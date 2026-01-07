@@ -1,0 +1,210 @@
+@page "/renters"
+@using MotoRent.Domain.Core
+@using MotoRent.Domain.Entities
+@using MotoRent.Services
+@inject RenterService RenterService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Renters - MotoRent</PageTitle>
+
+<MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
+    <MudText Typo="Typo.h4">Renter Management</MudText>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.PersonAdd" OnClick="OpenAddDialog">
+        Register Renter
+    </MudButton>
+</MudStack>
+
+<MudPaper Elevation="2" Class="pa-4 mb-4">
+    <MudTextField @bind-Value="m_searchTerm" Placeholder="Search by name, phone, passport, email..."
+                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                  Immediate="true" DebounceInterval="300" OnDebounceIntervalElapsed="SearchChanged"
+                  Style="max-width: 400px;" />
+</MudPaper>
+
+@if (m_loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+}
+
+<MudPaper Elevation="2">
+    <MudDataGrid T="Renter" Items="@m_renters" Hover="true" Striped="true"
+                 Loading="@m_loading" Dense="true" Virtualize="true"
+                 RowClick="@OnRowClick" RowStyle="cursor: pointer;">
+        <Columns>
+            <PropertyColumn Property="x => x.FullName" Title="Full Name" />
+            <PropertyColumn Property="x => x.Nationality" Title="Nationality" />
+            <PropertyColumn Property="x => x.PassportNo" Title="Passport No." />
+            <PropertyColumn Property="x => x.Phone" Title="Phone" />
+            <PropertyColumn Property="x => x.Email" Title="Email" />
+            <PropertyColumn Property="x => x.HotelName" Title="Hotel" />
+            <TemplateColumn Title="Actions" Sortable="false">
+                <CellTemplate>
+                    <MudStack Row="true" Spacing="1">
+                        <MudTooltip Text="Edit">
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                           Color="Color.Primary" OnClick="@(() => OpenEditDialog(context.Item))" />
+                        </MudTooltip>
+                        <MudTooltip Text="View Documents">
+                            <MudIconButton Icon="@Icons.Material.Filled.FolderOpen" Size="Size.Small"
+                                           Color="Color.Info" OnClick="@(() => ViewDocuments(context.Item))" />
+                        </MudTooltip>
+                        <MudTooltip Text="Delete">
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                           Color="Color.Error" OnClick="@(() => ConfirmDelete(context.Item))" />
+                        </MudTooltip>
+                    </MudStack>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+        <PagerContent>
+            <MudDataGridPager T="Renter" PageSizeOptions="new[] { 10, 20, 50, 100 }" />
+        </PagerContent>
+    </MudDataGrid>
+</MudPaper>
+
+@code {
+    private List<Renter> m_renters = [];
+    private bool m_loading = true;
+    private string? m_searchTerm;
+    private int m_shopId = 1; // TODO: Get from user session
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        m_loading = true;
+        try
+        {
+            var result = await RenterService.GetRentersAsync(
+                m_shopId,
+                m_searchTerm,
+                page: 1,
+                pageSize: 100);
+
+            m_renters = result.ItemCollection;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading data: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private async Task SearchChanged()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task OnRowClick(DataGridRowClickEventArgs<Renter> args)
+    {
+        await OpenEditDialog(args.Item);
+    }
+
+    private async Task OpenAddDialog()
+    {
+        var renter = new Renter
+        {
+            ShopId = m_shopId
+        };
+
+        var parameters = new DialogParameters<RenterDialog>
+        {
+            { x => x.Renter, renter },
+            { x => x.IsNew, true }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true,
+            CloseButton = true
+        };
+
+        var dialog = await DialogService.ShowAsync<RenterDialog>("Register Renter", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            await LoadDataAsync();
+            Snackbar.Add("Renter registered successfully", Severity.Success);
+        }
+    }
+
+    private async Task OpenEditDialog(Renter renter)
+    {
+        var cloned = renter.Clone();
+
+        var parameters = new DialogParameters<RenterDialog>
+        {
+            { x => x.Renter, cloned },
+            { x => x.IsNew, false }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true,
+            CloseButton = true
+        };
+
+        var dialog = await DialogService.ShowAsync<RenterDialog>("Edit Renter", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            await LoadDataAsync();
+            Snackbar.Add("Renter updated successfully", Severity.Success);
+        }
+    }
+
+    private async Task ViewDocuments(Renter renter)
+    {
+        // TODO: Implement document viewer dialog
+        Snackbar.Add("Document viewer coming soon", Severity.Info);
+        await Task.CompletedTask;
+    }
+
+    private async Task ConfirmDelete(Renter renter)
+    {
+        // Check if renter has active rentals
+        var activeRentals = await RenterService.GetActiveRentalCountAsync(renter.RenterId);
+        if (activeRentals > 0)
+        {
+            Snackbar.Add($"Cannot delete: {renter.FullName} has {activeRentals} active rental(s)", Severity.Warning);
+            return;
+        }
+
+        var parameters = new DialogParameters<MudMessageBox>
+        {
+            { x => x.Title, "Confirm Delete" },
+            { x => x.Message, $"Are you sure you want to delete {renter.FullName}?" },
+            { x => x.YesText, "Delete" },
+            { x => x.NoText, "Cancel" }
+        };
+
+        var dialog = await DialogService.ShowAsync<MudMessageBox>("Confirm Delete", parameters);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            var deleteResult = await RenterService.DeleteRenterAsync(renter, "system");
+            if (deleteResult.Success)
+            {
+                await LoadDataAsync();
+                Snackbar.Add("Renter deleted successfully", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add($"Delete failed: {deleteResult.Message}", Severity.Error);
+            }
+        }
+    }
+}

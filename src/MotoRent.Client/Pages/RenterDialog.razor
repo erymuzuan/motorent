@@ -1,0 +1,163 @@
+@using MotoRent.Domain.Entities
+@using MotoRent.Services
+@inject RenterService RenterService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="m_form" @bind-IsValid="m_formValid">
+            <MudText Typo="Typo.h6" Class="mb-3">Personal Information</MudText>
+            <MudGrid>
+                <MudItem xs="12" md="8">
+                    <MudTextField @bind-Value="Renter.FullName" Label="Full Name"
+                                  Required="true" RequiredError="Full name is required"
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+
+                <MudItem xs="12" md="4">
+                    <MudTextField @bind-Value="Renter.Nationality" Label="Nationality"
+                                  Variant="Variant.Outlined"
+                                  Placeholder="e.g., USA, UK, Germany" />
+                </MudItem>
+            </MudGrid>
+
+            <MudText Typo="Typo.h6" Class="mb-3 mt-4">Identification</MudText>
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="Renter.PassportNo" Label="Passport Number"
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="Renter.NationalIdNo" Label="National ID Number"
+                                  Variant="Variant.Outlined"
+                                  HelperText="For Thai nationals" />
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="Renter.DrivingLicenseNo" Label="Driving License Number"
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="Renter.DrivingLicenseCountry" Label="License Country"
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudDatePicker @bind-Date="m_licenseExpiry" Label="License Expiry Date"
+                                   Variant="Variant.Outlined" Editable="true"
+                                   Placeholder="Select date" />
+                </MudItem>
+            </MudGrid>
+
+            <MudText Typo="Typo.h6" Class="mb-3 mt-4">Contact Information</MudText>
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="Renter.Phone" Label="Phone Number"
+                                  Required="true" RequiredError="Phone is required"
+                                  Variant="Variant.Outlined"
+                                  InputType="InputType.Telephone" />
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="Renter.Email" Label="Email"
+                                  Variant="Variant.Outlined"
+                                  InputType="InputType.Email" />
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="Renter.HotelName" Label="Hotel Name"
+                                  Variant="Variant.Outlined"
+                                  Placeholder="Where are you staying?" />
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="Renter.HotelAddress" Label="Hotel Address"
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="Renter.EmergencyContact" Label="Emergency Contact"
+                                  Variant="Variant.Outlined"
+                                  Placeholder="Name and phone number" />
+                </MudItem>
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                   OnClick="SaveAsync" Disabled="@(!m_formValid || m_saving)">
+            @if (m_saving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @(IsNew ? "Register" : "Save")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private MudDialogInstance? MudDialog { get; set; }
+
+    [Parameter]
+    public Renter Renter { get; set; } = new();
+
+    [Parameter]
+    public bool IsNew { get; set; }
+
+    private MudForm? m_form;
+    private bool m_formValid;
+    private bool m_saving;
+    private DateTime? m_licenseExpiry;
+
+    protected override void OnInitialized()
+    {
+        m_licenseExpiry = Renter.DrivingLicenseExpiry?.DateTime;
+    }
+
+    private void Cancel()
+    {
+        MudDialog?.Cancel();
+    }
+
+    private async Task SaveAsync()
+    {
+        if (m_form == null) return;
+
+        await m_form.Validate();
+        if (!m_formValid) return;
+
+        m_saving = true;
+
+        try
+        {
+            Renter.DrivingLicenseExpiry = m_licenseExpiry.HasValue
+                ? new DateTimeOffset(m_licenseExpiry.Value)
+                : null;
+
+            var result = IsNew
+                ? await RenterService.CreateRenterAsync(Renter, "system")
+                : await RenterService.UpdateRenterAsync(Renter, "system");
+
+            if (result.Success)
+            {
+                MudDialog?.Close(DialogResult.Ok(Renter));
+            }
+            else
+            {
+                Snackbar.Add($"Save failed: {result.Message}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            m_saving = false;
+        }
+    }
+}

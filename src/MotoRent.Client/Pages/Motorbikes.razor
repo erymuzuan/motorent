@@ -1,0 +1,250 @@
+@page "/motorbikes"
+@using MotoRent.Domain.Core
+@using MotoRent.Domain.Entities
+@using MotoRent.Services
+@inject MotorbikeService MotorbikeService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Motorbikes - MotoRent</PageTitle>
+
+<MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
+    <MudText Typo="Typo.h4">Motorbike Inventory</MudText>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Add" OnClick="OpenAddDialog">
+        Add Motorbike
+    </MudButton>
+</MudStack>
+
+<MudPaper Elevation="2" Class="pa-4 mb-4">
+    <MudStack Row="true" Spacing="4" AlignItems="AlignItems.Center">
+        <MudTextField @bind-Value="m_searchTerm" Placeholder="Search by license plate, brand, model..."
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                      Immediate="true" DebounceInterval="300" OnDebounceIntervalElapsed="SearchChanged"
+                      Style="max-width: 400px;" />
+
+        <MudSelect T="string" Value="m_statusFilter" Label="Status" Style="width: 150px;"
+                   ValueChanged="@((string? s) => StatusFilterChanged(s))" Clearable="true">
+            <MudSelectItem Value="@("Available")">Available</MudSelectItem>
+            <MudSelectItem Value="@("Rented")">Rented</MudSelectItem>
+            <MudSelectItem Value="@("Maintenance")">Maintenance</MudSelectItem>
+        </MudSelect>
+
+        <MudSpacer />
+
+        @foreach (var (status, count) in m_statusCounts)
+        {
+            <MudChip T="string" Size="Size.Small"
+                     Color="@GetStatusColor(status)"
+                     OnClick="@(() => FilterByStatus(status))">
+                @status: @count
+            </MudChip>
+        }
+    </MudStack>
+</MudPaper>
+
+@if (m_loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+}
+
+<MudPaper Elevation="2">
+    <MudDataGrid T="Motorbike" Items="@m_motorbikes" Hover="true" Striped="true"
+                 Loading="@m_loading" Dense="true" Virtualize="true"
+                 RowClick="@OnRowClick" RowStyle="cursor: pointer;">
+        <Columns>
+            <PropertyColumn Property="x => x.LicensePlate" Title="License Plate" />
+            <PropertyColumn Property="x => x.Brand" Title="Brand" />
+            <PropertyColumn Property="x => x.Model" Title="Model" />
+            <PropertyColumn Property="x => x.EngineCC" Title="CC" />
+            <PropertyColumn Property="x => x.Color" Title="Color" />
+            <PropertyColumn Property="x => x.Year" Title="Year" />
+            <TemplateColumn Title="Daily Rate" Sortable="true">
+                <CellTemplate>
+                    <MudText Color="Color.Primary">@context.Item.DailyRate.ToString("N0") THB</MudText>
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Status">
+                <CellTemplate>
+                    <MudChip T="string" Size="Size.Small"
+                             Color="@GetStatusColor(context.Item.Status)">
+                        @context.Item.Status
+                    </MudChip>
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Actions" Sortable="false">
+                <CellTemplate>
+                    <MudStack Row="true" Spacing="1">
+                        <MudTooltip Text="Edit">
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                           Color="Color.Primary" OnClick="@(() => OpenEditDialog(context.Item))" />
+                        </MudTooltip>
+                        <MudTooltip Text="Delete">
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                           Color="Color.Error" OnClick="@(() => ConfirmDelete(context.Item))" />
+                        </MudTooltip>
+                    </MudStack>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+        <PagerContent>
+            <MudDataGridPager T="Motorbike" PageSizeOptions="new[] { 10, 20, 50, 100 }" />
+        </PagerContent>
+    </MudDataGrid>
+</MudPaper>
+
+@code {
+    private List<Motorbike> m_motorbikes = [];
+    private Dictionary<string, int> m_statusCounts = new();
+    private bool m_loading = true;
+    private string? m_searchTerm;
+    private string? m_statusFilter;
+    private int m_shopId = 1; // TODO: Get from user session
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        m_loading = true;
+        try
+        {
+            var result = await MotorbikeService.GetMotorbikesAsync(
+                m_shopId,
+                m_searchTerm,
+                m_statusFilter,
+                page: 1,
+                pageSize: 100);
+
+            m_motorbikes = result.ItemCollection;
+            m_statusCounts = await MotorbikeService.GetStatusCountsAsync(m_shopId);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading data: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private async Task SearchChanged()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task StatusFilterChanged(string? status)
+    {
+        m_statusFilter = status;
+        await LoadDataAsync();
+    }
+
+    private async Task FilterByStatus(string status)
+    {
+        m_statusFilter = m_statusFilter == status ? null : status;
+        await LoadDataAsync();
+    }
+
+    private async Task OnRowClick(DataGridRowClickEventArgs<Motorbike> args)
+    {
+        await OpenEditDialog(args.Item);
+    }
+
+    private async Task OpenAddDialog()
+    {
+        var motorbike = new Motorbike
+        {
+            ShopId = m_shopId,
+            Status = "Available",
+            Year = DateTime.Now.Year
+        };
+
+        var parameters = new DialogParameters<MotorbikeDialog>
+        {
+            { x => x.Motorbike, motorbike },
+            { x => x.IsNew, true }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true,
+            CloseButton = true
+        };
+
+        var dialog = await DialogService.ShowAsync<MotorbikeDialog>("Add Motorbike", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            await LoadDataAsync();
+            Snackbar.Add("Motorbike added successfully", Severity.Success);
+        }
+    }
+
+    private async Task OpenEditDialog(Motorbike motorbike)
+    {
+        var cloned = motorbike.Clone();
+
+        var parameters = new DialogParameters<MotorbikeDialog>
+        {
+            { x => x.Motorbike, cloned },
+            { x => x.IsNew, false }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true,
+            CloseButton = true
+        };
+
+        var dialog = await DialogService.ShowAsync<MotorbikeDialog>("Edit Motorbike", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            await LoadDataAsync();
+            Snackbar.Add("Motorbike updated successfully", Severity.Success);
+        }
+    }
+
+    private async Task ConfirmDelete(Motorbike motorbike)
+    {
+        var parameters = new DialogParameters<MudMessageBox>
+        {
+            { x => x.Title, "Confirm Delete" },
+            { x => x.Message, $"Are you sure you want to delete {motorbike.Brand} {motorbike.Model} ({motorbike.LicensePlate})?" },
+            { x => x.YesText, "Delete" },
+            { x => x.NoText, "Cancel" }
+        };
+
+        var dialog = await DialogService.ShowAsync<MudMessageBox>("Confirm Delete", parameters);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            var deleteResult = await MotorbikeService.DeleteMotorbikeAsync(motorbike, "system");
+            if (deleteResult.Success)
+            {
+                await LoadDataAsync();
+                Snackbar.Add("Motorbike deleted successfully", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add($"Delete failed: {deleteResult.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private static Color GetStatusColor(string? status) => status switch
+    {
+        "Available" => Color.Success,
+        "Rented" => Color.Primary,
+        "Maintenance" => Color.Warning,
+        _ => Color.Default
+    };
+}
