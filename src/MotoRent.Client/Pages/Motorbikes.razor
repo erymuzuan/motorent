@@ -1,10 +1,8 @@
 @page "/motorbikes"
-@using MotoRent.Domain.Core
+@inherits MotoRentComponentBase
 @using MotoRent.Domain.Entities
 @using MotoRent.Services
 @inject MotorbikeService MotorbikeService
-@inject IDialogService DialogService
-@inject ISnackbar Snackbar
 
 <PageTitle>Motorbikes - MotoRent</PageTitle>
 
@@ -61,7 +59,7 @@
             <PropertyColumn Property="x => x.Year" Title="Year" />
             <TemplateColumn Title="Daily Rate" Sortable="true">
                 <CellTemplate>
-                    <MudText Color="Color.Primary">@context.Item.DailyRate.ToString("N0") THB</MudText>
+                    <MudText Color="Color.Primary">@FormatCurrency(context.Item.DailyRate)</MudText>
                 </CellTemplate>
             </TemplateColumn>
             <TemplateColumn Title="Status">
@@ -99,7 +97,6 @@
     private bool m_loading = true;
     private string? m_searchTerm;
     private string? m_statusFilter;
-    private int m_shopId = 1; // TODO: Get from user session
 
     protected override async Task OnInitializedAsync()
     {
@@ -112,18 +109,18 @@
         try
         {
             var result = await MotorbikeService.GetMotorbikesAsync(
-                m_shopId,
+                ShopId,
                 m_searchTerm,
                 m_statusFilter,
                 page: 1,
                 pageSize: 100);
 
             m_motorbikes = result.ItemCollection;
-            m_statusCounts = await MotorbikeService.GetStatusCountsAsync(m_shopId);
+            m_statusCounts = await MotorbikeService.GetStatusCountsAsync(ShopId);
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error loading data: {ex.Message}", Severity.Error);
+            ShowError($"Error loading data: {ex.Message}");
         }
         finally
         {
@@ -157,7 +154,7 @@
     {
         var motorbike = new Motorbike
         {
-            ShopId = m_shopId,
+            ShopId = ShopId,
             Status = "Available",
             Year = DateTime.Now.Year
         };
@@ -181,7 +178,7 @@
         if (result is { Canceled: false })
         {
             await LoadDataAsync();
-            Snackbar.Add("Motorbike added successfully", Severity.Success);
+            ShowSuccess("Motorbike added successfully");
         }
     }
 
@@ -208,35 +205,25 @@
         if (result is { Canceled: false })
         {
             await LoadDataAsync();
-            Snackbar.Add("Motorbike updated successfully", Severity.Success);
+            ShowSuccess("Motorbike updated successfully");
         }
     }
 
     private async Task ConfirmDelete(Motorbike motorbike)
     {
-        var parameters = new DialogParameters<MudMessageBox>
-        {
-            { x => x.Title, "Confirm Delete" },
-            { x => x.Message, $"Are you sure you want to delete {motorbike.Brand} {motorbike.Model} ({motorbike.LicensePlate})?" },
-            { x => x.YesText, "Delete" },
-            { x => x.NoText, "Cancel" }
-        };
+        var itemName = $"{motorbike.Brand} {motorbike.Model} ({motorbike.LicensePlate})";
+        if (!await ConfirmDeleteAsync(itemName))
+            return;
 
-        var dialog = await DialogService.ShowAsync<MudMessageBox>("Confirm Delete", parameters);
-        var result = await dialog.Result;
-
-        if (result is { Canceled: false })
+        var deleteResult = await MotorbikeService.DeleteMotorbikeAsync(motorbike, UserName);
+        if (deleteResult.Success)
         {
-            var deleteResult = await MotorbikeService.DeleteMotorbikeAsync(motorbike, "system");
-            if (deleteResult.Success)
-            {
-                await LoadDataAsync();
-                Snackbar.Add("Motorbike deleted successfully", Severity.Success);
-            }
-            else
-            {
-                Snackbar.Add($"Delete failed: {deleteResult.Message}", Severity.Error);
-            }
+            await LoadDataAsync();
+            ShowSuccess("Motorbike deleted successfully");
+        }
+        else
+        {
+            ShowError($"Delete failed: {deleteResult.Message}");
         }
     }
 

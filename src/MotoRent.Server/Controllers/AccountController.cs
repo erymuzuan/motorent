@@ -1,0 +1,381 @@
+using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using MotoRent.Domain.Core;
+using MotoRent.Domain.DataContext;
+using CoreUser = MotoRent.Domain.Core.User;
+
+namespace MotoRent.Server.Controllers;
+
+/// <summary>
+/// Controller for authentication, authorization, and user account management.
+/// </summary>
+[Route("account")]
+public class AccountController : Controller
+{
+    private readonly IDirectoryService m_directoryService;
+    private readonly IRequestContext m_requestContext;
+    private readonly CoreDataContext m_coreDataContext;
+
+    public AccountController(
+        IDirectoryService directoryService,
+        IRequestContext requestContext,
+        CoreDataContext coreDataContext)
+    {
+        m_directoryService = directoryService;
+        m_requestContext = requestContext;
+        m_coreDataContext = coreDataContext;
+    }
+
+    #region Login Pages
+
+    /// <summary>
+    /// Login page.
+    /// </summary>
+    [HttpGet("login")]
+    public IActionResult Login([FromQuery] string? returnUrl = null)
+    {
+        ViewData["ReturnUrl"] = returnUrl;
+        return View();
+    }
+
+    /// <summary>
+    /// Access denied page.
+    /// </summary>
+    [HttpGet("access-denied")]
+    public IActionResult AccessDenied()
+    {
+        return View();
+    }
+
+    #endregion
+
+    #region OAuth Login
+
+    /// <summary>
+    /// Initiates Google OAuth login.
+    /// </summary>
+    [HttpGet("google")]
+    public IActionResult LoginWithGoogle([FromQuery] string? returnUrl = null)
+    {
+        var properties = new AuthenticationProperties
+        {
+            RedirectUri = Url.Action(nameof(OAuthCallback), new { returnUrl }),
+            Items = { { "LoginProvider", "Google" } }
+        };
+        return Challenge(properties, "Google");
+    }
+
+    /// <summary>
+    /// Initiates Microsoft OAuth login.
+    /// </summary>
+    [HttpGet("microsoft")]
+    public IActionResult LoginWithMicrosoft([FromQuery] string? returnUrl = null)
+    {
+        var properties = new AuthenticationProperties
+        {
+            RedirectUri = Url.Action(nameof(OAuthCallback), new { returnUrl }),
+            Items = { { "LoginProvider", "Microsoft" } }
+        };
+        return Challenge(properties, "Microsoft");
+    }
+
+    /// <summary>
+    /// OAuth callback handler - processes the response from OAuth providers.
+    /// </summary>
+    [HttpGet("oauth-callback")]
+    public async Task<IActionResult> OAuthCallback([FromQuery] string? returnUrl = null)
+    {
+        // Authenticate using the external cookie
+        var result = await HttpContext.AuthenticateAsync("ExternalAuth");
+        if (!result.Succeeded || result.Principal == null)
+        {
+            return RedirectToAction(nameof(Login));
+        }
+
+        // Get the external claims
+        var externalUser = result.Principal;
+        var email = externalUser.FindFirst(ClaimTypes.Email)?.Value
+            ?? externalUser.FindFirst(ClaimTypes.Name)?.Value;
+
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return RedirectToAction(nameof(Login));
+        }
+
+        var userName = email.ToLowerInvariant();
+
+        // Look up or create the user
+        var user = await m_directoryService.GetUserAsync(userName);
+        if (user == null)
+        {
+            // Create a new user from OAuth
+            user = new CoreUser
+            {
+                UserName = userName,
+                Email = email,
+                FullName = externalUser.FindFirst(ClaimTypes.Name)?.Value ?? email,
+                CredentialProvider = result.Properties?.Items["LoginProvider"] ?? CoreUser.GOOGLE,
+                NameIdentifier = externalUser.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            };
+
+            // Save the new user
+            await m_directoryService.SaveUserProfileAsync(user);
+        }
+
+        // Check if user is locked
+        if (user.IsLockedOut)
+        {
+            return RedirectToAction(nameof(AccessDenied));
+        }
+
+        // Get the user's default account (or null for super admins)
+        var accountNo = user.AccountNo;
+
+        // Build claims for the user
+        var claims = await m_directoryService.GetClaimsAsync(userName, accountNo);
+        var claimsList = claims.ToList();
+
+        if (claimsList.Count == 0)
+        {
+            // User exists but has no account access
+            // For now, allow them in with minimal claims
+            claimsList.Add(new Claim(ClaimTypes.Name, userName));
+            claimsList.Add(new Claim(ClaimTypes.Email, email));
+            claimsList.Add(new Claim(ClaimTypes.Role, UserAccount.REGISTERED_USER));
+        }
+
+        // Create the authentication principal
+        var identity = new ClaimsIdentity(claimsList, CookieAuthenticationDefaults.AuthenticationScheme);
+        var principal = new ClaimsPrincipal(identity);
+
+        // Sign out of external auth and sign in with the main cookie
+        await HttpContext.SignOutAsync("ExternalAuth");
+        await HttpContext.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            principal,
+            new AuthenticationProperties
+            {
+                IsPersistent = true,
+                ExpiresUtc = DateTimeOffset.UtcNow.AddDays(14),
+                IssuedUtc = DateTimeOffset.UtcNow
+            });
+
+        return LocalRedirect(returnUrl ?? "/");
+    }
+
+    #endregion
+
+    #region Account Switching
+
+    /// <summary>
+    /// Signs in to a specific account (for users with multiple accounts).
+    /// </summary>
+    [Authorize]
+    [HttpGet("sign-in/{accountNo}")]
+    public async Task<IActionResult> SignInToAccount(string accountNo, [FromQuery] string? returnUrl = null)
+    {
+        var userName = m_requestContext.GetUserName();
+        if (string.IsNullOrWhiteSpace(userName))
+        {
+            return RedirectToAction(nameof(Login));
+        }
+
+        // Verify user has access to this account
+        var user = await m_directoryService.GetUserAsync(userName);
+        if (user == null || !user.AccountCollection.Any(a => a.AccountNo == accountNo))
+        {
+            return RedirectToAction(nameof(AccessDenied));
+        }
+
+        // Build claims for the new account
+        var claims = await m_directoryService.GetClaimsAsync(userName, accountNo);
+        var claimsList = claims.ToList();
+
+        if (claimsList.Count == 0)
+        {
+            return RedirectToAction(nameof(AccessDenied));
+        }
+
+        // Sign in with the new account
+        var identity = new ClaimsIdentity(claimsList, CookieAuthenticationDefaults.AuthenticationScheme);
+        var principal = new ClaimsPrincipal(identity);
+
+        await HttpContext.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            principal,
+            new AuthenticationProperties
+            {
+                IsPersistent = true,
+                ExpiresUtc = DateTimeOffset.UtcNow.AddDays(14),
+                IssuedUtc = DateTimeOffset.UtcNow
+            });
+
+        return LocalRedirect(returnUrl ?? "/");
+    }
+
+    #endregion
+
+    #region Logout
+
+    /// <summary>
+    /// Logs out the current user.
+    /// </summary>
+    [HttpGet("logoff")]
+    public async Task<IActionResult> Logoff()
+    {
+        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        await HttpContext.SignOutAsync("ExternalAuth");
+        return RedirectToAction(nameof(Login));
+    }
+
+    #endregion
+
+    #region Impersonation
+
+    /// <summary>
+    /// Impersonates a user (super admin only).
+    /// Hash must be MD5(userName:accountNo) for security.
+    /// </summary>
+    [Authorize(Roles = UserAccount.SUPER_ADMIN)]
+    [HttpGet("impersonate")]
+    public async Task<IActionResult> ImpersonateAccount(
+        [FromQuery(Name = "user")] string userName,
+        [FromQuery(Name = "account")] string accountNo,
+        [FromQuery(Name = "hash")] string hash,
+        [FromQuery(Name = "url")] string? url = null)
+    {
+        // Get the original super admin username for audit trail
+        var superAdmin = m_requestContext.GetUserName();
+        if (string.IsNullOrWhiteSpace(superAdmin))
+        {
+            return BadRequest("Not authenticated");
+        }
+
+        // Validate hash: MD5(userName:accountNo)
+        var expectedHash = ComputeMd5Hash($"{userName}:{accountNo}");
+        if (!string.Equals(hash, expectedHash, StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest("Invalid hash");
+        }
+
+        // Load the target user
+        var user = await m_coreDataContext.LoadOneAsync<User>(u => u.UserName == userName);
+        if (user == null)
+        {
+            return NotFound($"User '{userName}' not found");
+        }
+
+        // Load the target organization
+        var org = await m_coreDataContext.LoadOneAsync<Organization>(o => o.AccountNo == accountNo);
+        if (org == null)
+        {
+            return NotFound($"Organization '{accountNo}' not found");
+        }
+
+        // Build claims for the impersonated user
+        var claims = (await m_directoryService.GetClaimsAsync(userName, accountNo)).ToList();
+
+        // Add super admin claims for audit and to allow returning
+        claims.Add(new Claim(ClaimTypes.Role, UserAccount.SUPER_ADMIN));
+        claims.Add(new Claim("SuperAdmin", superAdmin)); // Original admin for audit trail
+        claims.Add(new Claim("Provider", "SuperAdmin")); // Indicates impersonation is active
+
+        // Create the impersonated identity
+        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        var principal = new ClaimsPrincipal(identity);
+
+        // Sign in as the impersonated user
+        await HttpContext.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            principal,
+            new AuthenticationProperties
+            {
+                IsPersistent = true,
+                ExpiresUtc = DateTimeOffset.UtcNow.AddDays(14),
+                IssuedUtc = DateTimeOffset.UtcNow
+            });
+
+        return LocalRedirect(url ?? "/");
+    }
+
+    /// <summary>
+    /// Returns to the super admin account after impersonation.
+    /// </summary>
+    [Authorize(Policy = UserAccount.POLICY_SUPER_ADMIN_IMPERSONATE)]
+    [HttpGet("back-super-admin")]
+    public async Task<IActionResult> RemoveImpersonateAccount()
+    {
+        // Get the original super admin username from claims
+        var superAdminUserName = await m_requestContext.GetClaimAsync<string>("SuperAdmin");
+        if (string.IsNullOrWhiteSpace(superAdminUserName))
+        {
+            return BadRequest("Not in impersonation mode");
+        }
+
+        // Load the super admin user
+        var user = await m_coreDataContext.LoadOneAsync<User>(u => u.UserName == superAdminUserName);
+        if (user == null)
+        {
+            return BadRequest("Failed to restore super admin session");
+        }
+
+        // Build claims for the super admin (no account)
+        var claims = (await m_directoryService.GetClaimsAsync(superAdminUserName, null)).ToList();
+
+        // Create the super admin identity
+        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        var principal = new ClaimsPrincipal(identity);
+
+        // Sign in as the super admin
+        await HttpContext.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            principal,
+            new AuthenticationProperties
+            {
+                IsPersistent = true,
+                ExpiresUtc = DateTimeOffset.UtcNow.AddDays(14),
+                IssuedUtc = DateTimeOffset.UtcNow
+            });
+
+        return Redirect("/super-admin/start-page");
+    }
+
+    /// <summary>
+    /// Generates an impersonation URL for a user (super admin only).
+    /// </summary>
+    [Authorize(Roles = UserAccount.SUPER_ADMIN)]
+    [HttpGet("impersonate-url")]
+    public IActionResult GetImpersonateUrl(
+        [FromQuery(Name = "user")] string userName,
+        [FromQuery(Name = "account")] string accountNo,
+        [FromQuery(Name = "url")] string? returnUrl = null)
+    {
+        var hash = ComputeMd5Hash($"{userName}:{accountNo}");
+        var impersonateUrl = $"/account/impersonate?user={Uri.EscapeDataString(userName)}&account={Uri.EscapeDataString(accountNo)}&hash={hash}";
+
+        if (!string.IsNullOrWhiteSpace(returnUrl))
+        {
+            impersonateUrl += $"&url={Uri.EscapeDataString(returnUrl)}";
+        }
+
+        return Ok(new { url = impersonateUrl });
+    }
+
+    #endregion
+
+    #region Helpers
+
+    private static string ComputeMd5Hash(string input)
+    {
+        var inputBytes = Encoding.UTF8.GetBytes(input);
+        var hashBytes = MD5.HashData(inputBytes);
+        return Convert.ToHexString(hashBytes).ToLowerInvariant();
+    }
+
+    #endregion
+}

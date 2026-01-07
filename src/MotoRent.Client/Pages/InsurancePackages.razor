@@ -1,0 +1,227 @@
+@page "/insurance"
+@using MotoRent.Domain.Core
+@using MotoRent.Domain.Entities
+@using MotoRent.Services
+@using InsuranceEntity = MotoRent.Domain.Entities.Insurance
+@inject InsuranceService InsuranceService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Insurance Packages - MotoRent</PageTitle>
+
+<MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
+    <MudText Typo="Typo.h4">Insurance Packages</MudText>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Add" OnClick="OpenAddDialog">
+        Add Package
+    </MudButton>
+</MudStack>
+
+<MudPaper Elevation="2" Class="pa-4 mb-4">
+    <MudStack Row="true" Spacing="4" AlignItems="AlignItems.Center">
+        <MudText Typo="Typo.subtitle1">Status:</MudText>
+        <MudSpacer />
+        @if (m_activeCounts.TryGetValue(true, out var activeCount))
+        {
+            <MudChip T="string" Size="Size.Small" Color="Color.Success">
+                Active: @activeCount
+            </MudChip>
+        }
+        @if (m_activeCounts.TryGetValue(false, out var inactiveCount))
+        {
+            <MudChip T="string" Size="Size.Small" Color="Color.Default">
+                Inactive: @inactiveCount
+            </MudChip>
+        }
+    </MudStack>
+</MudPaper>
+
+@if (m_loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+}
+
+<MudPaper Elevation="2">
+    <MudDataGrid T="InsuranceEntity" Items="@m_insurances" Hover="true" Striped="true"
+                 Loading="@m_loading" Dense="true"
+                 RowClick="@OnRowClick" RowStyle="cursor: pointer;">
+        <Columns>
+            <PropertyColumn Property="x => x.Name" Title="Package Name" />
+            <PropertyColumn Property="x => x.Description" Title="Description" />
+            <TemplateColumn Title="Daily Rate" Sortable="true">
+                <CellTemplate>
+                    <MudText Color="Color.Primary">@context.Item.DailyRate.ToString("N0") THB</MudText>
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Max Coverage" Sortable="true">
+                <CellTemplate>
+                    <MudText>@context.Item.MaxCoverage.ToString("N0") THB</MudText>
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Deductible" Sortable="true">
+                <CellTemplate>
+                    <MudText>@context.Item.Deductible.ToString("N0") THB</MudText>
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Status">
+                <CellTemplate>
+                    <MudSwitch T="bool" Value="@context.Item.IsActive"
+                               ValueChanged="@((bool val) => ToggleActiveAsync(context.Item))"
+                               Color="Color.Primary" Size="Size.Small"
+                               @onclick:stopPropagation="true" />
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Actions" Sortable="false">
+                <CellTemplate>
+                    <MudStack Row="true" Spacing="1">
+                        <MudTooltip Text="Edit">
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                           Color="Color.Primary" OnClick="@(() => OpenEditDialog(context.Item))" />
+                        </MudTooltip>
+                        <MudTooltip Text="Delete">
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                           Color="Color.Error" OnClick="@(() => ConfirmDelete(context.Item))" />
+                        </MudTooltip>
+                    </MudStack>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+    </MudDataGrid>
+</MudPaper>
+
+@code {
+    private List<InsuranceEntity> m_insurances = [];
+    private Dictionary<bool, int> m_activeCounts = new();
+    private bool m_loading = true;
+    private int m_shopId = 1; // TODO: Get from user session
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        m_loading = true;
+        try
+        {
+            var result = await InsuranceService.GetInsurancesAsync(m_shopId, page: 1, pageSize: 100);
+            m_insurances = result.ItemCollection;
+            m_activeCounts = await InsuranceService.GetActiveCountsAsync(m_shopId);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading data: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private async Task OnRowClick(DataGridRowClickEventArgs<InsuranceEntity> args)
+    {
+        await OpenEditDialog(args.Item);
+    }
+
+    private async Task OpenAddDialog()
+    {
+        var insurance = new InsuranceEntity
+        {
+            ShopId = m_shopId,
+            IsActive = true
+        };
+
+        var parameters = new DialogParameters<InsuranceDialog>
+        {
+            { x => x.Insurance, insurance },
+            { x => x.IsNew, true }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true,
+            CloseButton = true
+        };
+
+        var dialog = await DialogService.ShowAsync<InsuranceDialog>("Add Insurance Package", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            await LoadDataAsync();
+            Snackbar.Add("Insurance package added successfully", Severity.Success);
+        }
+    }
+
+    private async Task OpenEditDialog(InsuranceEntity insurance)
+    {
+        var cloned = insurance.Clone();
+
+        var parameters = new DialogParameters<InsuranceDialog>
+        {
+            { x => x.Insurance, cloned },
+            { x => x.IsNew, false }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true,
+            CloseButton = true
+        };
+
+        var dialog = await DialogService.ShowAsync<InsuranceDialog>("Edit Insurance Package", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            await LoadDataAsync();
+            Snackbar.Add("Insurance package updated successfully", Severity.Success);
+        }
+    }
+
+    private async Task ConfirmDelete(InsuranceEntity insurance)
+    {
+        var parameters = new DialogParameters<MudMessageBox>
+        {
+            { x => x.Title, "Confirm Delete" },
+            { x => x.Message, $"Are you sure you want to delete the '{insurance.Name}' insurance package?" },
+            { x => x.YesText, "Delete" },
+            { x => x.NoText, "Cancel" }
+        };
+
+        var dialog = await DialogService.ShowAsync<MudMessageBox>("Confirm Delete", parameters);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            var deleteResult = await InsuranceService.DeleteInsuranceAsync(insurance, "system");
+            if (deleteResult.Success)
+            {
+                await LoadDataAsync();
+                Snackbar.Add("Insurance package deleted successfully", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add($"Delete failed: {deleteResult.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task ToggleActiveAsync(InsuranceEntity insurance)
+    {
+        var result = await InsuranceService.ToggleActiveAsync(insurance.InsuranceId, "system");
+        if (result.Success)
+        {
+            await LoadDataAsync();
+            var status = insurance.IsActive ? "deactivated" : "activated";
+            Snackbar.Add($"Insurance package {status}", Severity.Success);
+        }
+        else
+        {
+            Snackbar.Add($"Failed to update status: {result.Message}", Severity.Error);
+        }
+    }
+}

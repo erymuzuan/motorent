@@ -1,0 +1,236 @@
+@page "/accessories"
+@using MotoRent.Domain.Core
+@using MotoRent.Domain.Entities
+@using MotoRent.Services
+@inject AccessoryService AccessoryService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Accessories - MotoRent</PageTitle>
+
+<MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
+    <MudText Typo="Typo.h4">Rental Accessories</MudText>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Add" OnClick="OpenAddDialog">
+        Add Accessory
+    </MudButton>
+</MudStack>
+
+<MudPaper Elevation="2" Class="pa-4 mb-4">
+    <MudStack Row="true" Spacing="4" AlignItems="AlignItems.Center">
+        <MudTextField @bind-Value="m_searchTerm" Placeholder="Search by name..."
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                      Immediate="true" DebounceInterval="300" OnDebounceIntervalElapsed="SearchChanged"
+                      Style="max-width: 400px;" />
+
+        <MudSpacer />
+
+        <MudChip T="string" Size="Size.Small" Color="Color.Primary">
+            Total: @m_totalCount
+        </MudChip>
+        <MudChip T="string" Size="Size.Small" Color="Color.Success">
+            Free with rental: @m_includedFreeCount
+        </MudChip>
+    </MudStack>
+</MudPaper>
+
+@if (m_loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+}
+
+<MudPaper Elevation="2">
+    <MudDataGrid T="Accessory" Items="@m_accessories" Hover="true" Striped="true"
+                 Loading="@m_loading" Dense="true"
+                 RowClick="@OnRowClick" RowStyle="cursor: pointer;">
+        <Columns>
+            <PropertyColumn Property="x => x.Name" Title="Name" />
+            <TemplateColumn Title="Daily Rate" Sortable="true">
+                <CellTemplate>
+                    @if (context.Item.IsIncluded)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Success">Free</MudChip>
+                    }
+                    else
+                    {
+                        <MudText Color="Color.Primary">@context.Item.DailyRate.ToString("N0") THB</MudText>
+                    }
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Quantity" Sortable="true">
+                <CellTemplate>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                        <MudText>@context.Item.QuantityAvailable</MudText>
+                        @if (context.Item.QuantityAvailable == 0)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Error">Out of stock</MudChip>
+                        }
+                        else if (context.Item.QuantityAvailable <= 3)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Warning">Low</MudChip>
+                        }
+                    </MudStack>
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Included" Sortable="true">
+                <CellTemplate>
+                    @if (context.Item.IsIncluded)
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.Check" Color="Color.Success" Size="Size.Small" />
+                    }
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Actions" Sortable="false">
+                <CellTemplate>
+                    <MudStack Row="true" Spacing="1">
+                        <MudTooltip Text="Edit">
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                           Color="Color.Primary" OnClick="@(() => OpenEditDialog(context.Item))" />
+                        </MudTooltip>
+                        <MudTooltip Text="Delete">
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                           Color="Color.Error" OnClick="@(() => ConfirmDelete(context.Item))" />
+                        </MudTooltip>
+                    </MudStack>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+    </MudDataGrid>
+</MudPaper>
+
+@code {
+    private List<Accessory> m_accessories = [];
+    private bool m_loading = true;
+    private string? m_searchTerm;
+    private int m_shopId = 1; // TODO: Get from user session
+    private int m_totalCount;
+    private int m_includedFreeCount;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        m_loading = true;
+        try
+        {
+            var result = await AccessoryService.GetAccessoriesAsync(
+                m_shopId,
+                m_searchTerm,
+                page: 1,
+                pageSize: 100);
+
+            m_accessories = result.ItemCollection;
+
+            var counts = await AccessoryService.GetAccessoryCountsAsync(m_shopId);
+            m_totalCount = counts.Total;
+            m_includedFreeCount = counts.IncludedFree;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading data: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private async Task SearchChanged()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task OnRowClick(DataGridRowClickEventArgs<Accessory> args)
+    {
+        await OpenEditDialog(args.Item);
+    }
+
+    private async Task OpenAddDialog()
+    {
+        var accessory = new Accessory
+        {
+            ShopId = m_shopId,
+            QuantityAvailable = 1
+        };
+
+        var parameters = new DialogParameters<AccessoryDialog>
+        {
+            { x => x.Accessory, accessory },
+            { x => x.IsNew, true }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true,
+            CloseButton = true
+        };
+
+        var dialog = await DialogService.ShowAsync<AccessoryDialog>("Add Accessory", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            await LoadDataAsync();
+            Snackbar.Add("Accessory added successfully", Severity.Success);
+        }
+    }
+
+    private async Task OpenEditDialog(Accessory accessory)
+    {
+        var cloned = accessory.Clone();
+
+        var parameters = new DialogParameters<AccessoryDialog>
+        {
+            { x => x.Accessory, cloned },
+            { x => x.IsNew, false }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true,
+            CloseButton = true
+        };
+
+        var dialog = await DialogService.ShowAsync<AccessoryDialog>("Edit Accessory", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            await LoadDataAsync();
+            Snackbar.Add("Accessory updated successfully", Severity.Success);
+        }
+    }
+
+    private async Task ConfirmDelete(Accessory accessory)
+    {
+        var parameters = new DialogParameters<MudMessageBox>
+        {
+            { x => x.Title, "Confirm Delete" },
+            { x => x.Message, $"Are you sure you want to delete '{accessory.Name}'?" },
+            { x => x.YesText, "Delete" },
+            { x => x.NoText, "Cancel" }
+        };
+
+        var dialog = await DialogService.ShowAsync<MudMessageBox>("Confirm Delete", parameters);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            var deleteResult = await AccessoryService.DeleteAccessoryAsync(accessory, "system");
+            if (deleteResult.Success)
+            {
+                await LoadDataAsync();
+                Snackbar.Add("Accessory deleted successfully", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add($"Delete failed: {deleteResult.Message}", Severity.Error);
+            }
+        }
+    }
+}

@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using MotoRent.Domain.Core;
 using MotoRent.Domain.Entities;
 
 namespace MotoRent.Domain.DataContext;
@@ -10,7 +11,7 @@ public static class ServiceCollectionExtensions
         // Register QueryProvider
         services.AddSingleton(new QueryProvider(connectionString));
 
-        // Register repositories for all entity types
+        // Register repositories for MotoRent operational entities
         services.AddScoped<IRepository<Shop>, Repository<Shop>>();
         services.AddScoped<IRepository<Renter>, Repository<Renter>>();
         services.AddScoped<IRepository<Document>, Repository<Document>>();
@@ -25,8 +26,17 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IRepository<DamagePhoto>, Repository<DamagePhoto>>();
         services.AddScoped<IRepository<RentalAgreement>, Repository<RentalAgreement>>();
 
-        // Register DataContext
+        // Register repositories for Core entities (uses [Core] schema)
+        services.AddScoped<IRepository<Organization>, CoreRepository<Organization>>();
+        services.AddScoped<IRepository<User>, CoreRepository<User>>();
+        services.AddScoped<IRepository<Setting>, CoreRepository<Setting>>();
+        services.AddScoped<IRepository<AccessToken>, CoreRepository<AccessToken>>();
+        services.AddScoped<IRepository<RegistrationInvite>, CoreRepository<RegistrationInvite>>();
+        services.AddScoped<IRepository<LogEntry>, CoreRepository<LogEntry>>();
+
+        // Register DataContexts
         services.AddScoped<RentalDataContext>();
+        services.AddScoped<CoreDataContext>();
 
         return services;
     }

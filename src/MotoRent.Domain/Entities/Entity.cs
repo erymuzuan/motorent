@@ -1,8 +1,10 @@
 using System.Text.Json.Serialization;
+using MotoRent.Domain.Core;
 
 namespace MotoRent.Domain.Entities;
 
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "$type")]
+// MotoRent operational entities
 [JsonDerivedType(typeof(Shop), nameof(Shop))]
 [JsonDerivedType(typeof(Renter), nameof(Renter))]
 [JsonDerivedType(typeof(Document), nameof(Document))]
@@ -16,6 +18,13 @@ namespace MotoRent.Domain.Entities;
 [JsonDerivedType(typeof(DamageReport), nameof(DamageReport))]
 [JsonDerivedType(typeof(DamagePhoto), nameof(DamagePhoto))]
 [JsonDerivedType(typeof(RentalAgreement), nameof(RentalAgreement))]
+// Core multi-tenant entities
+[JsonDerivedType(typeof(Organization), nameof(Organization))]
+[JsonDerivedType(typeof(User), nameof(User))]
+[JsonDerivedType(typeof(Setting), nameof(Setting))]
+[JsonDerivedType(typeof(AccessToken), nameof(AccessToken))]
+[JsonDerivedType(typeof(RegistrationInvite), nameof(RegistrationInvite))]
+[JsonDerivedType(typeof(LogEntry), nameof(LogEntry))]
 public abstract class Entity
 {
     public string? WebId { get; set; }

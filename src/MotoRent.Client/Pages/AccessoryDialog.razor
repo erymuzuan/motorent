@@ -1,0 +1,119 @@
+@using MotoRent.Domain.Entities
+@using MotoRent.Services
+@inject AccessoryService AccessoryService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="m_form" @bind-IsValid="m_formValid">
+            <MudGrid>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="Accessory.Name" Label="Accessory Name"
+                                  Required="true" RequiredError="Name is required"
+                                  Variant="Variant.Outlined"
+                                  Placeholder="e.g., Helmet, Phone Holder, Rain Poncho" />
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudNumericField @bind-Value="Accessory.DailyRate" Label="Daily Rate (THB)"
+                                     Required="true" Min="0"
+                                     Variant="Variant.Outlined" Format="N0"
+                                     HelperText="@(Accessory.IsIncluded ? "Free with rental" : "Charge per day")"
+                                     Disabled="@Accessory.IsIncluded" />
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudNumericField @bind-Value="Accessory.QuantityAvailable" Label="Quantity Available"
+                                     Required="true" Min="0"
+                                     Variant="Variant.Outlined" />
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudSwitch T="bool" Value="@Accessory.IsIncluded" Label="Free with rental"
+                               Color="Color.Primary"
+                               ValueChanged="@OnIncludedChanged" />
+                    @if (Accessory.IsIncluded)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Success">
+                            This accessory is included free with every rental
+                        </MudText>
+                    }
+                </MudItem>
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                   OnClick="SaveAsync" Disabled="@(!m_formValid || m_saving)">
+            @if (m_saving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @(IsNew ? "Add" : "Save")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private MudDialogInstance? MudDialog { get; set; }
+
+    [Parameter]
+    public Accessory Accessory { get; set; } = new();
+
+    [Parameter]
+    public bool IsNew { get; set; }
+
+    private MudForm? m_form;
+    private bool m_formValid;
+    private bool m_saving;
+
+    private void Cancel()
+    {
+        MudDialog?.Cancel();
+    }
+
+    private void OnIncludedChanged(bool isIncluded)
+    {
+        Accessory.IsIncluded = isIncluded;
+        if (isIncluded)
+        {
+            Accessory.DailyRate = 0;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (m_form == null) return;
+
+        await m_form.Validate();
+        if (!m_formValid) return;
+
+        m_saving = true;
+
+        try
+        {
+            var result = IsNew
+                ? await AccessoryService.CreateAccessoryAsync(Accessory, "system")
+                : await AccessoryService.UpdateAccessoryAsync(Accessory, "system");
+
+            if (result.Success)
+            {
+                MudDialog?.Close(DialogResult.Ok(Accessory));
+            }
+            else
+            {
+                Snackbar.Add($"Save failed: {result.Message}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            m_saving = false;
+        }
+    }
+}

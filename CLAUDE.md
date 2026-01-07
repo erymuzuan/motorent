@@ -92,9 +92,22 @@ CREATE TABLE [MotoRent].[Entity]
 ```
 
 ## Key Entities
+
+### Core Entities (Multi-Tenant)
+| Entity | Schema | Purpose |
+|--------|--------|---------|
+| Organization | [Core] | Tenant with AccountNo identifier |
+| User | [Core] | User with AccountCollection for multi-tenant access |
+| UserAccount | (embedded) | Links user to organization with roles |
+| Setting | [Core] | Key-value settings per organization/user |
+| AccessToken | [Core] | API access tokens with JWT payload |
+| RegistrationInvite | [Core] | Invitation codes for tenant onboarding |
+| LogEntry | [Core] | Audit and error logging |
+
+### Operational Entities (Tenant-Specific)
 | Entity | Purpose |
 |--------|---------|
-| Shop | Multi-tenant shop configuration |
+| Shop | Shop location within an organization |
 | Renter | Tourist/customer information |
 | Motorbike | Inventory with status tracking |
 | Rental | Rental transactions |
@@ -116,6 +129,32 @@ CREATE TABLE [MotoRent].[Entity]
 - `Completed` - Returned successfully
 - `Cancelled` - Booking cancelled
 
+## User Roles
+| Role | Constant | Description |
+|------|----------|-------------|
+| Super Admin | `administrator` | Platform administrator with full access |
+| Org Admin | `OrgAdmin` | Organization owner/manager |
+| Shop Manager | `ShopManager` | Manages a shop location |
+| Staff | `Staff` | Rental desk staff |
+| Mechanic | `Mechanic` | Maintenance staff |
+
+## Authentication
+- **Providers**: Google, Microsoft OAuth 2.0
+- **Cookie**: 14-day sliding expiration
+- **JWT**: For API access tokens
+- **Impersonation**: Super admin can impersonate users via `/account/impersonate`
+
+### Impersonation URL Format
+```
+/account/impersonate?user={userName}&account={accountNo}&hash={MD5(userName:accountNo)}
+```
+
+## Multi-Tenant Architecture
+- **[Core] schema**: Shared entities (Organization, User, Setting, etc.)
+- **[AccountNo] schema**: Tenant-specific operational data
+- **AccountNo**: Unique tenant identifier stored in Organization
+- **IRequestContext**: Provides current tenant/user context from claims
+
 ## Current Implementation Status
 - [x] Solution structure
 - [x] Domain entities with JSON polymorphism
@@ -124,6 +163,11 @@ CREATE TABLE [MotoRent].[Entity]
 - [x] Repository pattern
 - [x] Motorbike CRUD pages
 - [x] Renter management pages
+- [x] Core multi-tenant module
+- [x] Google/Microsoft OAuth authentication
+- [x] Super admin impersonation
+- [ ] Organization management pages
+- [ ] User management pages
 - [ ] Document OCR (Gemini)
 - [ ] Rental check-in/check-out
 - [ ] Payment processing
