@@ -1,0 +1,119 @@
+@page "/"
+
+<PageTitle>Dashboard - MotoRent</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Dashboard</MudText>
+
+<MudGrid>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Elevation="2" Class="pa-4">
+            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                <div>
+                    <MudText Typo="Typo.subtitle2" Color="Color.Default">Active Rentals</MudText>
+                    <MudText Typo="Typo.h4">12</MudText>
+                </div>
+                <MudIcon Icon="@Icons.Material.Filled.Receipt" Color="Color.Primary" Size="Size.Large" />
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Elevation="2" Class="pa-4">
+            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                <div>
+                    <MudText Typo="Typo.subtitle2" Color="Color.Default">Available Bikes</MudText>
+                    <MudText Typo="Typo.h4">24</MudText>
+                </div>
+                <MudIcon Icon="@Icons.Material.Filled.TwoWheeler" Color="Color.Success" Size="Size.Large" />
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Elevation="2" Class="pa-4">
+            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                <div>
+                    <MudText Typo="Typo.subtitle2" Color="Color.Default">Due Today</MudText>
+                    <MudText Typo="Typo.h4">5</MudText>
+                </div>
+                <MudIcon Icon="@Icons.Material.Filled.Schedule" Color="Color.Warning" Size="Size.Large" />
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Elevation="2" Class="pa-4">
+            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                <div>
+                    <MudText Typo="Typo.subtitle2" Color="Color.Default">Today's Revenue</MudText>
+                    <MudText Typo="Typo.h4">8,500</MudText>
+                </div>
+                <MudIcon Icon="@Icons.Material.Filled.AttachMoney" Color="Color.Secondary" Size="Size.Large" />
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+<MudGrid Class="mt-4">
+    <MudItem xs="12" md="8">
+        <MudPaper Elevation="2" Class="pa-4">
+            <MudText Typo="Typo.h6" Class="mb-4">Recent Rentals</MudText>
+            <MudTable Items="@m_recentRentals" Hover="true" Dense="true">
+                <HeaderContent>
+                    <MudTh>Renter</MudTh>
+                    <MudTh>Motorbike</MudTh>
+                    <MudTh>Start Date</MudTh>
+                    <MudTh>Status</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.RenterName</MudTd>
+                    <MudTd>@context.MotorbikeName</MudTd>
+                    <MudTd>@context.StartDate.ToString("dd MMM yyyy")</MudTd>
+                    <MudTd>
+                        <MudChip T="string" Size="Size.Small"
+                                 Color="@(context.Status == "Active" ? Color.Success : Color.Default)">
+                            @context.Status
+                        </MudChip>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" md="4">
+        <MudPaper Elevation="2" Class="pa-4">
+            <MudText Typo="Typo.h6" Class="mb-4">Quick Actions</MudText>
+            <MudStack Spacing="2">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                           StartIcon="@Icons.Material.Filled.Login" Href="/rentals/checkin">
+                    New Check-In
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true"
+                           StartIcon="@Icons.Material.Filled.Logout" Href="/rentals/checkout">
+                    Process Check-Out
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Secondary" FullWidth="true"
+                           StartIcon="@Icons.Material.Filled.PersonAdd" Href="/renters">
+                    Register Renter
+                </MudButton>
+                <MudButton Variant="Variant.Text" Color="Color.Default" FullWidth="true"
+                           StartIcon="@Icons.Material.Filled.TwoWheeler" Href="/motorbikes">
+                    Manage Inventory
+                </MudButton>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private record RentalSummary(string RenterName, string MotorbikeName, DateTime StartDate, string Status);
+
+    private List<RentalSummary> m_recentRentals =
+    [
+        new("John Smith", "Honda Click 125", DateTime.Today.AddDays(-2), "Active"),
+        new("Maria Garcia", "Yamaha Aerox 155", DateTime.Today.AddDays(-1), "Active"),
+        new("James Wilson", "Honda PCX 160", DateTime.Today, "Active"),
+        new("Sophie Chen", "Yamaha NMAX 155", DateTime.Today.AddDays(-3), "Active"),
+        new("Alex Brown", "Honda Click 125", DateTime.Today.AddDays(-5), "Completed")
+    ];
+}
