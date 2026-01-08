@@ -9,7 +9,7 @@ namespace MotoRent.Client.Controls;
 
 /// <summary>
 /// Base class for all MotoRent Blazor components.
-/// Provides common services: DataContext, RequestContext, DialogService, Snackbar, Navigation, and Logging.
+/// Provides common services: DataContext, RequestContext, DialogService, Snackbar, Navigation, Logging, and CommonLocalizer.
 /// </summary>
 public class MotoRentComponentBase : ComponentBase
 {
@@ -19,6 +19,9 @@ public class MotoRentComponentBase : ComponentBase
     [Inject] protected ISnackbar Snackbar { get; set; } = null!;
     [Inject] protected IRequestContext RequestContext { get; set; } = null!;
     [Inject] protected NavigationManager NavigationManager { get; set; } = null!;
+    [Inject] protected IStringLocalizer<CommonResources> CommonLocalizer { get; set; } = null!;
+
+    #region Request Context Properties
 
     /// <summary>
     /// Gets the current shop ID from the request context.
@@ -26,14 +29,21 @@ public class MotoRentComponentBase : ComponentBase
     protected int ShopId => RequestContext.GetShopId();
 
     /// <summary>
-    /// Gets the current username from the request context.
+    /// Gets the current username from the request context, or "system" if not authenticated.
     /// </summary>
-    protected string UserName => RequestContext.GetUserName();
+    protected string UserName => RequestContext.GetUserName() ?? "system";
+
+    /// <summary>
+    /// Gets the current organization AccountNo (tenant identifier).
+    /// </summary>
+    protected string? AccountNo => RequestContext.GetAccountNo();
 
     /// <summary>
     /// Gets the current date in the user's timezone.
     /// </summary>
     protected DateOnly Today => RequestContext.GetDate();
+
+    #endregion
 
     #region Date/Time Formatting
 
@@ -139,3 +149,9 @@ public class MotoRentComponentBase : ComponentBase
 
     #endregion
 }
+
+/// <summary>
+/// Marker class for common/shared localization resources.
+/// Resource file: Resources/CommonResources.resx
+/// </summary>
+public class CommonResources { }

@@ -2,11 +2,74 @@
 
 Entity definitions for MotoRent rental system.
 
+## Multi-Tenant Architecture
+
+MotoRent uses a **schema-per-tenant** isolation strategy:
+
+```
+[Core] schema (shared)              [AccountNo] schema (per tenant)
++------------------------+          +------------------------+
+| Organization (tenant)  |          | Shop (outlet)          |
+| User                   |          | Motorbike              |
+| UserAccount (embedded) |          | Renter                 |
+| Setting                |          | Rental                 |
+| AccessToken            |          | Payment                |
+| RegistrationInvite     |          | ... other operational  |
+| LogEntry               |          +------------------------+
++------------------------+
+```
+
+### Key Concepts
+
+1. **Organization** = Tenant (in [Core] schema)
+   - Identified by `AccountNo` (unique string)
+   - Contains tenant settings, subscriptions, timezone, currency
+
+2. **Shop** = Outlet/Location (in tenant's schema)
+   - One Organization can have multiple Shops
+   - Shop data is in `[AccountNo].[Shop]` - schema provides isolation
+   - **NO AccountNo property needed** on Shop entity
+
+3. **User** = System user (in [Core] schema)
+   - Can belong to multiple Organizations via `AccountCollection`
+   - Each `UserAccount` entry links to an Organization with roles
+
+### Why Shop doesn't have AccountNo
+
+```csharp
+// WRONG - Redundant! Schema already provides tenant isolation
+public class Shop : Entity
+{
+    public string AccountNo { get; set; }  // DON'T DO THIS
+}
+
+// CORRECT - Schema isolation handles multi-tenancy
+public class Shop : Entity
+{
+    // Data stored in [AccountNo].[Shop] table
+    // No AccountNo property needed
+}
+```
+
 ## Entity Overview
+
+### Core Entities (Shared [Core] Schema)
 
 | Entity | Description | Key Fields |
 |--------|-------------|------------|
-| Shop | Multi-tenant shop | Name, Location, Phone |
+| Organization | Tenant/company | AccountNo, Name, Currency, Timezone |
+| User | System user | UserName, Email, AccountCollection |
+| UserAccount | User-org link | AccountNo, Roles[] |
+| Setting | Config values | AccountNo, Key, Value, UserName |
+| AccessToken | API tokens | Token, Salt, AccountNo, Expires |
+| RegistrationInvite | Invite codes | Code, ValidFrom, ValidTo, MaxAccount |
+| LogEntry | Audit logs | AccountNo, UserName, Message, Severity |
+
+### Operational Entities (Tenant Schema)
+
+| Entity | Description | Key Fields |
+|--------|-------------|------------|
+| Shop | Outlet/location | Name, Location, Phone |
 | Renter | Tourist/customer | FullName, Passport, Phone |
 | Document | ID/license images | DocumentType, ImagePath, OcrData |
 | Motorbike | Inventory | LicensePlate, Brand, Status |
@@ -25,6 +88,7 @@ Entity definitions for MotoRent rental system.
 ```csharp
 // MotoRent.Domain/Entities/Entity.cs
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "$type")]
+// Operational entities (tenant schema)
 [JsonDerivedType(typeof(Shop), nameof(Shop))]
 [JsonDerivedType(typeof(Renter), nameof(Renter))]
 [JsonDerivedType(typeof(Document), nameof(Document))]
@@ -38,6 +102,13 @@ Entity definitions for MotoRent rental system.
 [JsonDerivedType(typeof(DamageReport), nameof(DamageReport))]
 [JsonDerivedType(typeof(DamagePhoto), nameof(DamagePhoto))]
 [JsonDerivedType(typeof(RentalAgreement), nameof(RentalAgreement))]
+// Core entities ([Core] schema)
+[JsonDerivedType(typeof(Organization), nameof(Organization))]
+[JsonDerivedType(typeof(User), nameof(User))]
+[JsonDerivedType(typeof(Setting), nameof(Setting))]
+[JsonDerivedType(typeof(AccessToken), nameof(AccessToken))]
+[JsonDerivedType(typeof(RegistrationInvite), nameof(RegistrationInvite))]
+[JsonDerivedType(typeof(LogEntry), nameof(LogEntry))]
 public abstract class Entity
 {
     public string? WebId { get; set; }
@@ -54,12 +125,19 @@ public abstract class Entity
 
 ## Shop
 
+An outlet/location within a tenant's organization. Stored in tenant schema.
+
 ```csharp
+/// <summary>
+/// Represents a shop/outlet location within a tenant's organization.
+/// Shop data is stored in the tenant's schema (e.g., [AccountNo].[Shop]),
+/// so tenant isolation is provided by the schema itself - no AccountNo property needed.
+/// </summary>
 public class Shop : Entity
 {
     public int ShopId { get; set; }
     public string Name { get; set; } = string.Empty;
-    public string Location { get; set; } = string.Empty;  // Phuket, Krabi
+    public string Location { get; set; } = string.Empty;  // Phuket, Krabi, Koh Samui
     public string Address { get; set; } = string.Empty;
     public string Phone { get; set; } = string.Empty;
     public string? Email { get; set; }
@@ -212,19 +290,88 @@ public class Rental : Entity
 
 ```
 MotoRent.Domain/
-└── Entities/
-    ├── Entity.cs
-    ├── Shop.cs
-    ├── Renter.cs
-    ├── Document.cs
-    ├── Motorbike.cs
-    ├── Rental.cs
-    ├── Deposit.cs
-    ├── Insurance.cs
-    ├── Accessory.cs
-    ├── RentalAccessory.cs
-    ├── Payment.cs
-    ├── DamageReport.cs
-    ├── DamagePhoto.cs
-    └── RentalAgreement.cs
+├── Entities/           # Operational entities (tenant schema)
+│   ├── Entity.cs       # Base class with polymorphic types
+│   ├── Shop.cs
+│   ├── Renter.cs
+│   ├── Document.cs
+│   ├── Motorbike.cs
+│   ├── Rental.cs
+│   ├── Deposit.cs
+│   ├── Insurance.cs
+│   ├── Accessory.cs
+│   ├── RentalAccessory.cs
+│   ├── Payment.cs
+│   ├── DamageReport.cs
+│   ├── DamagePhoto.cs
+│   └── RentalAgreement.cs
+├── Core/               # Core entities ([Core] schema)
+│   ├── Organization.cs
+│   ├── User.cs
+│   ├── UserAccount.cs
+│   ├── Setting.cs
+│   ├── AccessToken.cs
+│   ├── RegistrationInvite.cs
+│   ├── LogEntry.cs
+│   ├── IRequestContext.cs
+│   └── IDirectoryService.cs
+└── DataContext/
+    ├── RentalDataContext.cs    # Tenant operational data
+    └── CoreDataContext.cs      # Core shared data
+```
+
+## Core Entity Examples
+
+### Organization (Tenant)
+
+```csharp
+public class Organization : Entity
+{
+    public int OrganizationId { get; set; }
+    public string AccountNo { get; set; } = "";      // Unique tenant identifier
+    public string Name { get; set; } = "";
+    public string Currency { get; set; } = "THB";
+    public double? Timezone { get; set; } = 7;       // UTC+7 Thailand
+    public string Language { get; set; } = "th-TH";
+    public string[] Subscriptions { get; set; } = [];
+    public bool IsActive { get; set; } = true;
+    // ... address, logos, etc.
+}
+```
+
+### User
+
+```csharp
+public class User : Entity
+{
+    public int UserId { get; set; }
+    public string UserName { get; set; } = "";       // Typically email
+    public string Email { get; set; } = "";
+    public string FullName { get; set; } = "";
+    public string CredentialProvider { get; set; }   // Google, Microsoft, Custom
+    public bool IsLockedOut { get; set; }
+
+    // Multi-tenant access
+    public List<UserAccount> AccountCollection { get; } = [];
+    public string? AccountNo => AccountCollection.FirstOrDefault()?.AccountNo;
+}
+```
+
+### UserAccount (Links User to Organization)
+
+```csharp
+public class UserAccount
+{
+    public string AccountNo { get; set; } = "";      // Links to Organization
+    public string? StartPage { get; set; }
+    public bool IsFavourite { get; set; }
+    public List<string> Roles { get; } = [];         // Role strings
+
+    // Role constants
+    public const string SUPER_ADMIN = "administrator";
+    public const string ORG_ADMIN = "OrgAdmin";
+    public const string SHOP_MANAGER = "ShopManager";
+    public const string STAFF = "Staff";
+    public const string MECHANIC = "Mechanic";
+}
 ```

@@ -2,44 +2,165 @@
 
 MudBlazor component patterns and theming for MotoRent.
 
-## Setup
+## Component Base Classes (IMPORTANT)
 
-### Package Reference
+All components should inherit from the appropriate base class:
 
-```xml
-<PackageReference Include="MudBlazor" Version="7.15.0" />
-```
+| Base Class | Usage |
+|------------|-------|
+| `LocalizedComponentBase<T>` | **Default** - Pages and components with localization |
+| `MotoRentComponentBase` | Components without localization (rare) |
+| `LocalizedDialogBase<TEntity, TLocalizer>` | Dialogs with localization |
+| `MotoRentDialogBase<TEntity>` | Dialogs without localization (rare) |
 
-### Program.cs
+### Base Class Services
+
+`MotoRentComponentBase` provides:
+- `DataContext` - RentalDataContext for data operations
+- `RequestContext` - User context, timezone, formatting
+- `DialogService` - MudBlazor dialogs
+- `Snackbar` - Toast notifications
+- `NavigationManager` - URL navigation
+- `Logger` - Logging
+- `CommonLocalizer` - Shared localization strings
+
+`LocalizedComponentBase<T>` adds:
+- `Localizer` - Component-specific localization
+
+### Helper Properties & Methods
 
 ```csharp
-using MudBlazor.Services;
+// Request context properties
+protected int ShopId;           // Current shop
+protected string UserName;      // Current user or "system"
+protected string? AccountNo;    // Tenant identifier
+protected DateOnly Today;       // Today in user's timezone
 
-builder.Services.AddMudServices(config =>
-{
-    config.SnackbarConfiguration.PositionClass = Defaults.Classes.Position.BottomRight;
-    config.SnackbarConfiguration.ShowCloseIcon = true;
-    config.SnackbarConfiguration.VisibleStateDuration = 3000;
-});
+// Formatting
+protected string FormatDateTime(DateTimeOffset? dto);
+protected string FormatDate(DateTimeOffset? dto);
+protected string FormatTime(DateTimeOffset? dto);
+protected string FormatCurrency(decimal amount);  // "1,500 THB"
+
+// Notifications
+protected void ShowSuccess(string message);
+protected void ShowError(string message);
+protected void ShowWarning(string message);
+protected void ShowInfo(string message);
+
+// Confirmation dialogs
+protected Task<bool> ConfirmAsync(string title, string message, ...);
+protected Task<bool> ConfirmDeleteAsync(string itemName);
 ```
 
-### App.razor (Head)
-
-```html
-<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet" />
-<link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />
-```
-
-### App.razor (Body)
-
-```html
-<script src="_content/MudBlazor/MudBlazor.min.js"></script>
-```
-
-### _Imports.razor
+## Page Template (Localized)
 
 ```razor
-@using MudBlazor
+@page "/motorbikes"
+@inherits LocalizedComponentBase<Motorbikes>
+@using MotoRent.Domain.Entities
+@using MotoRent.Services
+@inject MotorbikeService MotorbikeService
+
+<PageTitle>@Localizer["PageTitle"]</PageTitle>
+
+<MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
+    <MudText Typo="Typo.h4">@Localizer["Header"]</MudText>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Add" OnClick="OpenAddDialog">
+        @CommonLocalizer["AddButton"]
+    </MudButton>
+</MudStack>
+
+@if (m_loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+}
+
+<MudPaper Elevation="2">
+    <MudDataGrid T="Motorbike" Items="@m_motorbikes" Hover="true" Striped="true"
+                 Loading="@m_loading" Dense="true">
+        <Columns>
+            <PropertyColumn Property="x => x.LicensePlate" Title="@Localizer["LicensePlate"]" />
+            <PropertyColumn Property="x => x.Brand" Title="@Localizer["Brand"]" />
+            <TemplateColumn Title="@Localizer["DailyRate"]">
+                <CellTemplate>
+                    <MudText Color="Color.Primary">@FormatCurrency(context.Item.DailyRate)</MudText>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+    </MudDataGrid>
+</MudPaper>
+
+@code {
+    private List<Motorbike> m_motorbikes = [];
+    private bool m_loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        if (m_loading) return; // Prevent double loading
+        m_loading = true;
+        try
+        {
+            var result = await MotorbikeService.GetMotorbikesAsync(ShopId);
+            m_motorbikes = result.ItemCollection;
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error loading data: {ex.Message}");
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private async Task ConfirmDelete(Motorbike motorbike)
+    {
+        if (!await ConfirmDeleteAsync(motorbike.LicensePlate))
+            return;
+
+        var result = await MotorbikeService.DeleteMotorbikeAsync(motorbike, UserName);
+        if (result.Success)
+        {
+            await LoadDataAsync();
+            ShowSuccess(Localizer["DeleteSuccess"]);
+        }
+        else
+        {
+            ShowError(result.Message ?? Localizer["DeleteFailed"]);
+        }
+    }
+}
+```
+
+## Loading Pattern
+
+```csharp
+private bool m_loading;
+
+private async Task LoadDataAsync()
+{
+    if (m_loading) return; // Prevent double loading
+    m_loading = true;
+    try
+    {
+        // Load data...
+    }
+    catch (Exception ex)
+    {
+        ShowError($"Error: {ex.Message}");
+    }
+    finally
+    {
+        m_loading = false;
+    }
+}
 ```
 
 ## Theme (Tropical Teal)
@@ -63,188 +184,86 @@ public static class MotoRentTheme
             Warning = "#FF9800",
             Error = "#F44336",
             Info = "#2196F3"
-        },
-        PaletteDark = new PaletteDark
-        {
-            Primary = "#4DB6AC",        // Teal 300
-            Secondary = "#FFAB91",
-            AppbarBackground = "#1E1E1E",
-            Background = "#121212",
-            Surface = "#1E1E1E"
         }
     };
 }
 ```
 
-### MainLayout.razor
-
-```razor
-@inherits LayoutComponentBase
-
-<MudThemeProvider Theme="MotoRentTheme.Theme" @bind-IsDarkMode="@m_isDarkMode" />
-<MudPopoverProvider />
-<MudDialogProvider />
-<MudSnackbarProvider />
-
-<MudLayout>
-    <MudAppBar Elevation="1">
-        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit"
-                       OnClick="@(_ => m_drawerOpen = !m_drawerOpen)" />
-        <MudIcon Icon="@Icons.Material.Filled.TwoWheeler" Class="mr-2" />
-        <MudText Typo="Typo.h6">MotoRent</MudText>
-        <MudSpacer />
-        <MudIconButton Icon="@(m_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
-                       Color="Color.Inherit" OnClick="@(_ => m_isDarkMode = !m_isDarkMode)" />
-    </MudAppBar>
-
-    <MudDrawer @bind-Open="m_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2">
-        <NavMenu />
-    </MudDrawer>
-
-    <MudMainContent>
-        <MudContainer MaxWidth="MaxWidth.Large" Class="my-4 pt-4">
-            @Body
-        </MudContainer>
-    </MudMainContent>
-</MudLayout>
-
-@code {
-    private bool m_drawerOpen = true;
-    private bool m_isDarkMode;
-}
-```
-
 ## Common Components
 
-### Data Table
+### Data Grid with Localization
 
 ```razor
-<MudTable Items="@m_motorbikes" Hover="true" Dense="true" Loading="@m_loading">
-    <ToolBarContent>
-        <MudText Typo="Typo.h6">Motorbikes</MudText>
-        <MudSpacer />
-        <MudTextField @bind-Value="m_searchString" Placeholder="Search..."
-                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
-                      Immediate="true" DebounceInterval="300" />
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
-                   OnClick="AddNew" Class="ml-4">Add</MudButton>
-    </ToolBarContent>
-    <HeaderContent>
-        <MudTh>License Plate</MudTh>
-        <MudTh>Brand</MudTh>
-        <MudTh>Model</MudTh>
-        <MudTh>Status</MudTh>
-        <MudTh>Daily Rate</MudTh>
-        <MudTh>Actions</MudTh>
-    </HeaderContent>
-    <RowTemplate>
-        <MudTd>@context.LicensePlate</MudTd>
-        <MudTd>@context.Brand</MudTd>
-        <MudTd>@context.Model</MudTd>
-        <MudTd>
-            <MudChip T="string" Size="Size.Small"
-                     Color="@(context.Status == "Available" ? Color.Success :
-                              context.Status == "Rented" ? Color.Warning : Color.Default)">
-                @context.Status
-            </MudChip>
-        </MudTd>
-        <MudTd>@context.DailyRate.ToString("N0") THB</MudTd>
-        <MudTd>
-            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
-                           OnClick="@(() => Edit(context))" />
-            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
-                           OnClick="@(() => Delete(context))" />
-        </MudTd>
-    </RowTemplate>
+<MudDataGrid T="Motorbike" Items="@m_motorbikes" Hover="true" Striped="true"
+             Loading="@m_loading" Dense="true" Virtualize="true">
+    <Columns>
+        <PropertyColumn Property="x => x.LicensePlate" Title="@Localizer["LicensePlate"]" />
+        <PropertyColumn Property="x => x.Brand" Title="@Localizer["Brand"]" />
+        <TemplateColumn Title="@Localizer["Status"]">
+            <CellTemplate>
+                <MudChip T="string" Size="Size.Small"
+                         Color="@GetStatusColor(context.Item.Status)">
+                    @Localizer[context.Item.Status ?? "Unknown"]
+                </MudChip>
+            </CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="@CommonLocalizer["Actions"]" Sortable="false">
+            <CellTemplate>
+                <MudStack Row="true" Spacing="1">
+                    <MudTooltip Text="@CommonLocalizer["Edit"]">
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                       Color="Color.Primary" OnClick="@(() => Edit(context.Item))" />
+                    </MudTooltip>
+                    <MudTooltip Text="@CommonLocalizer["Delete"]">
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                       Color="Color.Error" OnClick="@(() => Delete(context.Item))" />
+                    </MudTooltip>
+                </MudStack>
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
     <PagerContent>
-        <MudTablePager PageSizeOptions="new[] { 10, 25, 50 }" />
+        <MudDataGridPager T="Motorbike" PageSizeOptions="new[] { 10, 20, 50, 100 }" />
     </PagerContent>
-</MudTable>
+</MudDataGrid>
 ```
 
 ### Form with Validation
 
 ```razor
-<MudForm @ref="m_form" @bind-IsValid="m_isValid">
+<MudForm @ref="m_form" @bind-IsValid="m_formValid">
     <MudGrid>
         <MudItem xs="12" sm="6">
             <MudTextField @bind-Value="m_item.LicensePlate"
-                          Label="License Plate"
+                          Label="@Localizer["LicensePlate"]"
                           Required="true"
-                          RequiredError="License plate is required" />
+                          RequiredError="@Localizer["LicensePlateRequired"]" />
         </MudItem>
         <MudItem xs="12" sm="6">
-            <MudSelect @bind-Value="m_item.Brand" Label="Brand" Required="true">
+            <MudSelect @bind-Value="m_item.Brand" Label="@Localizer["Brand"]" Required="true">
                 <MudSelectItem Value="@("Honda")">Honda</MudSelectItem>
                 <MudSelectItem Value="@("Yamaha")">Yamaha</MudSelectItem>
-                <MudSelectItem Value="@("Suzuki")">Suzuki</MudSelectItem>
             </MudSelect>
         </MudItem>
         <MudItem xs="12" sm="6">
-            <MudNumericField @bind-Value="m_item.DailyRate" Label="Daily Rate (THB)"
+            <MudNumericField @bind-Value="m_item.DailyRate"
+                             Label="@Localizer["DailyRate"]"
                              Format="N0" Min="0" />
-        </MudItem>
-        <MudItem xs="12" sm="6">
-            <MudDatePicker @bind-Date="m_item.LastServiceDate" Label="Last Service Date" />
         </MudItem>
     </MudGrid>
 </MudForm>
 ```
 
-### Dashboard Cards
-
-```razor
-<MudGrid>
-    <MudItem xs="12" sm="6" md="3">
-        <MudPaper Elevation="2" Class="pa-4">
-            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
-                <div>
-                    <MudText Typo="Typo.subtitle2">Active Rentals</MudText>
-                    <MudText Typo="Typo.h4">@m_activeRentals</MudText>
-                </div>
-                <MudIcon Icon="@Icons.Material.Filled.Receipt" Color="Color.Primary" Size="Size.Large" />
-            </MudStack>
-        </MudPaper>
-    </MudItem>
-</MudGrid>
-```
-
-### Navigation Menu
-
-```razor
-<MudNavMenu>
-    <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">
-        Dashboard
-    </MudNavLink>
-
-    <MudNavGroup Title="Rentals" Icon="@Icons.Material.Filled.Receipt" Expanded="true">
-        <MudNavLink Href="/rentals" Icon="@Icons.Material.Filled.List">Active Rentals</MudNavLink>
-        <MudNavLink Href="/rentals/checkin" Icon="@Icons.Material.Filled.Login">Check-In</MudNavLink>
-        <MudNavLink Href="/rentals/checkout" Icon="@Icons.Material.Filled.Logout">Check-Out</MudNavLink>
-    </MudNavGroup>
-
-    <MudNavGroup Title="Inventory" Icon="@Icons.Material.Filled.TwoWheeler">
-        <MudNavLink Href="/motorbikes" Icon="@Icons.Material.Filled.DirectionsBike">Motorbikes</MudNavLink>
-    </MudNavGroup>
-</MudNavMenu>
-```
-
-### Snackbar Notifications
+## Status Color Helper
 
 ```csharp
-@inject ISnackbar Snackbar
-
-// Success
-Snackbar.Add("Rental saved successfully", Severity.Success);
-
-// Error
-Snackbar.Add("Failed to save rental", Severity.Error);
-
-// Warning
-Snackbar.Add("This bike needs maintenance", Severity.Warning);
-
-// Info
-Snackbar.Add("New booking received", Severity.Info);
+private static Color GetStatusColor(string? status) => status switch
+{
+    "Available" => Color.Success,
+    "Rented" => Color.Primary,
+    "Maintenance" => Color.Warning,
+    _ => Color.Default
+};
 ```
 
 ## Component Reference
@@ -265,3 +284,4 @@ Snackbar.Add("New booking received", Severity.Info);
 
 ## Source
 - MudBlazor Docs: https://mudblazor.com
+- Base classes: `src/MotoRent.Client/Controls/`

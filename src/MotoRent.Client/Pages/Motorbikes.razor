@@ -1,5 +1,6 @@
 @page "/motorbikes"
 @inherits MotoRentComponentBase
+@using MotoRent.Client.Controls
 @using MotoRent.Domain.Entities
 @using MotoRent.Services
 @inject MotorbikeService MotorbikeService
@@ -159,23 +160,13 @@
             Year = DateTime.Now.Year
         };
 
-        var parameters = new DialogParameters<MotorbikeDialog>
-        {
-            { x => x.Motorbike, motorbike },
-            { x => x.IsNew, true }
-        };
+        var confirmed = await DialogService
+            .CreateDialog<MotorbikeDialog>("Add Motorbike")
+            .WithParameter(x => x.Motorbike, motorbike)
+            .WithParameter(x => x.IsNew, true)
+            .ShowAndConfirmAsync();
 
-        var options = new DialogOptions
-        {
-            MaxWidth = MaxWidth.Medium,
-            FullWidth = true,
-            CloseButton = true
-        };
-
-        var dialog = await DialogService.ShowAsync<MotorbikeDialog>("Add Motorbike", parameters, options);
-        var result = await dialog.Result;
-
-        if (result is { Canceled: false })
+        if (confirmed)
         {
             await LoadDataAsync();
             ShowSuccess("Motorbike added successfully");
@@ -184,25 +175,13 @@
 
     private async Task OpenEditDialog(Motorbike motorbike)
     {
-        var cloned = motorbike.Clone();
+        var confirmed = await DialogService
+            .CreateDialog<MotorbikeDialog>("Edit Motorbike")
+            .WithParameter(x => x.Motorbike, motorbike.Clone())
+            .WithParameter(x => x.IsNew, false)
+            .ShowAndConfirmAsync();
 
-        var parameters = new DialogParameters<MotorbikeDialog>
-        {
-            { x => x.Motorbike, cloned },
-            { x => x.IsNew, false }
-        };
-
-        var options = new DialogOptions
-        {
-            MaxWidth = MaxWidth.Medium,
-            FullWidth = true,
-            CloseButton = true
-        };
-
-        var dialog = await DialogService.ShowAsync<MotorbikeDialog>("Edit Motorbike", parameters, options);
-        var result = await dialog.Result;
-
-        if (result is { Canceled: false })
+        if (confirmed)
         {
             await LoadDataAsync();
             ShowSuccess("Motorbike updated successfully");

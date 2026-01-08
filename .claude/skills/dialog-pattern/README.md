@@ -1,6 +1,31 @@
 # Dialog Pattern (MudBlazor)
 
-Dialog patterns from rx-erp, adapted for MudBlazor.
+Dialog patterns using MudBlazor with localized base classes.
+
+## Dialog Base Classes
+
+| Base Class | Usage |
+|------------|-------|
+| `LocalizedDialogBase<TEntity, TLocalizer>` | **Default** - Dialogs with localization |
+| `MotoRentDialogBase<TEntity>` | Dialogs without localization (rare) |
+
+### Base Class Features
+
+`MotoRentDialogBase<TEntity>` provides:
+- `MudDialog` - Cascading dialog instance
+- `Entity` - The entity being edited
+- `IsNew` - Whether creating new or editing existing
+- `Form` - MudForm reference for validation
+- `FormValid` - Form validation state
+- `Saving` - Save operation in progress
+- `Cancel()` - Cancel the dialog
+- `Close()` / `Close(result)` - Close with result
+- `ValidateFormAsync()` - Validate and return result
+- `SaveButtonText` - "Add" or "Save" based on IsNew
+
+`LocalizedDialogBase<TEntity, TLocalizer>` adds:
+- `Localizer` - Component-specific localization
+- `GetLocalizedText(key, defaultText)` - Get localized string
 
 ## Pattern Guidelines
 
@@ -13,277 +38,314 @@ Dialog patterns from rx-erp, adapted for MudBlazor.
 | **No Business Logic** | Keep business logic in services, not in dialogs or parents |
 | **Operation Name** | Use descriptive operation names for SubmitChanges |
 
-## Base Dialog Component
-
-```csharp
-// Components/Dialogs/DialogBase.cs
-using Microsoft.AspNetCore.Components;
-using MudBlazor;
-
-namespace MotoRent.Server.Components.Dialogs;
-
-public abstract class DialogBase<TItem> : ComponentBase where TItem : class
-{
-    [CascadingParameter]
-    protected MudDialogInstance MudDialog { get; set; } = default!;
-
-    [Parameter]
-    public TItem? Item { get; set; }
-
-    [Inject]
-    protected RentalDataContext DataContext { get; set; } = default!;
-
-    [Inject]
-    protected ISnackbar Snackbar { get; set; } = default!;
-
-    protected virtual bool OkDisabled => this.Item is null;
-
-    protected void Ok()
-    {
-        this.MudDialog.Close(DialogResult.Ok(this.Item));
-    }
-
-    protected void Cancel()
-    {
-        this.MudDialog.Cancel();
-    }
-}
-```
-
-## Simple Edit Dialog
+## Localized Dialog Template
 
 ```razor
-@* Components/Dialogs/MotorbikeDialog.razor *@
-@inherits DialogBase<Motorbike>
+@* MotorbikeDialog.razor *@
+@inherits LocalizedDialogBase<Motorbike, MotorbikeDialog>
+@using MotoRent.Domain.Entities
+@using MotoRent.Services
+@inject MotorbikeService MotorbikeService
 
 <MudDialog>
     <TitleContent>
         <MudText Typo="Typo.h6">
             <MudIcon Icon="@Icons.Material.Filled.TwoWheeler" Class="mr-2" />
-            @(Item?.MotorbikeId == 0 ? "Add Motorbike" : "Edit Motorbike")
+            @(IsNew ? Localizer["AddTitle"] : Localizer["EditTitle"])
         </MudText>
     </TitleContent>
 
     <DialogContent>
-        @if (this.Item is not null)
-        {
-            <MudForm @ref="m_form" @bind-IsValid="m_isValid">
-                <MudGrid>
-                    <MudItem xs="12" sm="6">
-                        <MudTextField @bind-Value="this.Item.LicensePlate"
-                                      Label="License Plate"
-                                      Required="true"
-                                      RequiredError="License plate is required" />
-                    </MudItem>
-                    <MudItem xs="12" sm="6">
-                        <MudSelect @bind-Value="this.Item.Brand" Label="Brand" Required="true">
-                            <MudSelectItem Value="@("Honda")">Honda</MudSelectItem>
-                            <MudSelectItem Value="@("Yamaha")">Yamaha</MudSelectItem>
-                            <MudSelectItem Value="@("Suzuki")">Suzuki</MudSelectItem>
-                        </MudSelect>
-                    </MudItem>
-                    <MudItem xs="12" sm="6">
-                        <MudTextField @bind-Value="this.Item.Model" Label="Model" Required="true" />
-                    </MudItem>
-                    <MudItem xs="12" sm="6">
-                        <MudNumericField @bind-Value="this.Item.EngineCC" Label="Engine CC" Min="50" Max="1000" />
-                    </MudItem>
-                    <MudItem xs="12" sm="6">
-                        <MudNumericField @bind-Value="this.Item.DailyRate" Label="Daily Rate (THB)"
-                                         Format="N2" Min="0" />
-                    </MudItem>
-                </MudGrid>
-            </MudForm>
-        }
+        <MudForm @ref="Form" @bind-IsValid="FormValid">
+            <MudGrid>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="Entity.LicensePlate"
+                                  Label="@Localizer["LicensePlate"]"
+                                  Required="true"
+                                  RequiredError="@Localizer["LicensePlateRequired"]"
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <MudSelect @bind-Value="Entity.Brand"
+                               Label="@Localizer["Brand"]"
+                               Required="true"
+                               Variant="Variant.Outlined">
+                        <MudSelectItem Value="@("Honda")">Honda</MudSelectItem>
+                        <MudSelectItem Value="@("Yamaha")">Yamaha</MudSelectItem>
+                        <MudSelectItem Value="@("Suzuki")">Suzuki</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="Entity.Model"
+                                  Label="@Localizer["Model"]"
+                                  Required="true"
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <MudNumericField @bind-Value="Entity.DailyRate"
+                                     Label="@Localizer["DailyRate"]"
+                                     Format="N0" Min="0"
+                                     Variant="Variant.Outlined" />
+                </MudItem>
+            </MudGrid>
+        </MudForm>
     </DialogContent>
 
     <DialogActions>
-        <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary" Disabled="@(!m_isValid)" OnClick="Ok">
-            @(Item?.MotorbikeId == 0 ? "Add" : "Save")
+        <MudButton OnClick="Cancel">@CommonLocalizer["Cancel"]</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                   OnClick="SaveAsync" Disabled="@(!FormValid || Saving)">
+            @if (Saving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @(IsNew ? CommonLocalizer["Add"] : CommonLocalizer["Save"])
         </MudButton>
     </DialogActions>
 </MudDialog>
 
 @code {
-    private MudForm m_form = default!;
-    private bool m_isValid;
+    private async Task SaveAsync()
+    {
+        if (!await ValidateFormAsync()) return;
+
+        Saving = true;
+        try
+        {
+            var result = IsNew
+                ? await MotorbikeService.CreateMotorbikeAsync(Entity, UserName)
+                : await MotorbikeService.UpdateMotorbikeAsync(Entity, UserName);
+
+            if (result.Success)
+            {
+                Close();
+            }
+            else
+            {
+                ShowError(result.Message ?? Localizer["SaveFailed"]);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowError(ex.Message);
+        }
+        finally
+        {
+            Saving = false;
+        }
+    }
 }
 ```
 
-## Calling Dialog from Parent
+## Calling Dialog from Parent (Fluent API)
+
+Use the fluent `DialogServiceExtensions` for cleaner dialog invocation:
 
 ```csharp
-// In parent component (e.g., MotorbikeList.razor.cs)
-@inject IDialogService DialogService
+@using MotoRent.Client.Controls
+@inherits LocalizedComponentBase<MotorbikeList>
 
-private List<Motorbike> m_motorbikes = [];
-
-private async Task EditMotorbike(Motorbike? motorbike = null)
+// Add new entity
+private async Task OpenAddDialog()
 {
-    // Clone for new or existing
+    var motorbike = new Motorbike { ShopId = ShopId };
+
+    var confirmed = await DialogService
+        .CreateDialog<MotorbikeDialog>(Localizer["AddDialogTitle"])
+        .WithParameter(x => x.Entity, motorbike)
+        .WithParameter(x => x.IsNew, true)
+        .ShowAndConfirmAsync();
+
+    if (confirmed)
+    {
+        await LoadDataAsync();
+        ShowSuccess(Localizer["AddSuccess"]);
+    }
+}
+
+// Edit existing entity
+private async Task OpenEditDialog(Motorbike motorbike)
+{
+    var confirmed = await DialogService
+        .CreateDialog<MotorbikeDialog>(Localizer["EditDialogTitle"])
+        .WithParameter(x => x.Entity, motorbike.Clone())
+        .WithParameter(x => x.IsNew, false)
+        .ShowAndConfirmAsync();
+
+    if (confirmed)
+    {
+        await LoadDataAsync();
+        ShowSuccess(Localizer["UpdateSuccess"]);
+    }
+}
+```
+
+## Fluent API Reference
+
+### Creating Dialogs
+
+```csharp
+// Standard dialog (Medium, FullWidth, CloseButton by default)
+DialogService.CreateDialog<MyDialog>("Title")
+
+// Shorthand for sizes
+DialogService.CreateSmallDialog<MyDialog>("Title")
+DialogService.CreateLargeDialog<MyDialog>("Title")
+DialogService.CreateFullscreenDialog<MyDialog>("Title")
+```
+
+### Fluent Methods
+
+| Method | Description |
+|--------|-------------|
+| `.WithParameter(x => x.Prop, value)` | Set component parameter |
+| `.Small()` / `.Medium()` / `.Large()` | Set dialog size |
+| `.WithMaxWidth(MaxWidth.ExtraLarge)` | Custom max width |
+| `.WithFullWidth(bool)` | Stretch to max width |
+| `.WithCloseButton(bool)` | Show/hide close button |
+| `.WithCloseOnEscapeKey(bool)` | ESC key behavior |
+| `.DisableBackdropClick()` | Prevent backdrop close |
+| `.WithNoHeader(bool)` | Hide dialog header |
+| `.WithPosition(DialogPosition)` | Dialog position |
+| `.Centered()` / `.TopCenter()` | Position shortcuts |
+| `.Fullscreen(bool)` | Fullscreen mode |
+
+### Showing Dialogs
+
+```csharp
+// Get raw DialogResult
+var result = await dialog.ShowAsync();
+
+// Get boolean (true if not canceled)
+var confirmed = await dialog.ShowAndConfirmAsync();
+
+// Get typed data from result
+var data = await dialog.ShowAndGetDataAsync<MyData>();
+
+// Non-blocking (for manual handling)
+var dialogRef = await dialog.ShowNonBlockingAsync();
+```
+
+## Traditional Pattern (Alternative)
+
+```csharp
+private async Task OpenEditDialog(Motorbike? motorbike = null)
+{
     var isNew = motorbike is null;
-    motorbike = isNew ? new Motorbike { ShopId = this.ShopId } : motorbike.Clone();
+    var entity = isNew
+        ? new Motorbike { ShopId = ShopId }
+        : motorbike.Clone();
 
     var parameters = new DialogParameters<MotorbikeDialog>
     {
-        { x => x.Item, motorbike }
+        { x => x.Entity, entity },
+        { x => x.IsNew, isNew }
     };
 
     var options = new DialogOptions
     {
-        MaxWidth = MaxWidth.Small,
+        MaxWidth = MaxWidth.Medium,
         FullWidth = true,
-        CloseOnEscapeKey = true
+        CloseButton = true
     };
 
-    var dialog = await this.DialogService.ShowAsync<MotorbikeDialog>(
-        isNew ? "Add Motorbike" : "Edit Motorbike",
+    var dialog = await DialogService.ShowAsync<MotorbikeDialog>(
+        isNew ? Localizer["AddDialogTitle"] : Localizer["EditDialogTitle"],
         parameters,
         options);
 
     var result = await dialog.Result;
 
-    if (result is { Canceled: false, Data: Motorbike item })
+    if (result is { Canceled: false })
     {
-        // Persistence in parent component
-        using var session = this.DataContext.OpenSession();
-        session.Attach(item);
-        await session.SubmitChanges(isNew ? "Add" : "Edit");
-
-        // Update list
-        this.m_motorbikes.AddOrReplace(item, x => x.MotorbikeId == item.MotorbikeId);
-
-        this.Snackbar.Add(isNew ? "Motorbike added" : "Motorbike updated", Severity.Success);
+        await LoadDataAsync();
+        ShowSuccess(isNew ? Localizer["AddSuccess"] : Localizer["UpdateSuccess"]);
     }
 }
 ```
 
-## DialogHelper Service
+## Delete Confirmation Pattern
+
+Use the built-in `ConfirmDeleteAsync` from base class:
 
 ```csharp
-// Services/DialogHelper.cs
-public class DialogHelper(IDialogService dialogService)
+private async Task DeleteMotorbike(Motorbike motorbike)
 {
-    private IDialogService DialogService { get; } = dialogService;
-
-    /// <summary>
-    /// Show confirmation dialog (Yes/No)
-    /// </summary>
-    public async Task<bool> ConfirmAsync(string message, string title = "Confirm")
-    {
-        var parameters = new DialogParameters<ConfirmDialog>
-        {
-            { x => x.ContentText, message },
-            { x => x.ButtonText, "Yes" },
-            { x => x.Color, Color.Primary }
-        };
-
-        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.ExtraSmall };
-        var dialog = await this.DialogService.ShowAsync<ConfirmDialog>(title, parameters, options);
-        var result = await dialog.Result;
-
-        return result is { Canceled: false };
-    }
-
-    /// <summary>
-    /// Show delete confirmation (with warning color)
-    /// </summary>
-    public async Task<bool> ConfirmDeleteAsync(string itemName)
-    {
-        var parameters = new DialogParameters<ConfirmDialog>
-        {
-            { x => x.ContentText, $"Are you sure you want to delete '{itemName}'? This action cannot be undone." },
-            { x => x.ButtonText, "Delete" },
-            { x => x.Color, Color.Error }
-        };
-
-        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.ExtraSmall };
-        var dialog = await this.DialogService.ShowAsync<ConfirmDialog>("Confirm Delete", parameters, options);
-        var result = await dialog.Result;
-
-        return result is { Canceled: false };
-    }
-
-    /// <summary>
-    /// Prompt for text input
-    /// </summary>
-    public async Task<string?> PromptAsync(string title, string message, string? defaultValue = null)
-    {
-        var parameters = new DialogParameters<PromptDialog>
-        {
-            { x => x.Message, message },
-            { x => x.Value, defaultValue ?? "" }
-        };
-
-        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small };
-        var dialog = await this.DialogService.ShowAsync<PromptDialog>(title, parameters, options);
-        var result = await dialog.Result;
-
-        return result is { Canceled: false, Data: string value } ? value : null;
-    }
-}
-```
-
-## Confirm Dialog Component
-
-```razor
-@* Components/Dialogs/ConfirmDialog.razor *@
-<MudDialog>
-    <DialogContent>
-        <MudText>@ContentText</MudText>
-    </DialogContent>
-    <DialogActions>
-        <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="@Color" Variant="Variant.Filled" OnClick="Submit">@ButtonText</MudButton>
-    </DialogActions>
-</MudDialog>
-
-@code {
-    [CascadingParameter]
-    private MudDialogInstance MudDialog { get; set; } = default!;
-
-    [Parameter]
-    public string ContentText { get; set; } = "Are you sure?";
-
-    [Parameter]
-    public string ButtonText { get; set; } = "OK";
-
-    [Parameter]
-    public Color Color { get; set; } = Color.Primary;
-
-    private void Submit() => this.MudDialog.Close(DialogResult.Ok(true));
-    private void Cancel() => this.MudDialog.Cancel();
-}
-```
-
-## Usage Example
-
-```csharp
-@inject DialogHelper Dialog
-@inject ISnackbar Snackbar
-
-private async Task DeleteMotorbike(Motorbike bike)
-{
-    if (!await this.Dialog.ConfirmDeleteAsync(bike.LicensePlate))
+    // Uses MudMessageBox with localized strings
+    if (!await ConfirmDeleteAsync(motorbike.LicensePlate))
         return;
 
-    using var session = this.DataContext.OpenSession();
-    session.Delete(bike);
-    await session.SubmitChanges("Delete");
-
-    this.m_motorbikes.Remove(bike);
-    this.Snackbar.Add("Motorbike deleted", Severity.Success);
+    var result = await MotorbikeService.DeleteMotorbikeAsync(motorbike, UserName);
+    if (result.Success)
+    {
+        await LoadDataAsync();
+        ShowSuccess(Localizer["DeleteSuccess"]);
+    }
+    else
+    {
+        ShowError(result.Message ?? Localizer["DeleteFailed"]);
+    }
 }
 ```
 
-## Service Registration
+## Custom Confirmation Dialog
+
+For custom confirmation messages:
 
 ```csharp
-// Program.cs
-builder.Services.AddScoped<DialogHelper>();
+private async Task ExtendRental(Rental rental)
+{
+    var confirmed = await ConfirmAsync(
+        title: Localizer["ExtendRentalTitle"],
+        message: Localizer["ExtendRentalMessage", rental.RenterName, rental.DaysToExtend],
+        yesText: Localizer["ExtendButton"],
+        noText: CommonLocalizer["Cancel"]
+    );
+
+    if (!confirmed) return;
+
+    // Proceed with extension...
+}
 ```
 
+## Dialog Options Reference
+
+```csharp
+var options = new DialogOptions
+{
+    MaxWidth = MaxWidth.Small,      // ExtraSmall, Small, Medium, Large, ExtraLarge
+    FullWidth = true,               // Stretch to MaxWidth
+    CloseButton = true,             // Show X button
+    CloseOnEscapeKey = true,        // ESC to close
+    DisableBackdropClick = false,   // Click outside to close
+    NoHeader = false,               // Hide header
+    Position = DialogPosition.Center // TopLeft, TopCenter, etc.
+};
+```
+
+## Resource File Structure
+
+For each dialog, create resource files:
+
+```
+Resources/
+└── Pages/
+    └── MotorbikeDialog.resx           # English (default)
+    └── MotorbikeDialog.th.resx        # Thai
+```
+
+Example keys:
+- `AddTitle` - "Add Motorbike"
+- `EditTitle` - "Edit Motorbike"
+- `LicensePlate` - "License Plate"
+- `LicensePlateRequired` - "License plate is required"
+- `SaveFailed` - "Failed to save motorbike"
+
 ## Source
-- Adapted from: `D:\project\work\rx-erp`
+- Base classes: `src/MotoRent.Client/Controls/MotoRentDialogBase.cs`
+- Fluent API: `src/MotoRent.Client/Controls/DialogFluent.cs`
+- Extensions: `src/MotoRent.Client/Controls/DialogServiceExtensions.cs`
 - MudBlazor Dialogs: https://mudblazor.com/components/dialog
