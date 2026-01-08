@@ -1,0 +1,176 @@
+@inherits MotoRentComponentBase
+@using MotoRent.Domain.Entities
+@using MotoRent.Services
+@inject RenterService RenterService
+
+<MudStack Spacing="4">
+    <MudText Typo="Typo.h6">Select a Renter</MudText>
+    <MudText Typo="Typo.body2" Color="Color.Secondary">
+        Search for an existing renter or create a new one
+    </MudText>
+
+    <MudAutocomplete T="Renter" Label="Search Renter"
+                     @bind-Value="SelectedRenter"
+                     SearchFunc="SearchRenters"
+                     ToStringFunc="@(r => r?.FullName ?? "")"
+                     AdornmentIcon="@Icons.Material.Filled.Search"
+                     AdornmentColor="Color.Primary"
+                     Variant="Variant.Outlined"
+                     Dense="true"
+                     ResetValueOnEmptyText="true"
+                     CoerceText="true"
+                     CoerceValue="true"
+                     DebounceInterval="300">
+        <ItemTemplate>
+            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                <MudAvatar Color="Color.Primary" Size="Size.Small">
+                    @context.FullName?.FirstOrDefault()
+                </MudAvatar>
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.body2">@context.FullName</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        @context.Phone @(context.Nationality != null ? $"| {context.Nationality}" : "")
+                    </MudText>
+                </MudStack>
+            </MudStack>
+        </ItemTemplate>
+        <NoItemsTemplate>
+            <MudStack Class="pa-2">
+                <MudText Color="Color.Secondary">No renters found</MudText>
+            </MudStack>
+        </NoItemsTemplate>
+    </MudAutocomplete>
+
+    <MudDivider Class="my-2" />
+
+    <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.PersonAdd"
+               OnClick="@(() => OnCreateNew.InvokeAsync())">
+        Create New Renter
+    </MudButton>
+
+    @if (m_recentRenters.Count > 0)
+    {
+        <MudText Typo="Typo.subtitle1" Class="mt-4">Recent Renters</MudText>
+        <MudStack Spacing="2">
+            @foreach (var renter in m_recentRenters.Take(5))
+            {
+                <MudPaper Elevation="1" Class="pa-3" Style="cursor: pointer;"
+                          @onclick="@(() => SelectRenterItem(renter))">
+                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                            <MudAvatar Color="Color.Primary" Size="Size.Small">
+                                @renter.FullName?.FirstOrDefault()
+                            </MudAvatar>
+                            <MudStack Spacing="0">
+                                <MudText Typo="Typo.body2" Style="font-weight: 500;">@renter.FullName</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    @renter.Phone
+                                    @if (!string.IsNullOrEmpty(renter.Nationality))
+                                    {
+                                        <span> | @renter.Nationality</span>
+                                    }
+                                </MudText>
+                            </MudStack>
+                        </MudStack>
+                        @if (SelectedRenter?.RenterId == renter.RenterId)
+                        {
+                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" />
+                        }
+                    </MudStack>
+                </MudPaper>
+            }
+        </MudStack>
+    }
+
+    @if (SelectedRenter != null)
+    {
+        <MudDivider Class="my-2" />
+        <MudAlert Severity="Severity.Success" Dense="true">
+            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                <MudIcon Icon="@Icons.Material.Filled.Person" />
+                <MudText>Selected: <strong>@SelectedRenter.FullName</strong> (@SelectedRenter.Phone)</MudText>
+            </MudStack>
+        </MudAlert>
+
+        <MudExpansionPanels Elevation="1" Class="mt-2">
+            <MudExpansionPanel Text="Renter Details" Dense="true">
+                <MudGrid>
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Nationality</MudText>
+                        <MudText Typo="Typo.body2">@(SelectedRenter.Nationality ?? "-")</MudText>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Passport/ID</MudText>
+                        <MudText Typo="Typo.body2">@(SelectedRenter.PassportNo ?? SelectedRenter.NationalIdNo ?? "-")</MudText>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Email</MudText>
+                        <MudText Typo="Typo.body2">@(SelectedRenter.Email ?? "-")</MudText>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Hotel</MudText>
+                        <MudText Typo="Typo.body2">@(SelectedRenter.HotelName ?? "-")</MudText>
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Driving License</MudText>
+                        <MudText Typo="Typo.body2">
+                            @(SelectedRenter.DrivingLicenseNo ?? "-")
+                            @if (!string.IsNullOrEmpty(SelectedRenter.DrivingLicenseCountry))
+                            {
+                                <span> (@SelectedRenter.DrivingLicenseCountry)</span>
+                            }
+                        </MudText>
+                    </MudItem>
+                </MudGrid>
+            </MudExpansionPanel>
+        </MudExpansionPanels>
+    }
+</MudStack>
+
+@code {
+    [Parameter] public Renter? SelectedRenter { get; set; }
+    [Parameter] public EventCallback<Renter?> SelectedRenterChanged { get; set; }
+    [Parameter] public EventCallback OnCreateNew { get; set; }
+
+    private List<Renter> m_recentRenters = [];
+    private bool m_loading;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRecentRenters();
+    }
+
+    private async Task LoadRecentRenters()
+    {
+        m_loading = true;
+        try
+        {
+            var result = await RenterService.GetRentersAsync(ShopId, page: 1, pageSize: 10);
+            m_recentRenters = result.ItemCollection;
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error loading renters: {ex.Message}");
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private async Task<IEnumerable<Renter>> SearchRenters(string searchTerm, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+            return m_recentRenters.Take(5);
+
+        var result = await RenterService.GetRentersAsync(ShopId, searchTerm, page: 1, pageSize: 10);
+        return result.ItemCollection;
+    }
+
+    private async Task SelectRenterItem(Renter renter)
+    {
+        SelectedRenter = renter;
+        await SelectedRenterChanged.InvokeAsync(renter);
+    }
+}

@@ -1,0 +1,194 @@
+@inherits MotoRentComponentBase
+@using MotoRent.Domain.Entities
+@using MotoRent.Services
+@inject MotorbikeService MotorbikeService
+
+<MudStack Spacing="4">
+    <MudText Typo="Typo.h6">Select a Motorbike</MudText>
+    <MudText Typo="Typo.body2" Color="Color.Secondary">
+        Choose an available motorbike for this rental
+    </MudText>
+
+    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+        <MudTextField @bind-Value="m_searchTerm" Placeholder="Search by brand, model, license plate..."
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                      Immediate="true" DebounceInterval="300" OnDebounceIntervalElapsed="OnSearchChanged"
+                      Style="max-width: 300px;" Variant="Variant.Outlined" Dense="true" />
+
+        <MudSelect T="string" @bind-Value="m_brandFilter" Label="Brand" Style="width: 150px;"
+                   Variant="Variant.Outlined" Dense="true" Clearable="true">
+            @foreach (var brand in m_brands)
+            {
+                <MudSelectItem Value="@brand">@brand</MudSelectItem>
+            }
+        </MudSelect>
+
+        <MudSpacer />
+
+        <MudChip T="string" Color="Color.Success" Size="Size.Small">
+            @m_availableCount Available
+        </MudChip>
+    </MudStack>
+
+    @if (m_loading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+
+    <MudGrid>
+        @foreach (var motorbike in m_filteredMotorbikes)
+        {
+            var isSelected = SelectedMotorbike?.MotorbikeId == motorbike.MotorbikeId;
+            <MudItem xs="12" sm="6" md="4">
+                <MudCard Elevation="@(isSelected ? 4 : 1)"
+                         Style="@(isSelected ? "border: 2px solid var(--mud-palette-primary);" : "cursor: pointer;")"
+                         Class="@(isSelected ? "selected-card" : "")"
+                         @onclick="@(() => SelectMotorbikeItem(motorbike))">
+                    <MudCardHeader>
+                        <CardHeaderAvatar>
+                            <MudAvatar Color="Color.Primary">
+                                <MudIcon Icon="@Icons.Material.Filled.TwoWheeler" />
+                            </MudAvatar>
+                        </CardHeaderAvatar>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.body1" Style="font-weight: 500;">
+                                @motorbike.Brand @motorbike.Model
+                            </MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Primary">
+                                @motorbike.LicensePlate
+                            </MudText>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            @if (isSelected)
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" />
+                            }
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudStack Spacing="1">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Engine</MudText>
+                                <MudText Typo="Typo.body2">@motorbike.EngineCC cc</MudText>
+                            </MudStack>
+                            <MudStack Row="true" Justify="Justify.SpaceBetween">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Year</MudText>
+                                <MudText Typo="Typo.body2">@motorbike.Year</MudText>
+                            </MudStack>
+                            <MudStack Row="true" Justify="Justify.SpaceBetween">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Color</MudText>
+                                <MudText Typo="Typo.body2">@(motorbike.Color ?? "-")</MudText>
+                            </MudStack>
+                            <MudStack Row="true" Justify="Justify.SpaceBetween">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Mileage</MudText>
+                                <MudText Typo="Typo.body2">@motorbike.Mileage.ToString("N0") km</MudText>
+                            </MudStack>
+                            <MudDivider Class="my-2" />
+                            <MudStack Row="true" Justify="Justify.SpaceBetween">
+                                <MudText Typo="Typo.body2" Style="font-weight: 500;">Daily Rate</MudText>
+                                <MudText Typo="Typo.body1" Color="Color.Primary" Style="font-weight: 600;">
+                                    @FormatCurrency(motorbike.DailyRate)
+                                </MudText>
+                            </MudStack>
+                            <MudStack Row="true" Justify="Justify.SpaceBetween">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Deposit</MudText>
+                                <MudText Typo="Typo.body2">@FormatCurrency(motorbike.DepositAmount)</MudText>
+                            </MudStack>
+                        </MudStack>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        }
+    </MudGrid>
+
+    @if (m_filteredMotorbikes.Count == 0 && !m_loading)
+    {
+        <MudAlert Severity="Severity.Info">
+            No available motorbikes found. All motorbikes may be currently rented or under maintenance.
+        </MudAlert>
+    }
+
+    @if (SelectedMotorbike != null)
+    {
+        <MudAlert Severity="Severity.Success" Dense="true" Class="mt-4">
+            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                <MudIcon Icon="@Icons.Material.Filled.TwoWheeler" />
+                <MudText>
+                    Selected: <strong>@SelectedMotorbike.Brand @SelectedMotorbike.Model</strong>
+                    (@SelectedMotorbike.LicensePlate) - @FormatCurrency(SelectedMotorbike.DailyRate)/day
+                </MudText>
+            </MudStack>
+        </MudAlert>
+    }
+</MudStack>
+
+@code {
+    [Parameter] public Motorbike? SelectedMotorbike { get; set; }
+    [Parameter] public EventCallback<Motorbike?> SelectedMotorbikeChanged { get; set; }
+
+    private List<Motorbike> m_motorbikes = [];
+    private List<Motorbike> m_filteredMotorbikes = [];
+    private List<string> m_brands = [];
+    private bool m_loading;
+    private string? m_searchTerm;
+    private string? m_brandFilter;
+    private int m_availableCount;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadMotorbikes();
+    }
+
+    private async Task LoadMotorbikes()
+    {
+        m_loading = true;
+        try
+        {
+            var result = await MotorbikeService.GetMotorbikesAsync(ShopId, status: "Available", pageSize: 100);
+            m_motorbikes = result.ItemCollection;
+            m_availableCount = m_motorbikes.Count;
+            m_brands = m_motorbikes.Select(m => m.Brand).Distinct().OrderBy(b => b).ToList();
+            ApplyFilters();
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error loading motorbikes: {ex.Message}");
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private void OnSearchChanged()
+    {
+        ApplyFilters();
+    }
+
+    private void ApplyFilters()
+    {
+        var filtered = m_motorbikes.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(m_searchTerm))
+        {
+            var term = m_searchTerm.ToLowerInvariant();
+            filtered = filtered.Where(m =>
+                m.Brand.ToLowerInvariant().Contains(term) ||
+                m.Model.ToLowerInvariant().Contains(term) ||
+                m.LicensePlate.ToLowerInvariant().Contains(term));
+        }
+
+        if (!string.IsNullOrWhiteSpace(m_brandFilter))
+        {
+            filtered = filtered.Where(m => m.Brand == m_brandFilter);
+        }
+
+        m_filteredMotorbikes = filtered.OrderBy(m => m.Brand).ThenBy(m => m.Model).ToList();
+    }
+
+    private async Task SelectMotorbikeItem(Motorbike motorbike)
+    {
+        SelectedMotorbike = motorbike;
+        await SelectedMotorbikeChanged.InvokeAsync(motorbike);
+    }
+}

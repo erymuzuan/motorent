@@ -291,11 +291,11 @@ public class RentalAgreement : Entity
 7. ✅ Create seed data (database/002-seed-data.sql)
 8. ✅ Implement custom repository pattern (MotoRent.Domain/DataContext/)
 
-### Phase 2: Shop Management (Backend) (PARTIALLY COMPLETED)
-1. ⏳ Shop registration & settings
+### Phase 2: Shop Management (Backend) (COMPLETED)
+1. ✅ Shop registration & settings (Shops.razor, ShopDialog.razor, ShopService.cs)
 2. ✅ Motorbike inventory CRUD (Motorbikes.razor, MotorbikeDialog.razor, MotorbikeService.cs)
-3. ⏳ Insurance packages setup
-4. ⏳ Accessories management
+3. ✅ Insurance packages setup (InsurancePackages.razor, InsuranceDialog.razor, InsuranceService.cs)
+4. ✅ Accessories management (Accessories.razor, AccessoryDialog.razor, AccessoryService.cs)
 5. ⏳ Daily rate configuration
 
 ### Phase 3: Renter Registration & Document OCR (PARTIALLY COMPLETED)
@@ -305,10 +305,10 @@ public class RentalAgreement : Entity
 4. ⏳ Manual verification/correction UI
 5. ⏳ Store documents securely
 
-### Phase 4: Rental Workflow
-1. Check-in process with stepper wizard
-2. Active rentals dashboard
-3. Check-out process with damage documentation
+### Phase 4: Rental Workflow (COMPLETED)
+1. ✅ Check-in process with stepper wizard (CheckIn.razor with 5 steps)
+2. ✅ Active rentals dashboard (RentalList.razor with status tabs)
+3. ✅ Check-out process with damage documentation (CheckOutDialog.razor)
 
 ### Phase 5: Payments & Accounting
 1. Payment recording (Cash, Card, PromptPay)

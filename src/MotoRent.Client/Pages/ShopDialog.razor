@@ -1,0 +1,212 @@
+@using MotoRent.Domain.Entities
+@using MotoRent.Services
+@inject ShopService ShopService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="m_form" @bind-IsValid="m_formValid">
+            <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pt-4">
+                <MudTabPanel Text="Basic Info" Icon="@Icons.Material.Filled.Store">
+                    <MudGrid>
+                        <MudItem xs="12" md="6">
+                            <MudTextField @bind-Value="Shop.Name" Label="Shop Name"
+                                          Required="true" RequiredError="Shop name is required"
+                                          Variant="Variant.Outlined"
+                                          Placeholder="e.g., MotoRent Patong Beach" />
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudSelect @bind-Value="Shop.Location" Label="Location/Area"
+                                       Required="true" RequiredError="Location is required"
+                                       Variant="Variant.Outlined">
+                                <MudSelectItem Value="@("Phuket - Patong")">Phuket - Patong</MudSelectItem>
+                                <MudSelectItem Value="@("Phuket - Kata")">Phuket - Kata</MudSelectItem>
+                                <MudSelectItem Value="@("Phuket - Karon")">Phuket - Karon</MudSelectItem>
+                                <MudSelectItem Value="@("Phuket - Kamala")">Phuket - Kamala</MudSelectItem>
+                                <MudSelectItem Value="@("Phuket - Rawai")">Phuket - Rawai</MudSelectItem>
+                                <MudSelectItem Value="@("Krabi - Ao Nang")">Krabi - Ao Nang</MudSelectItem>
+                                <MudSelectItem Value="@("Krabi - Railay")">Krabi - Railay</MudSelectItem>
+                                <MudSelectItem Value="@("Koh Samui")">Koh Samui</MudSelectItem>
+                                <MudSelectItem Value="@("Koh Phangan")">Koh Phangan</MudSelectItem>
+                                <MudSelectItem Value="@("Chiang Mai")">Chiang Mai</MudSelectItem>
+                                <MudSelectItem Value="@("Pai")">Pai</MudSelectItem>
+                                <MudSelectItem Value="@("Bangkok")">Bangkok</MudSelectItem>
+                                <MudSelectItem Value="@("Pattaya")">Pattaya</MudSelectItem>
+                                <MudSelectItem Value="@("Other")">Other</MudSelectItem>
+                            </MudSelect>
+                        </MudItem>
+
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="Shop.Address" Label="Full Address"
+                                          Required="true" RequiredError="Address is required"
+                                          Variant="Variant.Outlined" Lines="2"
+                                          Placeholder="Street address, city, postal code" />
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudTextField @bind-Value="Shop.Phone" Label="Phone Number"
+                                          Required="true" RequiredError="Phone is required"
+                                          Variant="Variant.Outlined"
+                                          Placeholder="+66 XX XXX XXXX"
+                                          InputType="InputType.Telephone" />
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudTextField @bind-Value="Shop.Email" Label="Email Address"
+                                          Variant="Variant.Outlined"
+                                          Placeholder="shop@motorent.com"
+                                          InputType="InputType.Email" />
+                        </MudItem>
+
+                        <MudItem xs="12">
+                            <MudSwitch @bind-Value="Shop.IsActive" Label="Active"
+                                       Color="Color.Primary" />
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                Inactive shops won't appear in selection lists
+                            </MudText>
+                        </MudItem>
+                    </MudGrid>
+                </MudTabPanel>
+
+                <MudTabPanel Text="Terms & Conditions" Icon="@Icons.Material.Filled.Description">
+                    <MudGrid>
+                        <MudItem xs="12">
+                            <MudText Typo="Typo.subtitle2" Class="mb-2">Rental Agreement Terms</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-4">
+                                These terms will be displayed to renters during check-in and included in the rental agreement.
+                            </MudText>
+                            <MudTextField @bind-Value="Shop.TermsAndConditions" Label="Terms & Conditions"
+                                          Variant="Variant.Outlined" Lines="12"
+                                          Placeholder="Enter your rental terms and conditions..." />
+                        </MudItem>
+
+                        @if (string.IsNullOrEmpty(Shop.TermsAndConditions))
+                        {
+                            <MudItem xs="12">
+                                <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                                           OnClick="InsertDefaultTerms">
+                                    Insert Default Terms
+                                </MudButton>
+                            </MudItem>
+                        }
+                    </MudGrid>
+                </MudTabPanel>
+            </MudTabs>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                   OnClick="SaveAsync" Disabled="@(!m_formValid || m_saving)">
+            @if (m_saving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @(IsNew ? "Add Shop" : "Save Changes")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private MudDialogInstance? MudDialog { get; set; }
+
+    [Parameter]
+    public Shop Shop { get; set; } = new();
+
+    [Parameter]
+    public bool IsNew { get; set; }
+
+    private MudForm? m_form;
+    private bool m_formValid;
+    private bool m_saving;
+
+    private void Cancel()
+    {
+        MudDialog?.Cancel();
+    }
+
+    private async Task SaveAsync()
+    {
+        if (m_form == null) return;
+
+        await m_form.Validate();
+        if (!m_formValid) return;
+
+        m_saving = true;
+
+        try
+        {
+            var result = IsNew
+                ? await ShopService.CreateShopAsync(Shop, "system")
+                : await ShopService.UpdateShopAsync(Shop, "system");
+
+            if (result.Success)
+            {
+                MudDialog?.Close(DialogResult.Ok(Shop));
+            }
+            else
+            {
+                Snackbar.Add($"Save failed: {result.Message}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            m_saving = false;
+        }
+    }
+
+    private void InsertDefaultTerms()
+    {
+        Shop.TermsAndConditions = """
+            RENTAL AGREEMENT TERMS AND CONDITIONS
+
+            1. RENTAL PERIOD
+            - The rental period begins at the time of vehicle pickup and ends at the agreed return time.
+            - Late returns may incur additional daily charges.
+            - Extensions must be requested at least 24 hours before the scheduled return time.
+
+            2. DRIVER REQUIREMENTS
+            - Renter must possess a valid driving license appropriate for the vehicle type.
+            - International Driving Permit (IDP) is required for foreign licenses.
+            - Renter must be at least 18 years of age.
+
+            3. VEHICLE USE
+            - The vehicle is for personal transportation only.
+            - Subletting or unauthorized use is prohibited.
+            - The vehicle must not be used for racing, off-road driving, or illegal purposes.
+
+            4. FUEL POLICY
+            - Vehicle is provided with a full tank of fuel.
+            - Vehicle must be returned with a full tank.
+            - Refueling charges apply if returned with less fuel.
+
+            5. INSURANCE & LIABILITY
+            - Basic insurance is included in the rental rate.
+            - Renter is responsible for any damage not covered by insurance.
+            - Deductible applies in case of accident or damage.
+
+            6. DEPOSIT
+            - A security deposit is required at the time of rental.
+            - Deposit will be refunded upon safe return of the vehicle.
+            - Deductions may be made for damages, traffic fines, or fuel.
+
+            7. BREAKDOWN & ACCIDENTS
+            - Contact the shop immediately in case of breakdown or accident.
+            - File a police report for any accident.
+            - Do not attempt unauthorized repairs.
+
+            8. RETURN CONDITIONS
+            - Vehicle must be returned clean and in the same condition.
+            - Return at the agreed location and time.
+            - Inspection will be conducted upon return.
+
+            By signing this agreement, the renter acknowledges having read and accepted these terms.
+            """;
+    }
+}

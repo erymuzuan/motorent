@@ -30,12 +30,14 @@ builder.Services.AddScoped<MotorbikeService>();
 builder.Services.AddScoped<RenterService>();
 builder.Services.AddScoped<InsuranceService>();
 builder.Services.AddScoped<AccessoryService>();
+builder.Services.AddScoped<RentalService>();
+builder.Services.AddScoped<ShopService>();
 
 // Add Core services
 builder.Services.AddScoped<IDirectoryService, SqlDirectoryService>();
 
 // Configure Authentication
-builder.Services.AddAuthentication(options =>
+var authBuilder = builder.Services.AddAuthentication(options =>
 {
     options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
     options.DefaultChallengeScheme = CookieAuthenticationDefaults.AuthenticationScheme;
@@ -55,23 +57,33 @@ builder.Services.AddAuthentication(options =>
 {
     options.Cookie.Name = "MotoRent.External";
     options.ExpireTimeSpan = TimeSpan.FromMinutes(10);
-})
-.AddGoogle(options =>
-{
-    var googleSection = builder.Configuration.GetSection("Authentication:Google");
-    options.ClientId = googleSection["ClientId"] ?? "";
-    options.ClientSecret = googleSection["ClientSecret"] ?? "";
-    options.SignInScheme = "ExternalAuth";
-    options.CallbackPath = "/signin-google";
-})
-.AddMicrosoftAccount(options =>
-{
-    var microsoftSection = builder.Configuration.GetSection("Authentication:Microsoft");
-    options.ClientId = microsoftSection["ClientId"] ?? "";
-    options.ClientSecret = microsoftSection["ClientSecret"] ?? "";
-    options.SignInScheme = "ExternalAuth";
-    options.CallbackPath = "/signin-microsoft";
 });
+
+// Add Google authentication only if configured
+var googleClientId = builder.Configuration["Authentication:Google:ClientId"];
+if (!string.IsNullOrEmpty(googleClientId))
+{
+    authBuilder.AddGoogle(options =>
+    {
+        options.ClientId = googleClientId;
+        options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"] ?? "";
+        options.SignInScheme = "ExternalAuth";
+        options.CallbackPath = "/signin-google";
+    });
+}
+
+// Add Microsoft authentication only if configured
+var microsoftClientId = builder.Configuration["Authentication:Microsoft:ClientId"];
+if (!string.IsNullOrEmpty(microsoftClientId))
+{
+    authBuilder.AddMicrosoftAccount(options =>
+    {
+        options.ClientId = microsoftClientId;
+        options.ClientSecret = builder.Configuration["Authentication:Microsoft:ClientSecret"] ?? "";
+        options.SignInScheme = "ExternalAuth";
+        options.CallbackPath = "/signin-microsoft";
+    });
+}
 
 // Configure Authorization Policies
 builder.Services.AddAuthorization(options =>

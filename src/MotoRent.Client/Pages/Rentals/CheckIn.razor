@@ -1,0 +1,245 @@
+@page "/rentals/checkin"
+@inherits MotoRentComponentBase
+@using MotoRent.Client.Controls
+@using MotoRent.Client.Pages.Rentals.CheckInSteps
+@using MotoRent.Domain.Entities
+@using MotoRent.Services
+@inject RentalService RentalService
+@inject RenterService RenterService
+@inject MotorbikeService MotorbikeService
+@inject InsuranceService InsuranceService
+@inject AccessoryService AccessoryService
+
+<PageTitle>New Check-In - MotoRent</PageTitle>
+
+<MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
+    <MudStack Spacing="0">
+        <MudText Typo="Typo.h4">New Check-In</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">Complete all steps to create a new rental</MudText>
+    </MudStack>
+    <MudButton Variant="Variant.Outlined" Color="Color.Default"
+               StartIcon="@Icons.Material.Filled.ArrowBack" Href="/rentals">
+        Back to Rentals
+    </MudButton>
+</MudStack>
+
+<MudPaper Elevation="2" Class="pa-4">
+    @* Step indicators *@
+    <MudStack Row="true" Spacing="2" Justify="Justify.Center" Class="mb-4">
+        @for (int i = 0; i < m_steps.Length; i++)
+        {
+            var stepIndex = i;
+            var isActive = m_activeStep == stepIndex;
+            var isCompleted = m_activeStep > stepIndex;
+            <MudStack AlignItems="AlignItems.Center" Spacing="1" Style="cursor: pointer;" @onclick="@(() => GoToStep(stepIndex))">
+                <MudAvatar Size="Size.Medium"
+                           Color="@(isActive ? Color.Primary : (isCompleted ? Color.Success : Color.Default))"
+                           Variant="@(isActive || isCompleted ? Variant.Filled : Variant.Outlined)">
+                    @if (isCompleted)
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" />
+                    }
+                    else
+                    {
+                        @(stepIndex + 1)
+                    }
+                </MudAvatar>
+                <MudText Typo="Typo.caption" Color="@(isActive ? Color.Primary : Color.Default)">
+                    @m_steps[stepIndex]
+                </MudText>
+            </MudStack>
+            @if (i < m_steps.Length - 1)
+            {
+                <MudDivider Vertical="true" FlexItem="true" Style="height: 40px;" Class="mx-2" />
+            }
+        }
+    </MudStack>
+
+    <MudDivider Class="mb-4" />
+
+    @* Step content *@
+    @switch (m_activeStep)
+    {
+        case 0:
+            <SelectRenterStep @bind-SelectedRenter="m_selectedRenter"
+                              OnCreateNew="OpenCreateRenterDialog" />
+            break;
+        case 1:
+            <SelectMotorbikeStep @bind-SelectedMotorbike="m_selectedMotorbike" />
+            break;
+        case 2:
+            <ConfigureRentalStep SelectedMotorbike="m_selectedMotorbike"
+                                 @bind-Config="m_rentalConfig" />
+            break;
+        case 3:
+            <CollectDepositStep RequiredAmount="@(m_selectedMotorbike?.DepositAmount ?? 0)"
+                                @bind-DepositInfo="m_depositInfo" />
+            break;
+        case 4:
+            <AgreementSignatureStep Renter="@m_selectedRenter"
+                                    Motorbike="@m_selectedMotorbike"
+                                    Config="@m_rentalConfig"
+                                    DepositInfo="@m_depositInfo"
+                                    @bind-SignatureData="m_signatureData"
+                                    OnComplete="CompleteCheckIn" />
+            break;
+    }
+
+    @* Navigation buttons *@
+    <MudStack Row="true" Justify="Justify.SpaceBetween" Class="mt-4">
+        <MudButton Variant="Variant.Text"
+                   Disabled="@(m_activeStep == 0)"
+                   OnClick="PreviousStep">
+            Previous
+        </MudButton>
+
+        @if (m_activeStep < 4)
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       Disabled="@(!CanProceedToNextStep())"
+                       OnClick="NextStep">
+                Next
+            </MudButton>
+        }
+    </MudStack>
+</MudPaper>
+
+@if (m_processing)
+{
+    <MudOverlay Visible="true" DarkBackground="true" Absolute="false" ZIndex="9999">
+        <MudStack AlignItems="AlignItems.Center">
+            <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+            <MudText Typo="Typo.h6" Color="Color.Default" Class="mt-4">Processing Check-In...</MudText>
+        </MudStack>
+    </MudOverlay>
+}
+
+@code {
+    private readonly string[] m_steps = ["Renter", "Motorbike", "Configure", "Deposit", "Agreement"];
+    private int m_activeStep;
+    private bool m_processing;
+
+    // Step 1: Renter selection
+    private Renter? m_selectedRenter;
+
+    // Step 2: Motorbike selection
+    private Motorbike? m_selectedMotorbike;
+
+    // Step 3: Rental configuration
+    private RentalConfig m_rentalConfig = new();
+
+    // Step 4: Deposit information
+    private DepositInfo m_depositInfo = new();
+
+    // Step 5: Signature data
+    private string? m_signatureData;
+
+    private bool CanProceedToNextStep()
+    {
+        return m_activeStep switch
+        {
+            0 => m_selectedRenter != null,
+            1 => m_selectedMotorbike != null,
+            2 => m_rentalConfig.IsValid,
+            3 => m_depositInfo.IsCollected,
+            4 => !string.IsNullOrEmpty(m_signatureData),
+            _ => false
+        };
+    }
+
+    private void NextStep()
+    {
+        if (m_activeStep < 4 && CanProceedToNextStep())
+            m_activeStep++;
+    }
+
+    private void PreviousStep()
+    {
+        if (m_activeStep > 0)
+            m_activeStep--;
+    }
+
+    private void GoToStep(int step)
+    {
+        // Only allow going back to previous steps
+        if (step < m_activeStep)
+            m_activeStep = step;
+    }
+
+    private async Task OpenCreateRenterDialog()
+    {
+        var renter = new Renter { ShopId = ShopId };
+
+        var confirmed = await DialogService
+            .CreateDialog<RenterDialog>("New Renter")
+            .WithParameter(x => x.Renter, renter)
+            .WithParameter(x => x.IsNew, true)
+            .ShowAndConfirmAsync();
+
+        if (confirmed)
+        {
+            m_selectedRenter = renter;
+            ShowSuccess("Renter created. You can now proceed.");
+            StateHasChanged();
+        }
+    }
+
+    private async Task CompleteCheckIn()
+    {
+        if (m_selectedRenter == null || m_selectedMotorbike == null)
+        {
+            ShowError("Please select a renter and motorbike");
+            return;
+        }
+
+        m_processing = true;
+        try
+        {
+            var request = new CheckInRequest
+            {
+                ShopId = ShopId,
+                RenterId = m_selectedRenter.RenterId,
+                MotorbikeId = m_selectedMotorbike.MotorbikeId,
+                StartDate = m_rentalConfig.StartDate,
+                ExpectedEndDate = m_rentalConfig.EndDate,
+                MileageStart = m_selectedMotorbike.Mileage,
+                DailyRate = m_selectedMotorbike.DailyRate,
+                TotalAmount = m_rentalConfig.TotalAmount,
+                InsuranceId = m_rentalConfig.SelectedInsuranceId,
+                DepositType = m_depositInfo.DepositType,
+                DepositAmount = m_depositInfo.Amount,
+                CardLast4 = m_depositInfo.CardLast4,
+                TransactionRef = m_depositInfo.TransactionRef,
+                SignatureImagePath = m_signatureData,
+                SignedByIp = "127.0.0.1",
+                Accessories = m_rentalConfig.SelectedAccessories
+                    .Select(a => new AccessorySelection
+                    {
+                        AccessoryId = a.Accessory.AccessoryId,
+                        Quantity = a.Quantity,
+                        ChargedAmount = a.TotalAmount
+                    }).ToList()
+            };
+
+            var result = await RentalService.CheckInAsync(request, UserName);
+
+            if (result.Success)
+            {
+                ShowSuccess($"Check-in completed! Rental #{result.RentalId}");
+                NavigationManager.NavigateTo("/rentals");
+            }
+            else
+            {
+                ShowError($"Check-in failed: {result.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error: {ex.Message}");
+        }
+        finally
+        {
+            m_processing = false;
+        }
+    }
+}

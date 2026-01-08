@@ -1,0 +1,213 @@
+@inherits MotoRentComponentBase
+@using MotoRent.Client.Controls
+@using MotoRent.Domain.Entities
+@using MotoRent.Client.Pages.Rentals
+
+<MudStack Spacing="4">
+    <MudText Typo="Typo.h6">Agreement & Signature</MudText>
+    <MudText Typo="Typo.body2" Color="Color.Secondary">
+        Review the rental summary and collect the renter's signature
+    </MudText>
+
+    <MudGrid>
+        <MudItem xs="12" md="6">
+            <MudPaper Elevation="1" Class="pa-4">
+                <MudText Typo="Typo.subtitle1" Class="mb-3">Rental Summary</MudText>
+
+                @if (Renter != null && Motorbike != null && Config != null)
+                {
+                    <MudStack Spacing="2">
+                        <MudStack Row="true" Justify="Justify.SpaceBetween">
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">Renter</MudText>
+                            <MudText Typo="Typo.body2" Style="font-weight: 500;">@Renter.FullName</MudText>
+                        </MudStack>
+                        <MudStack Row="true" Justify="Justify.SpaceBetween">
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">Phone</MudText>
+                            <MudText Typo="Typo.body2">@Renter.Phone</MudText>
+                        </MudStack>
+                        <MudStack Row="true" Justify="Justify.SpaceBetween">
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">Passport/ID</MudText>
+                            <MudText Typo="Typo.body2">@(Renter.PassportNo ?? Renter.NationalIdNo ?? "-")</MudText>
+                        </MudStack>
+
+                        <MudDivider Class="my-2" />
+
+                        <MudStack Row="true" Justify="Justify.SpaceBetween">
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">Motorbike</MudText>
+                            <MudText Typo="Typo.body2" Style="font-weight: 500;">@Motorbike.Brand @Motorbike.Model</MudText>
+                        </MudStack>
+                        <MudStack Row="true" Justify="Justify.SpaceBetween">
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">License Plate</MudText>
+                            <MudText Typo="Typo.body2">@Motorbike.LicensePlate</MudText>
+                        </MudStack>
+                        <MudStack Row="true" Justify="Justify.SpaceBetween">
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">Current Mileage</MudText>
+                            <MudText Typo="Typo.body2">@Motorbike.Mileage.ToString("N0") km</MudText>
+                        </MudStack>
+
+                        <MudDivider Class="my-2" />
+
+                        <MudStack Row="true" Justify="Justify.SpaceBetween">
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">Rental Period</MudText>
+                            <MudText Typo="Typo.body2">
+                                @FormatDate(Config.StartDate) - @FormatDate(Config.EndDate) (@Config.Days days)
+                            </MudText>
+                        </MudStack>
+                        <MudStack Row="true" Justify="Justify.SpaceBetween">
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">Daily Rate</MudText>
+                            <MudText Typo="Typo.body2">@FormatCurrency(Motorbike.DailyRate)</MudText>
+                        </MudStack>
+
+                        @if (Config.SelectedInsurance != null)
+                        {
+                            <MudStack Row="true" Justify="Justify.SpaceBetween">
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">Insurance</MudText>
+                                <MudText Typo="Typo.body2">@Config.SelectedInsurance.Name</MudText>
+                            </MudStack>
+                        }
+
+                        @if (Config.SelectedAccessories.Count > 0)
+                        {
+                            <MudStack Row="true" Justify="Justify.SpaceBetween">
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">Accessories</MudText>
+                                <MudText Typo="Typo.body2">
+                                    @string.Join(", ", Config.SelectedAccessories.Select(a => a.Accessory.Name))
+                                </MudText>
+                            </MudStack>
+                        }
+
+                        <MudDivider Class="my-2" />
+
+                        <MudStack Row="true" Justify="Justify.SpaceBetween">
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">Deposit</MudText>
+                            <MudText Typo="Typo.body2">
+                                @DepositInfo?.DepositType - @FormatCurrency(DepositInfo?.Amount ?? 0)
+                            </MudText>
+                        </MudStack>
+
+                        <MudDivider Class="my-2" />
+
+                        <MudStack Row="true" Justify="Justify.SpaceBetween">
+                            <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Total Amount</MudText>
+                            <MudText Typo="Typo.h5" Color="Color.Primary" Style="font-weight: 600;">
+                                @FormatCurrency(Config.TotalAmount)
+                            </MudText>
+                        </MudStack>
+                    </MudStack>
+                }
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudPaper Elevation="1" Class="pa-4">
+                <MudText Typo="Typo.subtitle1" Class="mb-3">Terms & Conditions</MudText>
+
+                <MudPaper Outlined="true" Class="pa-3" Style="max-height: 200px; overflow-y: auto; background-color: var(--mud-palette-background-grey);">
+                    <MudText Typo="Typo.body2" Style="white-space: pre-line;">@m_agreementText</MudText>
+                </MudPaper>
+
+                <MudCheckBox T="bool" @bind-Value="m_termsAccepted" Color="Color.Primary" Class="mt-2"
+                             Label="I have read and explained the terms to the renter" />
+            </MudPaper>
+
+            <MudPaper Elevation="1" Class="pa-4 mt-4">
+                <MudText Typo="Typo.subtitle1" Class="mb-3">Renter's Signature</MudText>
+
+                <SignaturePad @ref="m_signaturePad"
+                              Width="100%"
+                              Height="200"
+                              OnSignatureChanged="OnSignatureChanged" />
+
+                <MudStack Row="true" Spacing="2" Class="mt-2">
+                    <MudButton Variant="Variant.Outlined" Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.Clear"
+                               OnClick="ClearSignature">
+                        Clear
+                    </MudButton>
+                </MudStack>
+
+                @if (!string.IsNullOrEmpty(SignatureData))
+                {
+                    <MudAlert Severity="Severity.Success" Dense="true" Class="mt-3">
+                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                            <MudIcon Icon="@Icons.Material.Filled.Draw" />
+                            <MudText>Signature captured</MudText>
+                        </MudStack>
+                    </MudAlert>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-3">
+                        Please have the renter sign above
+                    </MudAlert>
+                }
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    <MudStack Row="true" Justify="Justify.FlexEnd" Class="mt-4">
+        <MudButton Variant="Variant.Filled" Color="Color.Success" Size="Size.Large"
+                   StartIcon="@Icons.Material.Filled.CheckCircle"
+                   Disabled="@(!CanComplete)"
+                   OnClick="@(() => OnComplete.InvokeAsync())">
+            Complete Check-In
+        </MudButton>
+    </MudStack>
+</MudStack>
+
+@code {
+    [Parameter] public Renter? Renter { get; set; }
+    [Parameter] public Motorbike? Motorbike { get; set; }
+    [Parameter] public RentalConfig? Config { get; set; }
+    [Parameter] public DepositInfo? DepositInfo { get; set; }
+    [Parameter] public string? SignatureData { get; set; }
+    [Parameter] public EventCallback<string?> SignatureDataChanged { get; set; }
+    [Parameter] public EventCallback OnComplete { get; set; }
+
+    private SignaturePad? m_signaturePad;
+    private bool m_termsAccepted;
+
+    private bool CanComplete => m_termsAccepted && !string.IsNullOrEmpty(SignatureData);
+
+    private string m_agreementText = @"MOTORBIKE RENTAL AGREEMENT
+
+I, the undersigned renter, agree to the following terms and conditions:
+
+1. VEHICLE CONDITION: I acknowledge that I have received the motorbike in good working condition and agree to return it in the same condition.
+
+2. LIABILITY: I am fully responsible for any damage, loss, or theft of the motorbike during the rental period, including but not limited to accidents, scratches, dents, and mechanical damage.
+
+3. INSURANCE: Any insurance coverage is subject to the terms of the selected insurance package. I understand the deductible and coverage limits.
+
+4. VALID LICENSE: I confirm that I hold a valid driving license appropriate for this vehicle type and will carry it at all times while operating the motorbike.
+
+5. TRAFFIC LAWS: I agree to follow all traffic laws and regulations of Thailand. I am responsible for all traffic violations and fines incurred during the rental period.
+
+6. NO SUB-RENTAL: I will not lend, sub-rent, or allow any unauthorized person to operate the motorbike.
+
+7. FUEL: I will return the motorbike with the same fuel level as at pick-up, or pay the refueling charge.
+
+8. LATE RETURN: If I fail to return the motorbike by the agreed date/time, I will pay additional daily rental charges plus any late fees.
+
+9. DEPOSIT: I understand that my deposit may be used to cover any damages, additional charges, or unpaid fees.
+
+10. EMERGENCY: In case of accident or breakdown, I will immediately contact the rental shop at the provided number.
+
+By signing below, I acknowledge that I have read, understood, and agree to all terms and conditions stated above.";
+
+    private async Task OnSignatureChanged(string signatureData)
+    {
+        SignatureData = signatureData;
+        await SignatureDataChanged.InvokeAsync(signatureData);
+    }
+
+    private async Task ClearSignature()
+    {
+        if (m_signaturePad != null)
+        {
+            await m_signaturePad.Clear();
+        }
+        SignatureData = null;
+        await SignatureDataChanged.InvokeAsync(null);
+    }
+}
