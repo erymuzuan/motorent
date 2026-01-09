@@ -1,0 +1,415 @@
+@using System.Text.Json
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@GetDocumentIcon()" />
+            <MudText Typo="Typo.h6">@GetDocumentTypeLabel()</MudText>
+            @if (Document.IsVerified)
+            {
+                <MudChip T="string" Color="Color.Success" Size="Size.Small" Icon="@Icons.Material.Filled.Verified">
+                    Verified
+                </MudChip>
+            }
+            else
+            {
+                <MudChip T="string" Color="Color.Warning" Size="Size.Small" Icon="@Icons.Material.Filled.Warning">
+                    Unverified
+                </MudChip>
+            }
+        </MudStack>
+    </TitleContent>
+
+    <DialogContent>
+        <MudGrid Spacing="3">
+            <!-- Document Image -->
+            <MudItem xs="12" md="6">
+                <MudPaper Outlined="true" Class="pa-2">
+                    @if (!string.IsNullOrEmpty(m_imageUrl))
+                    {
+                        <MudImage Src="@m_imageUrl" Alt="Document" ObjectFit="ObjectFit.Contain"
+                                  Style="width: 100%; max-height: 400px;" Class="rounded" />
+                    }
+                    else
+                    {
+                        <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Style="height: 200px;">
+                            <MudIcon Icon="@Icons.Material.Filled.ImageNotSupported" Size="Size.Large" Color="Color.Secondary" />
+                            <MudText Color="Color.Secondary">Image not available</MudText>
+                        </MudStack>
+                    }
+                </MudPaper>
+
+                <MudStack Row="true" Spacing="1" Class="mt-2" Justify="Justify.Center">
+                    <MudIconButton Icon="@Icons.Material.Filled.ZoomIn" OnClick="ZoomIn"
+                                   Title="Zoom In" Size="Size.Small" />
+                    <MudIconButton Icon="@Icons.Material.Filled.ZoomOut" OnClick="ZoomOut"
+                                   Title="Zoom Out" Size="Size.Small" />
+                    <MudIconButton Icon="@Icons.Material.Filled.RotateRight" OnClick="RotateImage"
+                                   Title="Rotate" Size="Size.Small" />
+                    <MudIconButton Icon="@Icons.Material.Filled.OpenInNew" OnClick="OpenFullScreen"
+                                   Title="Full Screen" Size="Size.Small" />
+                </MudStack>
+            </MudItem>
+
+            <!-- Extracted Data -->
+            <MudItem xs="12" md="6">
+                <MudText Typo="Typo.subtitle1" Class="mb-2">Extracted Information</MudText>
+
+                @if (m_extractedData != null)
+                {
+                    <MudSimpleTable Dense="true" Hover="true" Striped="true">
+                        <tbody>
+                            @if (!string.IsNullOrEmpty(m_extractedData.FullName))
+                            {
+                                <tr>
+                                    <td style="width: 40%;"><strong>Full Name</strong></td>
+                                    <td>@m_extractedData.FullName</td>
+                                </tr>
+                            }
+                            @if (!string.IsNullOrEmpty(m_extractedData.GivenName))
+                            {
+                                <tr>
+                                    <td><strong>Given Name</strong></td>
+                                    <td>@m_extractedData.GivenName</td>
+                                </tr>
+                            }
+                            @if (!string.IsNullOrEmpty(m_extractedData.Surname))
+                            {
+                                <tr>
+                                    <td><strong>Surname</strong></td>
+                                    <td>@m_extractedData.Surname</td>
+                                </tr>
+                            }
+                            @if (!string.IsNullOrEmpty(m_extractedData.DocumentNumber))
+                            {
+                                <tr>
+                                    <td><strong>Document Number</strong></td>
+                                    <td>@m_extractedData.DocumentNumber</td>
+                                </tr>
+                            }
+                            @if (!string.IsNullOrEmpty(m_extractedData.Nationality))
+                            {
+                                <tr>
+                                    <td><strong>Nationality</strong></td>
+                                    <td>@m_extractedData.Nationality</td>
+                                </tr>
+                            }
+                            @if (m_extractedData.DateOfBirth.HasValue)
+                            {
+                                <tr>
+                                    <td><strong>Date of Birth</strong></td>
+                                    <td>@m_extractedData.DateOfBirth.Value.ToString("yyyy-MM-dd")</td>
+                                </tr>
+                            }
+                            @if (!string.IsNullOrEmpty(m_extractedData.Gender))
+                            {
+                                <tr>
+                                    <td><strong>Gender</strong></td>
+                                    <td>@(m_extractedData.Gender == "M" ? "Male" : m_extractedData.Gender == "F" ? "Female" : m_extractedData.Gender)</td>
+                                </tr>
+                            }
+                            @if (!string.IsNullOrEmpty(m_extractedData.PlaceOfBirth))
+                            {
+                                <tr>
+                                    <td><strong>Place of Birth</strong></td>
+                                    <td>@m_extractedData.PlaceOfBirth</td>
+                                </tr>
+                            }
+                            @if (!string.IsNullOrEmpty(m_extractedData.Address))
+                            {
+                                <tr>
+                                    <td><strong>Address</strong></td>
+                                    <td>@m_extractedData.Address</td>
+                                </tr>
+                            }
+                            @if (m_extractedData.DateOfIssue.HasValue)
+                            {
+                                <tr>
+                                    <td><strong>Issue Date</strong></td>
+                                    <td>@m_extractedData.DateOfIssue.Value.ToString("yyyy-MM-dd")</td>
+                                </tr>
+                            }
+                            @if (m_extractedData.DateOfExpiry.HasValue)
+                            {
+                                <tr>
+                                    <td><strong>Expiry Date</strong></td>
+                                    <td>
+                                        @m_extractedData.DateOfExpiry.Value.ToString("yyyy-MM-dd")
+                                        @if (m_extractedData.DateOfExpiry.Value < DateTimeOffset.Now)
+                                        {
+                                            <MudChip T="string" Color="Color.Error" Size="Size.Small" Class="ml-2">Expired</MudChip>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                            @if (!string.IsNullOrEmpty(m_extractedData.IssuingAuthority))
+                            {
+                                <tr>
+                                    <td><strong>Issuing Authority</strong></td>
+                                    <td>@m_extractedData.IssuingAuthority</td>
+                                </tr>
+                            }
+                            @if (!string.IsNullOrEmpty(m_extractedData.IssuingCountry))
+                            {
+                                <tr>
+                                    <td><strong>Issuing Country</strong></td>
+                                    <td>@m_extractedData.IssuingCountry</td>
+                                </tr>
+                            }
+                            @if (m_extractedData.VehicleClasses?.Any() == true)
+                            {
+                                <tr>
+                                    <td><strong>Vehicle Classes</strong></td>
+                                    <td>@string.Join(", ", m_extractedData.VehicleClasses)</td>
+                                </tr>
+                            }
+                            @if (!string.IsNullOrEmpty(m_extractedData.Restrictions))
+                            {
+                                <tr>
+                                    <td><strong>Restrictions</strong></td>
+                                    <td>@m_extractedData.Restrictions</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </MudSimpleTable>
+
+                    @if (!string.IsNullOrEmpty(m_extractedData.Error))
+                    {
+                        <MudAlert Severity="Severity.Warning" Class="mt-2" Dense="true">
+                            @m_extractedData.Error
+                        </MudAlert>
+                    }
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Info">
+                        No extracted data available for this document.
+                    </MudAlert>
+                }
+
+                <MudDivider Class="my-3" />
+
+                <!-- Document Info -->
+                <MudText Typo="Typo.subtitle2" Class="mb-2">Document Details</MudText>
+                <MudSimpleTable Dense="true">
+                    <tbody>
+                        <tr>
+                            <td style="width: 40%;"><strong>Type</strong></td>
+                            <td>@GetDocumentTypeLabel()</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Uploaded</strong></td>
+                            <td>@Document.UploadedOn.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Status</strong></td>
+                            <td>@(Document.IsVerified ? "Verified" : "Pending Verification")</td>
+                        </tr>
+                    </tbody>
+                </MudSimpleTable>
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="ReprocessOcr" Disabled="m_processing"
+                   StartIcon="@Icons.Material.Filled.Refresh" Color="Color.Secondary">
+            Re-scan OCR
+        </MudButton>
+        <MudSpacer />
+
+        @if (!Document.IsVerified)
+        {
+            <MudButton OnClick="VerifyDocument" Disabled="m_processing"
+                       Color="Color.Success" Variant="Variant.Filled"
+                       StartIcon="@Icons.Material.Filled.CheckCircle">
+                Mark as Verified
+            </MudButton>
+        }
+        else
+        {
+            <MudButton OnClick="UnverifyDocument" Disabled="m_processing"
+                       Color="Color.Warning" Variant="Variant.Outlined"
+                       StartIcon="@Icons.Material.Filled.RemoveCircle">
+                Remove Verification
+            </MudButton>
+        }
+
+        <MudButton OnClick="Close">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private MudDialogInstance? MudDialog { get; set; }
+
+    [Parameter]
+    public Document Document { get; set; } = new();
+
+    private ExtractedDocumentData? m_extractedData;
+    private string? m_imageUrl;
+    private bool m_processing;
+
+    protected override void OnInitialized()
+    {
+        LoadExtractedData();
+        LoadImageUrl();
+    }
+
+    private void LoadExtractedData()
+    {
+        if (!string.IsNullOrEmpty(Document.ExtractedData))
+        {
+            try
+            {
+                m_extractedData = JsonSerializer.Deserialize<ExtractedDocumentData>(
+                    Document.ExtractedData,
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            }
+            catch
+            {
+                // Ignore parsing errors
+            }
+        }
+    }
+
+    private void LoadImageUrl()
+    {
+        if (!string.IsNullOrEmpty(Document.ImagePath))
+        {
+            m_imageUrl = $"/api/documents/file/{Document.ImagePath}";
+        }
+    }
+
+    private string GetDocumentTypeLabel() => Document.DocumentType switch
+    {
+        "Passport" => "Passport",
+        "NationalId" => "National ID Card",
+        "DrivingLicense" => "Driving License",
+        _ => "Document"
+    };
+
+    private string GetDocumentIcon() => Document.DocumentType switch
+    {
+        "Passport" => Icons.Material.Filled.Badge,
+        "NationalId" => Icons.Material.Filled.CreditCard,
+        "DrivingLicense" => Icons.Material.Filled.DirectionsCar,
+        _ => Icons.Material.Filled.Description
+    };
+
+    private void ZoomIn()
+    {
+        // TODO: Implement zoom functionality via JS
+    }
+
+    private void ZoomOut()
+    {
+        // TODO: Implement zoom functionality via JS
+    }
+
+    private void RotateImage()
+    {
+        // TODO: Implement rotation via JS
+    }
+
+    private void OpenFullScreen()
+    {
+        // TODO: Open image in new tab
+    }
+
+    private async Task VerifyDocument()
+    {
+        await SetVerification(true);
+    }
+
+    private async Task UnverifyDocument()
+    {
+        await SetVerification(false);
+    }
+
+    private async Task SetVerification(bool isVerified)
+    {
+        m_processing = true;
+        StateHasChanged();
+
+        try
+        {
+            var response = await Http.PostAsJsonAsync(
+                $"/api/documents/{Document.DocumentId}/verify",
+                new { IsVerified = isVerified });
+
+            if (response.IsSuccessStatusCode)
+            {
+                Document.IsVerified = isVerified;
+                Snackbar.Add(isVerified ? "Document verified" : "Verification removed", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("Failed to update verification status", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            m_processing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ReprocessOcr()
+    {
+        m_processing = true;
+        StateHasChanged();
+
+        try
+        {
+            var response = await Http.PostAsync($"/api/documents/{Document.DocumentId}/reprocess", null);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var json = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<ReprocessResponse>(json, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+
+                if (result?.ExtractedData != null)
+                {
+                    m_extractedData = result.ExtractedData;
+                    Document.ExtractedData = JsonSerializer.Serialize(m_extractedData);
+                    Snackbar.Add("OCR re-processing complete", Severity.Success);
+                }
+            }
+            else
+            {
+                Snackbar.Add("Failed to reprocess document", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            m_processing = false;
+            StateHasChanged();
+        }
+    }
+
+    private void Close()
+    {
+        MudDialog?.Close(DialogResult.Ok(Document));
+    }
+
+    private class ReprocessResponse
+    {
+        public int? DocumentId { get; set; }
+        public string? FilePath { get; set; }
+        public ExtractedDocumentData? ExtractedData { get; set; }
+    }
+}

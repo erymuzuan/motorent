@@ -11,28 +11,28 @@ public static class ServiceCollectionExtensions
         // Register QueryProvider
         services.AddSingleton(new QueryProvider(connectionString));
 
-        // Register repositories for MotoRent operational entities
-        services.AddScoped<IRepository<Shop>, Repository<Shop>>();
-        services.AddScoped<IRepository<Renter>, Repository<Renter>>();
-        services.AddScoped<IRepository<Document>, Repository<Document>>();
-        services.AddScoped<IRepository<Motorbike>, Repository<Motorbike>>();
-        services.AddScoped<IRepository<Rental>, Repository<Rental>>();
-        services.AddScoped<IRepository<Deposit>, Repository<Deposit>>();
-        services.AddScoped<IRepository<Insurance>, Repository<Insurance>>();
-        services.AddScoped<IRepository<Accessory>, Repository<Accessory>>();
-        services.AddScoped<IRepository<RentalAccessory>, Repository<RentalAccessory>>();
-        services.AddScoped<IRepository<Payment>, Repository<Payment>>();
-        services.AddScoped<IRepository<DamageReport>, Repository<DamageReport>>();
-        services.AddScoped<IRepository<DamagePhoto>, Repository<DamagePhoto>>();
-        services.AddScoped<IRepository<RentalAgreement>, Repository<RentalAgreement>>();
+        // Register repositories for MotoRent operational entities (singleton since they're stateless)
+        services.AddSingleton<IRepository<Shop>, Repository<Shop>>();
+        services.AddSingleton<IRepository<Renter>, Repository<Renter>>();
+        services.AddSingleton<IRepository<Document>, Repository<Document>>();
+        services.AddSingleton<IRepository<Motorbike>, Repository<Motorbike>>();
+        services.AddSingleton<IRepository<Rental>, Repository<Rental>>();
+        services.AddSingleton<IRepository<Deposit>, Repository<Deposit>>();
+        services.AddSingleton<IRepository<Insurance>, Repository<Insurance>>();
+        services.AddSingleton<IRepository<Accessory>, Repository<Accessory>>();
+        services.AddSingleton<IRepository<RentalAccessory>, Repository<RentalAccessory>>();
+        services.AddSingleton<IRepository<Payment>, Repository<Payment>>();
+        services.AddSingleton<IRepository<DamageReport>, Repository<DamageReport>>();
+        services.AddSingleton<IRepository<DamagePhoto>, Repository<DamagePhoto>>();
+        services.AddSingleton<IRepository<RentalAgreement>, Repository<RentalAgreement>>();
 
         // Register repositories for Core entities (uses [Core] schema)
-        services.AddScoped<IRepository<Organization>, CoreRepository<Organization>>();
-        services.AddScoped<IRepository<User>, CoreRepository<User>>();
-        services.AddScoped<IRepository<Setting>, CoreRepository<Setting>>();
-        services.AddScoped<IRepository<AccessToken>, CoreRepository<AccessToken>>();
-        services.AddScoped<IRepository<RegistrationInvite>, CoreRepository<RegistrationInvite>>();
-        services.AddScoped<IRepository<LogEntry>, CoreRepository<LogEntry>>();
+        services.AddSingleton<IRepository<Organization>, CoreRepository<Organization>>();
+        services.AddSingleton<IRepository<User>, CoreRepository<User>>();
+        services.AddSingleton<IRepository<Setting>, CoreRepository<Setting>>();
+        services.AddSingleton<IRepository<AccessToken>, CoreRepository<AccessToken>>();
+        services.AddSingleton<IRepository<RegistrationInvite>, CoreRepository<RegistrationInvite>>();
+        services.AddSingleton<IRepository<LogEntry>, CoreRepository<LogEntry>>();
 
         // Register DataContexts
         services.AddScoped<RentalDataContext>();

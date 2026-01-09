@@ -4,6 +4,9 @@
 -- organization (tenant) management, and authentication
 -- =============================================
 
+SET QUOTED_IDENTIFIER ON
+GO
+
 -- Create Core schema
 IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'Core')
 BEGIN

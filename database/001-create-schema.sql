@@ -1,6 +1,9 @@
 -- MotoRent Database Schema
 -- SQL Server with JSON columns and computed columns for indexing
 
+SET QUOTED_IDENTIFIER ON
+GO
+
 -- Create schema
 IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'MotoRent')
     EXEC('CREATE SCHEMA [MotoRent]')
