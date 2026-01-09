@@ -1,0 +1,294 @@
+@page "/reports"
+@inherits MotoRentComponentBase
+@using MotoRent.Domain.Entities
+@using MotoRent.Services
+@inject PaymentService PaymentService
+@inject RentalService RentalService
+
+<PageTitle>Reports - MotoRent</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Reports</MudText>
+
+<MudPaper Elevation="2" Class="pa-4 mb-4">
+    <MudGrid>
+        <MudItem xs="12" md="4">
+            <MudSelect T="string" Value="m_reportType" Label="Report Type"
+                       Variant="Variant.Outlined" Dense="true"
+                       ValueChanged="@(async (string s) => { m_reportType = s; await LoadReportAsync(); })">
+                <MudSelectItem Value="@("daily")">Daily Summary</MudSelectItem>
+                <MudSelectItem Value="@("weekly")">Weekly Summary</MudSelectItem>
+                <MudSelectItem Value="@("monthly")">Monthly Summary</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" md="4">
+            <MudDatePicker Date="m_reportDate" Label="Report Date"
+                           Variant="Variant.Outlined" Editable="true"
+                           DateChanged="@(async (DateTime? d) => { m_reportDate = d ?? DateTime.Today; await LoadReportAsync(); })" />
+        </MudItem>
+        <MudItem xs="12" md="4" Class="d-flex align-center">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadReportAsync">
+                Generate Report
+            </MudButton>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@if (m_loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+}
+
+@* Summary Cards *@
+<MudGrid Class="mb-4">
+    <MudItem xs="6" md="3">
+        <MudPaper Elevation="2" Class="pa-4">
+            <MudStack Spacing="1">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Total Revenue</MudText>
+                <MudText Typo="Typo.h4" Color="Color.Success">@FormatCurrency(m_totalRevenue)</MudText>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="6" md="3">
+        <MudPaper Elevation="2" Class="pa-4">
+            <MudStack Spacing="1">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Total Rentals</MudText>
+                <MudText Typo="Typo.h4" Color="Color.Primary">@m_totalRentals</MudText>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="6" md="3">
+        <MudPaper Elevation="2" Class="pa-4">
+            <MudStack Spacing="1">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Active Rentals</MudText>
+                <MudText Typo="Typo.h4" Color="Color.Info">@m_activeRentals</MudText>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="6" md="3">
+        <MudPaper Elevation="2" Class="pa-4">
+            <MudStack Spacing="1">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Completed</MudText>
+                <MudText Typo="Typo.h4">@m_completedRentals</MudText>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+<MudGrid>
+    @* Revenue by Payment Method *@
+    <MudItem xs="12" md="6">
+        <MudPaper Elevation="2" Class="pa-4">
+            <MudText Typo="Typo.h6" Class="mb-3">Revenue by Payment Method</MudText>
+            @if (m_revenueByMethod.Any())
+            {
+                <MudSimpleTable Dense="true" Striped="true">
+                    <thead>
+                        <tr>
+                            <th>Method</th>
+                            <th style="text-align: right;">Amount</th>
+                            <th style="text-align: right;">%</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in m_revenueByMethod)
+                        {
+                            <tr>
+                                <td>
+                                    <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                                        <MudIcon Icon="@GetPaymentMethodIcon(item.Key)" Size="Size.Small" />
+                                        @item.Key
+                                    </MudStack>
+                                </td>
+                                <td style="text-align: right;">@FormatCurrency(item.Value)</td>
+                                <td style="text-align: right;">@(m_totalRevenue > 0 ? (item.Value / m_totalRevenue * 100).ToString("F1") : "0")%</td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            }
+            else
+            {
+                <MudText Color="Color.Secondary">No payment data for this period</MudText>
+            }
+        </MudPaper>
+    </MudItem>
+
+    @* Rental Status Summary *@
+    <MudItem xs="12" md="6">
+        <MudPaper Elevation="2" Class="pa-4">
+            <MudText Typo="Typo.h6" Class="mb-3">Rental Status</MudText>
+            @if (m_rentalsByStatus.Any())
+            {
+                <MudSimpleTable Dense="true" Striped="true">
+                    <thead>
+                        <tr>
+                            <th>Status</th>
+                            <th style="text-align: right;">Count</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in m_rentalsByStatus)
+                        {
+                            <tr>
+                                <td>
+                                    <MudChip T="string" Size="Size.Small" Color="@GetStatusColor(item.Key)">
+                                        @item.Key
+                                    </MudChip>
+                                </td>
+                                <td style="text-align: right;">@item.Value</td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            }
+            else
+            {
+                <MudText Color="Color.Secondary">No rental data for this period</MudText>
+            }
+        </MudPaper>
+    </MudItem>
+
+    @* Daily Revenue Breakdown *@
+    <MudItem xs="12">
+        <MudPaper Elevation="2" Class="pa-4">
+            <MudText Typo="Typo.h6" Class="mb-3">@GetPeriodTitle() Revenue</MudText>
+            @if (m_dailyRevenue.Any())
+            {
+                <MudSimpleTable Dense="true" Striped="true">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th style="text-align: right;">Revenue</th>
+                            <th>Progress</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{
+                            var maxRevenue = m_dailyRevenue.Values.DefaultIfEmpty(1).Max();
+                        }
+                        @foreach (var item in m_dailyRevenue.OrderByDescending(x => x.Key))
+                        {
+                            <tr>
+                                <td>@item.Key</td>
+                                <td style="text-align: right;">@FormatCurrency(item.Value)</td>
+                                <td style="width: 40%;">
+                                    <MudProgressLinear Value="@(maxRevenue > 0 ? (double)(item.Value / maxRevenue * 100) : 0)"
+                                                       Color="Color.Primary" Size="Size.Medium" />
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            }
+            else
+            {
+                <MudText Color="Color.Secondary">No revenue data for this period</MudText>
+            }
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private bool m_loading = true;
+    private string m_reportType = "daily";
+    private DateTime m_reportDate = DateTime.Today;
+
+    // Summary metrics
+    private decimal m_totalRevenue;
+    private int m_totalRentals;
+    private int m_activeRentals;
+    private int m_completedRentals;
+
+    // Breakdown data
+    private Dictionary<string, decimal> m_revenueByMethod = new();
+    private Dictionary<string, int> m_rentalsByStatus = new();
+    private Dictionary<string, decimal> m_dailyRevenue = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadReportAsync();
+    }
+
+    private async Task LoadReportAsync()
+    {
+        m_loading = true;
+        try
+        {
+            var (fromDate, toDate) = GetDateRange();
+
+            // Load payment summary
+            var paymentSummary = await PaymentService.GetPaymentSummaryAsync(ShopId, fromDate, toDate);
+            m_totalRevenue = paymentSummary.TotalAmount;
+            m_revenueByMethod = paymentSummary.ByPaymentMethod;
+
+            // Load daily revenue
+            m_dailyRevenue = await PaymentService.GetDailyRevenueAsync(ShopId, fromDate, toDate);
+
+            // Load rental stats
+            m_rentalsByStatus = await RentalService.GetStatusCountsAsync(ShopId);
+            m_totalRentals = m_rentalsByStatus.Values.Sum();
+            m_activeRentals = m_rentalsByStatus.GetValueOrDefault("Active", 0);
+            m_completedRentals = m_rentalsByStatus.GetValueOrDefault("Completed", 0);
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error loading report: {ex.Message}");
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private (DateTimeOffset fromDate, DateTimeOffset toDate) GetDateRange()
+    {
+        var baseDate = m_reportDate;
+
+        return m_reportType switch
+        {
+            "daily" => (
+                new DateTimeOffset(baseDate.Date),
+                new DateTimeOffset(baseDate.Date.AddDays(1).AddSeconds(-1))
+            ),
+            "weekly" => (
+                new DateTimeOffset(baseDate.Date.AddDays(-(int)baseDate.DayOfWeek)),
+                new DateTimeOffset(baseDate.Date.AddDays(7 - (int)baseDate.DayOfWeek).AddSeconds(-1))
+            ),
+            "monthly" => (
+                new DateTimeOffset(new DateTime(baseDate.Year, baseDate.Month, 1)),
+                new DateTimeOffset(new DateTime(baseDate.Year, baseDate.Month, 1).AddMonths(1).AddSeconds(-1))
+            ),
+            _ => (
+                new DateTimeOffset(baseDate.Date),
+                new DateTimeOffset(baseDate.Date.AddDays(1).AddSeconds(-1))
+            )
+        };
+    }
+
+    private string GetPeriodTitle() => m_reportType switch
+    {
+        "daily" => "Hourly",
+        "weekly" => "Daily",
+        "monthly" => "Daily",
+        _ => "Daily"
+    };
+
+    private static Color GetStatusColor(string? status) => status switch
+    {
+        "Active" => Color.Primary,
+        "Completed" => Color.Success,
+        "Cancelled" => Color.Error,
+        "Reserved" => Color.Info,
+        _ => Color.Default
+    };
+
+    private static string GetPaymentMethodIcon(string? method) => method switch
+    {
+        "Cash" => Icons.Material.Filled.Money,
+        "Card" => Icons.Material.Filled.CreditCard,
+        "PromptPay" => Icons.Material.Filled.QrCode,
+        "BankTransfer" => Icons.Material.Filled.AccountBalance,
+        _ => Icons.Material.Filled.Payment
+    };
+}

@@ -1,0 +1,214 @@
+@using MotoRent.Domain.Entities
+@using MotoRent.Services
+@inject PaymentService PaymentService
+@inject RentalService RentalService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="m_form" @bind-IsValid="m_formValid">
+            <MudGrid>
+                @if (!HideRentalSelector)
+                {
+                    <MudItem xs="12">
+                        <MudAutocomplete T="Rental" Label="Rental"
+                                         @bind-Value="m_selectedRental"
+                                         SearchFunc="SearchRentalsAsync"
+                                         ToStringFunc="@(r => r == null ? "" : $"#{r.RentalId} - {r.RenterName}")"
+                                         Required="true"
+                                         RequiredError="Rental is required"
+                                         Variant="Variant.Outlined"
+                                         Dense="true"
+                                         ShowProgressIndicator="true" />
+                    </MudItem>
+                }
+
+                <MudItem xs="12" md="6">
+                    <MudSelect @bind-Value="Payment.PaymentType" Label="Payment Type"
+                               Required="true" Variant="Variant.Outlined">
+                        <MudSelectItem Value="@("Rental")">Rental Payment</MudSelectItem>
+                        <MudSelectItem Value="@("Insurance")">Insurance</MudSelectItem>
+                        <MudSelectItem Value="@("Accessory")">Accessory</MudSelectItem>
+                        <MudSelectItem Value="@("Deposit")">Deposit</MudSelectItem>
+                        <MudSelectItem Value="@("Damage")">Damage Charge</MudSelectItem>
+                        <MudSelectItem Value="@("Additional")">Additional Charge</MudSelectItem>
+                        <MudSelectItem Value="@("Refund")">Refund</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudSelect @bind-Value="Payment.PaymentMethod" Label="Payment Method"
+                               Required="true" Variant="Variant.Outlined">
+                        <MudSelectItem Value="@("Cash")">Cash</MudSelectItem>
+                        <MudSelectItem Value="@("Card")">Credit/Debit Card</MudSelectItem>
+                        <MudSelectItem Value="@("PromptPay")">PromptPay (QR)</MudSelectItem>
+                        <MudSelectItem Value="@("BankTransfer")">Bank Transfer</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudNumericField @bind-Value="Payment.Amount" Label="Amount (THB)"
+                                     Required="true" Min="0"
+                                     Variant="Variant.Outlined" Format="N2"
+                                     Adornment="Adornment.Start" AdornmentText="฿" />
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudSelect @bind-Value="Payment.Status" Label="Status"
+                               Required="true" Variant="Variant.Outlined">
+                        <MudSelectItem Value="@("Completed")">Completed</MudSelectItem>
+                        <MudSelectItem Value="@("Pending")">Pending</MudSelectItem>
+                        <MudSelectItem Value="@("Refunded")">Refunded</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudDatePicker @bind-Date="m_paidOnDate" Label="Payment Date"
+                                   Variant="Variant.Outlined" Editable="true"
+                                   Required="true" />
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudTimePicker @bind-Time="m_paidOnTime" Label="Payment Time"
+                                   Variant="Variant.Outlined" Editable="true" />
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="Payment.TransactionRef" Label="Transaction Reference"
+                                  Variant="Variant.Outlined"
+                                  Placeholder="Receipt #, Card approval code, etc." />
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="Payment.Notes" Label="Notes"
+                                  Variant="Variant.Outlined" Lines="2" />
+                </MudItem>
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                   OnClick="SaveAsync" Disabled="@(!m_formValid || m_saving)">
+            @if (m_saving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @(IsNew ? "Record Payment" : "Save")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private MudDialogInstance? MudDialog { get; set; }
+
+    [Parameter]
+    public Payment Payment { get; set; } = new();
+
+    [Parameter]
+    public bool IsNew { get; set; }
+
+    [Parameter]
+    public int ShopId { get; set; }
+
+    [Parameter]
+    public bool HideRentalSelector { get; set; }
+
+    [Parameter]
+    public string UserName { get; set; } = "system";
+
+    private MudForm? m_form;
+    private bool m_formValid;
+    private bool m_saving;
+    private DateTime? m_paidOnDate;
+    private TimeSpan? m_paidOnTime;
+    private Rental? m_selectedRental;
+    private List<Rental> m_rentals = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        m_paidOnDate = Payment.PaidOn == default ? DateTime.Today : Payment.PaidOn.DateTime.Date;
+        m_paidOnTime = Payment.PaidOn == default ? DateTime.Now.TimeOfDay : Payment.PaidOn.DateTime.TimeOfDay;
+
+        if (Payment.RentalId > 0)
+        {
+            m_selectedRental = await RentalService.GetRentalByIdAsync(Payment.RentalId);
+        }
+
+        // Pre-load active rentals for autocomplete
+        var result = await RentalService.GetRentalsAsync(ShopId, status: "Active", pageSize: 100);
+        m_rentals = result.ItemCollection.ToList();
+
+        // Also include completed rentals (for recording late payments)
+        var completedResult = await RentalService.GetRentalsAsync(ShopId, status: "Completed", pageSize: 50);
+        m_rentals.AddRange(completedResult.ItemCollection);
+    }
+
+    private async Task<IEnumerable<Rental>> SearchRentalsAsync(string value, CancellationToken token)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return m_rentals.Take(20);
+
+        return m_rentals
+            .Where(r => r.RentalId.ToString().Contains(value) ||
+                       (r.RenterName?.Contains(value, StringComparison.OrdinalIgnoreCase) ?? false))
+            .Take(20);
+    }
+
+    private void Cancel()
+    {
+        MudDialog?.Cancel();
+    }
+
+    private async Task SaveAsync()
+    {
+        if (m_form == null) return;
+
+        await m_form.Validate();
+        if (!m_formValid) return;
+
+        m_saving = true;
+
+        try
+        {
+            // Set rental ID from selection
+            if (m_selectedRental != null)
+            {
+                Payment.RentalId = m_selectedRental.RentalId;
+            }
+
+            // Combine date and time
+            if (m_paidOnDate.HasValue)
+            {
+                var dateTime = m_paidOnDate.Value.Date;
+                if (m_paidOnTime.HasValue)
+                {
+                    dateTime = dateTime.Add(m_paidOnTime.Value);
+                }
+                Payment.PaidOn = new DateTimeOffset(dateTime);
+            }
+
+            var result = IsNew
+                ? await PaymentService.CreatePaymentAsync(Payment, UserName)
+                : await PaymentService.UpdatePaymentAsync(Payment, UserName);
+
+            if (result.Success)
+            {
+                MudDialog?.Close(DialogResult.Ok(Payment));
+            }
+            else
+            {
+                Snackbar.Add($"Save failed: {result.Message}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            m_saving = false;
+        }
+    }
+}

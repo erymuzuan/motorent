@@ -16,6 +16,10 @@ public class Rental : Entity
     public string Status { get; set; } = "Reserved";  // Reserved, Active, Completed, Cancelled
     public string? Notes { get; set; }
 
+    // Denormalized for display
+    public string? RenterName { get; set; }
+    public string? MotorbikeName { get; set; }
+
     // Related
     public int? InsuranceId { get; set; }
     public int? DepositId { get; set; }

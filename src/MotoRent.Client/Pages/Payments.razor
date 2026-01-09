@@ -1,0 +1,335 @@
+@page "/payments"
+@inherits MotoRentComponentBase
+@using MotoRent.Domain.Entities
+@using MotoRent.Services
+@inject PaymentService PaymentService
+@inject RentalService RentalService
+
+<PageTitle>Payments - MotoRent</PageTitle>
+
+<MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
+    <MudText Typo="Typo.h4">Payments</MudText>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Add" OnClick="OpenAddPaymentDialog">
+        Record Payment
+    </MudButton>
+</MudStack>
+
+<MudPaper Elevation="2" Class="pa-4 mb-4">
+    <MudGrid>
+        <MudItem xs="12" md="3">
+            <MudSelect T="string" Value="m_statusFilter" Label="Status"
+                       Variant="Variant.Outlined" Dense="true" Clearable="true"
+                       ValueChanged="@(async (string? s) => { m_statusFilter = s; await FilterChanged(); })">
+                <MudSelectItem Value="@("Completed")">Completed</MudSelectItem>
+                <MudSelectItem Value="@("Pending")">Pending</MudSelectItem>
+                <MudSelectItem Value="@("Refunded")">Refunded</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <MudSelect T="string" Value="m_paymentMethodFilter" Label="Payment Method"
+                       Variant="Variant.Outlined" Dense="true" Clearable="true"
+                       ValueChanged="@(async (string? s) => { m_paymentMethodFilter = s; await FilterChanged(); })">
+                <MudSelectItem Value="@("Cash")">Cash</MudSelectItem>
+                <MudSelectItem Value="@("Card")">Card</MudSelectItem>
+                <MudSelectItem Value="@("PromptPay")">PromptPay</MudSelectItem>
+                <MudSelectItem Value="@("BankTransfer")">Bank Transfer</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <MudDatePicker Date="m_fromDate" Label="From Date"
+                           Variant="Variant.Outlined" Editable="true"
+                           Clearable="true" DateChanged="@(async (DateTime? d) => { m_fromDate = d; await FilterChanged(); })" />
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <MudDatePicker Date="m_toDate" Label="To Date"
+                           Variant="Variant.Outlined" Editable="true"
+                           Clearable="true" DateChanged="@(async (DateTime? d) => { m_toDate = d; await FilterChanged(); })" />
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@* Summary Cards *@
+<MudGrid Class="mb-4">
+    <MudItem xs="6" md="3">
+        <MudPaper Elevation="2" Class="pa-4">
+            <MudStack Spacing="1">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Total Payments</MudText>
+                <MudText Typo="Typo.h5" Color="Color.Primary">@FormatCurrency(m_totalAmount)</MudText>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="6" md="3">
+        <MudPaper Elevation="2" Class="pa-4">
+            <MudStack Spacing="1">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Cash</MudText>
+                <MudText Typo="Typo.h5">@FormatCurrency(m_cashAmount)</MudText>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="6" md="3">
+        <MudPaper Elevation="2" Class="pa-4">
+            <MudStack Spacing="1">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Card</MudText>
+                <MudText Typo="Typo.h5">@FormatCurrency(m_cardAmount)</MudText>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="6" md="3">
+        <MudPaper Elevation="2" Class="pa-4">
+            <MudStack Spacing="1">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">PromptPay/Transfer</MudText>
+                <MudText Typo="Typo.h5">@FormatCurrency(m_otherAmount)</MudText>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@if (m_loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+}
+
+<MudPaper Elevation="2">
+    <MudDataGrid T="PaymentViewModel" Items="@m_payments" Hover="true" Striped="true"
+                 Loading="@m_loading" Dense="true">
+        <Columns>
+            <PropertyColumn Property="x => x.Payment.PaymentId" Title="ID" />
+            <TemplateColumn Title="Rental">
+                <CellTemplate>
+                    <MudLink Href="@($"/rentals/{context.Item.Payment.RentalId}")">
+                        #@context.Item.Payment.RentalId
+                    </MudLink>
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Type">
+                <CellTemplate>
+                    <MudChip T="string" Size="Size.Small" Color="@GetPaymentTypeColor(context.Item.Payment.PaymentType)">
+                        @context.Item.Payment.PaymentType
+                    </MudChip>
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Method">
+                <CellTemplate>
+                    <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                        <MudIcon Icon="@GetPaymentMethodIcon(context.Item.Payment.PaymentMethod)" Size="Size.Small" />
+                        <MudText Typo="Typo.body2">@context.Item.Payment.PaymentMethod</MudText>
+                    </MudStack>
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Amount">
+                <CellTemplate>
+                    <MudText Color="@(context.Item.Payment.PaymentType == "Refund" ? Color.Error : Color.Primary)"
+                             Style="font-weight: 600;">
+                        @(context.Item.Payment.PaymentType == "Refund" ? "-" : "")@FormatCurrency(context.Item.Payment.Amount)
+                    </MudText>
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Status">
+                <CellTemplate>
+                    <MudChip T="string" Size="Size.Small" Color="@GetStatusColor(context.Item.Payment.Status)">
+                        @context.Item.Payment.Status
+                    </MudChip>
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Date">
+                <CellTemplate>
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.body2">@FormatDate(context.Item.Payment.PaidOn)</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@context.Item.Payment.PaidOn.ToString("HH:mm")</MudText>
+                    </MudStack>
+                </CellTemplate>
+            </TemplateColumn>
+            <PropertyColumn Property="x => x.Payment.TransactionRef" Title="Reference" />
+            <TemplateColumn Title="Actions" Sortable="false">
+                <CellTemplate>
+                    <MudStack Row="true" Spacing="1">
+                        <MudTooltip Text="View Details">
+                            <MudIconButton Icon="@Icons.Material.Filled.Visibility" Size="Size.Small"
+                                           OnClick="@(() => ViewPayment(context.Item.Payment))" />
+                        </MudTooltip>
+                        @if (context.Item.Payment.Status == "Completed" && context.Item.Payment.PaymentType != "Refund")
+                        {
+                            <MudTooltip Text="Refund">
+                                <MudIconButton Icon="@Icons.Material.Filled.Undo" Size="Size.Small"
+                                               Color="Color.Warning"
+                                               OnClick="@(() => RefundPayment(context.Item.Payment))" />
+                            </MudTooltip>
+                        }
+                    </MudStack>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+        <PagerContent>
+            <MudDataGridPager T="PaymentViewModel" PageSizeOptions="new[] { 10, 20, 50, 100 }" />
+        </PagerContent>
+        <NoRecordsContent>
+            <MudStack AlignItems="AlignItems.Center" Class="pa-8">
+                <MudIcon Icon="@Icons.Material.Filled.Payment" Size="Size.Large" Color="Color.Secondary" />
+                <MudText Color="Color.Secondary">No payments found</MudText>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="OpenAddPaymentDialog">
+                    Record Payment
+                </MudButton>
+            </MudStack>
+        </NoRecordsContent>
+    </MudDataGrid>
+</MudPaper>
+
+@code {
+    private List<PaymentViewModel> m_payments = [];
+    private bool m_loading = true;
+    private string? m_statusFilter;
+    private string? m_paymentMethodFilter;
+    private DateTime? m_fromDate;
+    private DateTime? m_toDate;
+
+    // Summary amounts
+    private decimal m_totalAmount;
+    private decimal m_cashAmount;
+    private decimal m_cardAmount;
+    private decimal m_otherAmount;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Default to current month
+        m_fromDate = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+        m_toDate = DateTime.Today;
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        m_loading = true;
+        try
+        {
+            var fromDateOffset = m_fromDate.HasValue ? new DateTimeOffset(m_fromDate.Value) : (DateTimeOffset?)null;
+            var toDateOffset = m_toDate.HasValue ? new DateTimeOffset(m_toDate.Value.AddDays(1).AddSeconds(-1)) : (DateTimeOffset?)null;
+
+            var result = await PaymentService.GetPaymentsAsync(
+                ShopId,
+                status: m_statusFilter,
+                paymentMethod: m_paymentMethodFilter,
+                fromDate: fromDateOffset,
+                toDate: toDateOffset,
+                pageSize: 500);
+
+            m_payments = result.ItemCollection
+                .Select(p => new PaymentViewModel { Payment = p })
+                .ToList();
+
+            // Calculate summaries (only completed payments)
+            var completedPayments = result.ItemCollection.Where(p => p.Status == "Completed").ToList();
+            m_totalAmount = completedPayments.Sum(p => p.PaymentType == "Refund" ? -p.Amount : p.Amount);
+            m_cashAmount = completedPayments.Where(p => p.PaymentMethod == "Cash").Sum(p => p.Amount);
+            m_cardAmount = completedPayments.Where(p => p.PaymentMethod == "Card").Sum(p => p.Amount);
+            m_otherAmount = completedPayments.Where(p => p.PaymentMethod is "PromptPay" or "BankTransfer").Sum(p => p.Amount);
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error loading payments: {ex.Message}");
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private async Task FilterChanged()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task OpenAddPaymentDialog()
+    {
+        var payment = new Payment
+        {
+            PaymentType = "Rental",
+            PaymentMethod = "Cash",
+            Status = "Completed",
+            PaidOn = DateTimeOffset.Now
+        };
+
+        var confirmed = await DialogService
+            .CreateDialog<PaymentDialog>("Record Payment")
+            .WithParameter(x => x.Payment, payment)
+            .WithParameter(x => x.IsNew, true)
+            .WithParameter(x => x.ShopId, ShopId)
+            .WithParameter(x => x.UserName, UserName)
+            .ShowAndConfirmAsync();
+
+        if (confirmed)
+        {
+            await LoadDataAsync();
+            ShowSuccess("Payment recorded successfully");
+        }
+    }
+
+    private async Task ViewPayment(Payment payment)
+    {
+        await DialogService
+            .CreateDialog<PaymentDialog>("Payment Details")
+            .WithParameter(x => x.Payment, payment.Clone())
+            .WithParameter(x => x.IsNew, false)
+            .WithParameter(x => x.ShopId, ShopId)
+            .WithParameter(x => x.UserName, UserName)
+            .ShowAndConfirmAsync();
+
+        await LoadDataAsync();
+    }
+
+    private async Task RefundPayment(Payment payment)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Confirm Refund",
+            $"Are you sure you want to refund {FormatCurrency(payment.Amount)}?",
+            yesText: "Refund", cancelText: "Cancel");
+
+        if (confirmed == true)
+        {
+            var result = await PaymentService.RefundPaymentAsync(payment.PaymentId, "Manual refund", UserName);
+            if (result.Success)
+            {
+                await LoadDataAsync();
+                ShowSuccess("Payment refunded successfully");
+            }
+            else
+            {
+                ShowError($"Refund failed: {result.Message}");
+            }
+        }
+    }
+
+    private static Color GetStatusColor(string? status) => status switch
+    {
+        "Completed" => Color.Success,
+        "Pending" => Color.Warning,
+        "Refunded" => Color.Error,
+        _ => Color.Default
+    };
+
+    private static Color GetPaymentTypeColor(string? type) => type switch
+    {
+        "Rental" => Color.Primary,
+        "Insurance" => Color.Info,
+        "Accessory" => Color.Secondary,
+        "Deposit" => Color.Tertiary,
+        "Damage" => Color.Error,
+        "Additional" => Color.Warning,
+        "Refund" => Color.Error,
+        _ => Color.Default
+    };
+
+    private static string GetPaymentMethodIcon(string? method) => method switch
+    {
+        "Cash" => Icons.Material.Filled.Money,
+        "Card" => Icons.Material.Filled.CreditCard,
+        "PromptPay" => Icons.Material.Filled.QrCode,
+        "BankTransfer" => Icons.Material.Filled.AccountBalance,
+        _ => Icons.Material.Filled.Payment
+    };
+
+    public class PaymentViewModel
+    {
+        public Payment Payment { get; set; } = new();
+    }
+}

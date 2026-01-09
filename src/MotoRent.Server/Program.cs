@@ -32,6 +32,14 @@ builder.Services.AddScoped<InsuranceService>();
 builder.Services.AddScoped<AccessoryService>();
 builder.Services.AddScoped<RentalService>();
 builder.Services.AddScoped<ShopService>();
+builder.Services.AddScoped<DocumentOcrService>();
+builder.Services.AddScoped<PaymentService>();
+
+// Add HttpClient for external API calls (Gemini)
+builder.Services.AddHttpClient("Gemini", client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(60);
+});
 
 // Add Core services
 builder.Services.AddScoped<IDirectoryService, SqlDirectoryService>();
@@ -101,6 +109,17 @@ builder.Services.AddAuthorization(options =>
 // Add controllers for authentication endpoints
 builder.Services.AddControllers();
 
+// Add localization services
+builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
+
+builder.Services.Configure<RequestLocalizationOptions>(options =>
+{
+    var supportedCultures = new[] { "en", "th" };
+    options.SetDefaultCulture("en");
+    options.AddSupportedCultures(supportedCultures);
+    options.AddSupportedUICultures(supportedCultures);
+});
+
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents()
@@ -126,6 +145,9 @@ else
 app.UseHttpsRedirection();
 
 app.UseStaticFiles();
+
+// Localization middleware
+app.UseRequestLocalization();
 
 // Authentication and Authorization middleware
 app.UseAuthentication();
