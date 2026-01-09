@@ -1,0 +1,463 @@
+@page "/staff/return"
+@using MotoRent.Domain
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Staff,ShopManager,OrgAdmin,administrator")]
+@inject NavigationManager NavigationManager
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Return Bike - MotoRent</PageTitle>
+
+@if (m_rental == null)
+{
+    @* Search/Scan View *@
+    <MudText Typo="Typo.h5" Class="mb-4">Return Bike</MudText>
+
+    <MudPaper Elevation="2" Class="pa-4 mb-4">
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="m_searchText"
+                          Label="Search by plate number or renter name"
+                          Variant="Variant.Outlined"
+                          Adornment="Adornment.End"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          OnKeyDown="@OnSearchKeyDown"
+                          Immediate="true"
+                          AutoFocus="true" />
+
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true"
+                       StartIcon="@Icons.Material.Filled.QrCodeScanner"
+                       Disabled="true">
+                Scan QR Code (Coming Soon)
+            </MudButton>
+        </MudStack>
+    </MudPaper>
+
+    @if (m_loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+    }
+    else if (m_searchResults.Any())
+    {
+        <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-2">
+            Select rental to process return:
+        </MudText>
+
+        <MudStack Spacing="2">
+            @foreach (var rental in m_searchResults)
+            {
+                <MudPaper Elevation="1" Class="pa-3 rental-select-card" @onclick="@(() => SelectRental(rental))">
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                        <MudStack Spacing="0">
+                            <MudText Typo="Typo.body1" Style="font-weight: 600;">
+                                @rental.MotorbikeName
+                            </MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Primary">
+                                @rental.LicensePlate
+                            </MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @rental.RenterName
+                            </MudText>
+                        </MudStack>
+                        <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Color="Color.Secondary" />
+                    </MudStack>
+                </MudPaper>
+            }
+        </MudStack>
+    }
+    else if (!string.IsNullOrEmpty(m_searchText) && m_searchText.Length >= 2)
+    {
+        <MudAlert Severity="Severity.Info">
+            No active rentals found matching "@m_searchText"
+        </MudAlert>
+    }
+
+    @* Recent Returns Quick Access *@
+    @if (!m_searchResults.Any() && m_recentActive.Any())
+    {
+        <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-2 mt-4">
+            Due Today / Overdue:
+        </MudText>
+
+        <MudStack Spacing="2">
+            @foreach (var rental in m_recentActive.Take(5))
+            {
+                <MudPaper Elevation="1" Class="pa-3 rental-select-card" @onclick="@(() => SelectRental(rental))">
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                            <div class="status-dot @(rental.IsOverdue ? "overdue" : "due-soon")"></div>
+                            <MudStack Spacing="0">
+                                <MudText Typo="Typo.body1" Style="font-weight: 500;">
+                                    @rental.LicensePlate - @rental.MotorbikeName
+                                </MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    @rental.RenterName
+                                </MudText>
+                            </MudStack>
+                        </MudStack>
+                        <MudChip T="string" Size="Size.Small" Color="@(rental.IsOverdue ? Color.Error : Color.Warning)">
+                            @(rental.IsOverdue ? "Overdue" : "Due Today")
+                        </MudChip>
+                    </MudStack>
+                </MudPaper>
+            }
+        </MudStack>
+    }
+}
+else
+{
+    @* Return Processing View *@
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick="ClearSelection" />
+        <MudText Typo="Typo.h5">Return: @m_rental.LicensePlate</MudText>
+    </MudStack>
+
+    @* Rental Summary *@
+    <MudPaper Elevation="2" Class="pa-4 mb-3">
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start">
+            <MudStack Spacing="1">
+                <MudText Typo="Typo.h6">@m_rental.MotorbikeName</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    Renter: @m_rental.RenterName
+                </MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    Period: @m_rental.StartDate.ToString("MMM dd") - @m_rental.DueDate.ToString("MMM dd")
+                    (@m_rental.TotalDays days)
+                </MudText>
+            </MudStack>
+            @if (m_rental.IsOverdue)
+            {
+                <MudChip T="string" Color="Color.Error" Size="Size.Small">
+                    @m_extraDays day(s) overdue
+                </MudChip>
+            }
+        </MudStack>
+    </MudPaper>
+
+    @* Condition Checklist *@
+    <MudPaper Elevation="2" Class="pa-4 mb-3">
+        <MudText Typo="Typo.subtitle1" Class="mb-3">Return Checklist</MudText>
+
+        <MudStack Spacing="2">
+            <MudCheckBox @bind-Value="m_bikeConditionOk" Color="Color.Primary" Dense="true"
+                         Label="Bike condition OK (no new damage)" />
+
+            <MudCheckBox @bind-Value="m_fuelChecked" Color="Color.Primary" Dense="true"
+                         Label="Fuel level checked" />
+
+            <MudCheckBox @bind-Value="m_keysReturned" Color="Color.Primary" Dense="true"
+                         Label="Keys returned" />
+
+            <MudCheckBox @bind-Value="m_helmetReturned" Color="Color.Primary" Dense="true"
+                         Label="Helmet(s) returned" />
+
+            <MudCheckBox @bind-Value="m_accessoriesReturned" Color="Color.Primary" Dense="true"
+                         Label="All accessories returned" />
+        </MudStack>
+
+        @if (!m_bikeConditionOk)
+        {
+            <MudAlert Severity="Severity.Warning" Class="mt-3" Dense="true">
+                <MudStack Spacing="2">
+                    <MudText Typo="Typo.body2">Report damage or issues:</MudText>
+                    <MudTextField @bind-Value="m_damageNotes"
+                                  Variant="Variant.Outlined"
+                                  Lines="2"
+                                  Placeholder="Describe damage..."
+                                  Class="mt-2" />
+                    <MudNumericField @bind-Value="m_damageCharge"
+                                     Label="Damage charge (THB)"
+                                     Variant="Variant.Outlined"
+                                     Min="0"
+                                     Adornment="Adornment.Start"
+                                     AdornmentText="฿" />
+                </MudStack>
+            </MudAlert>
+        }
+    </MudPaper>
+
+    @* Financial Summary *@
+    <MudPaper Elevation="2" Class="pa-4 mb-3">
+        <MudText Typo="Typo.subtitle1" Class="mb-3">Payment Summary</MudText>
+
+        <MudStack Spacing="1">
+            <MudStack Row="true" Justify="Justify.SpaceBetween">
+                <MudText Typo="Typo.body2">Rental (@m_rental.TotalDays days x ฿@m_rental.DailyRate)</MudText>
+                <MudText Typo="Typo.body2">฿@m_rentalTotal.ToString("N0")</MudText>
+            </MudStack>
+
+            @if (m_extraDays > 0)
+            {
+                <MudStack Row="true" Justify="Justify.SpaceBetween">
+                    <MudText Typo="Typo.body2" Color="Color.Error">
+                        Extra days (@m_extraDays x ฿@m_rental.DailyRate)
+                    </MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Error">฿@m_extraDaysCharge.ToString("N0")</MudText>
+                </MudStack>
+            }
+
+            @if (m_damageCharge > 0)
+            {
+                <MudStack Row="true" Justify="Justify.SpaceBetween">
+                    <MudText Typo="Typo.body2" Color="Color.Warning">Damage charge</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Warning">฿@m_damageCharge.ToString("N0")</MudText>
+                </MudStack>
+            }
+
+            <MudDivider Class="my-2" />
+
+            <MudStack Row="true" Justify="Justify.SpaceBetween">
+                <MudText Typo="Typo.body1" Style="font-weight: 600;">Total Due</MudText>
+                <MudText Typo="Typo.body1" Style="font-weight: 600;">฿@TotalDue.ToString("N0")</MudText>
+            </MudStack>
+
+            <MudStack Row="true" Justify="Justify.SpaceBetween">
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Deposit held</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">฿@m_rental.DepositAmount.ToString("N0")</MudText>
+            </MudStack>
+
+            <MudDivider Class="my-2" />
+
+            @if (RefundAmount > 0)
+            {
+                <MudStack Row="true" Justify="Justify.SpaceBetween">
+                    <MudText Typo="Typo.h6" Color="Color.Success">REFUND TO CUSTOMER</MudText>
+                    <MudText Typo="Typo.h6" Color="Color.Success">฿@RefundAmount.ToString("N0")</MudText>
+                </MudStack>
+            }
+            else if (RefundAmount < 0)
+            {
+                <MudStack Row="true" Justify="Justify.SpaceBetween">
+                    <MudText Typo="Typo.h6" Color="Color.Error">COLLECT FROM CUSTOMER</MudText>
+                    <MudText Typo="Typo.h6" Color="Color.Error">฿@Math.Abs(RefundAmount).ToString("N0")</MudText>
+                </MudStack>
+            }
+            else
+            {
+                <MudStack Row="true" Justify="Justify.SpaceBetween">
+                    <MudText Typo="Typo.h6">DEPOSIT USED (No refund)</MudText>
+                    <MudText Typo="Typo.h6">฿0</MudText>
+                </MudStack>
+            }
+        </MudStack>
+    </MudPaper>
+
+    @* Complete Button *@
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               FullWidth="true"
+               Size="Size.Large"
+               Class="py-4"
+               Disabled="@(!CanComplete)"
+               OnClick="CompleteReturn">
+        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" />
+            <span>
+                @if (RefundAmount > 0)
+                {
+                    @($"Complete Return & Refund ฿{RefundAmount:N0}")
+                }
+                else if (RefundAmount < 0)
+                {
+                    @($"Complete Return & Collect ฿{Math.Abs(RefundAmount):N0}")
+                }
+                else
+                {
+                    @("Complete Return")
+                }
+            </span>
+        </MudStack>
+    </MudButton>
+}
+
+<style>
+    .rental-select-card {
+        cursor: pointer;
+        border-radius: 12px;
+        transition: transform 0.15s ease;
+    }
+
+    .rental-select-card:active {
+        transform: scale(0.98);
+    }
+
+    .status-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+
+    .status-dot.overdue {
+        background-color: var(--mud-palette-error);
+    }
+
+    .status-dot.due-soon {
+        background-color: var(--mud-palette-warning);
+    }
+</style>
+
+@code {
+    [SupplyParameterFromQuery]
+    public int? RentalId { get; set; }
+
+    private bool m_loading;
+    private string m_searchText = "";
+    private List<RentalReturnItem> m_searchResults = [];
+    private List<RentalReturnItem> m_recentActive = [];
+    private RentalReturnItem? m_rental;
+
+    // Checklist
+    private bool m_bikeConditionOk = true;
+    private bool m_fuelChecked;
+    private bool m_keysReturned;
+    private bool m_helmetReturned;
+    private bool m_accessoriesReturned;
+
+    // Damage
+    private string m_damageNotes = "";
+    private decimal m_damageCharge;
+
+    // Calculations
+    private int m_extraDays => m_rental?.IsOverdue == true
+        ? (DateTime.Today - m_rental.DueDate.Date).Days
+        : 0;
+
+    private decimal m_rentalTotal => (m_rental?.TotalDays ?? 0) * (m_rental?.DailyRate ?? 0);
+    private decimal m_extraDaysCharge => m_extraDays * (m_rental?.DailyRate ?? 0);
+    private decimal TotalDue => m_rentalTotal + m_extraDaysCharge + m_damageCharge;
+    private decimal RefundAmount => (m_rental?.DepositAmount ?? 0) - TotalDue;
+
+    private bool CanComplete => m_fuelChecked && m_keysReturned && m_helmetReturned && m_accessoriesReturned
+                                && (m_bikeConditionOk || !string.IsNullOrWhiteSpace(m_damageNotes));
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRecentActiveAsync();
+
+        if (RentalId.HasValue)
+        {
+            await LoadRentalAsync(RentalId.Value);
+        }
+    }
+
+    private async Task LoadRecentActiveAsync()
+    {
+        // TODO: Load from service
+        m_recentActive =
+        [
+            new(4, "Sophie Chen", "+66 854 321 0987", "Yamaha NMAX 155", "D-3456",
+                DateTime.Today.AddDays(-1), DateTime.Today.AddDays(-5), 450, 5000),
+            new(2, "Maria Garcia", "+66 898 765 4321", "Yamaha Aerox 155", "B-5678",
+                DateTime.Today, DateTime.Today.AddDays(-1), 450, 5000),
+            new(6, "Emma Davis", "+66 821 098 7654", "Yamaha Fino 125", "F-2345",
+                DateTime.Today.AddDays(-2), DateTime.Today.AddDays(-7), 350, 3000),
+        ];
+
+        await Task.CompletedTask;
+    }
+
+    private async Task LoadRentalAsync(int rentalId)
+    {
+        // TODO: Load from service
+        m_rental = m_recentActive.FirstOrDefault(r => r.RentalId == rentalId)
+                   ?? new(rentalId, "John Smith", "+66 812 345 6789", "Honda Click 125", "A-1234",
+                       DateTime.Today.AddDays(2), DateTime.Today.AddDays(-2), 350, 3000);
+
+        await Task.CompletedTask;
+    }
+
+    private async Task OnSearchKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter" && m_searchText.Length >= 2)
+        {
+            await SearchRentalsAsync();
+        }
+    }
+
+    private async Task SearchRentalsAsync()
+    {
+        if (m_searchText.Length < 2) return;
+
+        m_loading = true;
+        try
+        {
+            await Task.Delay(200); // Simulate search
+
+            // TODO: Replace with actual search
+            var search = m_searchText.ToLowerInvariant();
+            m_searchResults = m_recentActive
+                .Concat(
+                [
+                    new(1, "John Smith", "+66 812 345 6789", "Honda Click 125", "A-1234",
+                        DateTime.Today.AddDays(2), DateTime.Today.AddDays(-2), 350, 3000),
+                    new(7, "Michael Lee", "+66 810 987 6543", "Honda Scoopy i", "G-6789",
+                        DateTime.Today.AddDays(3), DateTime.Today.AddDays(-1), 300, 3000),
+                ])
+                .Where(r =>
+                    r.LicensePlate.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                    r.RenterName.Contains(search, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private void SelectRental(RentalReturnItem rental)
+    {
+        m_rental = rental;
+        m_searchText = "";
+        m_searchResults.Clear();
+
+        // Reset checklist
+        m_bikeConditionOk = true;
+        m_fuelChecked = false;
+        m_keysReturned = false;
+        m_helmetReturned = false;
+        m_accessoriesReturned = false;
+        m_damageNotes = "";
+        m_damageCharge = 0;
+    }
+
+    private void ClearSelection()
+    {
+        m_rental = null;
+    }
+
+    private async Task CompleteReturn()
+    {
+        var confirm = await DialogService.ShowMessageBox(
+            "Confirm Return",
+            RefundAmount > 0
+                ? $"Complete return and refund ฿{RefundAmount:N0} to {m_rental!.RenterName}?"
+                : RefundAmount < 0
+                    ? $"Complete return and collect ฿{Math.Abs(RefundAmount):N0} from {m_rental!.RenterName}?"
+                    : $"Complete return for {m_rental!.RenterName}? Deposit will be used for rental.",
+            yesText: "Confirm",
+            cancelText: "Cancel");
+
+        if (confirm == true)
+        {
+            // TODO: Process return via service
+            Snackbar.Add($"Return completed for {m_rental!.LicensePlate}", Severity.Success);
+            NavigationManager.NavigateTo("/staff");
+        }
+    }
+
+    private record RentalReturnItem(
+        int RentalId,
+        string RenterName,
+        string Phone,
+        string MotorbikeName,
+        string LicensePlate,
+        DateTime DueDate,
+        DateTime StartDate,
+        decimal DailyRate,
+        decimal DepositAmount
+    )
+    {
+        public bool IsOverdue => DueDate.Date < DateTime.Today;
+        public int TotalDays => Math.Max(1, (DueDate.Date - StartDate.Date).Days + 1);
+    }
+}

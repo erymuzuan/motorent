@@ -1,0 +1,42 @@
+@* Large touch-friendly action card for staff kiosk *@
+
+<MudPaper @onclick="OnClick"
+          Class="@($"staff-action-card pa-4 {Class}")"
+          Elevation="@Elevation"
+          Style="@ComputedStyle">
+    <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Style="height: 100%;" Spacing="2">
+        <MudIcon Icon="@Icon" Style="font-size: 3rem;" Color="@IconColor" />
+        <MudText Typo="Typo.h6" Align="Align.Center" Style="font-weight: 600;">
+            @Title
+        </MudText>
+        @if (!string.IsNullOrEmpty(Subtitle))
+        {
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center">
+                @Subtitle
+            </MudText>
+        }
+        @if (BadgeCount > 0)
+        {
+            <MudChip T="string" Color="@BadgeColor" Size="Size.Small" Class="mt-1">
+                @BadgeCount
+            </MudChip>
+        }
+    </MudStack>
+</MudPaper>
+
+@code {
+    [Parameter] public string Icon { get; set; } = Icons.Material.Filled.TouchApp;
+    [Parameter] public string Title { get; set; } = "Action";
+    [Parameter] public string? Subtitle { get; set; }
+    [Parameter] public Color IconColor { get; set; } = Color.Primary;
+    [Parameter] public int BadgeCount { get; set; }
+    [Parameter] public Color BadgeColor { get; set; } = Color.Error;
+    [Parameter] public int Elevation { get; set; } = 2;
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? BackgroundColor { get; set; }
+    [Parameter] public EventCallback OnClick { get; set; }
+
+    private string ComputedStyle => string.IsNullOrEmpty(BackgroundColor)
+        ? "min-height: 160px; cursor: pointer;"
+        : $"min-height: 160px; cursor: pointer; background: {BackgroundColor};";
+}

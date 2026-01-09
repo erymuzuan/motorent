@@ -1,0 +1,189 @@
+@page "/staff"
+@using MotoRent.Client.Components.Staff
+@using MotoRent.Domain
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Staff,ShopManager,OrgAdmin,administrator")]
+@inject NavigationManager NavigationManager
+
+<PageTitle>Staff Home - MotoRent</PageTitle>
+
+@* Main Action Cards *@
+<MudGrid Spacing="3" Class="mb-4">
+    <MudItem xs="6">
+        <StaffActionCard Icon="@Icons.Material.Filled.Login"
+                         Title="New Check-In"
+                         Subtitle="Start a rental"
+                         IconColor="Color.Primary"
+                         OnClick="@(() => NavigationManager.NavigateTo("/rentals/checkin"))" />
+    </MudItem>
+
+    <MudItem xs="6">
+        <StaffActionCard Icon="@Icons.Material.Filled.Logout"
+                         Title="Return Bike"
+                         Subtitle="Process return"
+                         IconColor="Color.Secondary"
+                         OnClick="@(() => NavigationManager.NavigateTo("/staff/return"))" />
+    </MudItem>
+
+    <MudItem xs="6">
+        <StaffActionCard Icon="@Icons.Material.Filled.Receipt"
+                         Title="Active"
+                         Subtitle="Current rentals"
+                         IconColor="Color.Success"
+                         BadgeCount="@m_activeCount"
+                         BadgeColor="Color.Success"
+                         OnClick="@(() => NavigationManager.NavigateTo("/staff/rentals"))" />
+    </MudItem>
+
+    <MudItem xs="6">
+        <StaffActionCard Icon="@Icons.Material.Filled.Warning"
+                         Title="Overdue"
+                         Subtitle="Needs attention"
+                         IconColor="Color.Error"
+                         BadgeCount="@m_overdueCount"
+                         BadgeColor="Color.Error"
+                         OnClick="@(() => NavigationManager.NavigateTo("/staff/rentals?filter=overdue"))" />
+    </MudItem>
+</MudGrid>
+
+@* Due Today Section *@
+<MudPaper Elevation="1" Class="pa-4">
+    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Schedule" Class="mr-2" Style="vertical-align: middle;" />
+            Due Today
+        </MudText>
+        <MudChip T="string" Color="Color.Warning" Size="Size.Small">@m_dueTodayRentals.Count</MudChip>
+    </MudStack>
+
+    @if (m_loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+    }
+    else if (m_dueTodayRentals.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info" Variant="Variant.Text" Dense="true">
+            No bikes due for return today
+        </MudAlert>
+    }
+    else
+    {
+        <MudStack Spacing="2">
+            @foreach (var rental in m_dueTodayRentals.Take(5))
+            {
+                <MudPaper Elevation="0" Class="pa-3" Style="background: var(--mud-palette-background);">
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                        <MudStack Spacing="0">
+                            <MudText Typo="Typo.body1" Style="font-weight: 500;">
+                                @rental.RenterName
+                            </MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                @rental.MotorbikeName (@rental.LicensePlate)
+                            </MudText>
+                        </MudStack>
+                        <MudStack AlignItems="AlignItems.End" Spacing="0">
+                            <MudText Typo="Typo.body2" Color="@(rental.IsOverdue ? Color.Error : Color.Warning)">
+                                @(rental.IsOverdue ? "OVERDUE" : rental.DueTime?.ToString("HH:mm") ?? "Today")
+                            </MudText>
+                            <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                                       OnClick="@(() => ProcessReturn(rental.RentalId))">
+                                Return
+                            </MudButton>
+                        </MudStack>
+                    </MudStack>
+                </MudPaper>
+            }
+        </MudStack>
+
+        @if (m_dueTodayRentals.Count > 5)
+        {
+            <MudButton Variant="Variant.Text" Color="Color.Primary" FullWidth="true" Class="mt-2"
+                       OnClick="@(() => NavigationManager.NavigateTo("/staff/rentals?filter=duetoday"))">
+                View All (@m_dueTodayRentals.Count)
+            </MudButton>
+        }
+    }
+</MudPaper>
+
+@* Quick Stats Footer *@
+<MudPaper Elevation="0" Class="pa-3 mt-4" Style="background: transparent;">
+    <MudStack Row="true" Justify="Justify.SpaceAround">
+        <MudStack AlignItems="AlignItems.Center" Spacing="0">
+            <MudText Typo="Typo.h5" Color="Color.Primary">@m_availableBikes</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">Available</MudText>
+        </MudStack>
+        <MudDivider Vertical="true" FlexItem="true" />
+        <MudStack AlignItems="AlignItems.Center" Spacing="0">
+            <MudText Typo="Typo.h5" Color="Color.Success">@m_activeCount</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">Rented</MudText>
+        </MudStack>
+        <MudDivider Vertical="true" FlexItem="true" />
+        <MudStack AlignItems="AlignItems.Center" Spacing="0">
+            <MudText Typo="Typo.h5" Color="Color.Warning">@m_maintenanceCount</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">Maintenance</MudText>
+        </MudStack>
+    </MudStack>
+</MudPaper>
+
+@code {
+    private bool m_loading = true;
+    private int m_activeCount;
+    private int m_overdueCount;
+    private int m_availableBikes;
+    private int m_maintenanceCount;
+    private List<DueTodayItem> m_dueTodayRentals = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            m_loading = true;
+
+            // TODO: Replace with actual service calls
+            // var stats = await RentalService.GetDashboardStatsAsync();
+            // m_activeCount = stats.ActiveRentals;
+            // m_overdueCount = stats.OverdueRentals;
+            // m_availableBikes = stats.AvailableBikes;
+            // m_maintenanceCount = stats.MaintenanceBikes;
+
+            // Placeholder data for now
+            m_activeCount = 12;
+            m_overdueCount = 2;
+            m_availableBikes = 24;
+            m_maintenanceCount = 3;
+
+            // Placeholder due today items
+            m_dueTodayRentals =
+            [
+                new("John Smith", "Honda Click 125", "A-1234", 1, TimeOnly.Parse("14:00"), false),
+                new("Maria Garcia", "Yamaha Aerox 155", "B-5678", 2, TimeOnly.Parse("16:00"), false),
+                new("James Wilson", "Honda PCX 160", "C-9012", 3, TimeOnly.Parse("18:00"), false),
+                new("Sophie Chen", "Yamaha NMAX 155", "D-3456", 4, null, true),
+                new("Alex Brown", "Honda Wave 110", "E-7890", 5, TimeOnly.Parse("12:00"), false),
+            ];
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private void ProcessReturn(int rentalId)
+    {
+        NavigationManager.NavigateTo($"/staff/return?rentalId={rentalId}");
+    }
+
+    private record DueTodayItem(
+        string RenterName,
+        string MotorbikeName,
+        string LicensePlate,
+        int RentalId,
+        TimeOnly? DueTime,
+        bool IsOverdue
+    );
+}

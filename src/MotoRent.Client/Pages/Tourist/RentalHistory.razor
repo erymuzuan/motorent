@@ -3,6 +3,7 @@
 @using MotoRent.Domain.Entities
 @using MotoRent.Services
 @inject RentalService RentalService
+@inject IJSRuntime JS
 
 <PageTitle>My Rentals - MotoRent</PageTitle>
 
@@ -99,7 +100,7 @@
                     @foreach (var rental in m_rentals)
                     {
                         <MudItem xs="12" md="6">
-                            <MudCard Elevation="2">
+                            <MudCard Elevation="2" Class="rental-history-card">
                                 <MudCardHeader>
                                     <CardHeaderContent>
                                         <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start">
@@ -136,18 +137,55 @@
                                                 @rental.Notes
                                             </MudText>
                                         }
+
+                                        @* QR Code for Active Rentals *@
+                                        @if (rental.Status is "Active" or "Reserved")
+                                        {
+                                            <MudDivider Class="my-2" />
+                                            <MudStack AlignItems="AlignItems.Center" Spacing="1">
+                                                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                                                           StartIcon="@Icons.Material.Filled.QrCode"
+                                                           OnClick="@(() => ShowQRCode(rental))">
+                                                    Show QR Code
+                                                </MudButton>
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                    Show this to staff at pickup/return
+                                                </MudText>
+                                            </MudStack>
+                                        }
                                     </MudStack>
                                 </MudCardContent>
-                                @if (rental.Status == "Reserved")
-                                {
-                                    <MudCardActions>
+                                <MudCardActions>
+                                    @if (rental.Status == "Active")
+                                    {
+                                        <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                                                   StartIcon="@Icons.Material.Filled.AddCircle"
+                                                   OnClick="@(() => ExtendRental(rental))">
+                                            Extend Rental
+                                        </MudButton>
+                                        <MudButton Variant="Variant.Text" Color="Color.Warning" Size="Size.Small"
+                                                   StartIcon="@Icons.Material.Filled.ReportProblem"
+                                                   OnClick="@(() => ReportIssue(rental))">
+                                            Report Issue
+                                        </MudButton>
+                                    }
+                                    else if (rental.Status == "Reserved")
+                                    {
                                         <MudSpacer />
                                         <MudButton Variant="Variant.Text" Color="Color.Error" Size="Size.Small"
                                                    OnClick="@(() => CancelReservation(rental))">
                                             Cancel Reservation
                                         </MudButton>
-                                    </MudCardActions>
-                                }
+                                    }
+                                    else if (rental.Status == "Completed")
+                                    {
+                                        <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                                                   StartIcon="@Icons.Material.Filled.Download"
+                                                   OnClick="@(() => DownloadReceipt(rental))">
+                                            Download Receipt
+                                        </MudButton>
+                                    }
+                                </MudCardActions>
                             </MudCard>
                         </MudItem>
                     }
@@ -262,4 +300,73 @@
         "Cancelled" => Color.Error,
         _ => Color.Default
     };
+
+    private async Task ShowQRCode(Rental rental)
+    {
+        // Generate QR code URL (using a free QR code API)
+        var qrData = $"MOTORENT-{rental.RentalId}-{rental.WebId}";
+        var qrUrl = $"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={Uri.EscapeDataString(qrData)}";
+
+        var parameters = new DialogParameters
+        {
+            { "ContentText", "" },
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Small,
+            CloseButton = true
+        };
+
+        // Show QR code in a dialog
+        await DialogService.ShowAsync<QRCodeDialog>(
+            $"Rental #{rental.RentalId}",
+            new DialogParameters<QRCodeDialog>
+            {
+                { x => x.QRCodeUrl, qrUrl },
+                { x => x.RentalId, rental.RentalId },
+                { x => x.Status, rental.Status ?? "Unknown" }
+            },
+            options);
+    }
+
+    private async Task ExtendRental(Rental rental)
+    {
+        var result = await DialogService.ShowMessageBox(
+            "Extend Rental",
+            new MarkupString($"<p>To extend your rental, please contact us:</p>" +
+                $"<p><strong>Phone:</strong> +66 76 123 4567</p>" +
+                $"<p><strong>Line:</strong> @motorent</p>" +
+                $"<p>Have your rental number ready: <strong>#{rental.RentalId}</strong></p>"),
+            yesText: "Call Now",
+            cancelText: "Close");
+
+        if (result == true)
+        {
+            await JS.InvokeVoidAsync("open", "tel:+6676123456", "_self");
+        }
+    }
+
+    private async Task ReportIssue(Rental rental)
+    {
+        var result = await DialogService.ShowMessageBox(
+            "Report an Issue",
+            new MarkupString($"<p>For emergencies or issues, please contact us immediately:</p>" +
+                $"<p><strong>Emergency:</strong> +66 76 123 4567</p>" +
+                $"<p><strong>Line:</strong> @motorent</p>" +
+                $"<p>Reference: Rental <strong>#{rental.RentalId}</strong></p>"),
+            yesText: "Call Emergency",
+            cancelText: "Close");
+
+        if (result == true)
+        {
+            await JS.InvokeVoidAsync("open", "tel:+6676123456", "_self");
+        }
+    }
+
+    private async Task DownloadReceipt(Rental rental)
+    {
+        ShowInfo($"Receipt download for Rental #{rental.RentalId} - Feature coming soon!");
+        await Task.CompletedTask;
+    }
 }

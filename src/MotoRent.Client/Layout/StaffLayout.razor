@@ -1,0 +1,223 @@
+@inherits LayoutComponentBase
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JS
+
+<MudThemeProvider Theme="MotoRent.Client.MotoRentTheme.Theme" @bind-IsDarkMode="@m_isDarkMode" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<div class="staff-layout">
+    @* Top App Bar - Minimal *@
+    <MudAppBar Elevation="1" Dense="true" Class="staff-appbar">
+        <MudIcon Icon="@Icons.Material.Filled.TwoWheeler" Class="mr-2" />
+        <MudText Typo="Typo.h6">MotoRent</MudText>
+        <MudSpacer />
+        <MudText Typo="Typo.body2" Class="mr-3">@DateTime.Now.ToString("HH:mm")</MudText>
+        <MudIconButton Icon="@(m_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+                       Color="Color.Inherit" Size="Size.Small"
+                       OnClick="@(_ => m_isDarkMode = !m_isDarkMode)" />
+        <MudIconButton Icon="@Icons.Material.Filled.MoreVert" Color="Color.Inherit" Size="Size.Small"
+                       OnClick="@(_ => m_moreDrawerOpen = true)" />
+    </MudAppBar>
+
+    @* Main Content Area - Full Height *@
+    <main class="staff-content">
+        <MudContainer MaxWidth="MaxWidth.Large" Class="py-4">
+            @Body
+        </MudContainer>
+    </main>
+
+    @* Bottom Navigation Bar *@
+    <MudPaper Class="staff-bottom-nav" Elevation="4">
+        <MudStack Row="true" Justify="Justify.SpaceEvenly" AlignItems="AlignItems.Center" Class="py-2">
+            <MudButton Variant="Variant.Text"
+                       Color="@(IsActive("/staff") ? Color.Primary : Color.Default)"
+                       Class="staff-nav-button"
+                       OnClick="@(() => Navigate("/staff"))">
+                <MudStack AlignItems="AlignItems.Center" Spacing="0">
+                    <MudIcon Icon="@Icons.Material.Filled.Home" />
+                    <MudText Typo="Typo.caption">Home</MudText>
+                </MudStack>
+            </MudButton>
+
+            <MudButton Variant="Variant.Text"
+                       Color="@(IsActive("/staff/checkin") ? Color.Primary : Color.Default)"
+                       Class="staff-nav-button"
+                       OnClick="@(() => Navigate("/rentals/checkin"))">
+                <MudStack AlignItems="AlignItems.Center" Spacing="0">
+                    <MudIcon Icon="@Icons.Material.Filled.Login" />
+                    <MudText Typo="Typo.caption">Check-In</MudText>
+                </MudStack>
+            </MudButton>
+
+            <MudButton Variant="Variant.Text"
+                       Color="@(IsActive("/staff/rentals") ? Color.Primary : Color.Default)"
+                       Class="staff-nav-button"
+                       OnClick="@(() => Navigate("/staff/rentals"))">
+                <MudStack AlignItems="AlignItems.Center" Spacing="0">
+                    <MudIcon Icon="@Icons.Material.Filled.Receipt" />
+                    <MudText Typo="Typo.caption">Rentals</MudText>
+                </MudStack>
+            </MudButton>
+
+            <MudButton Variant="Variant.Text"
+                       Color="@(IsActive("/staff/payments") ? Color.Primary : Color.Default)"
+                       Class="staff-nav-button"
+                       OnClick="@(() => Navigate("/payments"))">
+                <MudStack AlignItems="AlignItems.Center" Spacing="0">
+                    <MudIcon Icon="@Icons.Material.Filled.Payment" />
+                    <MudText Typo="Typo.caption">Payments</MudText>
+                </MudStack>
+            </MudButton>
+
+            <MudButton Variant="Variant.Text"
+                       Color="@(m_moreDrawerOpen ? Color.Primary : Color.Default)"
+                       Class="staff-nav-button"
+                       OnClick="@(() => m_moreDrawerOpen = true)">
+                <MudStack AlignItems="AlignItems.Center" Spacing="0">
+                    <MudIcon Icon="@Icons.Material.Filled.Menu" />
+                    <MudText Typo="Typo.caption">More</MudText>
+                </MudStack>
+            </MudButton>
+        </MudStack>
+    </MudPaper>
+
+    @* More Drawer (slides from right) *@
+    <MudDrawer @bind-Open="m_moreDrawerOpen" Anchor="Anchor.End" Elevation="2" Variant="DrawerVariant.Temporary">
+        <MudDrawerHeader>
+            <MudText Typo="Typo.h6">More Options</MudText>
+        </MudDrawerHeader>
+        <MudNavMenu>
+            <MudNavLink Href="/motorbikes" Icon="@Icons.Material.Filled.TwoWheeler"
+                        OnClick="@(() => m_moreDrawerOpen = false)">
+                Motorbikes
+            </MudNavLink>
+            <MudNavLink Href="/renters" Icon="@Icons.Material.Filled.People"
+                        OnClick="@(() => m_moreDrawerOpen = false)">
+                Renters
+            </MudNavLink>
+            <MudNavLink Href="/accessories" Icon="@Icons.Material.Filled.Headset"
+                        OnClick="@(() => m_moreDrawerOpen = false)">
+                Accessories
+            </MudNavLink>
+            <MudDivider Class="my-2" />
+            <MudNavLink Href="/deposits" Icon="@Icons.Material.Filled.AccountBalanceWallet"
+                        OnClick="@(() => m_moreDrawerOpen = false)">
+                Deposits
+            </MudNavLink>
+            <MudNavLink Href="/reports" Icon="@Icons.Material.Filled.Assessment"
+                        OnClick="@(() => m_moreDrawerOpen = false)">
+                Reports
+            </MudNavLink>
+            <MudDivider Class="my-2" />
+            <MudNavLink Href="/insurance" Icon="@Icons.Material.Filled.Security"
+                        OnClick="@(() => m_moreDrawerOpen = false)">
+                Insurance
+            </MudNavLink>
+            <MudNavLink Href="/shop" Icon="@Icons.Material.Filled.Store"
+                        OnClick="@(() => m_moreDrawerOpen = false)">
+                Shop Settings
+            </MudNavLink>
+            <MudDivider Class="my-2" />
+            <MudNavLink Href="/" Icon="@Icons.Material.Filled.Dashboard"
+                        OnClick="@(() => m_moreDrawerOpen = false)">
+                Classic View
+            </MudNavLink>
+        </MudNavMenu>
+    </MudDrawer>
+</div>
+
+<style>
+    .staff-layout {
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+        background: var(--mud-palette-background);
+    }
+
+    .staff-appbar {
+        flex-shrink: 0;
+    }
+
+    .staff-content {
+        flex: 1;
+        overflow-y: auto;
+        padding-bottom: 80px; /* Space for bottom nav */
+    }
+
+    .staff-bottom-nav {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 1100;
+        background: var(--mud-palette-surface);
+        border-top: 1px solid var(--mud-palette-lines-default);
+    }
+
+    .staff-nav-button {
+        min-width: 64px;
+        min-height: 56px;
+        padding: 8px 12px;
+        border-radius: 8px;
+    }
+
+    .staff-nav-button:active {
+        transform: scale(0.95);
+    }
+
+    /* Touch-friendly targets */
+    .staff-touch-target {
+        min-width: 48px;
+        min-height: 48px;
+    }
+
+    /* Action card styling */
+    .staff-action-card {
+        min-height: 160px;
+        border-radius: 16px;
+        cursor: pointer;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .staff-action-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    }
+
+    .staff-action-card:active {
+        transform: scale(0.98);
+    }
+
+    /* Responsive adjustments */
+    @@media (max-width: 600px) {
+        .staff-nav-button {
+            min-width: 56px;
+            padding: 8px 8px;
+        }
+    }
+</style>
+
+@code {
+    private bool m_isDarkMode;
+    private bool m_moreDrawerOpen;
+
+    private bool IsActive(string path)
+    {
+        var currentUri = NavigationManager.Uri;
+        var relativePath = NavigationManager.ToBaseRelativePath(currentUri);
+
+        if (path == "/staff")
+        {
+            return relativePath == "staff" || relativePath == "";
+        }
+
+        return relativePath.StartsWith(path.TrimStart('/'), StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void Navigate(string path)
+    {
+        NavigationManager.NavigateTo(path);
+    }
+}

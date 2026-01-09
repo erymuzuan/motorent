@@ -1,6 +1,35 @@
 ﻿<Router AppAssembly="typeof(Program).Assembly">
     <Found Context="routeData">
-        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+        <RouteView RouteData="routeData" DefaultLayout="@GetLayoutType(routeData)" />
         <FocusOnNavigate RouteData="routeData" Selector="h1" />
     </Found>
 </Router>
+
+@code {
+    private Type GetLayoutType(RouteData routeData)
+    {
+        var pageNamespace = routeData.PageType.Namespace ?? string.Empty;
+        var pageName = routeData.PageType.FullName ?? string.Empty;
+
+        // Staff pages use StaffLayout
+        if (pageNamespace.Contains(".Pages.Staff") || pageName.Contains(".Pages.Staff"))
+        {
+            return typeof(Layout.StaffLayout);
+        }
+
+        // Tourist pages use TouristLayout
+        if (pageNamespace.Contains(".Pages.Tourist") || pageName.Contains(".Pages.Tourist"))
+        {
+            return typeof(Layout.TouristLayout);
+        }
+
+        // Manager pages use ManagerLayout (when created)
+        // if (pageNamespace.Contains(".Pages.Manager"))
+        // {
+        //     return typeof(Layout.ManagerLayout);
+        // }
+
+        // Default to MainLayout
+        return typeof(Layout.MainLayout);
+    }
+}

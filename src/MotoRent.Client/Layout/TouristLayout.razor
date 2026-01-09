@@ -1,0 +1,166 @@
+@inherits LayoutComponentBase
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JS
+
+<MudThemeProvider Theme="MotoRent.Client.MotoRentTheme.Theme" @bind-IsDarkMode="@m_isDarkMode" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<div class="tourist-layout">
+    @* Minimal Top Header *@
+    <MudAppBar Elevation="1" Dense="false" Class="tourist-header">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.TwoWheeler" Size="Size.Medium" />
+            <MudText Typo="Typo.h6" Style="font-weight: 600;">MotoRent</MudText>
+        </MudStack>
+
+        <MudSpacer />
+
+        @* Language Selector *@
+        <MudMenu Icon="@Icons.Material.Filled.Language" Color="Color.Inherit" Dense="true"
+                 AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+            <MudMenuItem OnClick="@(() => SetLanguage("en"))">
+                <MudStack Row="true" Spacing="2">
+                    <span>🇬🇧</span>
+                    <span>English</span>
+                </MudStack>
+            </MudMenuItem>
+            <MudMenuItem OnClick="@(() => SetLanguage("th"))">
+                <MudStack Row="true" Spacing="2">
+                    <span>🇹🇭</span>
+                    <span>ภาษาไทย</span>
+                </MudStack>
+            </MudMenuItem>
+            <MudMenuItem OnClick="@(() => SetLanguage("ru"))">
+                <MudStack Row="true" Spacing="2">
+                    <span>🇷🇺</span>
+                    <span>Русский</span>
+                </MudStack>
+            </MudMenuItem>
+            <MudMenuItem OnClick="@(() => SetLanguage("zh"))">
+                <MudStack Row="true" Spacing="2">
+                    <span>🇨🇳</span>
+                    <span>中文</span>
+                </MudStack>
+            </MudMenuItem>
+        </MudMenu>
+
+        <MudIconButton Icon="@(m_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+                       Color="Color.Inherit" OnClick="@(_ => m_isDarkMode = !m_isDarkMode)" />
+
+        <MudButton Variant="Variant.Text" Color="Color.Inherit"
+                   StartIcon="@Icons.Material.Filled.Receipt"
+                   Href="/my-rentals">
+            My Rentals
+        </MudButton>
+    </MudAppBar>
+
+    @* Main Content *@
+    <main class="tourist-content">
+        @Body
+    </main>
+
+    @* Footer *@
+    <footer class="tourist-footer">
+        <MudContainer MaxWidth="MaxWidth.Large">
+            <MudGrid>
+                <MudItem xs="12" md="4">
+                    <MudStack Spacing="2">
+                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                            <MudIcon Icon="@Icons.Material.Filled.TwoWheeler" />
+                            <MudText Typo="Typo.h6">MotoRent</MudText>
+                        </MudStack>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                            Your trusted motorbike rental service in Thailand.
+                            Quality bikes, fair prices, great service.
+                        </MudText>
+                    </MudStack>
+                </MudItem>
+
+                <MudItem xs="12" md="4">
+                    <MudText Typo="Typo.subtitle1" Style="font-weight: 600;" Class="mb-2">Contact Us</MudText>
+                    <MudStack Spacing="1">
+                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                            <MudIcon Icon="@Icons.Material.Filled.Phone" Size="Size.Small" Color="Color.Secondary" />
+                            <MudText Typo="Typo.body2">+66 76 123 4567</MudText>
+                        </MudStack>
+                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                            <MudIcon Icon="@Icons.Material.Filled.Email" Size="Size.Small" Color="Color.Secondary" />
+                            <MudText Typo="Typo.body2">info@motorent.th</MudText>
+                        </MudStack>
+                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                            <MudIcon Icon="@Icons.Material.Filled.Chat" Size="Size.Small" Color="Color.Secondary" />
+                            <MudText Typo="Typo.body2">Line: @@motorent</MudText>
+                        </MudStack>
+                    </MudStack>
+                </MudItem>
+
+                <MudItem xs="12" md="4">
+                    <MudText Typo="Typo.subtitle1" Style="font-weight: 600;" Class="mb-2">Quick Links</MudText>
+                    <MudStack Spacing="1">
+                        <MudLink Href="/browse" Color="Color.Secondary" Typo="Typo.body2">Browse Bikes</MudLink>
+                        <MudLink Href="/my-rentals" Color="Color.Secondary" Typo="Typo.body2">My Rentals</MudLink>
+                        <MudLink Href="#" Color="Color.Secondary" Typo="Typo.body2">Terms & Conditions</MudLink>
+                        <MudLink Href="#" Color="Color.Secondary" Typo="Typo.body2">FAQ</MudLink>
+                    </MudStack>
+                </MudItem>
+            </MudGrid>
+
+            <MudDivider Class="my-4" />
+
+            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    © @DateTime.Now.Year MotoRent. All rights reserved.
+                </MudText>
+                <MudStack Row="true" Spacing="1">
+                    <MudIconButton Icon="@Icons.Custom.Brands.Facebook" Size="Size.Small" Color="Color.Secondary" />
+                    <MudIconButton Icon="@Icons.Custom.Brands.Instagram" Size="Size.Small" Color="Color.Secondary" />
+                </MudStack>
+            </MudStack>
+        </MudContainer>
+    </footer>
+</div>
+
+<style>
+    .tourist-layout {
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+        background: var(--mud-palette-background);
+    }
+
+    .tourist-header {
+        flex-shrink: 0;
+    }
+
+    .tourist-content {
+        flex: 1;
+    }
+
+    .tourist-footer {
+        background: var(--mud-palette-surface);
+        padding: 48px 0 24px;
+        margin-top: auto;
+        border-top: 1px solid var(--mud-palette-lines-default);
+    }
+
+    /* Mobile optimizations */
+    @@media (max-width: 600px) {
+        .tourist-footer {
+            padding: 32px 16px 16px;
+        }
+    }
+</style>
+
+@code {
+    private bool m_isDarkMode;
+    private string m_currentLanguage = "en";
+
+    private void SetLanguage(string lang)
+    {
+        m_currentLanguage = lang;
+        // TODO: Implement actual language switching via culture
+        // NavigationManager.NavigateTo(NavigationManager.Uri, forceLoad: true);
+    }
+}

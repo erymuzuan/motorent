@@ -1,0 +1,57 @@
+@* QR Code display dialog for tourists to show at pickup/return *@
+
+<MudDialog>
+    <TitleContent>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.QrCode" />
+            <MudText Typo="Typo.h6">Rental #@RentalId</MudText>
+        </MudStack>
+    </TitleContent>
+    <DialogContent>
+        <MudStack AlignItems="AlignItems.Center" Spacing="3">
+            @* QR Code Image *@
+            <MudPaper Elevation="0" Class="pa-4" Style="background: white; border-radius: 12px;">
+                <MudImage Src="@QRCodeUrl" Alt="QR Code" Width="250" Height="250"
+                          ObjectFit="ObjectFit.Contain" />
+            </MudPaper>
+
+            @* Status Badge *@
+            <MudChip T="string" Color="@GetStatusColor()" Size="Size.Medium" Variant="Variant.Filled">
+                @Status
+            </MudChip>
+
+            @* Instructions *@
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center">
+                Show this QR code to our staff when you pick up or return your motorbike.
+            </MudText>
+
+            <MudAlert Severity="Severity.Info" Dense="true" Class="mt-2">
+                <MudText Typo="Typo.caption">
+                    Take a screenshot for offline access
+                </MudText>
+            </MudAlert>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="Close">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public string QRCodeUrl { get; set; } = "";
+    [Parameter] public int RentalId { get; set; }
+    [Parameter] public string Status { get; set; } = "";
+
+    private Color GetStatusColor() => Status switch
+    {
+        "Reserved" => Color.Info,
+        "Active" => Color.Success,
+        "Completed" => Color.Default,
+        "Cancelled" => Color.Error,
+        _ => Color.Default
+    };
+
+    private void Close() => MudDialog.Close();
+}
