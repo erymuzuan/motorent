@@ -29,7 +29,7 @@ public class RentalConfig
 }
 
 /// <summary>
-/// Information about the deposit collected.
+/// Information about the deposit collected and rental payment.
 /// </summary>
 public class DepositInfo
 {
@@ -38,4 +38,8 @@ public class DepositInfo
     public string? CardLast4 { get; set; }
     public string? TransactionRef { get; set; }
     public bool IsCollected { get; set; }
+
+    // Rental payment info
+    public string PaymentMethod { get; set; } = "Cash";
+    public string? PaymentTransactionRef { get; set; }
 }

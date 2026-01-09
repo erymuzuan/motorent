@@ -298,23 +298,23 @@ public class RentalAgreement : Entity
 4. ✅ Accessories management (Accessories.razor, AccessoryDialog.razor, AccessoryService.cs)
 5. ⏳ Daily rate configuration
 
-### Phase 3: Renter Registration & Document OCR (PARTIALLY COMPLETED)
+### Phase 3: Renter Registration & Document OCR (COMPLETED)
 1. ✅ Renter registration form (Renters.razor, RenterDialog.razor, RenterService.cs)
-2. ⏳ Camera/photo upload for documents
-3. ⏳ **Google Gemini Flash API integration**
-4. ⏳ Manual verification/correction UI
-5. ⏳ Store documents securely
+2. ✅ Camera/photo upload for documents (DocumentUpload.razor, DocumentsController.cs)
+3. ✅ **Google Gemini Flash API integration** (DocumentOcrService.cs)
+4. ✅ Manual verification/correction UI (DocumentViewerDialog.razor)
+5. ✅ Store documents securely (uploads folder with tenant isolation)
 
 ### Phase 4: Rental Workflow (COMPLETED)
 1. ✅ Check-in process with stepper wizard (CheckIn.razor with 5 steps)
 2. ✅ Active rentals dashboard (RentalList.razor with status tabs)
 3. ✅ Check-out process with damage documentation (CheckOutDialog.razor)
 
-### Phase 5: Payments & Accounting
-1. Payment recording (Cash, Card, PromptPay)
-2. Invoice generation
-3. Daily/weekly/monthly reports
-4. Deposit tracking
+### Phase 5: Payments & Accounting (COMPLETED)
+1. ✅ Payment recording (Cash, Card, PromptPay) - PaymentService.cs, Payments.razor, PaymentDialog.razor
+2. ✅ Invoice generation - InvoiceService.cs, InvoiceDialog.razor
+3. ✅ Daily/weekly/monthly reports - Reports.razor with revenue summaries
+4. ✅ Deposit tracking - DepositService.cs, Deposits.razor, RefundDepositDialog.razor
 
 ### Phase 6: Tourist Self-Service Portal
 1. Browse available motorbikes

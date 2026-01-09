@@ -1,5 +1,5 @@
 @page "/rentals/checkin"
-@inherits MotoRentComponentBase
+@inherits LocalizedComponentBase<CheckIn>
 @using MotoRent.Client.Controls
 @using MotoRent.Client.Pages.Rentals.CheckInSteps
 @using MotoRent.Domain.Entities
@@ -10,23 +10,23 @@
 @inject InsuranceService InsuranceService
 @inject AccessoryService AccessoryService
 
-<PageTitle>New Check-In - MotoRent</PageTitle>
+<PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
     <MudStack Spacing="0">
-        <MudText Typo="Typo.h4">New Check-In</MudText>
-        <MudText Typo="Typo.body2" Color="Color.Secondary">Complete all steps to create a new rental</MudText>
+        <MudText Typo="Typo.h4">@Localizer["Header"]</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">@Localizer["SubHeader"]</MudText>
     </MudStack>
     <MudButton Variant="Variant.Outlined" Color="Color.Default"
                StartIcon="@Icons.Material.Filled.ArrowBack" Href="/rentals">
-        Back to Rentals
+        @CommonLocalizer["BackToList"]
     </MudButton>
 </MudStack>
 
 <MudPaper Elevation="2" Class="pa-4">
     @* Step indicators *@
     <MudStack Row="true" Spacing="2" Justify="Justify.Center" Class="mb-4">
-        @for (int i = 0; i < m_steps.Length; i++)
+        @for (int i = 0; i < m_stepKeys.Length; i++)
         {
             var stepIndex = i;
             var isActive = m_activeStep == stepIndex;
@@ -45,10 +45,10 @@
                     }
                 </MudAvatar>
                 <MudText Typo="Typo.caption" Color="@(isActive ? Color.Primary : Color.Default)">
-                    @m_steps[stepIndex]
+                    @CommonLocalizer[m_stepKeys[stepIndex]]
                 </MudText>
             </MudStack>
-            @if (i < m_steps.Length - 1)
+            @if (i < m_stepKeys.Length - 1)
             {
                 <MudDivider Vertical="true" FlexItem="true" Style="height: 40px;" Class="mx-2" />
             }
@@ -73,6 +73,7 @@
             break;
         case 3:
             <CollectDepositStep RequiredAmount="@(m_selectedMotorbike?.DepositAmount ?? 0)"
+                                RentalAmount="@m_rentalConfig.TotalAmount"
                                 @bind-DepositInfo="m_depositInfo" />
             break;
         case 4:
@@ -90,7 +91,7 @@
         <MudButton Variant="Variant.Text"
                    Disabled="@(m_activeStep == 0)"
                    OnClick="PreviousStep">
-            Previous
+            @CommonLocalizer["Previous"]
         </MudButton>
 
         @if (m_activeStep < 4)
@@ -98,7 +99,7 @@
             <MudButton Variant="Variant.Filled" Color="Color.Primary"
                        Disabled="@(!CanProceedToNextStep())"
                        OnClick="NextStep">
-                Next
+                @CommonLocalizer["Next"]
             </MudButton>
         }
     </MudStack>
@@ -109,13 +110,13 @@
     <MudOverlay Visible="true" DarkBackground="true" Absolute="false" ZIndex="9999">
         <MudStack AlignItems="AlignItems.Center">
             <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
-            <MudText Typo="Typo.h6" Color="Color.Default" Class="mt-4">Processing Check-In...</MudText>
+            <MudText Typo="Typo.h6" Color="Color.Default" Class="mt-4">@Localizer["ProcessingMessage"]</MudText>
         </MudStack>
     </MudOverlay>
 }
 
 @code {
-    private readonly string[] m_steps = ["Renter", "Motorbike", "Configure", "Deposit", "Agreement"];
+    private readonly string[] m_stepKeys = ["Renter", "Motorbike", "Configure", "Deposit", "Agreement"];
     private int m_activeStep;
     private bool m_processing;
 
@@ -171,7 +172,7 @@
         var renter = new Renter { ShopId = ShopId };
 
         var confirmed = await DialogService
-            .CreateDialog<RenterDialog>("New Renter")
+            .CreateDialog<RenterDialog>(CommonLocalizer["AddRenter"])
             .WithParameter(x => x.Renter, renter)
             .WithParameter(x => x.IsNew, true)
             .ShowAndConfirmAsync();
@@ -179,8 +180,8 @@
         if (confirmed)
         {
             m_selectedRenter = renter;
-            ShowSuccess("Renter created. You can now proceed.");
-            StateHasChanged();
+            ShowSuccess(Localizer["RenterCreatedSuccess"]);
+            ViewStateChanged();
         }
     }
 
@@ -188,7 +189,7 @@
     {
         if (m_selectedRenter == null || m_selectedMotorbike == null)
         {
-            ShowError("Please select a renter and motorbike");
+            ShowError(Localizer["ValidationError"]);
             return;
         }
 
@@ -206,6 +207,10 @@
                 DailyRate = m_selectedMotorbike.DailyRate,
                 TotalAmount = m_rentalConfig.TotalAmount,
                 InsuranceId = m_rentalConfig.SelectedInsuranceId,
+                // Payment info
+                PaymentMethod = m_depositInfo.PaymentMethod,
+                PaymentTransactionRef = m_depositInfo.PaymentTransactionRef,
+                // Deposit info
                 DepositType = m_depositInfo.DepositType,
                 DepositAmount = m_depositInfo.Amount,
                 CardLast4 = m_depositInfo.CardLast4,
@@ -225,12 +230,12 @@
 
             if (result.Success)
             {
-                ShowSuccess($"Check-in completed! Rental #{result.RentalId}");
+                ShowSuccess(GetLocalizedText("CheckInSuccess", result.RentalId));
                 NavigationManager.NavigateTo("/rentals");
             }
             else
             {
-                ShowError($"Check-in failed: {result.Message}");
+                ShowError(GetLocalizedText("CheckInFailed", result.Message ?? "Unknown error"));
             }
         }
         catch (Exception ex)

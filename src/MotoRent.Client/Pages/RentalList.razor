@@ -157,6 +157,11 @@
                                            Color="Color.Default" OnClick="@(() => ViewRentalDetails(context.Item))"
                                            OnClick:stopPropagation="true" />
                         </MudTooltip>
+                        <MudTooltip Text="View Invoice">
+                            <MudIconButton Icon="@Icons.Material.Filled.Receipt" Size="Size.Small"
+                                           Color="Color.Primary" OnClick="@(() => ViewInvoice(context.Item))"
+                                           OnClick:stopPropagation="true" />
+                        </MudTooltip>
                     </MudStack>
                 </CellTemplate>
             </TemplateColumn>
@@ -304,6 +309,23 @@
     {
         // TODO: Open rental details dialog
         ShowInfo($"Viewing rental #{rental.Rental.RentalId}");
+    }
+
+    private async Task ViewInvoice(RentalViewModel rental)
+    {
+        var parameters = new DialogParameters<InvoiceDialog>
+        {
+            { x => x.RentalId, rental.Rental.RentalId }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true,
+            CloseButton = true
+        };
+
+        await DialogService.ShowAsync<InvoiceDialog>("Invoice", parameters, options);
     }
 
     private async Task OpenCheckOutDialog(RentalViewModel rental)

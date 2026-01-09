@@ -201,6 +201,40 @@ public class RentalService
                 session.Attach(motorbike);
             }
 
+            // 6. Create payment record for rental amount
+            if (request.TotalAmount > 0)
+            {
+                var rentalPayment = new Payment
+                {
+                    RentalId = 0, // Will be linked after submit
+                    PaymentType = "Rental",
+                    PaymentMethod = request.PaymentMethod,
+                    Amount = request.TotalAmount,
+                    Status = "Completed",
+                    TransactionRef = request.PaymentTransactionRef,
+                    PaidOn = DateTimeOffset.Now,
+                    Notes = $"Rental payment: {(request.ExpectedEndDate - request.StartDate).TotalDays:N0} days"
+                };
+                session.Attach(rentalPayment);
+            }
+
+            // 7. Create payment record for deposit
+            if (request.DepositAmount > 0)
+            {
+                var depositPayment = new Payment
+                {
+                    RentalId = 0, // Will be linked after submit
+                    PaymentType = "Deposit",
+                    PaymentMethod = request.DepositType == "Cash" ? "Cash" : "Card",
+                    Amount = request.DepositAmount,
+                    Status = "Completed",
+                    TransactionRef = request.TransactionRef,
+                    PaidOn = DateTimeOffset.Now,
+                    Notes = $"Security deposit ({request.DepositType})"
+                };
+                session.Attach(depositPayment);
+            }
+
             // Submit all changes in a single transaction
             var result = await session.SubmitChanges("CheckIn");
 
@@ -310,6 +344,22 @@ public class RentalService
                     Notes = $"Extra days: {extraDays}, Damage charges: {additionalCharges - (extraDays * rental.DailyRate)}"
                 };
                 session.Attach(payment);
+            }
+
+            // 7. Create payment record for deposit refund
+            if (refundAmount > 0 && request.RefundDeposit)
+            {
+                var refundPayment = new Payment
+                {
+                    RentalId = request.RentalId,
+                    PaymentType = "Refund",
+                    PaymentMethod = request.PaymentMethod ?? "Cash",
+                    Amount = refundAmount,
+                    Status = "Completed",
+                    PaidOn = DateTimeOffset.Now,
+                    Notes = $"Deposit refund via {request.PaymentMethod ?? "Cash"}"
+                };
+                session.Attach(refundPayment);
             }
 
             var result = await session.SubmitChanges("CheckOut");
@@ -437,6 +487,10 @@ public class CheckInRequest
     public decimal TotalAmount { get; set; }
     public int? InsuranceId { get; set; }
     public string? Notes { get; set; }
+
+    // Payment info
+    public string PaymentMethod { get; set; } = "Cash";
+    public string? PaymentTransactionRef { get; set; }
 
     // Deposit info
     public string DepositType { get; set; } = "Cash";
