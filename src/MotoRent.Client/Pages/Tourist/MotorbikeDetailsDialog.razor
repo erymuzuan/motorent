@@ -1,0 +1,167 @@
+@inherits MotoRentComponentBase
+@using MotoRent.Domain.Entities
+
+<MudDialog>
+    <TitleContent>
+        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+            <MudIcon Icon="@Icons.Material.Filled.TwoWheeler" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">@Motorbike.Brand @Motorbike.Model</MudText>
+        </MudStack>
+    </TitleContent>
+
+    <DialogContent>
+        <MudGrid>
+            @* Image *@
+            <MudItem xs="12" md="6">
+                <MudPaper Elevation="0" Style="background-color: var(--mud-palette-background-grey); border-radius: 8px; overflow: hidden;">
+                    <MudImage Src="@GetMotorbikeImage()" Alt="@GetMotorbikeAlt()"
+                              ObjectFit="ObjectFit.Cover" Height="300"
+                              Style="display: block; width: 100%;" />
+                </MudPaper>
+            </MudItem>
+
+            @* Details *@
+            <MudItem xs="12" md="6">
+                <MudStack Spacing="3">
+                    <MudStack Spacing="1">
+                        <MudText Typo="Typo.h4">@Motorbike.Brand @Motorbike.Model</MudText>
+                        <MudText Typo="Typo.body1" Color="Color.Secondary">
+                            @Motorbike.Year - @Motorbike.EngineCC cc
+                        </MudText>
+                    </MudStack>
+
+                    <MudChip T="string" Color="Color.Success" Variant="Variant.Filled">
+                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Class="mr-1" Size="Size.Small" />
+                        Available for Rent
+                    </MudChip>
+
+                    <MudDivider />
+
+                    <MudStack Spacing="2">
+                        <MudStack Row="true" Justify="Justify.SpaceBetween">
+                            <MudText Typo="Typo.body1">Daily Rate</MudText>
+                            <MudText Typo="Typo.h5" Color="Color.Primary">@FormatCurrency(Motorbike.DailyRate)</MudText>
+                        </MudStack>
+                        <MudStack Row="true" Justify="Justify.SpaceBetween">
+                            <MudText Typo="Typo.body1">Security Deposit</MudText>
+                            <MudText Typo="Typo.body1">@FormatCurrency(Motorbike.DepositAmount)</MudText>
+                        </MudStack>
+                    </MudStack>
+
+                    @if (DateRange != null)
+                    {
+                        var days = (DateRange.End!.Value - DateRange.Start!.Value).Days + 1;
+                        var total = Motorbike.DailyRate * days;
+
+                        <MudPaper Elevation="0" Class="pa-3" Style="background-color: var(--mud-palette-primary-lighten); border-radius: 8px;">
+                            <MudStack Spacing="1">
+                                <MudText Typo="Typo.caption" Color="Color.Primary">
+                                    @FormatDate(DateRange.Start.Value) - @FormatDate(DateRange.End.Value) (@days days)
+                                </MudText>
+                                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                    <MudText Typo="Typo.body1"><strong>Estimated Total</strong></MudText>
+                                    <MudText Typo="Typo.h5" Color="Color.Primary"><strong>@FormatCurrency(total)</strong></MudText>
+                                </MudStack>
+                            </MudStack>
+                        </MudPaper>
+                    }
+                </MudStack>
+            </MudItem>
+
+            @* Specifications *@
+            <MudItem xs="12">
+                <MudText Typo="Typo.h6" Class="mb-3">Specifications</MudText>
+                <MudGrid>
+                    <MudItem xs="6" sm="3">
+                        <MudPaper Elevation="0" Class="pa-3" Style="background-color: var(--mud-palette-background-grey); text-align: center;">
+                            <MudIcon Icon="@Icons.Material.Filled.Speed" Color="Color.Primary" />
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">Engine</MudText>
+                            <MudText Typo="Typo.body1"><strong>@Motorbike.EngineCC cc</strong></MudText>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="6" sm="3">
+                        <MudPaper Elevation="0" Class="pa-3" Style="background-color: var(--mud-palette-background-grey); text-align: center;">
+                            <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Color="Color.Primary" />
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">Year</MudText>
+                            <MudText Typo="Typo.body1"><strong>@Motorbike.Year</strong></MudText>
+                        </MudPaper>
+                    </MudItem>
+                    @if (!string.IsNullOrEmpty(Motorbike.Color))
+                    {
+                        <MudItem xs="6" sm="3">
+                            <MudPaper Elevation="0" Class="pa-3" Style="background-color: var(--mud-palette-background-grey); text-align: center;">
+                                <MudIcon Icon="@Icons.Material.Filled.Palette" Color="Color.Primary" />
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">Color</MudText>
+                                <MudText Typo="Typo.body1"><strong>@Motorbike.Color</strong></MudText>
+                            </MudPaper>
+                        </MudItem>
+                    }
+                    <MudItem xs="6" sm="3">
+                        <MudPaper Elevation="0" Class="pa-3" Style="background-color: var(--mud-palette-background-grey); text-align: center;">
+                            <MudIcon Icon="@Icons.Material.Filled.LocalGasStation" Color="Color.Primary" />
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">Fuel Type</MudText>
+                            <MudText Typo="Typo.body1"><strong>Petrol</strong></MudText>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+            </MudItem>
+
+            @* What's Included *@
+            <MudItem xs="12">
+                <MudText Typo="Typo.h6" Class="mb-3">What's Included</MudText>
+                <MudStack Row="true" Spacing="4" Wrap="Wrap.Wrap">
+                    <MudChip T="string" Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Variant="Variant.Text">
+                        2 Helmets
+                    </MudChip>
+                    <MudChip T="string" Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Variant="Variant.Text">
+                        Rain Gear
+                    </MudChip>
+                    <MudChip T="string" Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Variant="Variant.Text">
+                        Phone Holder
+                    </MudChip>
+                    <MudChip T="string" Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Variant="Variant.Text">
+                        24/7 Support
+                    </MudChip>
+                </MudStack>
+            </MudItem>
+
+            @if (!string.IsNullOrEmpty(Motorbike.Notes))
+            {
+                <MudItem xs="12">
+                    <MudAlert Severity="Severity.Info" Dense="true">
+                        @Motorbike.Notes
+                    </MudAlert>
+                </MudItem>
+            }
+        </MudGrid>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="Cancel" Variant="Variant.Text">Close</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                   EndIcon="@Icons.Material.Filled.ArrowForward"
+                   OnClick="Reserve">
+            Reserve This Bike
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance? MudDialog { get; set; }
+    [Parameter] public Motorbike Motorbike { get; set; } = new();
+    [Parameter] public DateRange? DateRange { get; set; }
+
+    private void Cancel() => MudDialog?.Cancel();
+
+    private void Reserve() => MudDialog?.Close(DialogResult.Ok(true));
+
+    private string GetMotorbikeImage()
+    {
+        if (!string.IsNullOrEmpty(Motorbike.ImagePath))
+            return Motorbike.ImagePath;
+
+        return "images/motorbike-placeholder.jpg";
+    }
+
+    private string GetMotorbikeAlt() => $"{Motorbike.Brand} {Motorbike.Model}";
+}

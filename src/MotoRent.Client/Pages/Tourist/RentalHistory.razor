@@ -1,0 +1,265 @@
+@page "/my-rentals"
+@inherits MotoRentComponentBase
+@using MotoRent.Domain.Entities
+@using MotoRent.Services
+@inject RentalService RentalService
+
+<PageTitle>My Rentals - MotoRent</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-6">
+    <MudStack Spacing="4">
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+            <MudStack Spacing="0">
+                <MudText Typo="Typo.h4">My Rentals</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    View your rental history and current reservations
+                </MudText>
+            </MudStack>
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                       Href="/browse" StartIcon="@Icons.Material.Filled.TwoWheeler">
+                Browse Motorbikes
+            </MudButton>
+        </MudStack>
+
+        @if (!m_isVerified)
+        {
+            @* Verification Form *@
+            <MudPaper Elevation="2" Class="pa-6">
+                <MudStack Spacing="4" AlignItems="AlignItems.Center">
+                    <MudIcon Icon="@Icons.Material.Filled.VerifiedUser" Size="Size.Large" Color="Color.Primary" />
+                    <MudText Typo="Typo.h5">Verify Your Identity</MudText>
+                    <MudText Typo="Typo.body1" Align="Align.Center" Color="Color.Secondary">
+                        Enter your email or phone number to view your rental history
+                    </MudText>
+
+                    <MudGrid Style="max-width: 500px;">
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="m_email" Label="Email Address"
+                                          Variant="Variant.Outlined" FullWidth="true"
+                                          InputType="InputType.Email"
+                                          Placeholder="your.email@example.com" />
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.Center">
+                                <MudDivider Style="width: 100px;" />
+                                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="px-2">OR</MudText>
+                                <MudDivider Style="width: 100px;" />
+                            </MudStack>
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="m_phone" Label="Phone Number"
+                                          Variant="Variant.Outlined" FullWidth="true"
+                                          InputType="InputType.Telephone"
+                                          Placeholder="+66 XX XXX XXXX" />
+                        </MudItem>
+                        <MudItem xs="12" Class="d-flex justify-center">
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                       OnClick="SearchRentals"
+                                       Disabled="@(string.IsNullOrWhiteSpace(m_email) && string.IsNullOrWhiteSpace(m_phone))">
+                                @if (m_searching)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                }
+                                View My Rentals
+                            </MudButton>
+                        </MudItem>
+                    </MudGrid>
+                </MudStack>
+            </MudPaper>
+        }
+        else
+        {
+            @* Rental History *@
+            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                <MudText Typo="Typo.body1">
+                    Showing rentals for: <strong>@(m_email ?? m_phone)</strong>
+                </MudText>
+                <MudButton Variant="Variant.Text" OnClick="ResetSearch"
+                           StartIcon="@Icons.Material.Filled.Logout">
+                    Search Different Account
+                </MudButton>
+            </MudStack>
+
+            @if (m_rentals.Count == 0)
+            {
+                <MudPaper Elevation="0" Class="pa-8" Style="text-align: center; background-color: var(--mud-palette-background-grey);">
+                    <MudIcon Icon="@Icons.Material.Filled.History" Size="Size.Large" Color="Color.Secondary" />
+                    <MudText Typo="Typo.h6" Color="Color.Secondary" Class="mt-4">No rentals found</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+                        You haven't made any rentals yet. Start exploring our motorbikes!
+                    </MudText>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/browse">
+                        Browse Motorbikes
+                    </MudButton>
+                </MudPaper>
+            }
+            else
+            {
+                <MudGrid>
+                    @foreach (var rental in m_rentals)
+                    {
+                        <MudItem xs="12" md="6">
+                            <MudCard Elevation="2">
+                                <MudCardHeader>
+                                    <CardHeaderContent>
+                                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start">
+                                            <MudStack Spacing="0">
+                                                <MudText Typo="Typo.h6">Rental #@rental.RentalId</MudText>
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                    @FormatDate(rental.StartDate.DateTime) - @FormatDate(rental.ExpectedEndDate.DateTime)
+                                                </MudText>
+                                            </MudStack>
+                                            <MudChip T="string" Size="Size.Small"
+                                                     Color="@GetStatusColor(rental.Status)"
+                                                     Variant="Variant.Filled">
+                                                @rental.Status
+                                            </MudChip>
+                                        </MudStack>
+                                    </CardHeaderContent>
+                                </MudCardHeader>
+                                <MudCardContent>
+                                    <MudStack Spacing="2">
+                                        <MudStack Row="true" Justify="Justify.SpaceBetween">
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">Daily Rate</MudText>
+                                            <MudText Typo="Typo.body1">@FormatCurrency(rental.DailyRate)</MudText>
+                                        </MudStack>
+                                        <MudStack Row="true" Justify="Justify.SpaceBetween">
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">Total Amount</MudText>
+                                            <MudText Typo="Typo.body1" Color="Color.Primary">
+                                                <strong>@FormatCurrency(rental.TotalAmount)</strong>
+                                            </MudText>
+                                        </MudStack>
+                                        @if (!string.IsNullOrEmpty(rental.Notes))
+                                        {
+                                            <MudDivider />
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                @rental.Notes
+                                            </MudText>
+                                        }
+                                    </MudStack>
+                                </MudCardContent>
+                                @if (rental.Status == "Reserved")
+                                {
+                                    <MudCardActions>
+                                        <MudSpacer />
+                                        <MudButton Variant="Variant.Text" Color="Color.Error" Size="Size.Small"
+                                                   OnClick="@(() => CancelReservation(rental))">
+                                            Cancel Reservation
+                                        </MudButton>
+                                    </MudCardActions>
+                                }
+                            </MudCard>
+                        </MudItem>
+                    }
+                </MudGrid>
+            }
+        }
+
+        @* FAQ Section *@
+        <MudPaper Elevation="0" Class="pa-6 mt-4" Style="background-color: var(--mud-palette-background-grey);">
+            <MudText Typo="Typo.h6" Class="mb-4">Frequently Asked Questions</MudText>
+            <MudExpansionPanels>
+                <MudExpansionPanel Text="How do I pick up my motorbike?">
+                    <MudText Typo="Typo.body2">
+                        Visit our shop at least 30 minutes before your rental start time with your passport and payment.
+                        Our staff will verify your documents and complete the check-in process.
+                    </MudText>
+                </MudExpansionPanel>
+                <MudExpansionPanel Text="Can I extend my rental?">
+                    <MudText Typo="Typo.body2">
+                        Yes! Contact us via phone or WhatsApp, or visit the shop to extend your rental period.
+                        Extensions are subject to availability.
+                    </MudText>
+                </MudExpansionPanel>
+                <MudExpansionPanel Text="What happens if I return late?">
+                    <MudText Typo="Typo.body2">
+                        Late returns are charged at the daily rate for each additional day.
+                        Please notify us if you'll be late to avoid any issues.
+                    </MudText>
+                </MudExpansionPanel>
+                <MudExpansionPanel Text="How do I get my deposit back?">
+                    <MudText Typo="Typo.body2">
+                        Your security deposit will be refunded upon successful return of the motorbike in good condition.
+                        Cash deposits are refunded immediately; card refunds may take 3-5 business days.
+                    </MudText>
+                </MudExpansionPanel>
+            </MudExpansionPanels>
+        </MudPaper>
+    </MudStack>
+</MudContainer>
+
+@code {
+    private bool m_isVerified;
+    private bool m_searching;
+    private string? m_email;
+    private string? m_phone;
+    private List<Rental> m_rentals = [];
+
+    private async Task SearchRentals()
+    {
+        if (string.IsNullOrWhiteSpace(m_email) && string.IsNullOrWhiteSpace(m_phone))
+            return;
+
+        m_searching = true;
+        try
+        {
+            m_rentals = await RentalService.GetRentalHistoryForTouristAsync(ShopId, m_email, m_phone);
+            m_isVerified = true;
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error searching rentals: {ex.Message}");
+        }
+        finally
+        {
+            m_searching = false;
+        }
+    }
+
+    private void ResetSearch()
+    {
+        m_isVerified = false;
+        m_email = null;
+        m_phone = null;
+        m_rentals.Clear();
+    }
+
+    private async Task CancelReservation(Rental rental)
+    {
+        bool? confirm = await DialogService.ShowMessageBox(
+            "Cancel Reservation",
+            "Are you sure you want to cancel this reservation?",
+            yesText: "Yes, Cancel",
+            cancelText: "No, Keep It");
+
+        if (confirm == true)
+        {
+            try
+            {
+                var result = await RentalService.CancelRentalAsync(rental.RentalId, "Cancelled by customer", "tourist");
+                if (result.Success)
+                {
+                    ShowSuccess("Reservation cancelled successfully");
+                    await SearchRentals(); // Refresh
+                }
+                else
+                {
+                    ShowError(result.Message ?? "Failed to cancel reservation");
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowError($"Error: {ex.Message}");
+            }
+        }
+    }
+
+    private static Color GetStatusColor(string? status) => status switch
+    {
+        "Reserved" => Color.Info,
+        "Active" => Color.Success,
+        "Completed" => Color.Default,
+        "Cancelled" => Color.Error,
+        _ => Color.Default
+    };
+}

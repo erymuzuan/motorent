@@ -1,0 +1,381 @@
+@inherits MotoRentComponentBase
+@using MotoRent.Domain.Entities
+@using MotoRent.Services
+@inject RentalService RentalService
+@inject InsuranceService InsuranceService
+
+<MudDialog>
+    <TitleContent>
+        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+            <MudIcon Icon="@Icons.Material.Filled.EventAvailable" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">Reserve @Motorbike.Brand @Motorbike.Model</MudText>
+        </MudStack>
+    </TitleContent>
+
+    <DialogContent>
+        <MudStepper @bind-ActiveIndex="m_activeStep" Linear="true" Color="Color.Primary">
+            @* Step 1: Dates & Insurance *@
+            <MudStep Title="Rental Details">
+                <MudStack Spacing="4">
+                    <MudText Typo="Typo.subtitle1">Select Your Rental Period</MudText>
+
+                    <MudDateRangePicker Label="Rental Dates" @bind-DateRange="m_dateRange"
+                                        Variant="Variant.Outlined" MinDate="DateTime.Today"
+                                        Required="true" RequiredError="Please select rental dates" />
+
+                    @if (m_dateRange?.Start != null && m_dateRange?.End != null)
+                    {
+                        <MudAlert Severity="Severity.Info" Dense="true">
+                            @m_days day(s) - @FormatDate(m_dateRange.Start.Value) to @FormatDate(m_dateRange.End.Value)
+                        </MudAlert>
+                    }
+
+                    <MudDivider />
+
+                    <MudText Typo="Typo.subtitle1">Insurance Options</MudText>
+
+                    @if (m_loadingInsurance)
+                    {
+                        <MudProgressLinear Indeterminate="true" />
+                    }
+                    else
+                    {
+                        <MudRadioGroup T="int?" @bind-Value="m_selectedInsuranceId">
+                            <MudStack Spacing="2">
+                                <MudPaper Elevation="1" Class="pa-3" Style="cursor: pointer;"
+                                          @onclick="@(() => m_selectedInsuranceId = null)">
+                                    <MudRadio T="int?" Value="@((int?)null)" Color="Color.Primary">
+                                        <MudStack Spacing="0">
+                                            <MudText Typo="Typo.body1"><strong>No Insurance</strong></MudText>
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                                You are responsible for all damages
+                                            </MudText>
+                                        </MudStack>
+                                    </MudRadio>
+                                </MudPaper>
+
+                                @foreach (var insurance in m_insuranceOptions)
+                                {
+                                    <MudPaper Elevation="1" Class="pa-3" Style="cursor: pointer;"
+                                              @onclick="@(() => m_selectedInsuranceId = insurance.InsuranceId)">
+                                        <MudRadio T="int?" Value="@insurance.InsuranceId" Color="Color.Primary">
+                                            <MudStack Row="true" Justify="Justify.SpaceBetween" Style="width: 100%;">
+                                                <MudStack Spacing="0">
+                                                    <MudText Typo="Typo.body1"><strong>@insurance.Name</strong></MudText>
+                                                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                                        @insurance.Description
+                                                    </MudText>
+                                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                        Deductible: @FormatCurrency(insurance.Deductible) | Max: @FormatCurrency(insurance.MaxCoverage)
+                                                    </MudText>
+                                                </MudStack>
+                                                <MudText Typo="Typo.body1" Color="Color.Primary">
+                                                    +@FormatCurrency(insurance.DailyRate)/day
+                                                </MudText>
+                                            </MudStack>
+                                        </MudRadio>
+                                    </MudPaper>
+                                }
+                            </MudStack>
+                        </MudRadioGroup>
+                    }
+                </MudStack>
+            </MudStep>
+
+            @* Step 2: Contact Information *@
+            <MudStep Title="Your Information">
+                <MudStack Spacing="3">
+                    <MudText Typo="Typo.subtitle1">Contact Details</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        We'll use this information to confirm your reservation
+                    </MudText>
+
+                    <MudGrid>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="m_contactInfo.FullName" Label="Full Name"
+                                          Variant="Variant.Outlined" Required="true" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="m_contactInfo.Nationality" Label="Nationality"
+                                          Variant="Variant.Outlined" Required="true" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="m_contactInfo.Phone" Label="Phone/WhatsApp"
+                                          Variant="Variant.Outlined" Required="true"
+                                          InputType="InputType.Telephone" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="m_contactInfo.Email" Label="Email"
+                                          Variant="Variant.Outlined" Required="true"
+                                          InputType="InputType.Email" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="m_contactInfo.PassportNo" Label="Passport Number"
+                                          Variant="Variant.Outlined"
+                                          HelperText="Required for pickup" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="m_contactInfo.HotelName" Label="Hotel/Accommodation"
+                                          Variant="Variant.Outlined"
+                                          HelperText="Where are you staying?" />
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="m_contactInfo.Notes" Label="Special Requests"
+                                          Variant="Variant.Outlined" Lines="2"
+                                          Placeholder="Any special requests or notes..." />
+                        </MudItem>
+                    </MudGrid>
+                </MudStack>
+            </MudStep>
+
+            @* Step 3: Confirmation *@
+            <MudStep Title="Confirm">
+                <MudStack Spacing="4">
+                    <MudText Typo="Typo.subtitle1">Reservation Summary</MudText>
+
+                    <MudPaper Elevation="1" Class="pa-4">
+                        <MudGrid>
+                            <MudItem xs="12" sm="6">
+                                <MudStack Spacing="2">
+                                    <MudStack Spacing="0">
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">Motorbike</MudText>
+                                        <MudText Typo="Typo.body1"><strong>@Motorbike.Brand @Motorbike.Model</strong></MudText>
+                                    </MudStack>
+                                    <MudStack Spacing="0">
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">Rental Period</MudText>
+                                        <MudText Typo="Typo.body1">
+                                            @FormatDate(m_dateRange?.Start ?? DateTime.Today) - @FormatDate(m_dateRange?.End ?? DateTime.Today)
+                                            (@m_days days)
+                                        </MudText>
+                                    </MudStack>
+                                    @if (m_selectedInsurance != null)
+                                    {
+                                        <MudStack Spacing="0">
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">Insurance</MudText>
+                                            <MudText Typo="Typo.body1">@m_selectedInsurance.Name</MudText>
+                                        </MudStack>
+                                    }
+                                </MudStack>
+                            </MudItem>
+                            <MudItem xs="12" sm="6">
+                                <MudStack Spacing="2">
+                                    <MudStack Spacing="0">
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">Contact</MudText>
+                                        <MudText Typo="Typo.body1"><strong>@m_contactInfo.FullName</strong></MudText>
+                                        <MudText Typo="Typo.body2">@m_contactInfo.Phone</MudText>
+                                        <MudText Typo="Typo.body2">@m_contactInfo.Email</MudText>
+                                    </MudStack>
+                                </MudStack>
+                            </MudItem>
+                        </MudGrid>
+                    </MudPaper>
+
+                    <MudPaper Elevation="1" Class="pa-4">
+                        <MudText Typo="Typo.subtitle2" Class="mb-3">Pricing Breakdown</MudText>
+                        <MudStack Spacing="2">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween">
+                                <MudText>Motorbike (@m_days days x @FormatCurrency(Motorbike.DailyRate))</MudText>
+                                <MudText>@FormatCurrency(m_motorbikeTotal)</MudText>
+                            </MudStack>
+                            @if (m_selectedInsurance != null)
+                            {
+                                <MudStack Row="true" Justify="Justify.SpaceBetween">
+                                    <MudText>Insurance (@m_days days x @FormatCurrency(m_selectedInsurance.DailyRate))</MudText>
+                                    <MudText>@FormatCurrency(m_insuranceTotal)</MudText>
+                                </MudStack>
+                            }
+                            <MudDivider />
+                            <MudStack Row="true" Justify="Justify.SpaceBetween">
+                                <MudText Typo="Typo.h6">Total</MudText>
+                                <MudText Typo="Typo.h5" Color="Color.Primary">@FormatCurrency(m_totalAmount)</MudText>
+                            </MudStack>
+                            <MudStack Row="true" Justify="Justify.SpaceBetween">
+                                <MudText Color="Color.Secondary">Security Deposit (refundable)</MudText>
+                                <MudText Color="Color.Secondary">@FormatCurrency(Motorbike.DepositAmount)</MudText>
+                            </MudStack>
+                        </MudStack>
+                    </MudPaper>
+
+                    <MudAlert Severity="Severity.Info">
+                        <MudText Typo="Typo.body2">
+                            <strong>Next Steps:</strong> After submitting, you'll receive a confirmation email.
+                            Please bring your passport and payment to our shop at least 30 minutes before your rental starts.
+                        </MudText>
+                    </MudAlert>
+
+                    <MudCheckBox T="bool" @bind-Value="m_agreedToTerms" Color="Color.Primary">
+                        <MudText Typo="Typo.body2">
+                            I agree to the <MudLink Href="/terms" Target="_blank">Terms and Conditions</MudLink>
+                            and <MudLink Href="/rental-policy" Target="_blank">Rental Policy</MudLink>
+                        </MudText>
+                    </MudCheckBox>
+                </MudStack>
+            </MudStep>
+        </MudStepper>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="Cancel" Variant="Variant.Text">Cancel</MudButton>
+        @if (m_activeStep > 0)
+        {
+            <MudButton OnClick="PreviousStep" Variant="Variant.Outlined">Back</MudButton>
+        }
+        @if (m_activeStep < 2)
+        {
+            <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                       Disabled="@(!CanProceed)"
+                       OnClick="NextStep">
+                Next
+            </MudButton>
+        }
+        else
+        {
+            <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                       Disabled="@(!CanSubmit || m_submitting)"
+                       OnClick="SubmitReservation">
+                @if (m_submitting)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                }
+                Submit Reservation
+            </MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance? MudDialog { get; set; }
+    [Parameter] public Motorbike Motorbike { get; set; } = new();
+    [Parameter] public DateRange? DateRange { get; set; }
+
+    private int m_activeStep;
+    private bool m_submitting;
+    private bool m_loadingInsurance = true;
+
+    // Step 1: Dates & Insurance
+    private DateRange? m_dateRange;
+    private List<Insurance> m_insuranceOptions = [];
+    private int? m_selectedInsuranceId;
+    private Insurance? m_selectedInsurance => m_insuranceOptions.FirstOrDefault(i => i.InsuranceId == m_selectedInsuranceId);
+
+    // Step 2: Contact Info
+    private ContactInfo m_contactInfo = new();
+
+    // Step 3: Confirmation
+    private bool m_agreedToTerms;
+
+    // Calculations
+    private int m_days => m_dateRange?.Start != null && m_dateRange?.End != null
+        ? Math.Max(1, (m_dateRange.End.Value - m_dateRange.Start.Value).Days + 1)
+        : 0;
+    private decimal m_motorbikeTotal => Motorbike.DailyRate * m_days;
+    private decimal m_insuranceTotal => (m_selectedInsurance?.DailyRate ?? 0) * m_days;
+    private decimal m_totalAmount => m_motorbikeTotal + m_insuranceTotal;
+
+    private bool CanProceed => m_activeStep switch
+    {
+        0 => m_dateRange?.Start != null && m_dateRange?.End != null,
+        1 => !string.IsNullOrWhiteSpace(m_contactInfo.FullName) &&
+             !string.IsNullOrWhiteSpace(m_contactInfo.Phone) &&
+             !string.IsNullOrWhiteSpace(m_contactInfo.Email),
+        _ => true
+    };
+
+    private bool CanSubmit => m_agreedToTerms && CanProceed;
+
+    protected override async Task OnInitializedAsync()
+    {
+        m_dateRange = DateRange ?? new DateRange(DateTime.Today, DateTime.Today.AddDays(3));
+        await LoadInsuranceOptions();
+    }
+
+    private async Task LoadInsuranceOptions()
+    {
+        m_loadingInsurance = true;
+        try
+        {
+            var result = await InsuranceService.GetActiveInsurancesAsync(ShopId);
+            m_insuranceOptions = result;
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error loading insurance options: {ex.Message}");
+        }
+        finally
+        {
+            m_loadingInsurance = false;
+        }
+    }
+
+    private void Cancel() => MudDialog?.Cancel();
+
+    private void NextStep()
+    {
+        if (CanProceed && m_activeStep < 2)
+            m_activeStep++;
+    }
+
+    private void PreviousStep()
+    {
+        if (m_activeStep > 0)
+            m_activeStep--;
+    }
+
+    private async Task SubmitReservation()
+    {
+        if (!CanSubmit) return;
+
+        m_submitting = true;
+        try
+        {
+            var request = new ReservationRequest
+            {
+                ShopId = ShopId,
+                MotorbikeId = Motorbike.MotorbikeId,
+                StartDate = new DateTimeOffset(m_dateRange!.Start!.Value, TimeSpan.Zero),
+                EndDate = new DateTimeOffset(m_dateRange!.End!.Value, TimeSpan.Zero),
+                InsuranceId = m_selectedInsuranceId,
+                DailyRate = Motorbike.DailyRate,
+                TotalAmount = m_totalAmount,
+                // Contact info
+                RenterName = m_contactInfo.FullName,
+                RenterPhone = m_contactInfo.Phone,
+                RenterEmail = m_contactInfo.Email,
+                RenterNationality = m_contactInfo.Nationality,
+                RenterPassport = m_contactInfo.PassportNo,
+                HotelName = m_contactInfo.HotelName,
+                Notes = m_contactInfo.Notes
+            };
+
+            var result = await RentalService.CreateReservationAsync(request);
+
+            if (result.Success)
+            {
+                MudDialog?.Close(DialogResult.Ok(result.RentalId));
+            }
+            else
+            {
+                ShowError($"Reservation failed: {result.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error: {ex.Message}");
+        }
+        finally
+        {
+            m_submitting = false;
+        }
+    }
+
+    private class ContactInfo
+    {
+        public string FullName { get; set; } = "";
+        public string Phone { get; set; } = "";
+        public string Email { get; set; } = "";
+        public string? Nationality { get; set; }
+        public string? PassportNo { get; set; }
+        public string? HotelName { get; set; }
+        public string? Notes { get; set; }
+    }
+}

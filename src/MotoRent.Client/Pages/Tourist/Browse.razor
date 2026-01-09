@@ -1,0 +1,356 @@
+@page "/browse"
+@page "/browse/{ShopSlug}"
+@inherits MotoRentComponentBase
+@using MotoRent.Domain.Entities
+@using MotoRent.Services
+@inject MotorbikeService MotorbikeService
+@inject ShopService ShopService
+
+<PageTitle>Browse Motorbikes - MotoRent</PageTitle>
+
+@* Hero Section *@
+<MudPaper Class="pa-8 mb-6" Style="background: linear-gradient(135deg, #00897B 0%, #004D40 100%); color: white;">
+    <MudContainer MaxWidth="MaxWidth.Large">
+        <MudStack Spacing="2" AlignItems="AlignItems.Center">
+            <MudIcon Icon="@Icons.Material.Filled.TwoWheeler" Size="Size.Large" />
+            <MudText Typo="Typo.h3" Align="Align.Center">Rent a Motorbike</MudText>
+            <MudText Typo="Typo.h6" Align="Align.Center" Style="opacity: 0.9;">
+                Explore Thailand on two wheels - Easy booking, great prices
+            </MudText>
+        </MudStack>
+    </MudContainer>
+</MudPaper>
+
+<MudContainer MaxWidth="MaxWidth.Large">
+    @* Search and Filter Bar *@
+    <MudPaper Elevation="2" Class="pa-4 mb-4">
+        <MudGrid>
+            <MudItem xs="12" md="4">
+                <MudDateRangePicker Label="Rental Period" @bind-DateRange="m_dateRange"
+                                    Variant="Variant.Outlined" MinDate="DateTime.Today"
+                                    Placeholder="Select dates" />
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudSelect T="string" Label="Engine Size" @bind-Value="m_engineFilter"
+                           Variant="Variant.Outlined" Clearable="true">
+                    <MudSelectItem Value="@("110")">110cc (Scooter)</MudSelectItem>
+                    <MudSelectItem Value="@("125")">125cc (City)</MudSelectItem>
+                    <MudSelectItem Value="@("150")">150cc+ (Sport)</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudSelect T="string" Label="Sort By" @bind-Value="m_sortBy"
+                           Variant="Variant.Outlined">
+                    <MudSelectItem Value="@("price-asc")">Price: Low to High</MudSelectItem>
+                    <MudSelectItem Value="@("price-desc")">Price: High to Low</MudSelectItem>
+                    <MudSelectItem Value="@("popular")">Most Popular</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="2">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                           Style="height: 56px;" OnClick="ApplyFilters">
+                    Search
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    @* Results Summary *@
+    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
+        <MudText Typo="Typo.h6">
+            @if (m_loading)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                <span>Loading...</span>
+            }
+            else
+            {
+                <span>@m_filteredMotorbikes.Count available motorbikes</span>
+            }
+        </MudText>
+        <MudStack Row="true" Spacing="2">
+            <MudToggleIconButton @bind-Toggled="m_gridView"
+                                 Icon="@Icons.Material.Filled.ViewList"
+                                 ToggledIcon="@Icons.Material.Filled.GridView"
+                                 Color="Color.Primary" />
+        </MudStack>
+    </MudStack>
+
+    @* Motorbike Cards Grid *@
+    @if (m_loading)
+    {
+        <MudGrid>
+            @for (int i = 0; i < 6; i++)
+            {
+                <MudItem xs="12" sm="6" md="4">
+                    <MudCard Elevation="2">
+                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" />
+                        <MudCardContent>
+                            <MudSkeleton Width="60%" />
+                            <MudSkeleton Width="40%" />
+                            <MudSkeleton Width="80%" />
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+    else if (m_filteredMotorbikes.Count == 0)
+    {
+        <MudPaper Elevation="0" Class="pa-8" Style="text-align: center;">
+            <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Color="Color.Secondary" />
+            <MudText Typo="Typo.h6" Color="Color.Secondary" Class="mt-4">No motorbikes found</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Try adjusting your filters or dates
+            </MudText>
+        </MudPaper>
+    }
+    else
+    {
+        <MudGrid>
+            @foreach (var bike in m_filteredMotorbikes)
+            {
+                <MudItem xs="12" sm="6" md="@(m_gridView ? 4 : 12)">
+                    <MudCard Elevation="2" Class="motorbike-card">
+                        @* Image placeholder *@
+                        <MudCardMedia Image="@GetMotorbikeImage(bike)" Height="200" />
+
+                        <MudCardContent>
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start">
+                                <MudStack Spacing="0">
+                                    <MudText Typo="Typo.h6">@bike.Brand @bike.Model</MudText>
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                        @bike.EngineCC cc - @bike.Year
+                                    </MudText>
+                                </MudStack>
+                                <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">
+                                    Available
+                                </MudChip>
+                            </MudStack>
+
+                            <MudDivider Class="my-3" />
+
+                            <MudStack Row="true" Spacing="4">
+                                <MudStack Spacing="0">
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Daily Rate</MudText>
+                                    <MudText Typo="Typo.h5" Color="Color.Primary">
+                                        @FormatCurrency(bike.DailyRate)
+                                    </MudText>
+                                </MudStack>
+                                <MudStack Spacing="0">
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Deposit</MudText>
+                                    <MudText Typo="Typo.body1">@FormatCurrency(bike.DepositAmount)</MudText>
+                                </MudStack>
+                            </MudStack>
+
+                            @if (!string.IsNullOrEmpty(bike.Color))
+                            {
+                                <MudStack Row="true" Spacing="1" Class="mt-2">
+                                    <MudIcon Icon="@Icons.Material.Filled.Palette" Size="Size.Small" Color="Color.Secondary" />
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">@bike.Color</MudText>
+                                </MudStack>
+                            }
+                        </MudCardContent>
+
+                        <MudCardActions>
+                            <MudButton Variant="Variant.Text" Color="Color.Primary"
+                                       OnClick="@(() => ViewDetails(bike))">
+                                Details
+                            </MudButton>
+                            <MudSpacer />
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                       EndIcon="@Icons.Material.Filled.ArrowForward"
+                                       OnClick="@(() => StartReservation(bike))">
+                                Reserve Now
+                            </MudButton>
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+
+    @* Rental Info Section *@
+    <MudPaper Elevation="0" Class="pa-6 mt-6" Style="background-color: var(--mud-palette-background-grey);">
+        <MudText Typo="Typo.h5" Class="mb-4">How It Works</MudText>
+        <MudGrid>
+            <MudItem xs="12" md="4">
+                <MudStack AlignItems="AlignItems.Center" Spacing="2">
+                    <MudAvatar Color="Color.Primary" Size="Size.Large">
+                        <MudIcon Icon="@Icons.Material.Filled.Search" />
+                    </MudAvatar>
+                    <MudText Typo="Typo.h6">1. Browse & Select</MudText>
+                    <MudText Typo="Typo.body2" Align="Align.Center" Color="Color.Secondary">
+                        Choose from our wide selection of well-maintained motorbikes
+                    </MudText>
+                </MudStack>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudStack AlignItems="AlignItems.Center" Spacing="2">
+                    <MudAvatar Color="Color.Primary" Size="Size.Large">
+                        <MudIcon Icon="@Icons.Material.Filled.EventAvailable" />
+                    </MudAvatar>
+                    <MudText Typo="Typo.h6">2. Reserve Online</MudText>
+                    <MudText Typo="Typo.body2" Align="Align.Center" Color="Color.Secondary">
+                        Pick your dates and complete the reservation in minutes
+                    </MudText>
+                </MudStack>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudStack AlignItems="AlignItems.Center" Spacing="2">
+                    <MudAvatar Color="Color.Primary" Size="Size.Large">
+                        <MudIcon Icon="@Icons.Material.Filled.TwoWheeler" />
+                    </MudAvatar>
+                    <MudText Typo="Typo.h6">3. Pick Up & Ride</MudText>
+                    <MudText Typo="Typo.body2" Align="Align.Center" Color="Color.Secondary">
+                        Visit our shop, show your ID, and start your adventure!
+                    </MudText>
+                </MudStack>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+</MudContainer>
+
+<style>
+    .motorbike-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .motorbike-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
+    }
+</style>
+
+@code {
+    [Parameter] public string? ShopSlug { get; set; }
+
+    private List<Motorbike> m_motorbikes = [];
+    private List<Motorbike> m_filteredMotorbikes = [];
+    private bool m_loading = true;
+    private bool m_gridView = true;
+
+    // Filters
+    private DateRange? m_dateRange = new(DateTime.Today, DateTime.Today.AddDays(3));
+    private string? m_engineFilter;
+    private string m_sortBy = "price-asc";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadMotorbikes();
+    }
+
+    private async Task LoadMotorbikes()
+    {
+        m_loading = true;
+        try
+        {
+            var result = await MotorbikeService.GetAvailableMotorbikesAsync(ShopId);
+            m_motorbikes = result.ToList();
+            ApplyFilters();
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error loading motorbikes: {ex.Message}");
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private void ApplyFilters()
+    {
+        var filtered = m_motorbikes.Where(m => m.Status == "Available").AsEnumerable();
+
+        // Engine filter
+        if (!string.IsNullOrEmpty(m_engineFilter))
+        {
+            filtered = m_engineFilter switch
+            {
+                "110" => filtered.Where(m => m.EngineCC <= 110),
+                "125" => filtered.Where(m => m.EngineCC > 110 && m.EngineCC <= 125),
+                "150" => filtered.Where(m => m.EngineCC > 125),
+                _ => filtered
+            };
+        }
+
+        // Sorting
+        filtered = m_sortBy switch
+        {
+            "price-asc" => filtered.OrderBy(m => m.DailyRate),
+            "price-desc" => filtered.OrderByDescending(m => m.DailyRate),
+            "popular" => filtered.OrderByDescending(m => m.EngineCC), // Placeholder
+            _ => filtered
+        };
+
+        m_filteredMotorbikes = filtered.ToList();
+    }
+
+    private string GetMotorbikeImage(Motorbike bike)
+    {
+        // Return placeholder or actual image
+        if (!string.IsNullOrEmpty(bike.ImagePath))
+            return bike.ImagePath;
+
+        // Return brand-specific placeholder
+        return bike.Brand?.ToLower() switch
+        {
+            "honda" => "images/honda-placeholder.jpg",
+            "yamaha" => "images/yamaha-placeholder.jpg",
+            _ => "images/motorbike-placeholder.jpg"
+        };
+    }
+
+    private async Task ViewDetails(Motorbike bike)
+    {
+        var parameters = new DialogParameters<MotorbikeDetailsDialog>
+        {
+            { x => x.Motorbike, bike },
+            { x => x.DateRange, m_dateRange }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true,
+            CloseButton = true
+        };
+
+        var dialog = await DialogService.ShowAsync<MotorbikeDetailsDialog>(
+            $"{bike.Brand} {bike.Model}", parameters, options);
+
+        var result = await dialog.Result;
+        if (result != null && !result.Canceled && result.Data is bool reserve && reserve)
+        {
+            await StartReservation(bike);
+        }
+    }
+
+    private async Task StartReservation(Motorbike bike)
+    {
+        var parameters = new DialogParameters<ReservationDialog>
+        {
+            { x => x.Motorbike, bike },
+            { x => x.DateRange, m_dateRange }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true,
+            CloseButton = true,
+            BackdropClick = false
+        };
+
+        var dialog = await DialogService.ShowAsync<ReservationDialog>(
+            "Make a Reservation", parameters, options);
+
+        var result = await dialog.Result;
+        if (result != null && !result.Canceled)
+        {
+            ShowSuccess("Reservation submitted successfully! We'll contact you shortly.");
+            await LoadMotorbikes(); // Refresh availability
+        }
+    }
+}

@@ -95,4 +95,18 @@ public class MotorbikeService
             .GroupBy(m => m.Status ?? "Unknown")
             .ToDictionary(g => g.Key, g => g.Count());
     }
+
+    /// <summary>
+    /// Gets available motorbikes for public browsing (tourist portal)
+    /// </summary>
+    public async Task<IEnumerable<Motorbike>> GetAvailableMotorbikesAsync(int shopId)
+    {
+        var result = await m_context.LoadAsync(
+            m_context.Motorbikes
+                .Where(m => m.ShopId == shopId)
+                .Where(m => m.Status == "Available"),
+            page: 1, size: 100, includeTotalRows: false);
+
+        return result.ItemCollection;
+    }
 }

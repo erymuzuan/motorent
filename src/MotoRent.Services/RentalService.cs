@@ -442,6 +442,126 @@ public class RentalService
         return await session.SubmitChanges("Extend");
     }
 
+    public async Task<ReservationResult> CreateReservationAsync(ReservationRequest request)
+    {
+        try
+        {
+            using var session = m_context.OpenSession("tourist");
+
+            // 1. Check if motorbike is available for the requested dates
+            var conflictingRentals = await m_context.LoadAsync(
+                m_context.Rentals
+                    .Where(r => r.MotorbikeId == request.MotorbikeId)
+                    .Where(r => r.Status == "Active" || r.Status == "Reserved")
+                    .Where(r => r.StartDate < request.EndDate && r.ExpectedEndDate > request.StartDate),
+                page: 1, size: 10, includeTotalRows: false);
+
+            if (conflictingRentals.ItemCollection.Any())
+            {
+                return ReservationResult.CreateFailure("This motorbike is not available for the selected dates.");
+            }
+
+            // 2. Create or find renter from contact info
+            var existingRenter = await m_context.LoadOneAsync<Renter>(
+                r => r.Phone == request.RenterPhone || r.Email == request.RenterEmail);
+
+            int renterId;
+            if (existingRenter != null)
+            {
+                renterId = existingRenter.RenterId;
+                // Update info if needed
+                existingRenter.FullName = request.RenterName;
+                existingRenter.Nationality = request.RenterNationality;
+                existingRenter.PassportNo = request.RenterPassport;
+                session.Attach(existingRenter);
+            }
+            else
+            {
+                var newRenter = new Renter
+                {
+                    ShopId = request.ShopId,
+                    FullName = request.RenterName,
+                    Phone = request.RenterPhone,
+                    Email = request.RenterEmail,
+                    Nationality = request.RenterNationality,
+                    PassportNo = request.RenterPassport
+                };
+                session.Attach(newRenter);
+                renterId = 0; // Will be assigned after submit
+            }
+
+            // 3. Create reservation (rental with "Reserved" status)
+            var rental = new Rental
+            {
+                ShopId = request.ShopId,
+                RenterId = renterId,
+                MotorbikeId = request.MotorbikeId,
+                StartDate = request.StartDate,
+                ExpectedEndDate = request.EndDate,
+                DailyRate = request.DailyRate,
+                TotalAmount = request.TotalAmount,
+                InsuranceId = request.InsuranceId,
+                Status = "Reserved",
+                Notes = BuildReservationNotes(request)
+            };
+            session.Attach(rental);
+
+            var result = await session.SubmitChanges("CreateReservation");
+
+            if (result.Success)
+            {
+                return ReservationResult.CreateSuccess(rental.RentalId, GenerateConfirmationCode());
+            }
+
+            return ReservationResult.CreateFailure(result.Message ?? "Reservation failed");
+        }
+        catch (Exception ex)
+        {
+            return ReservationResult.CreateFailure($"Reservation error: {ex.Message}");
+        }
+    }
+
+    private static string BuildReservationNotes(ReservationRequest request)
+    {
+        var notes = $"Online Reservation - {DateTimeOffset.Now:g}";
+        if (!string.IsNullOrEmpty(request.HotelName))
+            notes += $"\nHotel: {request.HotelName}";
+        if (!string.IsNullOrEmpty(request.Notes))
+            notes += $"\nNotes: {request.Notes}";
+        return notes;
+    }
+
+    private static string GenerateConfirmationCode()
+    {
+        return $"MR-{DateTime.Now:yyMMdd}-{Guid.NewGuid().ToString()[..6].ToUpper()}";
+    }
+
+    /// <summary>
+    /// Gets rental history for a tourist by email or phone
+    /// </summary>
+    public async Task<List<Rental>> GetRentalHistoryForTouristAsync(int shopId, string? email, string? phone)
+    {
+        if (string.IsNullOrWhiteSpace(email) && string.IsNullOrWhiteSpace(phone))
+            return [];
+
+        // First find the renter
+        var renter = await m_context.LoadOneAsync<Renter>(r =>
+            r.ShopId == shopId &&
+            ((email != null && r.Email == email) || (phone != null && r.Phone == phone)));
+
+        if (renter == null)
+            return [];
+
+        // Then get their rentals
+        var rentals = await m_context.LoadAsync(
+            m_context.Rentals
+                .Where(r => r.RenterId == renter.RenterId)
+                .OrderByDescending(r => r.RentalId),
+            page: 1, size: 100, includeTotalRows: false);
+
+        return rentals.ItemCollection.ToList();
+    }
+
     #endregion
 
     #region Helper Methods
@@ -573,6 +693,47 @@ public class CheckOutResult
     };
 
     public static CheckOutResult CreateFailure(string message) => new()
+    {
+        Success = false,
+        Message = message
+    };
+}
+
+public class ReservationRequest
+{
+    public int ShopId { get; set; }
+    public int MotorbikeId { get; set; }
+    public DateTimeOffset StartDate { get; set; }
+    public DateTimeOffset EndDate { get; set; }
+    public int? InsuranceId { get; set; }
+    public decimal DailyRate { get; set; }
+    public decimal TotalAmount { get; set; }
+
+    // Contact info
+    public string RenterName { get; set; } = string.Empty;
+    public string RenterPhone { get; set; } = string.Empty;
+    public string RenterEmail { get; set; } = string.Empty;
+    public string? RenterNationality { get; set; }
+    public string? RenterPassport { get; set; }
+    public string? HotelName { get; set; }
+    public string? Notes { get; set; }
+}
+
+public class ReservationResult
+{
+    public bool Success { get; set; }
+    public string? Message { get; set; }
+    public int RentalId { get; set; }
+    public string? ConfirmationCode { get; set; }
+
+    public static ReservationResult CreateSuccess(int rentalId, string confirmationCode) => new()
+    {
+        Success = true,
+        RentalId = rentalId,
+        ConfirmationCode = confirmationCode
+    };
+
+    public static ReservationResult CreateFailure(string message) => new()
     {
         Success = false,
         Message = message
