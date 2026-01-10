@@ -1,0 +1,146 @@
+@inherits LayoutComponentBase
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JS
+
+<MudThemeProvider Theme="MotoRent.Client.MotoRentTheme.Theme" @bind-IsDarkMode="@m_isDarkMode" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    @* Top App Bar *@
+    <MudAppBar Elevation="1" Dense="true">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start"
+                       OnClick="@(_ => m_drawerOpen = !m_drawerOpen)" />
+        <MudIcon Icon="@Icons.Material.Filled.TwoWheeler" Class="mr-2" />
+        <MudText Typo="Typo.h6">MotoRent</MudText>
+        <MudChip T="string" Color="Color.Primary" Size="Size.Small" Class="ml-2">Manager</MudChip>
+
+        <MudSpacer />
+
+        @* Date Range Quick Selector *@
+        <MudMenu Label="@m_selectedPeriod" EndIcon="@Icons.Material.Filled.KeyboardArrowDown"
+                 Color="Color.Inherit" Dense="true">
+            <MudMenuItem OnClick="@(() => SetPeriod("Today"))">Today</MudMenuItem>
+            <MudMenuItem OnClick="@(() => SetPeriod("This Week"))">This Week</MudMenuItem>
+            <MudMenuItem OnClick="@(() => SetPeriod("This Month"))">This Month</MudMenuItem>
+            <MudMenuItem OnClick="@(() => SetPeriod("Last 30 Days"))">Last 30 Days</MudMenuItem>
+            <MudMenuItem OnClick="@(() => SetPeriod("This Year"))">This Year</MudMenuItem>
+        </MudMenu>
+
+        <MudDivider Vertical="true" FlexItem="true" Class="mx-2" />
+
+        @* Notifications *@
+        <MudBadge Content="3" Color="Color.Error" Overlap="true" Visible="@(m_notificationCount > 0)">
+            <MudIconButton Icon="@Icons.Material.Filled.Notifications" Color="Color.Inherit" />
+        </MudBadge>
+
+        <MudIconButton Icon="@(m_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+                       Color="Color.Inherit" OnClick="@(_ => m_isDarkMode = !m_isDarkMode)" />
+
+        @* User Menu *@
+        <MudMenu AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+            <ActivatorContent>
+                <MudChip T="string" Color="Color.Default" Class="ml-2">
+                    <MudAvatar Size="Size.Small" Color="Color.Primary" Class="mr-2">M</MudAvatar>
+                    Manager
+                    <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" Size="Size.Small" Class="ml-1" />
+                </MudChip>
+            </ActivatorContent>
+            <ChildContent>
+                <MudMenuItem Icon="@Icons.Material.Filled.Person">Profile</MudMenuItem>
+                <MudMenuItem Icon="@Icons.Material.Filled.Settings">Settings</MudMenuItem>
+                <MudDivider />
+                <MudMenuItem Icon="@Icons.Material.Filled.Dashboard" Href="/staff">Staff View</MudMenuItem>
+                <MudMenuItem Icon="@Icons.Material.Filled.Home" Href="/">Classic View</MudMenuItem>
+                <MudDivider />
+                <MudMenuItem Icon="@Icons.Material.Filled.Logout">Logout</MudMenuItem>
+            </ChildContent>
+        </MudMenu>
+    </MudAppBar>
+
+    @* Sidebar Navigation *@
+    <MudDrawer @bind-Open="m_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2" Variant="DrawerVariant.Responsive">
+        <MudNavMenu Bordered="true" Class="pa-2">
+            @* Dashboard *@
+            <MudNavLink Href="/manager" Match="NavLinkMatch.All"
+                        Icon="@Icons.Material.Filled.Dashboard">
+                Dashboard
+            </MudNavLink>
+
+            <MudDivider Class="my-2" />
+
+            @* Analytics *@
+            <MudText Typo="Typo.overline" Class="px-4 mt-2" Color="Color.Secondary">Analytics</MudText>
+            <MudNavLink Href="/manager/revenue" Icon="@Icons.Material.Filled.TrendingUp">
+                Revenue
+            </MudNavLink>
+            <MudNavLink Href="/manager/fleet" Icon="@Icons.Material.Filled.DirectionsBike">
+                Fleet Utilization
+            </MudNavLink>
+            <MudNavLink Href="/manager/renters" Icon="@Icons.Material.Filled.People">
+                Customer Insights
+            </MudNavLink>
+
+            <MudDivider Class="my-2" />
+
+            @* Operations *@
+            <MudText Typo="Typo.overline" Class="px-4 mt-2" Color="Color.Secondary">Operations</MudText>
+            <MudNavLink Href="/rentals" Icon="@Icons.Material.Filled.Receipt">
+                Rentals
+            </MudNavLink>
+            <MudNavLink Href="/payments" Icon="@Icons.Material.Filled.Payment">
+                Payments
+            </MudNavLink>
+            <MudNavLink Href="/deposits" Icon="@Icons.Material.Filled.AccountBalanceWallet">
+                Deposits
+            </MudNavLink>
+
+            <MudDivider Class="my-2" />
+
+            @* Inventory *@
+            <MudText Typo="Typo.overline" Class="px-4 mt-2" Color="Color.Secondary">Inventory</MudText>
+            <MudNavLink Href="/motorbikes" Icon="@Icons.Material.Filled.TwoWheeler">
+                Motorbikes
+            </MudNavLink>
+            <MudNavLink Href="/accessories" Icon="@Icons.Material.Filled.Headset">
+                Accessories
+            </MudNavLink>
+
+            <MudDivider Class="my-2" />
+
+            @* Settings *@
+            <MudText Typo="Typo.overline" Class="px-4 mt-2" Color="Color.Secondary">Settings</MudText>
+            <MudNavLink Href="/insurance" Icon="@Icons.Material.Filled.Security">
+                Insurance Packages
+            </MudNavLink>
+            <MudNavLink Href="/shop" Icon="@Icons.Material.Filled.Store">
+                Shop Settings
+            </MudNavLink>
+            <MudNavLink Href="/renters" Icon="@Icons.Material.Filled.PersonAdd">
+                Renters
+            </MudNavLink>
+        </MudNavMenu>
+    </MudDrawer>
+
+    @* Main Content *@
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-4">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private bool m_drawerOpen = true;
+    private bool m_isDarkMode;
+    private string m_selectedPeriod = "This Week";
+    private int m_notificationCount = 3;
+
+    private void SetPeriod(string period)
+    {
+        m_selectedPeriod = period;
+        // TODO: Trigger data refresh based on period
+        StateHasChanged();
+    }
+}

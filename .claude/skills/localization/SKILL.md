@@ -1,3 +1,7 @@
+--- 
+name: localization
+description: Multi-language support (English/Thai) implementation using localized base classes and resource files.
+---
 # Localization (Multi-Language Support)
 
 Multi-language support patterns for MotoRent (English/Thai) using localized base classes.
@@ -7,12 +11,9 @@ Multi-language support patterns for MotoRent (English/Thai) using localized base
 ### Inherit from Localized Base Classes
 
 ```razor
-@* Page with localization *@
-@page "/motorbikes"
-@inherits LocalizedComponentBase<Motorbikes>
+@* Page with localization *@@page "/motorbikes"@inherits LocalizedComponentBase<Motorbikes>
 
-@* Dialog with localization *@
-@inherits LocalizedDialogBase<Motorbike, MotorbikeDialog>
+@* Dialog with localization *@@inherits LocalizedDialogBase<Motorbike, MotorbikeDialog>
 ```
 
 ### Available Localizers
@@ -25,17 +26,14 @@ Multi-language support patterns for MotoRent (English/Thai) using localized base
 ### Usage in Components
 
 ```razor
-@* Component-specific strings *@
-<MudText>@Localizer["PageTitle"]</MudText>
+@* Component-specific strings *@<MudText>@Localizer["PageTitle"]</MudText>
 <MudTextField Label="@Localizer["LicensePlate"]" />
 
-@* Shared strings (buttons, common labels) *@
-<MudButton>@CommonLocalizer["Save"]</MudButton>
+@* Shared strings (buttons, common labels) *@<MudButton>@CommonLocalizer["Save"]</MudButton>
 <MudButton>@CommonLocalizer["Cancel"]</MudButton>
 <MudButton>@CommonLocalizer["Delete"]</MudButton>
 
-@* With parameters *@
-<MudText>@Localizer["WelcomeMessage", userName, shopName]</MudText>
+@* With parameters *@<MudText>@Localizer["WelcomeMessage", userName, shopName]</MudText>
 ```
 
 ## Naming Conventions for Keys

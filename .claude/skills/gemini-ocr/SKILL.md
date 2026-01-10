@@ -1,3 +1,7 @@
+---
+name: gemini-ocr
+description: Document OCR integration using Google Gemini Flash API for extracting data from passports and licenses.
+---
 # Gemini OCR Integration
 
 Document OCR using Google Gemini Flash API.

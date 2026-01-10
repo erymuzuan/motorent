@@ -1,16 +1,13 @@
--- MotoRent Database Schema
+-- MotoRent Tenant Database Schema Template
 -- SQL Server with JSON columns and computed columns for indexing
+-- NOTE: This is a template file. Replace <schema> with tenant AccountNo
+-- The schema is created separately by SqlSubscriptionService.CreateSchemaAsync()
 
 SET QUOTED_IDENTIFIER ON
 GO
 
--- Create schema
-IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'MotoRent')
-    EXEC('CREATE SCHEMA [MotoRent]')
-GO
-
 -- Shop table
-CREATE TABLE [MotoRent].[Shop]
+CREATE TABLE [<schema>].[Shop]
 (
     [ShopId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
     -- Computed columns for querying
@@ -28,7 +25,7 @@ CREATE TABLE [MotoRent].[Shop]
 GO
 
 -- Renter table
-CREATE TABLE [MotoRent].[Renter]
+CREATE TABLE [<schema>].[Renter]
 (
     [RenterId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
     -- Computed columns for querying
@@ -46,11 +43,11 @@ CREATE TABLE [MotoRent].[Renter]
 )
 GO
 
-CREATE INDEX IX_Renter_ShopId ON [MotoRent].[Renter]([ShopId])
+CREATE INDEX IX_Renter_ShopId ON [<schema>].[Renter]([ShopId])
 GO
 
 -- Document table
-CREATE TABLE [MotoRent].[Document]
+CREATE TABLE [<schema>].[Document]
 (
     [DocumentId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
     -- Computed columns
@@ -66,11 +63,11 @@ CREATE TABLE [MotoRent].[Document]
 )
 GO
 
-CREATE INDEX IX_Document_RenterId ON [MotoRent].[Document]([RenterId])
+CREATE INDEX IX_Document_RenterId ON [<schema>].[Document]([RenterId])
 GO
 
 -- Motorbike table
-CREATE TABLE [MotoRent].[Motorbike]
+CREATE TABLE [<schema>].[Motorbike]
 (
     [MotorbikeId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
     -- Computed columns for querying
@@ -90,11 +87,11 @@ CREATE TABLE [MotoRent].[Motorbike]
 )
 GO
 
-CREATE INDEX IX_Motorbike_ShopId_Status ON [MotoRent].[Motorbike]([ShopId], [Status])
+CREATE INDEX IX_Motorbike_ShopId_Status ON [<schema>].[Motorbike]([ShopId], [Status])
 GO
 
 -- Insurance table
-CREATE TABLE [MotoRent].[Insurance]
+CREATE TABLE [<schema>].[Insurance]
 (
     [InsuranceId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
     -- Computed columns
@@ -111,11 +108,11 @@ CREATE TABLE [MotoRent].[Insurance]
 )
 GO
 
-CREATE INDEX IX_Insurance_ShopId ON [MotoRent].[Insurance]([ShopId])
+CREATE INDEX IX_Insurance_ShopId ON [<schema>].[Insurance]([ShopId])
 GO
 
 -- Accessory table
-CREATE TABLE [MotoRent].[Accessory]
+CREATE TABLE [<schema>].[Accessory]
 (
     [AccessoryId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
     -- Computed columns
@@ -131,11 +128,11 @@ CREATE TABLE [MotoRent].[Accessory]
 )
 GO
 
-CREATE INDEX IX_Accessory_ShopId ON [MotoRent].[Accessory]([ShopId])
+CREATE INDEX IX_Accessory_ShopId ON [<schema>].[Accessory]([ShopId])
 GO
 
 -- Rental table
-CREATE TABLE [MotoRent].[Rental]
+CREATE TABLE [<schema>].[Rental]
 (
     [RentalId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
     -- Computed columns for querying
@@ -155,13 +152,13 @@ CREATE TABLE [MotoRent].[Rental]
 )
 GO
 
-CREATE INDEX IX_Rental_ShopId_Status ON [MotoRent].[Rental]([ShopId], [Status])
-CREATE INDEX IX_Rental_RenterId ON [MotoRent].[Rental]([RenterId])
-CREATE INDEX IX_Rental_MotorbikeId ON [MotoRent].[Rental]([MotorbikeId])
+CREATE INDEX IX_Rental_ShopId_Status ON [<schema>].[Rental]([ShopId], [Status])
+CREATE INDEX IX_Rental_RenterId ON [<schema>].[Rental]([RenterId])
+CREATE INDEX IX_Rental_MotorbikeId ON [<schema>].[Rental]([MotorbikeId])
 GO
 
 -- RentalAccessory table
-CREATE TABLE [MotoRent].[RentalAccessory]
+CREATE TABLE [<schema>].[RentalAccessory]
 (
     [RentalAccessoryId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
     -- Computed columns
@@ -177,11 +174,11 @@ CREATE TABLE [MotoRent].[RentalAccessory]
 )
 GO
 
-CREATE INDEX IX_RentalAccessory_RentalId ON [MotoRent].[RentalAccessory]([RentalId])
+CREATE INDEX IX_RentalAccessory_RentalId ON [<schema>].[RentalAccessory]([RentalId])
 GO
 
 -- Deposit table
-CREATE TABLE [MotoRent].[Deposit]
+CREATE TABLE [<schema>].[Deposit]
 (
     [DepositId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
     -- Computed columns
@@ -198,11 +195,11 @@ CREATE TABLE [MotoRent].[Deposit]
 )
 GO
 
-CREATE INDEX IX_Deposit_RentalId ON [MotoRent].[Deposit]([RentalId])
+CREATE INDEX IX_Deposit_RentalId ON [<schema>].[Deposit]([RentalId])
 GO
 
 -- Payment table
-CREATE TABLE [MotoRent].[Payment]
+CREATE TABLE [<schema>].[Payment]
 (
     [PaymentId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
     -- Computed columns
@@ -220,11 +217,11 @@ CREATE TABLE [MotoRent].[Payment]
 )
 GO
 
-CREATE INDEX IX_Payment_RentalId ON [MotoRent].[Payment]([RentalId])
+CREATE INDEX IX_Payment_RentalId ON [<schema>].[Payment]([RentalId])
 GO
 
 -- DamageReport table
-CREATE TABLE [MotoRent].[DamageReport]
+CREATE TABLE [<schema>].[DamageReport]
 (
     [DamageReportId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
     -- Computed columns
@@ -242,12 +239,12 @@ CREATE TABLE [MotoRent].[DamageReport]
 )
 GO
 
-CREATE INDEX IX_DamageReport_RentalId ON [MotoRent].[DamageReport]([RentalId])
-CREATE INDEX IX_DamageReport_MotorbikeId ON [MotoRent].[DamageReport]([MotorbikeId])
+CREATE INDEX IX_DamageReport_RentalId ON [<schema>].[DamageReport]([RentalId])
+CREATE INDEX IX_DamageReport_MotorbikeId ON [<schema>].[DamageReport]([MotorbikeId])
 GO
 
 -- DamagePhoto table
-CREATE TABLE [MotoRent].[DamagePhoto]
+CREATE TABLE [<schema>].[DamagePhoto]
 (
     [DamagePhotoId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
     -- Computed columns
@@ -263,11 +260,11 @@ CREATE TABLE [MotoRent].[DamagePhoto]
 )
 GO
 
-CREATE INDEX IX_DamagePhoto_DamageReportId ON [MotoRent].[DamagePhoto]([DamageReportId])
+CREATE INDEX IX_DamagePhoto_DamageReportId ON [<schema>].[DamagePhoto]([DamageReportId])
 GO
 
 -- RentalAgreement table
-CREATE TABLE [MotoRent].[RentalAgreement]
+CREATE TABLE [<schema>].[RentalAgreement]
 (
     [RentalAgreementId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
     -- Computed columns
@@ -282,7 +279,7 @@ CREATE TABLE [MotoRent].[RentalAgreement]
 )
 GO
 
-CREATE INDEX IX_RentalAgreement_RentalId ON [MotoRent].[RentalAgreement]([RentalId])
+CREATE INDEX IX_RentalAgreement_RentalId ON [<schema>].[RentalAgreement]([RentalId])
 GO
 
 PRINT 'MotoRent schema created successfully'

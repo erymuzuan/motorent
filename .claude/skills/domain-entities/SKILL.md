@@ -1,3 +1,7 @@
+---
+name: domain-entities
+description: Entity definitions and multi-tenant architecture schema for the MotoRent rental system.
+---
 # Domain Entities
 
 Entity definitions for MotoRent rental system.

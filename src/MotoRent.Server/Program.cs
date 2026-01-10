@@ -45,6 +45,7 @@ builder.Services.AddHttpClient("Gemini", client =>
 
 // Add Core services
 builder.Services.AddScoped<IDirectoryService, SqlDirectoryService>();
+builder.Services.AddScoped<ISubscriptionService, SqlSubscriptionService>();
 
 // Configure Authentication
 var authBuilder = builder.Services.AddAuthentication(options =>
@@ -106,10 +107,30 @@ builder.Services.AddAuthorization(options =>
 
     options.AddPolicy("RequireShopManager", policy =>
         policy.RequireRole(UserAccount.SHOP_MANAGER, UserAccount.ORG_ADMIN, UserAccount.SUPER_ADMIN));
+
+    // Tenant-specific policies (require AccountNo claim = tenant context)
+    // SuperAdmin must impersonate a tenant user to access these pages
+    options.AddPolicy("RequireTenantStaff", policy =>
+        policy.RequireRole(UserAccount.STAFF, UserAccount.SHOP_MANAGER, UserAccount.ORG_ADMIN)
+              .RequireClaim("AccountNo"));
+
+    options.AddPolicy("RequireTenantManager", policy =>
+        policy.RequireRole(UserAccount.SHOP_MANAGER, UserAccount.ORG_ADMIN)
+              .RequireClaim("AccountNo"));
+
+    options.AddPolicy("RequireTenantOrgAdmin", policy =>
+        policy.RequireRole(UserAccount.ORG_ADMIN)
+              .RequireClaim("AccountNo"));
+
+    // Require authentication by default for all pages/endpoints
+    // Use [AllowAnonymous] attribute to allow anonymous access to specific endpoints
+    options.FallbackPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
 });
 
 // Add controllers for authentication endpoints
-builder.Services.AddControllers();
+builder.Services.AddControllersWithViews();
 
 // Add localization services
 builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");

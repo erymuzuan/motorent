@@ -1,0 +1,170 @@
+@using MotoRent.Domain.Core
+@inject ISubscriptionService SubscriptionService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="m_form" @bind-IsValid="@m_isValid">
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="m_organization.Name" Label="Organization Name" Required="true"
+                                  RequiredError="Name is required" Immediate="true" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="m_accountNo" Label="Account No (Schema)"
+                                  HelperText="Unique identifier for database schema. Auto-generated if empty."
+                                  Immediate="true" />
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudText Typo="Typo.subtitle2" Class="mt-2 mb-2">Contact Information</MudText>
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="m_organization.Email" Label="Email"
+                                  InputType="InputType.Email" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="m_organization.Phone" Label="Phone" />
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudText Typo="Typo.subtitle2" Class="mt-2 mb-2">Address</MudText>
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="m_organization.Address.Street" Label="Street" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="m_organization.Address.City" Label="City" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="m_organization.Address.Province" Label="Province/State" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="m_organization.Address.PostalCode" Label="Postal Code" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="m_organization.Address.Country" Label="Country" />
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudText Typo="Typo.subtitle2" Class="mt-2 mb-2">Regional Settings</MudText>
+                </MudItem>
+
+                <MudItem xs="12" md="4">
+                    <MudSelect T="string" @bind-Value="m_organization.Currency" Label="Currency">
+                        <MudSelectItem Value="@("THB")">THB - Thai Baht</MudSelectItem>
+                        <MudSelectItem Value="@("USD")">USD - US Dollar</MudSelectItem>
+                        <MudSelectItem Value="@("EUR")">EUR - Euro</MudSelectItem>
+                        <MudSelectItem Value="@("MYR")">MYR - Malaysian Ringgit</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudSelect T="string" @bind-Value="m_organization.Language" Label="Language">
+                        <MudSelectItem Value="@("th-TH")">Thai</MudSelectItem>
+                        <MudSelectItem Value="@("en")">English</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudNumericField @bind-Value="m_timezone" Label="Timezone (UTC offset)" Min="-12" Max="14" />
+                </MudItem>
+            </MudGrid>
+
+            @if (m_isCreating)
+            {
+                <MudPaper Class="mt-4 pa-3" Elevation="0" Style="background-color: var(--mud-palette-background-grey);">
+                    <MudText Typo="Typo.subtitle2">Provisioning Progress</MudText>
+                    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="my-2" />
+                    <MudText Typo="Typo.body2">@m_progressMessage</MudText>
+                </MudPaper>
+            }
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Disabled="@m_isCreating">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="CreateOrganization"
+                   Disabled="@(!m_isValid || m_isCreating)">
+            @if (m_isCreating)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                <span>Creating...</span>
+            }
+            else
+            {
+                <span>Create Organization</span>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = default!;
+
+    private MudForm? m_form;
+    private Organization m_organization = new()
+    {
+        Currency = "THB",
+        Language = "th-TH",
+        IsActive = true,
+        Address = new Address { Country = "Thailand" }
+    };
+    private string m_accountNo = "";
+    private double m_timezone = 7;
+    private bool m_isValid;
+    private bool m_isCreating;
+    private string m_progressMessage = "";
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task CreateOrganization()
+    {
+        if (m_form != null)
+        {
+            await m_form.Validate();
+            if (!m_isValid) return;
+        }
+
+        m_isCreating = true;
+        m_progressMessage = "Initializing...";
+
+        try
+        {
+            // Generate or validate AccountNo
+            if (string.IsNullOrWhiteSpace(m_accountNo))
+            {
+                m_accountNo = await SubscriptionService.CreateAccountNoAsync(
+                    m_organization.Name.Replace(" ", ""));
+            }
+            else
+            {
+                m_accountNo = await SubscriptionService.CreateAccountNoAsync(m_accountNo);
+            }
+
+            // Check if AccountNo is available
+            if (!await SubscriptionService.IsAccountNoAvailableAsync(m_accountNo))
+            {
+                Snackbar.Add($"Account No '{m_accountNo}' is already in use.", Severity.Error);
+                m_isCreating = false;
+                return;
+            }
+
+            m_organization.AccountNo = m_accountNo;
+            m_organization.Timezone = m_timezone;
+
+            // Create the organization with schema
+            await SubscriptionService.CreateOrganizationAsync(m_organization, progress =>
+            {
+                m_progressMessage = progress.Message;
+                InvokeAsync(StateHasChanged);
+            });
+
+            MudDialog.Close(DialogResult.Ok(m_organization));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error creating organization: {ex.Message}", Severity.Error);
+            m_isCreating = false;
+        }
+    }
+}

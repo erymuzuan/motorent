@@ -1,3 +1,7 @@
+---
+name: json-serialization
+description: High-performance JSON serialization patterns using System.Text.Json with custom converters and polymorphism.
+---
 # JSON Serialization (System.Text.Json)
 
 High-performance JSON serialization patterns from forex project.

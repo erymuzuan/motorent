@@ -1,3 +1,7 @@
+---
+name: blazor-mudblazor
+description: MudBlazor component patterns, theming, and base classes for MotoRent UI development.
+---
 # Blazor MudBlazor UI
 
 MudBlazor component patterns and theming for MotoRent.

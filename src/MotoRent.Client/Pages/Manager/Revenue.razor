@@ -1,0 +1,337 @@
+@page "/manager/revenue"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Policy = "RequireTenantManager")]
+@inherits MotoRentComponentBase
+
+<PageTitle>Revenue Analytics - MotoRent Manager</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-4">
+    <MudStack Spacing="4">
+        @* Page Header *@
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+            <MudStack Spacing="0">
+                <MudText Typo="Typo.h4">Revenue Analytics</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    Detailed breakdown of rental income and financial metrics
+                </MudText>
+            </MudStack>
+            <MudStack Row="true" Spacing="2">
+                <MudDateRangePicker @bind-DateRange="m_dateRange" Label="Date Range"
+                                    Variant="Variant.Outlined" />
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Download">
+                    Export
+                </MudButton>
+            </MudStack>
+        </MudStack>
+
+        @* Summary Cards *@
+        <MudGrid Spacing="3">
+            <MudItem xs="12" sm="6" md="3">
+                <MotoRent.Client.Components.Manager.MetricCard
+                    Title="Total Revenue"
+                    Value="@m_totalRevenue.ToString("N0")"
+                    Prefix="฿"
+                    Icon="@Icons.Material.Filled.AccountBalance"
+                    IconColor="Color.Success"
+                    ShowTrend="true"
+                    TrendPercent="15.2"
+                    TrendPeriod="last period" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MotoRent.Client.Components.Manager.MetricCard
+                    Title="Total Rentals"
+                    Value="@m_totalRentals.ToString()"
+                    Icon="@Icons.Material.Filled.Receipt"
+                    IconColor="Color.Primary"
+                    ShowTrend="true"
+                    TrendPercent="8.7"
+                    TrendPeriod="last period" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MotoRent.Client.Components.Manager.MetricCard
+                    Title="Avg. Daily Rate"
+                    Value="@m_avgDailyRate.ToString("N0")"
+                    Prefix="฿"
+                    Icon="@Icons.Material.Filled.TrendingUp"
+                    IconColor="Color.Info"
+                    ShowTrend="true"
+                    TrendPercent="3.2"
+                    TrendPeriod="last period" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MotoRent.Client.Components.Manager.MetricCard
+                    Title="Avg. Rental Duration"
+                    Value="@m_avgDuration.ToString("N1")"
+                    Suffix="days"
+                    Icon="@Icons.Material.Filled.Schedule"
+                    IconColor="Color.Warning" />
+            </MudItem>
+        </MudGrid>
+
+        @* Revenue Chart *@
+        <MudPaper Elevation="2" Class="pa-4">
+            <MudStack Spacing="3">
+                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                    <MudText Typo="Typo.h6">Revenue Over Time</MudText>
+                    <MudStack Row="true" Spacing="2">
+                        <MudSelect T="string" @bind-Value="m_chartGrouping" Label="Group By"
+                                   Variant="Variant.Outlined" Dense="true" Style="width: 120px;">
+                            <MudSelectItem Value="@("daily")">Daily</MudSelectItem>
+                            <MudSelectItem Value="@("weekly")">Weekly</MudSelectItem>
+                            <MudSelectItem Value="@("monthly")">Monthly</MudSelectItem>
+                        </MudSelect>
+                        <MudToggleGroup T="string" @bind-Value="m_chartType" Color="Color.Primary"
+                                       Size="Size.Small" Outline="true">
+                            <MudToggleItem Value="@("bar")" Icon="@Icons.Material.Filled.BarChart" />
+                            <MudToggleItem Value="@("line")" Icon="@Icons.Material.Filled.ShowChart" />
+                        </MudToggleGroup>
+                    </MudStack>
+                </MudStack>
+
+                @if (m_chartType == "bar")
+                {
+                    <MudChart ChartType="ChartType.Bar"
+                              ChartSeries="@m_revenueChartSeries"
+                              XAxisLabels="@m_revenueLabels"
+                              Width="100%"
+                              Height="350px"
+                              ChartOptions="@m_barChartOptions" />
+                }
+                else
+                {
+                    <MudChart ChartType="ChartType.Line"
+                              ChartSeries="@m_revenueChartSeries"
+                              XAxisLabels="@m_revenueLabels"
+                              Width="100%"
+                              Height="350px"
+                              ChartOptions="@m_lineChartOptions" />
+                }
+            </MudStack>
+        </MudPaper>
+
+        <MudGrid Spacing="3">
+            @* Revenue by Bike Type *@
+            <MudItem xs="12" md="6">
+                <MudPaper Elevation="2" Class="pa-4" Style="height: 100%;">
+                    <MudStack Spacing="3">
+                        <MudText Typo="Typo.h6">Revenue by Bike Type</MudText>
+                        <MudChart ChartType="ChartType.Donut"
+                                  InputData="@m_bikeTypeData"
+                                  InputLabels="@m_bikeTypeLabels"
+                                  Width="100%"
+                                  Height="220px"
+                                  ChartOptions="@m_donutChartOptions" />
+                        <MudSimpleTable Dense="true">
+                            <tbody>
+                                @for (int i = 0; i < m_bikeTypeLabels.Length; i++)
+                                {
+                                    var index = i;
+                                    <tr>
+                                        <td>
+                                            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                                <div style="width: 12px; height: 12px; border-radius: 2px; background: @m_donutChartOptions.ChartPalette[index];"></div>
+                                                <span>@m_bikeTypeLabels[index]</span>
+                                            </MudStack>
+                                        </td>
+                                        <td style="text-align: right; font-weight: 600;">@FormatCurrency((decimal)m_bikeTypeRevenue[index])</td>
+                                        <td style="text-align: right; color: var(--mud-palette-text-secondary);">@((m_bikeTypeData[index]).ToString("N1"))%</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </MudSimpleTable>
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+
+            @* Revenue by Payment Method *@
+            <MudItem xs="12" md="6">
+                <MudPaper Elevation="2" Class="pa-4" Style="height: 100%;">
+                    <MudStack Spacing="3">
+                        <MudText Typo="Typo.h6">Revenue by Payment Method</MudText>
+                        <MudChart ChartType="ChartType.Pie"
+                                  InputData="@m_paymentMethodData"
+                                  InputLabels="@m_paymentMethodLabels"
+                                  Width="100%"
+                                  Height="220px"
+                                  ChartOptions="@m_pieChartOptions" />
+                        <MudSimpleTable Dense="true">
+                            <tbody>
+                                @for (int i = 0; i < m_paymentMethodLabels.Length; i++)
+                                {
+                                    var index = i;
+                                    <tr>
+                                        <td>
+                                            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                                <MudIcon Icon="@GetPaymentIcon(m_paymentMethodLabels[index])" Size="Size.Small" />
+                                                <span>@m_paymentMethodLabels[index]</span>
+                                            </MudStack>
+                                        </td>
+                                        <td style="text-align: right; font-weight: 600;">@FormatCurrency((decimal)m_paymentMethodRevenue[index])</td>
+                                        <td style="text-align: right; color: var(--mud-palette-text-secondary);">@((m_paymentMethodData[index]).ToString("N1"))%</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </MudSimpleTable>
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        @* Detailed Transactions Table *@
+        <MudPaper Elevation="2" Class="pa-4">
+            <MudStack Spacing="3">
+                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                    <MudText Typo="Typo.h6">Recent Transactions</MudText>
+                    <MudTextField @bind-Value="m_searchText" Placeholder="Search..."
+                                  Variant="Variant.Outlined" Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                  Immediate="true" Style="max-width: 300px;" />
+                </MudStack>
+
+                <MudSimpleTable Dense="true" Hover="true" Striped="true">
+                    <thead>
+                        <tr>
+                            <th>Rental #</th>
+                            <th>Date</th>
+                            <th>Customer</th>
+                            <th>Motorbike</th>
+                            <th>Duration</th>
+                            <th style="text-align: right;">Amount</th>
+                            <th>Payment</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var tx in m_transactions.Where(t => FilterTransaction(t)))
+                        {
+                            <tr>
+                                <td><MudLink Href="@($"/manager/rentals/{tx.RentalId}")">@tx.RentalId</MudLink></td>
+                                <td>@tx.Date.ToString("dd MMM")</td>
+                                <td>@tx.CustomerName</td>
+                                <td>@tx.MotorbikeName</td>
+                                <td>@tx.Duration days</td>
+                                <td style="text-align: right; font-weight: 600;">@FormatCurrency(tx.Amount)</td>
+                                <td>
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text">
+                                        @tx.PaymentMethod
+                                    </MudChip>
+                                </td>
+                                <td>
+                                    <MudChip T="string" Size="Size.Small"
+                                             Color="@GetStatusColor(tx.Status)"
+                                             Variant="Variant.Filled">
+                                        @tx.Status
+                                    </MudChip>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+
+                <MudStack Row="true" Justify="Justify.Center">
+                    <MudPagination Count="5" Selected="1" Color="Color.Primary" />
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+    </MudStack>
+</MudContainer>
+
+@code {
+    // Filters
+    private DateRange m_dateRange = new(DateTime.Now.AddDays(-30), DateTime.Now);
+    private string m_chartGrouping = "daily";
+    private string m_chartType = "bar";
+    private string m_searchText = "";
+
+    // Summary Metrics
+    private decimal m_totalRevenue = 1250000;
+    private int m_totalRentals = 342;
+    private decimal m_avgDailyRate = 485;
+    private decimal m_avgDuration = 4.2m;
+
+    // Revenue Chart Data
+    private List<ChartSeries> m_revenueChartSeries = [];
+    private string[] m_revenueLabels = [];
+    private ChartOptions m_barChartOptions = new() { YAxisTicks = 10000 };
+    private ChartOptions m_lineChartOptions = new() { YAxisTicks = 10000, LineStrokeWidth = 2 };
+
+    // Bike Type Breakdown
+    private double[] m_bikeTypeData = [42.5, 31.2, 18.8, 7.5];
+    private double[] m_bikeTypeRevenue = [531250, 390000, 235000, 93750];
+    private string[] m_bikeTypeLabels = ["Scooter (110-125cc)", "Sport Scooter (150cc+)", "Manual (125cc)", "Big Bike (300cc+)"];
+    private ChartOptions m_donutChartOptions = new()
+    {
+        ChartPalette = ["#00897B", "#26A69A", "#4DB6AC", "#80CBC4"]
+    };
+
+    // Payment Method Breakdown
+    private double[] m_paymentMethodData = [55.3, 28.7, 12.5, 3.5];
+    private double[] m_paymentMethodRevenue = [691250, 358750, 156250, 43750];
+    private string[] m_paymentMethodLabels = ["Cash", "Credit Card", "Bank Transfer", "PromptPay"];
+    private ChartOptions m_pieChartOptions = new()
+    {
+        ChartPalette = ["#4CAF50", "#2196F3", "#FF9800", "#9C27B0"]
+    };
+
+    // Transactions
+    private List<TransactionData> m_transactions = [];
+
+    protected override void OnInitialized()
+    {
+        LoadRevenueData();
+    }
+
+    private void LoadRevenueData()
+    {
+        // Revenue chart data (placeholder - 7 days)
+        m_revenueLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+        m_revenueChartSeries =
+        [
+            new ChartSeries { Name = "Revenue", Data = [32000, 28500, 41200, 38900, 45600, 52300, 48200] }
+        ];
+
+        // Transaction data (placeholder)
+        m_transactions =
+        [
+            new TransactionData(1047, DateTime.Now.AddHours(-2), "John Smith", "Honda PCX 160", 5, 3500, "Credit Card", "Active"),
+            new TransactionData(1046, DateTime.Now.AddHours(-5), "Maria Garcia", "Yamaha NMAX", 3, 2400, "Cash", "Active"),
+            new TransactionData(1045, DateTime.Now.AddDays(-1), "Kim Soo", "Honda Click 125", 7, 3150, "Cash", "Completed"),
+            new TransactionData(1044, DateTime.Now.AddDays(-1), "Alex Brown", "Yamaha Aerox", 4, 2800, "PromptPay", "Completed"),
+            new TransactionData(1043, DateTime.Now.AddDays(-2), "Lisa Wong", "Honda Wave 110", 10, 4000, "Bank Transfer", "Completed"),
+            new TransactionData(1042, DateTime.Now.AddDays(-2), "Tom Wilson", "Honda PCX 160", 3, 2100, "Credit Card", "Completed"),
+            new TransactionData(1041, DateTime.Now.AddDays(-3), "Emma Davis", "Yamaha NMAX", 5, 4000, "Cash", "Completed"),
+            new TransactionData(1040, DateTime.Now.AddDays(-3), "Chen Wei", "Honda Click 125", 2, 900, "Cash", "Completed")
+        ];
+    }
+
+    private bool FilterTransaction(TransactionData tx)
+    {
+        if (string.IsNullOrWhiteSpace(m_searchText))
+            return true;
+
+        var search = m_searchText.ToLower();
+        return tx.RentalId.ToString().Contains(search) ||
+               tx.CustomerName.ToLower().Contains(search) ||
+               tx.MotorbikeName.ToLower().Contains(search);
+    }
+
+    private string GetPaymentIcon(string method) => method switch
+    {
+        "Cash" => Icons.Material.Filled.Payments,
+        "Credit Card" => Icons.Material.Filled.CreditCard,
+        "Bank Transfer" => Icons.Material.Filled.AccountBalance,
+        "PromptPay" => Icons.Material.Filled.QrCode,
+        _ => Icons.Material.Filled.Payment
+    };
+
+    private Color GetStatusColor(string status) => status switch
+    {
+        "Active" => Color.Success,
+        "Completed" => Color.Default,
+        "Cancelled" => Color.Error,
+        _ => Color.Default
+    };
+
+    private record TransactionData(int RentalId, DateTime Date, string CustomerName, string MotorbikeName, int Duration, decimal Amount, string PaymentMethod, string Status);
+}

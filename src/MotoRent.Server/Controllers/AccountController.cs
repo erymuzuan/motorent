@@ -15,6 +15,7 @@ namespace MotoRent.Server.Controllers;
 /// Controller for authentication, authorization, and user account management.
 /// </summary>
 [Route("account")]
+[Authorize]
 public class AccountController : Controller
 {
     private readonly IDirectoryService m_directoryService;
@@ -36,16 +37,25 @@ public class AccountController : Controller
     /// <summary>
     /// Login page.
     /// </summary>
+    [AllowAnonymous]
     [HttpGet("login")]
     public IActionResult Login([FromQuery] string? returnUrl = null)
     {
         ViewData["ReturnUrl"] = returnUrl;
+
+        // Pass OAuth configuration status to the view
+        var authSchemes = HttpContext.RequestServices.GetRequiredService<IAuthenticationSchemeProvider>();
+        var schemes = authSchemes.GetAllSchemesAsync().Result;
+        ViewData["GoogleEnabled"] = schemes.Any(s => s.Name == "Google");
+        ViewData["MicrosoftEnabled"] = schemes.Any(s => s.Name == "Microsoft");
+
         return View();
     }
 
     /// <summary>
     /// Access denied page.
     /// </summary>
+    [AllowAnonymous]
     [HttpGet("access-denied")]
     public IActionResult AccessDenied()
     {
@@ -59,6 +69,7 @@ public class AccountController : Controller
     /// <summary>
     /// Initiates Google OAuth login.
     /// </summary>
+    [AllowAnonymous]
     [HttpGet("google")]
     public IActionResult LoginWithGoogle([FromQuery] string? returnUrl = null)
     {
@@ -73,6 +84,7 @@ public class AccountController : Controller
     /// <summary>
     /// Initiates Microsoft OAuth login.
     /// </summary>
+    [AllowAnonymous]
     [HttpGet("microsoft")]
     public IActionResult LoginWithMicrosoft([FromQuery] string? returnUrl = null)
     {
@@ -87,6 +99,7 @@ public class AccountController : Controller
     /// <summary>
     /// OAuth callback handler - processes the response from OAuth providers.
     /// </summary>
+    [AllowAnonymous]
     [HttpGet("oauth-callback")]
     public async Task<IActionResult> OAuthCallback([FromQuery] string? returnUrl = null)
     {
@@ -225,6 +238,7 @@ public class AccountController : Controller
     /// <summary>
     /// Logs out the current user.
     /// </summary>
+    [AllowAnonymous]
     [HttpGet("logoff")]
     public async Task<IActionResult> Logoff()
     {

@@ -1,3 +1,7 @@
+---
+name: code-standards
+description: C# coding conventions, naming patterns, and file organization standards for the MotoRent project.
+---
 # Code Standards
 
 C# coding conventions and patterns for MotoRent.
@@ -272,3 +276,5 @@ public async Task<Rental?> GetRentalAsync(int rentalId)
 ## Source
 - Based on: `D:\project\work\rx-erp` patterns
 - Microsoft C# Coding Conventions
+
+```

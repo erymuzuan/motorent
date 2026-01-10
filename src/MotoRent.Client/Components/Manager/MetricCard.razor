@@ -1,0 +1,103 @@
+@* Dashboard KPI metric card *@
+
+<MudPaper Elevation="@Elevation" Class="@($"metric-card pa-4 {Class}")" Style="@GetStyle()">
+    <MudStack Spacing="1">
+        @* Header with icon *@
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start">
+            <MudText Typo="Typo.body2" Color="Color.Secondary">@Title</MudText>
+            @if (!string.IsNullOrEmpty(Icon))
+            {
+                <MudIcon Icon="@Icon" Color="@IconColor" Size="Size.Medium" />
+            }
+        </MudStack>
+
+        @* Main Value *@
+        <MudText Typo="Typo.h4" Style="font-weight: 600;">
+            @if (!string.IsNullOrEmpty(Prefix))
+            {
+                <span style="font-size: 0.7em;">@Prefix</span>
+            }
+            @Value
+            @if (!string.IsNullOrEmpty(Suffix))
+            {
+                <span style="font-size: 0.6em; color: var(--mud-palette-text-secondary);">@Suffix</span>
+            }
+        </MudText>
+
+        @* Trend Indicator *@
+        @if (ShowTrend && TrendPercent != 0)
+        {
+            <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                <MudIcon Icon="@GetTrendIcon()" Color="@GetTrendColor()" Size="Size.Small" />
+                <MudText Typo="Typo.caption" Color="@GetTrendColor()">
+                    @Math.Abs(TrendPercent).ToString("N1")%
+                </MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    vs @TrendPeriod
+                </MudText>
+            </MudStack>
+        }
+
+        @* Optional subtitle *@
+        @if (!string.IsNullOrEmpty(Subtitle))
+        {
+            <MudText Typo="Typo.caption" Color="Color.Secondary">@Subtitle</MudText>
+        }
+    </MudStack>
+</MudPaper>
+
+<style>
+    .metric-card {
+        border-radius: 12px;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .metric-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .metric-card.clickable {
+        cursor: pointer;
+    }
+</style>
+
+@code {
+    [Parameter] public string Title { get; set; } = "Metric";
+    [Parameter] public string Value { get; set; } = "0";
+    [Parameter] public string? Prefix { get; set; }
+    [Parameter] public string? Suffix { get; set; }
+    [Parameter] public string? Subtitle { get; set; }
+    [Parameter] public string? Icon { get; set; }
+    [Parameter] public Color IconColor { get; set; } = Color.Primary;
+    [Parameter] public int Elevation { get; set; } = 2;
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? BackgroundColor { get; set; }
+
+    // Trend
+    [Parameter] public bool ShowTrend { get; set; }
+    [Parameter] public double TrendPercent { get; set; }
+    [Parameter] public string TrendPeriod { get; set; } = "last week";
+    [Parameter] public bool TrendPositiveIsGood { get; set; } = true;
+
+    private string GetStyle()
+    {
+        if (!string.IsNullOrEmpty(BackgroundColor))
+            return $"background: {BackgroundColor};";
+        return "";
+    }
+
+    private string GetTrendIcon()
+    {
+        return TrendPercent > 0
+            ? Icons.Material.Filled.TrendingUp
+            : Icons.Material.Filled.TrendingDown;
+    }
+
+    private Color GetTrendColor()
+    {
+        var isPositive = TrendPercent > 0;
+        var isGood = TrendPositiveIsGood ? isPositive : !isPositive;
+        return isGood ? Color.Success : Color.Error;
+    }
+}

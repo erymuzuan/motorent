@@ -1,0 +1,324 @@
+@page "/manager"
+@page "/manager/dashboard"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Policy = "RequireTenantManager")]
+@inherits MotoRentComponentBase
+
+<PageTitle>Dashboard - MotoRent Manager</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-4">
+    <MudStack Spacing="4">
+        @* Page Header *@
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+            <MudStack Spacing="0">
+                <MudText Typo="Typo.h4">Dashboard</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    Overview of your rental business performance
+                </MudText>
+            </MudStack>
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Download">
+                Export Report
+            </MudButton>
+        </MudStack>
+
+        @* KPI Metrics Row *@
+        <MudGrid Spacing="3">
+            <MudItem xs="12" sm="6" md="3">
+                <MotoRent.Client.Components.Manager.MetricCard
+                    Title="Today's Revenue"
+                    Value="@m_todayRevenue.ToString("N0")"
+                    Prefix="฿"
+                    Icon="@Icons.Material.Filled.Payments"
+                    IconColor="Color.Success"
+                    ShowTrend="true"
+                    TrendPercent="12.5"
+                    TrendPeriod="yesterday" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MotoRent.Client.Components.Manager.MetricCard
+                    Title="Active Rentals"
+                    Value="@m_activeRentals.ToString()"
+                    Icon="@Icons.Material.Filled.TwoWheeler"
+                    IconColor="Color.Primary"
+                    ShowTrend="true"
+                    TrendPercent="8.3"
+                    TrendPeriod="last week" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MotoRent.Client.Components.Manager.MetricCard
+                    Title="Returns Today"
+                    Value="@m_returnsToday.ToString()"
+                    Icon="@Icons.Material.Filled.AssignmentReturn"
+                    IconColor="Color.Warning"
+                    Subtitle="@($"{m_overdueCount} overdue")" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MotoRent.Client.Components.Manager.MetricCard
+                    Title="Fleet Utilization"
+                    Value="@m_fleetUtilization.ToString("N0")"
+                    Suffix="%"
+                    Icon="@Icons.Material.Filled.Speed"
+                    IconColor="Color.Info"
+                    ShowTrend="true"
+                    TrendPercent="-2.1"
+                    TrendPeriod="last week"
+                    TrendPositiveIsGood="true" />
+            </MudItem>
+        </MudGrid>
+
+        @* Charts Row *@
+        <MudGrid Spacing="3">
+            @* Revenue Trend Chart *@
+            <MudItem xs="12" md="8">
+                <MudPaper Elevation="2" Class="pa-4">
+                    <MudStack Spacing="3">
+                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                            <MudText Typo="Typo.h6">Revenue Trend</MudText>
+                            <MudToggleGroup T="string" @bind-Value="m_revenuePeriod" Color="Color.Primary"
+                                           Size="Size.Small" Outline="true">
+                                <MudToggleItem Value="@("7d")" Text="7 Days" />
+                                <MudToggleItem Value="@("30d")" Text="30 Days" />
+                                <MudToggleItem Value="@("90d")" Text="90 Days" />
+                            </MudToggleGroup>
+                        </MudStack>
+                        <MudChart ChartType="ChartType.Line"
+                                  ChartSeries="@m_revenueChartSeries"
+                                  XAxisLabels="@m_revenueLabels"
+                                  Width="100%"
+                                  Height="300px"
+                                  ChartOptions="@m_lineChartOptions" />
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+
+            @* Fleet Status Donut *@
+            <MudItem xs="12" md="4">
+                <MudPaper Elevation="2" Class="pa-4" Style="height: 100%;">
+                    <MudStack Spacing="3">
+                        <MudText Typo="Typo.h6">Fleet Status</MudText>
+                        <MudChart ChartType="ChartType.Donut"
+                                  InputData="@m_fleetStatusData"
+                                  InputLabels="@m_fleetStatusLabels"
+                                  Width="100%"
+                                  Height="200px"
+                                  ChartOptions="@m_donutChartOptions" />
+                        <MudStack Spacing="1">
+                            @for (int i = 0; i < m_fleetStatusLabels.Length; i++)
+                            {
+                                var index = i;
+                                <MudStack Row="true" Justify="Justify.SpaceBetween">
+                                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                        <div style="width: 12px; height: 12px; border-radius: 2px; background: @GetStatusColor(index);"></div>
+                                        <MudText Typo="Typo.body2">@m_fleetStatusLabels[index]</MudText>
+                                    </MudStack>
+                                    <MudText Typo="Typo.body2" Style="font-weight: 600;">@m_fleetStatusData[index]</MudText>
+                                </MudStack>
+                            }
+                        </MudStack>
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        @* Bottom Row - Top Bikes & Recent Activity *@
+        <MudGrid Spacing="3">
+            @* Top Performing Bikes *@
+            <MudItem xs="12" md="6">
+                <MudPaper Elevation="2" Class="pa-4">
+                    <MudStack Spacing="3">
+                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                            <MudText Typo="Typo.h6">Top Performing Bikes</MudText>
+                            <MudLink Href="/manager/fleet" Color="Color.Primary">View All</MudLink>
+                        </MudStack>
+                        <MudSimpleTable Dense="true" Hover="true" Striped="true">
+                            <thead>
+                                <tr>
+                                    <th>Bike</th>
+                                    <th style="text-align: right;">Rentals</th>
+                                    <th style="text-align: right;">Revenue</th>
+                                    <th style="text-align: right;">Utilization</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var bike in m_topBikes)
+                                {
+                                    <tr>
+                                        <td>
+                                            <MudStack Spacing="0">
+                                                <MudText Typo="Typo.body2" Style="font-weight: 500;">@bike.Name</MudText>
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary">@bike.Plate</MudText>
+                                            </MudStack>
+                                        </td>
+                                        <td style="text-align: right;">@bike.RentalCount</td>
+                                        <td style="text-align: right;">@FormatCurrency(bike.Revenue)</td>
+                                        <td style="text-align: right;">
+                                            <MudChip T="string" Size="Size.Small"
+                                                     Color="@(bike.Utilization > 80 ? Color.Success : bike.Utilization > 50 ? Color.Warning : Color.Default)"
+                                                     Variant="Variant.Filled">
+                                                @bike.Utilization%
+                                            </MudChip>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </MudSimpleTable>
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+
+            @* Recent Activity *@
+            <MudItem xs="12" md="6">
+                <MudPaper Elevation="2" Class="pa-4">
+                    <MudStack Spacing="3">
+                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                            <MudText Typo="Typo.h6">Recent Activity</MudText>
+                            <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Small"
+                                           OnClick="RefreshActivity" />
+                        </MudStack>
+                        <MudTimeline TimelinePosition="TimelinePosition.Start">
+                            @foreach (var activity in m_recentActivities)
+                            {
+                                <MudTimelineItem Color="@activity.Color" Size="Size.Small">
+                                    <MudStack Spacing="0">
+                                        <MudText Typo="Typo.body2">@activity.Description</MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                            @FormatRelativeTime(activity.Time) by @activity.User
+                                        </MudText>
+                                    </MudStack>
+                                </MudTimelineItem>
+                            }
+                        </MudTimeline>
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        @* Alerts Section *@
+        @if (m_alerts.Count > 0)
+        {
+            <MudPaper Elevation="2" Class="pa-4">
+                <MudStack Spacing="2">
+                    <MudText Typo="Typo.h6">Alerts & Notifications</MudText>
+                    @foreach (var alert in m_alerts)
+                    {
+                        <MudAlert Severity="@alert.Severity" Dense="true" Class="mb-1">
+                            @alert.Message
+                        </MudAlert>
+                    }
+                </MudStack>
+            </MudPaper>
+        }
+    </MudStack>
+</MudContainer>
+
+@code {
+    // KPI Data
+    private decimal m_todayRevenue = 45600;
+    private int m_activeRentals = 23;
+    private int m_returnsToday = 8;
+    private int m_overdueCount = 2;
+    private decimal m_fleetUtilization = 72;
+
+    // Chart Controls
+    private string m_revenuePeriod = "7d";
+
+    // Revenue Chart Data
+    private List<ChartSeries> m_revenueChartSeries = [];
+    private string[] m_revenueLabels = [];
+    private ChartOptions m_lineChartOptions = new()
+    {
+        YAxisTicks = 5000,
+        LineStrokeWidth = 2
+    };
+
+    // Fleet Status Chart Data
+    private double[] m_fleetStatusData = [23, 12, 3, 2];
+    private string[] m_fleetStatusLabels = ["Rented", "Available", "Maintenance", "Reserved"];
+    private ChartOptions m_donutChartOptions = new()
+    {
+        ChartPalette = ["#00897B", "#4DB6AC", "#FF7043", "#42A5F5"]
+    };
+
+    // Top Bikes Data
+    private List<TopBikeData> m_topBikes = [];
+
+    // Recent Activity
+    private List<ActivityItem> m_recentActivities = [];
+
+    // Alerts
+    private List<AlertItem> m_alerts = [];
+
+    protected override void OnInitialized()
+    {
+        LoadDashboardData();
+    }
+
+    private void LoadDashboardData()
+    {
+        // Revenue chart data (placeholder)
+        m_revenueLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+        m_revenueChartSeries =
+        [
+            new ChartSeries { Name = "Revenue", Data = [32000, 28500, 41200, 38900, 45600, 52300, 45600] }
+        ];
+
+        // Top bikes data (placeholder)
+        m_topBikes =
+        [
+            new TopBikeData("Honda PCX 160", "กข 1234", 45, 67500, 92),
+            new TopBikeData("Yamaha NMAX", "กค 5678", 38, 57000, 85),
+            new TopBikeData("Honda Click 125", "กง 9012", 52, 46800, 78),
+            new TopBikeData("Yamaha Aerox", "กจ 3456", 31, 43400, 72),
+            new TopBikeData("Honda Wave 110", "กฉ 7890", 48, 38400, 68)
+        ];
+
+        // Recent activities (placeholder)
+        var now = DateTime.Now;
+        m_recentActivities =
+        [
+            new ActivityItem("Rental #1047 checked in - Honda PCX 160", now.AddMinutes(-5), "Somchai", Color.Success),
+            new ActivityItem("Payment received ฿3,500 for Rental #1046", now.AddMinutes(-12), "System", Color.Primary),
+            new ActivityItem("Rental #1042 returned - minor scratch reported", now.AddMinutes(-25), "Niran", Color.Warning),
+            new ActivityItem("New reservation #1048 - Yamaha NMAX", now.AddMinutes(-45), "Online", Color.Info),
+            new ActivityItem("Maintenance completed - Honda Click #12", now.AddHours(-2), "Chai", Color.Default)
+        ];
+
+        // Alerts (placeholder)
+        m_alerts =
+        [
+            new AlertItem(Severity.Warning, "2 rentals are overdue for return today"),
+            new AlertItem(Severity.Info, "3 motorbikes scheduled for maintenance this week")
+        ];
+    }
+
+    private string GetStatusColor(int index) => index switch
+    {
+        0 => "#00897B", // Rented - Primary teal
+        1 => "#4DB6AC", // Available - Light teal
+        2 => "#FF7043", // Maintenance - Orange
+        3 => "#42A5F5", // Reserved - Blue
+        _ => "#9E9E9E"
+    };
+
+    private void RefreshActivity()
+    {
+        // Refresh activity feed
+        LoadDashboardData();
+        StateHasChanged();
+    }
+
+    private string FormatRelativeTime(DateTime time)
+    {
+        var diff = DateTime.Now - time;
+        if (diff.TotalMinutes < 1) return "just now";
+        if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes} min ago";
+        if (diff.TotalHours < 24) return $"{(int)diff.TotalHours} hr ago";
+        return $"{(int)diff.TotalDays} days ago";
+    }
+
+    // Helper classes
+    private record TopBikeData(string Name, string Plate, int RentalCount, decimal Revenue, int Utilization);
+    private record ActivityItem(string Description, DateTime Time, string User, Color Color);
+    private record AlertItem(Severity Severity, string Message);
+}

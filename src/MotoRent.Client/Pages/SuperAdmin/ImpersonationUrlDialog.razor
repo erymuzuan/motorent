@@ -1,0 +1,84 @@
+@using System.Security.Cryptography
+@using System.Text
+@using MotoRent.Domain.Core
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.subtitle1" Class="mb-4">
+            Impersonation URLs for <strong>@User.FullName</strong> (@User.UserName)
+        </MudText>
+
+        @foreach (var account in User.AccountCollection)
+        {
+            var org = Organizations.FirstOrDefault(o => o.AccountNo == account.AccountNo);
+            var url = GenerateUrl(account.AccountNo);
+
+            <MudCard Outlined="true" Class="mb-2">
+                <MudCardContent>
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                        <div>
+                            <MudText Typo="Typo.subtitle2">@(org?.Name ?? account.AccountNo)</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                Roles: @string.Join(", ", account.Roles)
+                            </MudText>
+                        </div>
+                        <MudStack Row="true" Spacing="1">
+                            <MudTooltip Text="Copy URL">
+                                <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
+                                               Size="Size.Small" Color="Color.Primary"
+                                               OnClick="@(() => CopyToClipboard(url))" />
+                            </MudTooltip>
+                            <MudTooltip Text="Impersonate">
+                                <MudIconButton Icon="@Icons.Material.Filled.Login"
+                                               Size="Size.Small" Color="Color.Success"
+                                               OnClick="@(() => Impersonate(url))" />
+                            </MudTooltip>
+                        </MudStack>
+                    </MudStack>
+                    <MudTextField Value="@url" ReadOnly="true" Variant="Variant.Outlined"
+                                  Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Link"
+                                  Style="font-size: 0.75rem; margin-top: 8px;" />
+                </MudCardContent>
+            </MudCard>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public User User { get; set; } = null!;
+    [Parameter] public List<Organization> Organizations { get; set; } = [];
+
+    private string GenerateUrl(string accountNo)
+    {
+        var hash = ComputeMd5Hash($"{User.UserName}:{accountNo}");
+        var baseUrl = NavigationManager.BaseUri.TrimEnd('/');
+        return $"{baseUrl}/account/impersonate?user={Uri.EscapeDataString(User.UserName)}&account={Uri.EscapeDataString(accountNo)}&hash={hash}";
+    }
+
+    private async Task CopyToClipboard(string url)
+    {
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", url);
+        Snackbar.Add("URL copied to clipboard", Severity.Success);
+    }
+
+    private void Impersonate(string url)
+    {
+        NavigationManager.NavigateTo(url, forceLoad: true);
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private static string ComputeMd5Hash(string input)
+    {
+        var inputBytes = Encoding.UTF8.GetBytes(input);
+        var hashBytes = MD5.HashData(inputBytes);
+        return Convert.ToHexString(hashBytes).ToLowerInvariant();
+    }
+}

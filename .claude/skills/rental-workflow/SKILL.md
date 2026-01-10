@@ -1,3 +1,7 @@
+---
+name: rental-workflow
+description: Business logic and workflow for motorbike check-in and check-out processes, including damage documentation.
+---
 # Rental Workflow
 
 Check-in and check-out business logic for MotoRent.

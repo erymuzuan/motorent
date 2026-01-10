@@ -1,0 +1,110 @@
+@using MotoRent.Domain.Core
+@inject ISubscriptionService SubscriptionService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        @if (m_loading)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+        }
+
+        <MudTable Items="@m_users" Hover="true" Striped="true" Dense="true" Loading="@m_loading">
+            <HeaderContent>
+                <MudTh>Username</MudTh>
+                <MudTh>Full Name</MudTh>
+                <MudTh>Provider</MudTh>
+                <MudTh>Roles</MudTh>
+                <MudTh>Status</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Username">@context.UserName</MudTd>
+                <MudTd DataLabel="Full Name">@context.FullName</MudTd>
+                <MudTd DataLabel="Provider">
+                    <MudChip T="string" Size="Size.Small" Color="@GetProviderColor(context.CredentialProvider)">
+                        @context.CredentialProvider
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="Roles">
+                    @{
+                        var account = context.AccountCollection.FirstOrDefault(a => a.AccountNo == Organization.AccountNo);
+                        if (account != null)
+                        {
+                            foreach (var role in account.Roles)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="@GetRoleColor(role)" Class="mr-1">
+                                    @role
+                                </MudChip>
+                            }
+                        }
+                    }
+                </MudTd>
+                <MudTd DataLabel="Status">
+                    @if (context.IsLockedOut)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Error">Locked</MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Success">Active</MudChip>
+                    }
+                </MudTd>
+            </RowTemplate>
+            <NoRecordsContent>
+                <MudText>No users found in this organization.</MudText>
+            </NoRecordsContent>
+        </MudTable>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public Organization Organization { get; set; } = null!;
+
+    private List<User> m_users = [];
+    private bool m_loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsersAsync();
+    }
+
+    private async Task LoadUsersAsync()
+    {
+        m_loading = true;
+        try
+        {
+            var users = await SubscriptionService.GetUsersAsync(Organization.AccountNo);
+            m_users = users.ToList();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading users: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private void Close() => MudDialog.Close();
+
+    private static Color GetProviderColor(string provider) => provider switch
+    {
+        User.GOOGLE => Color.Error,
+        User.MICROSOFT => Color.Info,
+        _ => Color.Default
+    };
+
+    private static Color GetRoleColor(string role) => role switch
+    {
+        UserAccount.ORG_ADMIN => Color.Primary,
+        UserAccount.SHOP_MANAGER => Color.Secondary,
+        UserAccount.STAFF => Color.Info,
+        UserAccount.MECHANIC => Color.Warning,
+        _ => Color.Default
+    };
+}

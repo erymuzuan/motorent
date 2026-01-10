@@ -1,3 +1,7 @@
+---
+name: dialog-pattern
+description: MudBlazor dialog patterns using localized base classes and fluent API extensions.
+---
 # Dialog Pattern (MudBlazor)
 
 Dialog patterns using MudBlazor with localized base classes.

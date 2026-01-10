@@ -1,0 +1,433 @@
+@page "/manager/fleet"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Policy = "RequireTenantManager")]
+@inherits MotoRentComponentBase
+
+<PageTitle>Fleet Analytics - MotoRent Manager</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-4">
+    <MudStack Spacing="4">
+        @* Page Header *@
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+            <MudStack Spacing="0">
+                <MudText Typo="Typo.h4">Fleet Analytics</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    Monitor fleet performance, utilization, and maintenance status
+                </MudText>
+            </MudStack>
+            <MudStack Row="true" Spacing="2">
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Add" Href="/motorbikes/create">
+                    Add Motorbike
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Default"
+                           StartIcon="@Icons.Material.Filled.Download">
+                    Export
+                </MudButton>
+            </MudStack>
+        </MudStack>
+
+        @* Summary Cards *@
+        <MudGrid Spacing="3">
+            <MudItem xs="12" sm="6" md="3">
+                <MotoRent.Client.Components.Manager.MetricCard
+                    Title="Total Fleet"
+                    Value="@m_totalFleet.ToString()"
+                    Suffix="bikes"
+                    Icon="@Icons.Material.Filled.TwoWheeler"
+                    IconColor="Color.Primary" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MotoRent.Client.Components.Manager.MetricCard
+                    Title="Currently Rented"
+                    Value="@m_rentedCount.ToString()"
+                    Icon="@Icons.Material.Filled.DirectionsBike"
+                    IconColor="Color.Success"
+                    Subtitle="@($"{m_utilizationRate:N0}% utilization")" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MotoRent.Client.Components.Manager.MetricCard
+                    Title="Available"
+                    Value="@m_availableCount.ToString()"
+                    Icon="@Icons.Material.Filled.CheckCircle"
+                    IconColor="Color.Info" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MotoRent.Client.Components.Manager.MetricCard
+                    Title="In Maintenance"
+                    Value="@m_maintenanceCount.ToString()"
+                    Icon="@Icons.Material.Filled.Build"
+                    IconColor="Color.Warning"
+                    Subtitle="@($"{m_scheduledMaintenance} scheduled")" />
+            </MudItem>
+        </MudGrid>
+
+        <MudGrid Spacing="3">
+            @* Utilization Over Time Chart *@
+            <MudItem xs="12" md="8">
+                <MudPaper Elevation="2" Class="pa-4">
+                    <MudStack Spacing="3">
+                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                            <MudText Typo="Typo.h6">Fleet Utilization Trend</MudText>
+                            <MudToggleGroup T="string" @bind-Value="m_utilizationPeriod" Color="Color.Primary"
+                                           Size="Size.Small" Outline="true">
+                                <MudToggleItem Value="@("7d")" Text="7 Days" />
+                                <MudToggleItem Value="@("30d")" Text="30 Days" />
+                                <MudToggleItem Value="@("90d")" Text="90 Days" />
+                            </MudToggleGroup>
+                        </MudStack>
+                        <MudChart ChartType="ChartType.Line"
+                                  ChartSeries="@m_utilizationChartSeries"
+                                  XAxisLabels="@m_utilizationLabels"
+                                  Width="100%"
+                                  Height="300px"
+                                  ChartOptions="@m_lineChartOptions" />
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+
+            @* Fleet by Status *@
+            <MudItem xs="12" md="4">
+                <MudPaper Elevation="2" Class="pa-4" Style="height: 100%;">
+                    <MudStack Spacing="3">
+                        <MudText Typo="Typo.h6">Fleet Status</MudText>
+                        <MudChart ChartType="ChartType.Donut"
+                                  InputData="@m_statusData"
+                                  InputLabels="@m_statusLabels"
+                                  Width="100%"
+                                  Height="200px"
+                                  ChartOptions="@m_donutChartOptions" />
+                        <MudStack Spacing="1">
+                            @for (int i = 0; i < m_statusLabels.Length; i++)
+                            {
+                                var index = i;
+                                <MudStack Row="true" Justify="Justify.SpaceBetween">
+                                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                        <div style="width: 12px; height: 12px; border-radius: 2px; background: @m_donutChartOptions.ChartPalette[index];"></div>
+                                        <MudText Typo="Typo.body2">@m_statusLabels[index]</MudText>
+                                    </MudStack>
+                                    <MudText Typo="Typo.body2" Style="font-weight: 600;">@m_statusCounts[index]</MudText>
+                                </MudStack>
+                            }
+                        </MudStack>
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        <MudGrid Spacing="3">
+            @* Fleet by Type *@
+            <MudItem xs="12" md="6">
+                <MudPaper Elevation="2" Class="pa-4">
+                    <MudStack Spacing="3">
+                        <MudText Typo="Typo.h6">Fleet by Type</MudText>
+                        <MudChart ChartType="ChartType.Bar"
+                                  ChartSeries="@m_typeChartSeries"
+                                  XAxisLabels="@m_typeLabels"
+                                  Width="100%"
+                                  Height="250px"
+                                  ChartOptions="@m_barChartOptions" />
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+
+            @* Revenue per Bike Chart *@
+            <MudItem xs="12" md="6">
+                <MudPaper Elevation="2" Class="pa-4">
+                    <MudStack Spacing="3">
+                        <MudText Typo="Typo.h6">Avg. Revenue per Bike (This Month)</MudText>
+                        <MudChart ChartType="ChartType.Bar"
+                                  ChartSeries="@m_revenuePerBikeSeries"
+                                  XAxisLabels="@m_typeLabels"
+                                  Width="100%"
+                                  Height="250px"
+                                  ChartOptions="@m_revenueChartOptions" />
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        @* Fleet Inventory Table *@
+        <MudPaper Elevation="2" Class="pa-4">
+            <MudStack Spacing="3">
+                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                    <MudText Typo="Typo.h6">Fleet Inventory</MudText>
+                    <MudStack Row="true" Spacing="2">
+                        <MudSelect T="string" @bind-Value="m_statusFilter" Label="Status" Dense="true"
+                                   Variant="Variant.Outlined" Style="width: 150px;">
+                            <MudSelectItem Value="@("")">All Status</MudSelectItem>
+                            <MudSelectItem Value="@("Available")">Available</MudSelectItem>
+                            <MudSelectItem Value="@("Rented")">Rented</MudSelectItem>
+                            <MudSelectItem Value="@("Maintenance")">Maintenance</MudSelectItem>
+                        </MudSelect>
+                        <MudTextField @bind-Value="m_searchText" Placeholder="Search..."
+                                      Variant="Variant.Outlined" Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Search"
+                                      Immediate="true" Style="width: 250px;" />
+                    </MudStack>
+                </MudStack>
+
+                <MudSimpleTable Dense="true" Hover="true" Striped="true">
+                    <thead>
+                        <tr>
+                            <th>Motorbike</th>
+                            <th>Plate</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th style="text-align: center;">Utilization</th>
+                            <th style="text-align: right;">Revenue (MTD)</th>
+                            <th style="text-align: right;">Rentals</th>
+                            <th>Last Service</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var bike in GetFilteredBikes())
+                        {
+                            <tr>
+                                <td>
+                                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                        <MudAvatar Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined">
+                                            <MudIcon Icon="@Icons.Material.Filled.TwoWheeler" Size="Size.Small" />
+                                        </MudAvatar>
+                                        <MudStack Spacing="0">
+                                            <MudText Typo="Typo.body2" Style="font-weight: 500;">@bike.Brand @bike.Model</MudText>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">@bike.Year • @bike.EngineCC cc</MudText>
+                                        </MudStack>
+                                    </MudStack>
+                                </td>
+                                <td><code>@bike.Plate</code></td>
+                                <td>@bike.Type</td>
+                                <td>
+                                    <MudChip T="string" Size="Size.Small"
+                                             Color="@GetStatusChipColor(bike.Status)"
+                                             Variant="Variant.Filled">
+                                        @bike.Status
+                                    </MudChip>
+                                </td>
+                                <td style="text-align: center;">
+                                    <MudProgressLinear Value="@bike.Utilization" Color="@GetUtilizationColor(bike.Utilization)"
+                                                       Size="Size.Small" Rounded="true" Style="width: 80px; display: inline-flex;" />
+                                    <MudText Typo="Typo.caption" Class="ml-2">@bike.Utilization%</MudText>
+                                </td>
+                                <td style="text-align: right; font-weight: 500;">@FormatCurrency(bike.Revenue)</td>
+                                <td style="text-align: right;">@bike.RentalCount</td>
+                                <td>
+                                    <MudText Typo="Typo.body2" Color="@(bike.DaysSinceService > 30 ? Color.Warning : Color.Default)">
+                                        @bike.DaysSinceService days ago
+                                    </MudText>
+                                </td>
+                                <td>
+                                    <MudStack Row="true" Spacing="0">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Visibility" Size="Size.Small"
+                                                       Href="@($"/motorbikes/{bike.MotorbikeId}")" />
+                                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                                       Href="@($"/motorbikes/{bike.MotorbikeId}/edit")" />
+                                        <MudIconButton Icon="@Icons.Material.Filled.Build" Size="Size.Small"
+                                                       OnClick="@(() => ScheduleMaintenance(bike))" />
+                                    </MudStack>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+
+                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Showing @GetFilteredBikes().Count of @m_fleet.Count motorbikes
+                    </MudText>
+                    <MudPagination Count="3" Selected="1" Color="Color.Primary" />
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+
+        @* Maintenance Schedule *@
+        <MudPaper Elevation="2" Class="pa-4">
+            <MudStack Spacing="3">
+                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                    <MudText Typo="Typo.h6">Upcoming Maintenance</MudText>
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                               EndIcon="@Icons.Material.Filled.ArrowForward">
+                        View All
+                    </MudButton>
+                </MudStack>
+
+                <MudGrid>
+                    @foreach (var maintenance in m_upcomingMaintenance)
+                    {
+                        <MudItem xs="12" md="4">
+                            <MudCard Elevation="1" Class="pa-3">
+                                <MudStack Spacing="2">
+                                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start">
+                                        <MudStack Spacing="0">
+                                            <MudText Typo="Typo.subtitle2">@maintenance.BikeName</MudText>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">@maintenance.Plate</MudText>
+                                        </MudStack>
+                                        <MudChip T="string" Size="Size.Small"
+                                                 Color="@GetMaintenanceUrgencyColor(maintenance.DaysUntil)"
+                                                 Variant="Variant.Outlined">
+                                            @(maintenance.DaysUntil == 0 ? "Today" : maintenance.DaysUntil == 1 ? "Tomorrow" : $"In {maintenance.DaysUntil} days")
+                                        </MudChip>
+                                    </MudStack>
+                                    <MudText Typo="Typo.body2">@maintenance.Type</MudText>
+                                    <MudStack Row="true" Spacing="1">
+                                        <MudButton Variant="Variant.Text" Size="Size.Small" Color="Color.Primary">
+                                            Start
+                                        </MudButton>
+                                        <MudButton Variant="Variant.Text" Size="Size.Small">
+                                            Reschedule
+                                        </MudButton>
+                                    </MudStack>
+                                </MudStack>
+                            </MudCard>
+                        </MudItem>
+                    }
+                </MudGrid>
+            </MudStack>
+        </MudPaper>
+    </MudStack>
+</MudContainer>
+
+@code {
+    // Summary metrics
+    private int m_totalFleet = 40;
+    private int m_rentedCount = 23;
+    private int m_availableCount = 12;
+    private int m_maintenanceCount = 3;
+    private int m_scheduledMaintenance = 5;
+    private decimal m_utilizationRate => m_totalFleet > 0 ? (decimal)m_rentedCount / m_totalFleet * 100 : 0;
+
+    // Filters
+    private string m_utilizationPeriod = "7d";
+    private string m_statusFilter = "";
+    private string m_searchText = "";
+
+    // Utilization Chart
+    private List<ChartSeries> m_utilizationChartSeries = [];
+    private string[] m_utilizationLabels = [];
+    private ChartOptions m_lineChartOptions = new() { YAxisTicks = 20, LineStrokeWidth = 2 };
+
+    // Status Chart
+    private double[] m_statusData = [57.5, 30.0, 7.5, 5.0];
+    private int[] m_statusCounts = [23, 12, 3, 2];
+    private string[] m_statusLabels = ["Rented", "Available", "Maintenance", "Reserved"];
+    private ChartOptions m_donutChartOptions = new()
+    {
+        ChartPalette = ["#00897B", "#4DB6AC", "#FF7043", "#42A5F5"]
+    };
+
+    // Type Chart
+    private List<ChartSeries> m_typeChartSeries = [];
+    private string[] m_typeLabels = ["Scooter", "Sport Scooter", "Manual", "Big Bike"];
+    private ChartOptions m_barChartOptions = new() { YAxisTicks = 5 };
+
+    // Revenue per Bike Chart
+    private List<ChartSeries> m_revenuePerBikeSeries = [];
+    private ChartOptions m_revenueChartOptions = new() { YAxisTicks = 5000 };
+
+    // Fleet Data
+    private List<FleetBikeData> m_fleet = [];
+
+    // Maintenance Schedule
+    private List<MaintenanceItem> m_upcomingMaintenance = [];
+
+    protected override void OnInitialized()
+    {
+        LoadFleetData();
+    }
+
+    private void LoadFleetData()
+    {
+        // Utilization chart
+        m_utilizationLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+        m_utilizationChartSeries =
+        [
+            new ChartSeries { Name = "Utilization %", Data = [65, 72, 68, 75, 82, 88, 72] }
+        ];
+
+        // Type chart
+        m_typeChartSeries =
+        [
+            new ChartSeries { Name = "Count", Data = [18, 12, 6, 4] }
+        ];
+
+        // Revenue per bike chart
+        m_revenuePerBikeSeries =
+        [
+            new ChartSeries { Name = "Avg Revenue", Data = [12500, 18200, 9800, 24500] }
+        ];
+
+        // Fleet inventory (placeholder)
+        m_fleet =
+        [
+            new FleetBikeData(1, "Honda", "PCX 160", 2023, 160, "กข 1234", "Scooter", "Rented", 92, 67500, 45, 8),
+            new FleetBikeData(2, "Yamaha", "NMAX", 2023, 155, "กค 5678", "Sport Scooter", "Rented", 85, 57000, 38, 12),
+            new FleetBikeData(3, "Honda", "Click 125", 2022, 125, "กง 9012", "Scooter", "Available", 78, 46800, 52, 5),
+            new FleetBikeData(4, "Yamaha", "Aerox", 2023, 155, "กจ 3456", "Sport Scooter", "Rented", 72, 43400, 31, 15),
+            new FleetBikeData(5, "Honda", "Wave 110", 2022, 110, "กฉ 7890", "Manual", "Available", 68, 38400, 48, 3),
+            new FleetBikeData(6, "Kawasaki", "Ninja 300", 2023, 300, "กช 1111", "Big Bike", "Maintenance", 45, 52000, 18, 45),
+            new FleetBikeData(7, "Honda", "Scoopy", 2023, 110, "กซ 2222", "Scooter", "Available", 55, 28500, 35, 10),
+            new FleetBikeData(8, "Yamaha", "Fino", 2022, 125, "กฌ 3333", "Scooter", "Rented", 62, 31200, 42, 7)
+        ];
+
+        // Upcoming maintenance
+        m_upcomingMaintenance =
+        [
+            new MaintenanceItem("Honda Click #12", "กต 4567", "Oil Change & Inspection", 0),
+            new MaintenanceItem("Yamaha NMAX #5", "กถ 8901", "Brake Pad Replacement", 2),
+            new MaintenanceItem("Honda PCX #8", "กท 2345", "Scheduled Service (5000km)", 5),
+            new MaintenanceItem("Kawasaki Ninja #1", "กธ 6789", "Chain & Sprocket Check", 7),
+            new MaintenanceItem("Honda Wave #15", "กน 0123", "Tire Replacement", 10)
+        ];
+    }
+
+    private List<FleetBikeData> GetFilteredBikes()
+    {
+        var filtered = m_fleet.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(m_statusFilter))
+            filtered = filtered.Where(b => b.Status == m_statusFilter);
+
+        if (!string.IsNullOrWhiteSpace(m_searchText))
+        {
+            var search = m_searchText.ToLower();
+            filtered = filtered.Where(b =>
+                b.Brand.ToLower().Contains(search) ||
+                b.Model.ToLower().Contains(search) ||
+                b.Plate.ToLower().Contains(search));
+        }
+
+        return filtered.ToList();
+    }
+
+    private Color GetStatusChipColor(string status) => status switch
+    {
+        "Available" => Color.Success,
+        "Rented" => Color.Primary,
+        "Maintenance" => Color.Warning,
+        "Reserved" => Color.Info,
+        _ => Color.Default
+    };
+
+    private Color GetUtilizationColor(int utilization) => utilization switch
+    {
+        > 80 => Color.Success,
+        > 50 => Color.Warning,
+        _ => Color.Error
+    };
+
+    private Color GetMaintenanceUrgencyColor(int daysUntil) => daysUntil switch
+    {
+        0 => Color.Error,
+        <= 2 => Color.Warning,
+        _ => Color.Default
+    };
+
+    private void ScheduleMaintenance(FleetBikeData bike)
+    {
+        ShowInfo($"Schedule maintenance for {bike.Brand} {bike.Model} - Feature coming soon!");
+    }
+
+    private record FleetBikeData(int MotorbikeId, string Brand, string Model, int Year, int EngineCC, string Plate, string Type, string Status, int Utilization, decimal Revenue, int RentalCount, int DaysSinceService);
+    private record MaintenanceItem(string BikeName, string Plate, string Type, int DaysUntil);
+}

@@ -1,0 +1,172 @@
+@using MotoRent.Domain.Core
+@inject IDirectoryService DirectoryService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="m_form" @bind-IsValid="@m_isValid">
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="m_organization.Name" Label="Organization Name" Required="true"
+                                  RequiredError="Name is required" Immediate="true" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField Value="@m_organization.AccountNo" Label="Account No (Schema)"
+                                  Disabled="true" HelperText="Cannot be changed after creation" />
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudText Typo="Typo.subtitle2" Class="mt-2 mb-2">Contact Information</MudText>
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="m_organization.Email" Label="Email"
+                                  InputType="InputType.Email" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="m_organization.Phone" Label="Phone" />
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudText Typo="Typo.subtitle2" Class="mt-2 mb-2">Address</MudText>
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="m_organization.Address.Street" Label="Street" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="m_organization.Address.City" Label="City" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="m_organization.Address.Province" Label="Province/State" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="m_organization.Address.PostalCode" Label="Postal Code" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="m_organization.Address.Country" Label="Country" />
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudText Typo="Typo.subtitle2" Class="mt-2 mb-2">Regional Settings</MudText>
+                </MudItem>
+
+                <MudItem xs="12" md="4">
+                    <MudSelect T="string" @bind-Value="m_organization.Currency" Label="Currency">
+                        <MudSelectItem Value="@("THB")">THB - Thai Baht</MudSelectItem>
+                        <MudSelectItem Value="@("USD")">USD - US Dollar</MudSelectItem>
+                        <MudSelectItem Value="@("EUR")">EUR - Euro</MudSelectItem>
+                        <MudSelectItem Value="@("MYR")">MYR - Malaysian Ringgit</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudSelect T="string" @bind-Value="m_organization.Language" Label="Language">
+                        <MudSelectItem Value="@("th-TH")">Thai</MudSelectItem>
+                        <MudSelectItem Value="@("en")">English</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudNumericField @bind-Value="m_timezone" Label="Timezone (UTC offset)" Min="-12" Max="14" />
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudText Typo="Typo.subtitle2" Class="mt-2 mb-2">Status</MudText>
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudSwitch @bind-Value="m_organization.IsActive" Color="Color.Success"
+                               Label="@(m_organization.IsActive ? "Active" : "Inactive")" />
+                </MudItem>
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Disabled="@m_isSaving">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="SaveOrganization"
+                   Disabled="@(!m_isValid || m_isSaving)">
+            @if (m_isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                <span>Saving...</span>
+            }
+            else
+            {
+                <span>Save Changes</span>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public Organization Organization { get; set; } = null!;
+
+    private MudForm? m_form;
+    private Organization m_organization = new();
+    private double m_timezone = 7;
+    private bool m_isValid = true;
+    private bool m_isSaving;
+
+    protected override void OnParametersSet()
+    {
+        // Clone the organization for editing
+        m_organization = new Organization
+        {
+            OrganizationId = Organization.OrganizationId,
+            AccountNo = Organization.AccountNo,
+            Name = Organization.Name,
+            Currency = Organization.Currency,
+            Timezone = Organization.Timezone,
+            Language = Organization.Language,
+            FirstDay = Organization.FirstDay,
+            Subscriptions = Organization.Subscriptions,
+            IsActive = Organization.IsActive,
+            WebSite = Organization.WebSite,
+            DefaultStartPage = Organization.DefaultStartPage,
+            CompanyNo = Organization.CompanyNo,
+            TaxNo = Organization.TaxNo,
+            LogoStoreId = Organization.LogoStoreId,
+            SmallLogoStoreId = Organization.SmallLogoStoreId,
+            Email = Organization.Email,
+            Phone = Organization.Phone,
+            Address = new Address
+            {
+                Street = Organization.Address?.Street,
+                City = Organization.Address?.City,
+                Province = Organization.Address?.Province,
+                PostalCode = Organization.Address?.PostalCode,
+                Country = Organization.Address?.Country ?? "Thailand"
+            }
+        };
+        m_timezone = m_organization.Timezone ?? 7;
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task SaveOrganization()
+    {
+        if (m_form != null)
+        {
+            await m_form.Validate();
+            if (!m_isValid) return;
+        }
+
+        m_isSaving = true;
+
+        try
+        {
+            m_organization.Timezone = m_timezone;
+            await DirectoryService.SaveOrganizationAsync(m_organization);
+
+            MudDialog.Close(DialogResult.Ok(m_organization));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving organization: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            m_isSaving = false;
+        }
+    }
+}

@@ -1,3 +1,7 @@
+--- 
+name: database-repository
+description: Custom repository pattern and DataContext implementation for JSON-based storage with computed columns.
+---
 # Database Repository Pattern
 
 Custom repository pattern with JSON storage, adapted from rx-erp.
