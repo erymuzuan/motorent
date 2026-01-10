@@ -1,6 +1,7 @@
 @page "/manager"
 @page "/manager/dashboard"
 @using Microsoft.AspNetCore.Authorization
+@using MotoRent.Client.Components.Manager
 @attribute [Authorize(Policy = "RequireTenantManager")]
 @inherits MotoRentComponentBase
 
@@ -199,23 +200,43 @@
         </div>
     </div>
 
-    @* Alerts Section *@
-    @if (m_alerts.Count > 0)
-    {
-        <div class="card">
-            <div class="card-body">
-                <h4 class="card-title mb-3">Alerts & Notifications</h4>
-                <div class="d-flex flex-column gap-2">
-                    @foreach (var alert in m_alerts)
+    @* Alerts Section with Maintenance Widget *@
+    <div class="row g-3 mb-4">
+        @* Maintenance Alerts Widget *@
+        <div class="col-12 col-md-6">
+            <MaintenanceAlertsWidget />
+        </div>
+
+        @* General Alerts *@
+        <div class="col-12 col-md-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h4 class="card-title mb-3">
+                        <i class="ti ti-bell me-2"></i>
+                        Alerts & Notifications
+                    </h4>
+                    @if (m_alerts.Count > 0)
                     {
-                        <div class="alert @GetAlertClass(alert.Severity) mb-0">
-                            @alert.Message
+                        <div class="d-flex flex-column gap-2">
+                            @foreach (var alert in m_alerts)
+                            {
+                                <div class="alert @GetAlertClass(alert.Severity) mb-0">
+                                    @alert.Message
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center text-secondary py-4">
+                            <i class="ti ti-bell-off mb-2" style="font-size: 2rem;"></i>
+                            <div>No alerts at this time</div>
                         </div>
                     }
                 </div>
             </div>
         </div>
-    }
+    </div>
 </div>
 
 <style>

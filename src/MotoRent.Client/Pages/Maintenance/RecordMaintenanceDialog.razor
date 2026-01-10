@@ -1,0 +1,112 @@
+@using MotoRent.Domain.Entities
+@using MotoRent.Services
+@inherits MotoRent.Client.Controls.LocalizedDialogBase<MaintenanceSchedule, RecordMaintenanceDialog>
+@inject MaintenanceService MaintenanceService
+
+<form id="@FormId" @onsubmit="SaveAsync" @onsubmit:preventDefault>
+    <div class="modal-body">
+        <div class="alert alert-info mb-3">
+            <div class="d-flex">
+                <i class="ti ti-info-circle me-2 mt-1"></i>
+                <div>
+                    <div>Recording service for <strong>@MotorbikeName</strong></div>
+                    <div>Service: <strong>@ServiceTypeName</strong></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label required">Service Date</label>
+                <input type="date" class="form-control" @bind="m_serviceDate" required
+                       max="@DateTime.Today.ToString("yyyy-MM-dd")" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label required">Mileage at Service (km)</label>
+                <input type="number" class="form-control" @bind="m_serviceMileage" required min="0" />
+                <small class="form-hint">Current: @CurrentMileage.ToString("N0") km</small>
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Performed By</label>
+                <input type="text" class="form-control" @bind="m_performedBy"
+                       placeholder="Mechanic name or shop" />
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Notes</label>
+                <textarea class="form-control" @bind="m_notes" rows="2"
+                          placeholder="Any notes about the service..."></textarea>
+            </div>
+        </div>
+    </div>
+</form>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">Cancel</button>
+    <button type="submit" form="@FormId" class="btn btn-success" disabled="@Saving">
+        @if (Saving)
+        {
+            <span class="spinner-border spinner-border-sm me-2"></span>
+        }
+        <i class="ti ti-check me-1"></i>
+        Record Service
+    </button>
+</div>
+
+@code {
+    [Parameter] public int MotorbikeId { get; set; }
+    [Parameter] public int ServiceTypeId { get; set; }
+    [Parameter] public string MotorbikeName { get; set; } = "";
+    [Parameter] public string ServiceTypeName { get; set; } = "";
+    [Parameter] public int CurrentMileage { get; set; }
+
+    private DateTime m_serviceDate = DateTime.Today;
+    private int m_serviceMileage;
+    private string? m_performedBy;
+    private string? m_notes;
+
+    protected override void OnInitialized()
+    {
+        m_serviceMileage = CurrentMileage;
+        FormValid = true;
+    }
+
+    private async Task SaveAsync()
+    {
+        Saving = true;
+        try
+        {
+            var request = new RecordServiceRequest
+            {
+                MotorbikeId = MotorbikeId,
+                ServiceTypeId = ServiceTypeId,
+                ServiceDate = new DateTimeOffset(m_serviceDate, TimeSpan.Zero),
+                ServiceMileage = m_serviceMileage,
+                PerformedBy = m_performedBy,
+                Notes = m_notes
+            };
+
+            var result = await MaintenanceService.RecordServiceAsync(request, UserName);
+
+            if (result.Success)
+            {
+                ShowSuccess("Service recorded successfully");
+                Close();
+            }
+            else
+            {
+                ShowError($"Failed: {result.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error: {ex.Message}");
+        }
+        finally
+        {
+            Saving = false;
+        }
+    }
+}

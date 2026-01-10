@@ -1,0 +1,55 @@
+@using MotoRent.Domain.Entities
+
+@* Displays maintenance status as a colored badge *@
+<span class="badge @GetBadgeClass()" title="@GetTooltip()">
+    <i class="@GetIcon() me-1"></i>
+    @GetText()
+</span>
+
+@code {
+    [Parameter] public MaintenanceStatus Status { get; set; }
+    [Parameter] public bool Compact { get; set; }
+    [Parameter] public int OverdueCount { get; set; }
+    [Parameter] public int DueSoonCount { get; set; }
+
+    private string GetBadgeClass() => Status switch
+    {
+        MaintenanceStatus.Overdue => "bg-danger",
+        MaintenanceStatus.DueSoon => "bg-warning text-dark",
+        _ => "bg-success"
+    };
+
+    private string GetIcon() => Status switch
+    {
+        MaintenanceStatus.Overdue => "ti ti-alert-circle",
+        MaintenanceStatus.DueSoon => "ti ti-clock-exclamation",
+        _ => "ti ti-circle-check"
+    };
+
+    private string GetText()
+    {
+        if (Compact)
+        {
+            return Status switch
+            {
+                MaintenanceStatus.Overdue => "!",
+                MaintenanceStatus.DueSoon => "?",
+                _ => "OK"
+            };
+        }
+
+        return Status switch
+        {
+            MaintenanceStatus.Overdue => OverdueCount > 1 ? $"{OverdueCount} Overdue" : "Overdue",
+            MaintenanceStatus.DueSoon => DueSoonCount > 1 ? $"{DueSoonCount} Due Soon" : "Due Soon",
+            _ => "OK"
+        };
+    }
+
+    private string GetTooltip() => Status switch
+    {
+        MaintenanceStatus.Overdue => "One or more services are overdue",
+        MaintenanceStatus.DueSoon => "One or more services are due soon",
+        _ => "All services up to date"
+    };
+}

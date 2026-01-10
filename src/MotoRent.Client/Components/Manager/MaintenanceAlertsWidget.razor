@@ -1,0 +1,109 @@
+@using MotoRent.Domain.Entities
+@using MotoRent.Services
+@using MotoRent.Client.Components.Shared
+@inherits MotoRent.Client.Controls.MotoRentComponentBase
+@inject MaintenanceService MaintenanceService
+
+<div class="card h-100">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="card-title mb-0">
+                <i class="ti ti-tool me-2"></i>
+                Maintenance Alerts
+            </h4>
+            <a href="/manager/service-types" class="text-primary text-decoration-none small">
+                <i class="ti ti-settings me-1"></i>Settings
+            </a>
+        </div>
+
+        @if (m_loading)
+        {
+            <div class="placeholder-glow">
+                @for (int i = 0; i < 3; i++)
+                {
+                    <div class="placeholder col-12 mb-2" style="height: 50px; border-radius: 4px;"></div>
+                }
+            </div>
+        }
+        else if (m_alerts.Count == 0)
+        {
+            <div class="text-center text-success py-4">
+                <i class="ti ti-circle-check mb-2" style="font-size: 2.5rem;"></i>
+                <div class="fw-medium">All maintenance up to date!</div>
+                <small class="text-secondary">No bikes require service</small>
+            </div>
+        }
+        else
+        {
+            <div class="d-flex flex-column gap-2">
+                @foreach (var alert in m_alerts)
+                {
+                    <div class="d-flex align-items-center p-2 rounded @GetAlertBgClass(alert.Status)">
+                        <div class="me-3">
+                            <MaintenanceStatusBadge Status="@alert.Status" Compact="true" />
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="fw-medium">@alert.LicensePlate</div>
+                            <small class="text-secondary">@alert.ServiceTypeName</small>
+                        </div>
+                        <div class="text-end">
+                            @if (alert.NextDueDate.HasValue)
+                            {
+                                <small class="text-secondary d-block">@FormatDate(alert.NextDueDate)</small>
+                            }
+                            @if (alert.NextDueMileage.HasValue)
+                            {
+                                <small class="text-secondary">@alert.NextDueMileage.Value.ToString("N0") km</small>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+
+            @if (m_hasMore)
+            {
+                <div class="text-center mt-3">
+                    <small class="text-secondary">+@m_totalAlerts more alerts</small>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    private bool m_loading = true;
+    private List<MaintenanceAlertItem> m_alerts = [];
+    private int m_totalAlerts;
+    private bool m_hasMore;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAlertsAsync();
+    }
+
+    private async Task LoadAlertsAsync()
+    {
+        m_loading = true;
+        try
+        {
+            // Get more than we display to know if there are more
+            var allAlerts = await MaintenanceService.GetMaintenanceAlertsAsync(
+                ShopId, DateTimeOffset.Now, limit: 20);
+
+            m_totalAlerts = allAlerts.Count;
+            m_alerts = allAlerts.Take(5).ToList();
+            m_hasMore = m_totalAlerts > 5;
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private static string GetAlertBgClass(MaintenanceStatus status) => status switch
+    {
+        MaintenanceStatus.Overdue => "bg-danger-lt",
+        MaintenanceStatus.DueSoon => "bg-warning-lt",
+        _ => "bg-success-lt"
+    };
+}

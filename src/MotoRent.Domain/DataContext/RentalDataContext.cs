@@ -18,6 +18,8 @@ public partial class RentalDataContext
     public Query<DamageReport> DamageReports { get; }
     public Query<DamagePhoto> DamagePhotos { get; }
     public Query<RentalAgreement> RentalAgreements { get; }
+    public Query<ServiceType> ServiceTypes { get; }
+    public Query<MaintenanceSchedule> MaintenanceSchedules { get; }
 
     private QueryProvider QueryProvider { get; }
 
@@ -39,6 +41,8 @@ public partial class RentalDataContext
         DamageReports = new Query<DamageReport>(provider);
         DamagePhotos = new Query<DamagePhoto>(provider);
         RentalAgreements = new Query<RentalAgreement>(provider);
+        ServiceTypes = new Query<ServiceType>(provider);
+        MaintenanceSchedules = new Query<MaintenanceSchedule>(provider);
     }
 
     public async Task<T?> LoadOneAsync<T>(Expression<Func<T, bool>> predicate) where T : Entity

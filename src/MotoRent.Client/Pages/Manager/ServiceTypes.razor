@@ -1,0 +1,199 @@
+@page "/manager/service-types"
+@using MotoRent.Domain.Entities
+@using MotoRent.Services
+@using MotoRent.Client.Components.Shared
+@inherits MotoRent.Client.Controls.LocalizedComponentBase<ServiceTypes>
+@inject MaintenanceService MaintenanceService
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "RequireTenantManager")]
+
+<MotoRentPageTitle>Service Types</MotoRentPageTitle>
+
+<TablerHeader Title="Maintenance Service Types" PreTitle="Configuration">
+    <div class="btn-list">
+        @if (m_serviceTypes.Count == 0 && !m_loading)
+        {
+            <button type="button" class="btn btn-outline-success" @onclick="CreateDefaultTypesAsync">
+                <i class="ti ti-wand me-1"></i>
+                Create Defaults
+            </button>
+        }
+        <button type="button" class="btn btn-primary" @onclick="OpenAddDialogAsync">
+            <i class="ti ti-plus me-1"></i>
+            Add Service Type
+        </button>
+    </div>
+</TablerHeader>
+
+<LoadingSkeleton Loading="@m_loading" Mode="LoadingSkeleton.PlaceholderMode.Table" Rows="5" Columns="5">
+    @if (m_serviceTypes.Count == 0)
+    {
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="ti ti-tool mb-3" style="font-size: 3rem; color: var(--tblr-secondary);"></i>
+                <h3>No Service Types Defined</h3>
+                <p class="text-secondary">
+                    Create service types to track maintenance schedules for your motorbikes.
+                </p>
+                <button type="button" class="btn btn-success" @onclick="CreateDefaultTypesAsync">
+                    <i class="ti ti-wand me-1"></i>
+                    Create Default Types
+                </button>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="table-responsive">
+                <table class="table table-vcenter card-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Description</th>
+                            <th class="text-center">Days</th>
+                            <th class="text-center">Kilometers</th>
+                            <th class="text-center">Status</th>
+                            <th class="w-1">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var st in m_serviceTypes)
+                        {
+                            <tr class="@(st.IsActive ? "" : "text-secondary")">
+                                <td>
+                                    <strong>@st.Name</strong>
+                                    <small class="d-block text-secondary">Order: @st.SortOrder</small>
+                                </td>
+                                <td>@(st.Description ?? "-")</td>
+                                <td class="text-center">@st.DaysInterval days</td>
+                                <td class="text-center">@st.KmInterval.ToString("N0") km</td>
+                                <td class="text-center">
+                                    <span class="badge @(st.IsActive ? "bg-success" : "bg-secondary")">
+                                        @(st.IsActive ? "Active" : "Inactive")
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="btn-list flex-nowrap">
+                                        <button type="button" class="btn btn-icon btn-ghost-primary"
+                                                title="Edit" @onclick="@(() => OpenEditDialogAsync(st))">
+                                            <i class="ti ti-edit"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-icon btn-ghost-danger"
+                                                title="Delete" @onclick="@(() => ConfirmDeleteAsync(st))">
+                                            <i class="ti ti-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</LoadingSkeleton>
+
+@code {
+    private bool m_loading = true;
+    private List<ServiceType> m_serviceTypes = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        m_loading = true;
+        try
+        {
+            var result = await MaintenanceService.GetServiceTypesAsync(ShopId, activeOnly: false);
+            m_serviceTypes = result.ItemCollection.ToList();
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private async Task OpenAddDialogAsync()
+    {
+        var serviceType = new ServiceType
+        {
+            ShopId = ShopId,
+            IsActive = true,
+            DaysInterval = 30,
+            KmInterval = 3000,
+            SortOrder = m_serviceTypes.Count + 1
+        };
+
+        var result = await DialogService
+            .Create<ServiceTypeDialog>("Add Service Type")
+            .WithParameter(x => x.Entity, serviceType)
+            .WithParameter(x => x.IsNew, true)
+            .ShowDialogAsync();
+
+        if (!result.Cancelled)
+        {
+            await LoadDataAsync();
+            ShowSuccess("Service type added");
+        }
+    }
+
+    private async Task OpenEditDialogAsync(ServiceType st)
+    {
+        var clone = st.Clone();
+
+        var result = await DialogService
+            .Create<ServiceTypeDialog>("Edit Service Type")
+            .WithParameter(x => x.Entity, clone)
+            .WithParameter(x => x.IsNew, false)
+            .ShowDialogAsync();
+
+        if (!result.Cancelled)
+        {
+            await LoadDataAsync();
+            ShowSuccess("Service type updated");
+        }
+    }
+
+    private async Task ConfirmDeleteAsync(ServiceType st)
+    {
+        if (!await ConfirmAsync($"Delete service type '{st.Name}'?",
+            "This will not delete existing maintenance schedules."))
+            return;
+
+        var result = await MaintenanceService.DeleteServiceTypeAsync(st, UserName);
+        if (result.Success)
+        {
+            await LoadDataAsync();
+            ShowSuccess("Service type deleted");
+        }
+        else
+        {
+            ShowError($"Delete failed: {result.Message}");
+        }
+    }
+
+    private async Task CreateDefaultTypesAsync()
+    {
+        m_loading = true;
+        try
+        {
+            var result = await MaintenanceService.CreateDefaultServiceTypesAsync(ShopId, UserName);
+            if (result.Success)
+            {
+                await LoadDataAsync();
+                ShowSuccess("Default service types created");
+            }
+            else
+            {
+                ShowError($"Failed: {result.Message}");
+            }
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+}

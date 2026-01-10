@@ -1,6 +1,9 @@
 @page "/motorbikes"
+@using MotoRent.Domain.Entities
+@using MotoRent.Client.Components.Shared
 @inherits LocalizedComponentBase<Motorbikes>
 @inject MotorbikeService MotorbikeService
+@inject MaintenanceService MaintenanceService
 
 <MotoRentPageTitle>Motorbikes</MotoRentPageTitle>
 
@@ -58,6 +61,7 @@
                         <th>Year</th>
                         <th>Daily Rate</th>
                         <th>Status</th>
+                        <th>Maintenance</th>
                         <th class="w-1">Actions</th>
                     </tr>
                 </thead>
@@ -65,7 +69,7 @@
                     @if (m_motorbikes.Count == 0)
                     {
                         <tr>
-                            <td colspan="9" class="text-center text-secondary py-4">
+                            <td colspan="10" class="text-center text-secondary py-4">
                                 <i class="ti ti-motorbike mb-2" style="font-size: 2rem;"></i>
                                 <div>No motorbikes found</div>
                             </td>
@@ -89,6 +93,18 @@
                                     <span class="badge @GetStatusBadgeClass(motorbike.Status)">
                                         @motorbike.Status
                                     </span>
+                                </td>
+                                <td>
+                                    @if (m_maintenanceSummaries.TryGetValue(motorbike.MotorbikeId, out var summary))
+                                    {
+                                        <MaintenanceStatusBadge Status="@summary.OverallStatus"
+                                                                 OverdueCount="@summary.OverdueCount"
+                                                                 DueSoonCount="@summary.DueSoonCount" />
+                                    }
+                                    else
+                                    {
+                                        <span class="text-secondary">-</span>
+                                    }
                                 </td>
                                 <td @onclick:stopPropagation="true">
                                     <div class="btn-list flex-nowrap">
@@ -122,6 +138,7 @@
 @code {
     private List<Motorbike> m_motorbikes = [];
     private Dictionary<string, int> m_statusCounts = new();
+    private Dictionary<int, MotorbikeMaintenanceSummary> m_maintenanceSummaries = new();
     private bool m_loading = true;
     private string? m_searchTerm;
     private string? m_statusFilter;
@@ -146,6 +163,15 @@
 
             this.m_motorbikes = result.ItemCollection;
             this.m_statusCounts = await this.MotorbikeService.GetStatusCountsAsync(this.ShopId);
+
+            // Load maintenance summaries for each motorbike
+            this.m_maintenanceSummaries.Clear();
+            var today = DateTimeOffset.Now;
+            foreach (var bike in this.m_motorbikes)
+            {
+                var summary = await this.MaintenanceService.GetMotorbikeMaintenanceSummaryAsync(bike.MotorbikeId, today);
+                this.m_maintenanceSummaries[bike.MotorbikeId] = summary;
+            }
         }
         catch (Exception ex)
         {

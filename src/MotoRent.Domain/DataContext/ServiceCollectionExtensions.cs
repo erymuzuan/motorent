@@ -25,6 +25,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IRepository<DamageReport>, Repository<DamageReport>>();
         services.AddSingleton<IRepository<DamagePhoto>, Repository<DamagePhoto>>();
         services.AddSingleton<IRepository<RentalAgreement>, Repository<RentalAgreement>>();
+        services.AddSingleton<IRepository<ServiceType>, Repository<ServiceType>>();
+        services.AddSingleton<IRepository<MaintenanceSchedule>, Repository<MaintenanceSchedule>>();
 
         // Register repositories for Core entities (uses [Core] schema)
         services.AddSingleton<IRepository<Organization>, CoreRepository<Organization>>();

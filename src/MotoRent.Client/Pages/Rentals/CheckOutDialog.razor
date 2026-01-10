@@ -1,7 +1,10 @@
+@using MotoRent.Domain.Entities
+@using MotoRent.Client.Components.Shared
 @inherits LocalizedDialogBase<Rental, CheckOutDialog>
 @inject RentalService RentalService
 @inject RenterService RenterService
 @inject MotorbikeService MotorbikeService
+@inject MaintenanceService MaintenanceService
 
 <div class="modal-body">
     @if (m_loading)
@@ -297,6 +300,34 @@
                 <input type="checkbox" class="form-check-input" @bind="m_refundProcessed" />
                 <span class="form-check-label">@GetRefundConfirmationText()</span>
             </label>
+
+            @if (m_hasMaintenanceWarning)
+            {
+                <div class="alert alert-warning mt-3">
+                    <div class="d-flex align-items-start">
+                        <i class="ti ti-tool me-2 mt-1"></i>
+                        <div class="flex-grow-1">
+                            <strong>Maintenance Notice</strong>
+                            <div class="mt-1">
+                                This motorbike has
+                                @if (m_maintenanceOverdueCount > 0)
+                                {
+                                    <span class="badge bg-danger mx-1">@m_maintenanceOverdueCount overdue</span>
+                                }
+                                @if (m_maintenanceDueSoonCount > 0)
+                                {
+                                    <span class="badge bg-warning text-dark mx-1">@m_maintenanceDueSoonCount due soon</span>
+                                }
+                                service(s). Consider scheduling maintenance after this check-out.
+                            </div>
+                            <label class="form-check mt-2 mb-0">
+                                <input type="checkbox" class="form-check-input" @bind="m_acknowledgeMaintenanceWarning" />
+                                <span class="form-check-label">I acknowledge and will proceed with checkout</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            }
         </div>
     </div>
 </div>
@@ -338,6 +369,12 @@
     private string m_refundMethod = "Cash";
     private bool m_refundProcessed;
 
+    // Maintenance warning
+    private bool m_hasMaintenanceWarning;
+    private int m_maintenanceOverdueCount;
+    private int m_maintenanceDueSoonCount;
+    private bool m_acknowledgeMaintenanceWarning;
+
     // Calculated values
     private int m_extraDays => this.m_actualReturnDate.HasValue
         ? Math.Max(0, (int)(this.m_actualReturnDate.Value - this.Entity.ExpectedEndDate.Date).TotalDays)
@@ -349,7 +386,8 @@
 
     private bool CanComplete => this.m_actualReturnDate.HasValue &&
                                 this.m_mileageEnd >= this.Entity.MileageStart &&
-                                (this.m_refundAmount == 0 || this.m_refundProcessed);
+                                (this.m_refundAmount == 0 || this.m_refundProcessed) &&
+                                (!this.m_hasMaintenanceWarning || this.m_acknowledgeMaintenanceWarning);
 
     protected override async Task OnInitializedAsync()
     {
@@ -373,6 +411,13 @@
             // Load deposit
             var deposit = await this.DataContext.LoadOneAsync<Deposit>(d => d.RentalId == this.Entity.RentalId);
             this.m_depositAmount = deposit?.Amount ?? 0;
+
+            // Check maintenance status
+            var maintenanceSummary = await this.MaintenanceService.GetMotorbikeMaintenanceSummaryAsync(
+                this.Entity.MotorbikeId, DateTimeOffset.Now);
+            this.m_maintenanceOverdueCount = maintenanceSummary.OverdueCount;
+            this.m_maintenanceDueSoonCount = maintenanceSummary.DueSoonCount;
+            this.m_hasMaintenanceWarning = maintenanceSummary.OverallStatus != MaintenanceStatus.Ok;
         }
         catch (Exception ex)
         {

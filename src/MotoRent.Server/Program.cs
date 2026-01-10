@@ -32,6 +32,7 @@ builder.Services.AddScoped<DocumentOcrService>();
 builder.Services.AddScoped<PaymentService>();
 builder.Services.AddScoped<DepositService>();
 builder.Services.AddScoped<InvoiceService>();
+builder.Services.AddScoped<MaintenanceService>();
 
 // Add HttpClient for external API calls (Gemini)
 builder.Services.AddHttpClient("Gemini", client =>
