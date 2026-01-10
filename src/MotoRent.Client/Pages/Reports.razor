@@ -1,4 +1,5 @@
 @page "/reports"
+@rendermode InteractiveServer
 @inherits MotoRentComponentBase
 @using MotoRent.Domain.Entities
 @using MotoRent.Services
@@ -7,187 +8,219 @@
 
 <PageTitle>Reports - MotoRent</PageTitle>
 
-<MudText Typo="Typo.h4" Class="mb-4">Reports</MudText>
+<h4 class="mb-4">Reports</h4>
 
-<MudPaper Elevation="2" Class="pa-4 mb-4">
-    <MudGrid>
-        <MudItem xs="12" md="4">
-            <MudSelect T="string" Value="m_reportType" Label="Report Type"
-                       Variant="Variant.Outlined" Dense="true"
-                       ValueChanged="@(async (string s) => { m_reportType = s; await LoadReportAsync(); })">
-                <MudSelectItem Value="@("daily")">Daily Summary</MudSelectItem>
-                <MudSelectItem Value="@("weekly")">Weekly Summary</MudSelectItem>
-                <MudSelectItem Value="@("monthly")">Monthly Summary</MudSelectItem>
-            </MudSelect>
-        </MudItem>
-        <MudItem xs="12" md="4">
-            <MudDatePicker Date="m_reportDate" Label="Report Date"
-                           Variant="Variant.Outlined" Editable="true"
-                           DateChanged="@(async (DateTime? d) => { m_reportDate = d ?? DateTime.Today; await LoadReportAsync(); })" />
-        </MudItem>
-        <MudItem xs="12" md="4" Class="d-flex align-center">
-            <MudButton Variant="Variant.Filled" Color="Color.Primary"
-                       StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadReportAsync">
-                Generate Report
-            </MudButton>
-        </MudItem>
-    </MudGrid>
-</MudPaper>
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+            <div class="col-12 col-md-4">
+                <label class="form-label">Report Type</label>
+                <select class="form-select" @bind="m_reportType" @bind:after="LoadReportAsync">
+                    <option value="daily">Daily Summary</option>
+                    <option value="weekly">Weekly Summary</option>
+                    <option value="monthly">Monthly Summary</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-4">
+                <label class="form-label">Report Date</label>
+                <input type="date" class="form-control"
+                       @bind="m_reportDate" @bind:after="LoadReportAsync" />
+            </div>
+            <div class="col-12 col-md-4">
+                <button type="button" class="btn btn-primary" @onclick="LoadReportAsync">
+                    <i class="ti ti-refresh me-2"></i>
+                    Generate Report
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 @if (m_loading)
 {
-    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+    <div class="progress progress-sm mb-4">
+        <div class="progress-bar progress-bar-indeterminate"></div>
+    </div>
 }
 
 @* Summary Cards *@
-<MudGrid Class="mb-4">
-    <MudItem xs="6" md="3">
-        <MudPaper Elevation="2" Class="pa-4">
-            <MudStack Spacing="1">
-                <MudText Typo="Typo.caption" Color="Color.Secondary">Total Revenue</MudText>
-                <MudText Typo="Typo.h4" Color="Color.Success">@FormatCurrency(m_totalRevenue)</MudText>
-            </MudStack>
-        </MudPaper>
-    </MudItem>
-    <MudItem xs="6" md="3">
-        <MudPaper Elevation="2" Class="pa-4">
-            <MudStack Spacing="1">
-                <MudText Typo="Typo.caption" Color="Color.Secondary">Total Rentals</MudText>
-                <MudText Typo="Typo.h4" Color="Color.Primary">@m_totalRentals</MudText>
-            </MudStack>
-        </MudPaper>
-    </MudItem>
-    <MudItem xs="6" md="3">
-        <MudPaper Elevation="2" Class="pa-4">
-            <MudStack Spacing="1">
-                <MudText Typo="Typo.caption" Color="Color.Secondary">Active Rentals</MudText>
-                <MudText Typo="Typo.h4" Color="Color.Info">@m_activeRentals</MudText>
-            </MudStack>
-        </MudPaper>
-    </MudItem>
-    <MudItem xs="6" md="3">
-        <MudPaper Elevation="2" Class="pa-4">
-            <MudStack Spacing="1">
-                <MudText Typo="Typo.caption" Color="Color.Secondary">Completed</MudText>
-                <MudText Typo="Typo.h4">@m_completedRentals</MudText>
-            </MudStack>
-        </MudPaper>
-    </MudItem>
-</MudGrid>
+<div class="row mb-4 g-3">
+    <div class="col-6 col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex flex-column">
+                    <small class="text-secondary">Total Revenue</small>
+                    <span class="h4 text-success mb-0">@FormatCurrency(m_totalRevenue)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex flex-column">
+                    <small class="text-secondary">Total Rentals</small>
+                    <span class="h4 text-primary mb-0">@m_totalRentals</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex flex-column">
+                    <small class="text-secondary">Active Rentals</small>
+                    <span class="h4 text-info mb-0">@m_activeRentals</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex flex-column">
+                    <small class="text-secondary">Completed</small>
+                    <span class="h4 mb-0">@m_completedRentals</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
-<MudGrid>
+<div class="row g-4">
     @* Revenue by Payment Method *@
-    <MudItem xs="12" md="6">
-        <MudPaper Elevation="2" Class="pa-4">
-            <MudText Typo="Typo.h6" Class="mb-3">Revenue by Payment Method</MudText>
-            @if (m_revenueByMethod.Any())
-            {
-                <MudSimpleTable Dense="true" Striped="true">
-                    <thead>
-                        <tr>
-                            <th>Method</th>
-                            <th style="text-align: right;">Amount</th>
-                            <th style="text-align: right;">%</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var item in m_revenueByMethod)
-                        {
-                            <tr>
-                                <td>
-                                    <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
-                                        <MudIcon Icon="@GetPaymentMethodIcon(item.Key)" Size="Size.Small" />
-                                        @item.Key
-                                    </MudStack>
-                                </td>
-                                <td style="text-align: right;">@FormatCurrency(item.Value)</td>
-                                <td style="text-align: right;">@(m_totalRevenue > 0 ? (item.Value / m_totalRevenue * 100).ToString("F1") : "0")%</td>
-                            </tr>
-                        }
-                    </tbody>
-                </MudSimpleTable>
-            }
-            else
-            {
-                <MudText Color="Color.Secondary">No payment data for this period</MudText>
-            }
-        </MudPaper>
-    </MudItem>
+    <div class="col-12 col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Revenue by Payment Method</h6>
+            </div>
+            <div class="card-body">
+                @if (m_revenueByMethod.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-vcenter table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Method</th>
+                                    <th class="text-end">Amount</th>
+                                    <th class="text-end">%</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in m_revenueByMethod)
+                                {
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <i class="@GetPaymentMethodIcon(item.Key)"></i>
+                                                @item.Key
+                                            </div>
+                                        </td>
+                                        <td class="text-end">@FormatCurrency(item.Value)</td>
+                                        <td class="text-end">@(m_totalRevenue > 0 ? (item.Value / m_totalRevenue * 100).ToString("F1") : "0")%</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <p class="text-secondary mb-0">No payment data for this period</p>
+                }
+            </div>
+        </div>
+    </div>
 
     @* Rental Status Summary *@
-    <MudItem xs="12" md="6">
-        <MudPaper Elevation="2" Class="pa-4">
-            <MudText Typo="Typo.h6" Class="mb-3">Rental Status</MudText>
-            @if (m_rentalsByStatus.Any())
-            {
-                <MudSimpleTable Dense="true" Striped="true">
-                    <thead>
-                        <tr>
-                            <th>Status</th>
-                            <th style="text-align: right;">Count</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var item in m_rentalsByStatus)
-                        {
-                            <tr>
-                                <td>
-                                    <MudChip T="string" Size="Size.Small" Color="@GetStatusColor(item.Key)">
-                                        @item.Key
-                                    </MudChip>
-                                </td>
-                                <td style="text-align: right;">@item.Value</td>
-                            </tr>
-                        }
-                    </tbody>
-                </MudSimpleTable>
-            }
-            else
-            {
-                <MudText Color="Color.Secondary">No rental data for this period</MudText>
-            }
-        </MudPaper>
-    </MudItem>
+    <div class="col-12 col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Rental Status</h6>
+            </div>
+            <div class="card-body">
+                @if (m_rentalsByStatus.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-vcenter table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Status</th>
+                                    <th class="text-end">Count</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in m_rentalsByStatus)
+                                {
+                                    <tr>
+                                        <td>
+                                            <span class="badge @GetStatusBadgeClass(item.Key)">
+                                                @item.Key
+                                            </span>
+                                        </td>
+                                        <td class="text-end">@item.Value</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <p class="text-secondary mb-0">No rental data for this period</p>
+                }
+            </div>
+        </div>
+    </div>
 
     @* Daily Revenue Breakdown *@
-    <MudItem xs="12">
-        <MudPaper Elevation="2" Class="pa-4">
-            <MudText Typo="Typo.h6" Class="mb-3">@GetPeriodTitle() Revenue</MudText>
-            @if (m_dailyRevenue.Any())
-            {
-                <MudSimpleTable Dense="true" Striped="true">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th style="text-align: right;">Revenue</th>
-                            <th>Progress</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @{
-                            var maxRevenue = m_dailyRevenue.Values.DefaultIfEmpty(1).Max();
-                        }
-                        @foreach (var item in m_dailyRevenue.OrderByDescending(x => x.Key))
-                        {
-                            <tr>
-                                <td>@item.Key</td>
-                                <td style="text-align: right;">@FormatCurrency(item.Value)</td>
-                                <td style="width: 40%;">
-                                    <MudProgressLinear Value="@(maxRevenue > 0 ? (double)(item.Value / maxRevenue * 100) : 0)"
-                                                       Color="Color.Primary" Size="Size.Medium" />
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </MudSimpleTable>
-            }
-            else
-            {
-                <MudText Color="Color.Secondary">No revenue data for this period</MudText>
-            }
-        </MudPaper>
-    </MudItem>
-</MudGrid>
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">@GetPeriodTitle() Revenue</h6>
+            </div>
+            <div class="card-body">
+                @if (m_dailyRevenue.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-vcenter table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th class="text-end">Revenue</th>
+                                    <th style="width: 40%;">Progress</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @{
+                                    var maxRevenue = m_dailyRevenue.Values.DefaultIfEmpty(1).Max();
+                                }
+                                @foreach (var item in m_dailyRevenue.OrderByDescending(x => x.Key))
+                                {
+                                    <tr>
+                                        <td>@item.Key</td>
+                                        <td class="text-end">@FormatCurrency(item.Value)</td>
+                                        <td>
+                                            <div class="progress">
+                                                <div class="progress-bar bg-primary"
+                                                     style="width: @(maxRevenue > 0 ? (item.Value / maxRevenue * 100).ToString("F0") : "0")%">
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <p class="text-secondary mb-0">No revenue data for this period</p>
+                }
+            </div>
+        </div>
+    </div>
+</div>
 
 @code {
     private bool m_loading = true;
@@ -212,40 +245,40 @@
 
     private async Task LoadReportAsync()
     {
-        m_loading = true;
+        this.m_loading = true;
         try
         {
             var (fromDate, toDate) = GetDateRange();
 
             // Load payment summary
-            var paymentSummary = await PaymentService.GetPaymentSummaryAsync(ShopId, fromDate, toDate);
-            m_totalRevenue = paymentSummary.TotalAmount;
-            m_revenueByMethod = paymentSummary.ByPaymentMethod;
+            var paymentSummary = await this.PaymentService.GetPaymentSummaryAsync(this.ShopId, fromDate, toDate);
+            this.m_totalRevenue = paymentSummary.TotalAmount;
+            this.m_revenueByMethod = paymentSummary.ByPaymentMethod;
 
             // Load daily revenue
-            m_dailyRevenue = await PaymentService.GetDailyRevenueAsync(ShopId, fromDate, toDate);
+            this.m_dailyRevenue = await this.PaymentService.GetDailyRevenueAsync(this.ShopId, fromDate, toDate);
 
             // Load rental stats
-            m_rentalsByStatus = await RentalService.GetStatusCountsAsync(ShopId);
-            m_totalRentals = m_rentalsByStatus.Values.Sum();
-            m_activeRentals = m_rentalsByStatus.GetValueOrDefault("Active", 0);
-            m_completedRentals = m_rentalsByStatus.GetValueOrDefault("Completed", 0);
+            this.m_rentalsByStatus = await this.RentalService.GetStatusCountsAsync(this.ShopId);
+            this.m_totalRentals = this.m_rentalsByStatus.Values.Sum();
+            this.m_activeRentals = this.m_rentalsByStatus.GetValueOrDefault("Active", 0);
+            this.m_completedRentals = this.m_rentalsByStatus.GetValueOrDefault("Completed", 0);
         }
         catch (Exception ex)
         {
-            ShowError($"Error loading report: {ex.Message}");
+            this.ShowError($"Error loading report: {ex.Message}");
         }
         finally
         {
-            m_loading = false;
+            this.m_loading = false;
         }
     }
 
     private (DateTimeOffset fromDate, DateTimeOffset toDate) GetDateRange()
     {
-        var baseDate = m_reportDate;
+        var baseDate = this.m_reportDate;
 
-        return m_reportType switch
+        return this.m_reportType switch
         {
             "daily" => (
                 new DateTimeOffset(baseDate.Date),
@@ -266,7 +299,7 @@
         };
     }
 
-    private string GetPeriodTitle() => m_reportType switch
+    private string GetPeriodTitle() => this.m_reportType switch
     {
         "daily" => "Hourly",
         "weekly" => "Daily",
@@ -274,21 +307,21 @@
         _ => "Daily"
     };
 
-    private static Color GetStatusColor(string? status) => status switch
+    private static string GetStatusBadgeClass(string? status) => status switch
     {
-        "Active" => Color.Primary,
-        "Completed" => Color.Success,
-        "Cancelled" => Color.Error,
-        "Reserved" => Color.Info,
-        _ => Color.Default
+        "Active" => "bg-primary",
+        "Completed" => "bg-success",
+        "Cancelled" => "bg-danger",
+        "Reserved" => "bg-info",
+        _ => "bg-secondary"
     };
 
     private static string GetPaymentMethodIcon(string? method) => method switch
     {
-        "Cash" => Icons.Material.Filled.Money,
-        "Card" => Icons.Material.Filled.CreditCard,
-        "PromptPay" => Icons.Material.Filled.QrCode,
-        "BankTransfer" => Icons.Material.Filled.AccountBalance,
-        _ => Icons.Material.Filled.Payment
+        "Cash" => "ti ti-cash",
+        "Card" => "ti ti-credit-card",
+        "PromptPay" => "ti ti-qrcode",
+        "BankTransfer" => "ti ti-building-bank",
+        _ => "ti ti-wallet"
     };
 }

@@ -1,165 +1,168 @@
 @page "/deposits"
-@inherits MotoRentComponentBase
-@using MotoRent.Domain.Entities
-@using MotoRent.Services
+@inherits LocalizedComponentBase<Deposits>
 @inject DepositService DepositService
 
-<PageTitle>Deposits - MotoRent</PageTitle>
+<MotoRentPageTitle>Deposits</MotoRentPageTitle>
 
-<MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
-    <MudStack Spacing="0">
-        <MudText Typo="Typo.h4">Deposit Tracking</MudText>
-        <MudText Typo="Typo.body2" Color="Color.Secondary">
-            Manage security deposits for rentals
-        </MudText>
-    </MudStack>
-</MudStack>
+<TablerHeader Title="Deposit Tracking" PreTitle="Finance">
+    <span class="text-secondary">Manage security deposits for rentals</span>
+</TablerHeader>
 
-@* Summary Cards *@
-<MudGrid Class="mb-4">
-    <MudItem xs="12" sm="6" md="3">
-        <MudPaper Elevation="2" Class="pa-4">
-            <MudStack Spacing="1">
-                <MudText Typo="Typo.caption" Color="Color.Secondary">Total Held</MudText>
-                <MudText Typo="Typo.h4" Color="Color.Primary">@FormatCurrency(m_totalHeld)</MudText>
-                <MudText Typo="Typo.caption">@m_statusCounts.GetValueOrDefault("Held", 0) deposits</MudText>
-            </MudStack>
-        </MudPaper>
-    </MudItem>
-    <MudItem xs="12" sm="6" md="3">
-        <MudPaper Elevation="2" Class="pa-4">
-            <MudStack Spacing="1">
-                <MudText Typo="Typo.caption" Color="Color.Secondary">Held</MudText>
-                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                    <MudIcon Icon="@Icons.Material.Filled.Lock" Color="Color.Warning" />
-                    <MudText Typo="Typo.h5">@m_statusCounts.GetValueOrDefault("Held", 0)</MudText>
-                </MudStack>
-            </MudStack>
-        </MudPaper>
-    </MudItem>
-    <MudItem xs="12" sm="6" md="3">
-        <MudPaper Elevation="2" Class="pa-4">
-            <MudStack Spacing="1">
-                <MudText Typo="Typo.caption" Color="Color.Secondary">Refunded</MudText>
-                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" />
-                    <MudText Typo="Typo.h5">@m_statusCounts.GetValueOrDefault("Refunded", 0)</MudText>
-                </MudStack>
-            </MudStack>
-        </MudPaper>
-    </MudItem>
-    <MudItem xs="12" sm="6" md="3">
-        <MudPaper Elevation="2" Class="pa-4">
-            <MudStack Spacing="1">
-                <MudText Typo="Typo.caption" Color="Color.Secondary">Forfeited</MudText>
-                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                    <MudIcon Icon="@Icons.Material.Filled.Block" Color="Color.Error" />
-                    <MudText Typo="Typo.h5">@m_statusCounts.GetValueOrDefault("Forfeited", 0)</MudText>
-                </MudStack>
-            </MudStack>
-        </MudPaper>
-    </MudItem>
-</MudGrid>
+<div class="row row-deck row-cards mb-3">
+    <div class="col-sm-6 col-lg-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="subheader">Total Held</div>
+                <div class="h2 text-primary">@FormatCurrency(m_totalHeld)</div>
+                <div class="text-secondary small">@m_statusCounts.GetValueOrDefault("Held", 0) deposits</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="subheader">Held</div>
+                <div class="d-flex align-items-center gap-2">
+                    <i class="ti ti-lock text-warning fs-2"></i>
+                    <span class="h3">@m_statusCounts.GetValueOrDefault("Held", 0)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="subheader">Refunded</div>
+                <div class="d-flex align-items-center gap-2">
+                    <i class="ti ti-circle-check text-success fs-2"></i>
+                    <span class="h3">@m_statusCounts.GetValueOrDefault("Refunded", 0)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="subheader">Forfeited</div>
+                <div class="d-flex align-items-center gap-2">
+                    <i class="ti ti-ban text-danger fs-2"></i>
+                    <span class="h3">@m_statusCounts.GetValueOrDefault("Forfeited", 0)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
-@* Status Filter Tabs *@
-<MudTabs @bind-ActivePanelIndex="m_activeTab" Elevation="0" ApplyEffectsToContainer="true"
-         PanelClass="pa-0" Rounded="true" Border="true" Class="mb-4">
-    <MudTabPanel Text="All" Icon="@Icons.Material.Filled.List" />
-    <MudTabPanel Text="Held" Icon="@Icons.Material.Filled.Lock" />
-    <MudTabPanel Text="Refunded" Icon="@Icons.Material.Filled.CheckCircle" />
-    <MudTabPanel Text="Forfeited" Icon="@Icons.Material.Filled.Block" />
-</MudTabs>
+<div class="card mb-3">
+    <div class="card-header">
+        <ul class="nav nav-tabs card-header-tabs">
+            <li class="nav-item">
+                <button class="nav-link @(m_activeTab == 0 ? "active" : "")" @onclick="@(() => SetActiveTab(0))">
+                    <i class="ti ti-list me-1"></i> All
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link @(m_activeTab == 1 ? "active" : "")" @onclick="@(() => SetActiveTab(1))">
+                    <i class="ti ti-lock me-1"></i> Held
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link @(m_activeTab == 2 ? "active" : "")" @onclick="@(() => SetActiveTab(2))">
+                    <i class="ti ti-circle-check me-1"></i> Refunded
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link @(m_activeTab == 3 ? "active" : "")" @onclick="@(() => SetActiveTab(3))">
+                    <i class="ti ti-ban me-1"></i> Forfeited
+                </button>
+            </li>
+        </ul>
+    </div>
+</div>
 
-@* Deposits Grid *@
-<MudPaper Elevation="2" Class="pa-4">
-    @if (m_loading)
-    {
-        <MudProgressLinear Indeterminate="true" Class="mb-4" />
-    }
-
-    <MudDataGrid T="DepositWithRentalInfo" Items="m_deposits" Dense="true" Hover="true"
-                 RowsPerPage="10" SortMode="SortMode.Single">
-        <Columns>
-            <PropertyColumn Property="x => x.Deposit.DepositId" Title="ID" />
-            <PropertyColumn Property="x => x.RenterName" Title="Renter" />
-            <PropertyColumn Property="x => x.MotorbikeName" Title="Motorbike" />
-            <TemplateColumn Title="Type">
-                <CellTemplate>
-                    <MudChip T="string" Size="Size.Small"
-                             Color="@GetDepositTypeColor(context.Item.Deposit.DepositType)"
-                             Variant="Variant.Outlined">
-                        @context.Item.Deposit.DepositType
-                    </MudChip>
-                </CellTemplate>
-            </TemplateColumn>
-            <TemplateColumn Title="Amount">
-                <CellTemplate>
-                    <MudText Typo="Typo.body2" Style="font-weight: 500;">
-                        @FormatCurrency(context.Item.Deposit.Amount)
-                    </MudText>
-                </CellTemplate>
-            </TemplateColumn>
-            <TemplateColumn Title="Status">
-                <CellTemplate>
-                    <MudChip T="string" Size="Size.Small"
-                             Color="@GetStatusColor(context.Item.Deposit.Status)">
-                        @context.Item.Deposit.Status
-                    </MudChip>
-                </CellTemplate>
-            </TemplateColumn>
-            <TemplateColumn Title="Collected">
-                <CellTemplate>
-                    <MudText Typo="Typo.body2">@FormatDate(context.Item.Deposit.CollectedOn)</MudText>
-                </CellTemplate>
-            </TemplateColumn>
-            <TemplateColumn Title="Refunded">
-                <CellTemplate>
-                    @if (context.Item.Deposit.RefundedOn.HasValue)
+<LoadingSkeleton Loading="@m_loading" Mode="LoadingSkeleton.PlaceholderMode.Table" Rows="10" Columns="8">
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-vcenter card-table table-striped">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Renter</th>
+                        <th>Motorbike</th>
+                        <th>Type</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Collected</th>
+                        <th>Refunded</th>
+                        <th class="w-1">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (m_deposits.Count == 0)
                     {
-                        <MudText Typo="Typo.body2">@FormatDate(context.Item.Deposit.RefundedOn.Value)</MudText>
+                        <tr>
+                            <td colspan="9" class="text-center text-secondary py-4">
+                                <i class="ti ti-wallet mb-2" style="font-size: 2rem;"></i>
+                                <div>No deposits found</div>
+                            </td>
+                        </tr>
                     }
                     else
                     {
-                        <MudText Typo="Typo.body2" Color="Color.Secondary">-</MudText>
-                    }
-                </CellTemplate>
-            </TemplateColumn>
-            <TemplateColumn Title="Actions" StickyRight="true">
-                <CellTemplate>
-                    <MudStack Row="true" Spacing="1">
-                        @if (context.Item.Deposit.Status == "Held")
+                        @foreach (var item in m_deposits)
                         {
-                            <MudTooltip Text="Refund Deposit">
-                                <MudIconButton Icon="@Icons.Material.Filled.MoneyOff"
-                                               Size="Size.Small" Color="Color.Success"
-                                               OnClick="@(() => OpenRefundDialog(context.Item))" />
-                            </MudTooltip>
-                            <MudTooltip Text="Forfeit Deposit">
-                                <MudIconButton Icon="@Icons.Material.Filled.Cancel"
-                                               Size="Size.Small" Color="Color.Error"
-                                               OnClick="@(() => OpenForfeitDialog(context.Item))" />
-                            </MudTooltip>
+                            <tr>
+                                <td>@item.Deposit.DepositId</td>
+                                <td>@item.RenterName</td>
+                                <td>@item.MotorbikeName</td>
+                                <td>
+                                    <span class="badge @GetDepositTypeBadgeClass(item.Deposit.DepositType)">
+                                        @item.Deposit.DepositType
+                                    </span>
+                                </td>
+                                <td class="fw-bold">@FormatCurrency(item.Deposit.Amount)</td>
+                                <td>
+                                    <span class="badge @GetStatusBadgeClass(item.Deposit.Status)">
+                                        @item.Deposit.Status
+                                    </span>
+                                </td>
+                                <td>@FormatDate(item.Deposit.CollectedOn)</td>
+                                <td>
+                                    @if (item.Deposit.RefundedOn.HasValue)
+                                    {
+                                        @FormatDate(item.Deposit.RefundedOn.Value)
+                                    }
+                                    else
+                                    {
+                                        <span class="text-secondary">-</span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="btn-list flex-nowrap">
+                                        @if (item.Deposit.Status == "Held")
+                                        {
+                                            <button type="button" class="btn btn-icon btn-ghost-success" title="Refund"
+                                                    @onclick="@(() => OpenRefundDialog(item))">
+                                                <i class="ti ti-cash-off"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-icon btn-ghost-danger" title="Forfeit"
+                                                    @onclick="@(() => OpenForfeitDialog(item))">
+                                                <i class="ti ti-x"></i>
+                                            </button>
+                                        }
+                                        <a href="/rentals?id=@item.Deposit.RentalId" class="btn btn-icon btn-ghost-primary" title="View Rental">
+                                            <i class="ti ti-eye"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
                         }
-                        <MudTooltip Text="View Rental">
-                            <MudIconButton Icon="@Icons.Material.Filled.Visibility"
-                                           Size="Size.Small" Color="Color.Primary"
-                                           Href="@($"/rentals?id={context.Item.Deposit.RentalId}")" />
-                        </MudTooltip>
-                    </MudStack>
-                </CellTemplate>
-            </TemplateColumn>
-        </Columns>
-        <PagerContent>
-            <MudDataGridPager T="DepositWithRentalInfo" />
-        </PagerContent>
-        <NoRecordsContent>
-            <MudStack AlignItems="AlignItems.Center" Class="pa-8">
-                <MudIcon Icon="@Icons.Material.Filled.AccountBalanceWallet" Size="Size.Large" Color="Color.Secondary" />
-                <MudText Typo="Typo.h6" Color="Color.Secondary">No deposits found</MudText>
-            </MudStack>
-        </NoRecordsContent>
-    </MudDataGrid>
-</MudPaper>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</LoadingSkeleton>
 
 @code {
     private bool m_loading = true;
@@ -168,7 +171,7 @@
     private Dictionary<string, int> m_statusCounts = new();
     private decimal m_totalHeld;
 
-    private string? CurrentStatusFilter => m_activeTab switch
+    private string? CurrentStatusFilter => this.m_activeTab switch
     {
         1 => "Held",
         2 => "Refunded",
@@ -178,124 +181,101 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadData();
+        await this.LoadData();
     }
 
-    protected override async Task OnParametersSetAsync()
+    private async Task SetActiveTab(int tab)
     {
-        await LoadData();
+        this.m_activeTab = tab;
+        await this.LoadDeposits();
     }
 
     private async Task LoadData()
     {
-        m_loading = true;
+        this.m_loading = true;
         try
         {
-            var tasks = new List<Task>
-            {
-                LoadDeposits(),
-                LoadStatusCounts(),
-                LoadTotalHeld()
-            };
-
-            await Task.WhenAll(tasks);
+            await Task.WhenAll(
+                this.LoadDeposits(),
+                this.LoadStatusCounts(),
+                this.LoadTotalHeld()
+            );
         }
         catch (Exception ex)
         {
-            ShowError($"Error loading deposits: {ex.Message}");
+            this.ShowError($"Error loading deposits: {ex.Message}");
         }
         finally
         {
-            m_loading = false;
+            this.m_loading = false;
         }
     }
 
     private async Task LoadDeposits()
     {
-        m_deposits = await DepositService.GetDepositsWithRentalInfoAsync(
-            ShopId,
-            CurrentStatusFilter,
+        this.m_deposits = await this.DepositService.GetDepositsWithRentalInfoAsync(
+            this.ShopId,
+            this.CurrentStatusFilter,
             page: 1,
             pageSize: 100);
     }
 
     private async Task LoadStatusCounts()
     {
-        m_statusCounts = await DepositService.GetStatusCountsAsync(ShopId);
+        this.m_statusCounts = await this.DepositService.GetStatusCountsAsync(this.ShopId);
     }
 
     private async Task LoadTotalHeld()
     {
-        m_totalHeld = await DepositService.GetTotalHeldDepositsAsync(ShopId);
+        this.m_totalHeld = await this.DepositService.GetTotalHeldDepositsAsync(this.ShopId);
     }
 
-    private async void OnTabChanged()
+    private static string GetStatusBadgeClass(string? status) => status switch
     {
-        await LoadDeposits();
-        ViewStateChanged();
-    }
-
-    private Color GetStatusColor(string? status) => status switch
-    {
-        "Held" => Color.Warning,
-        "Refunded" => Color.Success,
-        "Forfeited" => Color.Error,
-        _ => Color.Default
+        "Held" => "bg-warning",
+        "Refunded" => "bg-success",
+        "Forfeited" => "bg-danger",
+        _ => "bg-secondary"
     };
 
-    private Color GetDepositTypeColor(string? type) => type switch
+    private static string GetDepositTypeBadgeClass(string? type) => type switch
     {
-        "Cash" => Color.Success,
-        "CardPreAuth" => Color.Primary,
-        "Passport" => Color.Warning,
-        _ => Color.Default
+        "Cash" => "bg-success-lt",
+        "CardPreAuth" => "bg-primary-lt",
+        "Passport" => "bg-warning-lt",
+        _ => "bg-secondary-lt"
     };
 
     private async Task OpenRefundDialog(DepositWithRentalInfo item)
     {
-        var parameters = new DialogParameters<RefundDepositDialog>
-        {
-            { x => x.Entity, item.Deposit },
-            { x => x.RenterName, item.RenterName }
-        };
+        var result = await this.DialogService
+            .Create<RefundDepositDialog>("Refund Deposit")
+            .WithParameter(x => x.Entity, item.Deposit)
+            .ShowDialogAsync();
 
-        var options = new DialogOptions
+        if (!result.Cancelled)
         {
-            MaxWidth = MaxWidth.Small,
-            FullWidth = true,
-            CloseButton = true
-        };
-
-        var dialog = await DialogService.ShowAsync<RefundDepositDialog>("Refund Deposit", parameters, options);
-        var result = await dialog.Result;
-
-        if (result != null && !result.Canceled)
-        {
-            await LoadData();
-            ShowSuccess("Deposit refunded successfully");
+            await this.LoadData();
+            this.ShowSuccess("Deposit refunded successfully");
         }
     }
 
     private async Task OpenForfeitDialog(DepositWithRentalInfo item)
     {
-        var confirmed = await DialogService.ShowMessageBox(
-            "Forfeit Deposit",
+        if (!await this.DialogService.ConfirmYesNoAsync(
             $"Are you sure you want to forfeit the deposit of {FormatCurrency(item.Deposit.Amount)} from {item.RenterName}? This action cannot be undone.",
-            yesText: "Forfeit",
-            cancelText: "Cancel");
+            "Forfeit Deposit"))
+            return;
 
-        if (confirmed == true)
+        var result = await this.DepositService.ForfeitDepositAsync(item.Deposit.DepositId, "Manual forfeit", this.UserName);
+        if (result.Success)
         {
-            var result = await DepositService.ForfeitDepositAsync(item.Deposit.DepositId, "Manual forfeit", UserName);
-            if (result.Success)
-            {
-                await LoadData();
-                ShowSuccess("Deposit forfeited");
-            }
-            else
-            {
-                ShowError($"Failed to forfeit deposit: {result.Message}");
-            }
+            await this.LoadData();
+            this.ShowSuccess("Deposit forfeited");
+        }
+        else
+        {
+            this.ShowError($"Failed to forfeit deposit: {result.Message}");
         }
     }
 }

@@ -1,0 +1,35 @@
+@using MotoRent.Client.Services
+@inject IModalService ModalService
+
+<div class="modal-body text-center py-4">
+    @if (Icon.HasValue)
+    {
+        <i class="@GetIconClass() mb-3" style="font-size: 3rem;"></i>
+    }
+    <p class="mb-0">@Message</p>
+</div>
+<div class="modal-footer">
+    <button type="button" class="btn btn-primary w-100" @onclick="OnOkClick">
+        OK
+    </button>
+</div>
+
+@code {
+    [Parameter] public string? Message { get; set; }
+    [Parameter] public MessageIcon? Icon { get; set; }
+
+    private string GetIconClass() => this.Icon switch
+    {
+        MessageIcon.Info => "ti ti-info-circle text-info",
+        MessageIcon.Success => "ti ti-circle-check text-success",
+        MessageIcon.Warning => "ti ti-alert-triangle text-warning",
+        MessageIcon.Error => "ti ti-alert-circle text-danger",
+        MessageIcon.Question => "ti ti-help text-primary",
+        _ => "ti ti-info-circle text-info"
+    };
+
+    private void OnOkClick()
+    {
+        this.ModalService.Close(ModalResult.Ok());
+    }
+}

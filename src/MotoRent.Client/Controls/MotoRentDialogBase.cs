@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Components;
-using MudBlazor;
+using MotoRent.Client.Services;
 
 namespace MotoRent.Client.Controls;
 
@@ -10,8 +10,8 @@ namespace MotoRent.Client.Controls;
 /// <typeparam name="TEntity">The entity type being edited in the dialog.</typeparam>
 public abstract class MotoRentDialogBase<TEntity> : MotoRentComponentBase where TEntity : class, new()
 {
-    [CascadingParameter]
-    protected MudDialogInstance? MudDialog { get; set; }
+    [Inject]
+    protected IModalService ModalService { get; set; } = null!;
 
     /// <summary>
     /// The entity being edited or created.
@@ -26,11 +26,6 @@ public abstract class MotoRentDialogBase<TEntity> : MotoRentComponentBase where 
     public bool IsNew { get; set; }
 
     /// <summary>
-    /// Reference to the MudForm for validation.
-    /// </summary>
-    protected MudForm? Form { get; set; }
-
-    /// <summary>
     /// Indicates whether the form is valid.
     /// </summary>
     protected bool FormValid { get; set; }
@@ -41,11 +36,16 @@ public abstract class MotoRentDialogBase<TEntity> : MotoRentComponentBase where 
     protected bool Saving { get; set; }
 
     /// <summary>
+    /// Gets the form ID for the modal footer's form attribute.
+    /// </summary>
+    protected virtual string FormId => this.GetType().Name.ToLowerInvariant().Replace("`1", "");
+
+    /// <summary>
     /// Cancels the dialog without saving.
     /// </summary>
     protected virtual void Cancel()
     {
-        MudDialog?.Cancel();
+        this.ModalService.Close(ModalResult.Cancel());
     }
 
     /// <summary>
@@ -53,7 +53,7 @@ public abstract class MotoRentDialogBase<TEntity> : MotoRentComponentBase where 
     /// </summary>
     protected virtual void Close()
     {
-        MudDialog?.Close(DialogResult.Ok(Entity));
+        this.ModalService.Close(ModalResult.Ok(this.Entity));
     }
 
     /// <summary>
@@ -61,24 +61,19 @@ public abstract class MotoRentDialogBase<TEntity> : MotoRentComponentBase where 
     /// </summary>
     protected virtual void Close(object result)
     {
-        MudDialog?.Close(DialogResult.Ok(result));
-    }
-
-    /// <summary>
-    /// Validates the form and returns true if valid.
-    /// </summary>
-    protected async Task<bool> ValidateFormAsync()
-    {
-        if (Form == null) return false;
-
-        await Form.Validate();
-        return FormValid;
+        this.ModalService.Close(ModalResult.Ok(result));
     }
 
     /// <summary>
     /// Gets the save button text based on IsNew.
     /// </summary>
-    protected string SaveButtonText => IsNew ? "Add" : "Save";
+    protected string SaveButtonText => this.IsNew ? "Add" : "Save";
+
+    /// <summary>
+    /// Gets whether the OK button should be disabled.
+    /// Override in derived classes to implement custom validation.
+    /// </summary>
+    protected virtual bool OkDisabled => !this.FormValid;
 }
 
 /// <summary>
@@ -96,9 +91,49 @@ public abstract class LocalizedDialogBase<TEntity, TLocalizer> : MotoRentDialogB
     /// </summary>
     protected string GetLocalizedText(string key, string defaultText = "")
     {
-        var localized = Localizer[key].Value;
+        var localized = this.Localizer[key].Value;
         if (localized.Equals(key, StringComparison.InvariantCultureIgnoreCase))
             return string.IsNullOrEmpty(defaultText) ? key : defaultText;
         return localized;
     }
+}
+
+/// <summary>
+/// Alias for MotoRentDialogBase for easier transition.
+/// </summary>
+public abstract class MotoRentModalBase<TEntity> : MotoRentDialogBase<TEntity>
+    where TEntity : class, new()
+{
+    /// <summary>
+    /// The item being edited (alias for Entity).
+    /// </summary>
+    [Parameter]
+    public TEntity? Item
+    {
+        get => this.Entity;
+        set => this.Entity = value ?? new TEntity();
+    }
+
+    /// <summary>
+    /// Gets the result output. Override to customize.
+    /// </summary>
+    protected virtual object? ResultOutput => this.Entity;
+
+    /// <summary>
+    /// Handles OK button click.
+    /// </summary>
+    protected virtual Task OkClick(TEntity? output)
+    {
+        this.ModalService.Close(ModalResult.Ok(this.ResultOutput ?? output));
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>
+/// Localized version of the modal base class matching rx-erp pattern.
+/// </summary>
+public abstract class LocalizedModalBase<TEntity, TLocalizer> : MotoRentModalBase<TEntity>
+    where TEntity : class, new()
+{
+    [Inject] protected Microsoft.Extensions.Localization.IStringLocalizer<TLocalizer> Localizer { get; set; } = null!;
 }

@@ -1,166 +1,151 @@
-@using MotoRent.Domain.Entities
-@using MotoRent.Services
+@inherits LocalizedDialogBase<Motorbike, MotorbikeDialog>
 @inject MotorbikeService MotorbikeService
-@inject ISnackbar Snackbar
 
-<MudDialog>
-    <DialogContent>
-        <MudForm @ref="m_form" @bind-IsValid="m_formValid">
-            <MudGrid>
-                <MudItem xs="12" md="6">
-                    <MudTextField @bind-Value="Motorbike.LicensePlate" Label="License Plate"
-                                  Required="true" RequiredError="License plate is required"
-                                  Variant="Variant.Outlined" />
-                </MudItem>
+<form id="@FormId" @onsubmit="SaveAsync" @onsubmit:preventDefault>
+    <div class="modal-body">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label required">License Plate</label>
+                <input type="text" class="form-control" @bind="Entity.LicensePlate" required
+                       placeholder="e.g., 1กก 1234" />
+            </div>
 
-                <MudItem xs="12" md="6">
-                    <MudSelect @bind-Value="Motorbike.Status" Label="Status"
-                               Required="true" Variant="Variant.Outlined">
-                        <MudSelectItem Value="@("Available")">Available</MudSelectItem>
-                        <MudSelectItem Value="@("Rented")">Rented</MudSelectItem>
-                        <MudSelectItem Value="@("Maintenance")">Maintenance</MudSelectItem>
-                    </MudSelect>
-                </MudItem>
+            <div class="col-md-6">
+                <label class="form-label required">Status</label>
+                <select class="form-select" @bind="Entity.Status" required>
+                    <option value="Available">Available</option>
+                    <option value="Rented">Rented</option>
+                    <option value="Maintenance">Maintenance</option>
+                </select>
+            </div>
 
-                <MudItem xs="12" md="6">
-                    <MudSelect @bind-Value="Motorbike.Brand" Label="Brand"
-                               Required="true" RequiredError="Brand is required"
-                               Variant="Variant.Outlined">
-                        <MudSelectItem Value="@("Honda")">Honda</MudSelectItem>
-                        <MudSelectItem Value="@("Yamaha")">Yamaha</MudSelectItem>
-                        <MudSelectItem Value="@("Suzuki")">Suzuki</MudSelectItem>
-                        <MudSelectItem Value="@("Kawasaki")">Kawasaki</MudSelectItem>
-                        <MudSelectItem Value="@("Vespa")">Vespa</MudSelectItem>
-                    </MudSelect>
-                </MudItem>
+            <div class="col-md-6">
+                <label class="form-label required">Brand</label>
+                <select class="form-select" @bind="Entity.Brand" required>
+                    <option value="">Select brand...</option>
+                    <option value="Honda">Honda</option>
+                    <option value="Yamaha">Yamaha</option>
+                    <option value="Suzuki">Suzuki</option>
+                    <option value="Kawasaki">Kawasaki</option>
+                    <option value="Vespa">Vespa</option>
+                </select>
+            </div>
 
-                <MudItem xs="12" md="6">
-                    <MudTextField @bind-Value="Motorbike.Model" Label="Model"
-                                  Required="true" RequiredError="Model is required"
-                                  Variant="Variant.Outlined"
-                                  Placeholder="e.g., Click 125, PCX 160, Aerox 155" />
-                </MudItem>
+            <div class="col-md-6">
+                <label class="form-label required">Model</label>
+                <input type="text" class="form-control" @bind="Entity.Model" required
+                       placeholder="e.g., Click 125, PCX 160, Aerox 155" />
+            </div>
 
-                <MudItem xs="12" md="4">
-                    <MudNumericField @bind-Value="Motorbike.EngineCC" Label="Engine CC"
-                                     Required="true" Min="50" Max="1000"
-                                     Variant="Variant.Outlined" />
-                </MudItem>
+            <div class="col-md-4">
+                <label class="form-label required">Engine CC</label>
+                <input type="number" class="form-control" @bind="Entity.EngineCC" required
+                       min="50" max="1000" placeholder="125" />
+            </div>
 
-                <MudItem xs="12" md="4">
-                    <MudTextField @bind-Value="Motorbike.Color" Label="Color"
-                                  Variant="Variant.Outlined" />
-                </MudItem>
+            <div class="col-md-4">
+                <label class="form-label">Color</label>
+                <input type="text" class="form-control" @bind="Entity.Color"
+                       placeholder="e.g., Black, White, Red" />
+            </div>
 
-                <MudItem xs="12" md="4">
-                    <MudNumericField @bind-Value="Motorbike.Year" Label="Year"
-                                     Required="true" Min="2000" Max="@DateTime.Now.Year"
-                                     Variant="Variant.Outlined" />
-                </MudItem>
+            <div class="col-md-4">
+                <label class="form-label required">Year</label>
+                <input type="number" class="form-control" @bind="Entity.Year" required
+                       min="2000" max="@DateTime.Now.Year" />
+            </div>
 
-                <MudItem xs="12" md="6">
-                    <MudNumericField @bind-Value="Motorbike.DailyRate" Label="Daily Rate (THB)"
-                                     Required="true" Min="0"
-                                     Variant="Variant.Outlined" Format="N0" />
-                </MudItem>
+            <div class="col-md-6">
+                <label class="form-label required">Daily Rate (THB)</label>
+                <div class="input-group">
+                    <span class="input-group-text">฿</span>
+                    <input type="number" class="form-control" @bind="Entity.DailyRate" required
+                           min="0" step="50" placeholder="300" />
+                </div>
+            </div>
 
-                <MudItem xs="12" md="6">
-                    <MudNumericField @bind-Value="Motorbike.DepositAmount" Label="Deposit Amount (THB)"
-                                     Required="true" Min="0"
-                                     Variant="Variant.Outlined" Format="N0" />
-                </MudItem>
+            <div class="col-md-6">
+                <label class="form-label required">Deposit Amount (THB)</label>
+                <div class="input-group">
+                    <span class="input-group-text">฿</span>
+                    <input type="number" class="form-control" @bind="Entity.DepositAmount" required
+                           min="0" step="500" placeholder="2000" />
+                </div>
+            </div>
 
-                <MudItem xs="12" md="6">
-                    <MudNumericField @bind-Value="Motorbike.Mileage" Label="Current Mileage (km)"
-                                     Min="0" Variant="Variant.Outlined" />
-                </MudItem>
+            <div class="col-md-6">
+                <label class="form-label">Current Mileage (km)</label>
+                <input type="number" class="form-control" @bind="Entity.Mileage"
+                       min="0" placeholder="0" />
+            </div>
 
-                <MudItem xs="12" md="6">
-                    <MudDatePicker @bind-Date="m_lastServiceDate" Label="Last Service Date"
-                                   Variant="Variant.Outlined" Editable="true"
-                                   Placeholder="Select date" />
-                </MudItem>
+            <div class="col-md-6">
+                <label class="form-label">Last Service Date</label>
+                <input type="date" class="form-control" @bind="m_lastServiceDate" />
+            </div>
 
-                <MudItem xs="12">
-                    <MudTextField @bind-Value="Motorbike.Notes" Label="Notes"
-                                  Variant="Variant.Outlined" Lines="3" />
-                </MudItem>
-            </MudGrid>
-        </MudForm>
-    </DialogContent>
-    <DialogActions>
-        <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary" Variant="Variant.Filled"
-                   OnClick="SaveAsync" Disabled="@(!m_formValid || m_saving)">
-            @if (m_saving)
-            {
-                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-            }
-            @(IsNew ? "Add" : "Save")
-        </MudButton>
-    </DialogActions>
-</MudDialog>
+            <div class="col-12">
+                <label class="form-label">Notes</label>
+                <textarea class="form-control" @bind="Entity.Notes" rows="3"
+                          placeholder="Additional notes about this motorbike..."></textarea>
+            </div>
+        </div>
+    </div>
+</form>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
+        Cancel
+    </button>
+    <button type="submit" form="@FormId" class="btn btn-primary" disabled="@Saving">
+        @if (Saving)
+        {
+            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+        }
+        <i class="ti ti-device-floppy me-1"></i>
+        @SaveButtonText
+    </button>
+</div>
 
 @code {
-    [CascadingParameter]
-    private MudDialogInstance? MudDialog { get; set; }
-
-    [Parameter]
-    public Motorbike Motorbike { get; set; } = new();
-
-    [Parameter]
-    public bool IsNew { get; set; }
-
-    private MudForm? m_form;
-    private bool m_formValid;
-    private bool m_saving;
     private DateTime? m_lastServiceDate;
 
     protected override void OnInitialized()
     {
-        m_lastServiceDate = Motorbike.LastServiceDate?.DateTime;
-    }
-
-    private void Cancel()
-    {
-        MudDialog?.Cancel();
+        this.m_lastServiceDate = this.Entity.LastServiceDate?.DateTime;
+        this.FormValid = true; // HTML5 validation handles this
     }
 
     private async Task SaveAsync()
     {
-        if (m_form == null) return;
-
-        await m_form.Validate();
-        if (!m_formValid) return;
-
-        m_saving = true;
+        this.Saving = true;
 
         try
         {
-            Motorbike.LastServiceDate = m_lastServiceDate.HasValue
-                ? new DateTimeOffset(m_lastServiceDate.Value)
+            this.Entity.LastServiceDate = this.m_lastServiceDate.HasValue
+                ? new DateTimeOffset(this.m_lastServiceDate.Value)
                 : null;
 
-            var result = IsNew
-                ? await MotorbikeService.CreateMotorbikeAsync(Motorbike, "system")
-                : await MotorbikeService.UpdateMotorbikeAsync(Motorbike, "system");
+            var result = this.IsNew
+                ? await this.MotorbikeService.CreateMotorbikeAsync(this.Entity, this.UserName)
+                : await this.MotorbikeService.UpdateMotorbikeAsync(this.Entity, this.UserName);
 
             if (result.Success)
             {
-                MudDialog?.Close(DialogResult.Ok(Motorbike));
+                this.Close();
             }
             else
             {
-                Snackbar.Add($"Save failed: {result.Message}", Severity.Error);
+                this.ShowError($"Save failed: {result.Message}");
             }
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            this.ShowError($"Error: {ex.Message}");
         }
         finally
         {
-            m_saving = false;
+            this.Saving = false;
         }
     }
 }

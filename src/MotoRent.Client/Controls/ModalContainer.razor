@@ -1,0 +1,117 @@
+@using MotoRent.Client.Services
+@implements IDisposable
+@inject IModalService ModalService
+
+@if (m_modal is not null)
+{
+    <div class="modal modal-blur fade show" style="display: block;" tabindex="-1"
+         @onclick="OnBackdropClick" @onkeydown="OnKeyDown">
+        <div class="modal-dialog @GetModalClasses()" role="document" @onclick:stopPropagation="true">
+            <div class="modal-content">
+                @if (m_modal.Options.ShowHeader)
+                {
+                    <div class="modal-header @GetHeaderStatusClass()">
+                        <h5 class="modal-title">@m_modal.Title</h5>
+                        @if (m_modal.Options.ShowCloseButton)
+                        {
+                            <button type="button" class="btn-close" @onclick="OnCloseClick"></button>
+                        }
+                    </div>
+                }
+                <CascadingValue Value="m_modalInstance">
+                    @if (m_modal.ContentFragment is not null)
+                    {
+                        @m_modal.ContentFragment
+                    }
+                    else
+                    {
+                        <DynamicComponent Type="@m_modal.ComponentType" Parameters="@m_modal.Parameters" />
+                    }
+                </CascadingValue>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@code {
+    private ModalState? m_modal;
+    private ModalInstance? m_modalInstance;
+
+    protected override void OnInitialized()
+    {
+        this.ModalService.OnChange += this.OnModalChange;
+        this.m_modal = this.ModalService.CurrentModal;
+        this.m_modalInstance = new ModalInstance(this.ModalService);
+    }
+
+    private void OnModalChange()
+    {
+        this.m_modal = this.ModalService.CurrentModal;
+        this.InvokeAsync(this.StateHasChanged);
+    }
+
+    private string GetModalClasses()
+    {
+        var classes = new List<string>();
+
+        // Size
+        classes.Add(this.m_modal?.Options.Size switch
+        {
+            ModalSize.Small => "modal-sm",
+            ModalSize.Medium => "modal-md",
+            ModalSize.Large => "modal-lg",
+            ModalSize.ExtraLarge => "modal-xl",
+            ModalSize.Fullscreen => "modal-fullscreen",
+            _ => "modal-lg"
+        });
+
+        // Centered
+        if (this.m_modal?.Options.Centered == true)
+        {
+            classes.Add("modal-dialog-centered");
+        }
+
+        // Scrollable
+        if (this.m_modal?.Options.Scrollable == true)
+        {
+            classes.Add("modal-dialog-scrollable");
+        }
+
+        return string.Join(" ", classes);
+    }
+
+    private string GetHeaderStatusClass()
+    {
+        if (string.IsNullOrEmpty(this.m_modal?.Options.StatusColor))
+            return string.Empty;
+
+        return $"bg-{this.m_modal.Options.StatusColor}";
+    }
+
+    private void OnBackdropClick()
+    {
+        if (this.m_modal?.Options.CloseOnClickOutside == true)
+        {
+            this.ModalService.Close(ModalResult.Cancel());
+        }
+    }
+
+    private void OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape" && this.m_modal?.Options.CloseOnEsc == true)
+        {
+            this.ModalService.Close(ModalResult.Cancel());
+        }
+    }
+
+    private void OnCloseClick()
+    {
+        this.ModalService.Close(ModalResult.Cancel());
+    }
+
+    public void Dispose()
+    {
+        this.ModalService.OnChange -= this.OnModalChange;
+    }
+}

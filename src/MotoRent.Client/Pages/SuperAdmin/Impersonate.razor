@@ -1,5 +1,6 @@
 @page "/super-admin/impersonate"
 @rendermode InteractiveServer
+@inherits MotoRentComponentBase
 @using System.Security.Cryptography
 @using System.Text
 @using Microsoft.AspNetCore.Authorization
@@ -9,119 +10,145 @@
 @inject CoreDataContext CoreContext
 @inject ISubscriptionService SubscriptionService
 @inject NavigationManager NavigationManager
-@inject ISnackbar Snackbar
-@inject IDialogService DialogService
 @inject IJSRuntime JS
 
 <PageTitle>Impersonate User - MotoRent</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
-    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
+<div class="container-xl mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <MudText Typo="Typo.h4">Impersonate User</MudText>
-            <MudText Typo="Typo.body2" Color="Color.Secondary">
-                Sign in as another user to troubleshoot issues or test functionality
-            </MudText>
+            <h4 class="mb-1">Impersonate User</h4>
+            <p class="text-secondary mb-0">Sign in as another user to troubleshoot issues or test functionality</p>
         </div>
-        <MudButton Variant="Variant.Text" Color="Color.Primary"
-                   StartIcon="@Icons.Material.Filled.ArrowBack" Href="/super-admin/start-page">
+        <a href="/super-admin/start-page" class="btn btn-ghost-primary">
+            <i class="ti ti-arrow-left me-2"></i>
             Back to Dashboard
-        </MudButton>
-    </MudStack>
+        </a>
+    </div>
 
     <!-- Search and Filter -->
-    <MudPaper Elevation="2" Class="pa-4 mb-4">
-        <MudStack Row="true" Spacing="4" AlignItems="AlignItems.Center">
-            <MudTextField @bind-Value="m_searchTerm" Placeholder="Search by username, email, or name..."
-                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
-                          Immediate="true" DebounceInterval="300" OnDebounceIntervalElapsed="ApplyFilters"
-                          Style="max-width: 400px;" />
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-12 col-md-5">
+                    <label class="form-label">Search</label>
+                    <div class="input-icon">
+                        <span class="input-icon-addon">
+                            <i class="ti ti-search"></i>
+                        </span>
+                        <input type="text" class="form-control" placeholder="Search by username, email, or name..."
+                               @bind="m_searchTerm" @bind:event="oninput" @onkeyup="OnSearchKeyup" />
+                    </div>
+                </div>
 
-            <MudSelect T="string" Value="m_organizationFilter" Label="Organization"
-                       Style="width: 250px;" ValueChanged="OnOrganizationFilterChanged" Clearable="true">
-                @foreach (var org in m_organizations)
-                {
-                    <MudSelectItem Value="@org.AccountNo">@org.Name (@org.AccountNo)</MudSelectItem>
-                }
-            </MudSelect>
-        </MudStack>
-    </MudPaper>
+                <div class="col-12 col-md-4">
+                    <label class="form-label">Organization</label>
+                    <select class="form-select" @bind="m_organizationFilter" @bind:after="ApplyFilters">
+                        <option value="">All Organizations</option>
+                        @foreach (var org in m_organizations)
+                        {
+                            <option value="@org.AccountNo">@org.Name (@org.AccountNo)</option>
+                        }
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
 
     @if (m_loading)
     {
-        <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+        <div class="progress progress-sm mb-4">
+            <div class="progress-bar progress-bar-indeterminate"></div>
+        </div>
     }
 
-    <!-- Users DataGrid -->
-    <MudPaper Elevation="2">
-        <MudDataGrid T="User" Items="@m_filteredUsers" Hover="true" Striped="true"
-                     Loading="@m_loading" Dense="true">
-            <Columns>
-                <PropertyColumn Property="x => x.UserName" Title="Username" />
-                <PropertyColumn Property="x => x.FullName" Title="Full Name" />
-                <PropertyColumn Property="x => x.Email" Title="Email" />
-                <TemplateColumn Title="Provider">
-                    <CellTemplate>
-                        <MudChip T="string" Size="Size.Small" Color="@GetProviderColor(context.Item.CredentialProvider)">
-                            @context.Item.CredentialProvider
-                        </MudChip>
-                    </CellTemplate>
-                </TemplateColumn>
-                <TemplateColumn Title="Status">
-                    <CellTemplate>
-                        @if (context.Item.IsLockedOut)
-                        {
-                            <MudChip T="string" Size="Size.Small" Color="Color.Error">Locked</MudChip>
-                        }
-                        else
-                        {
-                            <MudChip T="string" Size="Size.Small" Color="Color.Success">Active</MudChip>
-                        }
-                    </CellTemplate>
-                </TemplateColumn>
-                <TemplateColumn Title="Organizations">
-                    <CellTemplate>
-                        <MudStack Row="true" Spacing="1" Wrap="Wrap.Wrap">
-                            @foreach (var account in context.Item.AccountCollection)
-                            {
-                                var org = m_organizations.FirstOrDefault(o => o.AccountNo == account.AccountNo);
-                                var tooltip = $"{org?.Name ?? account.AccountNo}\nRoles: {string.Join(", ", account.Roles)}";
-                                <MudTooltip Text="@tooltip">
-                                    <MudChip T="string" Size="Size.Small" Color="Color.Info"
-                                             OnClick="@(() => ImpersonateUser(context.Item, account))"
-                                             Style="cursor: pointer;">
-                                        @account.AccountNo
-                                        <MudIcon Icon="@Icons.Material.Filled.Login" Size="Size.Small" Class="ml-1" />
-                                    </MudChip>
-                                </MudTooltip>
-                            }
-                        </MudStack>
-                    </CellTemplate>
-                </TemplateColumn>
-                <TemplateColumn Title="Actions" Sortable="false">
-                    <CellTemplate>
-                        <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small">
-                            <MudMenuItem Icon="@Icons.Material.Filled.ContentCopy"
-                                         OnClick="@(() => ShowImpersonationUrls(context.Item))">
-                                Copy Impersonation URL
-                            </MudMenuItem>
-                            <MudMenuItem Icon="@Icons.Material.Filled.Visibility"
-                                         OnClick="@(() => ViewUserDetails(context.Item))">
-                                View Details
-                            </MudMenuItem>
-                        </MudMenu>
-                    </CellTemplate>
-                </TemplateColumn>
-            </Columns>
-            <NoRecordsContent>
-                <MudText>No users found matching your criteria.</MudText>
-            </NoRecordsContent>
-            <PagerContent>
-                <MudDataGridPager T="User" PageSizeOptions="new[] { 10, 20, 50, 100 }" />
-            </PagerContent>
-        </MudDataGrid>
-    </MudPaper>
-</MudContainer>
+    <!-- Users Table -->
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-vcenter card-table table-striped">
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th>Full Name</th>
+                        <th>Email</th>
+                        <th>Provider</th>
+                        <th>Status</th>
+                        <th>Organizations</th>
+                        <th class="w-1"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var user in m_filteredUsers)
+                    {
+                        <tr>
+                            <td>@user.UserName</td>
+                            <td>@user.FullName</td>
+                            <td>@user.Email</td>
+                            <td>
+                                <span class="badge @GetProviderBadgeClass(user.CredentialProvider)">
+                                    @user.CredentialProvider
+                                </span>
+                            </td>
+                            <td>
+                                @if (user.IsLockedOut)
+                                {
+                                    <span class="badge bg-danger">Locked</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success">Active</span>
+                                }
+                            </td>
+                            <td>
+                                <div class="d-flex flex-wrap gap-1">
+                                    @foreach (var account in user.AccountCollection)
+                                    {
+                                        var org = m_organizations.FirstOrDefault(o => o.AccountNo == account.AccountNo);
+                                        <span class="badge bg-info-lt cursor-pointer"
+                                              title="@($"{org?.Name ?? account.AccountNo}\nRoles: {string.Join(", ", account.Roles)}")"
+                                              @onclick="@(() => ImpersonateUser(user, account))">
+                                            @account.AccountNo
+                                            <i class="ti ti-login ms-1" style="font-size: 0.75rem;"></i>
+                                        </span>
+                                    }
+                                </div>
+                            </td>
+                            <td>
+                                <div class="dropdown">
+                                    <button type="button" class="btn btn-ghost-secondary btn-icon"
+                                            data-bs-toggle="dropdown">
+                                        <i class="ti ti-dots-vertical"></i>
+                                    </button>
+                                    <div class="dropdown-menu dropdown-menu-end">
+                                        <a class="dropdown-item" href="#" @onclick="@(() => ShowImpersonationUrls(user))" @onclick:preventDefault>
+                                            <i class="ti ti-copy me-2"></i>
+                                            Copy Impersonation URL
+                                        </a>
+                                        <a class="dropdown-item" href="#" @onclick="@(() => ViewUserDetails(user))" @onclick:preventDefault>
+                                            <i class="ti ti-eye me-2"></i>
+                                            View Details
+                                        </a>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        @if (m_filteredUsers.Count == 0 && !m_loading)
+        {
+            <div class="card-body">
+                <div class="empty">
+                    <p class="empty-title">No users found</p>
+                    <p class="empty-subtitle text-secondary">
+                        No users found matching your search criteria.
+                    </p>
+                </div>
+            </div>
+        }
+    </div>
+</div>
 
 @code {
     private List<User> m_users = [];
@@ -130,6 +157,7 @@
     private bool m_loading = true;
     private string? m_searchTerm;
     private string? m_organizationFilter;
+    private System.Timers.Timer? m_debounceTimer;
 
     protected override async Task OnInitializedAsync()
     {
@@ -138,35 +166,53 @@
 
     private async Task LoadDataAsync()
     {
-        m_loading = true;
+        this.m_loading = true;
         try
         {
             // Load all users
-            var usersQuery = CoreContext.Users.OrderBy(u => u.UserName);
-            var usersResult = await CoreContext.LoadAsync(usersQuery, page: 1, size: 1000);
-            m_users = usersResult.ItemCollection
-                .Where(u => u.AccountCollection.Count > 0) // Only users with org membership
+            var usersQuery = this.CoreContext.Users.OrderBy(u => u.UserName);
+            var usersResult = await this.CoreContext.LoadAsync(usersQuery, page: 1, size: 1000);
+            this.m_users = usersResult.ItemCollection
+                .Where(u => u.AccountCollection.Count > 0)
                 .ToList();
 
             // Load all organizations for filter dropdown
-            var orgs = await SubscriptionService.GetAllOrganizationsAsync();
-            m_organizations = orgs.ToList();
+            var orgs = await this.SubscriptionService.GetAllOrganizationsAsync();
+            this.m_organizations = orgs.ToList();
 
             ApplyFilters();
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error loading data: {ex.Message}", Severity.Error);
+            this.ShowError($"Error loading data: {ex.Message}");
         }
         finally
         {
-            m_loading = false;
+            this.m_loading = false;
         }
+    }
+
+    private void OnSearchKeyup()
+    {
+        this.m_debounceTimer?.Stop();
+        this.m_debounceTimer?.Dispose();
+
+        this.m_debounceTimer = new System.Timers.Timer(300);
+        this.m_debounceTimer.Elapsed += (sender, args) =>
+        {
+            this.m_debounceTimer?.Stop();
+            InvokeAsync(() =>
+            {
+                ApplyFilters();
+                StateHasChanged();
+            });
+        };
+        this.m_debounceTimer.Start();
     }
 
     private void ApplyFilters()
     {
-        m_filteredUsers = m_users
+        this.m_filteredUsers = this.m_users
             .Where(MatchesSearch)
             .Where(MatchesOrganization)
             .ToList();
@@ -174,8 +220,8 @@
 
     private bool MatchesSearch(User user)
     {
-        if (string.IsNullOrWhiteSpace(m_searchTerm)) return true;
-        var term = m_searchTerm.ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(this.m_searchTerm)) return true;
+        var term = this.m_searchTerm.ToLowerInvariant();
         return (user.UserName?.ToLowerInvariant().Contains(term) ?? false) ||
                (user.FullName?.ToLowerInvariant().Contains(term) ?? false) ||
                (user.Email?.ToLowerInvariant().Contains(term) ?? false);
@@ -183,39 +229,23 @@
 
     private bool MatchesOrganization(User user)
     {
-        if (string.IsNullOrWhiteSpace(m_organizationFilter)) return true;
-        return user.AccountCollection.Any(a => a.AccountNo == m_organizationFilter);
-    }
-
-    private void OnOrganizationFilterChanged(string? value)
-    {
-        m_organizationFilter = value;
-        ApplyFilters();
+        if (string.IsNullOrWhiteSpace(this.m_organizationFilter)) return true;
+        return user.AccountCollection.Any(a => a.AccountNo == this.m_organizationFilter);
     }
 
     private void ImpersonateUser(User user, UserAccount account)
     {
         var hash = ComputeMd5Hash($"{user.UserName}:{account.AccountNo}");
         var url = $"/account/impersonate?user={Uri.EscapeDataString(user.UserName)}&account={Uri.EscapeDataString(account.AccountNo)}&hash={hash}";
-        NavigationManager.NavigateTo(url, forceLoad: true);
+        this.NavigationManager.NavigateTo(url, forceLoad: true);
     }
 
     private async Task ShowImpersonationUrls(User user)
     {
-        var parameters = new DialogParameters<ImpersonationUrlDialog>
-        {
-            { x => x.User, user },
-            { x => x.Organizations, m_organizations }
-        };
-
-        var options = new DialogOptions
-        {
-            MaxWidth = MaxWidth.Medium,
-            FullWidth = true,
-            CloseButton = true
-        };
-
-        await DialogService.ShowAsync<ImpersonationUrlDialog>("Impersonation URLs", parameters, options);
+        await this.DialogService
+            .Create<ImpersonationUrlDialog>("Impersonation URLs")
+            .WithParameter(x => x.User, user)
+            .ShowDialogAsync();
     }
 
     private async Task ViewUserDetails(User user)
@@ -234,7 +264,7 @@
             {accounts}
             """;
 
-        await DialogService.ShowMessageBox("User Details", message, yesText: "Close");
+        await this.DialogService.ShowMessageAsync(message, "User Details");
     }
 
     private static string ComputeMd5Hash(string input)
@@ -244,10 +274,10 @@
         return Convert.ToHexString(hashBytes).ToLowerInvariant();
     }
 
-    private static Color GetProviderColor(string provider) => provider switch
+    private static string GetProviderBadgeClass(string provider) => provider switch
     {
-        User.GOOGLE => Color.Error,
-        User.MICROSOFT => Color.Info,
-        _ => Color.Default
+        User.GOOGLE => "bg-red",
+        User.MICROSOFT => "bg-azure",
+        _ => "bg-secondary"
     };
 }

@@ -1,18 +1,18 @@
 @* Dashboard KPI metric card *@
 
-<MudPaper Elevation="@Elevation" Class="@($"metric-card pa-4 {Class}")" Style="@GetStyle()">
-    <MudStack Spacing="1">
+<div class="@($"card metric-card {Class}")" style="@GetStyle()">
+    <div class="card-body">
         @* Header with icon *@
-        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start">
-            <MudText Typo="Typo.body2" Color="Color.Secondary">@Title</MudText>
+        <div class="d-flex justify-content-between align-items-start">
+            <span class="text-secondary small">@Title</span>
             @if (!string.IsNullOrEmpty(Icon))
             {
-                <MudIcon Icon="@Icon" Color="@IconColor" Size="Size.Medium" />
+                <i class="@($"ti {Icon}")" style="font-size: 1.25rem; color: @IconColorValue;"></i>
             }
-        </MudStack>
+        </div>
 
         @* Main Value *@
-        <MudText Typo="Typo.h4" Style="font-weight: 600;">
+        <h4 class="mt-2 mb-1 fw-semibold">
             @if (!string.IsNullOrEmpty(Prefix))
             {
                 <span style="font-size: 0.7em;">@Prefix</span>
@@ -20,31 +20,27 @@
             @Value
             @if (!string.IsNullOrEmpty(Suffix))
             {
-                <span style="font-size: 0.6em; color: var(--mud-palette-text-secondary);">@Suffix</span>
+                <span class="text-secondary" style="font-size: 0.6em;">@Suffix</span>
             }
-        </MudText>
+        </h4>
 
         @* Trend Indicator *@
         @if (ShowTrend && TrendPercent != 0)
         {
-            <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
-                <MudIcon Icon="@GetTrendIcon()" Color="@GetTrendColor()" Size="Size.Small" />
-                <MudText Typo="Typo.caption" Color="@GetTrendColor()">
-                    @Math.Abs(TrendPercent).ToString("N1")%
-                </MudText>
-                <MudText Typo="Typo.caption" Color="Color.Secondary">
-                    vs @TrendPeriod
-                </MudText>
-            </MudStack>
+            <div class="d-flex align-items-center gap-1">
+                <i class="@GetTrendIcon() @GetTrendColorClass()" style="font-size: 0.875rem;"></i>
+                <span class="@GetTrendColorClass() small">@Math.Abs(TrendPercent).ToString("N1")%</span>
+                <span class="text-secondary small">vs @TrendPeriod</span>
+            </div>
         }
 
         @* Optional subtitle *@
         @if (!string.IsNullOrEmpty(Subtitle))
         {
-            <MudText Typo="Typo.caption" Color="Color.Secondary">@Subtitle</MudText>
+            <small class="text-secondary">@Subtitle</small>
         }
-    </MudStack>
-</MudPaper>
+    </div>
+</div>
 
 <style>
     .metric-card {
@@ -69,8 +65,7 @@
     [Parameter] public string? Suffix { get; set; }
     [Parameter] public string? Subtitle { get; set; }
     [Parameter] public string? Icon { get; set; }
-    [Parameter] public Color IconColor { get; set; } = Color.Primary;
-    [Parameter] public int Elevation { get; set; } = 2;
+    [Parameter] public string IconColor { get; set; } = "primary";
     [Parameter] public string? Class { get; set; }
     [Parameter] public string? BackgroundColor { get; set; }
 
@@ -80,24 +75,35 @@
     [Parameter] public string TrendPeriod { get; set; } = "last week";
     [Parameter] public bool TrendPositiveIsGood { get; set; } = true;
 
+    private string IconColorValue => this.IconColor switch
+    {
+        "primary" => "var(--tblr-primary)",
+        "secondary" => "var(--tblr-secondary)",
+        "success" => "var(--tblr-success)",
+        "danger" => "var(--tblr-danger)",
+        "warning" => "var(--tblr-warning)",
+        "info" => "var(--tblr-info)",
+        _ => $"var(--tblr-{this.IconColor})"
+    };
+
     private string GetStyle()
     {
-        if (!string.IsNullOrEmpty(BackgroundColor))
-            return $"background: {BackgroundColor};";
+        if (!string.IsNullOrEmpty(this.BackgroundColor))
+            return $"background: {this.BackgroundColor};";
         return "";
     }
 
     private string GetTrendIcon()
     {
-        return TrendPercent > 0
-            ? Icons.Material.Filled.TrendingUp
-            : Icons.Material.Filled.TrendingDown;
+        return this.TrendPercent > 0
+            ? "ti ti-trending-up"
+            : "ti ti-trending-down";
     }
 
-    private Color GetTrendColor()
+    private string GetTrendColorClass()
     {
-        var isPositive = TrendPercent > 0;
-        var isGood = TrendPositiveIsGood ? isPositive : !isPositive;
-        return isGood ? Color.Success : Color.Error;
+        var isPositive = this.TrendPercent > 0;
+        var isGood = this.TrendPositiveIsGood ? isPositive : !isPositive;
+        return isGood ? "text-success" : "text-danger";
     }
 }

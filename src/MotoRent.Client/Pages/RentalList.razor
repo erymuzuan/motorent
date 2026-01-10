@@ -1,185 +1,169 @@
 @page "/rentals"
-@inherits MotoRentComponentBase
-@using MotoRent.Client.Controls
-@using MotoRent.Domain.Entities
-@using MotoRent.Services
+@inherits LocalizedComponentBase<RentalList>
 @inject RentalService RentalService
 @inject RenterService RenterService
 @inject MotorbikeService MotorbikeService
 
-<PageTitle>Rentals - MotoRent</PageTitle>
+<MotoRentPageTitle>Rentals</MotoRentPageTitle>
 
-<MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
-    <MudText Typo="Typo.h4">Rentals</MudText>
-    <MudButton Variant="Variant.Filled" Color="Color.Primary"
-               StartIcon="@Icons.Material.Filled.Add" Href="/rentals/checkin">
+<TablerHeader Title="Rentals" PreTitle="Operations">
+    <a href="/rentals/checkin" class="btn btn-primary">
+        <i class="ti ti-plus me-1"></i>
         New Check-In
-    </MudButton>
-</MudStack>
+    </a>
+</TablerHeader>
 
-<MudPaper Elevation="2" Class="pa-4 mb-4">
-    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap">
-        <MudChip T="string" Size="Size.Medium"
-                 Color="@(m_activeTab == "Active" ? Color.Primary : Color.Default)"
-                 Variant="@(m_activeTab == "Active" ? Variant.Filled : Variant.Outlined)"
-                 OnClick="@(() => SetActiveTab("Active"))">
-            Active @(m_statusCounts.GetValueOrDefault("Active", 0))
-        </MudChip>
-        <MudChip T="string" Size="Size.Medium"
-                 Color="@(m_activeTab == "DueToday" ? Color.Warning : (m_dueTodayCount > 0 ? Color.Warning : Color.Default))"
-                 Variant="@(m_activeTab == "DueToday" ? Variant.Filled : Variant.Outlined)"
-                 OnClick="@(() => SetActiveTab("DueToday"))">
-            Due Today @m_dueTodayCount
-        </MudChip>
-        <MudChip T="string" Size="Size.Medium"
-                 Color="@(m_activeTab == "Overdue" ? Color.Error : (m_overdueCount > 0 ? Color.Error : Color.Default))"
-                 Variant="@(m_activeTab == "Overdue" ? Variant.Filled : Variant.Outlined)"
-                 OnClick="@(() => SetActiveTab("Overdue"))">
-            Overdue @m_overdueCount
-        </MudChip>
-        <MudChip T="string" Size="Size.Medium"
-                 Color="@(m_activeTab == "Completed" ? Color.Success : Color.Default)"
-                 Variant="@(m_activeTab == "Completed" ? Variant.Filled : Variant.Outlined)"
-                 OnClick="@(() => SetActiveTab("Completed"))">
-            Completed @(m_statusCounts.GetValueOrDefault("Completed", 0))
-        </MudChip>
-        <MudChip T="string" Size="Size.Medium"
-                 Color="@(m_activeTab == "All" ? Color.Dark : Color.Default)"
-                 Variant="@(m_activeTab == "All" ? Variant.Filled : Variant.Outlined)"
-                 OnClick="@(() => SetActiveTab("All"))">
-            All
-        </MudChip>
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-3 align-items-center">
+            <div class="col-auto">
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn @(m_activeTab == "Active" ? "btn-primary" : "btn-outline-primary")"
+                            @onclick="@(() => SetActiveTab("Active"))">
+                        Active @(m_statusCounts.GetValueOrDefault("Active", 0))
+                    </button>
+                    <button type="button" class="btn @(m_activeTab == "DueToday" ? "btn-warning" : (m_dueTodayCount > 0 ? "btn-outline-warning" : "btn-outline-secondary"))"
+                            @onclick="@(() => SetActiveTab("DueToday"))">
+                        Due Today @m_dueTodayCount
+                    </button>
+                    <button type="button" class="btn @(m_activeTab == "Overdue" ? "btn-danger" : (m_overdueCount > 0 ? "btn-outline-danger" : "btn-outline-secondary"))"
+                            @onclick="@(() => SetActiveTab("Overdue"))">
+                        Overdue @m_overdueCount
+                    </button>
+                    <button type="button" class="btn @(m_activeTab == "Completed" ? "btn-success" : "btn-outline-success")"
+                            @onclick="@(() => SetActiveTab("Completed"))">
+                        Completed @(m_statusCounts.GetValueOrDefault("Completed", 0))
+                    </button>
+                    <button type="button" class="btn @(m_activeTab == "All" ? "btn-dark" : "btn-outline-dark")"
+                            @onclick="@(() => SetActiveTab("All"))">
+                        All
+                    </button>
+                </div>
+            </div>
+            <div class="col-auto ms-auto">
+                <div class="input-icon">
+                    <span class="input-icon-addon">
+                        <i class="ti ti-search"></i>
+                    </span>
+                    <input type="text" class="form-control" placeholder="Search renter, motorbike..."
+                           @bind="m_searchTerm" @bind:event="oninput" @onkeyup="OnSearchKeyUp" />
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
-        <MudSpacer />
-
-        <MudTextField @bind-Value="m_searchTerm" Placeholder="Search renter, motorbike..."
-                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
-                      Immediate="true" DebounceInterval="300" OnDebounceIntervalElapsed="SearchChanged"
-                      Style="max-width: 300px;" />
-    </MudStack>
-</MudPaper>
-
-@if (m_loading)
-{
-    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
-}
-
-<MudPaper Elevation="2">
-    <MudDataGrid T="RentalViewModel" Items="@m_filteredRentals" Hover="true" Striped="true"
-                 Loading="@m_loading" Dense="true" Virtualize="true"
-                 RowClick="@OnRowClick" RowStyle="cursor: pointer;">
-        <Columns>
-            <TemplateColumn Title="Renter">
-                <CellTemplate>
-                    <MudStack Spacing="0">
-                        <MudText Typo="Typo.body2" Style="font-weight: 500;">@context.Item.RenterName</MudText>
-                        <MudText Typo="Typo.caption" Color="Color.Secondary">@context.Item.RenterPhone</MudText>
-                    </MudStack>
-                </CellTemplate>
-            </TemplateColumn>
-            <TemplateColumn Title="Motorbike">
-                <CellTemplate>
-                    <MudStack Spacing="0">
-                        <MudText Typo="Typo.body2">@context.Item.MotorbikeBrandModel</MudText>
-                        <MudText Typo="Typo.caption" Color="Color.Primary">@context.Item.MotorbikeLicensePlate</MudText>
-                    </MudStack>
-                </CellTemplate>
-            </TemplateColumn>
-            <TemplateColumn Title="Period">
-                <CellTemplate>
-                    <MudStack Spacing="0">
-                        <MudText Typo="Typo.body2">@FormatDate(context.Item.Rental.StartDate)</MudText>
-                        <MudText Typo="Typo.caption">to @FormatDate(context.Item.Rental.ExpectedEndDate)</MudText>
-                    </MudStack>
-                </CellTemplate>
-            </TemplateColumn>
-            <PropertyColumn Property="x => x.Days" Title="Days" />
-            <TemplateColumn Title="Amount">
-                <CellTemplate>
-                    <MudText Color="Color.Primary">@FormatCurrency(context.Item.Rental.TotalAmount)</MudText>
-                </CellTemplate>
-            </TemplateColumn>
-            <TemplateColumn Title="Status">
-                <CellTemplate>
-                    <MudStack Spacing="1">
-                        <MudChip T="string" Size="Size.Small" Color="@GetStatusColor(context.Item.Rental.Status)">
-                            @context.Item.Rental.Status
-                        </MudChip>
-                        @if (context.Item.IsOverdue)
+<LoadingSkeleton Loading="@m_loading" Mode="LoadingSkeleton.PlaceholderMode.Table" Rows="10" Columns="7">
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-vcenter card-table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Renter</th>
+                        <th>Motorbike</th>
+                        <th>Period</th>
+                        <th>Days</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th class="w-1">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (m_filteredRentals.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center text-secondary py-4">
+                                <i class="ti ti-motorbike mb-2" style="font-size: 2rem;"></i>
+                                <div>No rentals found</div>
+                                <a href="/rentals/checkin" class="btn btn-outline-primary btn-sm mt-2">
+                                    Create New Check-In
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var rental in m_filteredRentals)
                         {
-                            <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Outlined">
-                                @context.Item.DaysOverdue day(s) overdue
-                            </MudChip>
+                            <tr class="cursor-pointer" @onclick="@(() => ViewRentalDetails(rental))">
+                                <td>
+                                    <div class="fw-bold">@rental.RenterName</div>
+                                    <small class="text-secondary">@rental.RenterPhone</small>
+                                </td>
+                                <td>
+                                    <div>@rental.MotorbikeBrandModel</div>
+                                    <small class="text-primary">@rental.MotorbikeLicensePlate</small>
+                                </td>
+                                <td>
+                                    <div>@FormatDate(rental.Rental.StartDate)</div>
+                                    <small class="text-secondary">to @FormatDate(rental.Rental.ExpectedEndDate)</small>
+                                </td>
+                                <td>@rental.Days</td>
+                                <td class="text-primary fw-bold">@FormatCurrency(rental.Rental.TotalAmount)</td>
+                                <td>
+                                    <div class="d-flex flex-column gap-1">
+                                        <span class="badge @GetStatusBadgeClass(rental.Rental.Status)">
+                                            @rental.Rental.Status
+                                        </span>
+                                        @if (rental.IsOverdue)
+                                        {
+                                            <span class="badge bg-danger-lt">@rental.DaysOverdue day(s) overdue</span>
+                                        }
+                                        else if (rental.IsDueToday)
+                                        {
+                                            <span class="badge bg-warning-lt">Due Today</span>
+                                        }
+                                    </div>
+                                </td>
+                                <td @onclick:stopPropagation="true">
+                                    <div class="btn-list flex-nowrap">
+                                        @if (rental.Rental.Status == "Active")
+                                        {
+                                            <button type="button" class="btn btn-icon btn-ghost-success" title="Check Out"
+                                                    @onclick="@(() => OpenCheckOutDialog(rental))">
+                                                <i class="ti ti-logout"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-icon btn-ghost-warning" title="Extend"
+                                                    @onclick="@(() => ExtendRental(rental))">
+                                                <i class="ti ti-calendar-plus"></i>
+                                            </button>
+                                        }
+                                        @if (rental.Rental.Status == "Reserved")
+                                        {
+                                            <button type="button" class="btn btn-icon btn-ghost-primary" title="Start Rental"
+                                                    @onclick="@(() => StartRental(rental))">
+                                                <i class="ti ti-player-play"></i>
+                                            </button>
+                                        }
+                                        @if (rental.Rental.Status is "Active" or "Reserved")
+                                        {
+                                            <button type="button" class="btn btn-icon btn-ghost-danger" title="Cancel"
+                                                    @onclick="@(() => CancelRental(rental))">
+                                                <i class="ti ti-x"></i>
+                                            </button>
+                                        }
+                                        <button type="button" class="btn btn-icon btn-ghost-primary" title="View Invoice"
+                                                @onclick="@(() => ViewInvoice(rental))">
+                                            <i class="ti ti-receipt"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
                         }
-                        else if (context.Item.IsDueToday)
-                        {
-                            <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined">
-                                Due Today
-                            </MudChip>
-                        }
-                    </MudStack>
-                </CellTemplate>
-            </TemplateColumn>
-            <TemplateColumn Title="Actions" Sortable="false">
-                <CellTemplate>
-                    <MudStack Row="true" Spacing="1">
-                        @if (context.Item.Rental.Status == "Active")
-                        {
-                            <MudTooltip Text="Check Out">
-                                <MudIconButton Icon="@Icons.Material.Filled.Logout" Size="Size.Small"
-                                               Color="Color.Success" OnClick="@(() => OpenCheckOutDialog(context.Item))"
-                                               OnClick:stopPropagation="true" />
-                            </MudTooltip>
-                            <MudTooltip Text="Extend">
-                                <MudIconButton Icon="@Icons.Material.Filled.EventRepeat" Size="Size.Small"
-                                               Color="Color.Warning" OnClick="@(() => ExtendRental(context.Item))"
-                                               OnClick:stopPropagation="true" />
-                            </MudTooltip>
-                        }
-                        @if (context.Item.Rental.Status == "Reserved")
-                        {
-                            <MudTooltip Text="Start Rental">
-                                <MudIconButton Icon="@Icons.Material.Filled.PlayArrow" Size="Size.Small"
-                                               Color="Color.Primary" OnClick="@(() => StartRental(context.Item))"
-                                               OnClick:stopPropagation="true" />
-                            </MudTooltip>
-                        }
-                        @if (context.Item.Rental.Status is "Active" or "Reserved")
-                        {
-                            <MudTooltip Text="Cancel">
-                                <MudIconButton Icon="@Icons.Material.Filled.Cancel" Size="Size.Small"
-                                               Color="Color.Error" OnClick="@(() => CancelRental(context.Item))"
-                                               OnClick:stopPropagation="true" />
-                            </MudTooltip>
-                        }
-                        <MudTooltip Text="View Details">
-                            <MudIconButton Icon="@Icons.Material.Filled.Visibility" Size="Size.Small"
-                                           Color="Color.Default" OnClick="@(() => ViewRentalDetails(context.Item))"
-                                           OnClick:stopPropagation="true" />
-                        </MudTooltip>
-                        <MudTooltip Text="View Invoice">
-                            <MudIconButton Icon="@Icons.Material.Filled.Receipt" Size="Size.Small"
-                                           Color="Color.Primary" OnClick="@(() => ViewInvoice(context.Item))"
-                                           OnClick:stopPropagation="true" />
-                        </MudTooltip>
-                    </MudStack>
-                </CellTemplate>
-            </TemplateColumn>
-        </Columns>
-        <PagerContent>
-            <MudDataGridPager T="RentalViewModel" PageSizeOptions="new[] { 10, 20, 50, 100 }" />
-        </PagerContent>
-        <NoRecordsContent>
-            <MudStack AlignItems="AlignItems.Center" Class="pa-8">
-                <MudIcon Icon="@Icons.Material.Filled.Moped" Size="Size.Large" Color="Color.Secondary" />
-                <MudText Typo="Typo.body1" Color="Color.Secondary">No rentals found</MudText>
-                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="/rentals/checkin">
-                    Create New Check-In
-                </MudButton>
-            </MudStack>
-        </NoRecordsContent>
-    </MudDataGrid>
-</MudPaper>
+                    }
+                </tbody>
+            </table>
+        </div>
+        @if (m_filteredRentals.Count > 0)
+        {
+            <div class="card-footer d-flex align-items-center">
+                <p class="m-0 text-secondary">
+                    Showing <strong>@m_filteredRentals.Count</strong> rentals
+                </p>
+            </div>
+        }
+    </div>
+</LoadingSkeleton>
 
 @code {
     private List<RentalViewModel> m_rentals = [];
@@ -190,52 +174,48 @@
     private bool m_loading = true;
     private string? m_searchTerm;
     private string m_activeTab = "Active";
+    private System.Timers.Timer? m_debounceTimer;
 
-    // Cache for renter and motorbike lookups
     private Dictionary<int, Renter> m_renterCache = new();
     private Dictionary<int, Motorbike> m_motorbikeCache = new();
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadDataAsync();
+        await this.LoadDataAsync();
     }
 
     private async Task LoadDataAsync()
     {
-        m_loading = true;
+        this.m_loading = true;
         try
         {
-            // Load all rentals
-            var result = await RentalService.GetRentalsAsync(ShopId, page: 1, pageSize: 1000);
+            var result = await this.RentalService.GetRentalsAsync(this.ShopId, page: 1, pageSize: 1000);
             var rentals = result.ItemCollection;
 
-            // Load renters for these rentals
             var renterIds = rentals.Select(r => r.RenterId).Distinct().ToList();
-            foreach (var renterId in renterIds.Where(id => !m_renterCache.ContainsKey(id)))
+            foreach (var renterId in renterIds.Where(id => !this.m_renterCache.ContainsKey(id)))
             {
-                var renter = await DataContext.LoadOneAsync<Renter>(r => r.RenterId == renterId);
+                var renter = await this.DataContext.LoadOneAsync<Renter>(r => r.RenterId == renterId);
                 if (renter != null)
-                    m_renterCache[renterId] = renter;
+                    this.m_renterCache[renterId] = renter;
             }
 
-            // Load motorbikes for these rentals
             var motorbikeIds = rentals.Select(r => r.MotorbikeId).Distinct().ToList();
-            foreach (var motorbikeId in motorbikeIds.Where(id => !m_motorbikeCache.ContainsKey(id)))
+            foreach (var motorbikeId in motorbikeIds.Where(id => !this.m_motorbikeCache.ContainsKey(id)))
             {
-                var motorbike = await DataContext.LoadOneAsync<Motorbike>(m => m.MotorbikeId == motorbikeId);
+                var motorbike = await this.DataContext.LoadOneAsync<Motorbike>(m => m.MotorbikeId == motorbikeId);
                 if (motorbike != null)
-                    m_motorbikeCache[motorbikeId] = motorbike;
+                    this.m_motorbikeCache[motorbikeId] = motorbike;
             }
 
-            // Build view models
             var today = DateTimeOffset.Now.Date;
-            m_rentals = rentals.Select(r => new RentalViewModel
+            this.m_rentals = rentals.Select(r => new RentalViewModel
             {
                 Rental = r,
-                RenterName = m_renterCache.TryGetValue(r.RenterId, out var renter) ? renter.FullName : "Unknown",
-                RenterPhone = m_renterCache.TryGetValue(r.RenterId, out var renter2) ? renter2.Phone : "",
-                MotorbikeBrandModel = m_motorbikeCache.TryGetValue(r.MotorbikeId, out var bike) ? $"{bike.Brand} {bike.Model}" : "Unknown",
-                MotorbikeLicensePlate = m_motorbikeCache.TryGetValue(r.MotorbikeId, out var bike2) ? bike2.LicensePlate : "",
+                RenterName = this.m_renterCache.TryGetValue(r.RenterId, out var renter) ? renter.FullName ?? "" : "Unknown",
+                RenterPhone = this.m_renterCache.TryGetValue(r.RenterId, out var renter2) ? renter2.Phone ?? "" : "",
+                MotorbikeBrandModel = this.m_motorbikeCache.TryGetValue(r.MotorbikeId, out var bike) ? $"{bike.Brand} {bike.Model}" : "Unknown",
+                MotorbikeLicensePlate = this.m_motorbikeCache.TryGetValue(r.MotorbikeId, out var bike2) ? bike2.LicensePlate ?? "" : "",
                 Days = (int)(r.ExpectedEndDate.Date - r.StartDate.Date).TotalDays + 1,
                 IsDueToday = r.Status == "Active" && r.ExpectedEndDate.Date == today,
                 IsOverdue = r.Status == "Active" && r.ExpectedEndDate.Date < today,
@@ -244,194 +224,182 @@
                     : 0
             }).ToList();
 
-            // Calculate counts
-            m_statusCounts = m_rentals
+            this.m_statusCounts = this.m_rentals
                 .GroupBy(r => r.Rental.Status ?? "Unknown")
                 .ToDictionary(g => g.Key, g => g.Count());
 
-            m_dueTodayCount = m_rentals.Count(r => r.IsDueToday);
-            m_overdueCount = m_rentals.Count(r => r.IsOverdue);
+            this.m_dueTodayCount = this.m_rentals.Count(r => r.IsDueToday);
+            this.m_overdueCount = this.m_rentals.Count(r => r.IsOverdue);
 
-            ApplyFilter();
+            this.ApplyFilter();
         }
         catch (Exception ex)
         {
-            ShowError($"Error loading data: {ex.Message}");
+            this.ShowError($"Error loading data: {ex.Message}");
         }
         finally
         {
-            m_loading = false;
+            this.m_loading = false;
         }
     }
 
     private void ApplyFilter()
     {
-        var filtered = m_activeTab switch
+        var filtered = this.m_activeTab switch
         {
-            "Active" => m_rentals.Where(r => r.Rental.Status == "Active"),
-            "DueToday" => m_rentals.Where(r => r.IsDueToday),
-            "Overdue" => m_rentals.Where(r => r.IsOverdue),
-            "Completed" => m_rentals.Where(r => r.Rental.Status == "Completed"),
-            "Reserved" => m_rentals.Where(r => r.Rental.Status == "Reserved"),
-            "Cancelled" => m_rentals.Where(r => r.Rental.Status == "Cancelled"),
-            _ => m_rentals
+            "Active" => this.m_rentals.Where(r => r.Rental.Status == "Active"),
+            "DueToday" => this.m_rentals.Where(r => r.IsDueToday),
+            "Overdue" => this.m_rentals.Where(r => r.IsOverdue),
+            "Completed" => this.m_rentals.Where(r => r.Rental.Status == "Completed"),
+            "Reserved" => this.m_rentals.Where(r => r.Rental.Status == "Reserved"),
+            "Cancelled" => this.m_rentals.Where(r => r.Rental.Status == "Cancelled"),
+            _ => this.m_rentals
         };
 
-        if (!string.IsNullOrWhiteSpace(m_searchTerm))
+        if (!string.IsNullOrWhiteSpace(this.m_searchTerm))
         {
-            var term = m_searchTerm.ToLowerInvariant();
+            var term = this.m_searchTerm.ToLowerInvariant();
             filtered = filtered.Where(r =>
                 r.RenterName.ToLowerInvariant().Contains(term) ||
                 r.MotorbikeBrandModel.ToLowerInvariant().Contains(term) ||
                 r.MotorbikeLicensePlate.ToLowerInvariant().Contains(term));
         }
 
-        m_filteredRentals = filtered.OrderByDescending(r => r.Rental.RentalId).ToList();
+        this.m_filteredRentals = filtered.OrderByDescending(r => r.Rental.RentalId).ToList();
     }
 
     private void SetActiveTab(string tab)
     {
-        m_activeTab = tab;
-        ApplyFilter();
+        this.m_activeTab = tab;
+        this.ApplyFilter();
     }
 
-    private void SearchChanged()
+    private void OnSearchKeyUp(KeyboardEventArgs e)
     {
-        ApplyFilter();
-    }
-
-    private void OnRowClick(DataGridRowClickEventArgs<RentalViewModel> args)
-    {
-        ViewRentalDetails(args.Item);
+        this.m_debounceTimer?.Stop();
+        this.m_debounceTimer?.Dispose();
+        this.m_debounceTimer = new System.Timers.Timer(300);
+        this.m_debounceTimer.Elapsed += async (_, _) =>
+        {
+            this.m_debounceTimer?.Stop();
+            await this.InvokeAsync(() =>
+            {
+                this.ApplyFilter();
+                this.StateHasChanged();
+            });
+        };
+        this.m_debounceTimer.Start();
     }
 
     private void ViewRentalDetails(RentalViewModel rental)
     {
-        // TODO: Open rental details dialog
-        ShowInfo($"Viewing rental #{rental.Rental.RentalId}");
+        this.ShowInfo($"Viewing rental #{rental.Rental.RentalId}");
     }
 
     private async Task ViewInvoice(RentalViewModel rental)
     {
-        var parameters = new DialogParameters<InvoiceDialog>
-        {
-            { x => x.RentalId, rental.Rental.RentalId }
-        };
-
-        var options = new DialogOptions
-        {
-            MaxWidth = MaxWidth.Medium,
-            FullWidth = true,
-            CloseButton = true
-        };
-
-        await DialogService.ShowAsync<InvoiceDialog>("Invoice", parameters, options);
+        await this.DialogService
+            .Create<InvoiceDialog>("Invoice")
+            .WithParameter(x => x.RentalId, rental.Rental.RentalId)
+            .Large()
+            .ShowDialogAsync();
     }
 
     private async Task OpenCheckOutDialog(RentalViewModel rental)
     {
-        // TODO: Implement check-out dialog
-        var confirmed = await ConfirmAsync("Check Out",
-            $"Check out {rental.RenterName} returning {rental.MotorbikeBrandModel}?",
-            "Check Out", "Cancel");
+        if (!await this.DialogService.ConfirmAsync(
+            $"Check out {rental.RenterName} returning {rental.MotorbikeBrandModel}?"))
+            return;
 
-        if (confirmed)
+        var request = new CheckOutRequest
         {
-            // For now, just update status
-            var request = new CheckOutRequest
-            {
-                RentalId = rental.Rental.RentalId,
-                ActualEndDate = DateTimeOffset.Now,
-                MileageEnd = rental.Rental.MileageStart + 50 // Placeholder
-            };
+            RentalId = rental.Rental.RentalId,
+            ActualEndDate = DateTimeOffset.Now,
+            MileageEnd = rental.Rental.MileageStart + 50
+        };
 
-            var result = await RentalService.CheckOutAsync(request, UserName);
-            if (result.Success)
-            {
-                await LoadDataAsync();
-                ShowSuccess($"Check-out completed. Refund: {FormatCurrency(result.RefundAmount)}");
-            }
-            else
-            {
-                ShowError($"Check-out failed: {result.Message}");
-            }
+        var result = await this.RentalService.CheckOutAsync(request, this.UserName);
+        if (result.Success)
+        {
+            await this.LoadDataAsync();
+            this.ShowSuccess($"Check-out completed. Refund: {FormatCurrency(result.RefundAmount)}");
+        }
+        else
+        {
+            this.ShowError($"Check-out failed: {result.Message}");
         }
     }
 
     private async Task ExtendRental(RentalViewModel rental)
     {
-        // TODO: Implement extend dialog
-        var confirmed = await ConfirmAsync("Extend Rental",
-            $"Extend rental for {rental.RenterName} by 1 day?",
-            "Extend", "Cancel");
+        if (!await this.DialogService.ConfirmAsync(
+            $"Extend rental for {rental.RenterName} by 1 day?"))
+            return;
 
-        if (confirmed)
+        var newEndDate = rental.Rental.ExpectedEndDate.AddDays(1);
+        var result = await this.RentalService.ExtendRentalAsync(rental.Rental.RentalId, newEndDate, this.UserName);
+        if (result.Success)
         {
-            var newEndDate = rental.Rental.ExpectedEndDate.AddDays(1);
-            var result = await RentalService.ExtendRentalAsync(rental.Rental.RentalId, newEndDate, UserName);
-            if (result.Success)
-            {
-                await LoadDataAsync();
-                ShowSuccess("Rental extended successfully");
-            }
-            else
-            {
-                ShowError($"Extension failed: {result.Message}");
-            }
+            await this.LoadDataAsync();
+            this.ShowSuccess("Rental extended successfully");
+        }
+        else
+        {
+            this.ShowError($"Extension failed: {result.Message}");
         }
     }
 
     private async Task StartRental(RentalViewModel rental)
     {
-        var confirmed = await ConfirmAsync("Start Rental",
-            $"Start rental for {rental.RenterName}?",
-            "Start", "Cancel");
+        if (!await this.DialogService.ConfirmAsync(
+            $"Start rental for {rental.RenterName}?"))
+            return;
 
-        if (confirmed)
+        rental.Rental.Status = "Active";
+        var result = await this.RentalService.UpdateRentalAsync(rental.Rental, this.UserName);
+        if (result.Success)
         {
-            rental.Rental.Status = "Active";
-            var result = await RentalService.UpdateRentalAsync(rental.Rental, UserName);
-            if (result.Success)
-            {
-                await LoadDataAsync();
-                ShowSuccess("Rental started");
-            }
-            else
-            {
-                ShowError($"Failed to start rental: {result.Message}");
-            }
+            await this.LoadDataAsync();
+            this.ShowSuccess("Rental started");
+        }
+        else
+        {
+            this.ShowError($"Failed to start rental: {result.Message}");
         }
     }
 
     private async Task CancelRental(RentalViewModel rental)
     {
-        var confirmed = await ConfirmAsync("Cancel Rental",
+        if (!await this.DialogService.ConfirmYesNoAsync(
             $"Cancel rental for {rental.RenterName}? The deposit will be refunded.",
-            "Cancel Rental", "Keep");
+            "Cancel Rental"))
+            return;
 
-        if (confirmed)
+        var result = await this.RentalService.CancelRentalAsync(rental.Rental.RentalId, "Cancelled by user", this.UserName);
+        if (result.Success)
         {
-            var result = await RentalService.CancelRentalAsync(rental.Rental.RentalId, "Cancelled by user", UserName);
-            if (result.Success)
-            {
-                await LoadDataAsync();
-                ShowSuccess("Rental cancelled and deposit refunded");
-            }
-            else
-            {
-                ShowError($"Cancellation failed: {result.Message}");
-            }
+            await this.LoadDataAsync();
+            this.ShowSuccess("Rental cancelled and deposit refunded");
+        }
+        else
+        {
+            this.ShowError($"Cancellation failed: {result.Message}");
         }
     }
 
-    private static Color GetStatusColor(string? status) => status switch
+    private static string GetStatusBadgeClass(string? status) => status switch
     {
-        "Active" => Color.Primary,
-        "Reserved" => Color.Info,
-        "Completed" => Color.Success,
-        "Cancelled" => Color.Error,
-        _ => Color.Default
+        "Active" => "bg-primary",
+        "Reserved" => "bg-info",
+        "Completed" => "bg-success",
+        "Cancelled" => "bg-danger",
+        _ => "bg-secondary"
     };
+
+    public void Dispose()
+    {
+        this.m_debounceTimer?.Dispose();
+    }
 
     public class RentalViewModel
     {

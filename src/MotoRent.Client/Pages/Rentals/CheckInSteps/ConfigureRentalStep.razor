@@ -5,202 +5,212 @@
 @inject InsuranceService InsuranceService
 @inject AccessoryService AccessoryService
 
-<MudStack Spacing="4">
-    <MudText Typo="Typo.h6">Configure Rental</MudText>
-    <MudText Typo="Typo.body2" Color="Color.Secondary">
-        Set the rental period and select optional insurance and accessories
-    </MudText>
+<div class="d-flex flex-column gap-4">
+    <div>
+        <h5 class="mb-1">Configure Rental</h5>
+        <p class="text-secondary mb-0">Set the rental period and select optional insurance and accessories</p>
+    </div>
 
-    <MudGrid>
-        <MudItem xs="12" md="8">
-            <MudPaper Elevation="1" Class="pa-4">
-                <MudText Typo="Typo.subtitle1" Class="mb-3">Rental Period</MudText>
+    <div class="row g-4">
+        <div class="col-12 col-md-8">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h6 class="card-title mb-3">Rental Period</h6>
 
-                <MudGrid>
-                    <MudItem xs="12" sm="5">
-                        <MudDatePicker Label="Start Date" @bind-Date="m_startDate"
-                                       MinDate="DateTime.Today"
-                                       Variant="Variant.Outlined" />
-                    </MudItem>
-                    <MudItem xs="12" sm="5">
-                        <MudDatePicker Label="End Date" @bind-Date="m_endDate"
-                                       MinDate="@(m_startDate ?? DateTime.Today)"
-                                       Variant="Variant.Outlined" />
-                    </MudItem>
-                    <MudItem xs="12" sm="2">
-                        <MudText Typo="Typo.caption" Color="Color.Secondary">Duration</MudText>
-                        <MudText Typo="Typo.h5" Color="Color.Primary">@Config.Days days</MudText>
-                    </MudItem>
-                </MudGrid>
+                    <div class="row g-3 align-items-end">
+                        <div class="col-12 col-sm-5">
+                            <label class="form-label">Start Date</label>
+                            <input type="date" class="form-control"
+                                   @bind="m_startDate" min="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                        </div>
+                        <div class="col-12 col-sm-5">
+                            <label class="form-label">End Date</label>
+                            <input type="date" class="form-control"
+                                   @bind="m_endDate" min="@((m_startDate ?? DateTime.Today).ToString("yyyy-MM-dd"))" />
+                        </div>
+                        <div class="col-12 col-sm-2 text-center">
+                            <small class="text-secondary d-block">Duration</small>
+                            <span class="text-primary fw-bold" style="font-size: 1.5rem;">@this.Config.Days</span>
+                            <small class="text-secondary">days</small>
+                        </div>
+                    </div>
 
-                <MudStack Row="true" Spacing="1" Class="mt-2">
-                    <MudButton Size="Size.Small" Variant="Variant.Outlined"
-                               OnClick="@(() => SetDays(1))">1 Day</MudButton>
-                    <MudButton Size="Size.Small" Variant="Variant.Outlined"
-                               OnClick="@(() => SetDays(3))">3 Days</MudButton>
-                    <MudButton Size="Size.Small" Variant="Variant.Outlined"
-                               OnClick="@(() => SetDays(7))">1 Week</MudButton>
-                    <MudButton Size="Size.Small" Variant="Variant.Outlined"
-                               OnClick="@(() => SetDays(14))">2 Weeks</MudButton>
-                    <MudButton Size="Size.Small" Variant="Variant.Outlined"
-                               OnClick="@(() => SetDays(30))">1 Month</MudButton>
-                </MudStack>
-            </MudPaper>
+                    <div class="btn-group btn-group-sm mt-3" role="group">
+                        <button type="button" class="btn btn-outline-secondary" @onclick="@(() => SetDays(1))">1 Day</button>
+                        <button type="button" class="btn btn-outline-secondary" @onclick="@(() => SetDays(3))">3 Days</button>
+                        <button type="button" class="btn btn-outline-secondary" @onclick="@(() => SetDays(7))">1 Week</button>
+                        <button type="button" class="btn btn-outline-secondary" @onclick="@(() => SetDays(14))">2 Weeks</button>
+                        <button type="button" class="btn btn-outline-secondary" @onclick="@(() => SetDays(30))">1 Month</button>
+                    </div>
+                </div>
+            </div>
 
-            <MudPaper Elevation="1" Class="pa-4 mt-4">
-                <MudText Typo="Typo.subtitle1" Class="mb-3">Insurance Package</MudText>
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h6 class="card-title mb-3">Insurance Package</h6>
 
-                @if (m_loadingInsurance)
-                {
-                    <MudProgressLinear Indeterminate="true" />
-                }
-                else
-                {
-                    <MudRadioGroup T="int?" @bind-Value="m_selectedInsuranceId">
-                        <MudStack Spacing="2">
-                            <MudRadio T="int?" Value="@((int?)null)" Color="Color.Primary">
-                                <MudStack Spacing="0">
-                                    <MudText Typo="Typo.body1">No Insurance</MudText>
-                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                        You are responsible for all damage costs
-                                    </MudText>
-                                </MudStack>
-                            </MudRadio>
+                    @if (m_loadingInsurance)
+                    {
+                        <div class="progress progress-sm">
+                            <div class="progress-bar progress-bar-indeterminate"></div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="d-flex flex-column gap-3">
+                            <label class="form-selectgroup-item">
+                                <input type="radio" name="insurance" class="form-selectgroup-input"
+                                       checked="@(m_selectedInsuranceId == null)"
+                                       @onchange="@(() => SelectInsurance(null))" />
+                                <span class="form-selectgroup-label d-flex align-items-start gap-3 w-100">
+                                    <span class="d-flex flex-column">
+                                        <span class="fw-medium">No Insurance</span>
+                                        <small class="text-secondary">You are responsible for all damage costs</small>
+                                    </span>
+                                </span>
+                            </label>
 
                             @foreach (var insurance in m_insurances)
                             {
-                                <MudRadio T="int?" Value="@insurance.InsuranceId" Color="Color.Primary">
-                                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Start" Justify="Justify.SpaceBetween" Style="width: 100%;">
-                                        <MudStack Spacing="0">
-                                            <MudText Typo="Typo.body1">@insurance.Name</MudText>
-                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                                @insurance.Description
-                                            </MudText>
-                                            <MudText Typo="Typo.caption">
-                                                Max coverage: @FormatCurrency(insurance.MaxCoverage) | Deductible: @FormatCurrency(insurance.Deductible)
-                                            </MudText>
-                                        </MudStack>
-                                        <MudText Typo="Typo.body1" Color="Color.Primary" Style="font-weight: 500;">
+                                <label class="form-selectgroup-item">
+                                    <input type="radio" name="insurance" class="form-selectgroup-input"
+                                           checked="@(m_selectedInsuranceId == insurance.InsuranceId)"
+                                           @onchange="@(() => SelectInsurance(insurance.InsuranceId))" />
+                                    <span class="form-selectgroup-label d-flex justify-content-between align-items-start w-100">
+                                        <span class="d-flex flex-column">
+                                            <span class="fw-medium">@insurance.Name</span>
+                                            <small class="text-secondary">@insurance.Description</small>
+                                            <small class="text-muted">
+                                                Max coverage: @FormatCurrency(insurance.MaxCoverage) |
+                                                Deductible: @FormatCurrency(insurance.Deductible)
+                                            </small>
+                                        </span>
+                                        <span class="text-primary fw-medium ms-3">
                                             @FormatCurrency(insurance.DailyRate)/day
-                                        </MudText>
-                                    </MudStack>
-                                </MudRadio>
+                                        </span>
+                                    </span>
+                                </label>
                             }
-                        </MudStack>
-                    </MudRadioGroup>
-                }
-            </MudPaper>
+                        </div>
+                    }
+                </div>
+            </div>
 
-            <MudPaper Elevation="1" Class="pa-4 mt-4">
-                <MudText Typo="Typo.subtitle1" Class="mb-3">Accessories</MudText>
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title mb-3">Accessories</h6>
 
-                @if (m_loadingAccessories)
-                {
-                    <MudProgressLinear Indeterminate="true" />
-                }
-                else
-                {
-                    <MudStack Spacing="2">
-                        @foreach (var accessory in m_accessories)
-                        {
-                            var selection = m_accessorySelections.FirstOrDefault(a => a.AccessoryId == accessory.AccessoryId);
-                            var isSelected = selection != null;
-
-                            <MudPaper Elevation="0" Class="pa-2" Style="background-color: var(--mud-palette-background-grey);">
-                                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
-                                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                                        <MudCheckBox T="bool" Value="@isSelected"
-                                                     ValueChanged="@((bool v) => ToggleAccessory(accessory, v))"
-                                                     Color="Color.Primary" Dense="true" />
-                                        <MudStack Spacing="0">
-                                            <MudText Typo="Typo.body2">
-                                                @accessory.Name
-                                                @if (accessory.IsIncluded)
-                                                {
-                                                    <MudChip T="string" Size="Size.Small" Color="Color.Success" Class="ml-2">Free</MudChip>
-                                                }
-                                            </MudText>
-                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                                @(accessory.IsIncluded ? "Included with rental" : $"{FormatCurrency(accessory.DailyRate)}/day")
-                                            </MudText>
-                                        </MudStack>
-                                    </MudStack>
-
-                                    @if (isSelected && !accessory.IsIncluded)
-                                    {
-                                        <MudNumericField T="int" @bind-Value="selection!.Quantity"
-                                                         Min="1" Max="@accessory.QuantityAvailable"
-                                                         Label="Qty" Style="width: 80px;"
-                                                         Variant="Variant.Outlined" Dense="true" />
-                                    }
-                                </MudStack>
-                            </MudPaper>
-                        }
-                    </MudStack>
-                }
-            </MudPaper>
-        </MudItem>
-
-        <MudItem xs="12" md="4">
-            <MudPaper Elevation="2" Class="pa-4" Style="position: sticky; top: 20px;">
-                <MudText Typo="Typo.subtitle1" Class="mb-3">Price Summary</MudText>
-
-                @if (SelectedMotorbike != null)
-                {
-                    <MudStack Spacing="2">
-                        <MudStack Row="true" Justify="Justify.SpaceBetween">
-                            <MudText Typo="Typo.body2">
-                                Motorbike (@Config.Days days x @FormatCurrency(SelectedMotorbike.DailyRate))
-                            </MudText>
-                            <MudText Typo="Typo.body2">@FormatCurrency(Config.MotorbikeTotal)</MudText>
-                        </MudStack>
-
-                        @if (m_selectedInsuranceId.HasValue)
-                        {
-                            var insurance = m_insurances.FirstOrDefault(i => i.InsuranceId == m_selectedInsuranceId);
-                            if (insurance != null)
+                    @if (m_loadingAccessories)
+                    {
+                        <div class="progress progress-sm">
+                            <div class="progress-bar progress-bar-indeterminate"></div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="d-flex flex-column gap-2">
+                            @foreach (var accessory in m_accessories)
                             {
-                                <MudStack Row="true" Justify="Justify.SpaceBetween">
-                                    <MudText Typo="Typo.body2">
-                                        @insurance.Name (@Config.Days days)
-                                    </MudText>
-                                    <MudText Typo="Typo.body2">@FormatCurrency(Config.InsuranceTotal)</MudText>
-                                </MudStack>
+                                var selection = m_accessorySelections.FirstOrDefault(a => a.AccessoryId == accessory.AccessoryId);
+                                var isSelected = selection != null;
+
+                                <div class="card bg-light">
+                                    <div class="card-body p-3">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div class="d-flex align-items-center gap-3">
+                                                <label class="form-check mb-0">
+                                                    <input class="form-check-input" type="checkbox"
+                                                           checked="@isSelected"
+                                                           @onchange="@((ChangeEventArgs e) => ToggleAccessory(accessory, (bool)(e.Value ?? false)))" />
+                                                </label>
+                                                <div class="d-flex flex-column">
+                                                    <span>
+                                                        @accessory.Name
+                                                        @if (accessory.IsIncluded)
+                                                        {
+                                                            <span class="badge bg-success ms-2">Free</span>
+                                                        }
+                                                    </span>
+                                                    <small class="text-secondary">
+                                                        @(accessory.IsIncluded ? "Included with rental" : $"{FormatCurrency(accessory.DailyRate)}/day")
+                                                    </small>
+                                                </div>
+                                            </div>
+
+                                            @if (isSelected && !accessory.IsIncluded)
+                                            {
+                                                <div style="width: 80px;">
+                                                    <input type="number" class="form-control form-control-sm"
+                                                           min="1" max="@accessory.QuantityAvailable"
+                                                           @bind="selection!.Quantity" @bind:after="UpdateConfig" />
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
                             }
-                        }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
 
-                        @foreach (var acc in m_accessorySelections.Where(a => !m_accessories.First(x => x.AccessoryId == a.AccessoryId).IsIncluded))
-                        {
-                            var accessory = m_accessories.First(a => a.AccessoryId == acc.AccessoryId);
-                            <MudStack Row="true" Justify="Justify.SpaceBetween">
-                                <MudText Typo="Typo.body2">@accessory.Name x@acc.Quantity</MudText>
-                                <MudText Typo="Typo.body2">@FormatCurrency(accessory.DailyRate * acc.Quantity * Config.Days)</MudText>
-                            </MudStack>
-                        }
+        <div class="col-12 col-md-4">
+            <div class="card" style="position: sticky; top: 20px;">
+                <div class="card-body">
+                    <h6 class="card-title mb-3">Price Summary</h6>
 
-                        <MudDivider Class="my-2" />
+                    @if (this.SelectedMotorbike != null)
+                    {
+                        <div class="d-flex flex-column gap-2">
+                            <div class="d-flex justify-content-between">
+                                <span>Motorbike (@this.Config.Days days x @FormatCurrency(this.SelectedMotorbike.DailyRate))</span>
+                                <span>@FormatCurrency(this.Config.MotorbikeTotal)</span>
+                            </div>
 
-                        <MudStack Row="true" Justify="Justify.SpaceBetween">
-                            <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Total</MudText>
-                            <MudText Typo="Typo.h5" Color="Color.Primary" Style="font-weight: 600;">
-                                @FormatCurrency(Config.TotalAmount)
-                            </MudText>
-                        </MudStack>
+                            @if (m_selectedInsuranceId.HasValue)
+                            {
+                                var insurance = m_insurances.FirstOrDefault(i => i.InsuranceId == m_selectedInsuranceId);
+                                if (insurance != null)
+                                {
+                                    <div class="d-flex justify-content-between">
+                                        <span>@insurance.Name (@this.Config.Days days)</span>
+                                        <span>@FormatCurrency(this.Config.InsuranceTotal)</span>
+                                    </div>
+                                }
+                            }
 
-                        <MudDivider Class="my-2" />
+                            @foreach (var acc in m_accessorySelections.Where(a => !m_accessories.First(x => x.AccessoryId == a.AccessoryId).IsIncluded))
+                            {
+                                var accessory = m_accessories.First(a => a.AccessoryId == acc.AccessoryId);
+                                <div class="d-flex justify-content-between">
+                                    <span>@accessory.Name x@acc.Quantity</span>
+                                    <span>@FormatCurrency(accessory.DailyRate * acc.Quantity * this.Config.Days)</span>
+                                </div>
+                            }
 
-                        <MudStack Row="true" Justify="Justify.SpaceBetween">
-                            <MudText Typo="Typo.body2" Color="Color.Secondary">Required Deposit</MudText>
-                            <MudText Typo="Typo.body2" Style="font-weight: 500;">
-                                @FormatCurrency(SelectedMotorbike.DepositAmount)
-                            </MudText>
-                        </MudStack>
-                    </MudStack>
-                }
-            </MudPaper>
-        </MudItem>
-    </MudGrid>
-</MudStack>
+                            <hr class="my-2">
+
+                            <div class="d-flex justify-content-between">
+                                <span class="fw-semibold" style="font-size: 1.1rem;">Total</span>
+                                <span class="text-primary fw-bold" style="font-size: 1.25rem;">
+                                    @FormatCurrency(this.Config.TotalAmount)
+                                </span>
+                            </div>
+
+                            <hr class="my-2">
+
+                            <div class="d-flex justify-content-between">
+                                <span class="text-secondary">Required Deposit</span>
+                                <span class="fw-medium">@FormatCurrency(this.SelectedMotorbike.DepositAmount)</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 @code {
     [Parameter] public Motorbike? SelectedMotorbike { get; set; }
@@ -219,46 +229,46 @@
 
     protected override async Task OnInitializedAsync()
     {
-        m_startDate = DateTime.Today;
-        m_endDate = DateTime.Today.AddDays(3);
+        this.m_startDate = DateTime.Today;
+        this.m_endDate = DateTime.Today.AddDays(3);
 
         await Task.WhenAll(
-            LoadInsurances(),
-            LoadAccessories()
+            this.LoadInsurances(),
+            this.LoadAccessories()
         );
 
-        UpdateConfig();
+        this.UpdateConfig();
     }
 
     private async Task LoadInsurances()
     {
-        m_loadingInsurance = true;
+        this.m_loadingInsurance = true;
         try
         {
-            m_insurances = await InsuranceService.GetActiveInsurancesAsync(ShopId);
+            this.m_insurances = await this.InsuranceService.GetActiveInsurancesAsync(this.ShopId);
         }
         catch (Exception ex)
         {
-            ShowError($"Error loading insurances: {ex.Message}");
+            this.ShowError($"Error loading insurances: {ex.Message}");
         }
         finally
         {
-            m_loadingInsurance = false;
+            this.m_loadingInsurance = false;
         }
     }
 
     private async Task LoadAccessories()
     {
-        m_loadingAccessories = true;
+        this.m_loadingAccessories = true;
         try
         {
-            var result = await AccessoryService.GetAccessoriesAsync(ShopId);
-            m_accessories = result.ItemCollection.Where(a => a.QuantityAvailable > 0).ToList();
+            var result = await this.AccessoryService.GetAccessoriesAsync(this.ShopId);
+            this.m_accessories = result.ItemCollection.Where(a => a.QuantityAvailable > 0).ToList();
 
             // Auto-select included accessories
-            foreach (var accessory in m_accessories.Where(a => a.IsIncluded))
+            foreach (var accessory in this.m_accessories.Where(a => a.IsIncluded))
             {
-                m_accessorySelections.Add(new AccessorySelectionModel
+                this.m_accessorySelections.Add(new AccessorySelectionModel
                 {
                     AccessoryId = accessory.AccessoryId,
                     Quantity = 1
@@ -267,28 +277,34 @@
         }
         catch (Exception ex)
         {
-            ShowError($"Error loading accessories: {ex.Message}");
+            this.ShowError($"Error loading accessories: {ex.Message}");
         }
         finally
         {
-            m_loadingAccessories = false;
+            this.m_loadingAccessories = false;
         }
     }
 
     private void SetDays(int days)
     {
-        m_startDate = DateTime.Today;
-        m_endDate = DateTime.Today.AddDays(days - 1);
-        UpdateConfig();
+        this.m_startDate = DateTime.Today;
+        this.m_endDate = DateTime.Today.AddDays(days - 1);
+        this.UpdateConfig();
+    }
+
+    private void SelectInsurance(int? insuranceId)
+    {
+        this.m_selectedInsuranceId = insuranceId;
+        this.UpdateConfig();
     }
 
     private void ToggleAccessory(Accessory accessory, bool selected)
     {
         if (selected)
         {
-            if (!m_accessorySelections.Any(a => a.AccessoryId == accessory.AccessoryId))
+            if (!this.m_accessorySelections.Any(a => a.AccessoryId == accessory.AccessoryId))
             {
-                m_accessorySelections.Add(new AccessorySelectionModel
+                this.m_accessorySelections.Add(new AccessorySelectionModel
                 {
                     AccessoryId = accessory.AccessoryId,
                     Quantity = 1
@@ -297,42 +313,42 @@
         }
         else
         {
-            m_accessorySelections.RemoveAll(a => a.AccessoryId == accessory.AccessoryId);
+            this.m_accessorySelections.RemoveAll(a => a.AccessoryId == accessory.AccessoryId);
         }
-        UpdateConfig();
+        this.UpdateConfig();
     }
 
     private void UpdateConfig()
     {
-        if (m_startDate.HasValue)
-            Config.StartDate = new DateTimeOffset(m_startDate.Value, TimeSpan.Zero);
-        if (m_endDate.HasValue)
-            Config.EndDate = new DateTimeOffset(m_endDate.Value, TimeSpan.Zero);
+        if (this.m_startDate.HasValue)
+            this.Config.StartDate = new DateTimeOffset(this.m_startDate.Value, TimeSpan.Zero);
+        if (this.m_endDate.HasValue)
+            this.Config.EndDate = new DateTimeOffset(this.m_endDate.Value, TimeSpan.Zero);
 
-        Config.SelectedInsuranceId = m_selectedInsuranceId;
-        Config.SelectedInsurance = m_selectedInsuranceId.HasValue
-            ? m_insurances.FirstOrDefault(i => i.InsuranceId == m_selectedInsuranceId)
+        this.Config.SelectedInsuranceId = this.m_selectedInsuranceId;
+        this.Config.SelectedInsurance = this.m_selectedInsuranceId.HasValue
+            ? this.m_insurances.FirstOrDefault(i => i.InsuranceId == this.m_selectedInsuranceId)
             : null;
 
-        if (SelectedMotorbike != null)
+        if (this.SelectedMotorbike != null)
         {
-            Config.MotorbikeTotal = SelectedMotorbike.DailyRate * Config.Days;
+            this.Config.MotorbikeTotal = this.SelectedMotorbike.DailyRate * this.Config.Days;
         }
 
-        Config.InsuranceTotal = Config.SelectedInsurance?.DailyRate * Config.Days ?? 0;
+        this.Config.InsuranceTotal = this.Config.SelectedInsurance?.DailyRate * this.Config.Days ?? 0;
 
-        Config.SelectedAccessories = m_accessorySelections
+        this.Config.SelectedAccessories = this.m_accessorySelections
             .Select(s => new RentalConfig.AccessorySelection
             {
-                Accessory = m_accessories.First(a => a.AccessoryId == s.AccessoryId),
+                Accessory = this.m_accessories.First(a => a.AccessoryId == s.AccessoryId),
                 Quantity = s.Quantity
             }).ToList();
 
-        Config.AccessoriesTotal = Config.SelectedAccessories
+        this.Config.AccessoriesTotal = this.Config.SelectedAccessories
             .Where(a => !a.Accessory.IsIncluded)
-            .Sum(a => a.Accessory.DailyRate * a.Quantity * Config.Days);
+            .Sum(a => a.Accessory.DailyRate * a.Quantity * this.Config.Days);
 
-        ConfigChanged.InvokeAsync(Config);
+        this.ConfigChanged.InvokeAsync(this.Config);
     }
 
     private class AccessorySelectionModel

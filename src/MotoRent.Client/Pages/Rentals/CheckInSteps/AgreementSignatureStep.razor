@@ -3,157 +3,164 @@
 @using MotoRent.Domain.Entities
 @using MotoRent.Client.Pages.Rentals
 
-<MudStack Spacing="4">
-    <MudText Typo="Typo.h6">Agreement & Signature</MudText>
-    <MudText Typo="Typo.body2" Color="Color.Secondary">
-        Review the rental summary and collect the renter's signature
-    </MudText>
+<div class="d-flex flex-column gap-4">
+    <div>
+        <h5 class="mb-1">Agreement & Signature</h5>
+        <p class="text-secondary mb-0">Review the rental summary and collect the renter's signature</p>
+    </div>
 
-    <MudGrid>
-        <MudItem xs="12" md="6">
-            <MudPaper Elevation="1" Class="pa-4">
-                <MudText Typo="Typo.subtitle1" Class="mb-3">Rental Summary</MudText>
+    <div class="row g-4">
+        <div class="col-12 col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title mb-3">Rental Summary</h6>
 
-                @if (Renter != null && Motorbike != null && Config != null)
-                {
-                    <MudStack Spacing="2">
-                        <MudStack Row="true" Justify="Justify.SpaceBetween">
-                            <MudText Typo="Typo.body2" Color="Color.Secondary">Renter</MudText>
-                            <MudText Typo="Typo.body2" Style="font-weight: 500;">@Renter.FullName</MudText>
-                        </MudStack>
-                        <MudStack Row="true" Justify="Justify.SpaceBetween">
-                            <MudText Typo="Typo.body2" Color="Color.Secondary">Phone</MudText>
-                            <MudText Typo="Typo.body2">@Renter.Phone</MudText>
-                        </MudStack>
-                        <MudStack Row="true" Justify="Justify.SpaceBetween">
-                            <MudText Typo="Typo.body2" Color="Color.Secondary">Passport/ID</MudText>
-                            <MudText Typo="Typo.body2">@(Renter.PassportNo ?? Renter.NationalIdNo ?? "-")</MudText>
-                        </MudStack>
+                    @if (this.Renter != null && this.Motorbike != null && this.Config != null)
+                    {
+                        <div class="d-flex flex-column gap-2">
+                            <div class="d-flex justify-content-between">
+                                <small class="text-secondary">Renter</small>
+                                <span class="fw-medium">@this.Renter.FullName</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <small class="text-secondary">Phone</small>
+                                <span>@this.Renter.Phone</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <small class="text-secondary">Passport/ID</small>
+                                <span>@(this.Renter.PassportNo ?? this.Renter.NationalIdNo ?? "-")</span>
+                            </div>
 
-                        <MudDivider Class="my-2" />
+                            <hr class="my-2">
 
-                        <MudStack Row="true" Justify="Justify.SpaceBetween">
-                            <MudText Typo="Typo.body2" Color="Color.Secondary">Motorbike</MudText>
-                            <MudText Typo="Typo.body2" Style="font-weight: 500;">@Motorbike.Brand @Motorbike.Model</MudText>
-                        </MudStack>
-                        <MudStack Row="true" Justify="Justify.SpaceBetween">
-                            <MudText Typo="Typo.body2" Color="Color.Secondary">License Plate</MudText>
-                            <MudText Typo="Typo.body2">@Motorbike.LicensePlate</MudText>
-                        </MudStack>
-                        <MudStack Row="true" Justify="Justify.SpaceBetween">
-                            <MudText Typo="Typo.body2" Color="Color.Secondary">Current Mileage</MudText>
-                            <MudText Typo="Typo.body2">@Motorbike.Mileage.ToString("N0") km</MudText>
-                        </MudStack>
+                            <div class="d-flex justify-content-between">
+                                <small class="text-secondary">Motorbike</small>
+                                <span class="fw-medium">@this.Motorbike.Brand @this.Motorbike.Model</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <small class="text-secondary">License Plate</small>
+                                <span>@this.Motorbike.LicensePlate</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <small class="text-secondary">Current Mileage</small>
+                                <span>@this.Motorbike.Mileage.ToString("N0") km</span>
+                            </div>
 
-                        <MudDivider Class="my-2" />
+                            <hr class="my-2">
 
-                        <MudStack Row="true" Justify="Justify.SpaceBetween">
-                            <MudText Typo="Typo.body2" Color="Color.Secondary">Rental Period</MudText>
-                            <MudText Typo="Typo.body2">
-                                @FormatDate(Config.StartDate) - @FormatDate(Config.EndDate) (@Config.Days days)
-                            </MudText>
-                        </MudStack>
-                        <MudStack Row="true" Justify="Justify.SpaceBetween">
-                            <MudText Typo="Typo.body2" Color="Color.Secondary">Daily Rate</MudText>
-                            <MudText Typo="Typo.body2">@FormatCurrency(Motorbike.DailyRate)</MudText>
-                        </MudStack>
+                            <div class="d-flex justify-content-between">
+                                <small class="text-secondary">Rental Period</small>
+                                <span>
+                                    @FormatDate(this.Config.StartDate) - @FormatDate(this.Config.EndDate) (@this.Config.Days days)
+                                </span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <small class="text-secondary">Daily Rate</small>
+                                <span>@FormatCurrency(this.Motorbike.DailyRate)</span>
+                            </div>
 
-                        @if (Config.SelectedInsurance != null)
-                        {
-                            <MudStack Row="true" Justify="Justify.SpaceBetween">
-                                <MudText Typo="Typo.body2" Color="Color.Secondary">Insurance</MudText>
-                                <MudText Typo="Typo.body2">@Config.SelectedInsurance.Name</MudText>
-                            </MudStack>
-                        }
+                            @if (this.Config.SelectedInsurance != null)
+                            {
+                                <div class="d-flex justify-content-between">
+                                    <small class="text-secondary">Insurance</small>
+                                    <span>@this.Config.SelectedInsurance.Name</span>
+                                </div>
+                            }
 
-                        @if (Config.SelectedAccessories.Count > 0)
-                        {
-                            <MudStack Row="true" Justify="Justify.SpaceBetween">
-                                <MudText Typo="Typo.body2" Color="Color.Secondary">Accessories</MudText>
-                                <MudText Typo="Typo.body2">
-                                    @string.Join(", ", Config.SelectedAccessories.Select(a => a.Accessory.Name))
-                                </MudText>
-                            </MudStack>
-                        }
+                            @if (this.Config.SelectedAccessories.Count > 0)
+                            {
+                                <div class="d-flex justify-content-between">
+                                    <small class="text-secondary">Accessories</small>
+                                    <span>
+                                        @string.Join(", ", this.Config.SelectedAccessories.Select(a => a.Accessory.Name))
+                                    </span>
+                                </div>
+                            }
 
-                        <MudDivider Class="my-2" />
+                            <hr class="my-2">
 
-                        <MudStack Row="true" Justify="Justify.SpaceBetween">
-                            <MudText Typo="Typo.body2" Color="Color.Secondary">Deposit</MudText>
-                            <MudText Typo="Typo.body2">
-                                @DepositInfo?.DepositType - @FormatCurrency(DepositInfo?.Amount ?? 0)
-                            </MudText>
-                        </MudStack>
+                            <div class="d-flex justify-content-between">
+                                <small class="text-secondary">Deposit</small>
+                                <span>
+                                    @this.DepositInfo?.DepositType - @FormatCurrency(this.DepositInfo?.Amount ?? 0)
+                                </span>
+                            </div>
 
-                        <MudDivider Class="my-2" />
+                            <hr class="my-2">
 
-                        <MudStack Row="true" Justify="Justify.SpaceBetween">
-                            <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Total Amount</MudText>
-                            <MudText Typo="Typo.h5" Color="Color.Primary" Style="font-weight: 600;">
-                                @FormatCurrency(Config.TotalAmount)
-                            </MudText>
-                        </MudStack>
-                    </MudStack>
-                }
-            </MudPaper>
-        </MudItem>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="fw-semibold" style="font-size: 1.1rem;">Total Amount</span>
+                                <span class="text-primary fw-bold" style="font-size: 1.5rem;">
+                                    @FormatCurrency(this.Config.TotalAmount)
+                                </span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
 
-        <MudItem xs="12" md="6">
-            <MudPaper Elevation="1" Class="pa-4">
-                <MudText Typo="Typo.subtitle1" Class="mb-3">Terms & Conditions</MudText>
+        <div class="col-12 col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title mb-3">Terms & Conditions</h6>
 
-                <MudPaper Outlined="true" Class="pa-3" Style="max-height: 200px; overflow-y: auto; background-color: var(--mud-palette-background-grey);">
-                    <MudText Typo="Typo.body2" Style="white-space: pre-line;">@m_agreementText</MudText>
-                </MudPaper>
+                    <div class="card bg-light" style="max-height: 200px; overflow-y: auto;">
+                        <div class="card-body p-3">
+                            <p class="mb-0" style="white-space: pre-line; font-size: 0.875rem;">@m_agreementText</p>
+                        </div>
+                    </div>
 
-                <MudCheckBox T="bool" @bind-Value="m_termsAccepted" Color="Color.Primary" Class="mt-2"
-                             Label="I have read and explained the terms to the renter" />
-            </MudPaper>
+                    <label class="form-check mt-3">
+                        <input class="form-check-input" type="checkbox" @bind="m_termsAccepted" />
+                        <span class="form-check-label">I have read and explained the terms to the renter</span>
+                    </label>
+                </div>
+            </div>
 
-            <MudPaper Elevation="1" Class="pa-4 mt-4">
-                <MudText Typo="Typo.subtitle1" Class="mb-3">Renter's Signature</MudText>
+            <div class="card mt-4">
+                <div class="card-body">
+                    <h6 class="card-title mb-3">Renter's Signature</h6>
 
-                <SignaturePad @ref="m_signaturePad"
-                              Width="100%"
-                              Height="200"
-                              OnSignatureChanged="OnSignatureChanged" />
+                    <SignaturePad @ref="m_signaturePad"
+                                  Width="100%"
+                                  Height="200"
+                                  OnSignatureChanged="OnSignatureChanged" />
 
-                <MudStack Row="true" Spacing="2" Class="mt-2">
-                    <MudButton Variant="Variant.Outlined" Size="Size.Small"
-                               StartIcon="@Icons.Material.Filled.Clear"
-                               OnClick="ClearSignature">
-                        Clear
-                    </MudButton>
-                </MudStack>
+                    <div class="mt-2">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="ClearSignature">
+                            <i class="ti ti-eraser me-1"></i>
+                            Clear
+                        </button>
+                    </div>
 
-                @if (!string.IsNullOrEmpty(SignatureData))
-                {
-                    <MudAlert Severity="Severity.Success" Dense="true" Class="mt-3">
-                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                            <MudIcon Icon="@Icons.Material.Filled.Draw" />
-                            <MudText>Signature captured</MudText>
-                        </MudStack>
-                    </MudAlert>
-                }
-                else
-                {
-                    <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-3">
-                        Please have the renter sign above
-                    </MudAlert>
-                }
-            </MudPaper>
-        </MudItem>
-    </MudGrid>
+                    @if (!string.IsNullOrEmpty(this.SignatureData))
+                    {
+                        <div class="alert alert-success d-flex align-items-center gap-2 mt-3 py-2">
+                            <i class="ti ti-signature"></i>
+                            <span>Signature captured</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-warning d-flex align-items-center gap-2 mt-3 py-2">
+                            <i class="ti ti-alert-triangle"></i>
+                            <span>Please have the renter sign above</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
 
-    <MudStack Row="true" Justify="Justify.FlexEnd" Class="mt-4">
-        <MudButton Variant="Variant.Filled" Color="Color.Success" Size="Size.Large"
-                   StartIcon="@Icons.Material.Filled.CheckCircle"
-                   Disabled="@(!CanComplete)"
-                   OnClick="@(() => OnComplete.InvokeAsync())">
+    <div class="d-flex justify-content-end mt-4">
+        <button type="button" class="btn btn-success btn-lg" disabled="@(!CanComplete)"
+                @onclick="@(() => this.OnComplete.InvokeAsync())">
+            <i class="ti ti-circle-check me-2"></i>
             Complete Check-In
-        </MudButton>
-    </MudStack>
-</MudStack>
+        </button>
+    </div>
+</div>
 
 @code {
     [Parameter] public Renter? Renter { get; set; }
@@ -167,7 +174,7 @@
     private SignaturePad? m_signaturePad;
     private bool m_termsAccepted;
 
-    private bool CanComplete => m_termsAccepted && !string.IsNullOrEmpty(SignatureData);
+    private bool CanComplete => this.m_termsAccepted && !string.IsNullOrEmpty(this.SignatureData);
 
     private string m_agreementText = @"MOTORBIKE RENTAL AGREEMENT
 
@@ -197,17 +204,17 @@ By signing below, I acknowledge that I have read, understood, and agree to all t
 
     private async Task OnSignatureChanged(string signatureData)
     {
-        SignatureData = signatureData;
-        await SignatureDataChanged.InvokeAsync(signatureData);
+        this.SignatureData = signatureData;
+        await this.SignatureDataChanged.InvokeAsync(signatureData);
     }
 
     private async Task ClearSignature()
     {
-        if (m_signaturePad != null)
+        if (this.m_signaturePad != null)
         {
-            await m_signaturePad.Clear();
+            await this.m_signaturePad.Clear();
         }
-        SignatureData = null;
-        await SignatureDataChanged.InvokeAsync(null);
+        this.SignatureData = null;
+        await this.SignatureDataChanged.InvokeAsync(null);
     }
 }

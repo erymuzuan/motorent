@@ -2,141 +2,205 @@
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JS
 
-<MudThemeProvider Theme="MotoRent.Client.MotoRentTheme.Theme" @bind-IsDarkMode="@m_isDarkMode" />
-<MudPopoverProvider />
-<MudDialogProvider />
-<MudSnackbarProvider />
+<ModalContainer />
+<ToastContainer />
 
-<div class="staff-layout">
+<div class="staff-layout d-flex flex-column" style="min-height: 100vh;">
     @* Top App Bar - Minimal *@
-    <MudAppBar Elevation="1" Dense="true" Class="staff-appbar">
-        <MudIcon Icon="@Icons.Material.Filled.TwoWheeler" Class="mr-2" />
-        <MudText Typo="Typo.h6">MotoRent</MudText>
-        <MudSpacer />
-        <MudText Typo="Typo.body2" Class="mr-3">@DateTime.Now.ToString("HH:mm")</MudText>
-        <MudIconButton Icon="@(m_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
-                       Color="Color.Inherit" Size="Size.Small"
-                       OnClick="@(_ => m_isDarkMode = !m_isDarkMode)" />
-        <MudIconButton Icon="@Icons.Material.Filled.MoreVert" Color="Color.Inherit" Size="Size.Small"
-                       OnClick="@(_ => m_moreDrawerOpen = true)" />
-    </MudAppBar>
+    <header class="navbar navbar-expand-md d-print-none staff-appbar" style="flex-shrink: 0;">
+        <div class="container-fluid">
+            <h1 class="navbar-brand navbar-brand-autodark d-flex align-items-center mb-0">
+                <i class="ti ti-motorbike me-2" style="font-size: 1.5rem;"></i>
+                MotoRent
+            </h1>
+
+            <div class="navbar-nav flex-row ms-auto">
+                <span class="nav-link text-secondary me-3">@DateTime.Now.ToString("HH:mm")</span>
+                <a href="#" class="nav-link px-2" @onclick="ToggleTheme" @onclick:preventDefault>
+                    @if (m_isDarkMode)
+                    {
+                        <i class="ti ti-sun"></i>
+                    }
+                    else
+                    {
+                        <i class="ti ti-moon"></i>
+                    }
+                </a>
+                <a href="#" class="nav-link px-2" @onclick="ToggleMoreDrawer" @onclick:preventDefault>
+                    <i class="ti ti-dots-vertical"></i>
+                </a>
+            </div>
+        </div>
+    </header>
 
     @* Main Content Area - Full Height *@
-    <main class="staff-content">
-        <MudContainer MaxWidth="MaxWidth.Large" Class="py-4">
+    <main class="flex-grow-1 overflow-auto py-4">
+        <div class="container-lg">
             @Body
-        </MudContainer>
+        </div>
     </main>
 
     @* Bottom Navigation Bar *@
-    <MudPaper Class="staff-bottom-nav" Elevation="4">
-        <MudStack Row="true" Justify="Justify.Center" AlignItems="AlignItems.Center" Class="py-2">
-            <MudButton Variant="Variant.Text"
-                       Color="@(IsActive("/staff") ? Color.Primary : Color.Default)"
-                       Class="staff-nav-button"
-                       OnClick="@(() => Navigate("/staff"))">
-                <MudStack AlignItems="AlignItems.Center" Spacing="0">
-                    <MudIcon Icon="@Icons.Material.Filled.Home" />
-                    <MudText Typo="Typo.caption">Home</MudText>
-                </MudStack>
-            </MudButton>
+    <nav class="staff-bottom-nav d-flex justify-content-center align-items-center py-2" style="flex-shrink: 0; background: var(--tblr-bg-surface); border-top: 1px solid var(--tblr-border-color); box-shadow: 0 -2px 10px rgba(0,0,0,0.1);">
+        <button type="button" class="btn btn-ghost-@(IsActive("/staff") ? "primary" : "secondary") staff-nav-button"
+                @onclick="@(() => Navigate("/staff"))">
+            <div class="d-flex flex-column align-items-center">
+                <i class="ti ti-home" style="font-size: 1.25rem;"></i>
+                <small>Home</small>
+            </div>
+        </button>
 
-            <MudButton Variant="Variant.Text"
-                       Color="@(IsActive("/staff/checkin") ? Color.Primary : Color.Default)"
-                       Class="staff-nav-button"
-                       OnClick="@(() => Navigate("/rentals/checkin"))">
-                <MudStack AlignItems="AlignItems.Center" Spacing="0">
-                    <MudIcon Icon="@Icons.Material.Filled.Login" />
-                    <MudText Typo="Typo.caption">Check-In</MudText>
-                </MudStack>
-            </MudButton>
+        <button type="button" class="btn btn-ghost-@(IsActive("/rentals/checkin") ? "primary" : "secondary") staff-nav-button"
+                @onclick="@(() => Navigate("/rentals/checkin"))">
+            <div class="d-flex flex-column align-items-center">
+                <i class="ti ti-login" style="font-size: 1.25rem;"></i>
+                <small>Check-In</small>
+            </div>
+        </button>
 
-            <MudButton Variant="Variant.Text"
-                       Color="@(IsActive("/staff/rentals") ? Color.Primary : Color.Default)"
-                       Class="staff-nav-button"
-                       OnClick="@(() => Navigate("/staff/rentals"))">
-                <MudStack AlignItems="AlignItems.Center" Spacing="0">
-                    <MudIcon Icon="@Icons.Material.Filled.Receipt" />
-                    <MudText Typo="Typo.caption">Rentals</MudText>
-                </MudStack>
-            </MudButton>
+        <button type="button" class="btn btn-ghost-@(IsActive("/staff/rentals") ? "primary" : "secondary") staff-nav-button"
+                @onclick="@(() => Navigate("/staff/rentals"))">
+            <div class="d-flex flex-column align-items-center">
+                <i class="ti ti-receipt" style="font-size: 1.25rem;"></i>
+                <small>Rentals</small>
+            </div>
+        </button>
 
-            <MudButton Variant="Variant.Text"
-                       Color="@(IsActive("/staff/payments") ? Color.Primary : Color.Default)"
-                       Class="staff-nav-button"
-                       OnClick="@(() => Navigate("/payments"))">
-                <MudStack AlignItems="AlignItems.Center" Spacing="0">
-                    <MudIcon Icon="@Icons.Material.Filled.Payment" />
-                    <MudText Typo="Typo.caption">Payments</MudText>
-                </MudStack>
-            </MudButton>
+        <button type="button" class="btn btn-ghost-@(IsActive("/payments") ? "primary" : "secondary") staff-nav-button"
+                @onclick="@(() => Navigate("/payments"))">
+            <div class="d-flex flex-column align-items-center">
+                <i class="ti ti-credit-card" style="font-size: 1.25rem;"></i>
+                <small>Payments</small>
+            </div>
+        </button>
 
-            <MudButton Variant="Variant.Text"
-                       Color="@(m_moreDrawerOpen ? Color.Primary : Color.Default)"
-                       Class="staff-nav-button"
-                       OnClick="@(() => m_moreDrawerOpen = true)">
-                <MudStack AlignItems="AlignItems.Center" Spacing="0">
-                    <MudIcon Icon="@Icons.Material.Filled.Menu" />
-                    <MudText Typo="Typo.caption">More</MudText>
-                </MudStack>
-            </MudButton>
-        </MudStack>
-    </MudPaper>
+        <button type="button" class="btn btn-ghost-@(m_moreDrawerOpen ? "primary" : "secondary") staff-nav-button"
+                @onclick="ToggleMoreDrawer">
+            <div class="d-flex flex-column align-items-center">
+                <i class="ti ti-menu-2" style="font-size: 1.25rem;"></i>
+                <small>More</small>
+            </div>
+        </button>
+    </nav>
 
     @* More Drawer (slides from right) *@
-    <MudDrawer @bind-Open="m_moreDrawerOpen" Anchor="Anchor.End" Elevation="2" Variant="DrawerVariant.Temporary">
-        <MudDrawerHeader>
-            <MudText Typo="Typo.h6">More Options</MudText>
-        </MudDrawerHeader>
-        <MudNavMenu>
-            <MudNavLink Href="/motorbikes" Icon="@Icons.Material.Filled.TwoWheeler"
-                        OnClick="@(() => m_moreDrawerOpen = false)">
-                Motorbikes
-            </MudNavLink>
-            <MudNavLink Href="/renters" Icon="@Icons.Material.Filled.People"
-                        OnClick="@(() => m_moreDrawerOpen = false)">
-                Renters
-            </MudNavLink>
-            <MudNavLink Href="/accessories" Icon="@Icons.Material.Filled.Headset"
-                        OnClick="@(() => m_moreDrawerOpen = false)">
-                Accessories
-            </MudNavLink>
-            <MudDivider Class="my-2" />
-            <MudNavLink Href="/deposits" Icon="@Icons.Material.Filled.AccountBalanceWallet"
-                        OnClick="@(() => m_moreDrawerOpen = false)">
-                Deposits
-            </MudNavLink>
-            <MudNavLink Href="/reports" Icon="@Icons.Material.Filled.Assessment"
-                        OnClick="@(() => m_moreDrawerOpen = false)">
-                Reports
-            </MudNavLink>
-            <MudDivider Class="my-2" />
-            <MudNavLink Href="/insurance" Icon="@Icons.Material.Filled.Security"
-                        OnClick="@(() => m_moreDrawerOpen = false)">
-                Insurance
-            </MudNavLink>
-            <MudNavLink Href="/shop" Icon="@Icons.Material.Filled.Store"
-                        OnClick="@(() => m_moreDrawerOpen = false)">
-                Shop Settings
-            </MudNavLink>
-            <MudDivider Class="my-2" />
-            <MudNavLink Href="/" Icon="@Icons.Material.Filled.Dashboard"
-                        OnClick="@(() => m_moreDrawerOpen = false)">
-                Classic View
-            </MudNavLink>
-        </MudNavMenu>
-    </MudDrawer>
+    @if (m_moreDrawerOpen)
+    {
+        <div class="offcanvas-backdrop fade show" @onclick="CloseMoreDrawer"></div>
+        <div class="offcanvas offcanvas-end show" tabindex="-1" style="visibility: visible;">
+            <div class="offcanvas-header">
+                <h5 class="offcanvas-title">More Options</h5>
+                <button type="button" class="btn-close" @onclick="CloseMoreDrawer"></button>
+            </div>
+            <div class="offcanvas-body p-0">
+                <div class="list-group list-group-flush">
+                    <a href="/motorbikes" class="list-group-item list-group-item-action d-flex align-items-center" @onclick="CloseMoreDrawer">
+                        <i class="ti ti-motorbike me-3"></i>
+                        Motorbikes
+                    </a>
+                    <a href="/renters" class="list-group-item list-group-item-action d-flex align-items-center" @onclick="CloseMoreDrawer">
+                        <i class="ti ti-users me-3"></i>
+                        Renters
+                    </a>
+                    <a href="/accessories" class="list-group-item list-group-item-action d-flex align-items-center" @onclick="CloseMoreDrawer">
+                        <i class="ti ti-helmet me-3"></i>
+                        Accessories
+                    </a>
+
+                    <div class="list-group-item bg-light py-2 text-secondary small">Operations</div>
+
+                    <a href="/deposits" class="list-group-item list-group-item-action d-flex align-items-center" @onclick="CloseMoreDrawer">
+                        <i class="ti ti-wallet me-3"></i>
+                        Deposits
+                    </a>
+                    <a href="/reports" class="list-group-item list-group-item-action d-flex align-items-center" @onclick="CloseMoreDrawer">
+                        <i class="ti ti-chart-bar me-3"></i>
+                        Reports
+                    </a>
+
+                    <div class="list-group-item bg-light py-2 text-secondary small">Settings</div>
+
+                    <a href="/insurance" class="list-group-item list-group-item-action d-flex align-items-center" @onclick="CloseMoreDrawer">
+                        <i class="ti ti-shield-check me-3"></i>
+                        Insurance
+                    </a>
+                    <a href="/shop" class="list-group-item list-group-item-action d-flex align-items-center" @onclick="CloseMoreDrawer">
+                        <i class="ti ti-building-store me-3"></i>
+                        Shop Settings
+                    </a>
+
+                    <div class="list-group-item bg-light py-2 text-secondary small">Views</div>
+
+                    <a href="/" class="list-group-item list-group-item-action d-flex align-items-center" @onclick="CloseMoreDrawer">
+                        <i class="ti ti-dashboard me-3"></i>
+                        Classic View
+                    </a>
+                </div>
+            </div>
+        </div>
+    }
 </div>
 
+<style>
+    .staff-nav-button {
+        min-width: 64px;
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: none;
+    }
+
+    .staff-nav-button:hover {
+        background: var(--tblr-bg-surface-secondary);
+    }
+
+    .staff-nav-button small {
+        font-size: 0.7rem;
+    }
+
+    /* Offcanvas transitions */
+    .offcanvas.show {
+        transform: none;
+    }
+
+    .offcanvas-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 1040;
+    }
+
+    .offcanvas-end {
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 300px;
+        max-width: 100%;
+        z-index: 1045;
+        background-color: var(--tblr-bg-surface);
+        border-left: 1px solid var(--tblr-border-color);
+    }
+</style>
 
 @code {
     private bool m_isDarkMode;
     private bool m_moreDrawerOpen;
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await this.ApplyTheme();
+        }
+    }
+
     private bool IsActive(string path)
     {
-        var currentUri = NavigationManager.Uri;
-        var relativePath = NavigationManager.ToBaseRelativePath(currentUri);
+        var currentUri = this.NavigationManager.Uri;
+        var relativePath = this.NavigationManager.ToBaseRelativePath(currentUri);
 
         if (path == "/staff")
         {
@@ -148,6 +212,28 @@
 
     private void Navigate(string path)
     {
-        NavigationManager.NavigateTo(path);
+        this.NavigationManager.NavigateTo(path);
+    }
+
+    private void ToggleMoreDrawer()
+    {
+        this.m_moreDrawerOpen = !this.m_moreDrawerOpen;
+    }
+
+    private void CloseMoreDrawer()
+    {
+        this.m_moreDrawerOpen = false;
+    }
+
+    private async Task ToggleTheme()
+    {
+        this.m_isDarkMode = !this.m_isDarkMode;
+        await this.ApplyTheme();
+    }
+
+    private async Task ApplyTheme()
+    {
+        var theme = this.m_isDarkMode ? "dark" : "light";
+        await this.JS.InvokeVoidAsync("eval", $"document.body.setAttribute('data-bs-theme', '{theme}')");
     }
 }

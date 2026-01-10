@@ -1,18 +1,14 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using MotoRent.Client.Pages;
+using MotoRent.Client.Services;
 using MotoRent.Domain.Core;
 using MotoRent.Domain.DataContext;
 using MotoRent.Server.Components;
 using MotoRent.Server.Services;
 using MotoRent.Services;
 using MotoRent.Services.Core;
-using MudBlazor.Services;
-
 var builder = WebApplication.CreateBuilder(args);
-
-// Add MudBlazor services
-builder.Services.AddMudServices();
 
 // Add HttpContextAccessor for request context
 builder.Services.AddHttpContextAccessor();
@@ -46,6 +42,11 @@ builder.Services.AddHttpClient("Gemini", client =>
 // Add Core services
 builder.Services.AddScoped<IDirectoryService, SqlDirectoryService>();
 builder.Services.AddScoped<ISubscriptionService, SqlSubscriptionService>();
+
+// Add UI services (Modal, Toast, Dialog)
+builder.Services.AddScoped<IModalService, ModalService>();
+builder.Services.AddScoped<ToastService>();
+builder.Services.AddScoped<DialogService>();
 
 // Configure Authentication
 var authBuilder = builder.Services.AddAuthentication(options =>

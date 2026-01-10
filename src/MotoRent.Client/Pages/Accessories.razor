@@ -1,236 +1,237 @@
 @page "/accessories"
-@using MotoRent.Domain.Core
-@using MotoRent.Domain.Entities
-@using MotoRent.Services
+@inherits LocalizedComponentBase<Accessories>
 @inject AccessoryService AccessoryService
-@inject IDialogService DialogService
-@inject ISnackbar Snackbar
 
-<PageTitle>Accessories - MotoRent</PageTitle>
+<MotoRentPageTitle>Accessories</MotoRentPageTitle>
 
-<MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
-    <MudText Typo="Typo.h4">Rental Accessories</MudText>
-    <MudButton Variant="Variant.Filled" Color="Color.Primary"
-               StartIcon="@Icons.Material.Filled.Add" OnClick="OpenAddDialog">
+<TablerHeader Title="Rental Accessories" PreTitle="Inventory Management">
+    <button type="button" class="btn btn-primary" @onclick="OpenAddDialog">
+        <i class="ti ti-plus me-1"></i>
         Add Accessory
-    </MudButton>
-</MudStack>
+    </button>
+</TablerHeader>
 
-<MudPaper Elevation="2" Class="pa-4 mb-4">
-    <MudStack Row="true" Spacing="4" AlignItems="AlignItems.Center">
-        <MudTextField @bind-Value="m_searchTerm" Placeholder="Search by name..."
-                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
-                      Immediate="true" DebounceInterval="300" OnDebounceIntervalElapsed="SearchChanged"
-                      Style="max-width: 400px;" />
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-3 align-items-center">
+            <div class="col-md-4">
+                <div class="input-icon">
+                    <span class="input-icon-addon">
+                        <i class="ti ti-search"></i>
+                    </span>
+                    <input type="text" class="form-control" placeholder="Search by name..."
+                           @bind="m_searchTerm" @bind:event="oninput" @onkeyup="OnSearchKeyUp" />
+                </div>
+            </div>
+            <div class="col-md-8 text-end">
+                <span class="badge bg-primary me-1">Total: @m_totalCount</span>
+                <span class="badge bg-success">Free with rental: @m_includedFreeCount</span>
+            </div>
+        </div>
+    </div>
+</div>
 
-        <MudSpacer />
-
-        <MudChip T="string" Size="Size.Small" Color="Color.Primary">
-            Total: @m_totalCount
-        </MudChip>
-        <MudChip T="string" Size="Size.Small" Color="Color.Success">
-            Free with rental: @m_includedFreeCount
-        </MudChip>
-    </MudStack>
-</MudPaper>
-
-@if (m_loading)
-{
-    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
-}
-
-<MudPaper Elevation="2">
-    <MudDataGrid T="Accessory" Items="@m_accessories" Hover="true" Striped="true"
-                 Loading="@m_loading" Dense="true"
-                 RowClick="@OnRowClick" RowStyle="cursor: pointer;">
-        <Columns>
-            <PropertyColumn Property="x => x.Name" Title="Name" />
-            <TemplateColumn Title="Daily Rate" Sortable="true">
-                <CellTemplate>
-                    @if (context.Item.IsIncluded)
+<LoadingSkeleton Loading="@m_loading" Mode="LoadingSkeleton.PlaceholderMode.Table" Rows="10" Columns="5">
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-vcenter card-table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Daily Rate</th>
+                        <th>Quantity</th>
+                        <th>Included</th>
+                        <th class="w-1">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (m_accessories.Count == 0)
                     {
-                        <MudChip T="string" Size="Size.Small" Color="Color.Success">Free</MudChip>
+                        <tr>
+                            <td colspan="5" class="text-center text-secondary py-4">
+                                <i class="ti ti-headphones mb-2" style="font-size: 2rem;"></i>
+                                <div>No accessories found</div>
+                            </td>
+                        </tr>
                     }
                     else
                     {
-                        <MudText Color="Color.Primary">@context.Item.DailyRate.ToString("N0") THB</MudText>
-                    }
-                </CellTemplate>
-            </TemplateColumn>
-            <TemplateColumn Title="Quantity" Sortable="true">
-                <CellTemplate>
-                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                        <MudText>@context.Item.QuantityAvailable</MudText>
-                        @if (context.Item.QuantityAvailable == 0)
+                        @foreach (var accessory in m_accessories)
                         {
-                            <MudChip T="string" Size="Size.Small" Color="Color.Error">Out of stock</MudChip>
+                            <tr class="cursor-pointer" @onclick="@(() => OpenEditDialog(accessory))">
+                                <td>
+                                    <strong>@accessory.Name</strong>
+                                </td>
+                                <td>
+                                    @if (accessory.IsIncluded)
+                                    {
+                                        <span class="badge bg-success">Free</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-primary fw-bold">@FormatCurrency(accessory.DailyRate)</span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-1">
+                                        <span>@accessory.QuantityAvailable</span>
+                                        @if (accessory.QuantityAvailable == 0)
+                                        {
+                                            <span class="badge bg-danger">Out of stock</span>
+                                        }
+                                        else if (accessory.QuantityAvailable <= 3)
+                                        {
+                                            <span class="badge bg-warning">Low</span>
+                                        }
+                                    </div>
+                                </td>
+                                <td>
+                                    @if (accessory.IsIncluded)
+                                    {
+                                        <i class="ti ti-check text-success"></i>
+                                    }
+                                </td>
+                                <td @onclick:stopPropagation="true">
+                                    <div class="btn-list flex-nowrap">
+                                        <button type="button" class="btn btn-icon btn-ghost-primary"
+                                                title="Edit" @onclick="@(() => OpenEditDialog(accessory))">
+                                            <i class="ti ti-edit"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-icon btn-ghost-danger"
+                                                title="Delete" @onclick="@(() => ConfirmDelete(accessory))">
+                                            <i class="ti ti-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
                         }
-                        else if (context.Item.QuantityAvailable <= 3)
-                        {
-                            <MudChip T="string" Size="Size.Small" Color="Color.Warning">Low</MudChip>
-                        }
-                    </MudStack>
-                </CellTemplate>
-            </TemplateColumn>
-            <TemplateColumn Title="Included" Sortable="true">
-                <CellTemplate>
-                    @if (context.Item.IsIncluded)
-                    {
-                        <MudIcon Icon="@Icons.Material.Filled.Check" Color="Color.Success" Size="Size.Small" />
                     }
-                </CellTemplate>
-            </TemplateColumn>
-            <TemplateColumn Title="Actions" Sortable="false">
-                <CellTemplate>
-                    <MudStack Row="true" Spacing="1">
-                        <MudTooltip Text="Edit">
-                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
-                                           Color="Color.Primary" OnClick="@(() => OpenEditDialog(context.Item))" />
-                        </MudTooltip>
-                        <MudTooltip Text="Delete">
-                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
-                                           Color="Color.Error" OnClick="@(() => ConfirmDelete(context.Item))" />
-                        </MudTooltip>
-                    </MudStack>
-                </CellTemplate>
-            </TemplateColumn>
-        </Columns>
-    </MudDataGrid>
-</MudPaper>
+                </tbody>
+            </table>
+        </div>
+        @if (m_accessories.Count > 0)
+        {
+            <div class="card-footer d-flex align-items-center">
+                <p class="m-0 text-secondary">
+                    Showing <strong>@m_accessories.Count</strong> accessories
+                </p>
+            </div>
+        }
+    </div>
+</LoadingSkeleton>
 
 @code {
     private List<Accessory> m_accessories = [];
     private bool m_loading = true;
     private string? m_searchTerm;
-    private int m_shopId = 1; // TODO: Get from user session
     private int m_totalCount;
     private int m_includedFreeCount;
+    private System.Timers.Timer? m_debounceTimer;
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadDataAsync();
+        await this.LoadDataAsync();
     }
 
     private async Task LoadDataAsync()
     {
-        m_loading = true;
+        this.m_loading = true;
         try
         {
-            var result = await AccessoryService.GetAccessoriesAsync(
-                m_shopId,
-                m_searchTerm,
+            var result = await this.AccessoryService.GetAccessoriesAsync(
+                this.ShopId,
+                this.m_searchTerm,
                 page: 1,
                 pageSize: 100);
 
-            m_accessories = result.ItemCollection;
+            this.m_accessories = result.ItemCollection;
 
-            var counts = await AccessoryService.GetAccessoryCountsAsync(m_shopId);
-            m_totalCount = counts.Total;
-            m_includedFreeCount = counts.IncludedFree;
+            var counts = await this.AccessoryService.GetAccessoryCountsAsync(this.ShopId);
+            this.m_totalCount = counts.Total;
+            this.m_includedFreeCount = counts.IncludedFree;
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error loading data: {ex.Message}", Severity.Error);
+            this.ShowError($"Error loading data: {ex.Message}");
         }
         finally
         {
-            m_loading = false;
+            this.m_loading = false;
         }
     }
 
-    private async Task SearchChanged()
+    private void OnSearchKeyUp(KeyboardEventArgs e)
     {
-        await LoadDataAsync();
-    }
-
-    private async Task OnRowClick(DataGridRowClickEventArgs<Accessory> args)
-    {
-        await OpenEditDialog(args.Item);
+        this.m_debounceTimer?.Stop();
+        this.m_debounceTimer?.Dispose();
+        this.m_debounceTimer = new System.Timers.Timer(300);
+        this.m_debounceTimer.Elapsed += async (_, _) =>
+        {
+            this.m_debounceTimer?.Stop();
+            await this.InvokeAsync(async () =>
+            {
+                await this.LoadDataAsync();
+                this.StateHasChanged();
+            });
+        };
+        this.m_debounceTimer.Start();
     }
 
     private async Task OpenAddDialog()
     {
         var accessory = new Accessory
         {
-            ShopId = m_shopId,
+            ShopId = this.ShopId,
             QuantityAvailable = 1
         };
 
-        var parameters = new DialogParameters<AccessoryDialog>
-        {
-            { x => x.Accessory, accessory },
-            { x => x.IsNew, true }
-        };
+        var result = await this.DialogService
+            .Create<AccessoryDialog>("Add Accessory")
+            .WithParameter(x => x.Entity, accessory)
+            .WithParameter(x => x.IsNew, true)
+            .ShowDialogAsync();
 
-        var options = new DialogOptions
+        if (!result.Cancelled)
         {
-            MaxWidth = MaxWidth.Small,
-            FullWidth = true,
-            CloseButton = true
-        };
-
-        var dialog = await DialogService.ShowAsync<AccessoryDialog>("Add Accessory", parameters, options);
-        var result = await dialog.Result;
-
-        if (result is { Canceled: false })
-        {
-            await LoadDataAsync();
-            Snackbar.Add("Accessory added successfully", Severity.Success);
+            await this.LoadDataAsync();
+            this.ShowSuccess("Accessory added successfully");
         }
     }
 
     private async Task OpenEditDialog(Accessory accessory)
     {
-        var cloned = accessory.Clone();
+        var result = await this.DialogService
+            .Create<AccessoryDialog>("Edit Accessory")
+            .WithParameter(x => x.Entity, accessory.Clone())
+            .WithParameter(x => x.IsNew, false)
+            .ShowDialogAsync();
 
-        var parameters = new DialogParameters<AccessoryDialog>
+        if (!result.Cancelled)
         {
-            { x => x.Accessory, cloned },
-            { x => x.IsNew, false }
-        };
-
-        var options = new DialogOptions
-        {
-            MaxWidth = MaxWidth.Small,
-            FullWidth = true,
-            CloseButton = true
-        };
-
-        var dialog = await DialogService.ShowAsync<AccessoryDialog>("Edit Accessory", parameters, options);
-        var result = await dialog.Result;
-
-        if (result is { Canceled: false })
-        {
-            await LoadDataAsync();
-            Snackbar.Add("Accessory updated successfully", Severity.Success);
+            await this.LoadDataAsync();
+            this.ShowSuccess("Accessory updated successfully");
         }
     }
 
     private async Task ConfirmDelete(Accessory accessory)
     {
-        var parameters = new DialogParameters<MudMessageBox>
-        {
-            { x => x.Title, "Confirm Delete" },
-            { x => x.Message, $"Are you sure you want to delete '{accessory.Name}'?" },
-            { x => x.YesText, "Delete" },
-            { x => x.NoText, "Cancel" }
-        };
+        if (!await this.ConfirmDeleteAsync(accessory.Name ?? "this accessory"))
+            return;
 
-        var dialog = await DialogService.ShowAsync<MudMessageBox>("Confirm Delete", parameters);
-        var result = await dialog.Result;
-
-        if (result is { Canceled: false })
+        var deleteResult = await this.AccessoryService.DeleteAccessoryAsync(accessory, this.UserName);
+        if (deleteResult.Success)
         {
-            var deleteResult = await AccessoryService.DeleteAccessoryAsync(accessory, "system");
-            if (deleteResult.Success)
-            {
-                await LoadDataAsync();
-                Snackbar.Add("Accessory deleted successfully", Severity.Success);
-            }
-            else
-            {
-                Snackbar.Add($"Delete failed: {deleteResult.Message}", Severity.Error);
-            }
+            await this.LoadDataAsync();
+            this.ShowSuccess("Accessory deleted successfully");
         }
+        else
+        {
+            this.ShowError($"Delete failed: {deleteResult.Message}");
+        }
+    }
+
+    public void Dispose()
+    {
+        this.m_debounceTimer?.Dispose();
     }
 }

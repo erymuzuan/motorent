@@ -1,119 +1,143 @@
-@inherits MotoRentDialogBase<Deposit>
-@using MotoRent.Domain.Entities
-@using MotoRent.Services
+@inherits LocalizedDialogBase<Deposit, RefundDepositDialog>
 @inject DepositService DepositService
 
-<MudDialog>
-    <TitleContent>
-        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-            <MudIcon Icon="@Icons.Material.Filled.MoneyOff" Color="Color.Success" />
-            <MudText Typo="Typo.h6">Refund Deposit</MudText>
-        </MudStack>
-    </TitleContent>
+<form id="@FormId" @onsubmit="ProcessRefund" @onsubmit:preventDefault>
+    <div class="modal-body">
+        <div class="alert alert-info mb-3">
+            <div class="d-flex align-items-center">
+                <i class="ti ti-info-circle me-2"></i>
+                <span>Refunding deposit of <strong>@FormatCurrency(Entity.Amount)</strong> to <strong>@RenterName</strong></span>
+            </div>
+        </div>
 
-    <DialogContent>
-        <MudStack Spacing="3">
-            <MudAlert Severity="Severity.Info" Dense="true">
-                <MudText>
-                    Refunding deposit of <strong>@FormatCurrency(Entity.Amount)</strong> to <strong>@RenterName</strong>
-                </MudText>
-            </MudAlert>
+        <h4 class="mb-3">Refund Method</h4>
 
-            <MudText Typo="Typo.subtitle1">Refund Method</MudText>
+        <div class="mb-3">
+            <div class="form-selectgroup form-selectgroup-boxes d-flex flex-column gap-2">
+                <label class="form-selectgroup-item flex-fill">
+                    <input type="radio" name="refund-method" value="Cash" class="form-selectgroup-input"
+                           checked="@(m_refundMethod == "Cash")" @onchange="@(() => m_refundMethod = "Cash")" />
+                    <div class="form-selectgroup-label d-flex align-items-center p-3">
+                        <div class="me-3">
+                            <span class="form-selectgroup-check"></span>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <i class="ti ti-cash text-success fs-2 me-2"></i>
+                            <span>Cash</span>
+                        </div>
+                    </div>
+                </label>
 
-            <MudRadioGroup T="string" @bind-Value="m_refundMethod">
-                <MudStack Spacing="2">
-                    <MudRadio T="string" Value="@("Cash")" Color="Color.Primary">
-                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                            <MudIcon Icon="@Icons.Material.Filled.Money" Color="Color.Success" Size="Size.Small" />
-                            <MudText>Cash</MudText>
-                        </MudStack>
-                    </MudRadio>
+                @if (Entity.DepositType == "CardPreAuth")
+                {
+                    <label class="form-selectgroup-item flex-fill">
+                        <input type="radio" name="refund-method" value="Card" class="form-selectgroup-input"
+                               checked="@(m_refundMethod == "Card")" @onchange="@(() => m_refundMethod = "Card")" />
+                        <div class="form-selectgroup-label d-flex align-items-center p-3">
+                            <div class="me-3">
+                                <span class="form-selectgroup-check"></span>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <i class="ti ti-credit-card text-primary fs-2 me-2"></i>
+                                <span>Return to Card @(!string.IsNullOrEmpty(Entity.CardLast4) ? $"(****{Entity.CardLast4})" : "")</span>
+                            </div>
+                        </div>
+                    </label>
+                }
 
-                    @if (Entity.DepositType == "CardPreAuth")
-                    {
-                        <MudRadio T="string" Value="@("Card")" Color="Color.Primary">
-                            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                                <MudIcon Icon="@Icons.Material.Filled.CreditCard" Color="Color.Primary" Size="Size.Small" />
-                                <MudText>Return to Card @(!string.IsNullOrEmpty(Entity.CardLast4) ? $"(****{Entity.CardLast4})" : "")</MudText>
-                            </MudStack>
-                        </MudRadio>
-                    }
+                <label class="form-selectgroup-item flex-fill">
+                    <input type="radio" name="refund-method" value="BankTransfer" class="form-selectgroup-input"
+                           checked="@(m_refundMethod == "BankTransfer")" @onchange="@(() => m_refundMethod = "BankTransfer")" />
+                    <div class="form-selectgroup-label d-flex align-items-center p-3">
+                        <div class="me-3">
+                            <span class="form-selectgroup-check"></span>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <i class="ti ti-building-bank text-info fs-2 me-2"></i>
+                            <span>Bank Transfer</span>
+                        </div>
+                    </div>
+                </label>
 
-                    <MudRadio T="string" Value="@("BankTransfer")" Color="Color.Primary">
-                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                            <MudIcon Icon="@Icons.Material.Filled.AccountBalance" Color="Color.Info" Size="Size.Small" />
-                            <MudText>Bank Transfer</MudText>
-                        </MudStack>
-                    </MudRadio>
+                <label class="form-selectgroup-item flex-fill">
+                    <input type="radio" name="refund-method" value="QRCode" class="form-selectgroup-input"
+                           checked="@(m_refundMethod == "QRCode")" @onchange="@(() => m_refundMethod = "QRCode")" />
+                    <div class="form-selectgroup-label d-flex align-items-center p-3">
+                        <div class="me-3">
+                            <span class="form-selectgroup-check"></span>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <i class="ti ti-qrcode text-secondary fs-2 me-2"></i>
+                            <span>QR Code (PromptPay)</span>
+                        </div>
+                    </div>
+                </label>
+            </div>
+        </div>
 
-                    <MudRadio T="string" Value="@("QRCode")" Color="Color.Primary">
-                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                            <MudIcon Icon="@Icons.Material.Filled.QrCode" Color="Color.Secondary" Size="Size.Small" />
-                            <MudText>QR Code (PromptPay)</MudText>
-                        </MudStack>
-                    </MudRadio>
-                </MudStack>
-            </MudRadioGroup>
+        <div class="mt-4">
+            <label class="form-check">
+                <input type="checkbox" class="form-check-input" @bind="m_confirmed" />
+                <span class="form-check-label">
+                    I confirm the refund of @FormatCurrency(Entity.Amount) has been processed via @m_refundMethod
+                </span>
+            </label>
+        </div>
+    </div>
+</form>
 
-            <MudCheckBox T="bool" @bind-Value="m_confirmed" Color="Color.Success"
-                         Label="@($"I confirm the refund of {FormatCurrency(Entity.Amount)} has been processed via {m_refundMethod}")" />
-        </MudStack>
-    </DialogContent>
-
-    <DialogActions>
-        <MudButton OnClick="Cancel" Variant="Variant.Text">Cancel</MudButton>
-        <MudButton Color="Color.Success" Variant="Variant.Filled"
-                   Disabled="@(!m_confirmed || m_saving)"
-                   OnClick="ProcessRefund">
-            @if (m_saving)
-            {
-                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-            }
-            Process Refund
-        </MudButton>
-    </DialogActions>
-</MudDialog>
+<div class="modal-footer">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
+        Cancel
+    </button>
+    <button type="submit" form="@FormId" class="btn btn-success" disabled="@(!m_confirmed || Saving)">
+        @if (Saving)
+        {
+            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+        }
+        <i class="ti ti-cash-off me-1"></i>
+        Process Refund
+    </button>
+</div>
 
 @code {
     [Parameter] public string RenterName { get; set; } = "";
 
     private string m_refundMethod = "Cash";
     private bool m_confirmed;
-    private bool m_saving;
 
     protected override void OnInitialized()
     {
         // Default to card refund if original deposit was card pre-auth
-        if (Entity.DepositType == "CardPreAuth")
+        if (this.Entity.DepositType == "CardPreAuth")
         {
-            m_refundMethod = "Card";
+            this.m_refundMethod = "Card";
         }
     }
 
     private async Task ProcessRefund()
     {
-        m_saving = true;
+        this.Saving = true;
         try
         {
-            var result = await DepositService.RefundDepositAsync(Entity.DepositId, m_refundMethod, UserName);
+            var result = await this.DepositService.RefundDepositAsync(this.Entity.DepositId, this.m_refundMethod, this.UserName);
 
             if (result.Success)
             {
-                MudDialog.Close(DialogResult.Ok(true));
+                this.Close();
             }
             else
             {
-                ShowError($"Failed to process refund: {result.Message}");
+                this.ShowError($"Failed to process refund: {result.Message}");
             }
         }
         catch (Exception ex)
         {
-            ShowError($"Error: {ex.Message}");
+            this.ShowError($"Error: {ex.Message}");
         }
         finally
         {
-            m_saving = false;
+            this.Saving = false;
         }
     }
 }

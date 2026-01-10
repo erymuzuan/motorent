@@ -1,70 +1,139 @@
 @inherits LayoutComponentBase
 @inject IJSRuntime JS
 
-<MudThemeProvider Theme="MotoRent.Client.MotoRentTheme.Theme" @bind-IsDarkMode="@m_isDarkMode" />
-<MudPopoverProvider />
-<MudDialogProvider />
-<MudSnackbarProvider />
+<ModalContainer />
+<ToastContainer />
 
-<MudLayout>
-    <MudAppBar Elevation="1">
-        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start"
-                       OnClick="@(_ => m_drawerOpen = !m_drawerOpen)" />
-        <MudIcon Icon="@Icons.Material.Filled.TwoWheeler" Class="mr-2" />
-        <MudText Typo="Typo.h6" Class="ml-2">MotoRent</MudText>
-        <MudSpacer />
-        <MudIconButton Icon="@(m_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
-                       Color="Color.Inherit" OnClick="@(_ => m_isDarkMode = !m_isDarkMode)" />
-    </MudAppBar>
+<div class="page">
+    @* Top Navigation Bar *@
+    <header class="navbar navbar-expand-md d-print-none">
+        <div class="container-xl">
+            <button class="navbar-toggler" type="button" @onclick="ToggleNavbar"
+                    aria-expanded="@m_navbarOpen" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <h1 class="navbar-brand navbar-brand-autodark d-none-navbar-horizontal pe-0 pe-md-3">
+                <a href="/">
+                    <i class="ti ti-motorbike me-2" style="font-size: 1.5rem;"></i>
+                    MotoRent
+                </a>
+            </h1>
+            <div class="navbar-nav flex-row order-md-last">
+                @* Theme Toggle *@
+                <div class="nav-item d-none d-md-flex me-3">
+                    <a href="#" class="nav-link px-0" @onclick="ToggleTheme" @onclick:preventDefault>
+                        @if (m_isDarkMode)
+                        {
+                            <i class="ti ti-sun"></i>
+                        }
+                        else
+                        {
+                            <i class="ti ti-moon"></i>
+                        }
+                    </a>
+                </div>
+                @* User Profile Dropdown *@
+                <div class="nav-item dropdown">
+                    <a href="#" class="nav-link d-flex lh-1 text-reset p-0" data-bs-toggle="dropdown"
+                       aria-label="Open user menu">
+                        <span class="avatar avatar-sm bg-primary text-white">
+                            <i class="ti ti-user"></i>
+                        </span>
+                        <div class="d-none d-xl-block ps-2">
+                            <div>User</div>
+                            <div class="mt-1 small text-secondary">Administrator</div>
+                        </div>
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
+                        <a href="/account/profile" class="dropdown-item">Profile</a>
+                        <a href="/account/settings" class="dropdown-item">Settings</a>
+                        <div class="dropdown-divider"></div>
+                        <a href="/account/logoff" class="dropdown-item">Logout</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
 
-    <MudDrawer @bind-Open="m_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2">
-        <NavMenu />
-    </MudDrawer>
+    @* Main Navigation Menu *@
+    <header class="navbar-expand-md">
+        <div class="collapse navbar-collapse @(m_navbarOpen ? "show" : "")" id="navbar-menu">
+            <div class="navbar">
+                <div class="container-xl">
+                    <NavMenu />
+                </div>
+            </div>
+        </div>
+    </header>
 
-    <MudMainContent>
-        <MudContainer MaxWidth="MaxWidth.Large" Class="my-4 pt-4">
-            @Body
-        </MudContainer>
-    </MudMainContent>
-</MudLayout>
+    @* Page Content *@
+    <div class="page-wrapper">
+        <div class="page-body">
+            <div class="container-xl">
+                @Body
+            </div>
+        </div>
+
+        @* Footer *@
+        <footer class="footer footer-transparent d-print-none">
+            <div class="container-xl">
+                <div class="row text-center align-items-center flex-row-reverse">
+                    <div class="col-lg-auto ms-lg-auto">
+                        <ul class="list-inline list-inline-dots mb-0">
+                            <li class="list-inline-item">
+                                <a href="/docs" class="link-secondary">Documentation</a>
+                            </li>
+                            <li class="list-inline-item">
+                                <a href="/help" class="link-secondary">Help</a>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="col-12 col-lg-auto mt-3 mt-lg-0">
+                        <ul class="list-inline list-inline-dots mb-0">
+                            <li class="list-inline-item">
+                                Copyright &copy; @DateTime.Now.Year MotoRent. All rights reserved.
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+</div>
 
 @* PWA Install Banner *@
 @if (m_showInstallBanner && m_isInstallable)
 {
-    <MudPaper Elevation="4" Style="position: fixed; bottom: 0; left: 0; right: 0; z-index: 9999; background: linear-gradient(135deg, #00897B 0%, #00695C 100%);">
-        <MudContainer MaxWidth="MaxWidth.Large">
-            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="py-3">
-                <MudStack Row="true" Spacing="3" AlignItems="AlignItems.Center">
-                    <MudAvatar Color="Color.Surface" Size="Size.Large">
-                        <MudIcon Icon="@Icons.Material.Filled.TwoWheeler" Color="Color.Primary" />
-                    </MudAvatar>
-                    <MudStack Spacing="0">
-                        <MudText Typo="Typo.body1" Style="color: white; font-weight: 500;">
-                            Install MotoRent App
-                        </MudText>
-                        <MudText Typo="Typo.caption" Style="color: rgba(255,255,255,0.8);">
-                            Quick access, offline support, and notifications
-                        </MudText>
-                    </MudStack>
-                </MudStack>
-                <MudStack Row="true" Spacing="2">
-                    <MudButton Variant="Variant.Text" Style="color: rgba(255,255,255,0.8);"
-                               OnClick="DismissInstallBanner">
+    <div class="position-fixed bottom-0 start-0 end-0" style="z-index: 1050;">
+        <div class="alert alert-primary alert-dismissible m-3 shadow-lg" role="alert"
+             style="background: linear-gradient(135deg, var(--tblr-primary) 0%, var(--tblr-primary-darken, #00695C) 100%); border: none;">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <span class="avatar bg-white text-primary">
+                        <i class="ti ti-motorbike"></i>
+                    </span>
+                </div>
+                <div class="flex-fill">
+                    <h4 class="alert-title text-white mb-1">Install MotoRent App</h4>
+                    <div class="text-white-50">Quick access, offline support, and notifications</div>
+                </div>
+                <div class="ms-auto">
+                    <button type="button" class="btn btn-ghost-light me-2" @onclick="DismissInstallBanner">
                         Not Now
-                    </MudButton>
-                    <MudButton Variant="Variant.Filled" Color="Color.Surface"
-                               StartIcon="@Icons.Material.Filled.GetApp"
-                               OnClick="InstallApp">
+                    </button>
+                    <button type="button" class="btn btn-light" @onclick="InstallApp">
+                        <i class="ti ti-download me-1"></i>
                         Install
-                    </MudButton>
-                </MudStack>
-            </MudStack>
-        </MudContainer>
-    </MudPaper>
+                    </button>
+                </div>
+            </div>
+            <a class="btn-close btn-close-white" @onclick="DismissInstallBanner"></a>
+        </div>
+    </div>
 }
 
 @code {
-    private bool m_drawerOpen = true;
+    private bool m_navbarOpen;
     private bool m_isDarkMode;
     private bool m_showInstallBanner = true;
     private bool m_isInstallable;
@@ -73,39 +142,57 @@
     {
         if (firstRender)
         {
-            await CheckInstallability();
+            await this.CheckInstallability();
+            await this.ApplyTheme();
         }
+    }
+
+    private void ToggleNavbar()
+    {
+        this.m_navbarOpen = !this.m_navbarOpen;
+    }
+
+    private async Task ToggleTheme()
+    {
+        this.m_isDarkMode = !this.m_isDarkMode;
+        await this.ApplyTheme();
+    }
+
+    private async Task ApplyTheme()
+    {
+        var theme = this.m_isDarkMode ? "dark" : "light";
+        await this.JS.InvokeVoidAsync("eval", $"document.body.setAttribute('data-bs-theme', '{theme}')");
     }
 
     private async Task CheckInstallability()
     {
         try
         {
-            var isStandalone = await JS.InvokeAsync<bool>("MotoRentPwa.isStandalone");
-            m_isInstallable = await JS.InvokeAsync<bool>("MotoRentPwa.isInstallable");
+            var isStandalone = await this.JS.InvokeAsync<bool>("MotoRentPwa.isStandalone");
+            this.m_isInstallable = await this.JS.InvokeAsync<bool>("MotoRentPwa.isInstallable");
 
             // Don't show if already running as PWA
             if (isStandalone)
             {
-                m_showInstallBanner = false;
+                this.m_showInstallBanner = false;
             }
 
             // Check if user previously dismissed
-            var dismissed = await JS.InvokeAsync<string?>("localStorage.getItem", "pwa-install-dismissed");
+            var dismissed = await this.JS.InvokeAsync<string?>("localStorage.getItem", "pwa-install-dismissed");
             if (!string.IsNullOrEmpty(dismissed) && DateTimeOffset.TryParse(dismissed, out var dismissedDate))
             {
                 // Show again after 7 days
                 if ((DateTimeOffset.Now - dismissedDate).TotalDays < 7)
                 {
-                    m_showInstallBanner = false;
+                    this.m_showInstallBanner = false;
                 }
             }
 
-            StateHasChanged();
+            this.StateHasChanged();
         }
         catch
         {
-            m_isInstallable = false;
+            this.m_isInstallable = false;
         }
     }
 
@@ -113,9 +200,9 @@
     {
         try
         {
-            await JS.InvokeVoidAsync("MotoRentPwa.showInstallPrompt");
-            m_showInstallBanner = false;
-            StateHasChanged();
+            await this.JS.InvokeVoidAsync("MotoRentPwa.showInstallPrompt");
+            this.m_showInstallBanner = false;
+            this.StateHasChanged();
         }
         catch (Exception ex)
         {
@@ -125,8 +212,8 @@
 
     private async Task DismissInstallBanner()
     {
-        m_showInstallBanner = false;
-        await JS.InvokeVoidAsync("localStorage.setItem", "pwa-install-dismissed", DateTimeOffset.Now.ToString("O"));
-        StateHasChanged();
+        this.m_showInstallBanner = false;
+        await this.JS.InvokeVoidAsync("localStorage.setItem", "pwa-install-dismissed", DateTimeOffset.Now.ToString("O"));
+        this.StateHasChanged();
     }
 }

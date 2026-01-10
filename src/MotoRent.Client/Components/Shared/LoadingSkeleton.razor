@@ -1,0 +1,136 @@
+@* Loading skeleton/placeholder component for Tabler CSS *@
+
+@if (Loading)
+{
+    @switch (Mode)
+    {
+        case PlaceholderMode.Card:
+            <div class="card placeholder-glow">
+                <div class="card-body">
+                    <div class="placeholder col-12 mb-3" style="height: 2rem;"></div>
+                    <div class="placeholder col-8 mb-2"></div>
+                    <div class="placeholder col-10 mb-2"></div>
+                    <div class="placeholder col-6"></div>
+                </div>
+            </div>
+            break;
+
+        case PlaceholderMode.Table:
+            <div class="card placeholder-glow">
+                <div class="card-header">
+                    <div class="placeholder col-3"></div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-vcenter card-table">
+                        <thead>
+                            <tr>
+                                @for (var i = 0; i < Columns; i++)
+                                {
+                                    <th><span class="placeholder col-8"></span></th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (var row = 0; row < Rows; row++)
+                            {
+                                <tr>
+                                    @for (var col = 0; col < Columns; col++)
+                                    {
+                                        <td><span class="placeholder col-@(6 + (col % 4))"></span></td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            break;
+
+        case PlaceholderMode.List:
+            <div class="list-group list-group-flush placeholder-glow">
+                @for (var i = 0; i < Rows; i++)
+                {
+                    <div class="list-group-item">
+                        <div class="row align-items-center">
+                            <div class="col-auto">
+                                <span class="avatar placeholder"></span>
+                            </div>
+                            <div class="col-7">
+                                <div class="placeholder col-9 mb-2"></div>
+                                <div class="placeholder placeholder-xs col-5"></div>
+                            </div>
+                            <div class="col-auto ms-auto">
+                                <div class="placeholder placeholder-xs col-4"></div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+            break;
+
+        case PlaceholderMode.Form:
+            <div class="placeholder-glow">
+                @for (var i = 0; i < Rows; i++)
+                {
+                    <div class="mb-3">
+                        <div class="placeholder col-3 mb-2" style="height: 0.875rem;"></div>
+                        <div class="placeholder col-12" style="height: 2.25rem;"></div>
+                    </div>
+                }
+            </div>
+            break;
+
+        default:
+            <div class="d-flex justify-content-center py-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+            break;
+    }
+}
+else
+{
+    @ChildContent
+}
+
+@code {
+    /// <summary>
+    /// Whether the loading state is active.
+    /// </summary>
+    [Parameter]
+    public bool Loading { get; set; }
+
+    /// <summary>
+    /// The type of placeholder to display.
+    /// </summary>
+    [Parameter]
+    public PlaceholderMode Mode { get; set; } = PlaceholderMode.Spinner;
+
+    /// <summary>
+    /// Number of rows for table/list placeholders.
+    /// </summary>
+    [Parameter]
+    public int Rows { get; set; } = 5;
+
+    /// <summary>
+    /// Number of columns for table placeholders.
+    /// </summary>
+    [Parameter]
+    public int Columns { get; set; } = 4;
+
+    /// <summary>
+    /// Content to display when not loading.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    public enum PlaceholderMode
+    {
+        Spinner,
+        Card,
+        Table,
+        List,
+        Form
+    }
+}

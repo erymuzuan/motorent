@@ -1,231 +1,245 @@
 @inherits MotoRentComponentBase
 @using MotoRent.Client.Pages.Rentals
 
-<MudStack Spacing="4">
-    <MudText Typo="Typo.h6">Payment & Deposit</MudText>
-    <MudText Typo="Typo.body2" Color="Color.Secondary">
-        Collect the rental payment and security deposit before proceeding
-    </MudText>
+<div class="d-flex flex-column gap-4">
+    <div>
+        <h5 class="mb-1">Payment & Deposit</h5>
+        <p class="text-secondary mb-0">Collect the rental payment and security deposit before proceeding</p>
+    </div>
 
-    <MudGrid>
-        <MudItem xs="12" md="6">
-            <MudAlert Severity="Severity.Info" Dense="true">
-                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                    <MudIcon Icon="@Icons.Material.Filled.ShoppingCart" />
-                    <MudText>Rental Amount: <strong>@FormatCurrency(RentalAmount)</strong></MudText>
-                </MudStack>
-            </MudAlert>
-        </MudItem>
-        <MudItem xs="12" md="6">
-            <MudAlert Severity="Severity.Warning" Dense="true">
-                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                    <MudIcon Icon="@Icons.Material.Filled.Security" />
-                    <MudText>Required Deposit: <strong>@FormatCurrency(RequiredAmount)</strong></MudText>
-                </MudStack>
-            </MudAlert>
-        </MudItem>
-    </MudGrid>
+    <div class="row g-3">
+        <div class="col-12 col-md-6">
+            <div class="alert alert-info d-flex align-items-center gap-2">
+                <i class="ti ti-shopping-cart"></i>
+                <span>Rental Amount: <strong>@FormatCurrency(this.RentalAmount)</strong></span>
+            </div>
+        </div>
+        <div class="col-12 col-md-6">
+            <div class="alert alert-warning d-flex align-items-center gap-2">
+                <i class="ti ti-shield"></i>
+                <span>Required Deposit: <strong>@FormatCurrency(this.RequiredAmount)</strong></span>
+            </div>
+        </div>
+    </div>
 
     @* Rental Payment Method *@
-    <MudPaper Elevation="1" Class="pa-4">
-        <MudText Typo="Typo.subtitle1" Class="mb-3">Rental Payment Method</MudText>
+    <div class="card">
+        <div class="card-body">
+            <h6 class="card-title mb-3">Rental Payment Method</h6>
 
-        <MudRadioGroup T="string" @bind-Value="DepositInfo.PaymentMethod">
-            <MudStack Row="true" Spacing="4">
-                <MudRadio T="string" Value="@("Cash")" Color="Color.Primary">
-                    <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
-                        <MudIcon Icon="@Icons.Material.Filled.Money" Color="Color.Success" Size="Size.Small" />
-                        <MudText>Cash</MudText>
-                    </MudStack>
-                </MudRadio>
-                <MudRadio T="string" Value="@("Card")" Color="Color.Primary">
-                    <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
-                        <MudIcon Icon="@Icons.Material.Filled.CreditCard" Color="Color.Primary" Size="Size.Small" />
-                        <MudText>Card</MudText>
-                    </MudStack>
-                </MudRadio>
-                <MudRadio T="string" Value="@("BankTransfer")" Color="Color.Primary">
-                    <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
-                        <MudIcon Icon="@Icons.Material.Filled.AccountBalance" Color="Color.Info" Size="Size.Small" />
-                        <MudText>Bank Transfer</MudText>
-                    </MudStack>
-                </MudRadio>
-                <MudRadio T="string" Value="@("QRCode")" Color="Color.Primary">
-                    <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
-                        <MudIcon Icon="@Icons.Material.Filled.QrCode" Color="Color.Secondary" Size="Size.Small" />
-                        <MudText>QR Code</MudText>
-                    </MudStack>
-                </MudRadio>
-            </MudStack>
-        </MudRadioGroup>
+            <div class="d-flex flex-wrap gap-3">
+                <label class="form-check">
+                    <input type="radio" name="paymentMethod" class="form-check-input"
+                           checked="@(this.DepositInfo.PaymentMethod == "Cash")"
+                           @onchange="@(() => this.DepositInfo.PaymentMethod = "Cash")" />
+                    <span class="form-check-label d-flex align-items-center gap-1">
+                        <i class="ti ti-cash text-success"></i>
+                        Cash
+                    </span>
+                </label>
+                <label class="form-check">
+                    <input type="radio" name="paymentMethod" class="form-check-input"
+                           checked="@(this.DepositInfo.PaymentMethod == "Card")"
+                           @onchange="@(() => this.DepositInfo.PaymentMethod = "Card")" />
+                    <span class="form-check-label d-flex align-items-center gap-1">
+                        <i class="ti ti-credit-card text-primary"></i>
+                        Card
+                    </span>
+                </label>
+                <label class="form-check">
+                    <input type="radio" name="paymentMethod" class="form-check-input"
+                           checked="@(this.DepositInfo.PaymentMethod == "BankTransfer")"
+                           @onchange="@(() => this.DepositInfo.PaymentMethod = "BankTransfer")" />
+                    <span class="form-check-label d-flex align-items-center gap-1">
+                        <i class="ti ti-building-bank text-info"></i>
+                        Bank Transfer
+                    </span>
+                </label>
+                <label class="form-check">
+                    <input type="radio" name="paymentMethod" class="form-check-input"
+                           checked="@(this.DepositInfo.PaymentMethod == "QRCode")"
+                           @onchange="@(() => this.DepositInfo.PaymentMethod = "QRCode")" />
+                    <span class="form-check-label d-flex align-items-center gap-1">
+                        <i class="ti ti-qrcode text-secondary"></i>
+                        QR Code
+                    </span>
+                </label>
+            </div>
 
-        @if (DepositInfo.PaymentMethod != "Cash")
-        {
-            <MudTextField @bind-Value="DepositInfo.PaymentTransactionRef"
-                          Label="Transaction Reference"
-                          Variant="Variant.Outlined"
-                          Placeholder="e.g., TXN-123456"
-                          Class="mt-3" />
-        }
-    </MudPaper>
-
-    <MudDivider />
-
-    <MudPaper Elevation="1" Class="pa-4">
-        <MudText Typo="Typo.subtitle1" Class="mb-3">Deposit Type</MudText>
-
-        <MudRadioGroup T="string" @bind-Value="DepositInfo.DepositType">
-            <MudStack Spacing="2">
-                <MudRadio T="string" Value="@("Cash")" Color="Color.Primary">
-                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                        <MudIcon Icon="@Icons.Material.Filled.Money" Color="Color.Success" />
-                        <MudStack Spacing="0">
-                            <MudText Typo="Typo.body1">Cash</MudText>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                Collect cash deposit from the renter
-                            </MudText>
-                        </MudStack>
-                    </MudStack>
-                </MudRadio>
-
-                <MudRadio T="string" Value="@("CardPreAuth")" Color="Color.Primary">
-                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                        <MudIcon Icon="@Icons.Material.Filled.CreditCard" Color="Color.Primary" />
-                        <MudStack Spacing="0">
-                            <MudText Typo="Typo.body1">Card Pre-Authorization</MudText>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                Hold the amount on the renter's credit/debit card
-                            </MudText>
-                        </MudStack>
-                    </MudStack>
-                </MudRadio>
-
-                <MudRadio T="string" Value="@("Passport")" Color="Color.Warning">
-                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                        <MudIcon Icon="@Icons.Material.Filled.Badge" Color="Color.Warning" />
-                        <MudStack Spacing="0">
-                            <MudText Typo="Typo.body1">Passport Hold</MudText>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                Hold the renter's passport as deposit (not recommended)
-                            </MudText>
-                        </MudStack>
-                    </MudStack>
-                </MudRadio>
-            </MudStack>
-        </MudRadioGroup>
-    </MudPaper>
-
-    @if (DepositInfo.DepositType == "Cash")
-    {
-        <MudPaper Elevation="1" Class="pa-4">
-            <MudText Typo="Typo.subtitle1" Class="mb-3">Cash Collection</MudText>
-            <MudGrid>
-                <MudItem xs="12" sm="6">
-                    <MudNumericField T="decimal" @bind-Value="DepositInfo.Amount"
-                                     Label="Amount Collected (THB)"
-                                     Min="0" Max="100000"
-                                     Variant="Variant.Outlined"
-                                     Adornment="Adornment.Start"
-                                     AdornmentText="฿" />
-                </MudItem>
-                <MudItem xs="12" sm="6">
-                    <MudStack Spacing="1">
-                        <MudButton Size="Size.Small" Variant="Variant.Outlined"
-                                   OnClick="@(() => DepositInfo.Amount = RequiredAmount)">
-                            Set to @FormatCurrency(RequiredAmount)
-                        </MudButton>
-                    </MudStack>
-                </MudItem>
-            </MudGrid>
-
-            @if (DepositInfo.Amount < RequiredAmount)
+            @if (this.DepositInfo.PaymentMethod != "Cash")
             {
-                <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-3">
-                    Amount is less than required deposit. Please collect @FormatCurrency(RequiredAmount - DepositInfo.Amount) more.
-                </MudAlert>
+                <div class="mt-3">
+                    <label class="form-label">Transaction Reference</label>
+                    <input type="text" class="form-control" placeholder="e.g., TXN-123456"
+                           @bind="this.DepositInfo.PaymentTransactionRef" />
+                </div>
             }
-            else if (DepositInfo.Amount > RequiredAmount)
-            {
-                <MudAlert Severity="Severity.Info" Dense="true" Class="mt-3">
-                    Amount exceeds required deposit by @FormatCurrency(DepositInfo.Amount - RequiredAmount).
-                </MudAlert>
-            }
-        </MudPaper>
-    }
-    else if (DepositInfo.DepositType == "CardPreAuth")
+        </div>
+    </div>
+
+    <hr>
+
+    <div class="card">
+        <div class="card-body">
+            <h6 class="card-title mb-3">Deposit Type</h6>
+
+            <div class="d-flex flex-column gap-3">
+                <label class="form-selectgroup-item">
+                    <input type="radio" name="depositType" class="form-selectgroup-input"
+                           checked="@(this.DepositInfo.DepositType == "Cash")"
+                           @onchange="@(() => this.DepositInfo.DepositType = "Cash")" />
+                    <span class="form-selectgroup-label d-flex align-items-center gap-3">
+                        <i class="ti ti-cash text-success" style="font-size: 1.5rem;"></i>
+                        <span class="d-flex flex-column">
+                            <span class="fw-medium">Cash</span>
+                            <small class="text-secondary">Collect cash deposit from the renter</small>
+                        </span>
+                    </span>
+                </label>
+
+                <label class="form-selectgroup-item">
+                    <input type="radio" name="depositType" class="form-selectgroup-input"
+                           checked="@(this.DepositInfo.DepositType == "CardPreAuth")"
+                           @onchange="@(() => this.DepositInfo.DepositType = "CardPreAuth")" />
+                    <span class="form-selectgroup-label d-flex align-items-center gap-3">
+                        <i class="ti ti-credit-card text-primary" style="font-size: 1.5rem;"></i>
+                        <span class="d-flex flex-column">
+                            <span class="fw-medium">Card Pre-Authorization</span>
+                            <small class="text-secondary">Hold the amount on the renter's credit/debit card</small>
+                        </span>
+                    </span>
+                </label>
+
+                <label class="form-selectgroup-item">
+                    <input type="radio" name="depositType" class="form-selectgroup-input"
+                           checked="@(this.DepositInfo.DepositType == "Passport")"
+                           @onchange="@(() => this.DepositInfo.DepositType = "Passport")" />
+                    <span class="form-selectgroup-label d-flex align-items-center gap-3">
+                        <i class="ti ti-id-badge text-warning" style="font-size: 1.5rem;"></i>
+                        <span class="d-flex flex-column">
+                            <span class="fw-medium">Passport Hold</span>
+                            <small class="text-secondary">Hold the renter's passport as deposit (not recommended)</small>
+                        </span>
+                    </span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    @if (this.DepositInfo.DepositType == "Cash")
     {
-        <MudPaper Elevation="1" Class="pa-4">
-            <MudText Typo="Typo.subtitle1" Class="mb-3">Card Pre-Authorization Details</MudText>
-            <MudGrid>
-                <MudItem xs="12" sm="6">
-                    <MudTextField @bind-Value="DepositInfo.CardLast4"
-                                  Label="Card Last 4 Digits"
-                                  MaxLength="4"
-                                  Counter="4"
-                                  Variant="Variant.Outlined"
-                                  InputType="InputType.Number" />
-                </MudItem>
-                <MudItem xs="12" sm="6">
-                    <MudTextField @bind-Value="DepositInfo.TransactionRef"
-                                  Label="Authorization Reference"
-                                  Variant="Variant.Outlined"
-                                  Placeholder="e.g., AUTH-123456" />
-                </MudItem>
-                <MudItem xs="12">
-                    <MudNumericField T="decimal" @bind-Value="DepositInfo.Amount"
-                                     Label="Pre-Auth Amount (THB)"
-                                     Min="0" Max="100000"
-                                     Variant="Variant.Outlined"
-                                     Adornment="Adornment.Start"
-                                     AdornmentText="฿" />
-                </MudItem>
-            </MudGrid>
-        </MudPaper>
+        <div class="card">
+            <div class="card-body">
+                <h6 class="card-title mb-3">Cash Collection</h6>
+                <div class="row g-3">
+                    <div class="col-12 col-sm-6">
+                        <label class="form-label">Amount Collected (THB)</label>
+                        <div class="input-group">
+                            <span class="input-group-text">฿</span>
+                            <input type="number" class="form-control" min="0" max="100000"
+                                   @bind="this.DepositInfo.Amount" />
+                        </div>
+                    </div>
+                    <div class="col-12 col-sm-6 d-flex align-items-end">
+                        <button type="button" class="btn btn-outline-secondary btn-sm"
+                                @onclick="@(() => this.DepositInfo.Amount = this.RequiredAmount)">
+                            Set to @FormatCurrency(this.RequiredAmount)
+                        </button>
+                    </div>
+                </div>
+
+                @if (this.DepositInfo.Amount < this.RequiredAmount)
+                {
+                    <div class="alert alert-warning mt-3">
+                        <i class="ti ti-alert-triangle me-2"></i>
+                        Amount is less than required deposit. Please collect @FormatCurrency(this.RequiredAmount - this.DepositInfo.Amount) more.
+                    </div>
+                }
+                else if (this.DepositInfo.Amount > this.RequiredAmount)
+                {
+                    <div class="alert alert-info mt-3">
+                        <i class="ti ti-info-circle me-2"></i>
+                        Amount exceeds required deposit by @FormatCurrency(this.DepositInfo.Amount - this.RequiredAmount).
+                    </div>
+                }
+            </div>
+        </div>
     }
-    else if (DepositInfo.DepositType == "Passport")
+    else if (this.DepositInfo.DepositType == "CardPreAuth")
     {
-        <MudPaper Elevation="1" Class="pa-4">
-            <MudAlert Severity="Severity.Warning" Class="mb-3">
-                <MudText Typo="Typo.body2">
+        <div class="card">
+            <div class="card-body">
+                <h6 class="card-title mb-3">Card Pre-Authorization Details</h6>
+                <div class="row g-3">
+                    <div class="col-12 col-sm-6">
+                        <label class="form-label">Card Last 4 Digits</label>
+                        <input type="text" class="form-control" maxlength="4" placeholder="1234"
+                               @bind="this.DepositInfo.CardLast4" />
+                    </div>
+                    <div class="col-12 col-sm-6">
+                        <label class="form-label">Authorization Reference</label>
+                        <input type="text" class="form-control" placeholder="e.g., AUTH-123456"
+                               @bind="this.DepositInfo.TransactionRef" />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Pre-Auth Amount (THB)</label>
+                        <div class="input-group">
+                            <span class="input-group-text">฿</span>
+                            <input type="number" class="form-control" min="0" max="100000"
+                                   @bind="this.DepositInfo.Amount" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else if (this.DepositInfo.DepositType == "Passport")
+    {
+        <div class="card">
+            <div class="card-body">
+                <div class="alert alert-warning mb-3">
+                    <i class="ti ti-alert-triangle me-2"></i>
                     <strong>Note:</strong> Holding passports as deposit is not recommended and may be illegal in some jurisdictions.
                     Consider using cash or card pre-authorization instead.
-                </MudText>
-            </MudAlert>
-            <MudGrid>
-                <MudItem xs="12">
-                    <MudTextField @bind-Value="DepositInfo.TransactionRef"
-                                  Label="Passport Number (for reference)"
-                                  Variant="Variant.Outlined" />
-                </MudItem>
-            </MudGrid>
-        </MudPaper>
+                </div>
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label">Passport Number (for reference)</label>
+                        <input type="text" class="form-control"
+                               @bind="this.DepositInfo.TransactionRef" />
+                    </div>
+                </div>
+            </div>
+        </div>
     }
 
-    <MudPaper Elevation="1" Class="pa-4">
-        <MudCheckBox T="bool" @bind-Value="DepositInfo.IsCollected" Color="Color.Success"
-                     Label="@GetConfirmationText()" />
-    </MudPaper>
+    <div class="card">
+        <div class="card-body">
+            <label class="form-check">
+                <input class="form-check-input" type="checkbox" @bind="this.DepositInfo.IsCollected" />
+                <span class="form-check-label">@GetConfirmationText()</span>
+            </label>
+        </div>
+    </div>
 
-    @if (DepositInfo.IsCollected)
+    @if (this.DepositInfo.IsCollected)
     {
-        <MudAlert Severity="Severity.Success" Dense="true">
-            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" />
-                <MudText>
-                    Deposit confirmed: @DepositInfo.DepositType -
-                    @if (DepositInfo.DepositType != "Passport")
-                    {
-                        @FormatCurrency(DepositInfo.Amount)
-                    }
-                    else
-                    {
-                        <span>Passport held</span>
-                    }
-                </MudText>
-            </MudStack>
-        </MudAlert>
+        <div class="alert alert-success d-flex align-items-center gap-2">
+            <i class="ti ti-circle-check"></i>
+            <span>
+                Deposit confirmed: @this.DepositInfo.DepositType -
+                @if (this.DepositInfo.DepositType != "Passport")
+                {
+                    @FormatCurrency(this.DepositInfo.Amount)
+                }
+                else
+                {
+                    <span>Passport held</span>
+                }
+            </span>
+        </div>
     }
-</MudStack>
+</div>
 
 @code {
     [Parameter] public decimal RequiredAmount { get; set; }
@@ -235,16 +249,16 @@
 
     protected override void OnInitialized()
     {
-        if (DepositInfo.Amount == 0)
-            DepositInfo.Amount = RequiredAmount;
+        if (this.DepositInfo.Amount == 0)
+            this.DepositInfo.Amount = this.RequiredAmount;
     }
 
     private string GetConfirmationText()
     {
-        return DepositInfo.DepositType switch
+        return this.DepositInfo.DepositType switch
         {
-            "Cash" => $"I confirm that I have collected {FormatCurrency(DepositInfo.Amount)} in cash as deposit",
-            "CardPreAuth" => $"I confirm that the card pre-authorization of {FormatCurrency(DepositInfo.Amount)} has been successfully processed",
+            "Cash" => $"I confirm that I have collected {FormatCurrency(this.DepositInfo.Amount)} in cash as deposit",
+            "CardPreAuth" => $"I confirm that the card pre-authorization of {FormatCurrency(this.DepositInfo.Amount)} has been successfully processed",
             "Passport" => "I confirm that the renter's passport has been collected and stored securely",
             _ => "I confirm the deposit has been collected"
         };

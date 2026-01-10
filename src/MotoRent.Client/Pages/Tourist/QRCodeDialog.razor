@@ -1,57 +1,49 @@
 @* QR Code display dialog for tourists to show at pickup/return *@
+@inherits MotoRentComponentBase
 
-<MudDialog>
-    <TitleContent>
-        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-            <MudIcon Icon="@Icons.Material.Filled.QrCode" />
-            <MudText Typo="Typo.h6">Rental #@RentalId</MudText>
-        </MudStack>
-    </TitleContent>
-    <DialogContent>
-        <MudStack AlignItems="AlignItems.Center" Spacing="3">
-            @* QR Code Image *@
-            <MudPaper Elevation="0" Class="pa-4" Style="background: white; border-radius: 12px;">
-                <MudImage Src="@QRCodeUrl" Alt="QR Code" Width="250" Height="250"
-                          ObjectFit="ObjectFit.Contain" />
-            </MudPaper>
+<div class="modal-body">
+    <div class="d-flex flex-column align-items-center gap-3">
+        @* QR Code Image *@
+        <div class="bg-white p-4 rounded-3">
+            <img src="@QRCodeUrl" alt="QR Code" width="250" height="250" style="object-fit: contain;" />
+        </div>
 
-            @* Status Badge *@
-            <MudChip T="string" Color="@GetStatusColor()" Size="Size.Medium" Variant="Variant.Filled">
-                @Status
-            </MudChip>
+        @* Status Badge *@
+        <span class="badge @GetStatusBadgeClass() fs-6">@Status</span>
 
-            @* Instructions *@
-            <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center">
-                Show this QR code to our staff when you pick up or return your motorbike.
-            </MudText>
+        @* Instructions *@
+        <p class="text-secondary text-center mb-0">
+            Show this QR code to our staff when you pick up or return your motorbike.
+        </p>
 
-            <MudAlert Severity="Severity.Info" Dense="true" Class="mt-2">
-                <MudText Typo="Typo.caption">
-                    Take a screenshot for offline access
-                </MudText>
-            </MudAlert>
-        </MudStack>
-    </DialogContent>
-    <DialogActions>
-        <MudButton Variant="Variant.Text" OnClick="Close">Close</MudButton>
-    </DialogActions>
-</MudDialog>
+        <div class="alert alert-info w-100 mb-0">
+            <div class="d-flex align-items-center">
+                <i class="ti ti-info-circle me-2"></i>
+                <small>Take a screenshot for offline access</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="Close">Close</button>
+</div>
 
 @code {
-    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = default!;
+    [CascadingParameter] private ModalInstance? ModalInstance { get; set; }
 
     [Parameter] public string QRCodeUrl { get; set; } = "";
     [Parameter] public int RentalId { get; set; }
     [Parameter] public string Status { get; set; } = "";
 
-    private Color GetStatusColor() => Status switch
+    private string GetStatusBadgeClass() => this.Status switch
     {
-        "Reserved" => Color.Info,
-        "Active" => Color.Success,
-        "Completed" => Color.Default,
-        "Cancelled" => Color.Error,
-        _ => Color.Default
+        "Reserved" => "bg-info",
+        "Active" => "bg-success",
+        "Completed" => "bg-secondary",
+        "Cancelled" => "bg-danger",
+        _ => "bg-secondary"
     };
 
-    private void Close() => MudDialog.Close();
+    private void Close() => this.ModalInstance?.Close();
 }

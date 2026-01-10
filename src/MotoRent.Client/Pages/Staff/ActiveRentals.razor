@@ -1,130 +1,129 @@
 @page "/staff/rentals"
 @using MotoRent.Domain
 @using Microsoft.AspNetCore.Authorization
+@inherits MotoRentComponentBase
 @attribute [Authorize(Policy = "RequireTenantStaff")]
 @inject NavigationManager NavigationManager
-@inject IDialogService DialogService
 
 <PageTitle>Active Rentals - MotoRent</PageTitle>
 
 @* Search and Filters *@
-<MudStack Row="true" Spacing="2" Class="mb-3">
-    <MudTextField @bind-Value="m_searchText"
-                  Placeholder="Search renter or plate..."
-                  Variant="Variant.Outlined"
-                  Adornment="Adornment.Start"
-                  AdornmentIcon="@Icons.Material.Filled.Search"
-                  Immediate="true"
-                  DebounceInterval="300"
-                  Class="flex-grow-1"
-                  Style="max-width: 100%;" />
-</MudStack>
+<div class="mb-3">
+    <div class="input-icon">
+        <span class="input-icon-addon">
+            <i class="ti ti-search"></i>
+        </span>
+        <input type="text" class="form-control" placeholder="Search renter or plate..."
+               @bind="m_searchText" @bind:event="oninput" />
+    </div>
+</div>
 
 @* Filter Chips *@
-<MudChipSet T="string" @bind-SelectedValue="m_selectedFilter" Mandatory="true" Class="mb-3">
-    <MudChip Value="@("all")" Color="Color.Default" Variant="Variant.Outlined">
+<div class="btn-group mb-3" role="group">
+    <button type="button" class="btn @(m_selectedFilter == "all" ? "btn-secondary" : "btn-outline-secondary")"
+            @onclick="@(() => SetFilter("all"))">
         All (@m_allRentals.Count)
-    </MudChip>
-    <MudChip Value="@("active")" Color="Color.Success" Variant="Variant.Outlined">
+    </button>
+    <button type="button" class="btn @(m_selectedFilter == "active" ? "btn-success" : "btn-outline-success")"
+            @onclick="@(() => SetFilter("active"))">
         Active (@m_allRentals.Count(r => r.Status == "Active"))
-    </MudChip>
-    <MudChip Value="@("duetoday")" Color="Color.Warning" Variant="Variant.Outlined">
+    </button>
+    <button type="button" class="btn @(m_selectedFilter == "duetoday" ? "btn-warning" : "btn-outline-warning")"
+            @onclick="@(() => SetFilter("duetoday"))">
         Due Today (@m_allRentals.Count(r => r.DueDate.Date == DateTime.Today))
-    </MudChip>
-    <MudChip Value="@("overdue")" Color="Color.Error" Variant="Variant.Outlined">
+    </button>
+    <button type="button" class="btn @(m_selectedFilter == "overdue" ? "btn-danger" : "btn-outline-danger")"
+            @onclick="@(() => SetFilter("overdue"))">
         Overdue (@m_allRentals.Count(r => r.IsOverdue))
-    </MudChip>
-</MudChipSet>
+    </button>
+</div>
 
 @* Rental Cards *@
 @if (m_loading)
 {
-    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-3" />
+    <div class="progress progress-sm mb-3">
+        <div class="progress-bar progress-bar-indeterminate"></div>
+    </div>
     @for (int i = 0; i < 3; i++)
     {
-        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="120px" Class="mb-2 rounded-lg" />
+        <div class="card mb-2">
+            <div class="card-body placeholder-glow">
+                <span class="placeholder col-6"></span>
+                <span class="placeholder col-4 ms-2"></span>
+            </div>
+        </div>
     }
 }
 else if (!FilteredRentals.Any())
 {
-    <MudAlert Severity="Severity.Info" Class="mt-4">
+    <div class="alert alert-info mt-4">
         No rentals match your search criteria
-    </MudAlert>
+    </div>
 }
 else
 {
-    <MudStack Spacing="2">
+    <div class="d-flex flex-column gap-2">
         @foreach (var rental in FilteredRentals)
         {
-            <MudPaper Elevation="2" Class="rental-card pa-3" @onclick="@(() => ShowDetails(rental))">
-                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start">
-                    @* Left: Status indicator + Info *@
-                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Start">
-                        <div class="status-indicator @GetStatusClass(rental)"></div>
-                        <MudStack Spacing="0">
-                            <MudText Typo="Typo.body1" Style="font-weight: 600;">
-                                @rental.RenterName
-                            </MudText>
-                            <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                @rental.Phone
-                            </MudText>
-                            <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center" Class="mt-1">
-                                <MudIcon Icon="@Icons.Material.Filled.TwoWheeler" Size="Size.Small" />
-                                <MudText Typo="Typo.body2">
-                                    @rental.MotorbikeName
-                                </MudText>
-                                <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                    (@rental.LicensePlate)
-                                </MudText>
-                            </MudStack>
-                        </MudStack>
-                    </MudStack>
+            <div class="card rental-card cursor-pointer" @onclick="@(() => ShowDetails(rental))">
+                <div class="card-body py-3">
+                    <div class="d-flex justify-content-between align-items-start">
+                        @* Left: Status indicator + Info *@
+                        <div class="d-flex gap-2 align-items-start">
+                            <div class="status-indicator @GetStatusClass(rental)"></div>
+                            <div>
+                                <div class="fw-semibold">@rental.RenterName</div>
+                                <small class="text-secondary">@rental.Phone</small>
+                                <div class="d-flex align-items-center gap-1 mt-1">
+                                    <i class="ti ti-motorbike" style="font-size: 0.875rem;"></i>
+                                    <span class="small">@rental.MotorbikeName</span>
+                                    <small class="text-secondary">(@rental.LicensePlate)</small>
+                                </div>
+                            </div>
+                        </div>
 
-                    @* Right: Due date + Actions *@
-                    <MudStack AlignItems="AlignItems.End" Spacing="1">
-                        <MudText Typo="Typo.caption" Color="Color.Secondary">
-                            Day @rental.CurrentDay of @rental.TotalDays
-                        </MudText>
-                        <MudText Typo="Typo.body2" Color="@GetDueColor(rental)" Style="font-weight: 500;">
-                            @GetDueText(rental)
-                        </MudText>
-                        @if (rental.IsOverdue)
-                        {
-                            <MudChip T="string" Color="Color.Error" Size="Size.Small">OVERDUE</MudChip>
-                        }
-                    </MudStack>
-                </MudStack>
+                        @* Right: Due date + Status *@
+                        <div class="text-end">
+                            <small class="text-secondary">
+                                Day @rental.CurrentDay of @rental.TotalDays
+                            </small>
+                            <div class="@GetDueColorClass(rental) small fw-medium">
+                                @GetDueText(rental)
+                            </div>
+                            @if (rental.IsOverdue)
+                            {
+                                <span class="badge bg-danger">OVERDUE</span>
+                            }
+                        </div>
+                    </div>
 
-                @* Action Buttons *@
-                <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="1" Class="mt-2">
-                    <MudButton Variant="Variant.Text" Color="Color.Default" Size="Size.Small"
-                               StartIcon="@Icons.Material.Filled.Phone"
-                               OnClick="@(() => CallRenter(rental))"
-                               OnClickStopPropagation="true">
-                        Call
-                    </MudButton>
-                    <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
-                               StartIcon="@Icons.Material.Filled.AddCircle"
-                               OnClick="@(() => ExtendRental(rental))"
-                               OnClickStopPropagation="true">
-                        Extend
-                    </MudButton>
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
-                               StartIcon="@Icons.Material.Filled.Logout"
-                               OnClick="@(() => ProcessReturn(rental))"
-                               OnClickStopPropagation="true">
-                        Return
-                    </MudButton>
-                </MudStack>
-            </MudPaper>
+                    @* Action Buttons *@
+                    <div class="d-flex justify-content-end gap-1 mt-2" @onclick:stopPropagation="true">
+                        <button type="button" class="btn btn-sm btn-ghost-secondary"
+                                @onclick="@(() => CallRenter(rental))">
+                            <i class="ti ti-phone me-1"></i>
+                            Call
+                        </button>
+                        <button type="button" class="btn btn-sm btn-ghost-primary"
+                                @onclick="@(() => ExtendRental(rental))">
+                            <i class="ti ti-calendar-plus me-1"></i>
+                            Extend
+                        </button>
+                        <button type="button" class="btn btn-sm btn-primary"
+                                @onclick="@(() => ProcessReturn(rental))">
+                            <i class="ti ti-logout me-1"></i>
+                            Return
+                        </button>
+                    </div>
+                </div>
+            </div>
         }
-    </MudStack>
+    </div>
 }
 
 <style>
     .rental-card {
         border-radius: 12px;
-        cursor: pointer;
         transition: transform 0.15s ease, box-shadow 0.15s ease;
     }
 
@@ -140,15 +139,15 @@ else
     }
 
     .status-ok {
-        background-color: var(--mud-palette-success);
+        background-color: var(--tblr-success);
     }
 
     .status-due-soon {
-        background-color: var(--mud-palette-warning);
+        background-color: var(--tblr-warning);
     }
 
     .status-overdue {
-        background-color: var(--mud-palette-error);
+        background-color: var(--tblr-danger);
     }
 </style>
 
@@ -165,10 +164,10 @@ else
     {
         get
         {
-            var query = m_allRentals.AsEnumerable();
+            var query = this.m_allRentals.AsEnumerable();
 
             // Apply status filter
-            query = m_selectedFilter switch
+            query = this.m_selectedFilter switch
             {
                 "active" => query.Where(r => r.Status == "Active" && !r.IsOverdue),
                 "duetoday" => query.Where(r => r.DueDate.Date == DateTime.Today),
@@ -177,9 +176,9 @@ else
             };
 
             // Apply search filter
-            if (!string.IsNullOrWhiteSpace(m_searchText))
+            if (!string.IsNullOrWhiteSpace(this.m_searchText))
             {
-                var search = m_searchText.ToLowerInvariant();
+                var search = this.m_searchText.ToLowerInvariant();
                 query = query.Where(r =>
                     r.RenterName.Contains(search, StringComparison.OrdinalIgnoreCase) ||
                     r.LicensePlate.Contains(search, StringComparison.OrdinalIgnoreCase) ||
@@ -194,26 +193,26 @@ else
     protected override async Task OnInitializedAsync()
     {
         // Set filter from query string
-        if (!string.IsNullOrEmpty(Filter))
+        if (!string.IsNullOrEmpty(this.Filter))
         {
-            m_selectedFilter = Filter.ToLowerInvariant();
+            this.m_selectedFilter = this.Filter.ToLowerInvariant();
         }
 
-        await LoadDataAsync();
+        await this.LoadDataAsync();
     }
 
     private async Task LoadDataAsync()
     {
         try
         {
-            m_loading = true;
+            this.m_loading = true;
 
             // TODO: Replace with actual service call
             // var rentals = await RentalService.GetActiveRentalsAsync();
 
             // Placeholder data
             await Task.Delay(300); // Simulate loading
-            m_allRentals =
+            this.m_allRentals =
             [
                 new(1, "John Smith", "+66 812 345 6789", "Honda Click 125", "A-1234",
                     DateTime.Today.AddDays(2), DateTime.Today.AddDays(-2), "Active"),
@@ -233,25 +232,30 @@ else
         }
         finally
         {
-            m_loading = false;
+            this.m_loading = false;
         }
     }
 
-    private string GetStatusClass(RentalDisplayItem rental)
+    private void SetFilter(string filter)
+    {
+        this.m_selectedFilter = filter;
+    }
+
+    private static string GetStatusClass(RentalDisplayItem rental)
     {
         if (rental.IsOverdue) return "status-overdue";
         if (rental.DueDate.Date <= DateTime.Today) return "status-due-soon";
         return "status-ok";
     }
 
-    private Color GetDueColor(RentalDisplayItem rental)
+    private static string GetDueColorClass(RentalDisplayItem rental)
     {
-        if (rental.IsOverdue) return Color.Error;
-        if (rental.DueDate.Date <= DateTime.Today) return Color.Warning;
-        return Color.Default;
+        if (rental.IsOverdue) return "text-danger";
+        if (rental.DueDate.Date <= DateTime.Today) return "text-warning";
+        return "text-secondary";
     }
 
-    private string GetDueText(RentalDisplayItem rental)
+    private static string GetDueText(RentalDisplayItem rental)
     {
         if (rental.IsOverdue)
         {
@@ -275,31 +279,26 @@ else
     private void ShowDetails(RentalDisplayItem rental)
     {
         // TODO: Show rental details dialog
-        NavigationManager.NavigateTo($"/rentals/{rental.RentalId}");
+        this.NavigationManager.NavigateTo($"/rentals/{rental.RentalId}");
     }
 
     private void CallRenter(RentalDisplayItem rental)
     {
-        NavigationManager.NavigateTo($"tel:{rental.Phone}", forceLoad: true);
+        this.NavigationManager.NavigateTo($"tel:{rental.Phone}", forceLoad: true);
     }
 
     private async Task ExtendRental(RentalDisplayItem rental)
     {
-        // TODO: Show extend rental dialog
-        var result = await DialogService.ShowMessageBox(
-            "Extend Rental",
-            $"Extend rental for {rental.RenterName}?",
-            yesText: "Extend", cancelText: "Cancel");
+        if (!await this.DialogService.ConfirmAsync($"Extend rental for {rental.RenterName}?", "Extend Rental"))
+            return;
 
-        if (result == true)
-        {
-            // TODO: Process extension
-        }
+        // TODO: Process extension
+        this.ShowSuccess("Rental extended successfully");
     }
 
     private void ProcessReturn(RentalDisplayItem rental)
     {
-        NavigationManager.NavigateTo($"/staff/return?rentalId={rental.RentalId}");
+        this.NavigationManager.NavigateTo($"/staff/return?rentalId={rental.RentalId}");
     }
 
     private record RentalDisplayItem(

@@ -1,172 +1,183 @@
 @using MotoRent.Domain.Core
+@inherits MotoRentComponentBase
 @inject IDirectoryService DirectoryService
-@inject ISnackbar Snackbar
 
-<MudDialog>
-    <DialogContent>
-        <MudForm @ref="m_form" @bind-IsValid="@m_isValid">
-            <MudGrid>
-                <MudItem xs="12" md="6">
-                    <MudTextField @bind-Value="m_organization.Name" Label="Organization Name" Required="true"
-                                  RequiredError="Name is required" Immediate="true" />
-                </MudItem>
-                <MudItem xs="12" md="6">
-                    <MudTextField Value="@m_organization.AccountNo" Label="Account No (Schema)"
-                                  Disabled="true" HelperText="Cannot be changed after creation" />
-                </MudItem>
+<form id="edit-org-form" @onsubmit="SaveOrganization" @onsubmit:preventDefault>
+    <div class="modal-body">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label required">Organization Name</label>
+                <input type="text" class="form-control" @bind="m_organization.Name" required />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Account No (Schema)</label>
+                <input type="text" class="form-control" value="@m_organization.AccountNo" disabled />
+                <small class="form-hint">Cannot be changed after creation</small>
+            </div>
 
-                <MudItem xs="12">
-                    <MudText Typo="Typo.subtitle2" Class="mt-2 mb-2">Contact Information</MudText>
-                </MudItem>
+            <div class="col-12">
+                <h4 class="subheader mt-2 mb-2">Contact Information</h4>
+            </div>
 
-                <MudItem xs="12" md="6">
-                    <MudTextField @bind-Value="m_organization.Email" Label="Email"
-                                  InputType="InputType.Email" />
-                </MudItem>
-                <MudItem xs="12" md="6">
-                    <MudTextField @bind-Value="m_organization.Phone" Label="Phone" />
-                </MudItem>
+            <div class="col-md-6">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-control" @bind="m_organization.Email" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Phone</label>
+                <input type="tel" class="form-control" @bind="m_organization.Phone" />
+            </div>
 
-                <MudItem xs="12">
-                    <MudText Typo="Typo.subtitle2" Class="mt-2 mb-2">Address</MudText>
-                </MudItem>
+            <div class="col-12">
+                <h4 class="subheader mt-2 mb-2">Address</h4>
+            </div>
 
-                <MudItem xs="12">
-                    <MudTextField @bind-Value="m_organization.Address.Street" Label="Street" />
-                </MudItem>
-                <MudItem xs="12" md="6">
-                    <MudTextField @bind-Value="m_organization.Address.City" Label="City" />
-                </MudItem>
-                <MudItem xs="12" md="6">
-                    <MudTextField @bind-Value="m_organization.Address.Province" Label="Province/State" />
-                </MudItem>
-                <MudItem xs="12" md="6">
-                    <MudTextField @bind-Value="m_organization.Address.PostalCode" Label="Postal Code" />
-                </MudItem>
-                <MudItem xs="12" md="6">
-                    <MudTextField @bind-Value="m_organization.Address.Country" Label="Country" />
-                </MudItem>
+            <div class="col-12">
+                <label class="form-label">Street</label>
+                <input type="text" class="form-control" @bind="m_organization.Address.Street" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">City</label>
+                <input type="text" class="form-control" @bind="m_organization.Address.City" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Province/State</label>
+                <input type="text" class="form-control" @bind="m_organization.Address.Province" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Postal Code</label>
+                <input type="text" class="form-control" @bind="m_organization.Address.PostalCode" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Country</label>
+                <input type="text" class="form-control" @bind="m_organization.Address.Country" />
+            </div>
 
-                <MudItem xs="12">
-                    <MudText Typo="Typo.subtitle2" Class="mt-2 mb-2">Regional Settings</MudText>
-                </MudItem>
+            <div class="col-12">
+                <h4 class="subheader mt-2 mb-2">Regional Settings</h4>
+            </div>
 
-                <MudItem xs="12" md="4">
-                    <MudSelect T="string" @bind-Value="m_organization.Currency" Label="Currency">
-                        <MudSelectItem Value="@("THB")">THB - Thai Baht</MudSelectItem>
-                        <MudSelectItem Value="@("USD")">USD - US Dollar</MudSelectItem>
-                        <MudSelectItem Value="@("EUR")">EUR - Euro</MudSelectItem>
-                        <MudSelectItem Value="@("MYR")">MYR - Malaysian Ringgit</MudSelectItem>
-                    </MudSelect>
-                </MudItem>
-                <MudItem xs="12" md="4">
-                    <MudSelect T="string" @bind-Value="m_organization.Language" Label="Language">
-                        <MudSelectItem Value="@("th-TH")">Thai</MudSelectItem>
-                        <MudSelectItem Value="@("en")">English</MudSelectItem>
-                    </MudSelect>
-                </MudItem>
-                <MudItem xs="12" md="4">
-                    <MudNumericField @bind-Value="m_timezone" Label="Timezone (UTC offset)" Min="-12" Max="14" />
-                </MudItem>
+            <div class="col-md-4">
+                <label class="form-label">Currency</label>
+                <select class="form-select" @bind="m_organization.Currency">
+                    <option value="THB">THB - Thai Baht</option>
+                    <option value="USD">USD - US Dollar</option>
+                    <option value="EUR">EUR - Euro</option>
+                    <option value="MYR">MYR - Malaysian Ringgit</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Language</label>
+                <select class="form-select" @bind="m_organization.Language">
+                    <option value="th-TH">Thai</option>
+                    <option value="en">English</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Timezone (UTC offset)</label>
+                <input type="number" class="form-control" @bind="m_timezone" min="-12" max="14" />
+            </div>
 
-                <MudItem xs="12">
-                    <MudText Typo="Typo.subtitle2" Class="mt-2 mb-2">Status</MudText>
-                </MudItem>
+            <div class="col-12">
+                <h4 class="subheader mt-2 mb-2">Status</h4>
+            </div>
 
-                <MudItem xs="12">
-                    <MudSwitch @bind-Value="m_organization.IsActive" Color="Color.Success"
-                               Label="@(m_organization.IsActive ? "Active" : "Inactive")" />
-                </MudItem>
-            </MudGrid>
-        </MudForm>
-    </DialogContent>
-    <DialogActions>
-        <MudButton OnClick="Cancel" Disabled="@m_isSaving">Cancel</MudButton>
-        <MudButton Color="Color.Primary" OnClick="SaveOrganization"
-                   Disabled="@(!m_isValid || m_isSaving)">
-            @if (m_isSaving)
-            {
-                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                <span>Saving...</span>
-            }
-            else
-            {
-                <span>Save Changes</span>
-            }
-        </MudButton>
-    </DialogActions>
-</MudDialog>
+            <div class="col-12">
+                <label class="form-check form-switch">
+                    <input type="checkbox" class="form-check-input" @bind="m_organization.IsActive" />
+                    <span class="form-check-label">@(m_organization.IsActive ? "Active" : "Inactive")</span>
+                </label>
+            </div>
+        </div>
+    </div>
+</form>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel" disabled="@m_isSaving">
+        Cancel
+    </button>
+    <button type="submit" form="edit-org-form" class="btn btn-primary" disabled="@m_isSaving">
+        @if (m_isSaving)
+        {
+            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+            <span>Saving...</span>
+        }
+        else
+        {
+            <i class="ti ti-device-floppy me-1"></i>
+            <span>Save Changes</span>
+        }
+    </button>
+</div>
 
 @code {
-    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = default!;
+    [CascadingParameter] private ModalInstance? ModalInstance { get; set; }
     [Parameter] public Organization Organization { get; set; } = null!;
 
-    private MudForm? m_form;
     private Organization m_organization = new();
     private double m_timezone = 7;
-    private bool m_isValid = true;
     private bool m_isSaving;
 
     protected override void OnParametersSet()
     {
         // Clone the organization for editing
-        m_organization = new Organization
+        this.m_organization = new Organization
         {
-            OrganizationId = Organization.OrganizationId,
-            AccountNo = Organization.AccountNo,
-            Name = Organization.Name,
-            Currency = Organization.Currency,
-            Timezone = Organization.Timezone,
-            Language = Organization.Language,
-            FirstDay = Organization.FirstDay,
-            Subscriptions = Organization.Subscriptions,
-            IsActive = Organization.IsActive,
-            WebSite = Organization.WebSite,
-            DefaultStartPage = Organization.DefaultStartPage,
-            CompanyNo = Organization.CompanyNo,
-            TaxNo = Organization.TaxNo,
-            LogoStoreId = Organization.LogoStoreId,
-            SmallLogoStoreId = Organization.SmallLogoStoreId,
-            Email = Organization.Email,
-            Phone = Organization.Phone,
+            OrganizationId = this.Organization.OrganizationId,
+            AccountNo = this.Organization.AccountNo,
+            Name = this.Organization.Name,
+            Currency = this.Organization.Currency,
+            Timezone = this.Organization.Timezone,
+            Language = this.Organization.Language,
+            FirstDay = this.Organization.FirstDay,
+            Subscriptions = this.Organization.Subscriptions,
+            IsActive = this.Organization.IsActive,
+            WebSite = this.Organization.WebSite,
+            DefaultStartPage = this.Organization.DefaultStartPage,
+            CompanyNo = this.Organization.CompanyNo,
+            TaxNo = this.Organization.TaxNo,
+            LogoStoreId = this.Organization.LogoStoreId,
+            SmallLogoStoreId = this.Organization.SmallLogoStoreId,
+            Email = this.Organization.Email,
+            Phone = this.Organization.Phone,
             Address = new Address
             {
-                Street = Organization.Address?.Street,
-                City = Organization.Address?.City,
-                Province = Organization.Address?.Province,
-                PostalCode = Organization.Address?.PostalCode,
-                Country = Organization.Address?.Country ?? "Thailand"
+                Street = this.Organization.Address?.Street,
+                City = this.Organization.Address?.City,
+                Province = this.Organization.Address?.Province,
+                PostalCode = this.Organization.Address?.PostalCode,
+                Country = this.Organization.Address?.Country ?? "Thailand"
             }
         };
-        m_timezone = m_organization.Timezone ?? 7;
+        this.m_timezone = this.m_organization.Timezone ?? 7;
     }
 
-    private void Cancel() => MudDialog.Cancel();
+    private void Cancel() => this.ModalInstance?.Cancel();
 
     private async Task SaveOrganization()
     {
-        if (m_form != null)
+        if (string.IsNullOrWhiteSpace(this.m_organization.Name))
         {
-            await m_form.Validate();
-            if (!m_isValid) return;
+            this.ShowError("Organization name is required");
+            return;
         }
 
-        m_isSaving = true;
+        this.m_isSaving = true;
 
         try
         {
-            m_organization.Timezone = m_timezone;
-            await DirectoryService.SaveOrganizationAsync(m_organization);
+            this.m_organization.Timezone = this.m_timezone;
+            await this.DirectoryService.SaveOrganizationAsync(this.m_organization);
 
-            MudDialog.Close(DialogResult.Ok(m_organization));
+            this.ModalInstance?.Close(this.m_organization);
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error saving organization: {ex.Message}", Severity.Error);
+            this.ShowError($"Error saving organization: {ex.Message}");
         }
         finally
         {
-            m_isSaving = false;
+            this.m_isSaving = false;
         }
     }
 }

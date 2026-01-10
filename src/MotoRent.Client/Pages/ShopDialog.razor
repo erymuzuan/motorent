@@ -1,169 +1,165 @@
-@using MotoRent.Domain.Entities
-@using MotoRent.Services
+@inherits LocalizedDialogBase<Shop, ShopDialog>
 @inject ShopService ShopService
-@inject ISnackbar Snackbar
 
-<MudDialog>
-    <DialogContent>
-        <MudForm @ref="m_form" @bind-IsValid="m_formValid">
-            <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pt-4">
-                <MudTabPanel Text="Basic Info" Icon="@Icons.Material.Filled.Store">
-                    <MudGrid>
-                        <MudItem xs="12" md="6">
-                            <MudTextField @bind-Value="Shop.Name" Label="Shop Name"
-                                          Required="true" RequiredError="Shop name is required"
-                                          Variant="Variant.Outlined"
-                                          Placeholder="e.g., MotoRent Patong Beach" />
-                        </MudItem>
+<form id="@FormId" @onsubmit="SaveAsync" @onsubmit:preventDefault>
+    <div class="modal-body">
+        <ul class="nav nav-tabs mb-3" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button type="button" class="nav-link @(m_activeTab == "basic" ? "active" : "")"
+                        @onclick="@(() => m_activeTab = "basic")">
+                    <i class="ti ti-building-store me-1"></i>
+                    Basic Info
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button type="button" class="nav-link @(m_activeTab == "terms" ? "active" : "")"
+                        @onclick="@(() => m_activeTab = "terms")">
+                    <i class="ti ti-file-text me-1"></i>
+                    Terms & Conditions
+                </button>
+            </li>
+        </ul>
 
-                        <MudItem xs="12" md="6">
-                            <MudSelect @bind-Value="Shop.Location" Label="Location/Area"
-                                       Required="true" RequiredError="Location is required"
-                                       Variant="Variant.Outlined">
-                                <MudSelectItem Value="@("Phuket - Patong")">Phuket - Patong</MudSelectItem>
-                                <MudSelectItem Value="@("Phuket - Kata")">Phuket - Kata</MudSelectItem>
-                                <MudSelectItem Value="@("Phuket - Karon")">Phuket - Karon</MudSelectItem>
-                                <MudSelectItem Value="@("Phuket - Kamala")">Phuket - Kamala</MudSelectItem>
-                                <MudSelectItem Value="@("Phuket - Rawai")">Phuket - Rawai</MudSelectItem>
-                                <MudSelectItem Value="@("Krabi - Ao Nang")">Krabi - Ao Nang</MudSelectItem>
-                                <MudSelectItem Value="@("Krabi - Railay")">Krabi - Railay</MudSelectItem>
-                                <MudSelectItem Value="@("Koh Samui")">Koh Samui</MudSelectItem>
-                                <MudSelectItem Value="@("Koh Phangan")">Koh Phangan</MudSelectItem>
-                                <MudSelectItem Value="@("Chiang Mai")">Chiang Mai</MudSelectItem>
-                                <MudSelectItem Value="@("Pai")">Pai</MudSelectItem>
-                                <MudSelectItem Value="@("Bangkok")">Bangkok</MudSelectItem>
-                                <MudSelectItem Value="@("Pattaya")">Pattaya</MudSelectItem>
-                                <MudSelectItem Value="@("Other")">Other</MudSelectItem>
-                            </MudSelect>
-                        </MudItem>
+        <div class="tab-content">
+            @* Basic Info Tab *@
+            <div class="tab-pane fade @(m_activeTab == "basic" ? "show active" : "")">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label required">Shop Name</label>
+                        <input type="text" class="form-control" @bind="Entity.Name" required
+                               placeholder="e.g., MotoRent Patong Beach" />
+                    </div>
 
-                        <MudItem xs="12">
-                            <MudTextField @bind-Value="Shop.Address" Label="Full Address"
-                                          Required="true" RequiredError="Address is required"
-                                          Variant="Variant.Outlined" Lines="2"
-                                          Placeholder="Street address, city, postal code" />
-                        </MudItem>
+                    <div class="col-md-6">
+                        <label class="form-label required">Location/Area</label>
+                        <select class="form-select" @bind="Entity.Location" required>
+                            <option value="">Select location...</option>
+                            <option value="Phuket - Patong">Phuket - Patong</option>
+                            <option value="Phuket - Kata">Phuket - Kata</option>
+                            <option value="Phuket - Karon">Phuket - Karon</option>
+                            <option value="Phuket - Kamala">Phuket - Kamala</option>
+                            <option value="Phuket - Rawai">Phuket - Rawai</option>
+                            <option value="Krabi - Ao Nang">Krabi - Ao Nang</option>
+                            <option value="Krabi - Railay">Krabi - Railay</option>
+                            <option value="Koh Samui">Koh Samui</option>
+                            <option value="Koh Phangan">Koh Phangan</option>
+                            <option value="Chiang Mai">Chiang Mai</option>
+                            <option value="Pai">Pai</option>
+                            <option value="Bangkok">Bangkok</option>
+                            <option value="Pattaya">Pattaya</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
 
-                        <MudItem xs="12" md="6">
-                            <MudTextField @bind-Value="Shop.Phone" Label="Phone Number"
-                                          Required="true" RequiredError="Phone is required"
-                                          Variant="Variant.Outlined"
-                                          Placeholder="+66 XX XXX XXXX"
-                                          InputType="InputType.Telephone" />
-                        </MudItem>
+                    <div class="col-12">
+                        <label class="form-label required">Full Address</label>
+                        <textarea class="form-control" @bind="Entity.Address" required rows="2"
+                                  placeholder="Street address, city, postal code"></textarea>
+                    </div>
 
-                        <MudItem xs="12" md="6">
-                            <MudTextField @bind-Value="Shop.Email" Label="Email Address"
-                                          Variant="Variant.Outlined"
-                                          Placeholder="shop@motorent.com"
-                                          InputType="InputType.Email" />
-                        </MudItem>
+                    <div class="col-md-6">
+                        <label class="form-label required">Phone Number</label>
+                        <input type="tel" class="form-control" @bind="Entity.Phone" required
+                               placeholder="+66 XX XXX XXXX" />
+                    </div>
 
-                        <MudItem xs="12">
-                            <MudSwitch @bind-Value="Shop.IsActive" Label="Active"
-                                       Color="Color.Primary" />
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                Inactive shops won't appear in selection lists
-                            </MudText>
-                        </MudItem>
-                    </MudGrid>
-                </MudTabPanel>
+                    <div class="col-md-6">
+                        <label class="form-label">Email Address</label>
+                        <input type="email" class="form-control" @bind="Entity.Email"
+                               placeholder="shop@motorent.com" />
+                    </div>
 
-                <MudTabPanel Text="Terms & Conditions" Icon="@Icons.Material.Filled.Description">
-                    <MudGrid>
-                        <MudItem xs="12">
-                            <MudText Typo="Typo.subtitle2" Class="mb-2">Rental Agreement Terms</MudText>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-4">
-                                These terms will be displayed to renters during check-in and included in the rental agreement.
-                            </MudText>
-                            <MudTextField @bind-Value="Shop.TermsAndConditions" Label="Terms & Conditions"
-                                          Variant="Variant.Outlined" Lines="12"
-                                          Placeholder="Enter your rental terms and conditions..." />
-                        </MudItem>
+                    <div class="col-12">
+                        <label class="form-check form-switch">
+                            <input type="checkbox" class="form-check-input" @bind="Entity.IsActive" />
+                            <span class="form-check-label">Active</span>
+                        </label>
+                        <small class="form-hint">Inactive shops won't appear in selection lists</small>
+                    </div>
+                </div>
+            </div>
 
-                        @if (string.IsNullOrEmpty(Shop.TermsAndConditions))
-                        {
-                            <MudItem xs="12">
-                                <MudButton Variant="Variant.Outlined" Color="Color.Primary"
-                                           OnClick="InsertDefaultTerms">
-                                    Insert Default Terms
-                                </MudButton>
-                            </MudItem>
-                        }
-                    </MudGrid>
-                </MudTabPanel>
-            </MudTabs>
-        </MudForm>
-    </DialogContent>
-    <DialogActions>
-        <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary" Variant="Variant.Filled"
-                   OnClick="SaveAsync" Disabled="@(!m_formValid || m_saving)">
-            @if (m_saving)
-            {
-                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-            }
-            @(IsNew ? "Add Shop" : "Save Changes")
-        </MudButton>
-    </DialogActions>
-</MudDialog>
+            @* Terms & Conditions Tab *@
+            <div class="tab-pane fade @(m_activeTab == "terms" ? "show active" : "")">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <h6 class="mb-2">Rental Agreement Terms</h6>
+                        <p class="text-secondary small mb-3">
+                            These terms will be displayed to renters during check-in and included in the rental agreement.
+                        </p>
+                        <textarea class="form-control" @bind="Entity.TermsAndConditions" rows="15"
+                                  placeholder="Enter your rental terms and conditions..."></textarea>
+                    </div>
+
+                    @if (string.IsNullOrEmpty(Entity.TermsAndConditions))
+                    {
+                        <div class="col-12">
+                            <button type="button" class="btn btn-outline-primary" @onclick="InsertDefaultTerms">
+                                <i class="ti ti-file-plus me-1"></i>
+                                Insert Default Terms
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
+        Cancel
+    </button>
+    <button type="submit" form="@FormId" class="btn btn-primary" disabled="@Saving">
+        @if (Saving)
+        {
+            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+        }
+        <i class="ti ti-device-floppy me-1"></i>
+        @SaveButtonText
+    </button>
+</div>
 
 @code {
-    [CascadingParameter]
-    private MudDialogInstance? MudDialog { get; set; }
+    private string m_activeTab = "basic";
 
-    [Parameter]
-    public Shop Shop { get; set; } = new();
-
-    [Parameter]
-    public bool IsNew { get; set; }
-
-    private MudForm? m_form;
-    private bool m_formValid;
-    private bool m_saving;
-
-    private void Cancel()
+    protected override void OnInitialized()
     {
-        MudDialog?.Cancel();
+        this.FormValid = true;
     }
 
     private async Task SaveAsync()
     {
-        if (m_form == null) return;
-
-        await m_form.Validate();
-        if (!m_formValid) return;
-
-        m_saving = true;
+        this.Saving = true;
 
         try
         {
-            var result = IsNew
-                ? await ShopService.CreateShopAsync(Shop, "system")
-                : await ShopService.UpdateShopAsync(Shop, "system");
+            var result = this.IsNew
+                ? await this.ShopService.CreateShopAsync(this.Entity, this.UserName)
+                : await this.ShopService.UpdateShopAsync(this.Entity, this.UserName);
 
             if (result.Success)
             {
-                MudDialog?.Close(DialogResult.Ok(Shop));
+                this.Close();
             }
             else
             {
-                Snackbar.Add($"Save failed: {result.Message}", Severity.Error);
+                this.ShowError($"Save failed: {result.Message}");
             }
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            this.ShowError($"Error: {ex.Message}");
         }
         finally
         {
-            m_saving = false;
+            this.Saving = false;
         }
     }
 
     private void InsertDefaultTerms()
     {
-        Shop.TermsAndConditions = """
+        this.Entity.TermsAndConditions = """
             RENTAL AGREEMENT TERMS AND CONDITIONS
 
             1. RENTAL PERIOD

@@ -1,179 +1,168 @@
 @page "/payments"
-@inherits MotoRentComponentBase
-@using MotoRent.Domain.Entities
-@using MotoRent.Services
+@inherits LocalizedComponentBase<Payments>
 @inject PaymentService PaymentService
 @inject RentalService RentalService
 
-<PageTitle>Payments - MotoRent</PageTitle>
+<MotoRentPageTitle>Payments</MotoRentPageTitle>
 
-<MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
-    <MudText Typo="Typo.h4">Payments</MudText>
-    <MudButton Variant="Variant.Filled" Color="Color.Primary"
-               StartIcon="@Icons.Material.Filled.Add" OnClick="OpenAddPaymentDialog">
+<TablerHeader Title="Payments" PreTitle="Finance">
+    <button type="button" class="btn btn-primary" @onclick="OpenAddPaymentDialog">
+        <i class="ti ti-plus me-1"></i>
         Record Payment
-    </MudButton>
-</MudStack>
+    </button>
+</TablerHeader>
 
-<MudPaper Elevation="2" Class="pa-4 mb-4">
-    <MudGrid>
-        <MudItem xs="12" md="3">
-            <MudSelect T="string" Value="m_statusFilter" Label="Status"
-                       Variant="Variant.Outlined" Dense="true" Clearable="true"
-                       ValueChanged="@(async (string? s) => { m_statusFilter = s; await FilterChanged(); })">
-                <MudSelectItem Value="@("Completed")">Completed</MudSelectItem>
-                <MudSelectItem Value="@("Pending")">Pending</MudSelectItem>
-                <MudSelectItem Value="@("Refunded")">Refunded</MudSelectItem>
-            </MudSelect>
-        </MudItem>
-        <MudItem xs="12" md="3">
-            <MudSelect T="string" Value="m_paymentMethodFilter" Label="Payment Method"
-                       Variant="Variant.Outlined" Dense="true" Clearable="true"
-                       ValueChanged="@(async (string? s) => { m_paymentMethodFilter = s; await FilterChanged(); })">
-                <MudSelectItem Value="@("Cash")">Cash</MudSelectItem>
-                <MudSelectItem Value="@("Card")">Card</MudSelectItem>
-                <MudSelectItem Value="@("PromptPay")">PromptPay</MudSelectItem>
-                <MudSelectItem Value="@("BankTransfer")">Bank Transfer</MudSelectItem>
-            </MudSelect>
-        </MudItem>
-        <MudItem xs="12" md="3">
-            <MudDatePicker Date="m_fromDate" Label="From Date"
-                           Variant="Variant.Outlined" Editable="true"
-                           Clearable="true" DateChanged="@(async (DateTime? d) => { m_fromDate = d; await FilterChanged(); })" />
-        </MudItem>
-        <MudItem xs="12" md="3">
-            <MudDatePicker Date="m_toDate" Label="To Date"
-                           Variant="Variant.Outlined" Editable="true"
-                           Clearable="true" DateChanged="@(async (DateTime? d) => { m_toDate = d; await FilterChanged(); })" />
-        </MudItem>
-    </MudGrid>
-</MudPaper>
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-3">
+                <select class="form-select" @bind="m_statusFilter" @bind:after="FilterChanged">
+                    <option value="">All Status</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Refunded">Refunded</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" @bind="m_paymentMethodFilter" @bind:after="FilterChanged">
+                    <option value="">All Methods</option>
+                    <option value="Cash">Cash</option>
+                    <option value="Card">Card</option>
+                    <option value="PromptPay">PromptPay</option>
+                    <option value="BankTransfer">Bank Transfer</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <input type="date" class="form-control" @bind="m_fromDate" @bind:after="FilterChanged" />
+            </div>
+            <div class="col-md-3">
+                <input type="date" class="form-control" @bind="m_toDate" @bind:after="FilterChanged" />
+            </div>
+        </div>
+    </div>
+</div>
 
-@* Summary Cards *@
-<MudGrid Class="mb-4">
-    <MudItem xs="6" md="3">
-        <MudPaper Elevation="2" Class="pa-4">
-            <MudStack Spacing="1">
-                <MudText Typo="Typo.caption" Color="Color.Secondary">Total Payments</MudText>
-                <MudText Typo="Typo.h5" Color="Color.Primary">@FormatCurrency(m_totalAmount)</MudText>
-            </MudStack>
-        </MudPaper>
-    </MudItem>
-    <MudItem xs="6" md="3">
-        <MudPaper Elevation="2" Class="pa-4">
-            <MudStack Spacing="1">
-                <MudText Typo="Typo.caption" Color="Color.Secondary">Cash</MudText>
-                <MudText Typo="Typo.h5">@FormatCurrency(m_cashAmount)</MudText>
-            </MudStack>
-        </MudPaper>
-    </MudItem>
-    <MudItem xs="6" md="3">
-        <MudPaper Elevation="2" Class="pa-4">
-            <MudStack Spacing="1">
-                <MudText Typo="Typo.caption" Color="Color.Secondary">Card</MudText>
-                <MudText Typo="Typo.h5">@FormatCurrency(m_cardAmount)</MudText>
-            </MudStack>
-        </MudPaper>
-    </MudItem>
-    <MudItem xs="6" md="3">
-        <MudPaper Elevation="2" Class="pa-4">
-            <MudStack Spacing="1">
-                <MudText Typo="Typo.caption" Color="Color.Secondary">PromptPay/Transfer</MudText>
-                <MudText Typo="Typo.h5">@FormatCurrency(m_otherAmount)</MudText>
-            </MudStack>
-        </MudPaper>
-    </MudItem>
-</MudGrid>
+<div class="row row-deck row-cards mb-3">
+    <div class="col-6 col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="subheader">Total Payments</div>
+                <div class="h2 text-primary">@FormatCurrency(m_totalAmount)</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="subheader">Cash</div>
+                <div class="h4">@FormatCurrency(m_cashAmount)</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="subheader">Card</div>
+                <div class="h4">@FormatCurrency(m_cardAmount)</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="subheader">PromptPay/Transfer</div>
+                <div class="h4">@FormatCurrency(m_otherAmount)</div>
+            </div>
+        </div>
+    </div>
+</div>
 
-@if (m_loading)
-{
-    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
-}
-
-<MudPaper Elevation="2">
-    <MudDataGrid T="PaymentViewModel" Items="@m_payments" Hover="true" Striped="true"
-                 Loading="@m_loading" Dense="true">
-        <Columns>
-            <PropertyColumn Property="x => x.Payment.PaymentId" Title="ID" />
-            <TemplateColumn Title="Rental">
-                <CellTemplate>
-                    <MudLink Href="@($"/rentals/{context.Item.Payment.RentalId}")">
-                        #@context.Item.Payment.RentalId
-                    </MudLink>
-                </CellTemplate>
-            </TemplateColumn>
-            <TemplateColumn Title="Type">
-                <CellTemplate>
-                    <MudChip T="string" Size="Size.Small" Color="@GetPaymentTypeColor(context.Item.Payment.PaymentType)">
-                        @context.Item.Payment.PaymentType
-                    </MudChip>
-                </CellTemplate>
-            </TemplateColumn>
-            <TemplateColumn Title="Method">
-                <CellTemplate>
-                    <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
-                        <MudIcon Icon="@GetPaymentMethodIcon(context.Item.Payment.PaymentMethod)" Size="Size.Small" />
-                        <MudText Typo="Typo.body2">@context.Item.Payment.PaymentMethod</MudText>
-                    </MudStack>
-                </CellTemplate>
-            </TemplateColumn>
-            <TemplateColumn Title="Amount">
-                <CellTemplate>
-                    <MudText Color="@(context.Item.Payment.PaymentType == "Refund" ? Color.Error : Color.Primary)"
-                             Style="font-weight: 600;">
-                        @(context.Item.Payment.PaymentType == "Refund" ? "-" : "")@FormatCurrency(context.Item.Payment.Amount)
-                    </MudText>
-                </CellTemplate>
-            </TemplateColumn>
-            <TemplateColumn Title="Status">
-                <CellTemplate>
-                    <MudChip T="string" Size="Size.Small" Color="@GetStatusColor(context.Item.Payment.Status)">
-                        @context.Item.Payment.Status
-                    </MudChip>
-                </CellTemplate>
-            </TemplateColumn>
-            <TemplateColumn Title="Date">
-                <CellTemplate>
-                    <MudStack Spacing="0">
-                        <MudText Typo="Typo.body2">@FormatDate(context.Item.Payment.PaidOn)</MudText>
-                        <MudText Typo="Typo.caption" Color="Color.Secondary">@context.Item.Payment.PaidOn.ToString("HH:mm")</MudText>
-                    </MudStack>
-                </CellTemplate>
-            </TemplateColumn>
-            <PropertyColumn Property="x => x.Payment.TransactionRef" Title="Reference" />
-            <TemplateColumn Title="Actions" Sortable="false">
-                <CellTemplate>
-                    <MudStack Row="true" Spacing="1">
-                        <MudTooltip Text="View Details">
-                            <MudIconButton Icon="@Icons.Material.Filled.Visibility" Size="Size.Small"
-                                           OnClick="@(() => ViewPayment(context.Item.Payment))" />
-                        </MudTooltip>
-                        @if (context.Item.Payment.Status == "Completed" && context.Item.Payment.PaymentType != "Refund")
+<LoadingSkeleton Loading="@m_loading" Mode="LoadingSkeleton.PlaceholderMode.Table" Rows="10" Columns="8">
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-vcenter card-table table-striped">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Rental</th>
+                        <th>Type</th>
+                        <th>Method</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                        <th>Reference</th>
+                        <th class="w-1">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (m_payments.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="9" class="text-center text-secondary py-4">
+                                <i class="ti ti-credit-card mb-2" style="font-size: 2rem;"></i>
+                                <div>No payments found</div>
+                                <button type="button" class="btn btn-outline-primary btn-sm mt-2" @onclick="OpenAddPaymentDialog">
+                                    Record Payment
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var item in m_payments)
                         {
-                            <MudTooltip Text="Refund">
-                                <MudIconButton Icon="@Icons.Material.Filled.Undo" Size="Size.Small"
-                                               Color="Color.Warning"
-                                               OnClick="@(() => RefundPayment(context.Item.Payment))" />
-                            </MudTooltip>
+                            <tr>
+                                <td>@item.Payment.PaymentId</td>
+                                <td>
+                                    <a href="/rentals?id=@item.Payment.RentalId">#@item.Payment.RentalId</a>
+                                </td>
+                                <td>
+                                    <span class="badge @GetPaymentTypeBadgeClass(item.Payment.PaymentType)">
+                                        @item.Payment.PaymentType
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-1">
+                                        <i class="@GetPaymentMethodIcon(item.Payment.PaymentMethod)"></i>
+                                        @item.Payment.PaymentMethod
+                                    </div>
+                                </td>
+                                <td class="@(item.Payment.PaymentType == "Refund" ? "text-danger" : "text-primary") fw-bold">
+                                    @(item.Payment.PaymentType == "Refund" ? "-" : "")@FormatCurrency(item.Payment.Amount)
+                                </td>
+                                <td>
+                                    <span class="badge @GetStatusBadgeClass(item.Payment.Status)">
+                                        @item.Payment.Status
+                                    </span>
+                                </td>
+                                <td>
+                                    <div>@FormatDate(item.Payment.PaidOn)</div>
+                                    <small class="text-secondary">@item.Payment.PaidOn.ToString("HH:mm")</small>
+                                </td>
+                                <td>@item.Payment.TransactionRef</td>
+                                <td>
+                                    <div class="btn-list flex-nowrap">
+                                        <button type="button" class="btn btn-icon btn-ghost-primary" title="View"
+                                                @onclick="@(() => ViewPayment(item.Payment))">
+                                            <i class="ti ti-eye"></i>
+                                        </button>
+                                        @if (item.Payment.Status == "Completed" && item.Payment.PaymentType != "Refund")
+                                        {
+                                            <button type="button" class="btn btn-icon btn-ghost-warning" title="Refund"
+                                                    @onclick="@(() => RefundPayment(item.Payment))">
+                                                <i class="ti ti-arrow-back-up"></i>
+                                            </button>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
                         }
-                    </MudStack>
-                </CellTemplate>
-            </TemplateColumn>
-        </Columns>
-        <PagerContent>
-            <MudDataGridPager T="PaymentViewModel" PageSizeOptions="new[] { 10, 20, 50, 100 }" />
-        </PagerContent>
-        <NoRecordsContent>
-            <MudStack AlignItems="AlignItems.Center" Class="pa-8">
-                <MudIcon Icon="@Icons.Material.Filled.Payment" Size="Size.Large" Color="Color.Secondary" />
-                <MudText Color="Color.Secondary">No payments found</MudText>
-                <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="OpenAddPaymentDialog">
-                    Record Payment
-                </MudButton>
-            </MudStack>
-        </NoRecordsContent>
-    </MudDataGrid>
-</MudPaper>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</LoadingSkeleton>
 
 @code {
     private List<PaymentViewModel> m_payments = [];
@@ -183,7 +172,6 @@
     private DateTime? m_fromDate;
     private DateTime? m_toDate;
 
-    // Summary amounts
     private decimal m_totalAmount;
     private decimal m_cashAmount;
     private decimal m_cardAmount;
@@ -191,52 +179,50 @@
 
     protected override async Task OnInitializedAsync()
     {
-        // Default to current month
-        m_fromDate = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
-        m_toDate = DateTime.Today;
-        await LoadDataAsync();
+        this.m_fromDate = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+        this.m_toDate = DateTime.Today;
+        await this.LoadDataAsync();
     }
 
     private async Task LoadDataAsync()
     {
-        m_loading = true;
+        this.m_loading = true;
         try
         {
-            var fromDateOffset = m_fromDate.HasValue ? new DateTimeOffset(m_fromDate.Value) : (DateTimeOffset?)null;
-            var toDateOffset = m_toDate.HasValue ? new DateTimeOffset(m_toDate.Value.AddDays(1).AddSeconds(-1)) : (DateTimeOffset?)null;
+            var fromDateOffset = this.m_fromDate.HasValue ? new DateTimeOffset(this.m_fromDate.Value) : (DateTimeOffset?)null;
+            var toDateOffset = this.m_toDate.HasValue ? new DateTimeOffset(this.m_toDate.Value.AddDays(1).AddSeconds(-1)) : (DateTimeOffset?)null;
 
-            var result = await PaymentService.GetPaymentsAsync(
-                ShopId,
-                status: m_statusFilter,
-                paymentMethod: m_paymentMethodFilter,
+            var result = await this.PaymentService.GetPaymentsAsync(
+                this.ShopId,
+                status: this.m_statusFilter,
+                paymentMethod: this.m_paymentMethodFilter,
                 fromDate: fromDateOffset,
                 toDate: toDateOffset,
                 pageSize: 500);
 
-            m_payments = result.ItemCollection
+            this.m_payments = result.ItemCollection
                 .Select(p => new PaymentViewModel { Payment = p })
                 .ToList();
 
-            // Calculate summaries (only completed payments)
             var completedPayments = result.ItemCollection.Where(p => p.Status == "Completed").ToList();
-            m_totalAmount = completedPayments.Sum(p => p.PaymentType == "Refund" ? -p.Amount : p.Amount);
-            m_cashAmount = completedPayments.Where(p => p.PaymentMethod == "Cash").Sum(p => p.Amount);
-            m_cardAmount = completedPayments.Where(p => p.PaymentMethod == "Card").Sum(p => p.Amount);
-            m_otherAmount = completedPayments.Where(p => p.PaymentMethod is "PromptPay" or "BankTransfer").Sum(p => p.Amount);
+            this.m_totalAmount = completedPayments.Sum(p => p.PaymentType == "Refund" ? -p.Amount : p.Amount);
+            this.m_cashAmount = completedPayments.Where(p => p.PaymentMethod == "Cash").Sum(p => p.Amount);
+            this.m_cardAmount = completedPayments.Where(p => p.PaymentMethod == "Card").Sum(p => p.Amount);
+            this.m_otherAmount = completedPayments.Where(p => p.PaymentMethod is "PromptPay" or "BankTransfer").Sum(p => p.Amount);
         }
         catch (Exception ex)
         {
-            ShowError($"Error loading payments: {ex.Message}");
+            this.ShowError($"Error loading payments: {ex.Message}");
         }
         finally
         {
-            m_loading = false;
+            this.m_loading = false;
         }
     }
 
     private async Task FilterChanged()
     {
-        await LoadDataAsync();
+        await this.LoadDataAsync();
     }
 
     private async Task OpenAddPaymentDialog()
@@ -249,83 +235,76 @@
             PaidOn = DateTimeOffset.Now
         };
 
-        var confirmed = await DialogService
-            .CreateDialog<PaymentDialog>("Record Payment")
-            .WithParameter(x => x.Payment, payment)
+        var result = await this.DialogService
+            .Create<PaymentDialog>("Record Payment")
+            .WithParameter(x => x.Entity, payment)
             .WithParameter(x => x.IsNew, true)
-            .WithParameter(x => x.ShopId, ShopId)
-            .WithParameter(x => x.UserName, UserName)
-            .ShowAndConfirmAsync();
+            .ShowDialogAsync();
 
-        if (confirmed)
+        if (!result.Cancelled)
         {
-            await LoadDataAsync();
-            ShowSuccess("Payment recorded successfully");
+            await this.LoadDataAsync();
+            this.ShowSuccess("Payment recorded successfully");
         }
     }
 
     private async Task ViewPayment(Payment payment)
     {
-        await DialogService
-            .CreateDialog<PaymentDialog>("Payment Details")
-            .WithParameter(x => x.Payment, payment.Clone())
+        await this.DialogService
+            .Create<PaymentDialog>("Payment Details")
+            .WithParameter(x => x.Entity, payment.Clone())
             .WithParameter(x => x.IsNew, false)
-            .WithParameter(x => x.ShopId, ShopId)
-            .WithParameter(x => x.UserName, UserName)
-            .ShowAndConfirmAsync();
+            .ShowDialogAsync();
 
-        await LoadDataAsync();
+        await this.LoadDataAsync();
     }
 
     private async Task RefundPayment(Payment payment)
     {
-        var confirmed = await DialogService.ShowMessageBox(
-            "Confirm Refund",
+        if (!await this.DialogService.ConfirmYesNoAsync(
             $"Are you sure you want to refund {FormatCurrency(payment.Amount)}?",
-            yesText: "Refund", cancelText: "Cancel");
+            "Confirm Refund"))
+            return;
 
-        if (confirmed == true)
+        var result = await this.PaymentService.RefundPaymentAsync(payment.PaymentId, "Manual refund", this.UserName);
+        if (result.Success)
         {
-            var result = await PaymentService.RefundPaymentAsync(payment.PaymentId, "Manual refund", UserName);
-            if (result.Success)
-            {
-                await LoadDataAsync();
-                ShowSuccess("Payment refunded successfully");
-            }
-            else
-            {
-                ShowError($"Refund failed: {result.Message}");
-            }
+            await this.LoadDataAsync();
+            this.ShowSuccess("Payment refunded successfully");
+        }
+        else
+        {
+            this.ShowError($"Refund failed: {result.Message}");
         }
     }
 
-    private static Color GetStatusColor(string? status) => status switch
+    private static string GetStatusBadgeClass(string? status) => status switch
     {
-        "Completed" => Color.Success,
-        "Pending" => Color.Warning,
-        "Refunded" => Color.Error,
-        _ => Color.Default
+        "Completed" => "bg-success",
+        "Pending" => "bg-warning",
+        "Refunded" => "bg-danger",
+        _ => "bg-secondary"
     };
 
-    private static Color GetPaymentTypeColor(string? type) => type switch
+    private static string GetPaymentTypeBadgeClass(string? type) => type switch
     {
-        "Rental" => Color.Primary,
-        "Insurance" => Color.Info,
-        "Accessory" => Color.Secondary,
-        "Deposit" => Color.Tertiary,
-        "Damage" => Color.Error,
-        "Additional" => Color.Warning,
-        "Refund" => Color.Error,
-        _ => Color.Default
+        "Rental" => "bg-primary",
+        "Insurance" => "bg-info",
+        "Accessory" => "bg-secondary",
+        "Deposit" => "bg-purple",
+        "Damage" => "bg-danger",
+        "Additional" => "bg-warning",
+        "Refund" => "bg-danger",
+        _ => "bg-secondary"
     };
 
     private static string GetPaymentMethodIcon(string? method) => method switch
     {
-        "Cash" => Icons.Material.Filled.Money,
-        "Card" => Icons.Material.Filled.CreditCard,
-        "PromptPay" => Icons.Material.Filled.QrCode,
-        "BankTransfer" => Icons.Material.Filled.AccountBalance,
-        _ => Icons.Material.Filled.Payment
+        "Cash" => "ti ti-cash",
+        "Card" => "ti ti-credit-card",
+        "PromptPay" => "ti ti-qrcode",
+        "BankTransfer" => "ti ti-building-bank",
+        _ => "ti ti-cash"
     };
 
     public class PaymentViewModel

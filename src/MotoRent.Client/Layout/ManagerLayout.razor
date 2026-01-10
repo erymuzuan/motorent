@@ -2,134 +2,262 @@
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JS
 
-<MudThemeProvider Theme="MotoRent.Client.MotoRentTheme.Theme" @bind-IsDarkMode="@m_isDarkMode" />
-<MudPopoverProvider />
-<MudDialogProvider />
-<MudSnackbarProvider />
+<ModalContainer />
+<ToastContainer />
 
-<MudLayout>
-    @* Top App Bar *@
-    <MudAppBar Elevation="1" Dense="true">
-        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start"
-                       OnClick="@(_ => m_drawerOpen = !m_drawerOpen)" />
-        <MudIcon Icon="@Icons.Material.Filled.TwoWheeler" Class="mr-2" />
-        <MudText Typo="Typo.h6">MotoRent</MudText>
-        <MudChip T="string" Color="Color.Primary" Size="Size.Small" Class="ml-2">Manager</MudChip>
-
-        <MudSpacer />
-
-        @* Date Range Quick Selector *@
-        <MudMenu Label="@m_selectedPeriod" EndIcon="@Icons.Material.Filled.KeyboardArrowDown"
-                 Color="Color.Inherit" Dense="true">
-            <MudMenuItem OnClick="@(() => SetPeriod("Today"))">Today</MudMenuItem>
-            <MudMenuItem OnClick="@(() => SetPeriod("This Week"))">This Week</MudMenuItem>
-            <MudMenuItem OnClick="@(() => SetPeriod("This Month"))">This Month</MudMenuItem>
-            <MudMenuItem OnClick="@(() => SetPeriod("Last 30 Days"))">Last 30 Days</MudMenuItem>
-            <MudMenuItem OnClick="@(() => SetPeriod("This Year"))">This Year</MudMenuItem>
-        </MudMenu>
-
-        <MudDivider Vertical="true" FlexItem="true" Class="mx-2" />
-
-        @* Notifications *@
-        <MudBadge Content="3" Color="Color.Error" Overlap="true" Visible="@(m_notificationCount > 0)">
-            <MudIconButton Icon="@Icons.Material.Filled.Notifications" Color="Color.Inherit" />
-        </MudBadge>
-
-        <MudIconButton Icon="@(m_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
-                       Color="Color.Inherit" OnClick="@(_ => m_isDarkMode = !m_isDarkMode)" />
-
-        @* User Menu *@
-        <MudMenu AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
-            <ActivatorContent>
-                <MudChip T="string" Color="Color.Default" Class="ml-2">
-                    <MudAvatar Size="Size.Small" Color="Color.Primary" Class="mr-2">M</MudAvatar>
-                    Manager
-                    <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" Size="Size.Small" Class="ml-1" />
-                </MudChip>
-            </ActivatorContent>
-            <ChildContent>
-                <MudMenuItem Icon="@Icons.Material.Filled.Person">Profile</MudMenuItem>
-                <MudMenuItem Icon="@Icons.Material.Filled.Settings">Settings</MudMenuItem>
-                <MudDivider />
-                <MudMenuItem Icon="@Icons.Material.Filled.Dashboard" Href="/staff">Staff View</MudMenuItem>
-                <MudMenuItem Icon="@Icons.Material.Filled.Home" Href="/">Classic View</MudMenuItem>
-                <MudDivider />
-                <MudMenuItem Icon="@Icons.Material.Filled.Logout">Logout</MudMenuItem>
-            </ChildContent>
-        </MudMenu>
-    </MudAppBar>
-
+<div class="page">
     @* Sidebar Navigation *@
-    <MudDrawer @bind-Open="m_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2" Variant="DrawerVariant.Responsive">
-        <MudNavMenu Bordered="true" Class="pa-2">
-            @* Dashboard *@
-            <MudNavLink Href="/manager" Match="NavLinkMatch.All"
-                        Icon="@Icons.Material.Filled.Dashboard">
-                Dashboard
-            </MudNavLink>
+    <aside class="navbar navbar-vertical navbar-expand-lg @(m_isDarkMode ? "navbar-dark" : "navbar-light")" data-bs-theme="@(m_isDarkMode ? "dark" : "light")">
+        <div class="container-fluid">
+            @* Logo and Toggle *@
+            <button class="navbar-toggler" type="button" @onclick="ToggleDrawer"
+                    aria-expanded="@m_drawerOpen" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <h1 class="navbar-brand navbar-brand-autodark">
+                <a href="/manager">
+                    <i class="ti ti-motorbike me-2" style="font-size: 1.5rem;"></i>
+                    MotoRent
+                    <span class="badge bg-primary ms-2">Manager</span>
+                </a>
+            </h1>
 
-            <MudDivider Class="my-2" />
+            @* Period selector and actions *@
+            <div class="navbar-nav flex-row d-lg-none">
+                <div class="nav-item dropdown">
+                    <a href="#" class="nav-link px-0" data-bs-toggle="dropdown" aria-label="Select period">
+                        <i class="ti ti-calendar"></i>
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-end">
+                        <a class="dropdown-item @(m_selectedPeriod == "Today" ? "active" : "")" href="#" @onclick="@(() => SetPeriod("Today"))" @onclick:preventDefault>Today</a>
+                        <a class="dropdown-item @(m_selectedPeriod == "This Week" ? "active" : "")" href="#" @onclick="@(() => SetPeriod("This Week"))" @onclick:preventDefault>This Week</a>
+                        <a class="dropdown-item @(m_selectedPeriod == "This Month" ? "active" : "")" href="#" @onclick="@(() => SetPeriod("This Month"))" @onclick:preventDefault>This Month</a>
+                        <a class="dropdown-item @(m_selectedPeriod == "Last 30 Days" ? "active" : "")" href="#" @onclick="@(() => SetPeriod("Last 30 Days"))" @onclick:preventDefault>Last 30 Days</a>
+                        <a class="dropdown-item @(m_selectedPeriod == "This Year" ? "active" : "")" href="#" @onclick="@(() => SetPeriod("This Year"))" @onclick:preventDefault>This Year</a>
+                    </div>
+                </div>
+            </div>
 
-            @* Analytics *@
-            <MudText Typo="Typo.overline" Class="px-4 mt-2" Color="Color.Secondary">Analytics</MudText>
-            <MudNavLink Href="/manager/revenue" Icon="@Icons.Material.Filled.TrendingUp">
-                Revenue
-            </MudNavLink>
-            <MudNavLink Href="/manager/fleet" Icon="@Icons.Material.Filled.DirectionsBike">
-                Fleet Utilization
-            </MudNavLink>
-            <MudNavLink Href="/manager/renters" Icon="@Icons.Material.Filled.People">
-                Customer Insights
-            </MudNavLink>
+            @* Sidebar Menu *@
+            <div class="collapse navbar-collapse @(m_drawerOpen ? "show" : "")" id="sidebar-menu">
+                <ul class="navbar-nav pt-lg-3">
+                    @* Dashboard *@
+                    <li class="nav-item">
+                        <a class="nav-link @(IsActive("/manager", true) ? "active" : "")" href="/manager">
+                            <span class="nav-link-icon d-md-none d-lg-inline-block">
+                                <i class="ti ti-dashboard"></i>
+                            </span>
+                            <span class="nav-link-title">Dashboard</span>
+                        </a>
+                    </li>
 
-            <MudDivider Class="my-2" />
+                    <li class="nav-item dropdown">
+                        <span class="nav-link dropdown-indicator cursor-default" style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--tblr-secondary);">
+                            Analytics
+                        </span>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link @(IsActive("/manager/revenue") ? "active" : "")" href="/manager/revenue">
+                            <span class="nav-link-icon d-md-none d-lg-inline-block"><i class="ti ti-trending-up"></i></span>
+                            <span class="nav-link-title">Revenue</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link @(IsActive("/manager/fleet") ? "active" : "")" href="/manager/fleet">
+                            <span class="nav-link-icon d-md-none d-lg-inline-block"><i class="ti ti-motorbike"></i></span>
+                            <span class="nav-link-title">Fleet Utilization</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link @(IsActive("/manager/renters") ? "active" : "")" href="/manager/renters">
+                            <span class="nav-link-icon d-md-none d-lg-inline-block"><i class="ti ti-users"></i></span>
+                            <span class="nav-link-title">Customer Insights</span>
+                        </a>
+                    </li>
 
-            @* Operations *@
-            <MudText Typo="Typo.overline" Class="px-4 mt-2" Color="Color.Secondary">Operations</MudText>
-            <MudNavLink Href="/rentals" Icon="@Icons.Material.Filled.Receipt">
-                Rentals
-            </MudNavLink>
-            <MudNavLink Href="/payments" Icon="@Icons.Material.Filled.Payment">
-                Payments
-            </MudNavLink>
-            <MudNavLink Href="/deposits" Icon="@Icons.Material.Filled.AccountBalanceWallet">
-                Deposits
-            </MudNavLink>
+                    <li class="nav-item dropdown">
+                        <span class="nav-link dropdown-indicator cursor-default" style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--tblr-secondary);">
+                            Operations
+                        </span>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link @(IsActive("/rentals") ? "active" : "")" href="/rentals">
+                            <span class="nav-link-icon d-md-none d-lg-inline-block"><i class="ti ti-receipt"></i></span>
+                            <span class="nav-link-title">Rentals</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link @(IsActive("/payments") ? "active" : "")" href="/payments">
+                            <span class="nav-link-icon d-md-none d-lg-inline-block"><i class="ti ti-credit-card"></i></span>
+                            <span class="nav-link-title">Payments</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link @(IsActive("/deposits") ? "active" : "")" href="/deposits">
+                            <span class="nav-link-icon d-md-none d-lg-inline-block"><i class="ti ti-wallet"></i></span>
+                            <span class="nav-link-title">Deposits</span>
+                        </a>
+                    </li>
 
-            <MudDivider Class="my-2" />
+                    <li class="nav-item dropdown">
+                        <span class="nav-link dropdown-indicator cursor-default" style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--tblr-secondary);">
+                            Inventory
+                        </span>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link @(IsActive("/motorbikes") ? "active" : "")" href="/motorbikes">
+                            <span class="nav-link-icon d-md-none d-lg-inline-block"><i class="ti ti-motorbike"></i></span>
+                            <span class="nav-link-title">Motorbikes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link @(IsActive("/accessories") ? "active" : "")" href="/accessories">
+                            <span class="nav-link-icon d-md-none d-lg-inline-block"><i class="ti ti-helmet"></i></span>
+                            <span class="nav-link-title">Accessories</span>
+                        </a>
+                    </li>
 
-            @* Inventory *@
-            <MudText Typo="Typo.overline" Class="px-4 mt-2" Color="Color.Secondary">Inventory</MudText>
-            <MudNavLink Href="/motorbikes" Icon="@Icons.Material.Filled.TwoWheeler">
-                Motorbikes
-            </MudNavLink>
-            <MudNavLink Href="/accessories" Icon="@Icons.Material.Filled.Headset">
-                Accessories
-            </MudNavLink>
+                    <li class="nav-item dropdown">
+                        <span class="nav-link dropdown-indicator cursor-default" style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--tblr-secondary);">
+                            Settings
+                        </span>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link @(IsActive("/insurance") ? "active" : "")" href="/insurance">
+                            <span class="nav-link-icon d-md-none d-lg-inline-block"><i class="ti ti-shield-check"></i></span>
+                            <span class="nav-link-title">Insurance Packages</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link @(IsActive("/shop") ? "active" : "")" href="/shop">
+                            <span class="nav-link-icon d-md-none d-lg-inline-block"><i class="ti ti-building-store"></i></span>
+                            <span class="nav-link-title">Shop Settings</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link @(IsActive("/renters") ? "active" : "")" href="/renters">
+                            <span class="nav-link-icon d-md-none d-lg-inline-block"><i class="ti ti-user-plus"></i></span>
+                            <span class="nav-link-title">Renters</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </aside>
 
-            <MudDivider Class="my-2" />
+    @* Main Content Wrapper *@
+    <div class="page-wrapper">
+        @* Top Header *@
+        <header class="navbar navbar-expand-md d-none d-lg-flex d-print-none">
+            <div class="container-xl">
+                <div class="navbar-nav flex-row order-md-last">
+                    @* Period Selector *@
+                    <div class="nav-item dropdown me-3">
+                        <a href="#" class="nav-link d-flex align-items-center" data-bs-toggle="dropdown">
+                            <i class="ti ti-calendar me-2"></i>
+                            <span>@m_selectedPeriod</span>
+                            <i class="ti ti-chevron-down ms-2"></i>
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-end">
+                            <a class="dropdown-item @(m_selectedPeriod == "Today" ? "active" : "")" href="#" @onclick="@(() => SetPeriod("Today"))" @onclick:preventDefault>Today</a>
+                            <a class="dropdown-item @(m_selectedPeriod == "This Week" ? "active" : "")" href="#" @onclick="@(() => SetPeriod("This Week"))" @onclick:preventDefault>This Week</a>
+                            <a class="dropdown-item @(m_selectedPeriod == "This Month" ? "active" : "")" href="#" @onclick="@(() => SetPeriod("This Month"))" @onclick:preventDefault>This Month</a>
+                            <a class="dropdown-item @(m_selectedPeriod == "Last 30 Days" ? "active" : "")" href="#" @onclick="@(() => SetPeriod("Last 30 Days"))" @onclick:preventDefault>Last 30 Days</a>
+                            <a class="dropdown-item @(m_selectedPeriod == "This Year" ? "active" : "")" href="#" @onclick="@(() => SetPeriod("This Year"))" @onclick:preventDefault>This Year</a>
+                        </div>
+                    </div>
 
-            @* Settings *@
-            <MudText Typo="Typo.overline" Class="px-4 mt-2" Color="Color.Secondary">Settings</MudText>
-            <MudNavLink Href="/insurance" Icon="@Icons.Material.Filled.Security">
-                Insurance Packages
-            </MudNavLink>
-            <MudNavLink Href="/shop" Icon="@Icons.Material.Filled.Store">
-                Shop Settings
-            </MudNavLink>
-            <MudNavLink Href="/renters" Icon="@Icons.Material.Filled.PersonAdd">
-                Renters
-            </MudNavLink>
-        </MudNavMenu>
-    </MudDrawer>
+                    <div class="d-none d-md-flex me-2" style="border-left: 1px solid var(--tblr-border-color); height: 24px;"></div>
 
-    @* Main Content *@
-    <MudMainContent>
-        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-4">
-            @Body
-        </MudContainer>
-    </MudMainContent>
-</MudLayout>
+                    @* Notifications *@
+                    <div class="nav-item dropdown me-2">
+                        <a href="#" class="nav-link px-0" data-bs-toggle="dropdown" aria-label="Notifications">
+                            <span class="position-relative">
+                                <i class="ti ti-bell"></i>
+                                @if (m_notificationCount > 0)
+                                {
+                                    <span class="badge bg-danger badge-notification">@m_notificationCount</span>
+                                }
+                            </span>
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-end dropdown-menu-card">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3 class="card-title">Notifications</h3>
+                                </div>
+                                <div class="list-group list-group-flush">
+                                    <div class="list-group-item">
+                                        <div class="row align-items-center">
+                                            <div class="col-auto">
+                                                <span class="status-dot status-dot-animated bg-warning d-block"></span>
+                                            </div>
+                                            <div class="col">
+                                                <div class="d-block text-body">2 rentals overdue</div>
+                                                <div class="d-block text-secondary mt-n1 small">5 minutes ago</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    @* Theme Toggle *@
+                    <div class="nav-item me-2">
+                        <a href="#" class="nav-link px-0" @onclick="ToggleTheme" @onclick:preventDefault>
+                            @if (m_isDarkMode)
+                            {
+                                <i class="ti ti-sun"></i>
+                            }
+                            else
+                            {
+                                <i class="ti ti-moon"></i>
+                            }
+                        </a>
+                    </div>
+
+                    @* User Menu *@
+                    <div class="nav-item dropdown">
+                        <a href="#" class="nav-link d-flex lh-1 text-reset p-0" data-bs-toggle="dropdown"
+                           aria-label="Open user menu">
+                            <span class="avatar avatar-sm bg-primary text-white">M</span>
+                            <div class="d-none d-xl-block ps-2">
+                                <div>Manager</div>
+                                <div class="mt-1 small text-secondary">Shop Admin</div>
+                            </div>
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
+                            <a href="/account/profile" class="dropdown-item">
+                                <i class="ti ti-user me-2"></i>Profile
+                            </a>
+                            <a href="/account/settings" class="dropdown-item">
+                                <i class="ti ti-settings me-2"></i>Settings
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <a href="/staff" class="dropdown-item">
+                                <i class="ti ti-dashboard me-2"></i>Staff View
+                            </a>
+                            <a href="/" class="dropdown-item">
+                                <i class="ti ti-home me-2"></i>Classic View
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <a href="/account/logoff" class="dropdown-item">
+                                <i class="ti ti-logout me-2"></i>Logout
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        @* Page Content *@
+        <div class="page-body">
+            <div class="container-xl py-4">
+                @Body
+            </div>
+        </div>
+    </div>
+</div>
 
 @code {
     private bool m_drawerOpen = true;
@@ -137,10 +265,48 @@
     private string m_selectedPeriod = "This Week";
     private int m_notificationCount = 3;
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await this.ApplyTheme();
+        }
+    }
+
+    private void ToggleDrawer()
+    {
+        this.m_drawerOpen = !this.m_drawerOpen;
+    }
+
     private void SetPeriod(string period)
     {
-        m_selectedPeriod = period;
+        this.m_selectedPeriod = period;
         // TODO: Trigger data refresh based on period
-        StateHasChanged();
+        this.StateHasChanged();
+    }
+
+    private async Task ToggleTheme()
+    {
+        this.m_isDarkMode = !this.m_isDarkMode;
+        await this.ApplyTheme();
+    }
+
+    private async Task ApplyTheme()
+    {
+        var theme = this.m_isDarkMode ? "dark" : "light";
+        await this.JS.InvokeVoidAsync("eval", $"document.body.setAttribute('data-bs-theme', '{theme}')");
+    }
+
+    private bool IsActive(string path, bool exact = false)
+    {
+        var currentUri = this.NavigationManager.Uri;
+        var relativePath = this.NavigationManager.ToBaseRelativePath(currentUri);
+
+        if (exact)
+        {
+            return relativePath == path.TrimStart('/') || relativePath == path.TrimStart('/') + "/dashboard";
+        }
+
+        return relativePath.StartsWith(path.TrimStart('/'), StringComparison.OrdinalIgnoreCase);
     }
 }

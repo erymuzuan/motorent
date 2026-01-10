@@ -1,96 +1,123 @@
 @page "/motorbikes"
-@inherits MotoRentComponentBase
-@using MotoRent.Client.Controls
-@using MotoRent.Domain.Entities
-@using MotoRent.Services
+@inherits LocalizedComponentBase<Motorbikes>
 @inject MotorbikeService MotorbikeService
 
-<PageTitle>Motorbikes - MotoRent</PageTitle>
+<MotoRentPageTitle>Motorbikes</MotoRentPageTitle>
 
-<MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
-    <MudText Typo="Typo.h4">Motorbike Inventory</MudText>
-    <MudButton Variant="Variant.Filled" Color="Color.Primary"
-               StartIcon="@Icons.Material.Filled.Add" OnClick="OpenAddDialog">
+<TablerHeader Title="Motorbike Inventory" PreTitle="Inventory Management">
+    <button type="button" class="btn btn-primary" @onclick="OpenAddDialog">
+        <i class="ti ti-plus me-1"></i>
         Add Motorbike
-    </MudButton>
-</MudStack>
+    </button>
+</TablerHeader>
 
-<MudPaper Elevation="2" Class="pa-4 mb-4">
-    <MudStack Row="true" Spacing="4" AlignItems="AlignItems.Center">
-        <MudTextField @bind-Value="m_searchTerm" Placeholder="Search by license plate, brand, model..."
-                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
-                      Immediate="true" DebounceInterval="300" OnDebounceIntervalElapsed="SearchChanged"
-                      Style="max-width: 400px;" />
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-3 align-items-center">
+            <div class="col-md-4">
+                <div class="input-icon">
+                    <span class="input-icon-addon">
+                        <i class="ti ti-search"></i>
+                    </span>
+                    <input type="text" class="form-control" placeholder="Search by license plate, brand, model..."
+                           @bind="m_searchTerm" @bind:event="oninput" @onkeyup="OnSearchKeyUp" />
+                </div>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" @bind="m_statusFilter" @bind:after="LoadDataAsync">
+                    <option value="">All Status</option>
+                    <option value="Available">Available</option>
+                    <option value="Rented">Rented</option>
+                    <option value="Maintenance">Maintenance</option>
+                </select>
+            </div>
+            <div class="col-md-6 text-end">
+                @foreach (var (status, count) in m_statusCounts)
+                {
+                    <span class="badge @GetStatusBadgeClass(status) cursor-pointer me-1"
+                          @onclick="@(() => FilterByStatus(status))">
+                        @status: @count
+                    </span>
+                }
+            </div>
+        </div>
+    </div>
+</div>
 
-        <MudSelect T="string" Value="m_statusFilter" Label="Status" Style="width: 150px;"
-                   ValueChanged="@((string? s) => StatusFilterChanged(s))" Clearable="true">
-            <MudSelectItem Value="@("Available")">Available</MudSelectItem>
-            <MudSelectItem Value="@("Rented")">Rented</MudSelectItem>
-            <MudSelectItem Value="@("Maintenance")">Maintenance</MudSelectItem>
-        </MudSelect>
-
-        <MudSpacer />
-
-        @foreach (var (status, count) in m_statusCounts)
+<LoadingSkeleton Loading="@m_loading" Mode="LoadingSkeleton.PlaceholderMode.Table" Rows="10" Columns="8">
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-vcenter card-table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>License Plate</th>
+                        <th>Brand</th>
+                        <th>Model</th>
+                        <th>CC</th>
+                        <th>Color</th>
+                        <th>Year</th>
+                        <th>Daily Rate</th>
+                        <th>Status</th>
+                        <th class="w-1">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (m_motorbikes.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="9" class="text-center text-secondary py-4">
+                                <i class="ti ti-motorbike mb-2" style="font-size: 2rem;"></i>
+                                <div>No motorbikes found</div>
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var motorbike in m_motorbikes)
+                        {
+                            <tr class="cursor-pointer" @onclick="@(() => OpenEditDialog(motorbike))">
+                                <td>
+                                    <strong>@motorbike.LicensePlate</strong>
+                                </td>
+                                <td>@motorbike.Brand</td>
+                                <td>@motorbike.Model</td>
+                                <td>@motorbike.EngineCC</td>
+                                <td>@motorbike.Color</td>
+                                <td>@motorbike.Year</td>
+                                <td class="text-primary fw-bold">@FormatCurrency(motorbike.DailyRate)</td>
+                                <td>
+                                    <span class="badge @GetStatusBadgeClass(motorbike.Status)">
+                                        @motorbike.Status
+                                    </span>
+                                </td>
+                                <td @onclick:stopPropagation="true">
+                                    <div class="btn-list flex-nowrap">
+                                        <button type="button" class="btn btn-icon btn-ghost-primary"
+                                                title="Edit" @onclick="@(() => OpenEditDialog(motorbike))">
+                                            <i class="ti ti-edit"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-icon btn-ghost-danger"
+                                                title="Delete" @onclick="@(() => ConfirmDelete(motorbike))">
+                                            <i class="ti ti-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+        @if (m_motorbikes.Count > 0)
         {
-            <MudChip T="string" Size="Size.Small"
-                     Color="@GetStatusColor(status)"
-                     OnClick="@(() => FilterByStatus(status))">
-                @status: @count
-            </MudChip>
+            <div class="card-footer d-flex align-items-center">
+                <p class="m-0 text-secondary">
+                    Showing <strong>@m_motorbikes.Count</strong> motorbikes
+                </p>
+            </div>
         }
-    </MudStack>
-</MudPaper>
-
-@if (m_loading)
-{
-    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
-}
-
-<MudPaper Elevation="2">
-    <MudDataGrid T="Motorbike" Items="@m_motorbikes" Hover="true" Striped="true"
-                 Loading="@m_loading" Dense="true"
-                 RowClick="@OnRowClick" RowStyle="cursor: pointer;">
-        <Columns>
-            <PropertyColumn Property="x => x.LicensePlate" Title="License Plate" />
-            <PropertyColumn Property="x => x.Brand" Title="Brand" />
-            <PropertyColumn Property="x => x.Model" Title="Model" />
-            <PropertyColumn Property="x => x.EngineCC" Title="CC" />
-            <PropertyColumn Property="x => x.Color" Title="Color" />
-            <PropertyColumn Property="x => x.Year" Title="Year" />
-            <TemplateColumn Title="Daily Rate" Sortable="true">
-                <CellTemplate>
-                    <MudText Color="Color.Primary">@FormatCurrency(context.Item.DailyRate)</MudText>
-                </CellTemplate>
-            </TemplateColumn>
-            <TemplateColumn Title="Status">
-                <CellTemplate>
-                    <MudChip T="string" Size="Size.Small"
-                             Color="@GetStatusColor(context.Item.Status)">
-                        @context.Item.Status
-                    </MudChip>
-                </CellTemplate>
-            </TemplateColumn>
-            <TemplateColumn Title="Actions" Sortable="false">
-                <CellTemplate>
-                    <MudStack Row="true" Spacing="1">
-                        <MudTooltip Text="Edit">
-                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
-                                           Color="Color.Primary" OnClick="@(() => OpenEditDialog(context.Item))" />
-                        </MudTooltip>
-                        <MudTooltip Text="Delete">
-                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
-                                           Color="Color.Error" OnClick="@(() => ConfirmDelete(context.Item))" />
-                        </MudTooltip>
-                    </MudStack>
-                </CellTemplate>
-            </TemplateColumn>
-        </Columns>
-        <PagerContent>
-            <MudDataGridPager T="Motorbike" PageSizeOptions="new[] { 10, 20, 50, 100 }" />
-        </PagerContent>
-    </MudDataGrid>
-</MudPaper>
+    </div>
+</LoadingSkeleton>
 
 @code {
     private List<Motorbike> m_motorbikes = [];
@@ -98,119 +125,129 @@
     private bool m_loading = true;
     private string? m_searchTerm;
     private string? m_statusFilter;
+    private System.Timers.Timer? m_debounceTimer;
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadDataAsync();
+        await this.LoadDataAsync();
     }
 
     private async Task LoadDataAsync()
     {
-        m_loading = true;
+        this.m_loading = true;
         try
         {
-            var result = await MotorbikeService.GetMotorbikesAsync(
-                ShopId,
-                m_searchTerm,
-                m_statusFilter,
+            var result = await this.MotorbikeService.GetMotorbikesAsync(
+                this.ShopId,
+                this.m_searchTerm,
+                this.m_statusFilter,
                 page: 1,
                 pageSize: 100);
 
-            m_motorbikes = result.ItemCollection;
-            m_statusCounts = await MotorbikeService.GetStatusCountsAsync(ShopId);
+            this.m_motorbikes = result.ItemCollection;
+            this.m_statusCounts = await this.MotorbikeService.GetStatusCountsAsync(this.ShopId);
         }
         catch (Exception ex)
         {
-            ShowError($"Error loading data: {ex.Message}");
+            this.ShowError($"Error loading data: {ex.Message}");
         }
         finally
         {
-            m_loading = false;
+            this.m_loading = false;
         }
     }
 
-    private async Task SearchChanged()
+    private void OnSearchKeyUp(KeyboardEventArgs e)
     {
-        await LoadDataAsync();
-    }
-
-    private async Task StatusFilterChanged(string? status)
-    {
-        m_statusFilter = status;
-        await LoadDataAsync();
+        // Debounce search
+        this.m_debounceTimer?.Stop();
+        this.m_debounceTimer?.Dispose();
+        this.m_debounceTimer = new System.Timers.Timer(300);
+        this.m_debounceTimer.Elapsed += async (_, _) =>
+        {
+            this.m_debounceTimer?.Stop();
+            await this.InvokeAsync(async () =>
+            {
+                await this.LoadDataAsync();
+                this.StateHasChanged();
+            });
+        };
+        this.m_debounceTimer.Start();
     }
 
     private async Task FilterByStatus(string status)
     {
-        m_statusFilter = m_statusFilter == status ? null : status;
-        await LoadDataAsync();
-    }
-
-    private async Task OnRowClick(DataGridRowClickEventArgs<Motorbike> args)
-    {
-        await OpenEditDialog(args.Item);
+        this.m_statusFilter = this.m_statusFilter == status ? null : status;
+        await this.LoadDataAsync();
     }
 
     private async Task OpenAddDialog()
     {
         var motorbike = new Motorbike
         {
-            ShopId = ShopId,
+            ShopId = this.ShopId,
             Status = "Available",
             Year = DateTime.Now.Year
         };
 
-        var confirmed = await DialogService
-            .CreateDialog<MotorbikeDialog>("Add Motorbike")
-            .WithParameter(x => x.Motorbike, motorbike)
+        var result = await this.DialogService
+            .Create<MotorbikeDialog>("Add Motorbike")
+            .WithParameter(x => x.Entity, motorbike)
             .WithParameter(x => x.IsNew, true)
-            .ShowAndConfirmAsync();
+            .Large()
+            .ShowDialogAsync();
 
-        if (confirmed)
+        if (!result.Cancelled)
         {
-            await LoadDataAsync();
-            ShowSuccess("Motorbike added successfully");
+            await this.LoadDataAsync();
+            this.ShowSuccess("Motorbike added successfully");
         }
     }
 
     private async Task OpenEditDialog(Motorbike motorbike)
     {
-        var confirmed = await DialogService
-            .CreateDialog<MotorbikeDialog>("Edit Motorbike")
-            .WithParameter(x => x.Motorbike, motorbike.Clone())
+        var result = await this.DialogService
+            .Create<MotorbikeDialog>("Edit Motorbike")
+            .WithParameter(x => x.Entity, motorbike.Clone())
             .WithParameter(x => x.IsNew, false)
-            .ShowAndConfirmAsync();
+            .Large()
+            .ShowDialogAsync();
 
-        if (confirmed)
+        if (!result.Cancelled)
         {
-            await LoadDataAsync();
-            ShowSuccess("Motorbike updated successfully");
+            await this.LoadDataAsync();
+            this.ShowSuccess("Motorbike updated successfully");
         }
     }
 
     private async Task ConfirmDelete(Motorbike motorbike)
     {
         var itemName = $"{motorbike.Brand} {motorbike.Model} ({motorbike.LicensePlate})";
-        if (!await ConfirmDeleteAsync(itemName))
+        if (!await this.ConfirmDeleteAsync(itemName))
             return;
 
-        var deleteResult = await MotorbikeService.DeleteMotorbikeAsync(motorbike, UserName);
+        var deleteResult = await this.MotorbikeService.DeleteMotorbikeAsync(motorbike, this.UserName);
         if (deleteResult.Success)
         {
-            await LoadDataAsync();
-            ShowSuccess("Motorbike deleted successfully");
+            await this.LoadDataAsync();
+            this.ShowSuccess("Motorbike deleted successfully");
         }
         else
         {
-            ShowError($"Delete failed: {deleteResult.Message}");
+            this.ShowError($"Delete failed: {deleteResult.Message}");
         }
     }
 
-    private static Color GetStatusColor(string? status) => status switch
+    private static string GetStatusBadgeClass(string? status) => status switch
     {
-        "Available" => Color.Success,
-        "Rented" => Color.Primary,
-        "Maintenance" => Color.Warning,
-        _ => Color.Default
+        "Available" => "bg-success",
+        "Rented" => "bg-primary",
+        "Maintenance" => "bg-warning",
+        _ => "bg-secondary"
     };
+
+    public void Dispose()
+    {
+        this.m_debounceTimer?.Dispose();
+    }
 }

@@ -1,107 +1,121 @@
 @using MotoRent.Domain.Core
+@inherits MotoRentComponentBase
 @inject ISubscriptionService SubscriptionService
-@inject ISnackbar Snackbar
 
-<MudDialog>
-    <DialogContent>
-        <MudForm @ref="m_form" @bind-IsValid="@m_isValid">
-            <MudGrid>
-                <MudItem xs="12" md="6">
-                    <MudTextField @bind-Value="m_organization.Name" Label="Organization Name" Required="true"
-                                  RequiredError="Name is required" Immediate="true" />
-                </MudItem>
-                <MudItem xs="12" md="6">
-                    <MudTextField @bind-Value="m_accountNo" Label="Account No (Schema)"
-                                  HelperText="Unique identifier for database schema. Auto-generated if empty."
-                                  Immediate="true" />
-                </MudItem>
+<form id="create-org-form" @onsubmit="CreateOrganization" @onsubmit:preventDefault>
+    <div class="modal-body">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label required">Organization Name</label>
+                <input type="text" class="form-control" @bind="m_organization.Name" required />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Account No (Schema)</label>
+                <input type="text" class="form-control" @bind="m_accountNo"
+                       placeholder="Auto-generated if empty" />
+                <small class="form-hint">Unique identifier for database schema</small>
+            </div>
 
-                <MudItem xs="12">
-                    <MudText Typo="Typo.subtitle2" Class="mt-2 mb-2">Contact Information</MudText>
-                </MudItem>
+            <div class="col-12">
+                <h4 class="subheader mt-2 mb-2">Contact Information</h4>
+            </div>
 
-                <MudItem xs="12" md="6">
-                    <MudTextField @bind-Value="m_organization.Email" Label="Email"
-                                  InputType="InputType.Email" />
-                </MudItem>
-                <MudItem xs="12" md="6">
-                    <MudTextField @bind-Value="m_organization.Phone" Label="Phone" />
-                </MudItem>
+            <div class="col-md-6">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-control" @bind="m_organization.Email" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Phone</label>
+                <input type="tel" class="form-control" @bind="m_organization.Phone" />
+            </div>
 
-                <MudItem xs="12">
-                    <MudText Typo="Typo.subtitle2" Class="mt-2 mb-2">Address</MudText>
-                </MudItem>
+            <div class="col-12">
+                <h4 class="subheader mt-2 mb-2">Address</h4>
+            </div>
 
-                <MudItem xs="12">
-                    <MudTextField @bind-Value="m_organization.Address.Street" Label="Street" />
-                </MudItem>
-                <MudItem xs="12" md="6">
-                    <MudTextField @bind-Value="m_organization.Address.City" Label="City" />
-                </MudItem>
-                <MudItem xs="12" md="6">
-                    <MudTextField @bind-Value="m_organization.Address.Province" Label="Province/State" />
-                </MudItem>
-                <MudItem xs="12" md="6">
-                    <MudTextField @bind-Value="m_organization.Address.PostalCode" Label="Postal Code" />
-                </MudItem>
-                <MudItem xs="12" md="6">
-                    <MudTextField @bind-Value="m_organization.Address.Country" Label="Country" />
-                </MudItem>
+            <div class="col-12">
+                <label class="form-label">Street</label>
+                <input type="text" class="form-control" @bind="m_organization.Address.Street" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">City</label>
+                <input type="text" class="form-control" @bind="m_organization.Address.City" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Province/State</label>
+                <input type="text" class="form-control" @bind="m_organization.Address.Province" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Postal Code</label>
+                <input type="text" class="form-control" @bind="m_organization.Address.PostalCode" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Country</label>
+                <input type="text" class="form-control" @bind="m_organization.Address.Country" />
+            </div>
 
-                <MudItem xs="12">
-                    <MudText Typo="Typo.subtitle2" Class="mt-2 mb-2">Regional Settings</MudText>
-                </MudItem>
+            <div class="col-12">
+                <h4 class="subheader mt-2 mb-2">Regional Settings</h4>
+            </div>
 
-                <MudItem xs="12" md="4">
-                    <MudSelect T="string" @bind-Value="m_organization.Currency" Label="Currency">
-                        <MudSelectItem Value="@("THB")">THB - Thai Baht</MudSelectItem>
-                        <MudSelectItem Value="@("USD")">USD - US Dollar</MudSelectItem>
-                        <MudSelectItem Value="@("EUR")">EUR - Euro</MudSelectItem>
-                        <MudSelectItem Value="@("MYR")">MYR - Malaysian Ringgit</MudSelectItem>
-                    </MudSelect>
-                </MudItem>
-                <MudItem xs="12" md="4">
-                    <MudSelect T="string" @bind-Value="m_organization.Language" Label="Language">
-                        <MudSelectItem Value="@("th-TH")">Thai</MudSelectItem>
-                        <MudSelectItem Value="@("en")">English</MudSelectItem>
-                    </MudSelect>
-                </MudItem>
-                <MudItem xs="12" md="4">
-                    <MudNumericField @bind-Value="m_timezone" Label="Timezone (UTC offset)" Min="-12" Max="14" />
-                </MudItem>
-            </MudGrid>
+            <div class="col-md-4">
+                <label class="form-label">Currency</label>
+                <select class="form-select" @bind="m_organization.Currency">
+                    <option value="THB">THB - Thai Baht</option>
+                    <option value="USD">USD - US Dollar</option>
+                    <option value="EUR">EUR - Euro</option>
+                    <option value="MYR">MYR - Malaysian Ringgit</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Language</label>
+                <select class="form-select" @bind="m_organization.Language">
+                    <option value="th-TH">Thai</option>
+                    <option value="en">English</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Timezone (UTC offset)</label>
+                <input type="number" class="form-control" @bind="m_timezone" min="-12" max="14" />
+            </div>
+        </div>
 
-            @if (m_isCreating)
-            {
-                <MudPaper Class="mt-4 pa-3" Elevation="0" Style="background-color: var(--mud-palette-background-grey);">
-                    <MudText Typo="Typo.subtitle2">Provisioning Progress</MudText>
-                    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="my-2" />
-                    <MudText Typo="Typo.body2">@m_progressMessage</MudText>
-                </MudPaper>
-            }
-        </MudForm>
-    </DialogContent>
-    <DialogActions>
-        <MudButton OnClick="Cancel" Disabled="@m_isCreating">Cancel</MudButton>
-        <MudButton Color="Color.Primary" OnClick="CreateOrganization"
-                   Disabled="@(!m_isValid || m_isCreating)">
-            @if (m_isCreating)
-            {
-                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                <span>Creating...</span>
-            }
-            else
-            {
-                <span>Create Organization</span>
-            }
-        </MudButton>
-    </DialogActions>
-</MudDialog>
+        @if (m_isCreating)
+        {
+            <div class="card bg-light mt-4">
+                <div class="card-body">
+                    <h4 class="subheader">Provisioning Progress</h4>
+                    <div class="progress progress-sm my-2">
+                        <div class="progress-bar progress-bar-indeterminate"></div>
+                    </div>
+                    <span class="small text-secondary">@m_progressMessage</span>
+                </div>
+            </div>
+        }
+    </div>
+</form>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel" disabled="@m_isCreating">
+        Cancel
+    </button>
+    <button type="submit" form="create-org-form" class="btn btn-primary" disabled="@m_isCreating">
+        @if (m_isCreating)
+        {
+            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+            <span>Creating...</span>
+        }
+        else
+        {
+            <i class="ti ti-plus me-1"></i>
+            <span>Create Organization</span>
+        }
+    </button>
+</div>
 
 @code {
-    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = default!;
+    [CascadingParameter] private ModalInstance? ModalInstance { get; set; }
 
-    private MudForm? m_form;
     private Organization m_organization = new()
     {
         Currency = "THB",
@@ -111,60 +125,59 @@
     };
     private string m_accountNo = "";
     private double m_timezone = 7;
-    private bool m_isValid;
     private bool m_isCreating;
     private string m_progressMessage = "";
 
-    private void Cancel() => MudDialog.Cancel();
+    private void Cancel() => this.ModalInstance?.Cancel();
 
     private async Task CreateOrganization()
     {
-        if (m_form != null)
+        if (string.IsNullOrWhiteSpace(this.m_organization.Name))
         {
-            await m_form.Validate();
-            if (!m_isValid) return;
+            this.ShowError("Organization name is required");
+            return;
         }
 
-        m_isCreating = true;
-        m_progressMessage = "Initializing...";
+        this.m_isCreating = true;
+        this.m_progressMessage = "Initializing...";
 
         try
         {
             // Generate or validate AccountNo
-            if (string.IsNullOrWhiteSpace(m_accountNo))
+            if (string.IsNullOrWhiteSpace(this.m_accountNo))
             {
-                m_accountNo = await SubscriptionService.CreateAccountNoAsync(
-                    m_organization.Name.Replace(" ", ""));
+                this.m_accountNo = await this.SubscriptionService.CreateAccountNoAsync(
+                    this.m_organization.Name.Replace(" ", ""));
             }
             else
             {
-                m_accountNo = await SubscriptionService.CreateAccountNoAsync(m_accountNo);
+                this.m_accountNo = await this.SubscriptionService.CreateAccountNoAsync(this.m_accountNo);
             }
 
             // Check if AccountNo is available
-            if (!await SubscriptionService.IsAccountNoAvailableAsync(m_accountNo))
+            if (!await this.SubscriptionService.IsAccountNoAvailableAsync(this.m_accountNo))
             {
-                Snackbar.Add($"Account No '{m_accountNo}' is already in use.", Severity.Error);
-                m_isCreating = false;
+                this.ShowError($"Account No '{this.m_accountNo}' is already in use.");
+                this.m_isCreating = false;
                 return;
             }
 
-            m_organization.AccountNo = m_accountNo;
-            m_organization.Timezone = m_timezone;
+            this.m_organization.AccountNo = this.m_accountNo;
+            this.m_organization.Timezone = this.m_timezone;
 
             // Create the organization with schema
-            await SubscriptionService.CreateOrganizationAsync(m_organization, progress =>
+            await this.SubscriptionService.CreateOrganizationAsync(this.m_organization, progress =>
             {
-                m_progressMessage = progress.Message;
-                InvokeAsync(StateHasChanged);
+                this.m_progressMessage = progress.Message;
+                this.InvokeAsync(this.StateHasChanged);
             });
 
-            MudDialog.Close(DialogResult.Ok(m_organization));
+            this.ModalInstance?.Close(this.m_organization);
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error creating organization: {ex.Message}", Severity.Error);
-            m_isCreating = false;
+            this.ShowError($"Error creating organization: {ex.Message}");
+            this.m_isCreating = false;
         }
     }
 }

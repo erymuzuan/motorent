@@ -2,7 +2,7 @@
 @inject IJSRuntime JS
 @implements IAsyncDisposable
 
-<MudPaper Outlined="true" Class="signature-pad-container" Style="@GetContainerStyle()">
+<div class="signature-pad-container card" style="@GetContainerStyle()">
     <canvas @ref="m_canvasRef" id="@m_canvasId"
             style="width: 100%; height: @(Height)px; cursor: crosshair; touch-action: none;"
             @onmousedown="OnMouseDown"
@@ -15,7 +15,7 @@
             @ontouchstart:preventDefault="true"
             @ontouchmove:preventDefault="true">
     </canvas>
-</MudPaper>
+</div>
 
 @code {
     [Parameter] public string Width { get; set; } = "100%";
@@ -36,122 +36,122 @@
     {
         if (firstRender)
         {
-            m_jsModule = await JS.InvokeAsync<IJSObjectReference>("import",
+            this.m_jsModule = await this.JS.InvokeAsync<IJSObjectReference>("import",
                 "./_content/MotoRent.Client/js/signature-pad.js");
 
-            await m_jsModule.InvokeVoidAsync("initCanvas", m_canvasRef, StrokeColor, StrokeWidth);
+            await this.m_jsModule.InvokeVoidAsync("initCanvas", this.m_canvasRef, this.StrokeColor, this.StrokeWidth);
         }
     }
 
     private string GetContainerStyle()
     {
-        return $"width: {Width}; background-color: white; border-radius: 4px;";
+        return $"width: {this.Width}; background-color: white; border-radius: 4px;";
     }
 
     private async Task OnMouseDown(MouseEventArgs e)
     {
-        m_isDrawing = true;
-        var pos = await GetCanvasPosition(e.ClientX, e.ClientY);
-        m_lastX = pos.x;
-        m_lastY = pos.y;
+        this.m_isDrawing = true;
+        var pos = await this.GetCanvasPosition(e.ClientX, e.ClientY);
+        this.m_lastX = pos.x;
+        this.m_lastY = pos.y;
     }
 
     private async Task OnMouseMove(MouseEventArgs e)
     {
-        if (!m_isDrawing) return;
+        if (!this.m_isDrawing) return;
 
-        var pos = await GetCanvasPosition(e.ClientX, e.ClientY);
-        await DrawLine(m_lastX, m_lastY, pos.x, pos.y);
-        m_lastX = pos.x;
-        m_lastY = pos.y;
-        m_hasSignature = true;
+        var pos = await this.GetCanvasPosition(e.ClientX, e.ClientY);
+        await this.DrawLine(this.m_lastX, this.m_lastY, pos.x, pos.y);
+        this.m_lastX = pos.x;
+        this.m_lastY = pos.y;
+        this.m_hasSignature = true;
     }
 
     private async Task OnMouseUp(MouseEventArgs e)
     {
-        if (m_isDrawing && m_hasSignature)
+        if (this.m_isDrawing && this.m_hasSignature)
         {
-            m_isDrawing = false;
-            await NotifySignatureChanged();
+            this.m_isDrawing = false;
+            await this.NotifySignatureChanged();
         }
-        m_isDrawing = false;
+        this.m_isDrawing = false;
     }
 
     private async Task OnTouchStart(TouchEventArgs e)
     {
         if (e.Touches.Length > 0)
         {
-            m_isDrawing = true;
+            this.m_isDrawing = true;
             var touch = e.Touches[0];
-            var pos = await GetCanvasPosition(touch.ClientX, touch.ClientY);
-            m_lastX = pos.x;
-            m_lastY = pos.y;
+            var pos = await this.GetCanvasPosition(touch.ClientX, touch.ClientY);
+            this.m_lastX = pos.x;
+            this.m_lastY = pos.y;
         }
     }
 
     private async Task OnTouchMove(TouchEventArgs e)
     {
-        if (!m_isDrawing || e.Touches.Length == 0) return;
+        if (!this.m_isDrawing || e.Touches.Length == 0) return;
 
         var touch = e.Touches[0];
-        var pos = await GetCanvasPosition(touch.ClientX, touch.ClientY);
-        await DrawLine(m_lastX, m_lastY, pos.x, pos.y);
-        m_lastX = pos.x;
-        m_lastY = pos.y;
-        m_hasSignature = true;
+        var pos = await this.GetCanvasPosition(touch.ClientX, touch.ClientY);
+        await this.DrawLine(this.m_lastX, this.m_lastY, pos.x, pos.y);
+        this.m_lastX = pos.x;
+        this.m_lastY = pos.y;
+        this.m_hasSignature = true;
     }
 
     private async Task OnTouchEnd(TouchEventArgs e)
     {
-        if (m_isDrawing && m_hasSignature)
+        if (this.m_isDrawing && this.m_hasSignature)
         {
-            m_isDrawing = false;
-            await NotifySignatureChanged();
+            this.m_isDrawing = false;
+            await this.NotifySignatureChanged();
         }
-        m_isDrawing = false;
+        this.m_isDrawing = false;
     }
 
     private async Task<(double x, double y)> GetCanvasPosition(double clientX, double clientY)
     {
-        if (m_jsModule == null) return (0, 0);
+        if (this.m_jsModule == null) return (0, 0);
 
-        var result = await m_jsModule.InvokeAsync<double[]>("getCanvasPosition", m_canvasRef, clientX, clientY);
+        var result = await this.m_jsModule.InvokeAsync<double[]>("getCanvasPosition", this.m_canvasRef, clientX, clientY);
         return (result[0], result[1]);
     }
 
     private async Task DrawLine(double x1, double y1, double x2, double y2)
     {
-        if (m_jsModule == null) return;
-        await m_jsModule.InvokeVoidAsync("drawLine", m_canvasRef, x1, y1, x2, y2);
+        if (this.m_jsModule == null) return;
+        await this.m_jsModule.InvokeVoidAsync("drawLine", this.m_canvasRef, x1, y1, x2, y2);
     }
 
     private async Task NotifySignatureChanged()
     {
-        if (m_jsModule == null) return;
+        if (this.m_jsModule == null) return;
 
-        var dataUrl = await m_jsModule.InvokeAsync<string>("getSignatureData", m_canvasRef);
-        await OnSignatureChanged.InvokeAsync(dataUrl);
+        var dataUrl = await this.m_jsModule.InvokeAsync<string>("getSignatureData", this.m_canvasRef);
+        await this.OnSignatureChanged.InvokeAsync(dataUrl);
     }
 
     public async Task Clear()
     {
-        if (m_jsModule == null) return;
-        await m_jsModule.InvokeVoidAsync("clearCanvas", m_canvasRef);
-        m_hasSignature = false;
-        await OnSignatureChanged.InvokeAsync(null);
+        if (this.m_jsModule == null) return;
+        await this.m_jsModule.InvokeVoidAsync("clearCanvas", this.m_canvasRef);
+        this.m_hasSignature = false;
+        await this.OnSignatureChanged.InvokeAsync(null);
     }
 
     public async Task<string?> GetSignatureData()
     {
-        if (m_jsModule == null || !m_hasSignature) return null;
-        return await m_jsModule.InvokeAsync<string>("getSignatureData", m_canvasRef);
+        if (this.m_jsModule == null || !this.m_hasSignature) return null;
+        return await this.m_jsModule.InvokeAsync<string>("getSignatureData", this.m_canvasRef);
     }
 
     public async ValueTask DisposeAsync()
     {
-        if (m_jsModule != null)
+        if (this.m_jsModule != null)
         {
-            await m_jsModule.DisposeAsync();
+            await this.m_jsModule.DisposeAsync();
         }
     }
 }

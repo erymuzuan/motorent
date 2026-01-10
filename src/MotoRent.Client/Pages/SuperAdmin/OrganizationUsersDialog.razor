@@ -1,67 +1,85 @@
 @using MotoRent.Domain.Core
+@inherits MotoRentComponentBase
 @inject ISubscriptionService SubscriptionService
-@inject ISnackbar Snackbar
 
-<MudDialog>
-    <DialogContent>
-        @if (m_loading)
-        {
-            <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
-        }
+<div class="modal-body">
+    @if (m_loading)
+    {
+        <div class="progress progress-sm mb-4">
+            <div class="progress-bar progress-bar-indeterminate"></div>
+        </div>
+    }
 
-        <MudTable Items="@m_users" Hover="true" Striped="true" Dense="true" Loading="@m_loading">
-            <HeaderContent>
-                <MudTh>Username</MudTh>
-                <MudTh>Full Name</MudTh>
-                <MudTh>Provider</MudTh>
-                <MudTh>Roles</MudTh>
-                <MudTh>Status</MudTh>
-            </HeaderContent>
-            <RowTemplate>
-                <MudTd DataLabel="Username">@context.UserName</MudTd>
-                <MudTd DataLabel="Full Name">@context.FullName</MudTd>
-                <MudTd DataLabel="Provider">
-                    <MudChip T="string" Size="Size.Small" Color="@GetProviderColor(context.CredentialProvider)">
-                        @context.CredentialProvider
-                    </MudChip>
-                </MudTd>
-                <MudTd DataLabel="Roles">
-                    @{
-                        var account = context.AccountCollection.FirstOrDefault(a => a.AccountNo == Organization.AccountNo);
-                        if (account != null)
-                        {
-                            foreach (var role in account.Roles)
-                            {
-                                <MudChip T="string" Size="Size.Small" Color="@GetRoleColor(role)" Class="mr-1">
-                                    @role
-                                </MudChip>
-                            }
-                        }
-                    }
-                </MudTd>
-                <MudTd DataLabel="Status">
-                    @if (context.IsLockedOut)
+    <div class="table-responsive">
+        <table class="table table-vcenter card-table table-striped">
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Full Name</th>
+                    <th>Provider</th>
+                    <th>Roles</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (m_users.Count == 0 && !m_loading)
+                {
+                    <tr>
+                        <td colspan="5" class="text-center text-secondary py-4">
+                            No users found in this organization.
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var user in m_users)
                     {
-                        <MudChip T="string" Size="Size.Small" Color="Color.Error">Locked</MudChip>
+                        <tr>
+                            <td>@user.UserName</td>
+                            <td>@user.FullName</td>
+                            <td>
+                                <span class="badge @GetProviderBadgeClass(user.CredentialProvider)">
+                                    @user.CredentialProvider
+                                </span>
+                            </td>
+                            <td>
+                                @{
+                                    var account = user.AccountCollection.FirstOrDefault(a => a.AccountNo == Organization.AccountNo);
+                                    if (account != null)
+                                    {
+                                        foreach (var role in account.Roles)
+                                        {
+                                            <span class="badge @GetRoleBadgeClass(role) me-1">@role</span>
+                                        }
+                                    }
+                                }
+                            </td>
+                            <td>
+                                @if (user.IsLockedOut)
+                                {
+                                    <span class="badge bg-danger">Locked</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success">Active</span>
+                                }
+                            </td>
+                        </tr>
                     }
-                    else
-                    {
-                        <MudChip T="string" Size="Size.Small" Color="Color.Success">Active</MudChip>
-                    }
-                </MudTd>
-            </RowTemplate>
-            <NoRecordsContent>
-                <MudText>No users found in this organization.</MudText>
-            </NoRecordsContent>
-        </MudTable>
-    </DialogContent>
-    <DialogActions>
-        <MudButton OnClick="Close">Close</MudButton>
-    </DialogActions>
-</MudDialog>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="Close">
+        Close
+    </button>
+</div>
 
 @code {
-    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = default!;
+    [CascadingParameter] private ModalInstance? ModalInstance { get; set; }
     [Parameter] public Organization Organization { get; set; } = null!;
 
     private List<User> m_users = [];
@@ -69,42 +87,42 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadUsersAsync();
+        await this.LoadUsersAsync();
     }
 
     private async Task LoadUsersAsync()
     {
-        m_loading = true;
+        this.m_loading = true;
         try
         {
-            var users = await SubscriptionService.GetUsersAsync(Organization.AccountNo);
-            m_users = users.ToList();
+            var users = await this.SubscriptionService.GetUsersAsync(this.Organization.AccountNo);
+            this.m_users = users.ToList();
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error loading users: {ex.Message}", Severity.Error);
+            this.ShowError($"Error loading users: {ex.Message}");
         }
         finally
         {
-            m_loading = false;
+            this.m_loading = false;
         }
     }
 
-    private void Close() => MudDialog.Close();
+    private void Close() => this.ModalInstance?.Close();
 
-    private static Color GetProviderColor(string provider) => provider switch
+    private static string GetProviderBadgeClass(string provider) => provider switch
     {
-        User.GOOGLE => Color.Error,
-        User.MICROSOFT => Color.Info,
-        _ => Color.Default
+        User.GOOGLE => "bg-danger",
+        User.MICROSOFT => "bg-info",
+        _ => "bg-secondary"
     };
 
-    private static Color GetRoleColor(string role) => role switch
+    private static string GetRoleBadgeClass(string role) => role switch
     {
-        UserAccount.ORG_ADMIN => Color.Primary,
-        UserAccount.SHOP_MANAGER => Color.Secondary,
-        UserAccount.STAFF => Color.Info,
-        UserAccount.MECHANIC => Color.Warning,
-        _ => Color.Default
+        UserAccount.ORG_ADMIN => "bg-primary",
+        UserAccount.SHOP_MANAGER => "bg-purple",
+        UserAccount.STAFF => "bg-info",
+        UserAccount.MECHANIC => "bg-warning",
+        _ => "bg-secondary"
     };
 }

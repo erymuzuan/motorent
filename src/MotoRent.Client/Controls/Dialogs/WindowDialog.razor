@@ -1,0 +1,64 @@
+@using MotoRent.Client.Services
+@inject IModalService ModalService
+
+<div class="modal-body text-center py-4">
+    @if (Icon.HasValue)
+    {
+        <i class="@GetIconClass() mb-3" style="font-size: 3rem;"></i>
+    }
+    <h3 class="mb-3">@Title</h3>
+    <p class="text-secondary">@Message</p>
+    @if (!string.IsNullOrEmpty(Hint))
+    {
+        <p class="text-muted small">@Hint</p>
+    }
+</div>
+<div class="modal-footer">
+    @foreach (var button in ButtonOptions)
+    {
+        <button type="button" class="@GetButtonClass(button)" @onclick="() => OnButtonClick(button)">
+            @GetButtonText(button)
+        </button>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string? Message { get; set; }
+    [Parameter] public string? Hint { get; set; }
+    [Parameter] public MessageIcon? Icon { get; set; }
+    [Parameter] public DialogResult[] ButtonOptions { get; set; } = [DialogResult.Ok];
+
+    private string GetIconClass() => this.Icon switch
+    {
+        MessageIcon.Info => "ti ti-info-circle text-info",
+        MessageIcon.Success => "ti ti-circle-check text-success",
+        MessageIcon.Warning => "ti ti-alert-triangle text-warning",
+        MessageIcon.Error => "ti ti-alert-circle text-danger",
+        MessageIcon.Question => "ti ti-help text-primary",
+        _ => "ti ti-info-circle text-info"
+    };
+
+    private string GetButtonClass(DialogResult result) => result switch
+    {
+        DialogResult.Ok => "btn btn-primary",
+        DialogResult.Yes => "btn btn-primary",
+        DialogResult.No => "btn btn-ghost-secondary",
+        DialogResult.Cancel => "btn btn-ghost-secondary",
+        _ => "btn btn-secondary"
+    };
+
+    private string GetButtonText(DialogResult result) => result switch
+    {
+        DialogResult.Ok => "OK",
+        DialogResult.Yes => "Yes",
+        DialogResult.No => "No",
+        DialogResult.Cancel => "Cancel",
+        _ => result.ToString()
+    };
+
+    private void OnButtonClick(DialogResult result)
+    {
+        this.ModalService.Close(ModalResult.Ok(result));
+    }
+}

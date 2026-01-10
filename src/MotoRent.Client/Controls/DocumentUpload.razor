@@ -1,153 +1,178 @@
 @using System.Net.Http.Headers
 @using System.Text.Json
 @using MotoRent.Services
+@inherits MotoRentComponentBase
 @inject HttpClient Http
-@inject ISnackbar Snackbar
 
-<MudPaper Outlined="true" Class="pa-4">
-    <MudStack Spacing="3">
-        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
-            <MudText Typo="Typo.h6">@GetDocumentTypeLabel()</MudText>
-            @if (m_extractedData != null && !string.IsNullOrEmpty(m_extractedData.FullName))
+<div class="card">
+    <div class="card-body">
+        <div class="d-flex flex-column gap-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">@GetDocumentTypeLabel()</h5>
+                @if (m_extractedData != null && !string.IsNullOrEmpty(m_extractedData.FullName))
+                {
+                    <span class="badge bg-success">
+                        <i class="ti ti-check me-1"></i>
+                        Data Extracted
+                    </span>
+                }
+            </div>
+
+            @if (string.IsNullOrEmpty(m_previewUrl))
             {
-                <MudChip T="string" Color="Color.Success" Size="Size.Small" Icon="@Icons.Material.Filled.Check">
-                    Data Extracted
-                </MudChip>
-            }
-        </MudStack>
-
-        @if (string.IsNullOrEmpty(m_previewUrl))
-        {
-            <!-- Upload Area -->
-            <MudFileUpload T="IBrowserFile" Accept="image/*,.pdf" MaximumFileCount="1"
-                           FilesChanged="OnFileSelected" Class="flex-1">
-                <ActivatorContent>
-                    <MudPaper Height="200px" Outlined="true" Class="d-flex flex-column align-center justify-center cursor-pointer hover-highlight"
-                              Style="border-style: dashed;">
-                        @if (m_uploading)
-                        {
-                            <MudProgressCircular Indeterminate="true" Size="Size.Large" />
-                            <MudText Class="mt-2">Processing document...</MudText>
-                        }
-                        else
-                        {
-                            <MudIcon Icon="@Icons.Material.Filled.CloudUpload" Size="Size.Large" Color="Color.Primary" />
-                            <MudText Class="mt-2">Click to upload or take a photo</MudText>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                Supported: JPG, PNG, PDF (max 10MB)
-                            </MudText>
-                        }
-                    </MudPaper>
-                </ActivatorContent>
-            </MudFileUpload>
-
-            <!-- Camera Button (Mobile) -->
-            <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true"
-                       StartIcon="@Icons.Material.Filled.PhotoCamera"
-                       OnClick="OpenCamera" Disabled="m_uploading">
-                Take Photo with Camera
-            </MudButton>
-            <input type="file" @ref="m_cameraInput" accept="image/*" capture="environment"
-                   @onchange="OnCameraCapture" style="display: none;" />
-        }
-        else
-        {
-            <!-- Preview Area -->
-            <MudStack>
-                <MudImage Src="@m_previewUrl" Alt="Document preview" ObjectFit="ObjectFit.Contain"
-                          Height="200" Class="rounded-lg" Style="max-width: 100%;" />
-
-                <MudStack Row="true" Spacing="2" Justify="Justify.Center">
-                    <MudButton Variant="Variant.Text" Color="Color.Error"
-                               StartIcon="@Icons.Material.Filled.Delete"
-                               OnClick="ClearDocument" Disabled="m_uploading">
-                        Remove
-                    </MudButton>
-                    <MudButton Variant="Variant.Text" Color="Color.Primary"
-                               StartIcon="@Icons.Material.Filled.Refresh"
-                               OnClick="RetryOcr" Disabled="m_uploading">
-                        Retry OCR
-                    </MudButton>
-                </MudStack>
-            </MudStack>
-        }
-
-        @if (m_extractedData != null)
-        {
-            <!-- Extracted Data Preview -->
-            <MudExpansionPanels>
-                <MudExpansionPanel Text="Extracted Information" IsInitiallyExpanded="true">
-                    <MudSimpleTable Dense="true" Hover="true">
-                        <tbody>
-                            @if (!string.IsNullOrEmpty(m_extractedData.FullName))
-                            {
-                                <tr>
-                                    <td><strong>Full Name</strong></td>
-                                    <td>@m_extractedData.FullName</td>
-                                </tr>
-                            }
-                            @if (!string.IsNullOrEmpty(m_extractedData.DocumentNumber))
-                            {
-                                <tr>
-                                    <td><strong>@GetDocumentNumberLabel()</strong></td>
-                                    <td>@m_extractedData.DocumentNumber</td>
-                                </tr>
-                            }
-                            @if (!string.IsNullOrEmpty(m_extractedData.Nationality))
-                            {
-                                <tr>
-                                    <td><strong>Nationality</strong></td>
-                                    <td>@m_extractedData.Nationality</td>
-                                </tr>
-                            }
-                            @if (m_extractedData.DateOfBirth.HasValue)
-                            {
-                                <tr>
-                                    <td><strong>Date of Birth</strong></td>
-                                    <td>@m_extractedData.DateOfBirth.Value.ToString("yyyy-MM-dd")</td>
-                                </tr>
-                            }
-                            @if (m_extractedData.DateOfExpiry.HasValue)
-                            {
-                                <tr>
-                                    <td><strong>Expiry Date</strong></td>
-                                    <td>@m_extractedData.DateOfExpiry.Value.ToString("yyyy-MM-dd")</td>
-                                </tr>
-                            }
-                            @if (!string.IsNullOrEmpty(m_extractedData.IssuingCountry))
-                            {
-                                <tr>
-                                    <td><strong>Issuing Country</strong></td>
-                                    <td>@m_extractedData.IssuingCountry</td>
-                                </tr>
-                            }
-                            @if (!string.IsNullOrEmpty(m_extractedData.Gender))
-                            {
-                                <tr>
-                                    <td><strong>Gender</strong></td>
-                                    <td>@m_extractedData.Gender</td>
-                                </tr>
-                            }
-                        </tbody>
-                    </MudSimpleTable>
-
-                    @if (!string.IsNullOrEmpty(m_extractedData.Error))
+                <!-- Upload Area -->
+                <div class="upload-dropzone d-flex flex-column align-items-center justify-content-center"
+                     style="height: 200px; border: 2px dashed var(--tblr-border-color); border-radius: 8px; cursor: pointer; transition: all 0.2s;"
+                     @onclick="TriggerFileSelect">
+                    @if (m_uploading)
                     {
-                        <MudAlert Severity="Severity.Warning" Class="mt-2">
-                            OCR Error: @m_extractedData.Error
-                        </MudAlert>
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Processing...</span>
+                        </div>
+                        <span class="mt-2">Processing document...</span>
                     }
+                    else
+                    {
+                        <i class="ti ti-cloud-upload text-primary" style="font-size: 3rem;"></i>
+                        <span class="mt-2">Click to upload or take a photo</span>
+                        <small class="text-secondary">
+                            Supported: JPG, PNG, PDF (max 10MB)
+                        </small>
+                    }
+                </div>
 
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3"
-                               FullWidth="true" OnClick="ApplyExtractedData"
-                               Disabled="@(m_extractedData.FullName == null)">
-                        Apply to Form
-                    </MudButton>
-                </MudExpansionPanel>
-            </MudExpansionPanels>
-        }
-    </MudStack>
-</MudPaper>
+                <InputFile @ref="m_fileInput" OnChange="OnFileSelected" accept="image/*,.pdf"
+                           style="display: none;" />
+
+                <!-- Camera Button (Mobile) -->
+                <button type="button" class="btn btn-outline-primary w-100" @onclick="OpenCamera"
+                        disabled="@m_uploading">
+                    <i class="ti ti-camera me-2"></i>
+                    Take Photo with Camera
+                </button>
+                <input type="file" @ref="m_cameraInput" accept="image/*" capture="environment"
+                       @onchange="OnCameraCapture" style="display: none;" />
+            }
+            else
+            {
+                <!-- Preview Area -->
+                <div class="d-flex flex-column gap-2">
+                    <div class="text-center">
+                        <img src="@m_previewUrl" alt="Document preview"
+                             style="max-height: 200px; max-width: 100%; border-radius: 8px; object-fit: contain;" />
+                    </div>
+
+                    <div class="d-flex justify-content-center gap-2">
+                        <button type="button" class="btn btn-ghost-danger" @onclick="ClearDocument"
+                                disabled="@m_uploading">
+                            <i class="ti ti-trash me-1"></i>
+                            Remove
+                        </button>
+                        <button type="button" class="btn btn-ghost-primary" @onclick="RetryOcr"
+                                disabled="@m_uploading">
+                            <i class="ti ti-refresh me-1"></i>
+                            Retry OCR
+                        </button>
+                    </div>
+                </div>
+            }
+
+            @if (m_extractedData != null)
+            {
+                <!-- Extracted Data Preview -->
+                <div class="accordion" id="extractedDataAccordion">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse"
+                                    data-bs-target="#extractedDataPanel" aria-expanded="true">
+                                Extracted Information
+                            </button>
+                        </h2>
+                        <div id="extractedDataPanel" class="accordion-collapse collapse show">
+                            <div class="accordion-body p-0">
+                                <table class="table table-vcenter table-sm mb-0">
+                                    <tbody>
+                                        @if (!string.IsNullOrEmpty(m_extractedData.FullName))
+                                        {
+                                            <tr>
+                                                <td class="fw-semibold" style="width: 40%;">Full Name</td>
+                                                <td>@m_extractedData.FullName</td>
+                                            </tr>
+                                        }
+                                        @if (!string.IsNullOrEmpty(m_extractedData.DocumentNumber))
+                                        {
+                                            <tr>
+                                                <td class="fw-semibold">@GetDocumentNumberLabel()</td>
+                                                <td>@m_extractedData.DocumentNumber</td>
+                                            </tr>
+                                        }
+                                        @if (!string.IsNullOrEmpty(m_extractedData.Nationality))
+                                        {
+                                            <tr>
+                                                <td class="fw-semibold">Nationality</td>
+                                                <td>@m_extractedData.Nationality</td>
+                                            </tr>
+                                        }
+                                        @if (m_extractedData.DateOfBirth.HasValue)
+                                        {
+                                            <tr>
+                                                <td class="fw-semibold">Date of Birth</td>
+                                                <td>@m_extractedData.DateOfBirth.Value.ToString("yyyy-MM-dd")</td>
+                                            </tr>
+                                        }
+                                        @if (m_extractedData.DateOfExpiry.HasValue)
+                                        {
+                                            <tr>
+                                                <td class="fw-semibold">Expiry Date</td>
+                                                <td>@m_extractedData.DateOfExpiry.Value.ToString("yyyy-MM-dd")</td>
+                                            </tr>
+                                        }
+                                        @if (!string.IsNullOrEmpty(m_extractedData.IssuingCountry))
+                                        {
+                                            <tr>
+                                                <td class="fw-semibold">Issuing Country</td>
+                                                <td>@m_extractedData.IssuingCountry</td>
+                                            </tr>
+                                        }
+                                        @if (!string.IsNullOrEmpty(m_extractedData.Gender))
+                                        {
+                                            <tr>
+                                                <td class="fw-semibold">Gender</td>
+                                                <td>@m_extractedData.Gender</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+
+                                @if (!string.IsNullOrEmpty(m_extractedData.Error))
+                                {
+                                    <div class="alert alert-warning m-3">
+                                        <i class="ti ti-alert-triangle me-2"></i>
+                                        OCR Error: @m_extractedData.Error
+                                    </div>
+                                }
+
+                                <div class="p-3">
+                                    <button type="button" class="btn btn-primary w-100" @onclick="ApplyExtractedData"
+                                            disabled="@(m_extractedData.FullName == null)">
+                                        Apply to Form
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .upload-dropzone:hover {
+        border-color: var(--tblr-primary) !important;
+        background: var(--tblr-bg-surface-secondary);
+    }
+</style>
 
 @code {
     [Parameter]
@@ -162,13 +187,14 @@
     [Parameter]
     public EventCallback<DocumentUploadResult> OnDocumentUploaded { get; set; }
 
+    private InputFile? m_fileInput;
     private ElementReference m_cameraInput;
     private string? m_previewUrl;
     private string? m_uploadedFilePath;
     private ExtractedDocumentData? m_extractedData;
     private bool m_uploading;
 
-    private string GetDocumentTypeLabel() => DocumentType switch
+    private string GetDocumentTypeLabel() => this.DocumentType switch
     {
         "Passport" => "Passport",
         "NationalId" => "National ID Card",
@@ -176,7 +202,7 @@
         _ => "Document"
     };
 
-    private string GetDocumentNumberLabel() => DocumentType switch
+    private string GetDocumentNumberLabel() => this.DocumentType switch
     {
         "Passport" => "Passport Number",
         "NationalId" => "ID Number",
@@ -184,10 +210,17 @@
         _ => "Document Number"
     };
 
-    private async Task OnFileSelected(IBrowserFile file)
+    private async Task TriggerFileSelect()
     {
+        // Trigger file input click via JS
+        // This would need JS interop to work
+    }
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
         if (file == null) return;
-        await ProcessFile(file);
+        await this.ProcessFile(file);
     }
 
     private async Task OnCameraCapture(ChangeEventArgs e)
@@ -206,12 +239,12 @@
     {
         if (file.Size > 10 * 1024 * 1024)
         {
-            Snackbar.Add("File size exceeds 10MB limit", Severity.Error);
+            this.ShowError("File size exceeds 10MB limit");
             return;
         }
 
-        m_uploading = true;
-        StateHasChanged();
+        this.m_uploading = true;
+        this.StateHasChanged();
 
         try
         {
@@ -226,15 +259,15 @@
             var fileContent = new StreamContent(ms);
             fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
             content.Add(fileContent, "file", file.Name);
-            content.Add(new StringContent(DocumentType), "documentType");
+            content.Add(new StringContent(this.DocumentType), "documentType");
 
-            if (RenterId.HasValue)
+            if (this.RenterId.HasValue)
             {
-                content.Add(new StringContent(RenterId.Value.ToString()), "renterId");
+                content.Add(new StringContent(this.RenterId.Value.ToString()), "renterId");
             }
 
             // Upload to API
-            var response = await Http.PostAsync("/api/documents/upload", content);
+            var response = await this.Http.PostAsync("/api/documents/upload", content);
 
             if (response.IsSuccessStatusCode)
             {
@@ -246,71 +279,71 @@
 
                 if (result != null)
                 {
-                    m_extractedData = result.ExtractedData;
-                    m_uploadedFilePath = result.FilePath;
+                    this.m_extractedData = result.ExtractedData;
+                    this.m_uploadedFilePath = result.FilePath;
 
                     // Create preview URL
                     var buffer = new byte[ms.Length];
                     ms.Position = 0;
                     await ms.ReadAsync(buffer);
-                    m_previewUrl = $"data:{file.ContentType};base64,{Convert.ToBase64String(buffer)}";
+                    this.m_previewUrl = $"data:{file.ContentType};base64,{Convert.ToBase64String(buffer)}";
 
                     // Notify parent
-                    await OnDocumentUploaded.InvokeAsync(new DocumentUploadResult
+                    await this.OnDocumentUploaded.InvokeAsync(new DocumentUploadResult
                     {
                         DocumentId = result.DocumentId,
                         FilePath = result.FilePath,
                         ExtractedData = result.ExtractedData
                     });
 
-                    if (m_extractedData != null && !string.IsNullOrEmpty(m_extractedData.FullName))
+                    if (this.m_extractedData != null && !string.IsNullOrEmpty(this.m_extractedData.FullName))
                     {
-                        Snackbar.Add("Document processed successfully", Severity.Success);
+                        this.ShowSuccess("Document processed successfully");
                     }
                     else
                     {
-                        Snackbar.Add("Document uploaded. OCR extraction may need manual verification.", Severity.Info);
+                        this.ShowInfo("Document uploaded. OCR extraction may need manual verification.");
                     }
                 }
             }
             else
             {
                 var error = await response.Content.ReadAsStringAsync();
-                Snackbar.Add($"Upload failed: {error}", Severity.Error);
+                this.ShowError($"Upload failed: {error}");
             }
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error processing document: {ex.Message}", Severity.Error);
+            this.ShowError($"Error processing document: {ex.Message}");
         }
         finally
         {
-            m_uploading = false;
-            StateHasChanged();
+            this.m_uploading = false;
+            this.StateHasChanged();
         }
     }
 
     private void ClearDocument()
     {
-        m_previewUrl = null;
-        m_extractedData = null;
-        m_uploadedFilePath = null;
+        this.m_previewUrl = null;
+        this.m_extractedData = null;
+        this.m_uploadedFilePath = null;
     }
 
     private async Task RetryOcr()
     {
-        if (string.IsNullOrEmpty(m_uploadedFilePath)) return;
+        if (string.IsNullOrEmpty(this.m_uploadedFilePath)) return;
 
         // TODO: Call reprocess endpoint
-        Snackbar.Add("Retrying OCR...", Severity.Info);
+        this.ShowInfo("Retrying OCR...");
     }
 
     private async Task ApplyExtractedData()
     {
-        if (m_extractedData != null)
+        if (this.m_extractedData != null)
         {
-            await OnDataExtracted.InvokeAsync(m_extractedData);
-            Snackbar.Add("Data applied to form", Severity.Success);
+            await this.OnDataExtracted.InvokeAsync(this.m_extractedData);
+            this.ShowSuccess("Data applied to form");
         }
     }
 

@@ -1,274 +1,264 @@
-@using MotoRent.Domain.Entities
-@using MotoRent.Services
+@inherits LocalizedDialogBase<Renter, RenterDialog>
 @inject RenterService RenterService
-@inject ISnackbar Snackbar
-@inject IDialogService DialogService
 
-<MudDialog>
-    <DialogContent>
-        <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-3">
-            <!-- Document Scan Tab -->
-            <MudTabPanel Text="Scan Documents" Icon="@Icons.Material.Filled.DocumentScanner">
-                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+<form id="@FormId" @onsubmit="SaveAsync" @onsubmit:preventDefault>
+    <div class="modal-body">
+        <ul class="nav nav-tabs mb-3" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button type="button" class="nav-link @(m_activeTab == "scan" ? "active" : "")"
+                        @onclick="@(() => m_activeTab = "scan")">
+                    <i class="ti ti-scan me-1"></i>
+                    Scan Documents
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button type="button" class="nav-link @(m_activeTab == "manual" ? "active" : "")"
+                        @onclick="@(() => m_activeTab = "manual")">
+                    <i class="ti ti-edit me-1"></i>
+                    Manual Entry
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+            @* Document Scan Tab *@
+            <div class="tab-pane fade @(m_activeTab == "scan" ? "show active" : "")">
+                <p class="text-secondary mb-3">
                     Upload passport, ID card, or driving license to auto-fill the form.
-                </MudText>
+                </p>
 
-                <MudGrid Spacing="3">
-                    <MudItem xs="12" md="6">
-                        <DocumentUpload DocumentType="Passport" RenterId="@(IsNew ? null : Renter.RenterId)"
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <DocumentUpload DocumentType="Passport" RenterId="@(IsNew ? null : Entity.RenterId)"
                                         OnDataExtracted="OnPassportDataExtracted"
                                         OnDocumentUploaded="OnDocumentUploaded" />
-                    </MudItem>
-                    <MudItem xs="12" md="6">
-                        <DocumentUpload DocumentType="DrivingLicense" RenterId="@(IsNew ? null : Renter.RenterId)"
+                    </div>
+                    <div class="col-md-6">
+                        <DocumentUpload DocumentType="DrivingLicense" RenterId="@(IsNew ? null : Entity.RenterId)"
                                         OnDataExtracted="OnLicenseDataExtracted"
                                         OnDocumentUploaded="OnDocumentUploaded" />
-                    </MudItem>
-                </MudGrid>
+                    </div>
+                </div>
 
                 @if (m_uploadedDocuments.Count > 0)
                 {
-                    <MudDivider Class="my-4" />
-                    <MudText Typo="Typo.subtitle2" Class="mb-2">Uploaded Documents (@m_uploadedDocuments.Count)</MudText>
-                    <MudStack Row="true" Spacing="2">
+                    <hr class="my-4" />
+                    <h6 class="mb-2">Uploaded Documents (@m_uploadedDocuments.Count)</h6>
+                    <div class="d-flex flex-wrap gap-2">
                         @foreach (var doc in m_uploadedDocuments)
                         {
-                            <MudChip T="string" Color="Color.Primary" Size="Size.Small"
-                                     OnClose="@(() => RemoveUploadedDocument(doc))"
-                                     Icon="@GetDocumentIcon(doc.DocumentType)">
+                            <span class="badge bg-primary d-flex align-items-center">
+                                <i class="@GetDocumentIcon(doc.DocumentType) me-1"></i>
                                 @doc.DocumentType
-                            </MudChip>
+                                <button type="button" class="btn-close btn-close-white ms-2"
+                                        style="font-size: 0.5rem;"
+                                        @onclick="@(() => RemoveUploadedDocument(doc))">
+                                </button>
+                            </span>
                         }
-                    </MudStack>
+                    </div>
                 }
-            </MudTabPanel>
+            </div>
 
-            <!-- Manual Entry Tab -->
-            <MudTabPanel Text="Manual Entry" Icon="@Icons.Material.Filled.Edit">
-                <MudForm @ref="m_form" @bind-IsValid="m_formValid">
-                    <MudText Typo="Typo.h6" Class="mb-3">Personal Information</MudText>
-                    <MudGrid>
-                        <MudItem xs="12" md="8">
-                            <MudTextField @bind-Value="Renter.FullName" Label="Full Name"
-                                          Required="true" RequiredError="Full name is required"
-                                          Variant="Variant.Outlined" />
-                        </MudItem>
+            @* Manual Entry Tab *@
+            <div class="tab-pane fade @(m_activeTab == "manual" ? "show active" : "")">
+                <h6 class="mb-3">Personal Information</h6>
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <label class="form-label required">Full Name</label>
+                        <input type="text" class="form-control" @bind="Entity.FullName" required
+                               placeholder="Full name as shown on passport" />
+                    </div>
 
-                        <MudItem xs="12" md="4">
-                            <MudTextField @bind-Value="Renter.Nationality" Label="Nationality"
-                                          Variant="Variant.Outlined"
-                                          Placeholder="e.g., USA, UK, Germany" />
-                        </MudItem>
-                    </MudGrid>
+                    <div class="col-md-4">
+                        <label class="form-label">Nationality</label>
+                        <input type="text" class="form-control" @bind="Entity.Nationality"
+                               placeholder="e.g., USA, UK, Germany" />
+                    </div>
+                </div>
 
-                    <MudText Typo="Typo.h6" Class="mb-3 mt-4">Identification</MudText>
-                    <MudGrid>
-                        <MudItem xs="12" md="6">
-                            <MudTextField @bind-Value="Renter.PassportNo" Label="Passport Number"
-                                          Variant="Variant.Outlined" />
-                        </MudItem>
+                <h6 class="mb-3 mt-4">Identification</h6>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Passport Number</label>
+                        <input type="text" class="form-control" @bind="Entity.PassportNo" />
+                    </div>
 
-                        <MudItem xs="12" md="6">
-                            <MudTextField @bind-Value="Renter.NationalIdNo" Label="National ID Number"
-                                          Variant="Variant.Outlined"
-                                          HelperText="For Thai nationals" />
-                        </MudItem>
+                    <div class="col-md-6">
+                        <label class="form-label">National ID Number</label>
+                        <input type="text" class="form-control" @bind="Entity.NationalIdNo" />
+                        <small class="form-hint">For Thai nationals</small>
+                    </div>
 
-                        <MudItem xs="12" md="6">
-                            <MudTextField @bind-Value="Renter.DrivingLicenseNo" Label="Driving License Number"
-                                          Variant="Variant.Outlined" />
-                        </MudItem>
+                    <div class="col-md-6">
+                        <label class="form-label">Driving License Number</label>
+                        <input type="text" class="form-control" @bind="Entity.DrivingLicenseNo" />
+                    </div>
 
-                        <MudItem xs="12" md="6">
-                            <MudTextField @bind-Value="Renter.DrivingLicenseCountry" Label="License Country"
-                                          Variant="Variant.Outlined" />
-                        </MudItem>
+                    <div class="col-md-6">
+                        <label class="form-label">License Country</label>
+                        <input type="text" class="form-control" @bind="Entity.DrivingLicenseCountry" />
+                    </div>
 
-                        <MudItem xs="12" md="6">
-                            <MudDatePicker @bind-Date="m_licenseExpiry" Label="License Expiry Date"
-                                           Variant="Variant.Outlined" Editable="true"
-                                           Placeholder="Select date" />
-                        </MudItem>
-                    </MudGrid>
+                    <div class="col-md-6">
+                        <label class="form-label">License Expiry Date</label>
+                        <input type="date" class="form-control" @bind="m_licenseExpiry" />
+                    </div>
+                </div>
 
-                    <MudText Typo="Typo.h6" Class="mb-3 mt-4">Contact Information</MudText>
-                    <MudGrid>
-                        <MudItem xs="12" md="6">
-                            <MudTextField @bind-Value="Renter.Phone" Label="Phone Number"
-                                          Required="true" RequiredError="Phone is required"
-                                          Variant="Variant.Outlined"
-                                          InputType="InputType.Telephone" />
-                        </MudItem>
+                <h6 class="mb-3 mt-4">Contact Information</h6>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label required">Phone Number</label>
+                        <input type="tel" class="form-control" @bind="Entity.Phone" required />
+                    </div>
 
-                        <MudItem xs="12" md="6">
-                            <MudTextField @bind-Value="Renter.Email" Label="Email"
-                                          Variant="Variant.Outlined"
-                                          InputType="InputType.Email" />
-                        </MudItem>
+                    <div class="col-md-6">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" @bind="Entity.Email" />
+                    </div>
 
-                        <MudItem xs="12" md="6">
-                            <MudTextField @bind-Value="Renter.HotelName" Label="Hotel Name"
-                                          Variant="Variant.Outlined"
-                                          Placeholder="Where are you staying?" />
-                        </MudItem>
+                    <div class="col-md-6">
+                        <label class="form-label">Hotel Name</label>
+                        <input type="text" class="form-control" @bind="Entity.HotelName"
+                               placeholder="Where are you staying?" />
+                    </div>
 
-                        <MudItem xs="12" md="6">
-                            <MudTextField @bind-Value="Renter.HotelAddress" Label="Hotel Address"
-                                          Variant="Variant.Outlined" />
-                        </MudItem>
+                    <div class="col-md-6">
+                        <label class="form-label">Hotel Address</label>
+                        <input type="text" class="form-control" @bind="Entity.HotelAddress" />
+                    </div>
 
-                        <MudItem xs="12">
-                            <MudTextField @bind-Value="Renter.EmergencyContact" Label="Emergency Contact"
-                                          Variant="Variant.Outlined"
-                                          Placeholder="Name and phone number" />
-                        </MudItem>
-                    </MudGrid>
-                </MudForm>
-            </MudTabPanel>
-        </MudTabs>
-    </DialogContent>
-    <DialogActions>
-        <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary" Variant="Variant.Filled"
-                   OnClick="SaveAsync" Disabled="@(!m_formValid || m_saving)">
-            @if (m_saving)
-            {
-                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-            }
-            @(IsNew ? "Register" : "Save")
-        </MudButton>
-    </DialogActions>
-</MudDialog>
+                    <div class="col-12">
+                        <label class="form-label">Emergency Contact</label>
+                        <input type="text" class="form-control" @bind="Entity.EmergencyContact"
+                               placeholder="Name and phone number" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
+        Cancel
+    </button>
+    <button type="submit" form="@FormId" class="btn btn-primary" disabled="@Saving">
+        @if (Saving)
+        {
+            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+        }
+        <i class="ti ti-device-floppy me-1"></i>
+        @SaveButtonText
+    </button>
+</div>
 
 @code {
-    [CascadingParameter]
-    private MudDialogInstance? MudDialog { get; set; }
-
-    [Parameter]
-    public Renter Renter { get; set; } = new();
-
-    [Parameter]
-    public bool IsNew { get; set; }
-
-    private MudForm? m_form;
-    private bool m_formValid;
-    private bool m_saving;
     private DateTime? m_licenseExpiry;
-    private List<UploadedDocumentInfo> m_uploadedDocuments = new();
+    private string m_activeTab = "manual";
+    private List<UploadedDocumentInfo> m_uploadedDocuments = [];
 
     protected override void OnInitialized()
     {
-        m_licenseExpiry = Renter.DrivingLicenseExpiry?.DateTime;
-    }
-
-    private void Cancel()
-    {
-        MudDialog?.Cancel();
+        this.m_licenseExpiry = this.Entity.DrivingLicenseExpiry?.DateTime;
+        this.FormValid = true;
     }
 
     private async Task SaveAsync()
     {
-        if (m_form == null) return;
-
-        await m_form.Validate();
-        if (!m_formValid) return;
-
-        m_saving = true;
+        this.Saving = true;
 
         try
         {
-            Renter.DrivingLicenseExpiry = m_licenseExpiry.HasValue
-                ? new DateTimeOffset(m_licenseExpiry.Value)
+            this.Entity.DrivingLicenseExpiry = this.m_licenseExpiry.HasValue
+                ? new DateTimeOffset(this.m_licenseExpiry.Value)
                 : null;
 
-            var result = IsNew
-                ? await RenterService.CreateRenterAsync(Renter, "system")
-                : await RenterService.UpdateRenterAsync(Renter, "system");
+            var result = this.IsNew
+                ? await this.RenterService.CreateRenterAsync(this.Entity, this.UserName)
+                : await this.RenterService.UpdateRenterAsync(this.Entity, this.UserName);
 
             if (result.Success)
             {
-                MudDialog?.Close(DialogResult.Ok(Renter));
+                this.Close();
             }
             else
             {
-                Snackbar.Add($"Save failed: {result.Message}", Severity.Error);
+                this.ShowError($"Save failed: {result.Message}");
             }
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            this.ShowError($"Error: {ex.Message}");
         }
         finally
         {
-            m_saving = false;
+            this.Saving = false;
         }
     }
 
     private void OnPassportDataExtracted(ExtractedDocumentData data)
     {
-        // Auto-fill passport-related fields
         if (!string.IsNullOrEmpty(data.FullName))
-            Renter.FullName = data.FullName;
+            this.Entity.FullName = data.FullName;
 
         if (!string.IsNullOrEmpty(data.DocumentNumber))
-            Renter.PassportNo = data.DocumentNumber;
+            this.Entity.PassportNo = data.DocumentNumber;
 
         if (!string.IsNullOrEmpty(data.Nationality))
-            Renter.Nationality = data.Nationality;
+            this.Entity.Nationality = data.Nationality;
 
-        StateHasChanged();
-        Snackbar.Add("Passport data applied to form", Severity.Success);
+        this.StateHasChanged();
+        this.ShowSuccess("Passport data applied to form");
     }
 
     private void OnLicenseDataExtracted(ExtractedDocumentData data)
     {
-        // Auto-fill driving license-related fields
         if (!string.IsNullOrEmpty(data.DocumentNumber))
-            Renter.DrivingLicenseNo = data.DocumentNumber;
+            this.Entity.DrivingLicenseNo = data.DocumentNumber;
 
         if (!string.IsNullOrEmpty(data.IssuingCountry))
-            Renter.DrivingLicenseCountry = data.IssuingCountry;
+            this.Entity.DrivingLicenseCountry = data.IssuingCountry;
 
         if (data.DateOfExpiry.HasValue)
         {
-            Renter.DrivingLicenseExpiry = data.DateOfExpiry;
-            m_licenseExpiry = data.DateOfExpiry.Value.DateTime;
+            this.Entity.DrivingLicenseExpiry = data.DateOfExpiry;
+            this.m_licenseExpiry = data.DateOfExpiry.Value.DateTime;
         }
 
-        // Also fill name if not already set
-        if (string.IsNullOrEmpty(Renter.FullName) && !string.IsNullOrEmpty(data.FullName))
-            Renter.FullName = data.FullName;
+        if (string.IsNullOrEmpty(this.Entity.FullName) && !string.IsNullOrEmpty(data.FullName))
+            this.Entity.FullName = data.FullName;
 
-        StateHasChanged();
-        Snackbar.Add("License data applied to form", Severity.Success);
+        this.StateHasChanged();
+        this.ShowSuccess("License data applied to form");
     }
 
     private void OnDocumentUploaded(DocumentUploadResult result)
     {
         if (result.ExtractedData != null)
         {
-            m_uploadedDocuments.Add(new UploadedDocumentInfo
+            this.m_uploadedDocuments.Add(new UploadedDocumentInfo
             {
                 DocumentId = result.DocumentId,
                 DocumentType = result.ExtractedData.DocumentType,
                 FilePath = result.FilePath
             });
-            StateHasChanged();
+            this.StateHasChanged();
         }
     }
 
     private void RemoveUploadedDocument(UploadedDocumentInfo doc)
     {
-        m_uploadedDocuments.Remove(doc);
-        // TODO: Call API to delete if needed
+        this.m_uploadedDocuments.Remove(doc);
     }
 
-    private string GetDocumentIcon(string documentType) => documentType switch
+    private static string GetDocumentIcon(string documentType) => documentType switch
     {
-        "Passport" => Icons.Material.Filled.Badge,
-        "NationalId" => Icons.Material.Filled.CreditCard,
-        "DrivingLicense" => Icons.Material.Filled.DirectionsCar,
-        _ => Icons.Material.Filled.Description
+        "Passport" => "ti ti-id-badge",
+        "NationalId" => "ti ti-credit-card",
+        "DrivingLicense" => "ti ti-car",
+        _ => "ti ti-file"
     };
 
     private class UploadedDocumentInfo

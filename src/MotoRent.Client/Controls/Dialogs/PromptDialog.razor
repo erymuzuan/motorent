@@ -1,0 +1,48 @@
+@using MotoRent.Client.Services
+@inject IModalService ModalService
+
+<div class="modal-body">
+    <div class="mb-3">
+        <label class="form-label">@Message</label>
+        <input type="text" class="form-control" @bind="m_value" @bind:event="oninput"
+               @onkeypress="OnKeyPress" autofocus />
+    </div>
+</div>
+<div class="modal-footer">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="OnCancelClick">
+        Cancel
+    </button>
+    <button type="button" class="btn btn-primary" @onclick="OnOkClick">
+        OK
+    </button>
+</div>
+
+@code {
+    [Parameter] public string? Message { get; set; }
+    [Parameter] public string? DefaultValue { get; set; }
+
+    private string m_value = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        this.m_value = this.DefaultValue ?? string.Empty;
+    }
+
+    private void OnKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            this.OnOkClick();
+        }
+    }
+
+    private void OnOkClick()
+    {
+        this.ModalService.Close(ModalResult.Ok(this.m_value));
+    }
+
+    private void OnCancelClick()
+    {
+        this.ModalService.Close(ModalResult.Cancel());
+    }
+}

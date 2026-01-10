@@ -1,113 +1,109 @@
-@page "/shops"
-@inherits MotoRentComponentBase
-@using MotoRent.Client.Controls
-@using MotoRent.Domain.Entities
-@using MotoRent.Services
+@page "/shop"
+@inherits LocalizedComponentBase<Shops>
 @inject ShopService ShopService
 
-<PageTitle>Shops - MotoRent</PageTitle>
+<MotoRentPageTitle>Shops</MotoRentPageTitle>
 
-<MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
-    <MudText Typo="Typo.h4">Shop Locations</MudText>
-    <MudButton Variant="Variant.Filled" Color="Color.Primary"
-               StartIcon="@Icons.Material.Filled.Add" OnClick="OpenAddDialog">
+<TablerHeader Title="Shop Locations" PreTitle="Settings">
+    <button type="button" class="btn btn-primary" @onclick="OpenAddDialog">
+        <i class="ti ti-plus me-1"></i>
         Add Shop
-    </MudButton>
-</MudStack>
+    </button>
+</TablerHeader>
 
-<MudPaper Elevation="2" Class="pa-4 mb-4">
-    <MudStack Row="true" Spacing="4" AlignItems="AlignItems.Center">
-        <MudTextField @bind-Value="m_searchTerm" Placeholder="Search by name, location, address..."
-                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
-                      Immediate="true" DebounceInterval="300" OnDebounceIntervalElapsed="SearchChanged"
-                      Style="max-width: 400px;" />
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-3 align-items-center">
+            <div class="col-md-4">
+                <div class="input-icon">
+                    <span class="input-icon-addon">
+                        <i class="ti ti-search"></i>
+                    </span>
+                    <input type="text" class="form-control" placeholder="Search by name, location, address..."
+                           @bind="m_searchTerm" @bind:event="oninput" @onkeyup="OnSearchKeyUp" />
+                </div>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" @bind="m_activeFilter" @bind:after="LoadDataAsync">
+                    <option value="">All Status</option>
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                </select>
+            </div>
+            <div class="col-md-6 text-end">
+                <span class="badge bg-success me-1">Active: @m_activeCount</span>
+                <span class="badge bg-secondary">Inactive: @m_inactiveCount</span>
+            </div>
+        </div>
+    </div>
+</div>
 
-        <MudSelect T="bool?" Value="m_activeFilter" Label="Status" Style="width: 150px;"
-                   ValueChanged="@((bool? s) => StatusFilterChanged(s))" Clearable="true">
-            <MudSelectItem Value="@((bool?)true)">Active</MudSelectItem>
-            <MudSelectItem Value="@((bool?)false)">Inactive</MudSelectItem>
-        </MudSelect>
-
-        <MudSpacer />
-
-        <MudChip T="string" Size="Size.Small" Color="Color.Success">
-            Active: @m_activeCount
-        </MudChip>
-        <MudChip T="string" Size="Size.Small" Color="Color.Default">
-            Inactive: @m_inactiveCount
-        </MudChip>
-    </MudStack>
-</MudPaper>
-
-@if (m_loading)
-{
-    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
-}
-
-<MudGrid>
-    @foreach (var shop in m_shops)
-    {
-        <MudItem xs="12" sm="6" md="4">
-            <MudCard Elevation="2" Class="@(shop.IsActive ? "" : "mud-card-inactive")">
-                <MudCardHeader>
-                    <CardHeaderContent>
-                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start">
+<LoadingSkeleton Loading="@m_loading" Mode="LoadingSkeleton.PlaceholderMode.Card">
+    <div class="row row-cards">
+        @foreach (var shop in m_shops)
+        {
+            <div class="col-sm-6 col-lg-4">
+                <div class="card @(shop.IsActive ? "" : "card-inactive")">
+                    <div class="card-header">
+                        <div class="d-flex w-100 justify-content-between">
                             <div>
-                                <MudText Typo="Typo.h6">@shop.Name</MudText>
-                                <MudText Typo="Typo.body2" Color="Color.Secondary">@shop.Location</MudText>
+                                <h3 class="card-title mb-1">@shop.Name</h3>
+                                <div class="text-secondary">@shop.Location</div>
                             </div>
-                            <MudChip T="string" Size="Size.Small"
-                                     Color="@(shop.IsActive ? Color.Success : Color.Default)">
+                            <span class="badge @(shop.IsActive ? "bg-success" : "bg-secondary")">
                                 @(shop.IsActive ? "Active" : "Inactive")
-                            </MudChip>
-                        </MudStack>
-                    </CardHeaderContent>
-                </MudCardHeader>
-                <MudCardContent>
-                    <MudStack Spacing="2">
-                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                            <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" Color="Color.Secondary" />
-                            <MudText Typo="Typo.body2">@shop.Address</MudText>
-                        </MudStack>
-                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                            <MudIcon Icon="@Icons.Material.Filled.Phone" Size="Size.Small" Color="Color.Secondary" />
-                            <MudText Typo="Typo.body2">@shop.Phone</MudText>
-                        </MudStack>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-2">
+                            <i class="ti ti-map-pin text-secondary me-2"></i>
+                            @shop.Address
+                        </div>
+                        <div class="mb-2">
+                            <i class="ti ti-phone text-secondary me-2"></i>
+                            @shop.Phone
+                        </div>
                         @if (!string.IsNullOrEmpty(shop.Email))
                         {
-                            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                                <MudIcon Icon="@Icons.Material.Filled.Email" Size="Size.Small" Color="Color.Secondary" />
-                                <MudText Typo="Typo.body2">@shop.Email</MudText>
-                            </MudStack>
+                            <div>
+                                <i class="ti ti-mail text-secondary me-2"></i>
+                                @shop.Email
+                            </div>
                         }
-                    </MudStack>
-                </MudCardContent>
-                <MudCardActions>
-                    <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
-                               OnClick="@(() => OpenEditDialog(shop))">
-                        Edit
-                    </MudButton>
-                    <MudButton Variant="Variant.Text" Color="@(shop.IsActive ? Color.Warning : Color.Success)" Size="Size.Small"
-                               OnClick="@(() => ToggleActiveStatus(shop))">
-                        @(shop.IsActive ? "Deactivate" : "Activate")
-                    </MudButton>
-                    <MudSpacer />
-                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
-                                   Color="Color.Error" OnClick="@(() => ConfirmDelete(shop))" />
-                </MudCardActions>
-            </MudCard>
-        </MudItem>
-    }
-</MudGrid>
+                    </div>
+                    <div class="card-footer">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="btn-list">
+                                <button type="button" class="btn btn-sm btn-outline-primary"
+                                        @onclick="@(() => OpenEditDialog(shop))">
+                                    Edit
+                                </button>
+                                <button type="button" class="btn btn-sm @(shop.IsActive ? "btn-outline-warning" : "btn-outline-success")"
+                                        @onclick="@(() => ToggleActiveStatus(shop))">
+                                    @(shop.IsActive ? "Deactivate" : "Activate")
+                                </button>
+                            </div>
+                            <button type="button" class="btn btn-icon btn-ghost-danger"
+                                    @onclick="@(() => ConfirmDelete(shop))">
+                                <i class="ti ti-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</LoadingSkeleton>
 
 @if (!m_loading && m_shops.Count == 0)
 {
-    <MudPaper Elevation="2" Class="pa-8 mt-4">
-        <MudStack AlignItems="AlignItems.Center" Spacing="4">
-            <MudIcon Icon="@Icons.Material.Filled.Store" Size="Size.Large" Color="Color.Secondary" />
-            <MudText Typo="Typo.h6" Color="Color.Secondary">No shops found</MudText>
-            <MudText Typo="Typo.body2" Color="Color.Secondary">
-                @if (string.IsNullOrEmpty(m_searchTerm) && !m_activeFilter.HasValue)
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <i class="ti ti-building-store mb-3" style="font-size: 3rem; color: var(--tblr-secondary);"></i>
+            <h3 class="text-secondary">No shops found</h3>
+            <p class="text-secondary">
+                @if (string.IsNullOrEmpty(m_searchTerm) && string.IsNullOrEmpty(m_activeFilter))
                 {
                     <span>Click "Add Shop" to create your first shop location.</span>
                 }
@@ -115,13 +111,13 @@
                 {
                     <span>Try adjusting your search filters.</span>
                 }
-            </MudText>
-        </MudStack>
-    </MudPaper>
+            </p>
+        </div>
+    </div>
 }
 
 <style>
-    .mud-card-inactive {
+    .card-inactive {
         opacity: 0.7;
     }
 </style>
@@ -130,52 +126,65 @@
     private List<Shop> m_shops = [];
     private bool m_loading = true;
     private string? m_searchTerm;
-    private bool? m_activeFilter;
+    private string? m_activeFilter;
     private int m_activeCount;
     private int m_inactiveCount;
+    private System.Timers.Timer? m_debounceTimer;
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadDataAsync();
+        await this.LoadDataAsync();
     }
 
     private async Task LoadDataAsync()
     {
-        m_loading = true;
+        this.m_loading = true;
         try
         {
-            var result = await ShopService.GetShopsAsync(
-                m_searchTerm,
-                m_activeFilter,
+            bool? activeFilter = this.m_activeFilter switch
+            {
+                "true" => true,
+                "false" => false,
+                _ => null
+            };
+
+            var result = await this.ShopService.GetShopsAsync(
+                this.m_searchTerm,
+                activeFilter,
                 page: 1,
                 pageSize: 100);
 
-            m_shops = result.ItemCollection;
+            this.m_shops = result.ItemCollection;
 
-            // Count active/inactive
-            var allShops = await ShopService.GetShopsAsync(null, null, 1, 1000);
-            m_activeCount = allShops.ItemCollection.Count(s => s.IsActive);
-            m_inactiveCount = allShops.ItemCollection.Count(s => !s.IsActive);
+            var allShops = await this.ShopService.GetShopsAsync(null, null, 1, 1000);
+            this.m_activeCount = allShops.ItemCollection.Count(s => s.IsActive);
+            this.m_inactiveCount = allShops.ItemCollection.Count(s => !s.IsActive);
         }
         catch (Exception ex)
         {
-            ShowError($"Error loading data: {ex.Message}");
+            this.ShowError($"Error loading data: {ex.Message}");
         }
         finally
         {
-            m_loading = false;
+            this.m_loading = false;
         }
     }
 
-    private async Task SearchChanged()
+    private void OnSearchKeyUp(KeyboardEventArgs e)
     {
-        await LoadDataAsync();
-    }
-
-    private async Task StatusFilterChanged(bool? status)
-    {
-        m_activeFilter = status;
-        await LoadDataAsync();
+        this.m_debounceTimer?.Stop();
+        this.m_debounceTimer?.Dispose();
+        this.m_debounceTimer = new System.Timers.Timer(300);
+        this.m_debounceTimer.Elapsed += async (_, _) =>
+        {
+            this.m_debounceTimer?.Stop();
+            await this.InvokeAsync(async () =>
+            {
+                await this.LoadDataAsync();
+                this.StateHasChanged();
+            });
+        };
+        this.m_debounceTimer.Start();
     }
 
     private async Task OpenAddDialog()
@@ -185,73 +194,75 @@
             IsActive = true
         };
 
-        var confirmed = await DialogService
-            .CreateDialog<ShopDialog>("Add Shop")
-            .WithParameter(x => x.Shop, shop)
+        var result = await this.DialogService
+            .Create<ShopDialog>("Add Shop")
+            .WithParameter(x => x.Entity, shop)
             .WithParameter(x => x.IsNew, true)
             .Large()
-            .ShowAndConfirmAsync();
+            .ShowDialogAsync();
 
-        if (confirmed)
+        if (!result.Cancelled)
         {
-            await LoadDataAsync();
-            ShowSuccess("Shop added successfully");
+            await this.LoadDataAsync();
+            this.ShowSuccess("Shop added successfully");
         }
     }
 
     private async Task OpenEditDialog(Shop shop)
     {
-        var confirmed = await DialogService
-            .CreateDialog<ShopDialog>("Edit Shop")
-            .WithParameter(x => x.Shop, shop.Clone())
+        var result = await this.DialogService
+            .Create<ShopDialog>("Edit Shop")
+            .WithParameter(x => x.Entity, shop.Clone())
             .WithParameter(x => x.IsNew, false)
             .Large()
-            .ShowAndConfirmAsync();
+            .ShowDialogAsync();
 
-        if (confirmed)
+        if (!result.Cancelled)
         {
-            await LoadDataAsync();
-            ShowSuccess("Shop updated successfully");
+            await this.LoadDataAsync();
+            this.ShowSuccess("Shop updated successfully");
         }
     }
 
     private async Task ToggleActiveStatus(Shop shop)
     {
         var action = shop.IsActive ? "deactivate" : "activate";
-        var confirmed = await DialogService.ShowMessageBox(
-            $"Confirm {action}",
+        if (!await this.DialogService.ConfirmYesNoAsync(
             $"Are you sure you want to {action} '{shop.Name}'?",
-            yesText: "Yes", cancelText: "Cancel");
+            $"Confirm {action}"))
+            return;
 
-        if (confirmed == true)
+        var result = await this.ShopService.SetActiveStatusAsync(shop.ShopId, !shop.IsActive, this.UserName);
+        if (result.Success)
         {
-            var result = await ShopService.SetActiveStatusAsync(shop.ShopId, !shop.IsActive, UserName);
-            if (result.Success)
-            {
-                await LoadDataAsync();
-                ShowSuccess($"Shop {action}d successfully");
-            }
-            else
-            {
-                ShowError($"Failed to {action} shop: {result.Message}");
-            }
+            await this.LoadDataAsync();
+            this.ShowSuccess($"Shop {action}d successfully");
+        }
+        else
+        {
+            this.ShowError($"Failed to {action} shop: {result.Message}");
         }
     }
 
     private async Task ConfirmDelete(Shop shop)
     {
-        if (!await ConfirmDeleteAsync(shop.Name))
+        if (!await this.ConfirmDeleteAsync(shop.Name ?? "this shop"))
             return;
 
-        var deleteResult = await ShopService.DeleteShopAsync(shop, UserName);
+        var deleteResult = await this.ShopService.DeleteShopAsync(shop, this.UserName);
         if (deleteResult.Success)
         {
-            await LoadDataAsync();
-            ShowSuccess("Shop deleted successfully");
+            await this.LoadDataAsync();
+            this.ShowSuccess("Shop deleted successfully");
         }
         else
         {
-            ShowError($"Delete failed: {deleteResult.Message}");
+            this.ShowError($"Delete failed: {deleteResult.Message}");
         }
+    }
+
+    public void Dispose()
+    {
+        this.m_debounceTimer?.Dispose();
     }
 }

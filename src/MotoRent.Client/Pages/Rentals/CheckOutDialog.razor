@@ -1,277 +1,322 @@
-@inherits MotoRentDialogBase<Rental>
-@using MotoRent.Domain.Entities
-@using MotoRent.Services
+@inherits LocalizedDialogBase<Rental, CheckOutDialog>
 @inject RentalService RentalService
 @inject RenterService RenterService
 @inject MotorbikeService MotorbikeService
 
-<MudDialog>
-    <TitleContent>
-        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-            <MudIcon Icon="@Icons.Material.Filled.Logout" Color="Color.Success" />
-            <MudText Typo="Typo.h6">Check Out</MudText>
-        </MudStack>
-    </TitleContent>
+<div class="modal-body">
+    @if (m_loading)
+    {
+        <div class="progress progress-sm mb-3">
+            <div class="progress-bar progress-bar-indeterminate"></div>
+        </div>
+    }
 
-    <DialogContent>
-        @if (m_loading)
-        {
-            <MudProgressLinear Indeterminate="true" Class="mb-4" />
-        }
+    <ul class="nav nav-tabs mb-3" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button type="button" class="nav-link @(m_activeTab == 0 ? "active" : "")"
+                    @onclick="@(() => m_activeTab = 0)">
+                <i class="ti ti-clipboard-check me-1"></i>
+                Return Details
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button type="button" class="nav-link @(m_activeTab == 1 ? "active" : "")"
+                    @onclick="@(() => m_activeTab = 1)">
+                <i class="ti ti-alert-triangle me-1"></i>
+                Damage Assessment
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button type="button" class="nav-link @(m_activeTab == 2 ? "active" : "")"
+                    @onclick="@(() => m_activeTab = 2)">
+                <i class="ti ti-calculator me-1"></i>
+                Final Settlement
+            </button>
+        </li>
+    </ul>
 
-        <MudTabs @bind-ActivePanelIndex="m_activeTab" Elevation="0" ApplyEffectsToContainer="true"
-                 PanelClass="pa-4" Rounded="true" Border="true">
-            <MudTabPanel Text="Return Details" Icon="@Icons.Material.Filled.Assignment">
-                <MudStack Spacing="3">
-                    <MudText Typo="Typo.subtitle1">Rental Information</MudText>
+    <div class="tab-content">
+        @* Return Details Tab *@
+        <div class="tab-pane fade @(m_activeTab == 0 ? "show active" : "")">
+            <h4 class="mb-3">Rental Information</h4>
 
-                    <MudGrid>
-                        <MudItem xs="6">
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">Renter</MudText>
-                            <MudText Typo="Typo.body1" Style="font-weight: 500;">@m_renterName</MudText>
-                        </MudItem>
-                        <MudItem xs="6">
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">Motorbike</MudText>
-                            <MudText Typo="Typo.body1" Style="font-weight: 500;">@m_motorbikeName</MudText>
-                        </MudItem>
-                        <MudItem xs="6">
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">Start Date</MudText>
-                            <MudText Typo="Typo.body1">@FormatDate(Entity.StartDate)</MudText>
-                        </MudItem>
-                        <MudItem xs="6">
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">Expected Return</MudText>
-                            <MudText Typo="Typo.body1">@FormatDate(Entity.ExpectedEndDate)</MudText>
-                        </MudItem>
-                    </MudGrid>
+            <div class="row g-3 mb-3">
+                <div class="col-6">
+                    <div class="subheader text-secondary">Renter</div>
+                    <div class="fw-bold">@m_renterName</div>
+                </div>
+                <div class="col-6">
+                    <div class="subheader text-secondary">Motorbike</div>
+                    <div class="fw-bold">@m_motorbikeName</div>
+                </div>
+                <div class="col-6">
+                    <div class="subheader text-secondary">Start Date</div>
+                    <div>@FormatDate(Entity.StartDate)</div>
+                </div>
+                <div class="col-6">
+                    <div class="subheader text-secondary">Expected Return</div>
+                    <div>@FormatDate(Entity.ExpectedEndDate)</div>
+                </div>
+            </div>
 
-                    <MudDivider Class="my-2" />
+            <hr class="my-3" />
 
-                    <MudText Typo="Typo.subtitle1">Return Information</MudText>
+            <h4 class="mb-3">Return Information</h4>
 
-                    <MudGrid>
-                        <MudItem xs="12" sm="6">
-                            <MudDatePicker Label="Actual Return Date" @bind-Date="m_actualReturnDate"
-                                           Variant="Variant.Outlined" />
-                        </MudItem>
-                        <MudItem xs="12" sm="6">
-                            <MudNumericField T="int" @bind-Value="m_mileageEnd"
-                                             Label="Mileage at Return (km)"
-                                             Min="@Entity.MileageStart"
-                                             Variant="Variant.Outlined" />
-                        </MudItem>
-                    </MudGrid>
+            <div class="row g-3">
+                <div class="col-12 col-sm-6">
+                    <label class="form-label">Actual Return Date</label>
+                    <input type="date" class="form-control" @bind="m_actualReturnDate" />
+                </div>
+                <div class="col-12 col-sm-6">
+                    <label class="form-label">Mileage at Return (km)</label>
+                    <input type="number" class="form-control" @bind="m_mileageEnd" min="@Entity.MileageStart" />
+                </div>
+            </div>
+
+            @if (m_extraDays > 0)
+            {
+                <div class="alert alert-warning mt-3">
+                    <div class="d-flex align-items-center">
+                        <i class="ti ti-alert-triangle me-2"></i>
+                        <div>
+                            <strong>Late Return:</strong> @m_extraDays day(s) past expected return date.
+                            Additional charge: @FormatCurrency(m_extraDays * Entity.DailyRate)
+                        </div>
+                    </div>
+                </div>
+            }
+            else if (m_extraDays < 0)
+            {
+                <div class="alert alert-info mt-3">
+                    <div class="d-flex align-items-center">
+                        <i class="ti ti-info-circle me-2"></i>
+                        <div>
+                            <strong>Early Return:</strong> Returning @Math.Abs(m_extraDays) day(s) early.
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <div class="mt-3">
+                <label class="form-label">Return Notes</label>
+                <textarea class="form-control" @bind="m_notes" rows="2"
+                          placeholder="Any additional notes about the return..."></textarea>
+            </div>
+        </div>
+
+        @* Damage Assessment Tab *@
+        <div class="tab-pane fade @(m_activeTab == 1 ? "show active" : "")">
+            <h4 class="mb-3">Condition Assessment</h4>
+
+            <div class="form-selectgroup form-selectgroup-boxes d-flex flex-column gap-2 mb-3">
+                <label class="form-selectgroup-item flex-fill">
+                    <input type="radio" name="damage-level" value="None" class="form-selectgroup-input"
+                           checked="@(m_damageLevel == "None")" @onchange="@(() => m_damageLevel = "None")" />
+                    <div class="form-selectgroup-label d-flex align-items-center p-3">
+                        <div class="me-3">
+                            <span class="form-selectgroup-check"></span>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <i class="ti ti-circle-check text-success fs-2 me-3"></i>
+                            <div>
+                                <div class="fw-bold">No Damage</div>
+                                <small class="text-secondary">Motorbike returned in good condition</small>
+                            </div>
+                        </div>
+                    </div>
+                </label>
+
+                <label class="form-selectgroup-item flex-fill">
+                    <input type="radio" name="damage-level" value="Minor" class="form-selectgroup-input"
+                           checked="@(m_damageLevel == "Minor")" @onchange="@(() => m_damageLevel = "Minor")" />
+                    <div class="form-selectgroup-label d-flex align-items-center p-3">
+                        <div class="me-3">
+                            <span class="form-selectgroup-check"></span>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <i class="ti ti-info-circle text-info fs-2 me-3"></i>
+                            <div>
+                                <div class="fw-bold">Minor Damage</div>
+                                <small class="text-secondary">Small scratches, scuffs - cosmetic only</small>
+                            </div>
+                        </div>
+                    </div>
+                </label>
+
+                <label class="form-selectgroup-item flex-fill">
+                    <input type="radio" name="damage-level" value="Moderate" class="form-selectgroup-input"
+                           checked="@(m_damageLevel == "Moderate")" @onchange="@(() => m_damageLevel = "Moderate")" />
+                    <div class="form-selectgroup-label d-flex align-items-center p-3">
+                        <div class="me-3">
+                            <span class="form-selectgroup-check"></span>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <i class="ti ti-alert-triangle text-warning fs-2 me-3"></i>
+                            <div>
+                                <div class="fw-bold">Moderate Damage</div>
+                                <small class="text-secondary">Dents, broken parts, requires repair</small>
+                            </div>
+                        </div>
+                    </div>
+                </label>
+
+                <label class="form-selectgroup-item flex-fill">
+                    <input type="radio" name="damage-level" value="Major" class="form-selectgroup-input"
+                           checked="@(m_damageLevel == "Major")" @onchange="@(() => m_damageLevel = "Major")" />
+                    <div class="form-selectgroup-label d-flex align-items-center p-3">
+                        <div class="me-3">
+                            <span class="form-selectgroup-check"></span>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <i class="ti ti-alert-octagon text-danger fs-2 me-3"></i>
+                            <div>
+                                <div class="fw-bold">Major Damage</div>
+                                <small class="text-secondary">Significant damage, major repairs needed</small>
+                            </div>
+                        </div>
+                    </div>
+                </label>
+            </div>
+
+            @if (m_damageLevel != "None")
+            {
+                <hr class="my-3" />
+
+                <h4 class="mb-3">Damage Details</h4>
+
+                <div class="mb-3">
+                    <label class="form-label">Damage Description</label>
+                    <textarea class="form-control" @bind="m_damageDescription" rows="3"
+                              placeholder="Describe the damage in detail..."></textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Estimated Repair Cost (THB)</label>
+                    <div class="input-group">
+                        <span class="input-group-text">฿</span>
+                        <input type="number" class="form-control" @bind="m_damageEstimate"
+                               min="0" max="100000" step="100" />
+                    </div>
+                </div>
+
+                <div class="alert alert-info">
+                    <i class="ti ti-info-circle me-2"></i>
+                    This amount will be deducted from the deposit if applicable.
+                </div>
+            }
+        </div>
+
+        @* Final Settlement Tab *@
+        <div class="tab-pane fade @(m_activeTab == 2 ? "show active" : "")">
+            <h4 class="mb-3">Charges Summary</h4>
+
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="small">Original Rental</span>
+                        <span class="small">@FormatCurrency(Entity.TotalAmount) (Paid)</span>
+                    </div>
 
                     @if (m_extraDays > 0)
                     {
-                        <MudAlert Severity="Severity.Warning">
-                            <MudText>
-                                <strong>Late Return:</strong> @m_extraDays day(s) past expected return date.
-                                Additional charge: @FormatCurrency(m_extraDays * Entity.DailyRate)
-                            </MudText>
-                        </MudAlert>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="small text-warning">Extra Days (@m_extraDays)</span>
+                            <span class="small text-warning">+@FormatCurrency(m_extraDaysCharge)</span>
+                        </div>
                     }
-                    else if (m_extraDays < 0)
+
+                    @if (m_damageLevel != "None" && m_damageEstimate > 0)
                     {
-                        <MudAlert Severity="Severity.Info">
-                            <MudText>
-                                <strong>Early Return:</strong> Returning @Math.Abs(m_extraDays) day(s) early.
-                            </MudText>
-                        </MudAlert>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="small text-danger">Damage (@m_damageLevel)</span>
+                            <span class="small text-danger">+@FormatCurrency(m_damageEstimate)</span>
+                        </div>
                     }
 
-                    <MudTextField @bind-Value="m_notes" Label="Return Notes"
-                                  Lines="2" Variant="Variant.Outlined"
-                                  Placeholder="Any additional notes about the return..." />
-                </MudStack>
-            </MudTabPanel>
+                    <hr class="my-2" />
 
-            <MudTabPanel Text="Damage Assessment" Icon="@Icons.Material.Filled.ReportProblem">
-                <MudStack Spacing="3">
-                    <MudText Typo="Typo.subtitle1">Condition Assessment</MudText>
+                    <div class="d-flex justify-content-between">
+                        <span class="fw-bold">Additional Due</span>
+                        <span class="fw-bold text-primary">@FormatCurrency(m_totalAdditional)</span>
+                    </div>
+                </div>
+            </div>
 
-                    <MudRadioGroup T="string" @bind-Value="m_damageLevel">
-                        <MudStack Spacing="2">
-                            <MudRadio T="string" Value="@("None")" Color="Color.Success">
-                                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" />
-                                    <MudStack Spacing="0">
-                                        <MudText Typo="Typo.body1">No Damage</MudText>
-                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                            Motorbike returned in good condition
-                                        </MudText>
-                                    </MudStack>
-                                </MudStack>
-                            </MudRadio>
+            <h4 class="mb-3">Deposit Settlement</h4>
 
-                            <MudRadio T="string" Value="@("Minor")" Color="Color.Info">
-                                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                                    <MudIcon Icon="@Icons.Material.Filled.Info" Color="Color.Info" />
-                                    <MudStack Spacing="0">
-                                        <MudText Typo="Typo.body1">Minor Damage</MudText>
-                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                            Small scratches, scuffs - cosmetic only
-                                        </MudText>
-                                    </MudStack>
-                                </MudStack>
-                            </MudRadio>
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="small">Deposit Held</span>
+                        <span class="small">@FormatCurrency(m_depositAmount)</span>
+                    </div>
 
-                            <MudRadio T="string" Value="@("Moderate")" Color="Color.Warning">
-                                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                                    <MudIcon Icon="@Icons.Material.Filled.Warning" Color="Color.Warning" />
-                                    <MudStack Spacing="0">
-                                        <MudText Typo="Typo.body1">Moderate Damage</MudText>
-                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                            Dents, broken parts, requires repair
-                                        </MudText>
-                                    </MudStack>
-                                </MudStack>
-                            </MudRadio>
-
-                            <MudRadio T="string" Value="@("Major")" Color="Color.Error">
-                                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                                    <MudIcon Icon="@Icons.Material.Filled.Error" Color="Color.Error" />
-                                    <MudStack Spacing="0">
-                                        <MudText Typo="Typo.body1">Major Damage</MudText>
-                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                            Significant damage, major repairs needed
-                                        </MudText>
-                                    </MudStack>
-                                </MudStack>
-                            </MudRadio>
-                        </MudStack>
-                    </MudRadioGroup>
-
-                    @if (m_damageLevel != "None")
+                    @if (m_totalAdditional > 0)
                     {
-                        <MudDivider Class="my-2" />
-
-                        <MudText Typo="Typo.subtitle1">Damage Details</MudText>
-
-                        <MudTextField @bind-Value="m_damageDescription" Label="Damage Description"
-                                      Lines="3" Variant="Variant.Outlined"
-                                      Placeholder="Describe the damage in detail..." />
-
-                        <MudNumericField T="decimal" @bind-Value="m_damageEstimate"
-                                         Label="Estimated Repair Cost (THB)"
-                                         Min="0" Max="100000"
-                                         Variant="Variant.Outlined"
-                                         Adornment="Adornment.Start"
-                                         AdornmentText="฿" />
-
-                        <MudAlert Severity="Severity.Info" Dense="true">
-                            This amount will be deducted from the deposit if applicable.
-                        </MudAlert>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="small">Deductions</span>
+                            <span class="small text-danger">-@FormatCurrency(Math.Min(m_totalAdditional, m_depositAmount))</span>
+                        </div>
                     }
-                </MudStack>
-            </MudTabPanel>
 
-            <MudTabPanel Text="Final Settlement" Icon="@Icons.Material.Filled.AccountBalance">
-                <MudStack Spacing="3">
-                    <MudText Typo="Typo.subtitle1">Charges Summary</MudText>
+                    <hr class="my-2" />
 
-                    <MudPaper Outlined="true" Class="pa-3">
-                        <MudStack Spacing="2">
-                            <MudStack Row="true" Justify="Justify.SpaceBetween">
-                                <MudText Typo="Typo.body2">Original Rental</MudText>
-                                <MudText Typo="Typo.body2">@FormatCurrency(Entity.TotalAmount) (Paid)</MudText>
-                            </MudStack>
+                    <div class="d-flex justify-content-between">
+                        <span class="fw-bold">Refund Amount</span>
+                        <span class="h4 text-success mb-0">@FormatCurrency(m_refundAmount)</span>
+                    </div>
 
-                            @if (m_extraDays > 0)
-                            {
-                                <MudStack Row="true" Justify="Justify.SpaceBetween">
-                                    <MudText Typo="Typo.body2" Color="Color.Warning">Extra Days (@m_extraDays)</MudText>
-                                    <MudText Typo="Typo.body2" Color="Color.Warning">+@FormatCurrency(m_extraDaysCharge)</MudText>
-                                </MudStack>
-                            }
+                    @if (m_totalAdditional > m_depositAmount)
+                    {
+                        <div class="alert alert-warning mt-3 mb-0">
+                            <i class="ti ti-alert-triangle me-2"></i>
+                            Additional payment of @FormatCurrency(m_totalAdditional - m_depositAmount) is required from the renter.
+                        </div>
+                    }
+                </div>
+            </div>
 
-                            @if (m_damageLevel != "None" && m_damageEstimate > 0)
-                            {
-                                <MudStack Row="true" Justify="Justify.SpaceBetween">
-                                    <MudText Typo="Typo.body2" Color="Color.Error">Damage (@m_damageLevel)</MudText>
-                                    <MudText Typo="Typo.body2" Color="Color.Error">+@FormatCurrency(m_damageEstimate)</MudText>
-                                </MudStack>
-                            }
+            <h4 class="mb-3">Refund Method</h4>
 
-                            <MudDivider />
+            <div class="btn-group w-100 mb-3" role="group">
+                <input type="radio" class="btn-check" name="refund-method" id="refund-cash" value="Cash"
+                       checked="@(m_refundMethod == "Cash")" @onchange="@(() => m_refundMethod = "Cash")" />
+                <label class="btn btn-outline-primary" for="refund-cash">Cash</label>
 
-                            <MudStack Row="true" Justify="Justify.SpaceBetween">
-                                <MudText Typo="Typo.body1" Style="font-weight: 500;">Additional Due</MudText>
-                                <MudText Typo="Typo.body1" Color="Color.Primary" Style="font-weight: 600;">
-                                    @FormatCurrency(m_totalAdditional)
-                                </MudText>
-                            </MudStack>
-                        </MudStack>
-                    </MudPaper>
+                <input type="radio" class="btn-check" name="refund-method" id="refund-card" value="Card"
+                       checked="@(m_refundMethod == "Card")" @onchange="@(() => m_refundMethod = "Card")" />
+                <label class="btn btn-outline-primary" for="refund-card">Return to Card</label>
 
-                    <MudText Typo="Typo.subtitle1" Class="mt-2">Deposit Settlement</MudText>
+                <input type="radio" class="btn-check" name="refund-method" id="refund-bank" value="BankTransfer"
+                       checked="@(m_refundMethod == "BankTransfer")" @onchange="@(() => m_refundMethod = "BankTransfer")" />
+                <label class="btn btn-outline-primary" for="refund-bank">Bank Transfer</label>
+            </div>
 
-                    <MudPaper Outlined="true" Class="pa-3">
-                        <MudStack Spacing="2">
-                            <MudStack Row="true" Justify="Justify.SpaceBetween">
-                                <MudText Typo="Typo.body2">Deposit Held</MudText>
-                                <MudText Typo="Typo.body2">@FormatCurrency(m_depositAmount)</MudText>
-                            </MudStack>
+            <label class="form-check">
+                <input type="checkbox" class="form-check-input" @bind="m_refundProcessed" />
+                <span class="form-check-label">@GetRefundConfirmationText()</span>
+            </label>
+        </div>
+    </div>
+</div>
 
-                            @if (m_totalAdditional > 0)
-                            {
-                                <MudStack Row="true" Justify="Justify.SpaceBetween">
-                                    <MudText Typo="Typo.body2">Deductions</MudText>
-                                    <MudText Typo="Typo.body2" Color="Color.Error">-@FormatCurrency(Math.Min(m_totalAdditional, m_depositAmount))</MudText>
-                                </MudStack>
-                            }
-
-                            <MudDivider />
-
-                            <MudStack Row="true" Justify="Justify.SpaceBetween">
-                                <MudText Typo="Typo.body1" Style="font-weight: 500;">Refund Amount</MudText>
-                                <MudText Typo="Typo.h5" Color="Color.Success" Style="font-weight: 600;">
-                                    @FormatCurrency(m_refundAmount)
-                                </MudText>
-                            </MudStack>
-
-                            @if (m_totalAdditional > m_depositAmount)
-                            {
-                                <MudAlert Severity="Severity.Warning" Dense="true">
-                                    Additional payment of @FormatCurrency(m_totalAdditional - m_depositAmount) is required from the renter.
-                                </MudAlert>
-                            }
-                        </MudStack>
-                    </MudPaper>
-
-                    <MudText Typo="Typo.subtitle1" Class="mt-2">Refund Method</MudText>
-
-                    <MudRadioGroup T="string" @bind-Value="m_refundMethod">
-                        <MudStack Row="true" Spacing="4">
-                            <MudRadio T="string" Value="@("Cash")" Color="Color.Primary">Cash</MudRadio>
-                            <MudRadio T="string" Value="@("Card")" Color="Color.Primary">Return to Card</MudRadio>
-                            <MudRadio T="string" Value="@("BankTransfer")" Color="Color.Primary">Bank Transfer</MudRadio>
-                        </MudStack>
-                    </MudRadioGroup>
-
-                    <MudCheckBox T="bool" @bind-Value="m_refundProcessed" Color="Color.Success"
-                                 Label="@GetRefundConfirmationText()" />
-                </MudStack>
-            </MudTabPanel>
-        </MudTabs>
-    </DialogContent>
-
-    <DialogActions>
-        <MudButton OnClick="Cancel" Variant="Variant.Text">Cancel</MudButton>
-        <MudButton Color="Color.Success" Variant="Variant.Filled"
-                   Disabled="@(!CanComplete)"
-                   OnClick="CompleteCheckOut">
-            @if (m_saving)
-            {
-                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-            }
-            Complete Check-Out
-        </MudButton>
-    </DialogActions>
-</MudDialog>
+<div class="modal-footer">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
+        Cancel
+    </button>
+    <button type="button" class="btn btn-success" disabled="@(!CanComplete)" @onclick="CompleteCheckOut">
+        @if (Saving)
+        {
+            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+        }
+        <i class="ti ti-logout me-1"></i>
+        Complete Check-Out
+    </button>
+</div>
 
 @code {
     private bool m_loading = true;
-    private bool m_saving;
     private int m_activeTab;
 
     // Rental details
@@ -294,109 +339,109 @@
     private bool m_refundProcessed;
 
     // Calculated values
-    private int m_extraDays => m_actualReturnDate.HasValue
-        ? Math.Max(0, (int)(m_actualReturnDate.Value - Entity.ExpectedEndDate.Date).TotalDays)
+    private int m_extraDays => this.m_actualReturnDate.HasValue
+        ? Math.Max(0, (int)(this.m_actualReturnDate.Value - this.Entity.ExpectedEndDate.Date).TotalDays)
         : 0;
 
-    private decimal m_extraDaysCharge => m_extraDays * Entity.DailyRate;
-    private decimal m_totalAdditional => m_extraDaysCharge + (m_damageLevel != "None" ? m_damageEstimate : 0);
-    private decimal m_refundAmount => Math.Max(0, m_depositAmount - m_totalAdditional);
+    private decimal m_extraDaysCharge => this.m_extraDays * this.Entity.DailyRate;
+    private decimal m_totalAdditional => this.m_extraDaysCharge + (this.m_damageLevel != "None" ? this.m_damageEstimate : 0);
+    private decimal m_refundAmount => Math.Max(0, this.m_depositAmount - this.m_totalAdditional);
 
-    private bool CanComplete => m_actualReturnDate.HasValue &&
-                                m_mileageEnd >= Entity.MileageStart &&
-                                (m_refundAmount == 0 || m_refundProcessed);
+    private bool CanComplete => this.m_actualReturnDate.HasValue &&
+                                this.m_mileageEnd >= this.Entity.MileageStart &&
+                                (this.m_refundAmount == 0 || this.m_refundProcessed);
 
     protected override async Task OnInitializedAsync()
     {
-        m_loading = true;
+        this.m_loading = true;
         try
         {
             // Set defaults
-            m_actualReturnDate = DateTime.Today;
-            m_mileageEnd = Entity.MileageStart;
+            this.m_actualReturnDate = DateTime.Today;
+            this.m_mileageEnd = this.Entity.MileageStart;
 
             // Load renter name
-            var renter = await DataContext.LoadOneAsync<Renter>(r => r.RenterId == Entity.RenterId);
-            m_renterName = renter?.FullName ?? "Unknown";
+            var renter = await this.DataContext.LoadOneAsync<Renter>(r => r.RenterId == this.Entity.RenterId);
+            this.m_renterName = renter?.FullName ?? "Unknown";
 
             // Load motorbike name
-            var motorbike = await DataContext.LoadOneAsync<Motorbike>(m => m.MotorbikeId == Entity.MotorbikeId);
-            m_motorbikeName = motorbike != null ? $"{motorbike.Brand} {motorbike.Model} ({motorbike.LicensePlate})" : "Unknown";
+            var motorbike = await this.DataContext.LoadOneAsync<Motorbike>(m => m.MotorbikeId == this.Entity.MotorbikeId);
+            this.m_motorbikeName = motorbike != null ? $"{motorbike.Brand} {motorbike.Model} ({motorbike.LicensePlate})" : "Unknown";
             if (motorbike != null)
-                m_mileageEnd = motorbike.Mileage;
+                this.m_mileageEnd = motorbike.Mileage;
 
             // Load deposit
-            var deposit = await DataContext.LoadOneAsync<Deposit>(d => d.RentalId == Entity.RentalId);
-            m_depositAmount = deposit?.Amount ?? 0;
+            var deposit = await this.DataContext.LoadOneAsync<Deposit>(d => d.RentalId == this.Entity.RentalId);
+            this.m_depositAmount = deposit?.Amount ?? 0;
         }
         catch (Exception ex)
         {
-            ShowError($"Error loading data: {ex.Message}");
+            this.ShowError($"Error loading data: {ex.Message}");
         }
         finally
         {
-            m_loading = false;
+            this.m_loading = false;
         }
     }
 
     private string GetRefundConfirmationText()
     {
-        if (m_refundAmount > 0)
-            return $"I confirm the refund of {FormatCurrency(m_refundAmount)} has been processed via {m_refundMethod}";
-        else if (m_totalAdditional > m_depositAmount)
-            return $"I confirm the additional payment of {FormatCurrency(m_totalAdditional - m_depositAmount)} has been collected";
+        if (this.m_refundAmount > 0)
+            return $"I confirm the refund of {FormatCurrency(this.m_refundAmount)} has been processed via {this.m_refundMethod}";
+        else if (this.m_totalAdditional > this.m_depositAmount)
+            return $"I confirm the additional payment of {FormatCurrency(this.m_totalAdditional - this.m_depositAmount)} has been collected";
         else
             return "No refund needed - deposit covers all charges";
     }
 
     private async Task CompleteCheckOut()
     {
-        if (!m_actualReturnDate.HasValue) return;
+        if (!this.m_actualReturnDate.HasValue) return;
 
-        m_saving = true;
+        this.Saving = true;
         try
         {
             var request = new CheckOutRequest
             {
-                RentalId = Entity.RentalId,
-                ActualEndDate = new DateTimeOffset(m_actualReturnDate.Value, TimeSpan.Zero),
-                MileageEnd = m_mileageEnd,
-                Notes = m_notes,
-                PaymentMethod = m_refundMethod,
-                RefundDeposit = m_refundAmount > 0
+                RentalId = this.Entity.RentalId,
+                ActualEndDate = new DateTimeOffset(this.m_actualReturnDate.Value, TimeSpan.Zero),
+                MileageEnd = this.m_mileageEnd,
+                Notes = this.m_notes,
+                PaymentMethod = this.m_refundMethod,
+                RefundDeposit = this.m_refundAmount > 0
             };
 
-            if (m_damageLevel != "None" && !string.IsNullOrEmpty(m_damageDescription))
+            if (this.m_damageLevel != "None" && !string.IsNullOrEmpty(this.m_damageDescription))
             {
                 request.DamageReports = [
                     new DamageReportInfo
                     {
-                        Description = m_damageDescription,
-                        Severity = m_damageLevel,
-                        EstimatedCost = m_damageEstimate
+                        Description = this.m_damageDescription,
+                        Severity = this.m_damageLevel,
+                        EstimatedCost = this.m_damageEstimate
                     }
                 ];
             }
 
-            var result = await RentalService.CheckOutAsync(request, UserName);
+            var result = await this.RentalService.CheckOutAsync(request, this.UserName);
 
             if (result.Success)
             {
-                ShowSuccess($"Check-out completed. Refund: {FormatCurrency(result.RefundAmount)}");
-                MudDialog.Close(DialogResult.Ok(true));
+                this.ShowSuccess($"Check-out completed. Refund: {FormatCurrency(result.RefundAmount)}");
+                this.Close();
             }
             else
             {
-                ShowError($"Check-out failed: {result.Message}");
+                this.ShowError($"Check-out failed: {result.Message}");
             }
         }
         catch (Exception ex)
         {
-            ShowError($"Error: {ex.Message}");
+            this.ShowError($"Error: {ex.Message}");
         }
         finally
         {
-            m_saving = false;
+            this.Saving = false;
         }
     }
 }

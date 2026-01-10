@@ -1,0 +1,67 @@
+@using MotoRent.Client.Services
+@implements IDisposable
+@inject ToastService ToastService
+
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1090;">
+    @foreach (var toast in this.ToastService.Toasts)
+    {
+        <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header">
+                <span class="@GetIconClass(toast.Type) me-2"></span>
+                <strong class="me-auto">@GetTitle(toast)</strong>
+                <button type="button" class="btn-close" @onclick="() => OnCloseClick(toast.Id)"></button>
+            </div>
+            <div class="toast-body @GetBodyClass(toast.Type)">
+                @toast.Message
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        this.ToastService.OnChange += this.OnToastChange;
+    }
+
+    private void OnToastChange()
+    {
+        this.InvokeAsync(this.StateHasChanged);
+    }
+
+    private string GetIconClass(ToastType type) => type switch
+    {
+        ToastType.Success => "ti ti-circle-check text-success",
+        ToastType.Error => "ti ti-alert-circle text-danger",
+        ToastType.Warning => "ti ti-alert-triangle text-warning",
+        ToastType.Info => "ti ti-info-circle text-info",
+        _ => "ti ti-info-circle text-info"
+    };
+
+    private string GetBodyClass(ToastType type) => type switch
+    {
+        ToastType.Error => "text-danger",
+        ToastType.Warning => "text-warning",
+        _ => string.Empty
+    };
+
+    private string GetTitle(ToastMessage toast) =>
+        toast.Title ?? toast.Type switch
+        {
+            ToastType.Success => "Success",
+            ToastType.Error => "Error",
+            ToastType.Warning => "Warning",
+            ToastType.Info => "Info",
+            _ => "Notice"
+        };
+
+    private void OnCloseClick(string id)
+    {
+        this.ToastService.RemoveToast(id);
+    }
+
+    public void Dispose()
+    {
+        this.ToastService.OnChange -= this.OnToastChange;
+    }
+}

@@ -1,22 +1,22 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
+using MotoRent.Client.Services;
 using MotoRent.Domain.Core;
 using MotoRent.Domain.DataContext;
-using MudBlazor;
 
 namespace MotoRent.Client.Controls;
 
 /// <summary>
 /// Base class for all MotoRent Blazor components.
-/// Provides common services: DataContext, RequestContext, DialogService, Snackbar, Navigation, Logging, and CommonLocalizer.
+/// Provides common services: DataContext, RequestContext, DialogService, ToastService, Navigation, Logging, and CommonLocalizer.
 /// </summary>
 public class MotoRentComponentBase : ComponentBase
 {
     [Inject] protected ILogger<MotoRentComponentBase> Logger { get; set; } = null!;
     [Inject] protected RentalDataContext DataContext { get; set; } = null!;
-    [Inject] protected IDialogService DialogService { get; set; } = null!;
-    [Inject] protected ISnackbar Snackbar { get; set; } = null!;
+    [Inject] protected DialogService DialogService { get; set; } = null!;
+    [Inject] protected ToastService ToastService { get; set; } = null!;
     [Inject] protected IRequestContext RequestContext { get; set; } = null!;
     [Inject] protected NavigationManager NavigationManager { get; set; } = null!;
     [Inject] protected IStringLocalizer<CommonResources> CommonLocalizer { get; set; } = null!;
@@ -26,22 +26,22 @@ public class MotoRentComponentBase : ComponentBase
     /// <summary>
     /// Gets the current shop ID from the request context.
     /// </summary>
-    protected int ShopId => RequestContext.GetShopId();
+    protected int ShopId => this.RequestContext.GetShopId();
 
     /// <summary>
     /// Gets the current username from the request context, or "system" if not authenticated.
     /// </summary>
-    protected string UserName => RequestContext.GetUserName() ?? "system";
+    protected string UserName => this.RequestContext.GetUserName() ?? "system";
 
     /// <summary>
     /// Gets the current organization AccountNo (tenant identifier).
     /// </summary>
-    protected string? AccountNo => RequestContext.GetAccountNo();
+    protected string? AccountNo => this.RequestContext.GetAccountNo();
 
     /// <summary>
     /// Gets the current date in the user's timezone.
     /// </summary>
-    protected DateOnly Today => RequestContext.GetDate();
+    protected DateOnly Today => this.RequestContext.GetDate();
 
     #endregion
 
@@ -51,25 +51,25 @@ public class MotoRentComponentBase : ComponentBase
     /// Formats a DateTimeOffset as a general date/time string in the user's timezone.
     /// </summary>
     protected string FormatDateTime(DateTimeOffset? dto) =>
-        dto.HasValue ? RequestContext.FormatDateTime(dto.Value) : "";
+        dto.HasValue ? this.RequestContext.FormatDateTime(dto.Value) : "";
 
     /// <summary>
     /// Formats a DateTimeOffset as a short date string in the user's timezone.
     /// </summary>
     protected string FormatDate(DateTimeOffset? dto) =>
-        dto.HasValue ? RequestContext.FormatDate(dto.Value) : "";
+        dto.HasValue ? this.RequestContext.FormatDate(dto.Value) : "";
 
     /// <summary>
     /// Formats a DateTimeOffset as a short time string in the user's timezone.
     /// </summary>
     protected string FormatTime(DateTimeOffset? dto) =>
-        dto.HasValue ? RequestContext.FormatTime(dto.Value) : "";
+        dto.HasValue ? this.RequestContext.FormatTime(dto.Value) : "";
 
     /// <summary>
     /// Formats a DateTimeOffset as a sortable string (yyyy-MM-ddTHH:mm).
     /// </summary>
     protected string FormatSortable(DateTimeOffset? dto) =>
-        RequestContext.FormatDateTimeOffsetSortable(dto);
+        this.RequestContext.FormatDateTimeOffsetSortable(dto);
 
     #endregion
 
@@ -93,30 +93,30 @@ public class MotoRentComponentBase : ComponentBase
     /// Shows a success notification.
     /// </summary>
     protected void ShowSuccess(string message) =>
-        Snackbar.Add(message, Severity.Success);
+        this.ToastService.ShowSuccess(message);
 
     /// <summary>
     /// Shows an error notification.
     /// </summary>
     protected void ShowError(string message) =>
-        Snackbar.Add(message, Severity.Error);
+        this.ToastService.ShowError(message);
 
     /// <summary>
     /// Shows a warning notification.
     /// </summary>
     protected void ShowWarning(string message) =>
-        Snackbar.Add(message, Severity.Warning);
+        this.ToastService.ShowWarning(message);
 
     /// <summary>
     /// Shows an info notification.
     /// </summary>
     protected void ShowInfo(string message) =>
-        Snackbar.Add(message, Severity.Info);
+        this.ToastService.ShowInfo(message);
 
     /// <summary>
     /// Triggers a UI refresh.
     /// </summary>
-    public void ViewStateChanged() => StateHasChanged();
+    public void ViewStateChanged() => this.StateHasChanged();
 
     #endregion
 
@@ -127,25 +127,14 @@ public class MotoRentComponentBase : ComponentBase
     /// </summary>
     protected async Task<bool> ConfirmAsync(string title, string message, string yesText = "Yes", string noText = "Cancel")
     {
-        var parameters = new DialogParameters<MudMessageBox>
-        {
-            { x => x.Title, title },
-            { x => x.Message, message },
-            { x => x.YesText, yesText },
-            { x => x.NoText, noText }
-        };
-
-        var dialog = await DialogService.ShowAsync<MudMessageBox>(title, parameters);
-        var result = await dialog.Result;
-
-        return result is { Canceled: false };
+        return await this.DialogService.ConfirmYesNoAsync(message, title);
     }
 
     /// <summary>
     /// Shows a delete confirmation dialog.
     /// </summary>
     protected Task<bool> ConfirmDeleteAsync(string itemName) =>
-        ConfirmAsync("Confirm Delete", $"Are you sure you want to delete '{itemName}'?", "Delete", "Cancel");
+        this.ConfirmAsync("Confirm Delete", $"Are you sure you want to delete '{itemName}'?", "Delete", "Cancel");
 
     #endregion
 }

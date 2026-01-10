@@ -1,211 +1,234 @@
 @page "/renters"
 @rendermode InteractiveServer
-@using MotoRent.Domain.Core
-@using MotoRent.Domain.Entities
-@using MotoRent.Services
+@inherits LocalizedComponentBase<Renters>
 @inject RenterService RenterService
-@inject IDialogService DialogService
-@inject ISnackbar Snackbar
 
-<PageTitle>Renters - MotoRent</PageTitle>
+<MotoRentPageTitle>Renters</MotoRentPageTitle>
 
-<MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
-    <MudText Typo="Typo.h4">Renter Management</MudText>
-    <MudButton Variant="Variant.Filled" Color="Color.Primary"
-               StartIcon="@Icons.Material.Filled.PersonAdd" OnClick="OpenAddDialog">
+<TablerHeader Title="Renter Management" PreTitle="Customer Records">
+    <button type="button" class="btn btn-primary" @onclick="OpenAddDialog">
+        <i class="ti ti-user-plus me-1"></i>
         Register Renter
-    </MudButton>
-</MudStack>
+    </button>
+</TablerHeader>
 
-<MudPaper Elevation="2" Class="pa-4 mb-4">
-    <MudTextField @bind-Value="m_searchTerm" Placeholder="Search by name, phone, passport, email..."
-                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
-                  Immediate="true" DebounceInterval="300" OnDebounceIntervalElapsed="SearchChanged"
-                  Style="max-width: 400px;" />
-</MudPaper>
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-3 align-items-center">
+            <div class="col-md-6">
+                <div class="input-icon">
+                    <span class="input-icon-addon">
+                        <i class="ti ti-search"></i>
+                    </span>
+                    <input type="text" class="form-control" placeholder="Search by name, phone, passport, email..."
+                           @bind="m_searchTerm" @bind:event="oninput" @onkeyup="OnSearchKeyUp" />
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
-@if (m_loading)
-{
-    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
-}
-
-<MudPaper Elevation="2">
-    <MudDataGrid T="Renter" Items="@m_renters" Hover="true" Striped="true"
-                 Loading="@m_loading" Dense="true" Virtualize="true"
-                 RowClick="@OnRowClick" RowStyle="cursor: pointer;">
-        <Columns>
-            <PropertyColumn Property="x => x.FullName" Title="Full Name" />
-            <PropertyColumn Property="x => x.Nationality" Title="Nationality" />
-            <PropertyColumn Property="x => x.PassportNo" Title="Passport No." />
-            <PropertyColumn Property="x => x.Phone" Title="Phone" />
-            <PropertyColumn Property="x => x.Email" Title="Email" />
-            <PropertyColumn Property="x => x.HotelName" Title="Hotel" />
-            <TemplateColumn Title="Actions" Sortable="false">
-                <CellTemplate>
-                    <MudStack Row="true" Spacing="1">
-                        <MudTooltip Text="Edit">
-                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
-                                           Color="Color.Primary" OnClick="@(() => OpenEditDialog(context.Item))" />
-                        </MudTooltip>
-                        <MudTooltip Text="View Documents">
-                            <MudIconButton Icon="@Icons.Material.Filled.FolderOpen" Size="Size.Small"
-                                           Color="Color.Info" OnClick="@(() => ViewDocuments(context.Item))" />
-                        </MudTooltip>
-                        <MudTooltip Text="Delete">
-                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
-                                           Color="Color.Error" OnClick="@(() => ConfirmDelete(context.Item))" />
-                        </MudTooltip>
-                    </MudStack>
-                </CellTemplate>
-            </TemplateColumn>
-        </Columns>
-        <PagerContent>
-            <MudDataGridPager T="Renter" PageSizeOptions="new[] { 10, 20, 50, 100 }" />
-        </PagerContent>
-    </MudDataGrid>
-</MudPaper>
+<LoadingSkeleton Loading="@m_loading" Mode="LoadingSkeleton.PlaceholderMode.Table" Rows="10" Columns="7">
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-vcenter card-table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Full Name</th>
+                        <th>Nationality</th>
+                        <th>Passport No.</th>
+                        <th>Phone</th>
+                        <th>Email</th>
+                        <th>Hotel</th>
+                        <th class="w-1">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (m_renters.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center text-secondary py-4">
+                                <i class="ti ti-users mb-2" style="font-size: 2rem;"></i>
+                                <div>No renters found</div>
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var renter in m_renters)
+                        {
+                            <tr class="cursor-pointer" @onclick="@(() => OpenEditDialog(renter))">
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <span class="avatar avatar-sm bg-primary-lt me-2">
+                                            @(renter.FullName?.Length > 0 ? renter.FullName[0].ToString().ToUpper() : "?")
+                                        </span>
+                                        <strong>@renter.FullName</strong>
+                                    </div>
+                                </td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(renter.Nationality))
+                                    {
+                                        <span class="badge bg-azure-lt">@renter.Nationality</span>
+                                    }
+                                </td>
+                                <td>@renter.PassportNo</td>
+                                <td>@renter.Phone</td>
+                                <td>@renter.Email</td>
+                                <td>@renter.HotelName</td>
+                                <td @onclick:stopPropagation="true">
+                                    <div class="btn-list flex-nowrap">
+                                        <button type="button" class="btn btn-icon btn-ghost-primary"
+                                                title="Edit" @onclick="@(() => OpenEditDialog(renter))">
+                                            <i class="ti ti-edit"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-icon btn-ghost-info"
+                                                title="View Documents" @onclick="@(() => ViewDocuments(renter))">
+                                            <i class="ti ti-folder"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-icon btn-ghost-danger"
+                                                title="Delete" @onclick="@(() => ConfirmDelete(renter))">
+                                            <i class="ti ti-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+        @if (m_renters.Count > 0)
+        {
+            <div class="card-footer d-flex align-items-center">
+                <p class="m-0 text-secondary">
+                    Showing <strong>@m_renters.Count</strong> renters
+                </p>
+            </div>
+        }
+    </div>
+</LoadingSkeleton>
 
 @code {
     private List<Renter> m_renters = [];
     private bool m_loading = true;
     private string? m_searchTerm;
-    private int m_shopId = 1; // TODO: Get from user session
+    private System.Timers.Timer? m_debounceTimer;
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadDataAsync();
+        await this.LoadDataAsync();
     }
 
     private async Task LoadDataAsync()
     {
-        m_loading = true;
+        this.m_loading = true;
         try
         {
-            var result = await RenterService.GetRentersAsync(
-                m_shopId,
-                m_searchTerm,
+            var result = await this.RenterService.GetRentersAsync(
+                this.ShopId,
+                this.m_searchTerm,
                 page: 1,
                 pageSize: 100);
 
-            m_renters = result.ItemCollection;
+            this.m_renters = result.ItemCollection;
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error loading data: {ex.Message}", Severity.Error);
+            this.ShowError($"Error loading data: {ex.Message}");
         }
         finally
         {
-            m_loading = false;
+            this.m_loading = false;
         }
     }
 
-    private async Task SearchChanged()
+    private void OnSearchKeyUp(KeyboardEventArgs e)
     {
-        await LoadDataAsync();
-    }
-
-    private async Task OnRowClick(DataGridRowClickEventArgs<Renter> args)
-    {
-        await OpenEditDialog(args.Item);
+        this.m_debounceTimer?.Stop();
+        this.m_debounceTimer?.Dispose();
+        this.m_debounceTimer = new System.Timers.Timer(300);
+        this.m_debounceTimer.Elapsed += async (_, _) =>
+        {
+            this.m_debounceTimer?.Stop();
+            await this.InvokeAsync(async () =>
+            {
+                await this.LoadDataAsync();
+                this.StateHasChanged();
+            });
+        };
+        this.m_debounceTimer.Start();
     }
 
     private async Task OpenAddDialog()
     {
         var renter = new Renter
         {
-            ShopId = m_shopId
+            ShopId = this.ShopId
         };
 
-        var parameters = new DialogParameters<RenterDialog>
-        {
-            { x => x.Renter, renter },
-            { x => x.IsNew, true }
-        };
+        var result = await this.DialogService
+            .Create<RenterDialog>("Register Renter")
+            .WithParameter(x => x.Entity, renter)
+            .WithParameter(x => x.IsNew, true)
+            .Large()
+            .ShowDialogAsync();
 
-        var options = new DialogOptions
+        if (!result.Cancelled)
         {
-            MaxWidth = MaxWidth.Medium,
-            FullWidth = true,
-            CloseButton = true
-        };
-
-        var dialog = await DialogService.ShowAsync<RenterDialog>("Register Renter", parameters, options);
-        var result = await dialog.Result;
-
-        if (result is { Canceled: false })
-        {
-            await LoadDataAsync();
-            Snackbar.Add("Renter registered successfully", Severity.Success);
+            await this.LoadDataAsync();
+            this.ShowSuccess("Renter registered successfully");
         }
     }
 
     private async Task OpenEditDialog(Renter renter)
     {
-        var cloned = renter.Clone();
+        var result = await this.DialogService
+            .Create<RenterDialog>("Edit Renter")
+            .WithParameter(x => x.Entity, renter.Clone())
+            .WithParameter(x => x.IsNew, false)
+            .Large()
+            .ShowDialogAsync();
 
-        var parameters = new DialogParameters<RenterDialog>
+        if (!result.Cancelled)
         {
-            { x => x.Renter, cloned },
-            { x => x.IsNew, false }
-        };
-
-        var options = new DialogOptions
-        {
-            MaxWidth = MaxWidth.Medium,
-            FullWidth = true,
-            CloseButton = true
-        };
-
-        var dialog = await DialogService.ShowAsync<RenterDialog>("Edit Renter", parameters, options);
-        var result = await dialog.Result;
-
-        if (result is { Canceled: false })
-        {
-            await LoadDataAsync();
-            Snackbar.Add("Renter updated successfully", Severity.Success);
+            await this.LoadDataAsync();
+            this.ShowSuccess("Renter updated successfully");
         }
     }
 
-    private async Task ViewDocuments(Renter renter)
+    private Task ViewDocuments(Renter renter)
     {
-        // TODO: Implement document viewer dialog
-        Snackbar.Add("Document viewer coming soon", Severity.Info);
-        await Task.CompletedTask;
+        this.ShowInfo("Document viewer coming soon");
+        return Task.CompletedTask;
     }
 
     private async Task ConfirmDelete(Renter renter)
     {
-        // Check if renter has active rentals
-        var activeRentals = await RenterService.GetActiveRentalCountAsync(renter.RenterId);
+        var activeRentals = await this.RenterService.GetActiveRentalCountAsync(renter.RenterId);
         if (activeRentals > 0)
         {
-            Snackbar.Add($"Cannot delete: {renter.FullName} has {activeRentals} active rental(s)", Severity.Warning);
+            this.ShowWarning($"Cannot delete: {renter.FullName} has {activeRentals} active rental(s)");
             return;
         }
 
-        var parameters = new DialogParameters<MudMessageBox>
-        {
-            { x => x.Title, "Confirm Delete" },
-            { x => x.Message, $"Are you sure you want to delete {renter.FullName}?" },
-            { x => x.YesText, "Delete" },
-            { x => x.NoText, "Cancel" }
-        };
+        if (!await this.ConfirmDeleteAsync(renter.FullName ?? "this renter"))
+            return;
 
-        var dialog = await DialogService.ShowAsync<MudMessageBox>("Confirm Delete", parameters);
-        var result = await dialog.Result;
-
-        if (result is { Canceled: false })
+        var deleteResult = await this.RenterService.DeleteRenterAsync(renter, this.UserName);
+        if (deleteResult.Success)
         {
-            var deleteResult = await RenterService.DeleteRenterAsync(renter, "system");
-            if (deleteResult.Success)
-            {
-                await LoadDataAsync();
-                Snackbar.Add("Renter deleted successfully", Severity.Success);
-            }
-            else
-            {
-                Snackbar.Add($"Delete failed: {deleteResult.Message}", Severity.Error);
-            }
+            await this.LoadDataAsync();
+            this.ShowSuccess("Renter deleted successfully");
         }
+        else
+        {
+            this.ShowError($"Delete failed: {deleteResult.Message}");
+        }
+    }
+
+    public void Dispose()
+    {
+        this.m_debounceTimer?.Dispose();
     }
 }

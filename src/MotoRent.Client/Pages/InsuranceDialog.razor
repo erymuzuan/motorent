@@ -1,117 +1,107 @@
-@using MotoRent.Domain.Entities
-@using MotoRent.Services
+@inherits LocalizedDialogBase<Insurance, InsuranceDialog>
 @using InsuranceEntity = MotoRent.Domain.Entities.Insurance
 @inject InsuranceService InsuranceService
-@inject ISnackbar Snackbar
 
-<MudDialog>
-    <DialogContent>
-        <MudForm @ref="m_form" @bind-IsValid="m_formValid">
-            <MudGrid>
-                <MudItem xs="12" md="6">
-                    <MudTextField @bind-Value="Insurance.Name" Label="Package Name"
-                                  Required="true" RequiredError="Package name is required"
-                                  Variant="Variant.Outlined"
-                                  Placeholder="e.g., Basic, Premium, Full Coverage" />
-                </MudItem>
+<form id="@FormId" @onsubmit="SaveAsync" @onsubmit:preventDefault>
+    <div class="modal-body">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label required">Package Name</label>
+                <input type="text" class="form-control" @bind="Entity.Name" required
+                       placeholder="e.g., Basic, Premium, Full Coverage" />
+            </div>
 
-                <MudItem xs="12" md="6">
-                    <MudSwitch @bind-Value="Insurance.IsActive" Label="Active"
-                               Color="Color.Primary" />
-                </MudItem>
+            <div class="col-md-6">
+                <label class="form-check form-switch mt-4">
+                    <input type="checkbox" class="form-check-input" @bind="Entity.IsActive" />
+                    <span class="form-check-label">Active</span>
+                </label>
+            </div>
 
-                <MudItem xs="12">
-                    <MudTextField @bind-Value="Insurance.Description" Label="Description"
-                                  Required="true" RequiredError="Description is required"
-                                  Variant="Variant.Outlined" Lines="3"
-                                  Placeholder="Describe what this insurance covers..." />
-                </MudItem>
+            <div class="col-12">
+                <label class="form-label required">Description</label>
+                <textarea class="form-control" @bind="Entity.Description" required rows="3"
+                          placeholder="Describe what this insurance covers..."></textarea>
+            </div>
 
-                <MudItem xs="12" md="4">
-                    <MudNumericField @bind-Value="Insurance.DailyRate" Label="Daily Rate (THB)"
-                                     Required="true" Min="0"
-                                     Variant="Variant.Outlined" Format="N0" />
-                </MudItem>
+            <div class="col-md-4">
+                <label class="form-label required">Daily Rate (THB)</label>
+                <div class="input-group">
+                    <span class="input-group-text">฿</span>
+                    <input type="number" class="form-control" @bind="Entity.DailyRate" required
+                           min="0" step="10" />
+                </div>
+            </div>
 
-                <MudItem xs="12" md="4">
-                    <MudNumericField @bind-Value="Insurance.MaxCoverage" Label="Max Coverage (THB)"
-                                     Required="true" Min="0"
-                                     Variant="Variant.Outlined" Format="N0"
-                                     HelperText="Maximum claim amount" />
-                </MudItem>
+            <div class="col-md-4">
+                <label class="form-label required">Max Coverage (THB)</label>
+                <div class="input-group">
+                    <span class="input-group-text">฿</span>
+                    <input type="number" class="form-control" @bind="Entity.MaxCoverage" required
+                           min="0" step="1000" />
+                </div>
+                <small class="form-hint">Maximum claim amount</small>
+            </div>
 
-                <MudItem xs="12" md="4">
-                    <MudNumericField @bind-Value="Insurance.Deductible" Label="Deductible (THB)"
-                                     Required="true" Min="0"
-                                     Variant="Variant.Outlined" Format="N0"
-                                     HelperText="Customer pays first" />
-                </MudItem>
-            </MudGrid>
-        </MudForm>
-    </DialogContent>
-    <DialogActions>
-        <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary" Variant="Variant.Filled"
-                   OnClick="SaveAsync" Disabled="@(!m_formValid || m_saving)">
-            @if (m_saving)
-            {
-                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-            }
-            @(IsNew ? "Add" : "Save")
-        </MudButton>
-    </DialogActions>
-</MudDialog>
+            <div class="col-md-4">
+                <label class="form-label required">Deductible (THB)</label>
+                <div class="input-group">
+                    <span class="input-group-text">฿</span>
+                    <input type="number" class="form-control" @bind="Entity.Deductible" required
+                           min="0" step="500" />
+                </div>
+                <small class="form-hint">Customer pays first</small>
+            </div>
+        </div>
+    </div>
+</form>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
+        Cancel
+    </button>
+    <button type="submit" form="@FormId" class="btn btn-primary" disabled="@Saving">
+        @if (Saving)
+        {
+            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+        }
+        <i class="ti ti-device-floppy me-1"></i>
+        @SaveButtonText
+    </button>
+</div>
 
 @code {
-    [CascadingParameter]
-    private MudDialogInstance? MudDialog { get; set; }
-
-    [Parameter]
-    public InsuranceEntity Insurance { get; set; } = new();
-
-    [Parameter]
-    public bool IsNew { get; set; }
-
-    private MudForm? m_form;
-    private bool m_formValid;
-    private bool m_saving;
-
-    private void Cancel()
+    protected override void OnInitialized()
     {
-        MudDialog?.Cancel();
+        this.FormValid = true;
     }
 
     private async Task SaveAsync()
     {
-        if (m_form == null) return;
-
-        await m_form.Validate();
-        if (!m_formValid) return;
-
-        m_saving = true;
+        this.Saving = true;
 
         try
         {
-            var result = IsNew
-                ? await InsuranceService.CreateInsuranceAsync(Insurance, "system")
-                : await InsuranceService.UpdateInsuranceAsync(Insurance, "system");
+            var result = this.IsNew
+                ? await this.InsuranceService.CreateInsuranceAsync(this.Entity, this.UserName)
+                : await this.InsuranceService.UpdateInsuranceAsync(this.Entity, this.UserName);
 
             if (result.Success)
             {
-                MudDialog?.Close(DialogResult.Ok(Insurance));
+                this.Close();
             }
             else
             {
-                Snackbar.Add($"Save failed: {result.Message}", Severity.Error);
+                this.ShowError($"Save failed: {result.Message}");
             }
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            this.ShowError($"Error: {ex.Message}");
         }
         finally
         {
-            m_saving = false;
+            this.Saving = false;
         }
     }
 }
