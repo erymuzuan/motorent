@@ -83,7 +83,6 @@ public class RenterService(RentalDataContext context)
         var query = this.Context.Rentals
             .Where(r => r.RenterId == renterId && r.Status == "Active");
 
-        var result = await this.Context.LoadAsync(query, page: 1, size: 1, includeTotalRows: true);
-        return result.TotalRows;
+        return await this.Context.GetCountAsync(query);
     }
 }

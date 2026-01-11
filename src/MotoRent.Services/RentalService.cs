@@ -444,14 +444,13 @@ public class RentalService(RentalDataContext context)
             using var session = this.Context.OpenSession("tourist");
 
             // 1. Check if motorbike is available for the requested dates
-            var conflictingRentals = await this.Context.LoadAsync(
+            var hasConflict = await this.Context.ExistAsync(
                 this.Context.Rentals
                     .Where(r => r.MotorbikeId == request.MotorbikeId)
                     .Where(r => r.Status == "Active" || r.Status == "Reserved")
-                    .Where(r => r.StartDate < request.EndDate && r.ExpectedEndDate > request.StartDate),
-                page: 1, size: 10, includeTotalRows: false);
+                    .Where(r => r.StartDate < request.EndDate && r.ExpectedEndDate > request.StartDate));
 
-            if (conflictingRentals.ItemCollection.Any())
+            if (hasConflict)
             {
                 return ReservationResult.CreateFailure("This motorbike is not available for the selected dates.");
             }

@@ -153,6 +153,179 @@ public class Repository<T> : IRepository<T> where T : Entity
         return await cmd.ExecuteNonQueryAsync();
     }
 
+    #region Aggregate Methods
+
+    public async Task<int> GetCountAsync(IQueryable<T> query)
+    {
+        var typedQuery = query as Query<T>;
+        if (typedQuery == null) return 0;
+
+        await using var connection = m_provider.CreateConnection();
+        await connection.OpenAsync();
+
+        var whereClause = BuildWhereClause(typedQuery.Predicates);
+        var sql = $"SELECT COUNT(*) FROM {m_tableName} {whereClause}";
+
+        await using var cmd = new SqlCommand(sql, connection);
+        AddWhereParameters(cmd, typedQuery.Predicates);
+
+        return (int)(await cmd.ExecuteScalarAsync() ?? 0);
+    }
+
+    public async Task<bool> ExistAsync(IQueryable<T> query)
+    {
+        var count = await GetCountAsync(query);
+        return count > 0;
+    }
+
+    public async Task<TResult> GetSumAsync<TResult>(IQueryable<T> query, Expression<Func<T, TResult>> selector) where TResult : struct
+    {
+        var typedQuery = query as Query<T>;
+        if (typedQuery == null) return default;
+
+        var columnName = GetColumnNameFromSelector(selector);
+
+        await using var connection = m_provider.CreateConnection();
+        await connection.OpenAsync();
+
+        var whereClause = BuildWhereClause(typedQuery.Predicates);
+        var sql = $"SELECT ISNULL(SUM([{columnName}]), 0) FROM {m_tableName} {whereClause}";
+
+        await using var cmd = new SqlCommand(sql, connection);
+        AddWhereParameters(cmd, typedQuery.Predicates);
+
+        var result = await cmd.ExecuteScalarAsync();
+        return result == null || result == DBNull.Value ? default : (TResult)Convert.ChangeType(result, typeof(TResult));
+    }
+
+    public async Task<TResult> GetMaxAsync<TResult>(IQueryable<T> query, Expression<Func<T, TResult>> selector)
+    {
+        var typedQuery = query as Query<T>;
+        if (typedQuery == null) return default!;
+
+        var columnName = GetColumnNameFromSelector(selector);
+
+        await using var connection = m_provider.CreateConnection();
+        await connection.OpenAsync();
+
+        var whereClause = BuildWhereClause(typedQuery.Predicates);
+        var sql = $"SELECT MAX([{columnName}]) FROM {m_tableName} {whereClause}";
+
+        await using var cmd = new SqlCommand(sql, connection);
+        AddWhereParameters(cmd, typedQuery.Predicates);
+
+        var result = await cmd.ExecuteScalarAsync();
+        return result == null || result == DBNull.Value ? default! : (TResult)Convert.ChangeType(result, typeof(TResult));
+    }
+
+    public async Task<TResult> GetMinAsync<TResult>(IQueryable<T> query, Expression<Func<T, TResult>> selector)
+    {
+        var typedQuery = query as Query<T>;
+        if (typedQuery == null) return default!;
+
+        var columnName = GetColumnNameFromSelector(selector);
+
+        await using var connection = m_provider.CreateConnection();
+        await connection.OpenAsync();
+
+        var whereClause = BuildWhereClause(typedQuery.Predicates);
+        var sql = $"SELECT MIN([{columnName}]) FROM {m_tableName} {whereClause}";
+
+        await using var cmd = new SqlCommand(sql, connection);
+        AddWhereParameters(cmd, typedQuery.Predicates);
+
+        var result = await cmd.ExecuteScalarAsync();
+        return result == null || result == DBNull.Value ? default! : (TResult)Convert.ChangeType(result, typeof(TResult));
+    }
+
+    public async Task<decimal> GetAverageAsync(IQueryable<T> query, Expression<Func<T, decimal>> selector)
+    {
+        var typedQuery = query as Query<T>;
+        if (typedQuery == null) return 0m;
+
+        var columnName = GetColumnNameFromSelector(selector);
+
+        await using var connection = m_provider.CreateConnection();
+        await connection.OpenAsync();
+
+        var whereClause = BuildWhereClause(typedQuery.Predicates);
+        var sql = $"SELECT ISNULL(AVG(CAST([{columnName}] AS DECIMAL(18,4))), 0) FROM {m_tableName} {whereClause}";
+
+        await using var cmd = new SqlCommand(sql, connection);
+        AddWhereParameters(cmd, typedQuery.Predicates);
+
+        var result = await cmd.ExecuteScalarAsync();
+        return result == null || result == DBNull.Value ? 0m : Convert.ToDecimal(result);
+    }
+
+    public async Task<TResult?> GetScalarAsync<TResult>(IQueryable<T> query, Expression<Func<T, TResult>> selector)
+    {
+        var typedQuery = query as Query<T>;
+        if (typedQuery == null) return default;
+
+        var columnName = GetColumnNameFromSelector(selector);
+
+        await using var connection = m_provider.CreateConnection();
+        await connection.OpenAsync();
+
+        var whereClause = BuildWhereClause(typedQuery.Predicates);
+        var orderClause = BuildOrderClause(typedQuery.OrderByColumns);
+        var sql = $"SELECT TOP 1 [{columnName}] FROM {m_tableName} {whereClause} {orderClause}";
+
+        await using var cmd = new SqlCommand(sql, connection);
+        AddWhereParameters(cmd, typedQuery.Predicates);
+
+        var result = await cmd.ExecuteScalarAsync();
+        return result == null || result == DBNull.Value ? default : (TResult)Convert.ChangeType(result, typeof(TResult));
+    }
+
+    public async Task<List<T>> GetListAsync(IQueryable<T> query, Expression<Func<T, object>> selector)
+    {
+        // This loads full entities - use LoadAsync with paging for large datasets
+        var result = await LoadAsync(query, page: 1, size: 1000, includeTotalRows: false);
+        return result.ItemCollection;
+    }
+
+    public async Task<List<TResult>> GetDistinctAsync<TResult>(IQueryable<T> query, Expression<Func<T, TResult>> selector)
+    {
+        var typedQuery = query as Query<T>;
+        if (typedQuery == null) return [];
+
+        var columnName = GetColumnNameFromSelector(selector);
+
+        await using var connection = m_provider.CreateConnection();
+        await connection.OpenAsync();
+
+        var whereClause = BuildWhereClause(typedQuery.Predicates);
+        var sql = $"SELECT DISTINCT [{columnName}] FROM {m_tableName} {whereClause}";
+
+        await using var cmd = new SqlCommand(sql, connection);
+        AddWhereParameters(cmd, typedQuery.Predicates);
+
+        var results = new List<TResult>();
+        await using var reader = await cmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            var value = reader.GetValue(0);
+            if (value != null && value != DBNull.Value)
+            {
+                results.Add((TResult)Convert.ChangeType(value, typeof(TResult)));
+            }
+        }
+        return results;
+    }
+
+    private static string GetColumnNameFromSelector<TResult>(Expression<Func<T, TResult>> selector)
+    {
+        if (selector.Body is MemberExpression member)
+            return member.Member.Name;
+        if (selector.Body is UnaryExpression unary && unary.Operand is MemberExpression unaryMember)
+            return unaryMember.Member.Name;
+        throw new ArgumentException("Invalid selector expression");
+    }
+
+    #endregion
+
     private T? MapFromReader(SqlDataReader reader)
     {
         var json = reader.GetString(reader.GetOrdinal("Json"));

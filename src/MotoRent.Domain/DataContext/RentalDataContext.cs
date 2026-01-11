@@ -27,22 +27,31 @@ public partial class RentalDataContext
 
     public RentalDataContext(QueryProvider provider)
     {
-        QueryProvider = provider;
-        Shops = new Query<Shop>(provider);
-        Renters = new Query<Renter>(provider);
-        Documents = new Query<Document>(provider);
-        Motorbikes = new Query<Motorbike>(provider);
-        Rentals = new Query<Rental>(provider);
-        Deposits = new Query<Deposit>(provider);
-        Insurances = new Query<Insurance>(provider);
-        Accessories = new Query<Accessory>(provider);
-        RentalAccessories = new Query<RentalAccessory>(provider);
-        Payments = new Query<Payment>(provider);
-        DamageReports = new Query<DamageReport>(provider);
-        DamagePhotos = new Query<DamagePhoto>(provider);
-        RentalAgreements = new Query<RentalAgreement>(provider);
-        ServiceTypes = new Query<ServiceType>(provider);
-        MaintenanceSchedules = new Query<MaintenanceSchedule>(provider);
+        this.QueryProvider = provider;
+        this.Shops = new Query<Shop>(provider);
+        this.Renters = new Query<Renter>(provider);
+        this.Documents = new Query<Document>(provider);
+        this.Motorbikes = new Query<Motorbike>(provider);
+        this.Rentals = new Query<Rental>(provider);
+        this.Deposits = new Query<Deposit>(provider);
+        this.Insurances = new Query<Insurance>(provider);
+        this.Accessories = new Query<Accessory>(provider);
+        this.RentalAccessories = new Query<RentalAccessory>(provider);
+        this.Payments = new Query<Payment>(provider);
+        this.DamageReports = new Query<DamageReport>(provider);
+        this.DamagePhotos = new Query<DamagePhoto>(provider);
+        this.RentalAgreements = new Query<RentalAgreement>(provider);
+        this.ServiceTypes = new Query<ServiceType>(provider);
+        this.MaintenanceSchedules = new Query<MaintenanceSchedule>(provider);
+    }
+
+    /// <summary>
+    /// Creates a new query for the specified entity type.
+    /// Preferred pattern over using Query properties directly.
+    /// </summary>
+    public Query<T> CreateQuery<T>() where T : Entity, new()
+    {
+        return new Query<T>(this.QueryProvider);
     }
 
     public async Task<T?> LoadOneAsync<T>(Expression<Func<T, bool>> predicate) where T : Entity
@@ -57,6 +66,89 @@ public partial class RentalDataContext
         var repos = ObjectBuilder.GetObject<IRepository<T>>();
         return await repos.LoadAsync(query, page, size, includeTotalRows);
     }
+
+    #region Aggregate Methods
+
+    /// <summary>
+    /// Gets the count of entities matching the query.
+    /// </summary>
+    public async Task<int> GetCountAsync<T>(IQueryable<T> query) where T : Entity
+    {
+        var repos = ObjectBuilder.GetObject<IRepository<T>>();
+        return await repos.GetCountAsync(query);
+    }
+
+    /// <summary>
+    /// Checks if any entity matches the query.
+    /// </summary>
+    public async Task<bool> ExistAsync<T>(IQueryable<T> query) where T : Entity
+    {
+        var repos = ObjectBuilder.GetObject<IRepository<T>>();
+        return await repos.ExistAsync(query);
+    }
+
+    /// <summary>
+    /// Gets the sum of a column for entities matching the query.
+    /// </summary>
+    public async Task<TResult> GetSumAsync<T, TResult>(IQueryable<T> query, Expression<Func<T, TResult>> selector)
+        where T : Entity
+        where TResult : struct
+    {
+        var repos = ObjectBuilder.GetObject<IRepository<T>>();
+        return await repos.GetSumAsync(query, selector);
+    }
+
+    /// <summary>
+    /// Gets the maximum value of a column for entities matching the query.
+    /// </summary>
+    public async Task<TResult> GetMaxAsync<T, TResult>(IQueryable<T> query, Expression<Func<T, TResult>> selector)
+        where T : Entity
+    {
+        var repos = ObjectBuilder.GetObject<IRepository<T>>();
+        return await repos.GetMaxAsync(query, selector);
+    }
+
+    /// <summary>
+    /// Gets the minimum value of a column for entities matching the query.
+    /// </summary>
+    public async Task<TResult> GetMinAsync<T, TResult>(IQueryable<T> query, Expression<Func<T, TResult>> selector)
+        where T : Entity
+    {
+        var repos = ObjectBuilder.GetObject<IRepository<T>>();
+        return await repos.GetMinAsync(query, selector);
+    }
+
+    /// <summary>
+    /// Gets the average value of a decimal column for entities matching the query.
+    /// </summary>
+    public async Task<decimal> GetAverageAsync<T>(IQueryable<T> query, Expression<Func<T, decimal>> selector)
+        where T : Entity
+    {
+        var repos = ObjectBuilder.GetObject<IRepository<T>>();
+        return await repos.GetAverageAsync(query, selector);
+    }
+
+    /// <summary>
+    /// Gets a single scalar value from the first matching entity.
+    /// </summary>
+    public async Task<TResult?> GetScalarAsync<T, TResult>(IQueryable<T> query, Expression<Func<T, TResult>> selector)
+        where T : Entity
+    {
+        var repos = ObjectBuilder.GetObject<IRepository<T>>();
+        return await repos.GetScalarAsync(query, selector);
+    }
+
+    /// <summary>
+    /// Gets distinct values for a column from entities matching the query.
+    /// </summary>
+    public async Task<List<TResult>> GetDistinctAsync<T, TResult>(IQueryable<T> query, Expression<Func<T, TResult>> selector)
+        where T : Entity
+    {
+        var repos = ObjectBuilder.GetObject<IRepository<T>>();
+        return await repos.GetDistinctAsync(query, selector);
+    }
+
+    #endregion
 
     public PersistenceSession OpenSession(string username = "system")
     {
