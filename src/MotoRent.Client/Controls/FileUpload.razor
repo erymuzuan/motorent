@@ -1,0 +1,106 @@
+@using System.Text.Json
+@using MotoRent.Client.Interops
+@using MotoRent.Domain.Storage
+
+@inherits MotoRentComponentBase
+@inject FileUploadJsInterop JsInterop
+@inject IBinaryStore BinaryStore
+@implements IDisposable
+
+<input type="file" class="form-control" @ref="m_selectElement" @attributes="@AdditionalAttributes" />
+
+@code {
+    private ElementReference m_selectElement;
+    private DotNetObjectReference<FileUpload>? m_dotNet;
+
+    [Parameter]
+    public string? StoreId { get; set; }
+
+    [Parameter]
+    public string? Prepend { get; set; }
+
+    [Parameter]
+    public bool AllowFileSelection { get; set; }
+
+    [Parameter]
+    public bool KeepOriginal { get; set; }
+
+    [Parameter]
+    public string? Caption { get; set; }
+
+    [Parameter]
+    public string? AcceptedExtensions { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> StoreIdChanged { get; set; }
+
+    private string? ProgressMessage { get; set; }
+    private bool? Uploading { get; set; }
+    private string? Source { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        this.Source = string.IsNullOrWhiteSpace(this.StoreId)
+            ? "/images/no-image.png"
+            : this.BinaryStore.GetImageUrl(this.StoreId);
+        base.OnParametersSet();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        if (firstRender)
+        {
+            this.m_dotNet = DotNetObjectReference.Create(this);
+            await this.JsInterop.StartFileUpload(this.m_selectElement, this.m_dotNet, new
+            {
+                prepend = this.Prepend,
+                compress = !this.KeepOriginal
+            });
+        }
+    }
+
+    [JSInvokable]
+    public async Task InvokeOnChange(object e)
+    {
+        if (e is JsonElement je && je.TryGetProperty("storeId", out var se))
+        {
+            var storeId = se.GetString();
+            try
+            {
+                await this.StoreIdChanged.InvokeAsync(storeId);
+            }
+            catch (Exception exc)
+            {
+                Console.WriteLine(@"File upload error: " + exc.Message);
+            }
+        }
+    }
+
+    [JSInvokable]
+    public async Task UpdateProgress(object e)
+    {
+        if (e is JsonElement je)
+        {
+            try
+            {
+                this.ProgressMessage = je.GetProperty("message").GetString();
+                this.Uploading = je.GetProperty("uploading").GetBoolean();
+                await this.InvokeAsync(StateHasChanged);
+            }
+            catch (Exception exc)
+            {
+                this.Uploading = true;
+                this.ProgressMessage = @"Error updating progress: " + exc.Message;
+            }
+        }
+    }
+
+    public void Dispose()
+    {
+        this.m_dotNet?.Dispose();
+    }
+}

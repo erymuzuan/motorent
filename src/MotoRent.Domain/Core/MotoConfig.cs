@@ -41,6 +41,14 @@ public static class MotoConfig
     public static string FileStorageBasePath => GetEnvironmentVariable("FileStorageBasePath") ?? "uploads";
     public static int FileStorageMaxSizeMb => GetEnvironmentVariableInt32("FileStorageMaxSizeMb", 10);
 
+    // AWS S3 Configuration
+    public static string? AwsAccessKeyId => GetEnvironmentVariable("AWS_ACCESS_KEY_ID", false);
+    public static string? AwsSecretAccessKey => GetEnvironmentVariable("AWS_SECRET_ACCESS_KEY", false);
+    public static string AwsRegion => GetEnvironmentVariable("AWS_REGION", false) ?? "ap-southeast-1";
+    public static string AwsBucket => GetEnvironmentVariable("AwsBucket") ?? "motorent.private";
+    public static string AwsPublicBucket => GetEnvironmentVariable("AwsPublicBucket") ?? "motorent.public";
+    public static TimeSpan AwsS3UrlTtl => TimeSpan.TryParse(GetEnvironmentVariable("AwsS3Ttl"), out var ts) ? ts : TimeSpan.FromMinutes(5);
+
     // Database Scripts Source
     public static string DatabaseSource => GetEnvironmentVariable("DatabaseSource") ?? "database";
 

@@ -1,0 +1,230 @@
+@using System.Text.Json
+@using MotoRent.Client.Interops
+@using MotoRent.Domain.Storage
+
+@inherits MotoRentComponentBase
+@inject FileUploadJsInterop JsInterop
+@inject IBinaryStore BinaryStore
+@implements IDisposable
+
+<div class="dropzone dz-clickable" style="border-style: dashed; border-color: var(--tblr-border-color); border-radius: 8px; padding: 1.5rem;"
+     data-public-store-id="@PublicStoreId" @ref="m_dropZoneElement">
+    <div class="fallback">
+        <input name="file" type="file" />
+    </div>
+    <div class="dz-message text-center">
+        @if (string.IsNullOrWhiteSpace(this.StoreId) && this.ChildContent is null)
+        {
+            <h4 class="text-muted mb-2">@(this.Title ?? "Upload Image")</h4>
+            @if (!string.IsNullOrWhiteSpace(this.HelpHint))
+            {
+                <span class="form-check-description text-secondary">@this.HelpHint</span>
+            }
+        }
+        @if (string.IsNullOrWhiteSpace(this.StoreId) && this.ChildContent is not null)
+        {
+            @ChildContent
+        }
+        @if (!this.HideImage && this.ChildContent is null && !string.IsNullOrWhiteSpace(this.Source))
+        {
+            <img id="img-@m_id" src="@Source" alt="@Caption" class="img-fluid rounded mt-2"
+                 style="max-height: 150px; object-fit: contain;"
+                 onerror="document.getElementById('image-loading-error-@m_id').classList.remove('d-none');document.getElementById('img-@m_id').style.display = 'none'" />
+        }
+        @if (string.IsNullOrWhiteSpace(this.StoreId) && this.Capture.HasValue)
+        {
+            <div class="d-block d-sm-none mt-3">
+                <div class="btn btn-outline-primary p-2">
+                    <i class="ti ti-camera me-2"></i>
+                    @(this.Caption ?? "Take a picture")
+                </div>
+            </div>
+            <div class="d-none d-md-block mt-3">
+                <div class="btn btn-outline-primary p-2">
+                    <i class="ti ti-upload me-2"></i>
+                    @(this.Caption ?? "Upload a file or take a picture")
+                </div>
+            </div>
+        }
+        else if (string.IsNullOrWhiteSpace(this.StoreId))
+        {
+            <div class="mt-3">
+                <i class="ti ti-cloud-upload text-primary" style="font-size: 2.5rem;"></i>
+                <div class="mt-2 text-muted">Click or drop image here</div>
+            </div>
+        }
+    </div>
+
+    @if (this.Uploading ?? false)
+    {
+        <div class="p-3 upload-progress">
+            <div class="progress">
+                <div class="progress-bar bg-primary progress-bar-indeterminate" role="progressbar"></div>
+            </div>
+            <div class="text-muted mt-2 small">@(this.ProgressMessage ?? "Uploading...")</div>
+        </div>
+    }
+</div>
+
+@if (this.AllowFileSelection)
+{
+    <div class="d-none d-sm-block d-md-none mt-2">
+        <FileUpload StoreId="@StoreId" StoreIdChanged="StoreIdChanged"></FileUpload>
+    </div>
+}
+
+<div id="upload-error-panel" class="upload-error-panel d-none alert alert-danger m-0 mt-3"></div>
+
+<div id="image-loading-error-@m_id" class="d-none alert alert-warning m-0 mt-3">
+    Failed to display image —
+    <a href="@Source" target="_blank" class="alert-link">
+        <i class="ti ti-external-link me-1"></i>Open in browser
+    </a>
+</div>
+
+@if (this.IsPublicAccess)
+{
+    <div class="p-2 mt-2">
+        <small class="form-hint text-warning">
+            <i class="ti ti-alert-triangle me-1"></i>
+            This content will be publicly accessible on the internet.
+        </small>
+    </div>
+}
+
+@code {
+    private ElementReference m_dropZoneElement;
+    private DotNetObjectReference<ImageUpload>? m_dotNet;
+    private string? m_id;
+
+    [Parameter] public string? StoreId { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string? Prepend { get; set; }
+    [Parameter] public bool AllowFileSelection { get; set; }
+    [Parameter] public bool KeepOriginal { get; set; }
+    [Parameter] public string? Uri { get; set; }
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string? Caption { get; set; }
+    [Parameter] public string NoImage { get; set; } = "/images/no-image.png";
+    [Parameter] public string? ErrorUrl { get; set; }
+    [Parameter] public string? HelpHint { get; set; }
+    [Parameter] public bool IsPublicAccess { get; set; }
+    [Parameter] public CameraCapture? Capture { get; set; }
+    [Parameter] public bool HideImage { get; set; }
+    [Parameter] public EventCallback<string?> StoreIdChanged { get; set; }
+    [Parameter] public EventCallback<string?> UploadCallback { get; set; }
+
+    private string? PublicStoreId { get; set; }
+    private string? ProgressMessage { get; set; }
+    private bool? Uploading { get; set; }
+    private string? Source { get; set; }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        this.m_id = Guid.NewGuid().ToString("N")[..8];
+    }
+
+    protected override void OnParametersSet()
+    {
+        this.Source = string.IsNullOrWhiteSpace(this.StoreId)
+            ? this.NoImage
+            : this.BinaryStore.GetImageUrl(this.StoreId);
+        base.OnParametersSet();
+
+        if (this.IsPublicAccess && this.StoreId is { Length: > 7 } && string.IsNullOrWhiteSpace(this.PublicStoreId))
+        {
+            this.PublicStoreId = this.StoreId[7..];
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        if (firstRender)
+        {
+            this.m_dotNet = DotNetObjectReference.Create(this);
+            try
+            {
+                var publicAccess = this.IsPublicAccess;
+                var uri = this switch
+                {
+                    { Uri.Length: > 0 } => this.Uri,
+                    { PublicStoreId.Length: > 0 } => $"/api/stores/upload-single?publicAccess={publicAccess}&publicStoreId={this.PublicStoreId}",
+                    _ => $"/api/stores/upload-single?publicAccess={publicAccess}"
+                };
+
+                await this.JsInterop.StartDropZone(this.m_dropZoneElement, this.m_dotNet, new
+                {
+                    prepend = this.Prepend,
+                    compress = !this.KeepOriginal,
+                    publicStoreId = this.PublicStoreId,
+                    publicAccess,
+                    capture = this.Capture?.ToString().ToLower(),
+                    uri,
+                    errorUrl = this.ErrorUrl
+                });
+            }
+            catch (ObjectDisposedException)
+            {
+                // Component disposed before JS init
+            }
+        }
+    }
+
+    [JSInvokable]
+    public async Task InvokeOnChange(object e)
+    {
+        if (!string.IsNullOrWhiteSpace(this.Uri))
+        {
+            await this.UploadCallback.InvokeAsync($"{e}");
+            return;
+        }
+
+        if (e is JsonElement je && je.TryGetProperty("storeId", out var se))
+        {
+            var storeId = se.GetString();
+            try
+            {
+                await this.StoreIdChanged.InvokeAsync(storeId);
+            }
+            catch (Exception exc)
+            {
+                this.ShowError("Image upload error: " + exc.Message);
+            }
+        }
+    }
+
+    [JSInvokable]
+    public async Task UpdateProgress(object e)
+    {
+        if (e is JsonElement je)
+        {
+            try
+            {
+                this.ProgressMessage = je.GetProperty("message").GetString();
+                this.Uploading = je.GetProperty("uploading").GetBoolean();
+                await this.InvokeAsync(StateHasChanged);
+            }
+            catch (Exception exc)
+            {
+                this.Uploading = true;
+                this.ProgressMessage = "Error: " + exc.Message;
+            }
+        }
+    }
+
+    public void Dispose()
+    {
+        this.m_dotNet?.Dispose();
+    }
+}
+
+@* Camera capture mode enum *@
+@code {
+    public enum CameraCapture
+    {
+        User,       // Front camera (selfie)
+        Environment // Back camera
+    }
+}

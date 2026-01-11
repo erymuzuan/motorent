@@ -1,13 +1,16 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using MotoRent.Client.Interops;
 using MotoRent.Client.Pages;
 using MotoRent.Client.Services;
 using MotoRent.Domain.Core;
 using MotoRent.Domain.DataContext;
+using MotoRent.Domain.Storage;
 using MotoRent.Server.Components;
 using MotoRent.Server.Services;
 using MotoRent.Services;
 using MotoRent.Services.Core;
+using MotoRent.Services.Storage;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add HttpContextAccessor for request context
@@ -41,6 +44,12 @@ builder.Services.AddHttpClient("Gemini", client =>
 // Add Core services
 builder.Services.AddScoped<IDirectoryService, SqlDirectoryService>();
 builder.Services.AddScoped<ISubscriptionService, SqlSubscriptionService>();
+
+// Add Binary Storage (AWS S3)
+builder.Services.AddSingleton<IBinaryStore, S3BinaryStore>();
+
+// Add JS Interop services
+builder.Services.AddScoped<FileUploadJsInterop>();
 
 // Add UI services (Modal, Toast, Dialog)
 builder.Services.AddScoped<IModalService, ModalService>();
