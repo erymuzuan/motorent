@@ -3,7 +3,7 @@
 @using MotoRent.Domain.Entities
 @attribute [Authorize(Policy = "RequireTenantStaff")]
 @inherits LocalizedComponentBase<Home>
-@inject MotorbikeService MotorbikeService
+@inject VehicleService VehicleService
 @inject RentalService RentalService
 @inject PaymentService PaymentService
 
@@ -37,17 +37,17 @@
         <div class="card">
             <div class="card-body">
                 <div class="d-flex align-items-center">
-                    <div class="subheader">Available Bikes</div>
+                    <div class="subheader">Available Vehicles</div>
                     <div class="ms-auto lh-1">
                         <span class="text-success">
-                            <i class="ti ti-motorbike fs-2"></i>
+                            <i class="ti ti-car fs-2"></i>
                         </span>
                     </div>
                 </div>
-                <div class="h1 mb-3">@m_availableBikes</div>
+                <div class="h1 mb-3">@m_availableVehicles</div>
                 <div class="d-flex mb-2">
                     <div>
-                        <span class="text-secondary">out of @m_totalBikes total</span>
+                        <span class="text-secondary">out of @m_totalVehicles total</span>
                     </div>
                 </div>
             </div>
@@ -108,7 +108,7 @@
                     <thead>
                         <tr>
                             <th>Renter</th>
-                            <th>Motorbike</th>
+                            <th>Vehicle</th>
                             <th>Start Date</th>
                             <th>Status</th>
                         </tr>
@@ -118,7 +118,7 @@
                         {
                             <tr>
                                 <td>@rental.RenterName</td>
-                                <td>@rental.MotorbikeName</td>
+                                <td>@rental.VehicleName</td>
                                 <td>@rental.StartDate.ToString("dd MMM yyyy")</td>
                                 <td>
                                     <span class="badge @(rental.Status == "Active" ? "bg-success" : "bg-secondary")">
@@ -152,9 +152,9 @@
                         <i class="ti ti-user-plus me-2"></i>
                         Register Renter
                     </a>
-                    <a href="/motorbikes" class="btn btn-ghost-secondary">
-                        <i class="ti ti-motorbike me-2"></i>
-                        Manage Inventory
+                    <a href="/vehicles" class="btn btn-ghost-secondary">
+                        <i class="ti ti-car me-2"></i>
+                        Manage Fleet
                     </a>
                 </div>
             </div>
@@ -165,8 +165,8 @@
 @code {
     // Dashboard stats
     private int m_activeRentals;
-    private int m_availableBikes;
-    private int m_totalBikes;
+    private int m_availableVehicles;
+    private int m_totalVehicles;
     private int m_dueToday;
     private decimal m_todayRevenue;
     private bool m_loading = true;
@@ -184,10 +184,10 @@
         m_loading = true;
         try
         {
-            // Get motorbike stats
-            var bikeStats = await MotorbikeService.GetStatusCountsAsync(ShopId);
-            m_availableBikes = bikeStats.GetValueOrDefault("Available", 0);
-            m_totalBikes = bikeStats.Values.Sum();
+            // Get vehicle stats
+            var vehicleStats = await VehicleService.GetStatusCountsAsync(ShopId);
+            m_availableVehicles = vehicleStats.GetValueOrDefault(VehicleStatus.Available, 0);
+            m_totalVehicles = vehicleStats.Values.Sum();
 
             // Get rental stats
             var rentalStats = await RentalService.GetStatusCountsAsync(ShopId);
@@ -230,18 +230,18 @@
             var renter = await DataContext.LoadOneAsync<Renter>(r => r.RenterId == rental.RenterId);
             var renterName = renter?.FullName ?? "Unknown";
 
-            // Get motorbike name
-            var motorbike = await DataContext.LoadOneAsync<Motorbike>(m => m.MotorbikeId == rental.MotorbikeId);
-            var motorbikeName = motorbike != null ? $"{motorbike.Brand} {motorbike.Model}" : "Unknown";
+            // Get vehicle name
+            var vehicle = await DataContext.LoadOneAsync<Vehicle>(v => v.VehicleId == rental.VehicleId);
+            var vehicleName = vehicle != null ? $"{vehicle.Brand} {vehicle.Model}" : "Unknown";
 
             m_recentRentals.Add(new RecentRentalItem(
                 renterName,
-                motorbikeName,
+                vehicleName,
                 rental.StartDate.DateTime,
                 rental.Status ?? "Unknown"
             ));
         }
     }
 
-    private record RecentRentalItem(string RenterName, string MotorbikeName, DateTime StartDate, string Status);
+    private record RecentRentalItem(string RenterName, string VehicleName, DateTime StartDate, string Status);
 }

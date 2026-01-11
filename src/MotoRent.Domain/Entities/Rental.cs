@@ -8,10 +8,27 @@ public class Rental : Entity
 
     #region Shop and Location
 
+    private int m_rentedFromShopId;
+
     /// <summary>
     /// Shop where the rental was initiated (check-in location).
     /// </summary>
-    public int RentedFromShopId { get; set; }
+    public int RentedFromShopId
+    {
+        get => m_rentedFromShopId;
+        set => m_rentedFromShopId = value;
+    }
+
+    /// <summary>
+    /// Backward compatibility - reads ShopId from old JSON data.
+    /// Only used for deserialization, not serialized.
+    /// </summary>
+    [JsonPropertyName("ShopId")]
+    [JsonInclude]
+    private int ShopIdFromJson
+    {
+        set => m_rentedFromShopId = value;
+    }
 
     /// <summary>
     /// Shop where the vehicle was returned (check-out location).
@@ -42,10 +59,27 @@ public class Rental : Entity
 
     public int RenterId { get; set; }
 
+    private int m_vehicleId;
+
     /// <summary>
     /// The vehicle being rented.
     /// </summary>
-    public int VehicleId { get; set; }
+    public int VehicleId
+    {
+        get => m_vehicleId;
+        set => m_vehicleId = value;
+    }
+
+    /// <summary>
+    /// Backward compatibility - reads MotorbikeId from old JSON data.
+    /// Only used for deserialization, not serialized.
+    /// </summary>
+    [JsonPropertyName("MotorbikeId")]
+    [JsonInclude]
+    private int MotorbikeIdFromJson
+    {
+        set => m_vehicleId = value;
+    }
 
     /// <summary>
     /// Backward compatibility - maps to VehicleId.
@@ -100,12 +134,29 @@ public class Rental : Entity
 
     #region Pricing
 
+    private decimal m_rentalRate;
+
     /// <summary>
     /// Rate used for this rental.
     /// For Daily: daily rate.
     /// For FixedInterval: interval rate (Rate15Min, Rate30Min, or Rate1Hour).
     /// </summary>
-    public decimal RentalRate { get; set; }
+    public decimal RentalRate
+    {
+        get => m_rentalRate;
+        set => m_rentalRate = value;
+    }
+
+    /// <summary>
+    /// Backward compatibility - reads DailyRate from old JSON data.
+    /// Only used for deserialization, not serialized.
+    /// </summary>
+    [JsonPropertyName("DailyRate")]
+    [JsonInclude]
+    private decimal DailyRateFromJson
+    {
+        set => m_rentalRate = value;
+    }
 
     /// <summary>
     /// Backward compatibility - maps to RentalRate.

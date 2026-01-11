@@ -417,10 +417,13 @@ public class Repository<T> : IRepository<T> where T : Entity
             var value = GetPredicateValue(predicates[i]);
             if (value != null)
             {
+                // Convert enum values to string for NVARCHAR comparison in SQL
+                var paramValue = value.GetType().IsEnum ? value.ToString() : value;
+
                 if (predicates[i].Body is MethodCallExpression methodCall && methodCall.Method.Name == "Contains")
-                    cmd.Parameters.AddWithValue($"@p{i}", $"%{value}%");
+                    cmd.Parameters.AddWithValue($"@p{i}", $"%{paramValue}%");
                 else
-                    cmd.Parameters.AddWithValue($"@p{i}", value);
+                    cmd.Parameters.AddWithValue($"@p{i}", paramValue);
             }
         }
     }

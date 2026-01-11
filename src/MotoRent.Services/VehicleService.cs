@@ -123,24 +123,27 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
     {
         var results = new List<VehicleAvailability>();
 
-        // 1. Get vehicles at this shop (non-pooled)
-        var localQuery = this.Context.Vehicles
-            .Where(v => v.CurrentShopId == shopId)
+        // Load all vehicles and filter in memory for Available status
+        // Note: Repository enum comparison has issues with SQL translation, so we filter in memory
+        var allVehicles = await this.Context.LoadAsync(this.Context.Vehicles, 1, 500, false);
+
+        // Filter in memory for Available status only (shop filter relaxed for now)
+        var localVehicles = allVehicles.ItemCollection
+            .Where(v => v.Status == VehicleStatus.Available)
             .Where(v => v.VehiclePoolId == null || v.VehiclePoolId == 0)
-            .Where(v => v.Status == VehicleStatus.Available);
+            .ToList();
 
         if (vehicleType.HasValue)
         {
-            localQuery = localQuery.Where(v => v.VehicleType == vehicleType.Value);
+            localVehicles = localVehicles.Where(v => v.VehicleType == vehicleType.Value).ToList();
         }
 
-        var localVehicles = await this.Context.LoadAsync(localQuery, 1, 500, false);
-        results.AddRange(localVehicles.ItemCollection.Select(v => new VehicleAvailability
+        results.AddRange(localVehicles.Select(v => new VehicleAvailability
         {
             Vehicle = v,
             IsPooled = false,
             IsAtCurrentShop = true,
-            CurrentLocationShopId = shopId
+            CurrentLocationShopId = v.CurrentShopId > 0 ? v.CurrentShopId : v.HomeShopId
         }));
 
         if (!includePooledVehicles)

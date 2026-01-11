@@ -4,7 +4,7 @@
 @inherits LocalizedComponentBase<RentalList>
 @inject RentalService RentalService
 @inject RenterService RenterService
-@inject MotorbikeService MotorbikeService
+@inject VehicleService VehicleService
 
 <MotoRentPageTitle>Rentals</MotoRentPageTitle>
 
@@ -47,7 +47,7 @@
                     <span class="input-icon-addon">
                         <i class="ti ti-search"></i>
                     </span>
-                    <input type="text" class="form-control" placeholder="Search renter, motorbike..."
+                    <input type="text" class="form-control" placeholder="Search renter, vehicle..."
                            @bind="m_searchTerm" @bind:event="oninput" @onkeyup="OnSearchKeyUp" />
                 </div>
             </div>
@@ -62,7 +62,7 @@
                 <thead>
                     <tr>
                         <th>Renter</th>
-                        <th>Motorbike</th>
+                        <th>Vehicle</th>
                         <th>Period</th>
                         <th>Days</th>
                         <th>Amount</th>
@@ -75,7 +75,7 @@
                     {
                         <tr>
                             <td colspan="7" class="text-center text-secondary py-4">
-                                <i class="ti ti-motorbike mb-2" style="font-size: 2rem;"></i>
+                                <i class="ti ti-car mb-2" style="font-size: 2rem;"></i>
                                 <div>No rentals found</div>
                                 <a href="/rentals/checkin" class="btn btn-outline-primary btn-sm mt-2">
                                     Create New Check-In
@@ -93,8 +93,8 @@
                                     <small class="text-secondary">@rental.RenterPhone</small>
                                 </td>
                                 <td>
-                                    <div>@rental.MotorbikeBrandModel</div>
-                                    <small class="text-primary">@rental.MotorbikeLicensePlate</small>
+                                    <div>@rental.VehicleBrandModel</div>
+                                    <small class="text-primary">@rental.VehicleLicensePlate</small>
                                 </td>
                                 <td>
                                     <div>@FormatDate(rental.Rental.StartDate)</div>
@@ -179,7 +179,7 @@
     private System.Timers.Timer? m_debounceTimer;
 
     private Dictionary<int, Renter> m_renterCache = new();
-    private Dictionary<int, Motorbike> m_motorbikeCache = new();
+    private Dictionary<int, Vehicle> m_vehicleCache = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -202,12 +202,12 @@
                     this.m_renterCache[renterId] = renter;
             }
 
-            var motorbikeIds = rentals.Select(r => r.MotorbikeId).Distinct().ToList();
-            foreach (var motorbikeId in motorbikeIds.Where(id => !this.m_motorbikeCache.ContainsKey(id)))
+            var vehicleIds = rentals.Select(r => r.VehicleId).Distinct().ToList();
+            foreach (var vehicleId in vehicleIds.Where(id => !this.m_vehicleCache.ContainsKey(id)))
             {
-                var motorbike = await this.DataContext.LoadOneAsync<Motorbike>(m => m.MotorbikeId == motorbikeId);
-                if (motorbike != null)
-                    this.m_motorbikeCache[motorbikeId] = motorbike;
+                var vehicle = await this.DataContext.LoadOneAsync<Vehicle>(v => v.VehicleId == vehicleId);
+                if (vehicle != null)
+                    this.m_vehicleCache[vehicleId] = vehicle;
             }
 
             var today = DateTimeOffset.Now.Date;
@@ -216,8 +216,8 @@
                 Rental = r,
                 RenterName = this.m_renterCache.TryGetValue(r.RenterId, out var renter) ? renter.FullName ?? "" : "Unknown",
                 RenterPhone = this.m_renterCache.TryGetValue(r.RenterId, out var renter2) ? renter2.Phone ?? "" : "",
-                MotorbikeBrandModel = this.m_motorbikeCache.TryGetValue(r.MotorbikeId, out var bike) ? $"{bike.Brand} {bike.Model}" : "Unknown",
-                MotorbikeLicensePlate = this.m_motorbikeCache.TryGetValue(r.MotorbikeId, out var bike2) ? bike2.LicensePlate ?? "" : "",
+                VehicleBrandModel = this.m_vehicleCache.TryGetValue(r.VehicleId, out var vehicle) ? $"{vehicle.Brand} {vehicle.Model}" : "Unknown",
+                VehicleLicensePlate = this.m_vehicleCache.TryGetValue(r.VehicleId, out var vehicle2) ? vehicle2.LicensePlate ?? "" : "",
                 Days = (int)(r.ExpectedEndDate.Date - r.StartDate.Date).TotalDays + 1,
                 IsDueToday = r.Status == "Active" && r.ExpectedEndDate.Date == today,
                 IsOverdue = r.Status == "Active" && r.ExpectedEndDate.Date < today,
@@ -263,8 +263,8 @@
             var term = this.m_searchTerm.ToLowerInvariant();
             filtered = filtered.Where(r =>
                 r.RenterName.ToLowerInvariant().Contains(term) ||
-                r.MotorbikeBrandModel.ToLowerInvariant().Contains(term) ||
-                r.MotorbikeLicensePlate.ToLowerInvariant().Contains(term));
+                r.VehicleBrandModel.ToLowerInvariant().Contains(term) ||
+                r.VehicleLicensePlate.ToLowerInvariant().Contains(term));
         }
 
         this.m_filteredRentals = filtered.OrderByDescending(r => r.Rental.RentalId).ToList();
@@ -310,7 +310,7 @@
     private async Task OpenCheckOutDialog(RentalViewModel rental)
     {
         if (!await this.DialogService.ConfirmAsync(
-            $"Check out {rental.RenterName} returning {rental.MotorbikeBrandModel}?"))
+            $"Check out {rental.RenterName} returning {rental.VehicleBrandModel}?"))
             return;
 
         var request = new CheckOutRequest
@@ -408,8 +408,8 @@
         public Rental Rental { get; set; } = null!;
         public string RenterName { get; set; } = "";
         public string RenterPhone { get; set; } = "";
-        public string MotorbikeBrandModel { get; set; } = "";
-        public string MotorbikeLicensePlate { get; set; } = "";
+        public string VehicleBrandModel { get; set; } = "";
+        public string VehicleLicensePlate { get; set; } = "";
         public int Days { get; set; }
         public bool IsDueToday { get; set; }
         public bool IsOverdue { get; set; }
