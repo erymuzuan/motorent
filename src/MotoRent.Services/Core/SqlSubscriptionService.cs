@@ -134,56 +134,94 @@ public partial class SqlSubscriptionService : ISubscriptionService
             throw;
         }
 
-        // Read and execute the schema template
+        // Read and execute table scripts from the tables folder
         var databaseFolder = MotoConfig.DatabaseSource;
-        var schemaFile = Path.Combine(databaseFolder, "001-create-schema.sql");
+        var tablesFolder = Path.Combine(databaseFolder, "tables");
 
-        if (!File.Exists(schemaFile))
+        if (!Directory.Exists(tablesFolder))
         {
             // Try relative to app base directory
-            schemaFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "database", "001-create-schema.sql");
+            tablesFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "database", "tables");
         }
 
-        if (!File.Exists(schemaFile))
+        if (!Directory.Exists(tablesFolder))
         {
             progressCallback?.Invoke(new ProvisioningProgress
             {
-                Message = $"Schema template file not found: {schemaFile}",
+                Message = $"Tables folder not found: {tablesFolder}",
                 Status = ProgressStatus.Error
             });
-            throw new FileNotFoundException("Schema template file not found", schemaFile);
+            throw new DirectoryNotFoundException($"Tables folder not found: {tablesFolder}");
         }
 
-        progressCallback?.Invoke(new ProvisioningProgress { Message = $"Reading schema template from {schemaFile}..." });
+        progressCallback?.Invoke(new ProvisioningProgress { Message = $"Reading table scripts from {tablesFolder}..." });
 
-        var sqlTemplate = await File.ReadAllTextAsync(schemaFile);
-
-        // Replace placeholder with actual schema name
-        var sql = sqlTemplate.Replace("<schema>", accountNo);
-
-        // Split by GO statements and execute each batch
-        var batches = SplitSqlBatches(sql);
-
-        foreach (var batch in batches)
+        // Define table creation order (respecting dependencies)
+        var tableOrder = new[]
         {
-            if (string.IsNullOrWhiteSpace(batch)) continue;
+            "MotoRent.Shop.sql",
+            "MotoRent.Renter.sql",
+            "MotoRent.Document.sql",
+            "MotoRent.Motorbike.sql",
+            "MotoRent.Insurance.sql",
+            "MotoRent.Accessory.sql",
+            "MotoRent.ServiceType.sql",
+            "MotoRent.MaintenanceSchedule.sql",
+            "MotoRent.Rental.sql",
+            "MotoRent.RentalAccessory.sql",
+            "MotoRent.Deposit.sql",
+            "MotoRent.Payment.sql",
+            "MotoRent.DamageReport.sql",
+            "MotoRent.DamagePhoto.sql",
+            "MotoRent.RentalAgreement.sql"
+        };
 
-            try
+        foreach (var tableFile in tableOrder)
+        {
+            var filePath = Path.Combine(tablesFolder, tableFile);
+            if (!File.Exists(filePath))
             {
-                await using var conn = m_queryProvider.CreateConnection();
-                await using var cmd = new SqlCommand(batch, conn);
-                await conn.OpenAsync();
-                await cmd.ExecuteNonQueryAsync();
-            }
-            catch (SqlException ex)
-            {
-                // Log but continue (table might already exist)
                 progressCallback?.Invoke(new ProvisioningProgress
                 {
-                    Message = $"Warning: {ex.Message}",
+                    Message = $"Skipping missing table file: {tableFile}",
                     Status = ProgressStatus.InProgress
                 });
+                continue;
             }
+
+            var sqlTemplate = await File.ReadAllTextAsync(filePath);
+            var sql = sqlTemplate.Replace("<schema>", accountNo);
+
+            // Split by GO statements and execute each batch
+            var batches = SplitSqlBatches(sql);
+
+            foreach (var batch in batches)
+            {
+                if (string.IsNullOrWhiteSpace(batch)) continue;
+
+                try
+                {
+                    await using var conn = m_queryProvider.CreateConnection();
+                    await using var cmd = new SqlCommand(batch, conn);
+                    await conn.OpenAsync();
+                    await cmd.ExecuteNonQueryAsync();
+                }
+                catch (SqlException ex)
+                {
+                    // Log but continue (table might already exist)
+                    progressCallback?.Invoke(new ProvisioningProgress
+                    {
+                        Message = $"Warning ({tableFile}): {ex.Message}",
+                        Status = ProgressStatus.InProgress
+                    });
+                }
+            }
+
+            progressCallback?.Invoke(new ProvisioningProgress
+            {
+                Message = $"Created table from {tableFile}",
+                Status = ProgressStatus.InProgress
+            });
         }
 
         progressCallback?.Invoke(new ProvisioningProgress
