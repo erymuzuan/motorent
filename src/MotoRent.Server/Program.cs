@@ -11,6 +11,7 @@ using MotoRent.Server.Services;
 using MotoRent.Services;
 using MotoRent.Services.Core;
 using MotoRent.Services.Storage;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add HttpContextAccessor for request context
@@ -36,10 +37,7 @@ builder.Services.AddScoped<InvoiceService>();
 builder.Services.AddScoped<MaintenanceService>();
 
 // Add HttpClient for external API calls (Gemini)
-builder.Services.AddHttpClient("Gemini", client =>
-{
-    client.Timeout = TimeSpan.FromSeconds(60);
-});
+builder.Services.AddHttpClient("Gemini", client => { client.Timeout = TimeSpan.FromSeconds(60); });
 
 // Add Core services
 builder.Services.AddScoped<IDirectoryService, SqlDirectoryService>();
@@ -58,26 +56,26 @@ builder.Services.AddScoped<DialogService>();
 
 // Configure Authentication
 var authBuilder = builder.Services.AddAuthentication(options =>
-{
-    options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-})
-.AddCookie(options =>
-{
-    options.LoginPath = "/account/login";
-    options.LogoutPath = "/account/logoff";
-    options.AccessDeniedPath = "/account/access-denied";
-    options.ExpireTimeSpan = TimeSpan.FromDays(14);
-    options.SlidingExpiration = true;
-    options.Cookie.Name = "MotoRent.Auth";
-    options.Cookie.HttpOnly = true;
-    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
-})
-.AddCookie("ExternalAuth", options =>
-{
-    options.Cookie.Name = "MotoRent.External";
-    options.ExpireTimeSpan = TimeSpan.FromMinutes(10);
-});
+    {
+        options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+    })
+    .AddCookie(options =>
+    {
+        options.LoginPath = "/account/login";
+        options.LogoutPath = "/account/logoff";
+        options.AccessDeniedPath = "/account/access-denied";
+        options.ExpireTimeSpan = TimeSpan.FromDays(14);
+        options.SlidingExpiration = true;
+        options.Cookie.Name = "MotoRent.Auth";
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+    })
+    .AddCookie("ExternalAuth", options =>
+    {
+        options.Cookie.Name = "MotoRent.External";
+        options.ExpireTimeSpan = TimeSpan.FromMinutes(10);
+    });
 
 // Add Google authentication only if configured (uses MOTO_GoogleClientId, MOTO_GoogleClientSecret)
 var googleClientId = MotoConfig.GoogleClientId;
@@ -121,15 +119,15 @@ builder.Services.AddAuthorization(options =>
     // SuperAdmin must impersonate a tenant user to access these pages
     options.AddPolicy("RequireTenantStaff", policy =>
         policy.RequireRole(UserAccount.STAFF, UserAccount.SHOP_MANAGER, UserAccount.ORG_ADMIN)
-              .RequireClaim("AccountNo"));
+            .RequireClaim("AccountNo"));
 
     options.AddPolicy("RequireTenantManager", policy =>
         policy.RequireRole(UserAccount.SHOP_MANAGER, UserAccount.ORG_ADMIN)
-              .RequireClaim("AccountNo"));
+            .RequireClaim("AccountNo"));
 
     options.AddPolicy("RequireTenantOrgAdmin", policy =>
         policy.RequireRole(UserAccount.ORG_ADMIN)
-              .RequireClaim("AccountNo"));
+            .RequireClaim("AccountNo"));
 
     // Require authentication by default for all pages/endpoints
     // Use [AllowAnonymous] attribute to allow anonymous access to specific endpoints
