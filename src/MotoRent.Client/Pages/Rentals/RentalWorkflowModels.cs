@@ -36,7 +36,7 @@ public class RentalConfig
         set => VehicleTotal = value;
     }
 
-    public bool IsValid => EndDate > StartDate;
+    public bool IsValid => EndDate >= StartDate;
 
     public class AccessorySelection
     {
