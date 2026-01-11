@@ -28,7 +28,7 @@
     }
 
     <div class="card">
-        <div class="table-responsive">
+        <div class="table-responsive" style="@(m_openDropdown != null ? "overflow: visible;" : "")">
             <table class="table table-vcenter card-table table-striped">
                 <thead>
                     <tr>
@@ -66,35 +66,39 @@
                                 }
                             </td>
                             <td>
-                                <div class="dropdown">
+                                <div class="dropdown" style="position: relative;">
                                     <button type="button" class="btn btn-ghost-secondary btn-icon"
-                                            data-bs-toggle="dropdown">
+                                            @onclick="@(() => ToggleDropdown(org.AccountNo))">
                                         <i class="ti ti-dots-vertical"></i>
                                     </button>
-                                    <div class="dropdown-menu dropdown-menu-end">
-                                        <a class="dropdown-item" href="#" @onclick="@(() => OpenEditDialog(org))" @onclick:preventDefault>
-                                            <i class="ti ti-edit me-2"></i>
-                                            Edit
-                                        </a>
-                                        <a class="dropdown-item" href="#" @onclick="@(() => ViewUsers(org))" @onclick:preventDefault>
-                                            <i class="ti ti-users me-2"></i>
-                                            View Users
-                                        </a>
-                                        @if (org.IsActive)
-                                        {
-                                            <a class="dropdown-item text-warning" href="#" @onclick="@(() => DeactivateOrganization(org))" @onclick:preventDefault>
-                                                <i class="ti ti-ban me-2"></i>
-                                                Deactivate
+                                    @if (m_openDropdown == org.AccountNo)
+                                    {
+                                        <div class="dropdown-menu dropdown-menu-end show"
+                                             style="display: block; position: absolute; right: 0; top: 100%; z-index: 1000;">
+                                            <a class="dropdown-item" href="#" @onclick="@(() => OpenEditDialog(org))" @onclick:preventDefault>
+                                                <i class="ti ti-edit me-2"></i>
+                                                Edit
                                             </a>
-                                        }
-                                        else
-                                        {
-                                            <a class="dropdown-item text-success" href="#" @onclick="@(() => ActivateOrganization(org))" @onclick:preventDefault>
-                                                <i class="ti ti-circle-check me-2"></i>
-                                                Activate
+                                            <a class="dropdown-item" href="#" @onclick="@(() => ViewUsers(org))" @onclick:preventDefault>
+                                                <i class="ti ti-users me-2"></i>
+                                                View Users
                                             </a>
-                                        }
-                                    </div>
+                                            @if (org.IsActive)
+                                            {
+                                                <a class="dropdown-item text-warning" href="#" @onclick="@(() => DeactivateOrganization(org))" @onclick:preventDefault>
+                                                    <i class="ti ti-ban me-2"></i>
+                                                    Deactivate
+                                                </a>
+                                            }
+                                            else
+                                            {
+                                                <a class="dropdown-item text-success" href="#" @onclick="@(() => ActivateOrganization(org))" @onclick:preventDefault>
+                                                    <i class="ti ti-circle-check me-2"></i>
+                                                    Activate
+                                                </a>
+                                            }
+                                        </div>
+                                    }
                                 </div>
                             </td>
                         </tr>
@@ -125,10 +129,21 @@
 @code {
     private List<Organization> m_organizations = [];
     private bool m_loading = true;
+    private string? m_openDropdown;
 
     protected override async Task OnInitializedAsync()
     {
         await LoadOrganizationsAsync();
+    }
+
+    private void ToggleDropdown(string accountNo)
+    {
+        this.m_openDropdown = this.m_openDropdown == accountNo ? null : accountNo;
+    }
+
+    private void CloseDropdown()
+    {
+        this.m_openDropdown = null;
     }
 
     private async Task LoadOrganizationsAsync()
@@ -164,6 +179,7 @@
 
     private async Task OpenEditDialog(Organization organization)
     {
+        CloseDropdown();
         var result = await this.DialogService
             .Create<EditOrganizationDialog>("Edit Organization")
             .WithParameter(x => x.Organization, organization.Clone())
@@ -178,6 +194,7 @@
 
     private async Task ViewUsers(Organization organization)
     {
+        CloseDropdown();
         await this.DialogService
             .Create<OrganizationUsersDialog>($"Users - {organization.Name}")
             .WithParameter(x => x.Organization, organization)
@@ -187,6 +204,7 @@
 
     private async Task DeactivateOrganization(Organization organization)
     {
+        CloseDropdown();
         var confirmed = await this.DialogService.ConfirmYesNoAsync(
             $"Are you sure you want to deactivate {organization.Name}? Users will not be able to log in.",
             "Deactivate Organization");
@@ -201,6 +219,7 @@
 
     private async Task ActivateOrganization(Organization organization)
     {
+        CloseDropdown();
         organization.IsActive = true;
         await LoadOrganizationsAsync();
         this.ShowSuccess($"{organization.Name} has been activated.");

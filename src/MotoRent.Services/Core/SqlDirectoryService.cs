@@ -152,6 +152,20 @@ public class SqlDirectoryService : IDirectoryService
                     {
                         claims.Add(new Claim($"subscription:{sub}", "true"));
                     }
+
+                    // Also load the user's tenant-specific roles if they have an account
+                    var superAdminUser = await GetUserAsync(userName);
+                    if (superAdminUser != null)
+                    {
+                        var superAdminAccount = superAdminUser.AccountCollection.FirstOrDefault(a => a.AccountNo == account);
+                        if (superAdminAccount != null)
+                        {
+                            foreach (var role in superAdminAccount.Roles)
+                            {
+                                claims.Add(new Claim(ClaimTypes.Role, role));
+                            }
+                        }
+                    }
                 }
             }
 

@@ -17,7 +17,9 @@ public static class JsonSerializerService
         {
             PropertyNameCaseInsensitive = true,
             WriteIndented = pretty,
-            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+            // Enable populating read-only collection properties during deserialization
+            PreferredObjectCreationHandling = JsonObjectCreationHandling.Populate
         };
 
         if (camelCase)

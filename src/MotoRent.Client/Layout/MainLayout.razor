@@ -1,5 +1,8 @@
 @inherits LayoutComponentBase
+@using Microsoft.AspNetCore.Authorization
+@using MotoRent.Domain.Core
 @inject IJSRuntime JS
+@inject IRequestContext RequestContext
 
 <ModalContainer />
 <ToastContainer />
@@ -40,13 +43,25 @@
                             <i class="ti ti-user"></i>
                         </span>
                         <div class="d-none d-xl-block ps-2">
-                            <div>User</div>
-                            <div class="mt-1 small text-secondary">Administrator</div>
+                            <div>@(RequestContext.GetUserName() ?? "User")</div>
+                            <div class="mt-1 small text-secondary">@(RequestContext.GetAccountNo() ?? "Not signed in")</div>
                         </div>
                     </a>
                     <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
                         <a href="/account/profile" class="dropdown-item">Profile</a>
                         <a href="/account/settings" class="dropdown-item">Settings</a>
+
+                        @* Show impersonation status when impersonating *@
+                        <AuthorizeView Policy="@UserAccount.POLICY_SUPER_ADMIN_IMPERSONATE">
+                            <div class="dropdown-divider"></div>
+                            <div class="dropdown-header text-warning">
+                                <i class="ti ti-user-search me-1"></i>Impersonating
+                            </div>
+                            <a href="/account/back-super-admin" class="dropdown-item text-info">
+                                <i class="ti ti-arrow-back me-2"></i>Back to Super Admin
+                            </a>
+                        </AuthorizeView>
+
                         <div class="dropdown-divider"></div>
                         <a href="/account/logoff" class="dropdown-item">Logout</a>
                     </div>

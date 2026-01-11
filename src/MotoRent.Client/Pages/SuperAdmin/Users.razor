@@ -1,0 +1,352 @@
+@page "/super-admin/users"
+@rendermode InteractiveServer
+@inherits MotoRentComponentBase
+@using Microsoft.AspNetCore.Authorization
+@using MotoRent.Domain.Core
+@using MotoRent.Domain.DataContext
+@attribute [Authorize(Roles = UserAccount.SUPER_ADMIN)]
+@inject CoreDataContext CoreContext
+@inject ISubscriptionService SubscriptionService
+@inject IDirectoryService DirectoryService
+
+<PageTitle>Users - MotoRent</PageTitle>
+
+<div class="container-xl mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="mb-1">Users</h4>
+            <p class="text-secondary mb-0">Manage user accounts across all organizations</p>
+        </div>
+        <a href="/super-admin/start-page" class="btn btn-ghost-primary">
+            <i class="ti ti-arrow-left me-2"></i>
+            Back to Dashboard
+        </a>
+    </div>
+
+    <!-- Search and Filter -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-12 col-md-5">
+                    <label class="form-label">Search</label>
+                    <div class="input-icon">
+                        <span class="input-icon-addon">
+                            <i class="ti ti-search"></i>
+                        </span>
+                        <input type="text" class="form-control" placeholder="Search by username, email, or name..."
+                               @bind="m_searchTerm" @bind:event="oninput" @onkeyup="OnSearchKeyup" />
+                    </div>
+                </div>
+
+                <div class="col-12 col-md-3">
+                    <label class="form-label">Organization</label>
+                    <select class="form-select" @bind="m_organizationFilter" @bind:after="ApplyFilters">
+                        <option value="">All Organizations</option>
+                        @foreach (var org in m_organizations)
+                        {
+                            <option value="@org.AccountNo">@org.Name (@org.AccountNo)</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="col-12 col-md-2">
+                    <label class="form-label">Provider</label>
+                    <select class="form-select" @bind="m_providerFilter" @bind:after="ApplyFilters">
+                        <option value="">All Providers</option>
+                        <option value="@User.GOOGLE">Google</option>
+                        <option value="@User.MICROSOFT">Microsoft</option>
+                        <option value="@User.CUSTOM">Custom</option>
+                    </select>
+                </div>
+
+                <div class="col-12 col-md-2">
+                    <label class="form-label">Status</label>
+                    <select class="form-select" @bind="m_statusFilter" @bind:after="ApplyFilters">
+                        <option value="">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="locked">Locked</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (m_loading)
+    {
+        <div class="progress progress-sm mb-4">
+            <div class="progress-bar progress-bar-indeterminate"></div>
+        </div>
+    }
+
+    <!-- Users Table -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">@m_filteredUsers.Count users</h3>
+        </div>
+        <div class="table-responsive" style="@(m_openDropdown != null ? "overflow: visible;" : "")">
+            <table class="table table-vcenter card-table table-striped">
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th>Full Name</th>
+                        <th>Email</th>
+                        <th>Provider</th>
+                        <th>Status</th>
+                        <th>Organizations</th>
+                        <th class="w-1"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var user in m_filteredUsers)
+                    {
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <span class="avatar avatar-sm me-2 bg-primary-lt">
+                                        @(user.FullName?.FirstOrDefault().ToString().ToUpperInvariant() ?? "U")
+                                    </span>
+                                    @user.UserName
+                                </div>
+                            </td>
+                            <td>@user.FullName</td>
+                            <td>@user.Email</td>
+                            <td>
+                                <span class="badge @GetProviderBadgeClass(user.CredentialProvider)">
+                                    @user.CredentialProvider
+                                </span>
+                            </td>
+                            <td>
+                                @if (user.IsLockedOut)
+                                {
+                                    <span class="badge bg-danger">Locked</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success">Active</span>
+                                }
+                            </td>
+                            <td>
+                                <div class="d-flex flex-wrap gap-1">
+                                    @foreach (var account in user.AccountCollection.Take(3))
+                                    {
+                                        var org = m_organizations.FirstOrDefault(o => o.AccountNo == account.AccountNo);
+                                        <span class="badge bg-info-lt" title="@($"{org?.Name ?? account.AccountNo}\nRoles: {string.Join(", ", account.Roles)}")">
+                                            @account.AccountNo
+                                        </span>
+                                    }
+                                    @if (user.AccountCollection.Count > 3)
+                                    {
+                                        <span class="badge bg-secondary-lt">+@(user.AccountCollection.Count - 3)</span>
+                                    }
+                                </div>
+                            </td>
+                            <td>
+                                <div class="dropdown @(m_openDropdown == user.UserName ? "show" : "")">
+                                    <button type="button" class="btn btn-ghost-secondary btn-icon"
+                                            @onclick="@(() => ToggleDropdown(user.UserName))" @onclick:stopPropagation="true">
+                                        <i class="ti ti-dots-vertical"></i>
+                                    </button>
+                                    <div class="dropdown-menu dropdown-menu-end @(m_openDropdown == user.UserName ? "show" : "")"
+                                         style="@(m_openDropdown == user.UserName ? "position: absolute; inset: 0px 0px auto auto; margin: 0px; transform: translate(0px, 34px);" : "")">
+                                        <a class="dropdown-item" href="#" @onclick="@(() => { CloseDropdown(); ViewUserDetails(user); })" @onclick:preventDefault>
+                                            <i class="ti ti-eye me-2"></i>
+                                            View Details
+                                        </a>
+                                        @if (user.IsLockedOut)
+                                        {
+                                            <a class="dropdown-item text-success" href="#" @onclick="@(() => { CloseDropdown(); UnlockUser(user); })" @onclick:preventDefault>
+                                                <i class="ti ti-lock-open me-2"></i>
+                                                Unlock User
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <a class="dropdown-item text-warning" href="#" @onclick="@(() => { CloseDropdown(); LockUser(user); })" @onclick:preventDefault>
+                                                <i class="ti ti-lock me-2"></i>
+                                                Lock User
+                                            </a>
+                                        }
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        @if (m_filteredUsers.Count == 0 && !m_loading)
+        {
+            <div class="card-body">
+                <div class="empty">
+                    <p class="empty-title">No users found</p>
+                    <p class="empty-subtitle text-secondary">
+                        No users found matching your search criteria.
+                    </p>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<User> m_users = [];
+    private List<User> m_filteredUsers = [];
+    private List<Organization> m_organizations = [];
+    private bool m_loading = true;
+    private string? m_searchTerm;
+    private string? m_organizationFilter;
+    private string? m_providerFilter;
+    private string? m_statusFilter;
+    private string? m_openDropdown;
+    private System.Timers.Timer? m_debounceTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private void ToggleDropdown(string? userName)
+    {
+        this.m_openDropdown = this.m_openDropdown == userName ? null : userName;
+    }
+
+    private void CloseDropdown()
+    {
+        this.m_openDropdown = null;
+    }
+
+    private async Task LoadDataAsync()
+    {
+        this.m_loading = true;
+        try
+        {
+            // Load all users
+            var usersQuery = this.CoreContext.Users.OrderBy(u => u.UserName);
+            var usersResult = await this.CoreContext.LoadAsync(usersQuery, page: 1, size: 1000);
+            this.m_users = usersResult.ItemCollection.ToList();
+
+            // Load all organizations for filter dropdown
+            var orgs = await this.SubscriptionService.GetAllOrganizationsAsync();
+            this.m_organizations = orgs.ToList();
+
+            ApplyFilters();
+        }
+        catch (Exception ex)
+        {
+            this.ShowError($"Error loading data: {ex.Message}");
+        }
+        finally
+        {
+            this.m_loading = false;
+        }
+    }
+
+    private void OnSearchKeyup()
+    {
+        this.m_debounceTimer?.Stop();
+        this.m_debounceTimer?.Dispose();
+
+        this.m_debounceTimer = new System.Timers.Timer(300);
+        this.m_debounceTimer.Elapsed += (sender, args) =>
+        {
+            this.m_debounceTimer?.Stop();
+            InvokeAsync(() =>
+            {
+                ApplyFilters();
+                StateHasChanged();
+            });
+        };
+        this.m_debounceTimer.Start();
+    }
+
+    private void ApplyFilters()
+    {
+        this.m_filteredUsers = this.m_users
+            .Where(MatchesSearch)
+            .Where(MatchesOrganization)
+            .Where(MatchesProvider)
+            .Where(MatchesStatus)
+            .ToList();
+    }
+
+    private bool MatchesSearch(User user)
+    {
+        if (string.IsNullOrWhiteSpace(this.m_searchTerm)) return true;
+        var term = this.m_searchTerm.ToLowerInvariant();
+        return (user.UserName?.ToLowerInvariant().Contains(term) ?? false) ||
+               (user.FullName?.ToLowerInvariant().Contains(term) ?? false) ||
+               (user.Email?.ToLowerInvariant().Contains(term) ?? false);
+    }
+
+    private bool MatchesOrganization(User user)
+    {
+        if (string.IsNullOrWhiteSpace(this.m_organizationFilter)) return true;
+        return user.AccountCollection.Any(a => a.AccountNo == this.m_organizationFilter);
+    }
+
+    private bool MatchesProvider(User user)
+    {
+        if (string.IsNullOrWhiteSpace(this.m_providerFilter)) return true;
+        return user.CredentialProvider == this.m_providerFilter;
+    }
+
+    private bool MatchesStatus(User user)
+    {
+        if (string.IsNullOrWhiteSpace(this.m_statusFilter)) return true;
+        return this.m_statusFilter switch
+        {
+            "active" => !user.IsLockedOut,
+            "locked" => user.IsLockedOut,
+            _ => true
+        };
+    }
+
+    private async Task ViewUserDetails(User user)
+    {
+        var accounts = string.Join("\n", user.AccountCollection.Select(a =>
+            $"  - {a.AccountNo}: {string.Join(", ", a.Roles)}"));
+
+        var message = $"""
+            Username: {user.UserName}
+            Full Name: {user.FullName}
+            Email: {user.Email}
+            Provider: {user.CredentialProvider}
+            Locked: {user.IsLockedOut}
+
+            Accounts:
+            {accounts}
+            """;
+
+        await this.DialogService.ShowMessageAsync(message, "User Details");
+    }
+
+    private async Task LockUser(User user)
+    {
+        var confirmed = await this.DialogService.ConfirmYesNoAsync(
+            $"Are you sure you want to lock {user.FullName ?? user.UserName}? They will not be able to log in.",
+            "Lock User");
+
+        if (confirmed)
+        {
+            user.IsLockedOut = true;
+            await this.DirectoryService.SaveUserProfileAsync(user);
+            this.ShowWarning($"{user.FullName ?? user.UserName} has been locked.");
+            StateHasChanged();
+        }
+    }
+
+    private async Task UnlockUser(User user)
+    {
+        user.IsLockedOut = false;
+        await this.DirectoryService.SaveUserProfileAsync(user);
+        this.ShowSuccess($"{user.FullName ?? user.UserName} has been unlocked.");
+        StateHasChanged();
+    }
+
+    private static string GetProviderBadgeClass(string provider) => provider switch
+    {
+        User.GOOGLE => "bg-red",
+        User.MICROSOFT => "bg-azure",
+        _ => "bg-secondary"
+    };
+}

@@ -1,6 +1,9 @@
 @using MotoRent.Domain.Core
+@using MotoRent.Domain.DataContext
 @inherits MotoRentComponentBase
 @inject ISubscriptionService SubscriptionService
+@inject CoreDataContext CoreContext
+@inject IDirectoryService DirectoryService
 
 <div class="modal-body">
     @if (m_loading)
@@ -9,6 +12,49 @@
             <div class="progress-bar progress-bar-indeterminate"></div>
         </div>
     }
+
+    <!-- Add User Section -->
+    @if (m_showAddUser)
+    {
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Select User</label>
+                        <select class="form-select" value="@m_selectedUserName" @onchange="OnUserSelected">
+                            <option value="">Select a user...</option>
+                            @foreach (var user in m_availableUsers)
+                            {
+                                <option value="@user.UserName">@user.FullName (@user.Email)</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Role</label>
+                        <select class="form-select" value="@m_selectedRole" @onchange="OnRoleSelected">
+                            <option value="@UserAccount.ORG_ADMIN">Organization Admin</option>
+                            <option value="@UserAccount.SHOP_MANAGER">Shop Manager</option>
+                            <option value="@UserAccount.STAFF">Staff</option>
+                            <option value="@UserAccount.MECHANIC">Mechanic</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="button" class="btn btn-primary w-100" @onclick="AddUserToOrganization" disabled="@(string.IsNullOrEmpty(m_selectedUserName))">
+                            <i class="ti ti-plus me-1"></i>Add
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <span class="text-secondary">@m_users.Count users in this organization</span>
+        <button type="button" class="btn btn-outline-primary btn-sm" @onclick="ToggleAddUser">
+            <i class="ti @(m_showAddUser ? "ti-x" : "ti-plus") me-1"></i>
+            @(m_showAddUser ? "Cancel" : "Add User")
+        </button>
+    </div>
 
     <div class="table-responsive">
         <table class="table table-vcenter card-table table-striped">
@@ -83,11 +129,16 @@
     [Parameter] public Organization Organization { get; set; } = null!;
 
     private List<User> m_users = [];
+    private List<User> m_availableUsers = [];
     private bool m_loading = true;
+    private bool m_showAddUser;
+    private string? m_selectedUserName;
+    private string m_selectedRole = UserAccount.STAFF;
 
     protected override async Task OnInitializedAsync()
     {
         await this.LoadUsersAsync();
+        await this.LoadAvailableUsersAsync();
     }
 
     private async Task LoadUsersAsync()
@@ -105,6 +156,76 @@
         finally
         {
             this.m_loading = false;
+        }
+    }
+
+    private async Task LoadAvailableUsersAsync()
+    {
+        try
+        {
+            // Load all users who are NOT already in this organization
+            var existingUserNames = this.m_users.Select(u => u.UserName).ToHashSet();
+            var allUsersQuery = this.CoreContext.Users.OrderBy(u => u.FullName);
+            var allUsersResult = await this.CoreContext.LoadAsync(allUsersQuery, page: 1, size: 100);
+
+            this.m_availableUsers = allUsersResult.ItemCollection
+                .Where(u => !existingUserNames.Contains(u.UserName))
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            this.ShowError($"Error loading available users: {ex.Message}");
+        }
+    }
+
+    private void ToggleAddUser()
+    {
+        this.m_showAddUser = !this.m_showAddUser;
+        if (this.m_showAddUser)
+        {
+            this.m_selectedUserName = null;
+            this.m_selectedRole = UserAccount.STAFF;
+        }
+    }
+
+    private void OnUserSelected(ChangeEventArgs e)
+    {
+        this.m_selectedUserName = e.Value?.ToString();
+    }
+
+    private void OnRoleSelected(ChangeEventArgs e)
+    {
+        this.m_selectedRole = e.Value?.ToString() ?? UserAccount.STAFF;
+    }
+
+    private async Task AddUserToOrganization()
+    {
+        if (string.IsNullOrEmpty(this.m_selectedUserName)) return;
+
+        try
+        {
+            var user = this.m_availableUsers.FirstOrDefault(u => u.UserName == this.m_selectedUserName);
+            if (user == null)
+            {
+                this.ShowError("User not found");
+                return;
+            }
+
+            // Use the subscription service to add the user
+            await this.SubscriptionService.AddUserToOrganizationAsync(user, this.Organization.AccountNo, this.m_selectedRole);
+
+            this.ShowSuccess($"{user.FullName} has been added to {this.Organization.Name}");
+
+            // Refresh lists
+            await this.LoadUsersAsync();
+            await this.LoadAvailableUsersAsync();
+
+            this.m_showAddUser = false;
+            this.m_selectedUserName = null;
+        }
+        catch (Exception ex)
+        {
+            this.ShowError($"Error adding user: {ex.Message}");
         }
     }
 
