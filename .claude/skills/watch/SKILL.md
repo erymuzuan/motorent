@@ -64,7 +64,7 @@ If browser verification fails:
 3. Wait for rebuild
 4. Verify again in browser
 5. Repeat until feature works correctly
-6. if the server "Unable to apply hot reload because of a rude edit" , Press "Ctrl + R" to restart
+6. if the server output "Unable to apply hot reload because of a rude edit" or when changes don't seem to be applying correctly. Press "Ctrl + R" to restart the watch
 
 ## Example session
 
