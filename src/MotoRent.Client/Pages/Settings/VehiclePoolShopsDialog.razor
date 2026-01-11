@@ -1,0 +1,175 @@
+@using MotoRent.Domain.Entities
+@inherits MotoRentDialogBase<VehiclePoolShopsDialog>
+@inject VehiclePoolService VehiclePoolService
+
+<div class="modal-body">
+    <div class="alert alert-info mb-3">
+        <i class="ti ti-info-circle me-2"></i>
+        Manage which shops participate in the <strong>@Pool.Name</strong> pool.
+        Vehicles in this pool can be rented from or returned to any participating shop.
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="ti ti-building-store me-2 text-success"></i>
+                        In Pool (@Pool.ShopIds.Count)
+                    </h3>
+                </div>
+                <div class="list-group list-group-flush" style="max-height: 300px; overflow-y: auto;">
+                    @foreach (var shopId in Pool.ShopIds)
+                    {
+                        var shop = AvailableShops.FirstOrDefault(s => s.ShopId == shopId);
+                        if (shop != null)
+                        {
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="fw-bold">@shop.Name</div>
+                                    @if (!string.IsNullOrEmpty(shop.Address))
+                                    {
+                                        <small class="text-secondary">@shop.Address</small>
+                                    }
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-danger"
+                                        @onclick="@(() => RemoveShop(shopId))"
+                                        disabled="@(Pool.ShopIds.Count <= 2 || m_saving)">
+                                    <i class="ti ti-arrow-right"></i>
+                                </button>
+                            </div>
+                        }
+                    }
+                    @if (Pool.ShopIds.Count == 0)
+                    {
+                        <div class="list-group-item text-secondary text-center py-4">
+                            No shops in pool
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="ti ti-building-store me-2 text-secondary"></i>
+                        Available Shops
+                    </h3>
+                </div>
+                <div class="list-group list-group-flush" style="max-height: 300px; overflow-y: auto;">
+                    @{
+                        var availableShops = AvailableShops.Where(s => !Pool.ShopIds.Contains(s.ShopId)).ToList();
+                    }
+                    @foreach (var shop in availableShops)
+                    {
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="fw-bold">@shop.Name</div>
+                                @if (!string.IsNullOrEmpty(shop.Address))
+                                {
+                                    <small class="text-secondary">@shop.Address</small>
+                                }
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-success"
+                                    @onclick="@(() => AddShop(shop.ShopId))"
+                                    disabled="@m_saving">
+                                <i class="ti ti-arrow-left"></i>
+                            </button>
+                        </div>
+                    }
+                    @if (availableShops.Count == 0)
+                    {
+                        <div class="list-group-item text-secondary text-center py-4">
+                            All shops are in the pool
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (Pool.ShopIds.Count < 2)
+    {
+        <div class="alert alert-warning mt-3">
+            <i class="ti ti-alert-triangle me-2"></i>
+            A pool must have at least 2 shops. Add more shops before removing any.
+        </div>
+    }
+</div>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-primary" @onclick="@(() => Close())">
+        <i class="ti ti-check me-1"></i>
+        Done
+    </button>
+</div>
+
+@code {
+    [Parameter]
+    public VehiclePool Pool { get; set; } = new();
+
+    [Parameter]
+    public List<Shop> AvailableShops { get; set; } = [];
+
+    private bool m_saving;
+
+    private async Task AddShop(int shopId)
+    {
+        this.m_saving = true;
+        try
+        {
+            var result = await this.VehiclePoolService.AddShopToPoolAsync(Pool.VehiclePoolId, shopId, this.UserName);
+            if (result.Success)
+            {
+                Pool.ShopIds.Add(shopId);
+                this.ShowSuccess("Shop added to pool");
+            }
+            else
+            {
+                this.ShowError(result.Message ?? "Failed to add shop");
+            }
+        }
+        catch (Exception ex)
+        {
+            this.ShowError($"Error: {ex.Message}");
+        }
+        finally
+        {
+            this.m_saving = false;
+        }
+    }
+
+    private async Task RemoveShop(int shopId)
+    {
+        if (Pool.ShopIds.Count <= 2)
+        {
+            this.ShowWarning("A pool must have at least 2 shops");
+            return;
+        }
+
+        this.m_saving = true;
+        try
+        {
+            var result = await this.VehiclePoolService.RemoveShopFromPoolAsync(Pool.VehiclePoolId, shopId, this.UserName);
+            if (result.Success)
+            {
+                Pool.ShopIds.Remove(shopId);
+                this.ShowSuccess("Shop removed from pool");
+            }
+            else
+            {
+                this.ShowError(result.Message ?? "Failed to remove shop");
+            }
+        }
+        catch (Exception ex)
+        {
+            this.ShowError($"Error: {ex.Message}");
+        }
+        finally
+        {
+            this.m_saving = false;
+        }
+    }
+}

@@ -1,0 +1,759 @@
+@page "/vehicles"
+@page "/fleet"
+@using Microsoft.AspNetCore.Authorization
+@using MotoRent.Domain.Entities
+@attribute [Authorize(Policy = "RequireTenantStaff")]
+@using MotoRent.Client.Components.Shared
+@inherits LocalizedComponentBase<Vehicles>
+@inject VehicleService VehicleService
+@inject VehiclePoolService VehiclePoolService
+@inject MaintenanceService MaintenanceService
+
+<MotoRentPageTitle>Fleet Management</MotoRentPageTitle>
+
+<TablerHeader Title="Fleet Management" PreTitle="Vehicle Inventory">
+    <button type="button" class="btn btn-primary" @onclick="OpenAddDialog">
+        <i class="ti ti-plus me-1"></i>
+        Add Vehicle
+    </button>
+</TablerHeader>
+
+@* Vehicle Type Tabs *@
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <ul class="nav nav-pills">
+            <li class="nav-item">
+                <a class="nav-link @(m_vehicleTypeFilter == null ? "active" : "")"
+                   href="javascript:void(0)" @onclick="@(() => FilterByType(null))">
+                    <i class="ti ti-list me-1"></i>
+                    All
+                    <span class="badge bg-secondary ms-1">@m_typeCounts.Values.Sum()</span>
+                </a>
+            </li>
+            @foreach (var (type, count) in m_typeCounts.OrderBy(x => x.Key))
+            {
+                <li class="nav-item">
+                    <a class="nav-link @(m_vehicleTypeFilter == type ? "active" : "")"
+                       href="javascript:void(0)" @onclick="@(() => FilterByType(type))">
+                        <i class="ti @GetVehicleTypeIcon(type) me-1"></i>
+                        @GetVehicleTypeLabel(type)
+                        <span class="badge @(m_vehicleTypeFilter == type ? "bg-white text-primary" : "bg-secondary") ms-1">@count</span>
+                    </a>
+                </li>
+            }
+        </ul>
+    </div>
+</div>
+
+@* Summary Stats Cards *@
+<div class="row row-deck row-cards mb-4">
+    <div class="col-sm-6 col-lg-3">
+        <div class="card card-sm">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-auto">
+                        <span class="bg-primary text-white avatar">
+                            <i class="ti @GetVehicleTypeIcon(m_vehicleTypeFilter)"></i>
+                        </span>
+                    </div>
+                    <div class="col">
+                        <div class="font-weight-medium">
+                            @GetTotalCount() Vehicles
+                        </div>
+                        <div class="text-secondary">
+                            @(m_vehicleTypeFilter.HasValue ? GetVehicleTypeLabel(m_vehicleTypeFilter.Value) : "Total Fleet")
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card card-sm cursor-pointer @(m_statusFilter == VehicleStatus.Available ? "border-success border-2" : "")"
+             @onclick="@(() => FilterByStatus(VehicleStatus.Available))">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-auto">
+                        <span class="bg-success text-white avatar">
+                            <i class="ti ti-circle-check"></i>
+                        </span>
+                    </div>
+                    <div class="col">
+                        <div class="font-weight-medium">
+                            @GetStatusCount(VehicleStatus.Available) Available
+                        </div>
+                        <div class="text-secondary">
+                            Ready to rent
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card card-sm cursor-pointer @(m_statusFilter == VehicleStatus.Rented ? "border-primary border-2" : "")"
+             @onclick="@(() => FilterByStatus(VehicleStatus.Rented))">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-auto">
+                        <span class="bg-primary text-white avatar">
+                            <i class="ti ti-key"></i>
+                        </span>
+                    </div>
+                    <div class="col">
+                        <div class="font-weight-medium">
+                            @GetStatusCount(VehicleStatus.Rented) Rented
+                        </div>
+                        <div class="text-secondary">
+                            Currently out
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card card-sm cursor-pointer @(m_statusFilter == VehicleStatus.Maintenance ? "border-warning border-2" : "")"
+             @onclick="@(() => FilterByStatus(VehicleStatus.Maintenance))">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-auto">
+                        <span class="bg-warning text-white avatar">
+                            <i class="ti ti-tool"></i>
+                        </span>
+                    </div>
+                    <div class="col">
+                        <div class="font-weight-medium">
+                            @GetStatusCount(VehicleStatus.Maintenance) Maintenance
+                        </div>
+                        <div class="text-secondary">
+                            Being serviced
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* Search and Filters *@
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-3 align-items-center">
+            <div class="col-md-4">
+                <div class="input-icon">
+                    <span class="input-icon-addon">
+                        <i class="ti ti-search"></i>
+                    </span>
+                    <input type="text" class="form-control" placeholder="Search by license plate, brand, model..."
+                           @bind="m_searchTerm" @bind:event="oninput" @onkeyup="OnSearchKeyUp" />
+                </div>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" @bind="m_statusFilter" @bind:after="LoadDataAsync">
+                    <option value="">All Status</option>
+                    @foreach (VehicleStatus status in Enum.GetValues<VehicleStatus>())
+                    {
+                        <option value="@status">@status</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" @bind="m_brandFilter" @bind:after="LoadDataAsync">
+                    <option value="">All Brands</option>
+                    @foreach (var brand in m_availableBrands)
+                    {
+                        <option value="@brand">@brand</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="includePooled"
+                           @bind="m_includePooled" @bind:after="LoadDataAsync">
+                    <label class="form-check-label" for="includePooled">Include Pooled</label>
+                </div>
+            </div>
+            <div class="col-md-2 text-end">
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn @(m_viewMode == "table" ? "btn-primary" : "btn-outline-primary")"
+                            @onclick="@(() => m_viewMode = "table")" title="Table View">
+                        <i class="ti ti-list"></i>
+                    </button>
+                    <button type="button" class="btn @(m_viewMode == "card" ? "btn-primary" : "btn-outline-primary")"
+                            @onclick="@(() => m_viewMode = "card")" title="Card View">
+                        <i class="ti ti-layout-grid"></i>
+                    </button>
+                </div>
+                @if (HasActiveFilters())
+                {
+                    <button type="button" class="btn btn-ghost-secondary ms-2" @onclick="ClearFilters">
+                        <i class="ti ti-x me-1"></i>Clear
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<LoadingSkeleton Loading="@m_loading" Mode="LoadingSkeleton.PlaceholderMode.Table" Rows="10" Columns="8">
+    @if (m_viewMode == "table")
+    {
+        @* Table View *@
+        <div class="card">
+            <div class="table-responsive">
+                <table class="table table-vcenter card-table table-hover">
+                    <thead>
+                        <tr>
+                            <th class="w-1"></th>
+                            <th>Vehicle</th>
+                            <th>Type</th>
+                            <th>Pricing</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-center">Location</th>
+                            <th class="w-1">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (m_vehicles.Count == 0)
+                        {
+                            <tr>
+                                <td colspan="7" class="text-center py-5">
+                                    <div class="empty">
+                                        <div class="empty-icon">
+                                            <i class="ti ti-car" style="font-size: 3rem;"></i>
+                                        </div>
+                                        <p class="empty-title">No vehicles found</p>
+                                        <p class="empty-subtitle text-secondary">
+                                            @if (HasActiveFilters())
+                                            {
+                                                <span>Try adjusting your search or filter criteria</span>
+                                            }
+                                            else
+                                            {
+                                                <span>Get started by adding your first vehicle to the fleet</span>
+                                            }
+                                        </p>
+                                        <div class="empty-action">
+                                            <button type="button" class="btn btn-primary" @onclick="OpenAddDialog">
+                                                <i class="ti ti-plus me-1"></i>
+                                                Add Vehicle
+                                            </button>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var vehicle in m_vehicles)
+                            {
+                                <tr class="cursor-pointer" @onclick="@(() => OpenEditDialog(vehicle))">
+                                    <td>
+                                        <span class="avatar avatar-md rounded @GetStatusAvatarClass(vehicle.Status)"
+                                              style="background-image: url('@GetVehicleImage(vehicle)')">
+                                            @if (string.IsNullOrEmpty(vehicle.ImagePath))
+                                            {
+                                                <i class="ti @GetVehicleTypeIcon(vehicle.VehicleType)"></i>
+                                            }
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex flex-column">
+                                            <span class="fw-bold text-primary">@vehicle.LicensePlate</span>
+                                            <span class="text-secondary">@vehicle.Brand @vehicle.Model</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge @GetVehicleTypeBadgeClass(vehicle.VehicleType)">
+                                            <i class="ti @GetVehicleTypeIcon(vehicle.VehicleType) me-1"></i>
+                                            @GetVehicleTypeLabel(vehicle.VehicleType)
+                                        </span>
+                                        @if (vehicle.Segment.HasValue)
+                                        {
+                                            <div class="text-secondary small mt-1">@vehicle.Segment</div>
+                                        }
+                                    </td>
+                                    <td>
+                                        <div class="d-flex flex-column">
+                                            @if (vehicle.UsesIntervalPricing)
+                                            {
+                                                <span class="fw-bold text-success">
+                                                    @if (vehicle.Rate1Hour.HasValue)
+                                                    {
+                                                        @FormatCurrency(vehicle.Rate1Hour.Value)<text>/hr</text>
+                                                    }
+                                                </span>
+                                                <span class="text-secondary small">Interval pricing</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="fw-bold text-success">@FormatCurrency(vehicle.DailyRate)/day</span>
+                                                <span class="text-secondary small">Deposit: @FormatCurrency(vehicle.DepositAmount)</span>
+                                            }
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge @GetStatusBadgeClass(vehicle.Status)">
+                                            <i class="ti @GetStatusIcon(vehicle.Status) me-1"></i>
+                                            @vehicle.Status
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        @if (vehicle.IsPooled)
+                                        {
+                                            <span class="badge bg-purple-lt text-purple" title="Pooled vehicle">
+                                                <i class="ti ti-share me-1"></i>Pooled
+                                            </span>
+                                            @if (vehicle.CurrentShopId != vehicle.HomeShopId)
+                                            {
+                                                <div class="text-warning small mt-1">
+                                                    <i class="ti ti-map-pin"></i> Away
+                                                </div>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <span class="text-secondary small">Local</span>
+                                        }
+                                    </td>
+                                    <td @onclick:stopPropagation="true">
+                                        <div class="dropdown">
+                                            <button class="btn btn-icon btn-ghost-secondary" data-bs-toggle="dropdown">
+                                                <i class="ti ti-dots-vertical"></i>
+                                            </button>
+                                            <div class="dropdown-menu dropdown-menu-end">
+                                                <a class="dropdown-item" href="javascript:void(0)" @onclick="@(() => OpenEditDialog(vehicle))">
+                                                    <i class="ti ti-edit me-2"></i>Edit Details
+                                                </a>
+                                                @if (!vehicle.IsPooled)
+                                                {
+                                                    <a class="dropdown-item" href="javascript:void(0)" @onclick="@(() => AssignToPool(vehicle))">
+                                                        <i class="ti ti-share me-2"></i>Add to Pool
+                                                    </a>
+                                                }
+                                                else
+                                                {
+                                                    <a class="dropdown-item" href="javascript:void(0)" @onclick="@(() => RemoveFromPool(vehicle))">
+                                                        <i class="ti ti-unlink me-2"></i>Remove from Pool
+                                                    </a>
+                                                }
+                                                <div class="dropdown-divider"></div>
+                                                <a class="dropdown-item text-danger" href="javascript:void(0)" @onclick="@(() => ConfirmDelete(vehicle))">
+                                                    <i class="ti ti-trash me-2"></i>Delete
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+            @if (m_vehicles.Count > 0)
+            {
+                <div class="card-footer d-flex align-items-center justify-content-between">
+                    <p class="m-0 text-secondary">
+                        Showing <strong>@m_vehicles.Count</strong> vehicles
+                    </p>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        @* Card View *@
+        @if (m_vehicles.Count == 0)
+        {
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <div class="empty">
+                        <div class="empty-icon">
+                            <i class="ti ti-car" style="font-size: 3rem;"></i>
+                        </div>
+                        <p class="empty-title">No vehicles found</p>
+                        <p class="empty-subtitle text-secondary">
+                            @if (HasActiveFilters())
+                            {
+                                <span>Try adjusting your search or filter criteria</span>
+                            }
+                            else
+                            {
+                                <span>Get started by adding your first vehicle to the fleet</span>
+                            }
+                        </p>
+                        <div class="empty-action">
+                            <button type="button" class="btn btn-primary" @onclick="OpenAddDialog">
+                                <i class="ti ti-plus me-1"></i>
+                                Add Vehicle
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="row row-cards">
+                @foreach (var vehicle in m_vehicles)
+                {
+                    <div class="col-sm-6 col-lg-4 col-xl-3">
+                        <div class="card card-sm cursor-pointer" @onclick="@(() => OpenEditDialog(vehicle))">
+                            <div class="card-img-top img-responsive img-responsive-16by9"
+                                 style="background-image: url('@GetVehicleImage(vehicle)'); background-color: #f8fafc;">
+                                @if (string.IsNullOrEmpty(vehicle.ImagePath))
+                                {
+                                    <div class="d-flex align-items-center justify-content-center h-100">
+                                        <i class="ti @GetVehicleTypeIcon(vehicle.VehicleType) text-secondary" style="font-size: 4rem; opacity: 0.3;"></i>
+                                    </div>
+                                }
+                                <div class="position-absolute top-0 start-0 m-2">
+                                    <span class="badge @GetVehicleTypeBadgeClass(vehicle.VehicleType)">
+                                        <i class="ti @GetVehicleTypeIcon(vehicle.VehicleType) me-1"></i>
+                                        @GetVehicleTypeLabel(vehicle.VehicleType)
+                                    </span>
+                                </div>
+                                <div class="position-absolute top-0 end-0 m-2">
+                                    <span class="badge @GetStatusBadgeClass(vehicle.Status)">
+                                        @vehicle.Status
+                                    </span>
+                                </div>
+                                @if (vehicle.IsPooled)
+                                {
+                                    <div class="position-absolute bottom-0 start-0 m-2">
+                                        <span class="badge bg-purple-lt text-purple">
+                                            <i class="ti ti-share"></i> Pooled
+                                        </span>
+                                    </div>
+                                }
+                            </div>
+                            <div class="card-body">
+                                <div class="d-flex align-items-center justify-content-between mb-2">
+                                    <span class="badge bg-primary-lt fw-bold">@vehicle.LicensePlate</span>
+                                </div>
+                                <h3 class="card-title mb-1">@vehicle.Brand @vehicle.Model</h3>
+                                <div class="text-secondary mb-3">
+                                    @if (vehicle.EngineCC.HasValue)
+                                    {
+                                        <span class="me-2"><i class="ti ti-engine me-1"></i>@vehicle.EngineCC cc</span>
+                                    }
+                                    @if (!string.IsNullOrEmpty(vehicle.Color))
+                                    {
+                                        <span class="me-2"><i class="ti ti-palette me-1"></i>@vehicle.Color</span>
+                                    }
+                                    @if (vehicle.Year > 0)
+                                    {
+                                        <span><i class="ti ti-calendar me-1"></i>@vehicle.Year</span>
+                                    }
+                                </div>
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div>
+                                        @if (vehicle.UsesIntervalPricing)
+                                        {
+                                            <span class="h3 text-success mb-0">@FormatCurrency(vehicle.Rate1Hour ?? 0)</span>
+                                            <span class="text-secondary">/hr</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="h3 text-success mb-0">@FormatCurrency(vehicle.DailyRate)</span>
+                                            <span class="text-secondary">/day</span>
+                                        }
+                                    </div>
+                                    <div class="btn-group" @onclick:stopPropagation="true">
+                                        <button type="button" class="btn btn-sm btn-outline-primary"
+                                                @onclick="@(() => OpenEditDialog(vehicle))">
+                                            <i class="ti ti-edit"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                                @onclick="@(() => ConfirmDelete(vehicle))">
+                                            <i class="ti ti-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    }
+</LoadingSkeleton>
+
+@code {
+    private List<Vehicle> m_vehicles = [];
+    private Dictionary<VehicleStatus, int> m_statusCounts = new();
+    private Dictionary<VehicleType, int> m_typeCounts = new();
+    private List<string> m_availableBrands = [];
+    private bool m_loading = true;
+    private string? m_searchTerm;
+    private VehicleStatus? m_statusFilter;
+    private VehicleType? m_vehicleTypeFilter;
+    private string? m_brandFilter;
+    private bool m_includePooled = true;
+    private string m_viewMode = "table";
+    private System.Timers.Timer? m_debounceTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await this.LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        this.m_loading = true;
+        try
+        {
+            var result = await this.VehicleService.GetVehiclesAsync(
+                this.ShopId,
+                this.m_vehicleTypeFilter,
+                this.m_statusFilter,
+                this.m_searchTerm,
+                this.m_includePooled,
+                page: 1,
+                pageSize: 100);
+
+            // Apply brand filter client-side
+            this.m_vehicles = string.IsNullOrEmpty(this.m_brandFilter)
+                ? result.ItemCollection
+                : result.ItemCollection.Where(v => v.Brand == this.m_brandFilter).ToList();
+
+            // Get counts
+            this.m_statusCounts = await this.VehicleService.GetStatusCountsAsync(this.ShopId, this.m_vehicleTypeFilter);
+            this.m_typeCounts = await this.VehicleService.GetTypeCountsAsync(this.ShopId);
+
+            // Get unique brands for filter
+            if (this.m_availableBrands.Count == 0)
+            {
+                this.m_availableBrands = result.ItemCollection
+                    .Where(v => !string.IsNullOrEmpty(v.Brand))
+                    .Select(v => v.Brand!)
+                    .Distinct()
+                    .OrderBy(b => b)
+                    .ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            this.ShowError($"Error loading data: {ex.Message}");
+        }
+        finally
+        {
+            this.m_loading = false;
+        }
+    }
+
+    private void OnSearchKeyUp(KeyboardEventArgs e)
+    {
+        this.m_debounceTimer?.Stop();
+        this.m_debounceTimer?.Dispose();
+        this.m_debounceTimer = new System.Timers.Timer(300);
+        this.m_debounceTimer.Elapsed += async (_, _) =>
+        {
+            this.m_debounceTimer?.Stop();
+            await this.InvokeAsync(async () =>
+            {
+                await this.LoadDataAsync();
+                this.StateHasChanged();
+            });
+        };
+        this.m_debounceTimer.Start();
+    }
+
+    private async Task FilterByStatus(VehicleStatus status)
+    {
+        this.m_statusFilter = this.m_statusFilter == status ? null : status;
+        await this.LoadDataAsync();
+    }
+
+    private async Task FilterByType(VehicleType? type)
+    {
+        this.m_vehicleTypeFilter = type;
+        await this.LoadDataAsync();
+    }
+
+    private async Task ClearFilters()
+    {
+        this.m_searchTerm = null;
+        this.m_statusFilter = null;
+        this.m_brandFilter = null;
+        await this.LoadDataAsync();
+    }
+
+    private bool HasActiveFilters() =>
+        !string.IsNullOrEmpty(m_searchTerm) ||
+        m_statusFilter.HasValue ||
+        !string.IsNullOrEmpty(m_brandFilter);
+
+    private int GetTotalCount() => m_vehicleTypeFilter.HasValue
+        ? m_typeCounts.GetValueOrDefault(m_vehicleTypeFilter.Value, 0)
+        : m_typeCounts.Values.Sum();
+
+    private int GetStatusCount(VehicleStatus status) => m_statusCounts.GetValueOrDefault(status, 0);
+
+    private async Task OpenAddDialog()
+    {
+        var vehicle = new Vehicle
+        {
+            HomeShopId = this.ShopId,
+            CurrentShopId = this.ShopId,
+            Status = VehicleStatus.Available,
+            VehicleType = m_vehicleTypeFilter ?? VehicleType.Motorbike,
+            Year = DateTime.Now.Year
+        };
+
+        var result = await this.DialogService
+            .Create<VehicleDialog>("Add Vehicle")
+            .WithParameter(x => x.Entity, vehicle)
+            .WithParameter(x => x.IsNew, true)
+            .Large()
+            .ShowDialogAsync();
+
+        if (!result.Cancelled)
+        {
+            await this.LoadDataAsync();
+            this.ShowSuccess("Vehicle added successfully");
+        }
+    }
+
+    private async Task OpenEditDialog(Vehicle vehicle)
+    {
+        var result = await this.DialogService
+            .Create<VehicleDialog>("Edit Vehicle")
+            .WithParameter(x => x.Entity, vehicle.Clone())
+            .WithParameter(x => x.IsNew, false)
+            .Large()
+            .ShowDialogAsync();
+
+        if (!result.Cancelled)
+        {
+            await this.LoadDataAsync();
+            this.ShowSuccess("Vehicle updated successfully");
+        }
+    }
+
+    private async Task AssignToPool(Vehicle vehicle)
+    {
+        // TODO: Show pool selection dialog
+        this.ShowInfo($"Assign {vehicle.LicensePlate} to pool - coming soon");
+    }
+
+    private async Task RemoveFromPool(Vehicle vehicle)
+    {
+        if (vehicle.CurrentShopId != vehicle.HomeShopId)
+        {
+            this.ShowWarning("Vehicle must be at home shop before removing from pool");
+            return;
+        }
+
+        var result = await this.VehicleService.RemoveFromPoolAsync(vehicle.VehicleId, this.UserName);
+        if (result.Success)
+        {
+            await this.LoadDataAsync();
+            this.ShowSuccess("Vehicle removed from pool");
+        }
+        else
+        {
+            this.ShowError(result.Message ?? "Failed to remove from pool");
+        }
+    }
+
+    private async Task ConfirmDelete(Vehicle vehicle)
+    {
+        var itemName = $"{vehicle.Brand} {vehicle.Model} ({vehicle.LicensePlate})";
+        if (!await this.ConfirmDeleteAsync(itemName))
+            return;
+
+        var deleteResult = await this.VehicleService.DeleteVehicleAsync(vehicle, this.UserName);
+        if (deleteResult.Success)
+        {
+            await this.LoadDataAsync();
+            this.ShowSuccess("Vehicle deleted successfully");
+        }
+        else
+        {
+            this.ShowError($"Delete failed: {deleteResult.Message}");
+        }
+    }
+
+    private static string GetVehicleTypeIcon(VehicleType? type) => type switch
+    {
+        VehicleType.Motorbike => "ti-motorbike",
+        VehicleType.Car => "ti-car",
+        VehicleType.JetSki => "ti-sailboat",
+        VehicleType.Boat => "ti-ship",
+        VehicleType.Van => "ti-bus",
+        _ => "ti-car"
+    };
+
+    private static string GetVehicleTypeLabel(VehicleType type) => type switch
+    {
+        VehicleType.Motorbike => "Motorbike",
+        VehicleType.Car => "Car",
+        VehicleType.JetSki => "Jet Ski",
+        VehicleType.Boat => "Boat",
+        VehicleType.Van => "Van",
+        _ => "Vehicle"
+    };
+
+    private static string GetVehicleTypeBadgeClass(VehicleType type) => type switch
+    {
+        VehicleType.Motorbike => "bg-indigo-lt text-indigo",
+        VehicleType.Car => "bg-blue-lt text-blue",
+        VehicleType.JetSki => "bg-cyan-lt text-cyan",
+        VehicleType.Boat => "bg-azure-lt text-azure",
+        VehicleType.Van => "bg-purple-lt text-purple",
+        _ => "bg-secondary-lt text-secondary"
+    };
+
+    private static string GetStatusBadgeClass(VehicleStatus status) => status switch
+    {
+        VehicleStatus.Available => "bg-teal-lt text-teal",
+        VehicleStatus.Rented => "bg-indigo-lt text-indigo",
+        VehicleStatus.Maintenance => "bg-orange-lt text-orange",
+        VehicleStatus.Reserved => "bg-yellow-lt text-yellow",
+        VehicleStatus.Retired => "bg-red-lt text-red",
+        _ => "bg-secondary-lt text-secondary"
+    };
+
+    private static string GetStatusAvatarClass(VehicleStatus status) => status switch
+    {
+        VehicleStatus.Available => "bg-teal-lt",
+        VehicleStatus.Rented => "bg-indigo-lt",
+        VehicleStatus.Maintenance => "bg-orange-lt",
+        VehicleStatus.Reserved => "bg-yellow-lt",
+        VehicleStatus.Retired => "bg-red-lt",
+        _ => "bg-secondary-lt"
+    };
+
+    private static string GetStatusIcon(VehicleStatus status) => status switch
+    {
+        VehicleStatus.Available => "ti-circle-check",
+        VehicleStatus.Rented => "ti-steering-wheel",
+        VehicleStatus.Maintenance => "ti-settings",
+        VehicleStatus.Reserved => "ti-clock",
+        VehicleStatus.Retired => "ti-archive",
+        _ => "ti-circle"
+    };
+
+    private static string GetVehicleImage(Vehicle vehicle)
+    {
+        if (!string.IsNullOrEmpty(vehicle.ImagePath))
+            return vehicle.ImagePath;
+
+        return vehicle.VehicleType switch
+        {
+            VehicleType.Motorbike => "/images/vehicles/motorbike-placeholder.png",
+            VehicleType.Car => "/images/vehicles/car-placeholder.png",
+            VehicleType.JetSki => "/images/vehicles/jetski-placeholder.png",
+            VehicleType.Boat => "/images/vehicles/boat-placeholder.png",
+            VehicleType.Van => "/images/vehicles/van-placeholder.png",
+            _ => "/images/vehicles/default-placeholder.png"
+        };
+    }
+
+    public void Dispose()
+    {
+        this.m_debounceTimer?.Dispose();
+    }
+}

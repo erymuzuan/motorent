@@ -1,0 +1,424 @@
+@using MotoRent.Domain.Entities
+@inherits LocalizedDialogBase<Vehicle, VehicleDialog>
+@inject VehicleService VehicleService
+
+<form id="@FormId" @onsubmit="SaveAsync" @onsubmit:preventDefault>
+    <div class="modal-body">
+        <div class="row g-3">
+            @* Vehicle Type Selection *@
+            <div class="col-12">
+                <label class="form-label required">Vehicle Type</label>
+                <div class="btn-group w-100" role="group">
+                    @foreach (VehicleType type in Enum.GetValues<VehicleType>())
+                    {
+                        <input type="radio" class="btn-check" name="vehicleType" id="type-@type"
+                               checked="@(Entity.VehicleType == type)"
+                               @onchange="@(() => OnVehicleTypeChanged(type))"
+                               disabled="@(!IsNew)" />
+                        <label class="btn btn-outline-primary" for="type-@type">
+                            <i class="ti @GetVehicleTypeIcon(type) me-1"></i>
+                            @GetVehicleTypeLabel(type)
+                        </label>
+                    }
+                </div>
+            </div>
+
+            @* Basic Info - All vehicle types *@
+            <div class="col-md-6">
+                <label class="form-label required">License Plate</label>
+                <input type="text" class="form-control" @bind="Entity.LicensePlate" required
+                       placeholder="e.g., 1กก 1234" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label required">Status</label>
+                <select class="form-select" @bind="Entity.Status" required>
+                    @foreach (VehicleStatus status in Enum.GetValues<VehicleStatus>())
+                    {
+                        <option value="@status">@status</option>
+                    }
+                </select>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label required">Brand</label>
+                <input type="text" class="form-control" @bind="Entity.Brand" required
+                       list="brandSuggestions" placeholder="e.g., Honda, Yamaha, Toyota" />
+                <datalist id="brandSuggestions">
+                    @foreach (var brand in GetBrandSuggestions())
+                    {
+                        <option value="@brand" />
+                    }
+                </datalist>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label required">Model</label>
+                <input type="text" class="form-control" @bind="Entity.Model" required
+                       placeholder="@GetModelPlaceholder()" />
+            </div>
+
+            @* Car-specific: Segment *@
+            @if (Entity.VehicleType == VehicleType.Car)
+            {
+                <div class="col-md-6">
+                    <label class="form-label required">Segment</label>
+                    <select class="form-select" @bind="Entity.Segment" required>
+                        <option value="">Select segment...</option>
+                        @foreach (CarSegment segment in Enum.GetValues<CarSegment>())
+                        {
+                            <option value="@segment">@GetSegmentLabel(segment)</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Transmission</label>
+                    <select class="form-select" @bind="Entity.Transmission">
+                        <option value="">Select...</option>
+                        <option value="Automatic">Automatic</option>
+                        <option value="Manual">Manual</option>
+                    </select>
+                </div>
+            }
+
+            @* Engine specs - Motorbikes and Cars *@
+            @if (Entity.VehicleType == VehicleType.Motorbike || Entity.VehicleType == VehicleType.Car)
+            {
+                <div class="col-md-4">
+                    <label class="form-label @(Entity.VehicleType == VehicleType.Motorbike ? "required" : "")">
+                        @(Entity.VehicleType == VehicleType.Motorbike ? "Engine CC" : "Engine (Liters)")
+                    </label>
+                    @if (Entity.VehicleType == VehicleType.Motorbike)
+                    {
+                        <input type="number" class="form-control" @bind="Entity.EngineCC" required
+                               min="50" max="2000" placeholder="125" />
+                    }
+                    else
+                    {
+                        <input type="number" class="form-control" @bind="Entity.EngineLiters"
+                               min="0.5" max="8" step="0.1" placeholder="1.5" />
+                    }
+                </div>
+            }
+
+            @* Capacity - Cars, Vans, Boats *@
+            @if (Entity.VehicleType == VehicleType.Boat)
+            {
+                <div class="col-md-4">
+                    <label class="form-label">Passenger Capacity</label>
+                    <input type="number" class="form-control" @bind="Entity.PassengerCapacity"
+                           min="1" max="50" placeholder="12" />
+                </div>
+            }
+            else if (Entity.VehicleType == VehicleType.Car || Entity.VehicleType == VehicleType.Van)
+            {
+                <div class="col-md-4">
+                    <label class="form-label">Seat Count</label>
+                    <input type="number" class="form-control" @bind="Entity.SeatCount"
+                           min="1" max="50" placeholder="5" />
+                </div>
+            }
+
+            <div class="col-md-4">
+                <label class="form-label">Color</label>
+                <input type="text" class="form-control" @bind="Entity.Color"
+                       placeholder="e.g., Black, White, Red" />
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Year</label>
+                <input type="number" class="form-control" @bind="Entity.Year"
+                       min="2000" max="@DateTime.Now.Year" />
+            </div>
+
+            @* Pricing Section *@
+            <div class="col-12">
+                <hr class="my-2" />
+                <h4 class="mb-3">
+                    <i class="ti ti-currency-baht me-1"></i>Pricing
+                </h4>
+            </div>
+
+            @if (Entity.VehicleType == VehicleType.JetSki)
+            {
+                @* Interval pricing for Jet Ski *@
+                <div class="col-md-4">
+                    <label class="form-label">15 Minutes Rate (THB)</label>
+                    <div class="input-group">
+                        <span class="input-group-text">฿</span>
+                        <input type="number" class="form-control" @bind="Entity.Rate15Min"
+                               min="0" step="50" placeholder="500" />
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">30 Minutes Rate (THB)</label>
+                    <div class="input-group">
+                        <span class="input-group-text">฿</span>
+                        <input type="number" class="form-control" @bind="Entity.Rate30Min"
+                               min="0" step="50" placeholder="800" />
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label required">1 Hour Rate (THB)</label>
+                    <div class="input-group">
+                        <span class="input-group-text">฿</span>
+                        <input type="number" class="form-control" @bind="Entity.Rate1Hour" required
+                               min="0" step="100" placeholder="1500" />
+                    </div>
+                </div>
+            }
+            else
+            {
+                @* Daily pricing for all other vehicles *@
+                <div class="col-md-6">
+                    <label class="form-label required">Daily Rate (THB)</label>
+                    <div class="input-group">
+                        <span class="input-group-text">฿</span>
+                        <input type="number" class="form-control" @bind="Entity.DailyRate" required
+                               min="0" step="50" placeholder="@GetDailyRatePlaceholder()" />
+                    </div>
+                </div>
+            }
+
+            <div class="col-md-6">
+                <label class="form-label required">Deposit Amount (THB)</label>
+                <div class="input-group">
+                    <span class="input-group-text">฿</span>
+                    <input type="number" class="form-control" @bind="Entity.DepositAmount" required
+                           min="0" step="500" placeholder="@GetDepositPlaceholder()" />
+                </div>
+            </div>
+
+            @* Driver/Guide options - Boats and Vans *@
+            @if (Entity.VehicleType == VehicleType.Boat || Entity.VehicleType == VehicleType.Van)
+            {
+                <div class="col-12">
+                    <hr class="my-2" />
+                    <h4 class="mb-3">
+                        <i class="ti ti-user me-1"></i>Driver / Guide Options
+                    </h4>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Driver Daily Fee (THB)</label>
+                    <div class="input-group">
+                        <span class="input-group-text">฿</span>
+                        <input type="number" class="form-control" @bind="Entity.DriverDailyFee"
+                               min="0" step="100" placeholder="1000" />
+                    </div>
+                    <small class="text-secondary">Leave empty if driver not available</small>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Guide Daily Fee (THB)</label>
+                    <div class="input-group">
+                        <span class="input-group-text">฿</span>
+                        <input type="number" class="form-control" @bind="Entity.GuideDailyFee"
+                               min="0" step="100" placeholder="800" />
+                    </div>
+                    <small class="text-secondary">Leave empty if guide not available</small>
+                </div>
+            }
+
+            @* Mileage tracking - Motorbikes, Cars, Vans *@
+            @if (Entity.VehicleType == VehicleType.Motorbike || Entity.VehicleType == VehicleType.Car || Entity.VehicleType == VehicleType.Van)
+            {
+                <div class="col-12">
+                    <hr class="my-2" />
+                    <h4 class="mb-3">
+                        <i class="ti ti-gauge me-1"></i>Maintenance Tracking
+                    </h4>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Current Mileage (km)</label>
+                    <input type="number" class="form-control" @bind="Entity.Mileage"
+                           min="0" placeholder="0" />
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Last Service Date</label>
+                    <input type="date" class="form-control" @bind="m_lastServiceDate" />
+                </div>
+            }
+
+            <div class="col-12">
+                <label class="form-label">Notes</label>
+                <textarea class="form-control" @bind="Entity.Notes" rows="3"
+                          placeholder="Additional notes about this vehicle..."></textarea>
+            </div>
+        </div>
+    </div>
+</form>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
+        Cancel
+    </button>
+    <button type="submit" form="@FormId" class="btn btn-primary" disabled="@Saving">
+        @if (Saving)
+        {
+            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+        }
+        <i class="ti ti-device-floppy me-1"></i>
+        @SaveButtonText
+    </button>
+</div>
+
+@code {
+    private DateTime? m_lastServiceDate;
+
+    protected override void OnInitialized()
+    {
+        this.m_lastServiceDate = this.Entity.LastServiceDate?.DateTime;
+        this.FormValid = true;
+    }
+
+    private void OnVehicleTypeChanged(VehicleType type)
+    {
+        this.Entity.VehicleType = type;
+
+        // Set default duration type based on vehicle type
+        this.Entity.DurationType = type == VehicleType.JetSki
+            ? RentalDurationType.FixedInterval
+            : RentalDurationType.Daily;
+
+        // Clear type-specific fields when changing type
+        if (type != VehicleType.Car)
+        {
+            this.Entity.Segment = null;
+            this.Entity.Transmission = null;
+            this.Entity.EngineLiters = null;
+            this.Entity.SeatCount = null;
+        }
+
+        if (type == VehicleType.JetSki)
+        {
+            // Clear daily rate for jet skis
+            this.Entity.DailyRate = 0;
+        }
+        else
+        {
+            // Clear interval rates for non-jet ski
+            this.Entity.Rate15Min = null;
+            this.Entity.Rate30Min = null;
+            this.Entity.Rate1Hour = null;
+        }
+
+        if (type != VehicleType.Boat && type != VehicleType.Van)
+        {
+            this.Entity.DriverDailyFee = null;
+            this.Entity.GuideDailyFee = null;
+            this.Entity.PassengerCapacity = null;
+        }
+
+        this.StateHasChanged();
+    }
+
+    private async Task SaveAsync()
+    {
+        this.Saving = true;
+
+        try
+        {
+            this.Entity.LastServiceDate = this.m_lastServiceDate.HasValue
+                ? new DateTimeOffset(this.m_lastServiceDate.Value)
+                : null;
+
+            var result = this.IsNew
+                ? await this.VehicleService.CreateVehicleAsync(this.Entity, this.UserName)
+                : await this.VehicleService.UpdateVehicleAsync(this.Entity, this.UserName);
+
+            if (result.Success)
+            {
+                this.Close();
+            }
+            else
+            {
+                this.ShowError($"Save failed: {result.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            this.ShowError($"Error: {ex.Message}");
+        }
+        finally
+        {
+            this.Saving = false;
+        }
+    }
+
+    private static string GetVehicleTypeIcon(VehicleType type) => type switch
+    {
+        VehicleType.Motorbike => "ti-motorbike",
+        VehicleType.Car => "ti-car",
+        VehicleType.JetSki => "ti-sailboat",
+        VehicleType.Boat => "ti-ship",
+        VehicleType.Van => "ti-bus",
+        _ => "ti-car"
+    };
+
+    private static string GetVehicleTypeLabel(VehicleType type) => type switch
+    {
+        VehicleType.Motorbike => "Motorbike",
+        VehicleType.Car => "Car",
+        VehicleType.JetSki => "Jet Ski",
+        VehicleType.Boat => "Boat",
+        VehicleType.Van => "Van",
+        _ => "Vehicle"
+    };
+
+    private static string GetSegmentLabel(CarSegment segment) => segment switch
+    {
+        CarSegment.SmallSedan => "Small Sedan",
+        CarSegment.BigSedan => "Big Sedan",
+        CarSegment.SUV => "SUV",
+        CarSegment.Pickup => "Pickup",
+        CarSegment.Hatchback => "Hatchback",
+        CarSegment.Minivan => "Minivan",
+        CarSegment.Luxury => "Luxury",
+        _ => segment.ToString()
+    };
+
+    private List<string> GetBrandSuggestions() => Entity.VehicleType switch
+    {
+        VehicleType.Motorbike => ["Honda", "Yamaha", "Suzuki", "Kawasaki", "Vespa", "GPX"],
+        VehicleType.Car => ["Toyota", "Honda", "Mazda", "Nissan", "Mitsubishi", "Isuzu", "Mercedes", "BMW"],
+        VehicleType.JetSki => ["Yamaha", "Sea-Doo", "Kawasaki", "Honda"],
+        VehicleType.Boat => ["Yamaha", "Bayliner", "Sea Ray", "Boston Whaler"],
+        VehicleType.Van => ["Toyota", "Hyundai", "Mercedes", "Ford", "Nissan"],
+        _ => []
+    };
+
+    private string GetModelPlaceholder() => Entity.VehicleType switch
+    {
+        VehicleType.Motorbike => "e.g., Click 125, PCX 160, Aerox 155",
+        VehicleType.Car => "e.g., Camry, Civic, CX-5",
+        VehicleType.JetSki => "e.g., VX Cruiser, GTI 130",
+        VehicleType.Boat => "e.g., Center Console 24ft",
+        VehicleType.Van => "e.g., Hiace, H1, Sprinter",
+        _ => "Model name"
+    };
+
+    private string GetDailyRatePlaceholder() => Entity.VehicleType switch
+    {
+        VehicleType.Motorbike => "300",
+        VehicleType.Car => "1500",
+        VehicleType.Boat => "5000",
+        VehicleType.Van => "2500",
+        _ => "1000"
+    };
+
+    private string GetDepositPlaceholder() => Entity.VehicleType switch
+    {
+        VehicleType.Motorbike => "2000",
+        VehicleType.Car => "10000",
+        VehicleType.JetSki => "5000",
+        VehicleType.Boat => "20000",
+        VehicleType.Van => "10000",
+        _ => "5000"
+    };
+}

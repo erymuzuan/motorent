@@ -4,9 +4,10 @@
 @inherits LocalizedComponentBase<CheckIn>
 @using MotoRent.Client.Controls
 @using MotoRent.Client.Pages.Rentals.CheckInSteps
+@using MotoRent.Domain.Entities
 @inject RentalService RentalService
 @inject RenterService RenterService
-@inject MotorbikeService MotorbikeService
+@inject VehicleService VehicleService
 @inject InsuranceService InsuranceService
 @inject AccessoryService AccessoryService
 
@@ -49,21 +50,30 @@
                                   OnCreateNew="OpenCreateRenterDialog" />
                 break;
             case 1:
-                <SelectMotorbikeStep @bind-SelectedMotorbike="m_selectedMotorbike" />
+                <SelectVehicleStep @bind-SelectedVehicle="m_selectedVehicle" />
                 break;
             case 2:
-                <ConfigureRentalStep SelectedMotorbike="m_selectedMotorbike"
-                                     @bind-Config="m_rentalConfig" />
+                @if (m_selectedVehicle?.UsesIntervalPricing == true)
+                {
+                    <ConfigureIntervalRentalStep SelectedVehicle="m_selectedVehicle"
+                                                 @bind-Config="m_intervalConfig" />
+                }
+                else
+                {
+                    <ConfigureRentalStep SelectedVehicle="m_selectedVehicle"
+                                         @bind-Config="m_rentalConfig" />
+                }
                 break;
             case 3:
-                <CollectDepositStep RequiredAmount="@(m_selectedMotorbike?.DepositAmount ?? 0)"
-                                    RentalAmount="@m_rentalConfig.TotalAmount"
+                <CollectDepositStep RequiredAmount="@(m_selectedVehicle?.DepositAmount ?? 0)"
+                                    RentalAmount="@GetRentalTotalAmount()"
                                     @bind-DepositInfo="m_depositInfo" />
                 break;
             case 4:
                 <AgreementSignatureStep Renter="@m_selectedRenter"
-                                        Motorbike="@m_selectedMotorbike"
+                                        Vehicle="@m_selectedVehicle"
                                         Config="@m_rentalConfig"
+                                        IntervalConfig="@m_intervalConfig"
                                         DepositInfo="@m_depositInfo"
                                         @bind-SignatureData="m_signatureData"
                                         OnComplete="CompleteCheckIn" />
@@ -102,18 +112,21 @@
 }
 
 @code {
-    private readonly string[] m_stepKeys = ["Renter", "Motorbike", "Configure", "Deposit", "Agreement"];
+    private readonly string[] m_stepKeys = ["Renter", "Vehicle", "Configure", "Deposit", "Agreement"];
     private int m_activeStep;
     private bool m_processing;
 
     // Step 1: Renter selection
     private Renter? m_selectedRenter;
 
-    // Step 2: Motorbike selection
-    private Motorbike? m_selectedMotorbike;
+    // Step 2: Vehicle selection
+    private Vehicle? m_selectedVehicle;
 
-    // Step 3: Rental configuration
+    // Step 3: Rental configuration (daily rentals)
     private RentalConfig m_rentalConfig = new();
+
+    // Step 3: Interval configuration (jet skis)
+    private IntervalRentalConfig m_intervalConfig = new();
 
     // Step 4: Deposit information
     private DepositInfo m_depositInfo = new();
@@ -121,13 +134,18 @@
     // Step 5: Signature data
     private string? m_signatureData;
 
+    private bool IsIntervalRental => this.m_selectedVehicle?.UsesIntervalPricing == true;
+
+    private decimal GetRentalTotalAmount() =>
+        this.IsIntervalRental ? this.m_intervalConfig.TotalAmount : this.m_rentalConfig.TotalAmount;
+
     private bool CanProceedToNextStep()
     {
         return this.m_activeStep switch
         {
             0 => this.m_selectedRenter != null,
-            1 => this.m_selectedMotorbike != null,
-            2 => this.m_rentalConfig.IsValid,
+            1 => this.m_selectedVehicle != null,
+            2 => this.IsIntervalRental ? this.m_intervalConfig.IsValid : this.m_rentalConfig.IsValid,
             3 => this.m_depositInfo.IsCollected,
             4 => !string.IsNullOrEmpty(this.m_signatureData),
             _ => false
@@ -173,7 +191,7 @@
 
     private async Task CompleteCheckIn()
     {
-        if (this.m_selectedRenter == null || this.m_selectedMotorbike == null)
+        if (this.m_selectedRenter == null || this.m_selectedVehicle == null)
         {
             this.ShowError(this.Localizer["ValidationError"]);
             return;
@@ -186,13 +204,9 @@
             {
                 ShopId = this.ShopId,
                 RenterId = this.m_selectedRenter.RenterId,
-                MotorbikeId = this.m_selectedMotorbike.MotorbikeId,
-                StartDate = this.m_rentalConfig.StartDate,
-                ExpectedEndDate = this.m_rentalConfig.EndDate,
-                MileageStart = this.m_selectedMotorbike.Mileage,
-                DailyRate = this.m_selectedMotorbike.DailyRate,
-                TotalAmount = this.m_rentalConfig.TotalAmount,
-                InsuranceId = this.m_rentalConfig.SelectedInsuranceId,
+                VehicleId = this.m_selectedVehicle.VehicleId,
+                SignatureImagePath = this.m_signatureData,
+                SignedByIp = "127.0.0.1",
                 // Payment info
                 PaymentMethod = this.m_depositInfo.PaymentMethod,
                 PaymentTransactionRef = this.m_depositInfo.PaymentTransactionRef,
@@ -200,17 +214,41 @@
                 DepositType = this.m_depositInfo.DepositType,
                 DepositAmount = this.m_depositInfo.Amount,
                 CardLast4 = this.m_depositInfo.CardLast4,
-                TransactionRef = this.m_depositInfo.TransactionRef,
-                SignatureImagePath = this.m_signatureData,
-                SignedByIp = "127.0.0.1",
-                Accessories = this.m_rentalConfig.SelectedAccessories
+                TransactionRef = this.m_depositInfo.TransactionRef
+            };
+
+            if (this.IsIntervalRental)
+            {
+                // Interval rental (jet ski)
+                request.DurationType = RentalDurationType.FixedInterval;
+                request.StartDate = this.m_intervalConfig.StartDateTime;
+                request.ExpectedEndDate = this.m_intervalConfig.EndDateTime;
+                request.IntervalMinutes = this.m_intervalConfig.IntervalMinutes;
+                request.RentalRate = this.m_intervalConfig.RentalRate;
+                request.TotalAmount = this.m_intervalConfig.TotalAmount;
+            }
+            else
+            {
+                // Daily rental
+                request.DurationType = RentalDurationType.Daily;
+                request.StartDate = this.m_rentalConfig.StartDate;
+                request.ExpectedEndDate = this.m_rentalConfig.EndDate;
+                request.MileageStart = this.m_selectedVehicle.Mileage ?? 0;
+                request.RentalRate = this.m_selectedVehicle.DailyRate;
+                request.TotalAmount = this.m_rentalConfig.TotalAmount;
+                request.InsuranceId = this.m_rentalConfig.SelectedInsuranceId;
+                request.IncludeDriver = this.m_rentalConfig.IncludeDriver;
+                request.IncludeGuide = this.m_rentalConfig.IncludeGuide;
+                request.DriverFee = this.m_rentalConfig.DriverTotal;
+                request.GuideFee = this.m_rentalConfig.GuideTotal;
+                request.Accessories = this.m_rentalConfig.SelectedAccessories
                     .Select(a => new AccessorySelection
                     {
                         AccessoryId = a.Accessory.AccessoryId,
                         Quantity = a.Quantity,
                         ChargedAmount = a.TotalAmount
-                    }).ToList()
-            };
+                    }).ToList();
+            }
 
             var result = await this.RentalService.CheckInAsync(request, this.UserName);
 

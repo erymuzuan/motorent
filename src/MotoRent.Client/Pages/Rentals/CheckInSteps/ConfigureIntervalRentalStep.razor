@@ -1,0 +1,267 @@
+@inherits MotoRentComponentBase
+@using MotoRent.Domain.Entities
+@using MotoRent.Client.Pages.Rentals
+
+<div class="d-flex flex-column gap-4">
+    <div>
+        <h5 class="mb-1">Configure Interval Rental</h5>
+        <p class="text-secondary mb-0">Select the rental duration for your jet ski experience</p>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-12 col-md-8">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h6 class="card-title mb-3">
+                        <i class="ti ti-clock me-2"></i>Select Duration
+                    </h6>
+
+                    <div class="row g-3">
+                        @if (this.SelectedVehicle?.Rate15Min.HasValue == true)
+                        {
+                            <div class="col-12 col-md-4">
+                                <div class="card h-100 @(m_selectedInterval == 15 ? "border-primary border-2" : "")"
+                                     style="cursor: pointer;"
+                                     @onclick="@(() => SelectInterval(15))">
+                                    <div class="card-body text-center py-4">
+                                        <div class="mb-2">
+                                            <span class="avatar avatar-lg bg-primary-lt text-primary">
+                                                <i class="ti ti-clock" style="font-size: 1.5rem;"></i>
+                                            </span>
+                                        </div>
+                                        <h3 class="mb-0">15 min</h3>
+                                        <div class="text-primary fw-bold" style="font-size: 1.25rem;">
+                                            @FormatCurrency(this.SelectedVehicle.Rate15Min ?? 0)
+                                        </div>
+                                        @if (m_selectedInterval == 15)
+                                        {
+                                            <i class="ti ti-circle-check text-success mt-2" style="font-size: 1.5rem;"></i>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+
+                        @if (this.SelectedVehicle?.Rate30Min.HasValue == true)
+                        {
+                            <div class="col-12 col-md-4">
+                                <div class="card h-100 @(m_selectedInterval == 30 ? "border-primary border-2" : "")"
+                                     style="cursor: pointer;"
+                                     @onclick="@(() => SelectInterval(30))">
+                                    <div class="card-body text-center py-4">
+                                        <div class="mb-2">
+                                            <span class="avatar avatar-lg bg-azure-lt text-azure">
+                                                <i class="ti ti-clock" style="font-size: 1.5rem;"></i>
+                                            </span>
+                                        </div>
+                                        <h3 class="mb-0">30 min</h3>
+                                        <div class="text-primary fw-bold" style="font-size: 1.25rem;">
+                                            @FormatCurrency(this.SelectedVehicle.Rate30Min ?? 0)
+                                        </div>
+                                        @if (m_selectedInterval == 30)
+                                        {
+                                            <i class="ti ti-circle-check text-success mt-2" style="font-size: 1.5rem;"></i>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+
+                        @if (this.SelectedVehicle?.Rate1Hour.HasValue == true)
+                        {
+                            <div class="col-12 col-md-4">
+                                <div class="card h-100 @(m_selectedInterval == 60 ? "border-primary border-2" : "")"
+                                     style="cursor: pointer;"
+                                     @onclick="@(() => SelectInterval(60))">
+                                    <div class="card-body text-center py-4">
+                                        <div class="mb-2">
+                                            <span class="avatar avatar-lg bg-cyan-lt text-cyan">
+                                                <i class="ti ti-clock" style="font-size: 1.5rem;"></i>
+                                            </span>
+                                        </div>
+                                        <h3 class="mb-0">1 hour</h3>
+                                        <div class="text-primary fw-bold" style="font-size: 1.25rem;">
+                                            @FormatCurrency(this.SelectedVehicle.Rate1Hour ?? 0)
+                                        </div>
+                                        @if (m_selectedInterval == 60)
+                                        {
+                                            <i class="ti ti-circle-check text-success mt-2" style="font-size: 1.5rem;"></i>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h6 class="card-title mb-3">
+                        <i class="ti ti-clock-play me-2"></i>Start Time
+                    </h6>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Date</label>
+                            <input type="date" class="form-control"
+                                   @bind="m_startDate" min="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Time</label>
+                            <input type="time" class="form-control"
+                                   value="@m_startTimeString"
+                                   @onchange="@((ChangeEventArgs e) => OnTimeChanged(e.Value?.ToString()))" />
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info mt-3 mb-0">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="ti ti-info-circle"></i>
+                            <span>
+                                Rental ends at <strong>@GetEndTimeDisplay()</strong>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert alert-warning">
+                <div class="d-flex gap-3">
+                    <i class="ti ti-alert-triangle" style="font-size: 1.5rem;"></i>
+                    <div>
+                        <h4 class="alert-title">Safety Notice</h4>
+                        <p class="text-secondary mb-0">
+                            All riders must wear life jackets at all times. Age restrictions apply.
+                            A safety briefing will be provided before the ride.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-4">
+            <div class="card" style="position: sticky; top: 20px;">
+                <div class="card-body">
+                    <h6 class="card-title mb-3">Price Summary</h6>
+
+                    @if (this.SelectedVehicle != null && m_selectedInterval.HasValue)
+                    {
+                        <div class="d-flex flex-column gap-2">
+                            <div class="d-flex justify-content-between">
+                                <span>
+                                    Jet Ski (@GetIntervalLabel())
+                                </span>
+                                <span>@FormatCurrency(GetIntervalRate())</span>
+                            </div>
+
+                            <hr class="my-2">
+
+                            <div class="d-flex justify-content-between">
+                                <span class="fw-semibold" style="font-size: 1.1rem;">Total</span>
+                                <span class="text-primary fw-bold" style="font-size: 1.25rem;">
+                                    @FormatCurrency(this.Config.TotalAmount)
+                                </span>
+                            </div>
+
+                            <hr class="my-2">
+
+                            <div class="d-flex justify-content-between">
+                                <span class="text-secondary">Required Deposit</span>
+                                <span class="fw-medium">@FormatCurrency(this.SelectedVehicle.DepositAmount)</span>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-secondary mb-0">Please select a duration to see pricing</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public Vehicle? SelectedVehicle { get; set; }
+    [Parameter] public IntervalRentalConfig Config { get; set; } = new();
+    [Parameter] public EventCallback<IntervalRentalConfig> ConfigChanged { get; set; }
+
+    private int? m_selectedInterval;
+    private DateTime? m_startDate;
+    private string m_startTimeString = "";
+    private TimeSpan m_startTime = TimeSpan.Zero;
+
+    protected override void OnInitialized()
+    {
+        this.m_startDate = DateTime.Today;
+        this.m_startTime = new TimeSpan(DateTime.Now.Hour, 0, 0);
+        this.m_startTimeString = this.m_startTime.ToString(@"hh\:mm");
+
+        // Default to 1 hour if available, otherwise first available interval
+        if (this.SelectedVehicle?.Rate1Hour.HasValue == true)
+            this.m_selectedInterval = 60;
+        else if (this.SelectedVehicle?.Rate30Min.HasValue == true)
+            this.m_selectedInterval = 30;
+        else if (this.SelectedVehicle?.Rate15Min.HasValue == true)
+            this.m_selectedInterval = 15;
+
+        this.UpdateConfig();
+    }
+
+    private void SelectInterval(int minutes)
+    {
+        this.m_selectedInterval = minutes;
+        this.UpdateConfig();
+    }
+
+    private void OnTimeChanged(string? timeValue)
+    {
+        if (!string.IsNullOrEmpty(timeValue) && TimeSpan.TryParse(timeValue, out var time))
+        {
+            this.m_startTimeString = timeValue;
+            this.m_startTime = time;
+            this.UpdateConfig();
+        }
+    }
+
+    private void UpdateConfig()
+    {
+        if (this.m_startDate.HasValue && this.m_selectedInterval.HasValue)
+        {
+            var startDateTime = this.m_startDate.Value.Date + this.m_startTime;
+            this.Config.StartDateTime = new DateTimeOffset(startDateTime, TimeSpan.Zero);
+            this.Config.IntervalMinutes = this.m_selectedInterval.Value;
+            this.Config.RentalRate = GetIntervalRate();
+            this.Config.TotalAmount = this.Config.RentalRate;
+        }
+
+        this.ConfigChanged.InvokeAsync(this.Config);
+    }
+
+    private decimal GetIntervalRate() => this.m_selectedInterval switch
+    {
+        15 => this.SelectedVehicle?.Rate15Min ?? 0,
+        30 => this.SelectedVehicle?.Rate30Min ?? 0,
+        60 => this.SelectedVehicle?.Rate1Hour ?? 0,
+        _ => 0
+    };
+
+    private string GetIntervalLabel() => this.m_selectedInterval switch
+    {
+        15 => "15 minutes",
+        30 => "30 minutes",
+        60 => "1 hour",
+        _ => ""
+    };
+
+    private string GetEndTimeDisplay()
+    {
+        if (!this.m_startDate.HasValue || !this.m_selectedInterval.HasValue)
+            return "--:--";
+
+        var startDateTime = this.m_startDate.Value.Date + this.m_startTime;
+        var endDateTime = startDateTime.AddMinutes(this.m_selectedInterval.Value);
+        return endDateTime.ToString("HH:mm");
+    }
+}

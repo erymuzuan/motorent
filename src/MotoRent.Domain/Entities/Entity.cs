@@ -8,7 +8,9 @@ namespace MotoRent.Domain.Entities;
 [JsonDerivedType(typeof(Shop), nameof(Shop))]
 [JsonDerivedType(typeof(Renter), nameof(Renter))]
 [JsonDerivedType(typeof(Document), nameof(Document))]
-[JsonDerivedType(typeof(Motorbike), nameof(Motorbike))]
+[JsonDerivedType(typeof(Vehicle), nameof(Vehicle))]
+[JsonDerivedType(typeof(VehiclePool), nameof(VehiclePool))]
+[JsonDerivedType(typeof(Motorbike), nameof(Motorbike))]  // Deprecated: Use Vehicle instead
 [JsonDerivedType(typeof(Rental), nameof(Rental))]
 [JsonDerivedType(typeof(Deposit), nameof(Deposit))]
 [JsonDerivedType(typeof(Insurance), nameof(Insurance))]

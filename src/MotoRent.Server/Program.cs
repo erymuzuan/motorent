@@ -24,7 +24,10 @@ builder.Services.AddScoped<IRequestContext, MotoRentRequestContext>();
 builder.Services.AddMotoRentDataContext(MotoConfig.SqlConnectionString);
 
 // Add MotoRent services
-builder.Services.AddScoped<MotorbikeService>();
+builder.Services.AddScoped<MotorbikeService>(); // Deprecated: use VehicleService
+builder.Services.AddScoped<VehiclePoolService>();
+builder.Services.AddScoped<VehicleService>();
+builder.Services.AddScoped<RentalPricingService>();
 builder.Services.AddScoped<RenterService>();
 builder.Services.AddScoped<InsuranceService>();
 builder.Services.AddScoped<AccessoryService>();

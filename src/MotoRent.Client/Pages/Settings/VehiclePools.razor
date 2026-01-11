@@ -1,0 +1,253 @@
+@page "/settings/vehicle-pools"
+@using Microsoft.AspNetCore.Authorization
+@using MotoRent.Domain.Entities
+@attribute [Authorize(Policy = "RequireTenantManager")]
+@using MotoRent.Client.Components.Shared
+@inherits LocalizedComponentBase<VehiclePools>
+@inject VehiclePoolService VehiclePoolService
+@inject ShopService ShopService
+
+<MotoRentPageTitle>Vehicle Pools</MotoRentPageTitle>
+
+<TablerHeader Title="Vehicle Pools" PreTitle="Settings">
+    <button type="button" class="btn btn-primary" @onclick="OpenAddDialog">
+        <i class="ti ti-plus me-1"></i>
+        Create Pool
+    </button>
+</TablerHeader>
+
+<div class="alert alert-info mb-4">
+    <div class="d-flex">
+        <div>
+            <i class="ti ti-info-circle me-2"></i>
+        </div>
+        <div>
+            <h4 class="alert-title">What are Vehicle Pools?</h4>
+            <div class="text-secondary">
+                Vehicle pools allow multiple shops to share inventory. Vehicles in a pool can be rented from
+                any participating shop and returned to any other shop in the same pool.
+            </div>
+        </div>
+    </div>
+</div>
+
+<LoadingSkeleton Loading="@m_loading" Mode="LoadingSkeleton.PlaceholderMode.Table" Rows="5" Columns="5">
+    @if (m_pools.Count == 0)
+    {
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <div class="empty">
+                    <div class="empty-icon">
+                        <i class="ti ti-share" style="font-size: 3rem;"></i>
+                    </div>
+                    <p class="empty-title">No vehicle pools</p>
+                    <p class="empty-subtitle text-secondary">
+                        Create a vehicle pool to share inventory between shops
+                    </p>
+                    <div class="empty-action">
+                        <button type="button" class="btn btn-primary" @onclick="OpenAddDialog">
+                            <i class="ti ti-plus me-1"></i>
+                            Create Pool
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="row row-cards">
+            @foreach (var pool in m_pools)
+            {
+                var stats = m_poolStats.GetValueOrDefault(pool.VehiclePoolId);
+                <div class="col-md-6 col-lg-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="ti ti-share me-2 text-purple"></i>
+                                @pool.Name
+                            </h3>
+                            <div class="card-actions">
+                                <span class="badge @(pool.IsActive ? "bg-success" : "bg-secondary")">
+                                    @(pool.IsActive ? "Active" : "Inactive")
+                                </span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            @if (!string.IsNullOrEmpty(pool.Description))
+                            {
+                                <p class="text-secondary mb-3">@pool.Description</p>
+                            }
+
+                            <div class="mb-3">
+                                <div class="subheader mb-2">Participating Shops (@pool.ShopIds.Count)</div>
+                                <div class="d-flex flex-wrap gap-1">
+                                    @foreach (var shopId in pool.ShopIds.Take(5))
+                                    {
+                                        var shop = m_shops.FirstOrDefault(s => s.ShopId == shopId);
+                                        <span class="badge bg-azure-lt text-azure">
+                                            <i class="ti ti-building-store me-1"></i>
+                                            @(shop?.Name ?? $"Shop #{shopId}")
+                                        </span>
+                                    }
+                                    @if (pool.ShopIds.Count > 5)
+                                    {
+                                        <span class="badge bg-secondary-lt">+@(pool.ShopIds.Count - 5) more</span>
+                                    }
+                                </div>
+                            </div>
+
+                            @if (stats != null)
+                            {
+                                <div class="row g-2 text-center">
+                                    <div class="col-4">
+                                        <div class="h3 mb-0 text-primary">@stats.TotalVehicles</div>
+                                        <div class="text-secondary small">Vehicles</div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="h3 mb-0 text-success">@stats.AvailableVehicles</div>
+                                        <div class="text-secondary small">Available</div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="h3 mb-0 text-indigo">@stats.RentedVehicles</div>
+                                        <div class="text-secondary small">Rented</div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                        <div class="card-footer">
+                            <div class="d-flex justify-content-between">
+                                <button type="button" class="btn btn-outline-primary btn-sm"
+                                        @onclick="@(() => OpenEditDialog(pool))">
+                                    <i class="ti ti-edit me-1"></i>Edit
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm"
+                                        @onclick="@(() => ManageShops(pool))">
+                                    <i class="ti ti-building-store me-1"></i>Manage Shops
+                                </button>
+                                <button type="button" class="btn btn-outline-danger btn-sm"
+                                        @onclick="@(() => ConfirmDelete(pool))">
+                                    <i class="ti ti-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</LoadingSkeleton>
+
+@code {
+    private List<VehiclePool> m_pools = [];
+    private List<Shop> m_shops = [];
+    private Dictionary<int, PoolStatistics> m_poolStats = new();
+    private bool m_loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await this.LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        this.m_loading = true;
+        try
+        {
+            // Load pools
+            var poolResult = await this.VehiclePoolService.GetPoolsAsync(page: 1, pageSize: 100);
+            this.m_pools = poolResult.ItemCollection;
+
+            // Load all shops for display
+            var shopResult = await this.ShopService.GetShopsAsync();
+            this.m_shops = shopResult.ItemCollection;
+
+            // Load stats for each pool
+            this.m_poolStats.Clear();
+            foreach (var pool in m_pools)
+            {
+                var stats = await this.VehiclePoolService.GetPoolStatisticsAsync(pool.VehiclePoolId);
+                this.m_poolStats[pool.VehiclePoolId] = stats;
+            }
+        }
+        catch (Exception ex)
+        {
+            this.ShowError($"Error loading data: {ex.Message}");
+        }
+        finally
+        {
+            this.m_loading = false;
+        }
+    }
+
+    private async Task OpenAddDialog()
+    {
+        var pool = new VehiclePool
+        {
+            IsActive = true,
+            ShopIds = [this.ShopId] // Include current shop by default
+        };
+
+        var result = await this.DialogService
+            .Create<VehiclePoolDialog>("Create Vehicle Pool")
+            .WithParameter(x => x.Entity, pool)
+            .WithParameter(x => x.IsNew, true)
+            .WithParameter(x => x.AvailableShops, m_shops)
+            .ShowDialogAsync();
+
+        if (!result.Cancelled)
+        {
+            await this.LoadDataAsync();
+            this.ShowSuccess("Vehicle pool created successfully");
+        }
+    }
+
+    private async Task OpenEditDialog(VehiclePool pool)
+    {
+        var result = await this.DialogService
+            .Create<VehiclePoolDialog>("Edit Vehicle Pool")
+            .WithParameter(x => x.Entity, pool.Clone())
+            .WithParameter(x => x.IsNew, false)
+            .WithParameter(x => x.AvailableShops, m_shops)
+            .ShowDialogAsync();
+
+        if (!result.Cancelled)
+        {
+            await this.LoadDataAsync();
+            this.ShowSuccess("Vehicle pool updated successfully");
+        }
+    }
+
+    private async Task ManageShops(VehiclePool pool)
+    {
+        var result = await this.DialogService
+            .Create<VehiclePoolShopsDialog>("Manage Pool Shops")
+            .WithParameter(x => x.Pool, pool.Clone())
+            .WithParameter(x => x.AvailableShops, m_shops)
+            .Large()
+            .ShowDialogAsync();
+
+        if (!result.Cancelled)
+        {
+            await this.LoadDataAsync();
+            this.ShowSuccess("Pool shops updated successfully");
+        }
+    }
+
+    private async Task ConfirmDelete(VehiclePool pool)
+    {
+        if (!await this.ConfirmDeleteAsync(pool.Name ?? "this pool"))
+            return;
+
+        var deleteResult = await this.VehiclePoolService.DeletePoolAsync(pool, this.UserName);
+        if (deleteResult.Success)
+        {
+            await this.LoadDataAsync();
+            this.ShowSuccess("Vehicle pool deleted successfully");
+        }
+        else
+        {
+            this.ShowError($"Delete failed: {deleteResult.Message}");
+        }
+    }
+}

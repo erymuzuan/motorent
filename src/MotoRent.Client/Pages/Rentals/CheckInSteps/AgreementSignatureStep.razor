@@ -15,7 +15,7 @@
                 <div class="card-body">
                     <h6 class="card-title mb-3">Rental Summary</h6>
 
-                    @if (this.Renter != null && this.Motorbike != null && this.Config != null)
+                    @if (this.Renter != null && this.Vehicle != null)
                     {
                         <div class="d-flex flex-column gap-2">
                             <div class="d-flex justify-content-between">
@@ -34,47 +34,84 @@
                             <hr class="my-2">
 
                             <div class="d-flex justify-content-between">
-                                <small class="text-secondary">Motorbike</small>
-                                <span class="fw-medium">@this.Motorbike.Brand @this.Motorbike.Model</span>
+                                <small class="text-secondary">@GetVehicleTypeLabel(this.Vehicle.VehicleType)</small>
+                                <span class="fw-medium">@this.Vehicle.Brand @this.Vehicle.Model</span>
                             </div>
                             <div class="d-flex justify-content-between">
                                 <small class="text-secondary">License Plate</small>
-                                <span>@this.Motorbike.LicensePlate</span>
+                                <span>@this.Vehicle.LicensePlate</span>
                             </div>
-                            <div class="d-flex justify-content-between">
-                                <small class="text-secondary">Current Mileage</small>
-                                <span>@this.Motorbike.Mileage.ToString("N0") km</span>
-                            </div>
-
-                            <hr class="my-2">
-
-                            <div class="d-flex justify-content-between">
-                                <small class="text-secondary">Rental Period</small>
-                                <span>
-                                    @FormatDate(this.Config.StartDate) - @FormatDate(this.Config.EndDate) (@this.Config.Days days)
-                                </span>
-                            </div>
-                            <div class="d-flex justify-content-between">
-                                <small class="text-secondary">Daily Rate</small>
-                                <span>@FormatCurrency(this.Motorbike.DailyRate)</span>
-                            </div>
-
-                            @if (this.Config.SelectedInsurance != null)
+                            @if (this.Vehicle.Mileage.HasValue && this.Vehicle.Mileage > 0)
                             {
                                 <div class="d-flex justify-content-between">
-                                    <small class="text-secondary">Insurance</small>
-                                    <span>@this.Config.SelectedInsurance.Name</span>
+                                    <small class="text-secondary">Current Mileage</small>
+                                    <span>@this.Vehicle.Mileage.Value.ToString("N0") km</span>
                                 </div>
                             }
 
-                            @if (this.Config.SelectedAccessories.Count > 0)
+                            <hr class="my-2">
+
+                            @if (this.IsIntervalRental && this.IntervalConfig != null)
                             {
                                 <div class="d-flex justify-content-between">
-                                    <small class="text-secondary">Accessories</small>
+                                    <small class="text-secondary">Duration</small>
+                                    <span>@GetIntervalLabel(this.IntervalConfig.IntervalMinutes)</span>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <small class="text-secondary">Start Time</small>
+                                    <span>@this.IntervalConfig.StartDateTime.DateTime.ToString("HH:mm")</span>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <small class="text-secondary">Rate</small>
+                                    <span>@FormatCurrency(this.IntervalConfig.RentalRate)</span>
+                                </div>
+                            }
+                            else if (this.Config != null)
+                            {
+                                <div class="d-flex justify-content-between">
+                                    <small class="text-secondary">Rental Period</small>
                                     <span>
-                                        @string.Join(", ", this.Config.SelectedAccessories.Select(a => a.Accessory.Name))
+                                        @FormatDate(this.Config.StartDate) - @FormatDate(this.Config.EndDate) (@this.Config.Days days)
                                     </span>
                                 </div>
+                                <div class="d-flex justify-content-between">
+                                    <small class="text-secondary">Daily Rate</small>
+                                    <span>@FormatCurrency(this.Vehicle.DailyRate)</span>
+                                </div>
+
+                                @if (this.Config.IncludeDriver)
+                                {
+                                    <div class="d-flex justify-content-between">
+                                        <small class="text-secondary">Driver</small>
+                                        <span>@FormatCurrency(this.Config.DriverTotal)</span>
+                                    </div>
+                                }
+
+                                @if (this.Config.IncludeGuide)
+                                {
+                                    <div class="d-flex justify-content-between">
+                                        <small class="text-secondary">Tour Guide</small>
+                                        <span>@FormatCurrency(this.Config.GuideTotal)</span>
+                                    </div>
+                                }
+
+                                @if (this.Config.SelectedInsurance != null)
+                                {
+                                    <div class="d-flex justify-content-between">
+                                        <small class="text-secondary">Insurance</small>
+                                        <span>@this.Config.SelectedInsurance.Name</span>
+                                    </div>
+                                }
+
+                                @if (this.Config.SelectedAccessories.Count > 0)
+                                {
+                                    <div class="d-flex justify-content-between">
+                                        <small class="text-secondary">Accessories</small>
+                                        <span>
+                                            @string.Join(", ", this.Config.SelectedAccessories.Select(a => a.Accessory.Name))
+                                        </span>
+                                    </div>
+                                }
                             }
 
                             <hr class="my-2">
@@ -91,7 +128,7 @@
                             <div class="d-flex justify-content-between align-items-center">
                                 <span class="fw-semibold" style="font-size: 1.1rem;">Total Amount</span>
                                 <span class="text-primary fw-bold" style="font-size: 1.5rem;">
-                                    @FormatCurrency(this.Config.TotalAmount)
+                                    @FormatCurrency(GetTotalAmount())
                                 </span>
                             </div>
                         </div>
@@ -164,41 +201,67 @@
 
 @code {
     [Parameter] public Renter? Renter { get; set; }
-    [Parameter] public Motorbike? Motorbike { get; set; }
+    [Parameter] public Vehicle? Vehicle { get; set; }
     [Parameter] public RentalConfig? Config { get; set; }
+    [Parameter] public IntervalRentalConfig? IntervalConfig { get; set; }
     [Parameter] public DepositInfo? DepositInfo { get; set; }
     [Parameter] public string? SignatureData { get; set; }
     [Parameter] public EventCallback<string?> SignatureDataChanged { get; set; }
     [Parameter] public EventCallback OnComplete { get; set; }
 
+
     private SignaturePad? m_signaturePad;
     private bool m_termsAccepted;
 
+    private bool IsIntervalRental => this.Vehicle?.UsesIntervalPricing == true;
     private bool CanComplete => this.m_termsAccepted && !string.IsNullOrEmpty(this.SignatureData);
 
-    private string m_agreementText = @"MOTORBIKE RENTAL AGREEMENT
+    private decimal GetTotalAmount() =>
+        this.IsIntervalRental ? (this.IntervalConfig?.TotalAmount ?? 0) : (this.Config?.TotalAmount ?? 0);
+
+    private static string GetVehicleTypeLabel(VehicleType type) => type switch
+    {
+        VehicleType.Motorbike => "Motorbike",
+        VehicleType.Car => "Car",
+        VehicleType.JetSki => "Jet Ski",
+        VehicleType.Boat => "Boat",
+        VehicleType.Van => "Van",
+        _ => "Vehicle"
+    };
+
+    private static string GetIntervalLabel(int minutes) => minutes switch
+    {
+        15 => "15 minutes",
+        30 => "30 minutes",
+        60 => "1 hour",
+        _ => $"{minutes} minutes"
+    };
+
+    private string m_agreementText = @"VEHICLE RENTAL AGREEMENT
 
 I, the undersigned renter, agree to the following terms and conditions:
 
-1. VEHICLE CONDITION: I acknowledge that I have received the motorbike in good working condition and agree to return it in the same condition.
+1. VEHICLE CONDITION: I acknowledge that I have received the vehicle in good working condition and agree to return it in the same condition.
 
-2. LIABILITY: I am fully responsible for any damage, loss, or theft of the motorbike during the rental period, including but not limited to accidents, scratches, dents, and mechanical damage.
+2. LIABILITY: I am fully responsible for any damage, loss, or theft of the vehicle during the rental period, including but not limited to accidents, scratches, dents, and mechanical damage.
 
 3. INSURANCE: Any insurance coverage is subject to the terms of the selected insurance package. I understand the deductible and coverage limits.
 
-4. VALID LICENSE: I confirm that I hold a valid driving license appropriate for this vehicle type and will carry it at all times while operating the motorbike.
+4. VALID LICENSE: I confirm that I hold a valid license appropriate for this vehicle type and will carry it at all times while operating the vehicle.
 
-5. TRAFFIC LAWS: I agree to follow all traffic laws and regulations of Thailand. I am responsible for all traffic violations and fines incurred during the rental period.
+5. TRAFFIC LAWS: I agree to follow all applicable laws and regulations of Thailand. I am responsible for all violations and fines incurred during the rental period.
 
-6. NO SUB-RENTAL: I will not lend, sub-rent, or allow any unauthorized person to operate the motorbike.
+6. NO SUB-RENTAL: I will not lend, sub-rent, or allow any unauthorized person to operate the vehicle.
 
-7. FUEL: I will return the motorbike with the same fuel level as at pick-up, or pay the refueling charge.
+7. FUEL: I will return the vehicle with the same fuel level as at pick-up, or pay the refueling charge (if applicable).
 
-8. LATE RETURN: If I fail to return the motorbike by the agreed date/time, I will pay additional daily rental charges plus any late fees.
+8. LATE RETURN: If I fail to return the vehicle by the agreed date/time, I will pay additional rental charges plus any late fees.
 
 9. DEPOSIT: I understand that my deposit may be used to cover any damages, additional charges, or unpaid fees.
 
 10. EMERGENCY: In case of accident or breakdown, I will immediately contact the rental shop at the provided number.
+
+11. SAFETY: I agree to wear appropriate safety equipment as required (helmets, life jackets, etc.) and follow all safety instructions provided.
 
 By signing below, I acknowledge that I have read, understood, and agree to all terms and conditions stated above.";
 

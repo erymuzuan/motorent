@@ -1,0 +1,403 @@
+@inherits MotoRentComponentBase
+@using MotoRent.Domain.Entities
+@using MotoRent.Services
+@inject VehicleService VehicleService
+
+<div class="d-flex flex-column gap-4">
+    <div>
+        <h5 class="mb-1">Select a Vehicle</h5>
+        <p class="text-secondary mb-0">Choose an available vehicle for this rental</p>
+    </div>
+
+    @* Vehicle Type Filter Tabs *@
+    <div class="card">
+        <div class="card-body py-2">
+            <ul class="nav nav-pills nav-fill">
+                <li class="nav-item">
+                    <a class="nav-link @(m_vehicleTypeFilter == null ? "active" : "")"
+                       href="javascript:void(0)" @onclick="@(() => FilterByType(null))">
+                        <i class="ti ti-list me-1"></i>All
+                        <span class="badge bg-secondary ms-1">@m_allVehicles.Count</span>
+                    </a>
+                </li>
+                @foreach (var type in m_availableTypes)
+                {
+                    var count = m_allVehicles.Count(v => v.Vehicle.VehicleType == type);
+                    <li class="nav-item">
+                        <a class="nav-link @(m_vehicleTypeFilter == type ? "active" : "")"
+                           href="javascript:void(0)" @onclick="@(() => FilterByType(type))">
+                            <i class="ti @GetVehicleTypeIcon(type) me-1"></i>
+                            @GetVehicleTypeLabel(type)
+                            <span class="badge @(m_vehicleTypeFilter == type ? "bg-white text-primary" : "bg-secondary") ms-1">@count</span>
+                        </a>
+                    </li>
+                }
+            </ul>
+        </div>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+        <div class="input-icon" style="max-width: 300px;">
+            <span class="input-icon-addon">
+                <i class="ti ti-search"></i>
+            </span>
+            <input type="text" class="form-control" placeholder="Search by brand, model, license plate..."
+                   @bind="m_searchTerm" @bind:event="oninput" @onkeyup="OnSearchChanged" />
+        </div>
+
+        <select class="form-select" style="width: 150px;" @bind="m_brandFilter" @bind:after="ApplyFilters">
+            <option value="">All Brands</option>
+            @foreach (var brand in m_brands)
+            {
+                <option value="@brand">@brand</option>
+            }
+        </select>
+
+        <div class="form-check form-switch ms-2">
+            <input class="form-check-input" type="checkbox" id="includePooled"
+                   @bind="m_includePooled" @bind:after="LoadVehicles">
+            <label class="form-check-label" for="includePooled">Include Pooled</label>
+        </div>
+
+        <div class="ms-auto">
+            <span class="badge bg-success">@m_filteredVehicles.Count Available</span>
+        </div>
+    </div>
+
+    @if (m_loading)
+    {
+        <div class="progress progress-sm">
+            <div class="progress-bar progress-bar-indeterminate"></div>
+        </div>
+    }
+
+    <div class="row g-3">
+        @foreach (var availability in m_filteredVehicles)
+        {
+            var vehicle = availability.Vehicle;
+            var isSelected = this.SelectedVehicle?.VehicleId == vehicle.VehicleId;
+            <div class="col-12 col-sm-6 col-md-4">
+                <div class="card h-100 @(isSelected ? "border-primary" : "")"
+                     style="cursor: pointer; @(isSelected ? "border-width: 2px;" : "")"
+                     @onclick="@(() => SelectVehicleItem(vehicle))">
+                    <div class="card-header">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="avatar @GetVehicleTypeAvatarClass(vehicle.VehicleType) text-white">
+                                <i class="ti @GetVehicleTypeIcon(vehicle.VehicleType)"></i>
+                            </span>
+                            <div class="flex-grow-1">
+                                <div class="fw-medium">@vehicle.Brand @vehicle.Model</div>
+                                <div class="d-flex align-items-center gap-1">
+                                    <span class="text-primary small">@vehicle.LicensePlate</span>
+                                    @if (availability.IsPooled)
+                                    {
+                                        <span class="badge bg-purple-lt text-purple" style="font-size: 0.65rem;">
+                                            <i class="ti ti-share"></i> Pooled
+                                        </span>
+                                    }
+                                </div>
+                            </div>
+                            @if (isSelected)
+                            {
+                                <i class="ti ti-circle-check text-success" style="font-size: 1.25rem;"></i>
+                            }
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex flex-column gap-1">
+                            @* Vehicle-type specific info *@
+                            @if (vehicle.VehicleType == VehicleType.Motorbike && vehicle.EngineCC.HasValue)
+                            {
+                                <div class="d-flex justify-content-between">
+                                    <small class="text-secondary">Engine</small>
+                                    <span>@vehicle.EngineCC cc</span>
+                                </div>
+                            }
+                            @if (vehicle.VehicleType == VehicleType.Car)
+                            {
+                                @if (vehicle.Segment.HasValue)
+                                {
+                                    <div class="d-flex justify-content-between">
+                                        <small class="text-secondary">Segment</small>
+                                        <span>@GetSegmentLabel(vehicle.Segment.Value)</span>
+                                    </div>
+                                }
+                                @if (vehicle.SeatCount.HasValue)
+                                {
+                                    <div class="d-flex justify-content-between">
+                                        <small class="text-secondary">Seats</small>
+                                        <span>@vehicle.SeatCount</span>
+                                    </div>
+                                }
+                            }
+                            @if (vehicle.VehicleType == VehicleType.Boat && vehicle.PassengerCapacity.HasValue)
+                            {
+                                <div class="d-flex justify-content-between">
+                                    <small class="text-secondary">Capacity</small>
+                                    <span>@vehicle.PassengerCapacity passengers</span>
+                                </div>
+                            }
+                            @if (vehicle.Year > 0)
+                            {
+                                <div class="d-flex justify-content-between">
+                                    <small class="text-secondary">Year</small>
+                                    <span>@vehicle.Year</span>
+                                </div>
+                            }
+                            @if (!string.IsNullOrEmpty(vehicle.Color))
+                            {
+                                <div class="d-flex justify-content-between">
+                                    <small class="text-secondary">Color</small>
+                                    <span>@vehicle.Color</span>
+                                </div>
+                            }
+
+                            @* Driver/Guide availability *@
+                            @if (vehicle.HasDriverOption || vehicle.HasGuideOption)
+                            {
+                                <div class="d-flex gap-1 mt-1">
+                                    @if (vehicle.HasDriverOption)
+                                    {
+                                        <span class="badge bg-azure-lt text-azure" style="font-size: 0.65rem;">
+                                            <i class="ti ti-steering-wheel"></i> Driver Available
+                                        </span>
+                                    }
+                                    @if (vehicle.HasGuideOption)
+                                    {
+                                        <span class="badge bg-teal-lt text-teal" style="font-size: 0.65rem;">
+                                            <i class="ti ti-map"></i> Guide Available
+                                        </span>
+                                    }
+                                </div>
+                            }
+
+                            <hr class="my-2">
+
+                            @* Pricing *@
+                            @if (vehicle.UsesIntervalPricing)
+                            {
+                                <div class="d-flex justify-content-between">
+                                    <span class="fw-medium">Hourly Rate</span>
+                                    <span class="text-primary fw-semibold" style="font-size: 1.1rem;">
+                                        @FormatCurrency(vehicle.Rate1Hour ?? 0)/hr
+                                    </span>
+                                </div>
+                                <div class="text-secondary small">
+                                    @if (vehicle.Rate15Min.HasValue)
+                                    {
+                                        <span class="me-2">15min: @FormatCurrency(vehicle.Rate15Min.Value)</span>
+                                    }
+                                    @if (vehicle.Rate30Min.HasValue)
+                                    {
+                                        <span>30min: @FormatCurrency(vehicle.Rate30Min.Value)</span>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="d-flex justify-content-between">
+                                    <span class="fw-medium">Daily Rate</span>
+                                    <span class="text-primary fw-semibold" style="font-size: 1.1rem;">
+                                        @FormatCurrency(vehicle.DailyRate)
+                                    </span>
+                                </div>
+                            }
+                            <div class="d-flex justify-content-between">
+                                <small class="text-secondary">Deposit</small>
+                                <span>@FormatCurrency(vehicle.DepositAmount)</span>
+                            </div>
+
+                            @* Pool location indicator *@
+                            @if (availability.IsPooled && !availability.IsAtCurrentShop)
+                            {
+                                <div class="alert alert-warning py-1 px-2 mb-0 mt-2" style="font-size: 0.75rem;">
+                                    <i class="ti ti-map-pin me-1"></i>
+                                    At another shop - may need pickup
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    @if (m_filteredVehicles.Count == 0 && !m_loading)
+    {
+        <div class="alert alert-info">
+            <i class="ti ti-info-circle me-2"></i>
+            No available vehicles found. All vehicles may be currently rented or under maintenance.
+            @if (!m_includePooled)
+            {
+                <span>Try enabling "Include Pooled" to see vehicles from partner shops.</span>
+            }
+        </div>
+    }
+
+    @if (this.SelectedVehicle != null)
+    {
+        <div class="alert alert-success d-flex align-items-center gap-2 mt-4">
+            <i class="ti @GetVehicleTypeIcon(this.SelectedVehicle.VehicleType)"></i>
+            <span>
+                Selected: <strong>@this.SelectedVehicle.Brand @this.SelectedVehicle.Model</strong>
+                (@this.SelectedVehicle.LicensePlate) -
+                @if (this.SelectedVehicle.UsesIntervalPricing)
+                {
+                    @FormatCurrency(this.SelectedVehicle.Rate1Hour ?? 0)<text>/hr</text>
+                }
+                else
+                {
+                    @FormatCurrency(this.SelectedVehicle.DailyRate)<text>/day</text>
+                }
+            </span>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public Vehicle? SelectedVehicle { get; set; }
+    [Parameter] public EventCallback<Vehicle?> SelectedVehicleChanged { get; set; }
+
+    private List<VehicleAvailability> m_allVehicles = [];
+    private List<VehicleAvailability> m_filteredVehicles = [];
+    private List<string> m_brands = [];
+    private List<VehicleType> m_availableTypes = [];
+    private bool m_loading;
+    private string? m_searchTerm;
+    private string? m_brandFilter;
+    private VehicleType? m_vehicleTypeFilter;
+    private bool m_includePooled = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await this.LoadVehicles();
+    }
+
+    private async Task LoadVehicles()
+    {
+        this.m_loading = true;
+        try
+        {
+            this.m_allVehicles = await this.VehicleService.GetAvailableVehiclesForShopAsync(
+                this.ShopId,
+                vehicleType: null,
+                includePooledVehicles: m_includePooled);
+
+            this.m_brands = this.m_allVehicles
+                .Where(v => !string.IsNullOrEmpty(v.Vehicle.Brand))
+                .Select(v => v.Vehicle.Brand!)
+                .Distinct()
+                .OrderBy(b => b)
+                .ToList();
+
+            this.m_availableTypes = this.m_allVehicles
+                .Select(v => v.Vehicle.VehicleType)
+                .Distinct()
+                .OrderBy(t => t)
+                .ToList();
+
+            this.ApplyFilters();
+        }
+        catch (Exception ex)
+        {
+            this.ShowError($"Error loading vehicles: {ex.Message}");
+        }
+        finally
+        {
+            this.m_loading = false;
+        }
+    }
+
+    private void OnSearchChanged()
+    {
+        this.ApplyFilters();
+    }
+
+    private void FilterByType(VehicleType? type)
+    {
+        this.m_vehicleTypeFilter = type;
+        this.ApplyFilters();
+    }
+
+    private void ApplyFilters()
+    {
+        var filtered = this.m_allVehicles.AsEnumerable();
+
+        // Filter by vehicle type
+        if (this.m_vehicleTypeFilter.HasValue)
+        {
+            filtered = filtered.Where(v => v.Vehicle.VehicleType == this.m_vehicleTypeFilter.Value);
+        }
+
+        // Filter by search term
+        if (!string.IsNullOrWhiteSpace(this.m_searchTerm))
+        {
+            var term = this.m_searchTerm.ToLowerInvariant();
+            filtered = filtered.Where(v =>
+                (v.Vehicle.Brand?.ToLowerInvariant().Contains(term) ?? false) ||
+                (v.Vehicle.Model?.ToLowerInvariant().Contains(term) ?? false) ||
+                (v.Vehicle.LicensePlate?.ToLowerInvariant().Contains(term) ?? false));
+        }
+
+        // Filter by brand
+        if (!string.IsNullOrWhiteSpace(this.m_brandFilter))
+        {
+            filtered = filtered.Where(v => v.Vehicle.Brand == this.m_brandFilter);
+        }
+
+        this.m_filteredVehicles = filtered
+            .OrderBy(v => !v.IsAtCurrentShop) // Local vehicles first
+            .ThenBy(v => v.Vehicle.VehicleType)
+            .ThenBy(v => v.Vehicle.Brand)
+            .ThenBy(v => v.Vehicle.Model)
+            .ToList();
+    }
+
+    private async Task SelectVehicleItem(Vehicle vehicle)
+    {
+        this.SelectedVehicle = vehicle;
+        await this.SelectedVehicleChanged.InvokeAsync(vehicle);
+    }
+
+    private static string GetVehicleTypeIcon(VehicleType type) => type switch
+    {
+        VehicleType.Motorbike => "ti-motorbike",
+        VehicleType.Car => "ti-car",
+        VehicleType.JetSki => "ti-sailboat",
+        VehicleType.Boat => "ti-ship",
+        VehicleType.Van => "ti-bus",
+        _ => "ti-car"
+    };
+
+    private static string GetVehicleTypeLabel(VehicleType type) => type switch
+    {
+        VehicleType.Motorbike => "Motorbike",
+        VehicleType.Car => "Car",
+        VehicleType.JetSki => "Jet Ski",
+        VehicleType.Boat => "Boat",
+        VehicleType.Van => "Van",
+        _ => "Vehicle"
+    };
+
+    private static string GetVehicleTypeAvatarClass(VehicleType type) => type switch
+    {
+        VehicleType.Motorbike => "bg-indigo",
+        VehicleType.Car => "bg-blue",
+        VehicleType.JetSki => "bg-cyan",
+        VehicleType.Boat => "bg-azure",
+        VehicleType.Van => "bg-purple",
+        _ => "bg-primary"
+    };
+
+    private static string GetSegmentLabel(CarSegment segment) => segment switch
+    {
+        CarSegment.SmallSedan => "Small Sedan",
+        CarSegment.BigSedan => "Big Sedan",
+        CarSegment.SUV => "SUV",
+        CarSegment.Pickup => "Pickup",
+        CarSegment.Hatchback => "Hatchback",
+        CarSegment.Minivan => "Minivan",
+        CarSegment.Luxury => "Luxury",
+        _ => segment.ToString()
+    };
+}

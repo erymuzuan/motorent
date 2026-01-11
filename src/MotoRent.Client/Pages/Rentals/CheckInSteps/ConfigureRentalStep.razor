@@ -45,6 +45,62 @@
                 </div>
             </div>
 
+            @* Driver/Guide Options - Only for Boats and Vans *@
+            @if (this.SelectedVehicle?.HasDriverOption == true || this.SelectedVehicle?.HasGuideOption == true)
+            {
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h6 class="card-title mb-3">
+                            <i class="ti ti-user me-2"></i>Driver & Guide Options
+                        </h6>
+
+                        <div class="d-flex flex-column gap-3">
+                            @if (this.SelectedVehicle.HasDriverOption)
+                            {
+                                <label class="form-selectgroup-item">
+                                    <input type="checkbox" class="form-selectgroup-input"
+                                           checked="@m_includeDriver"
+                                           @onchange="@((ChangeEventArgs e) => ToggleDriver((bool)(e.Value ?? false)))" />
+                                    <span class="form-selectgroup-label d-flex justify-content-between align-items-center w-100">
+                                        <span class="d-flex align-items-center gap-2">
+                                            <i class="ti ti-steering-wheel text-azure" style="font-size: 1.25rem;"></i>
+                                            <span class="d-flex flex-column">
+                                                <span class="fw-medium">Include Driver</span>
+                                                <small class="text-secondary">Professional driver for your trip</small>
+                                            </span>
+                                        </span>
+                                        <span class="text-primary fw-medium">
+                                            @FormatCurrency(this.SelectedVehicle.DriverDailyFee ?? 0)/day
+                                        </span>
+                                    </span>
+                                </label>
+                            }
+
+                            @if (this.SelectedVehicle.HasGuideOption)
+                            {
+                                <label class="form-selectgroup-item">
+                                    <input type="checkbox" class="form-selectgroup-input"
+                                           checked="@m_includeGuide"
+                                           @onchange="@((ChangeEventArgs e) => ToggleGuide((bool)(e.Value ?? false)))" />
+                                    <span class="form-selectgroup-label d-flex justify-content-between align-items-center w-100">
+                                        <span class="d-flex align-items-center gap-2">
+                                            <i class="ti ti-map text-teal" style="font-size: 1.25rem;"></i>
+                                            <span class="d-flex flex-column">
+                                                <span class="fw-medium">Include Tour Guide</span>
+                                                <small class="text-secondary">Local guide for sightseeing</small>
+                                            </span>
+                                        </span>
+                                        <span class="text-primary fw-medium">
+                                            @FormatCurrency(this.SelectedVehicle.GuideDailyFee ?? 0)/day
+                                        </span>
+                                    </span>
+                                </label>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+
             <div class="card mb-4">
                 <div class="card-body">
                     <h6 class="card-title mb-3">Insurance Package</h6>
@@ -160,13 +216,29 @@
                 <div class="card-body">
                     <h6 class="card-title mb-3">Price Summary</h6>
 
-                    @if (this.SelectedMotorbike != null)
+                    @if (this.SelectedVehicle != null)
                     {
                         <div class="d-flex flex-column gap-2">
                             <div class="d-flex justify-content-between">
-                                <span>Motorbike (@this.Config.Days days x @FormatCurrency(this.SelectedMotorbike.DailyRate))</span>
-                                <span>@FormatCurrency(this.Config.MotorbikeTotal)</span>
+                                <span>@GetVehicleTypeLabel(this.SelectedVehicle.VehicleType) (@this.Config.Days days x @FormatCurrency(this.SelectedVehicle.DailyRate))</span>
+                                <span>@FormatCurrency(this.Config.VehicleTotal)</span>
                             </div>
+
+                            @if (m_includeDriver && this.SelectedVehicle.HasDriverOption)
+                            {
+                                <div class="d-flex justify-content-between">
+                                    <span>Driver (@this.Config.Days days)</span>
+                                    <span>@FormatCurrency(this.Config.DriverTotal)</span>
+                                </div>
+                            }
+
+                            @if (m_includeGuide && this.SelectedVehicle.HasGuideOption)
+                            {
+                                <div class="d-flex justify-content-between">
+                                    <span>Tour Guide (@this.Config.Days days)</span>
+                                    <span>@FormatCurrency(this.Config.GuideTotal)</span>
+                                </div>
+                            }
 
                             @if (m_selectedInsuranceId.HasValue)
                             {
@@ -202,7 +274,7 @@
 
                             <div class="d-flex justify-content-between">
                                 <span class="text-secondary">Required Deposit</span>
-                                <span class="fw-medium">@FormatCurrency(this.SelectedMotorbike.DepositAmount)</span>
+                                <span class="fw-medium">@FormatCurrency(this.SelectedVehicle.DepositAmount)</span>
                             </div>
                         </div>
                     }
@@ -213,9 +285,10 @@
 </div>
 
 @code {
-    [Parameter] public Motorbike? SelectedMotorbike { get; set; }
+    [Parameter] public Vehicle? SelectedVehicle { get; set; }
     [Parameter] public RentalConfig Config { get; set; } = new();
     [Parameter] public EventCallback<RentalConfig> ConfigChanged { get; set; }
+
 
     private List<Insurance> m_insurances = [];
     private List<Accessory> m_accessories = [];
@@ -226,6 +299,8 @@
     private DateTime? m_startDate;
     private DateTime? m_endDate;
     private int? m_selectedInsuranceId;
+    private bool m_includeDriver;
+    private bool m_includeGuide;
 
     protected override async Task OnInitializedAsync()
     {
@@ -318,6 +393,18 @@
         this.UpdateConfig();
     }
 
+    private void ToggleDriver(bool include)
+    {
+        this.m_includeDriver = include;
+        this.UpdateConfig();
+    }
+
+    private void ToggleGuide(bool include)
+    {
+        this.m_includeGuide = include;
+        this.UpdateConfig();
+    }
+
     private void UpdateConfig()
     {
         if (this.m_startDate.HasValue)
@@ -330,9 +417,15 @@
             ? this.m_insurances.FirstOrDefault(i => i.InsuranceId == this.m_selectedInsuranceId)
             : null;
 
-        if (this.SelectedMotorbike != null)
+        if (this.SelectedVehicle != null)
         {
-            this.Config.MotorbikeTotal = this.SelectedMotorbike.DailyRate * this.Config.Days;
+            this.Config.VehicleTotal = this.SelectedVehicle.DailyRate * this.Config.Days;
+
+            // Driver/Guide options
+            this.Config.IncludeDriver = this.m_includeDriver && this.SelectedVehicle.HasDriverOption;
+            this.Config.IncludeGuide = this.m_includeGuide && this.SelectedVehicle.HasGuideOption;
+            this.Config.DriverDailyFee = this.SelectedVehicle.DriverDailyFee ?? 0;
+            this.Config.GuideDailyFee = this.SelectedVehicle.GuideDailyFee ?? 0;
         }
 
         this.Config.InsuranceTotal = this.Config.SelectedInsurance?.DailyRate * this.Config.Days ?? 0;
@@ -350,6 +443,16 @@
 
         this.ConfigChanged.InvokeAsync(this.Config);
     }
+
+    private static string GetVehicleTypeLabel(VehicleType type) => type switch
+    {
+        VehicleType.Motorbike => "Motorbike",
+        VehicleType.Car => "Car",
+        VehicleType.JetSki => "Jet Ski",
+        VehicleType.Boat => "Boat",
+        VehicleType.Van => "Van",
+        _ => "Vehicle"
+    };
 
     private class AccessorySelectionModel
     {

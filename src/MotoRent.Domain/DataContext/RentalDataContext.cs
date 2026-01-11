@@ -8,6 +8,9 @@ public partial class RentalDataContext
     public Query<Shop> Shops { get; }
     public Query<Renter> Renters { get; }
     public Query<Document> Documents { get; }
+    public Query<Vehicle> Vehicles { get; }
+    public Query<VehiclePool> VehiclePools { get; }
+    [Obsolete("Use Vehicles instead")]
     public Query<Motorbike> Motorbikes { get; }
     public Query<Rental> Rentals { get; }
     public Query<Deposit> Deposits { get; }
@@ -31,6 +34,8 @@ public partial class RentalDataContext
         this.Shops = new Query<Shop>(provider);
         this.Renters = new Query<Renter>(provider);
         this.Documents = new Query<Document>(provider);
+        this.Vehicles = new Query<Vehicle>(provider);
+        this.VehiclePools = new Query<VehiclePool>(provider);
         this.Motorbikes = new Query<Motorbike>(provider);
         this.Rentals = new Query<Rental>(provider);
         this.Deposits = new Query<Deposit>(provider);

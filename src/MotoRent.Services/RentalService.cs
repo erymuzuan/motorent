@@ -3,9 +3,10 @@ using MotoRent.Domain.Entities;
 
 namespace MotoRent.Services;
 
-public class RentalService(RentalDataContext context)
+public class RentalService(RentalDataContext context, VehiclePoolService? poolService = null)
 {
     private RentalDataContext Context { get; } = context;
+    private VehiclePoolService? PoolService { get; } = poolService;
 
     #region CRUD Operations
 
@@ -19,7 +20,7 @@ public class RentalService(RentalDataContext context)
         int pageSize = 20)
     {
         var query = this.Context.Rentals
-            .Where(r => r.ShopId == shopId);
+            .Where(r => r.RentedFromShopId == shopId || r.ReturnedToShopId == shopId);
 
         if (!string.IsNullOrWhiteSpace(status))
         {
@@ -74,7 +75,7 @@ public class RentalService(RentalDataContext context)
     public async Task<Dictionary<string, int>> GetStatusCountsAsync(int shopId)
     {
         var allRentals = await this.Context.LoadAsync(
-            this.Context.Rentals.Where(r => r.ShopId == shopId),
+            this.Context.Rentals.Where(r => r.RentedFromShopId == shopId),
             page: 1, size: 10000, includeTotalRows: false);
 
         return allRentals.ItemCollection
@@ -89,7 +90,7 @@ public class RentalService(RentalDataContext context)
 
         var rentals = await this.Context.LoadAsync(
             this.Context.Rentals
-                .Where(r => r.ShopId == shopId && r.Status == "Active")
+                .Where(r => r.RentedFromShopId == shopId && r.Status == "Active")
                 .Where(r => r.ExpectedEndDate >= todayStart && r.ExpectedEndDate < todayEnd),
             page: 1, size: 1000, includeTotalRows: false);
 
@@ -102,22 +103,28 @@ public class RentalService(RentalDataContext context)
 
         var rentals = await this.Context.LoadAsync(
             this.Context.Rentals
-                .Where(r => r.ShopId == shopId && r.Status == "Active")
+                .Where(r => r.RentedFromShopId == shopId && r.Status == "Active")
                 .Where(r => r.ExpectedEndDate < todayStart),
             page: 1, size: 1000, includeTotalRows: false);
 
         return rentals.ItemCollection.ToList();
     }
 
-    public async Task<List<Rental>> GetActiveRentalsForMotorbikeAsync(int motorbikeId)
+    public async Task<List<Rental>> GetActiveRentalsForVehicleAsync(int vehicleId)
     {
         var rentals = await this.Context.LoadAsync(
             this.Context.Rentals
-                .Where(r => r.MotorbikeId == motorbikeId)
+                .Where(r => r.VehicleId == vehicleId)
                 .Where(r => r.Status == "Active" || r.Status == "Reserved"),
             page: 1, size: 100, includeTotalRows: false);
 
         return rentals.ItemCollection.ToList();
+    }
+
+    [Obsolete("Use GetActiveRentalsForVehicleAsync instead")]
+    public async Task<List<Rental>> GetActiveRentalsForMotorbikeAsync(int motorbikeId)
+    {
+        return await GetActiveRentalsForVehicleAsync(motorbikeId);
     }
 
     #endregion
@@ -130,27 +137,58 @@ public class RentalService(RentalDataContext context)
         {
             using var session = this.Context.OpenSession(username);
 
-            // 1. Create rental
+            // Load vehicle to get pool info
+            var vehicle = await this.Context.LoadOneAsync<Vehicle>(v => v.VehicleId == request.VehicleId);
+            if (vehicle == null)
+            {
+                // Fallback to Motorbike for backward compatibility
+                var motorbike = await this.Context.LoadOneAsync<Motorbike>(m => m.MotorbikeId == request.VehicleId);
+                if (motorbike == null)
+                    return CheckInResult.CreateFailure("Vehicle not found");
+
+                // Use motorbike as vehicle equivalent
+                return await CheckInWithMotorbikeAsync(request, motorbike, session, username);
+            }
+
+            // Validate pool membership for pooled vehicles
+            if (vehicle.IsPooled && PoolService != null)
+            {
+                var pool = await PoolService.GetPoolByIdAsync(vehicle.VehiclePoolId!.Value);
+                if (pool != null && !pool.ShopIds.Contains(request.ShopId))
+                {
+                    return CheckInResult.CreateFailure("This shop is not authorized to rent this pooled vehicle");
+                }
+            }
+
+            // 1. Create rental with new fields
             var rental = new Rental
             {
-                ShopId = request.ShopId,
+                RentedFromShopId = request.ShopId,
+                VehiclePoolId = vehicle.VehiclePoolId,
                 RenterId = request.RenterId,
-                MotorbikeId = request.MotorbikeId,
+                VehicleId = request.VehicleId,
+                DurationType = request.DurationType,
+                IntervalMinutes = request.IntervalMinutes,
                 StartDate = request.StartDate,
                 ExpectedEndDate = request.ExpectedEndDate,
                 MileageStart = request.MileageStart,
-                DailyRate = request.DailyRate,
+                RentalRate = request.RentalRate,
                 TotalAmount = request.TotalAmount,
+                IncludeDriver = request.IncludeDriver,
+                IncludeGuide = request.IncludeGuide,
+                DriverFee = request.DriverFee,
+                GuideFee = request.GuideFee,
                 InsuranceId = request.InsuranceId,
                 Status = "Active",
-                Notes = request.Notes
+                Notes = request.Notes,
+                VehicleName = $"{vehicle.Brand} {vehicle.Model}"
             };
             session.Attach(rental);
 
             // 2. Create deposit
             var deposit = new Deposit
             {
-                RentalId = 0, // Will be linked after submit via RentalId
+                RentalId = 0,
                 DepositType = request.DepositType,
                 Amount = request.DepositAmount,
                 Status = "Held",
@@ -165,7 +203,7 @@ public class RentalService(RentalDataContext context)
             {
                 var rentalAccessory = new RentalAccessory
                 {
-                    RentalId = 0, // Will be linked
+                    RentalId = 0,
                     AccessoryId = accessory.AccessoryId,
                     Quantity = accessory.Quantity,
                     ChargedAmount = accessory.ChargedAmount
@@ -178,7 +216,7 @@ public class RentalService(RentalDataContext context)
             {
                 var agreement = new RentalAgreement
                 {
-                    RentalId = 0, // Will be linked
+                    RentalId = 0,
                     AgreementText = request.AgreementText ?? GetDefaultAgreementText(),
                     SignatureImagePath = request.SignatureImagePath,
                     SignedOn = DateTimeOffset.Now,
@@ -187,28 +225,29 @@ public class RentalService(RentalDataContext context)
                 session.Attach(agreement);
             }
 
-            // 5. Update motorbike status to "Rented"
-            var motorbike = await this.Context.LoadOneAsync<Motorbike>(m => m.MotorbikeId == request.MotorbikeId);
-            if (motorbike != null)
-            {
-                motorbike.Status = "Rented";
-                motorbike.Mileage = request.MileageStart;
-                session.Attach(motorbike);
-            }
+            // 5. Update vehicle status to "Rented"
+            vehicle.Status = VehicleStatus.Rented;
+            if (vehicle.SupportsMileageTracking)
+                vehicle.Mileage = request.MileageStart;
+            session.Attach(vehicle);
 
             // 6. Create payment record for rental amount
             if (request.TotalAmount > 0)
             {
+                var durationNote = request.DurationType == RentalDurationType.FixedInterval
+                    ? $"{request.IntervalMinutes} minutes"
+                    : $"{(request.ExpectedEndDate - request.StartDate).TotalDays:N0} days";
+
                 var rentalPayment = new Payment
                 {
-                    RentalId = 0, // Will be linked after submit
+                    RentalId = 0,
                     PaymentType = "Rental",
                     PaymentMethod = request.PaymentMethod,
                     Amount = request.TotalAmount,
                     Status = "Completed",
                     TransactionRef = request.PaymentTransactionRef,
                     PaidOn = DateTimeOffset.Now,
-                    Notes = $"Rental payment: {(request.ExpectedEndDate - request.StartDate).TotalDays:N0} days"
+                    Notes = $"Rental payment: {durationNote}"
                 };
                 session.Attach(rentalPayment);
             }
@@ -218,7 +257,7 @@ public class RentalService(RentalDataContext context)
             {
                 var depositPayment = new Payment
                 {
-                    RentalId = 0, // Will be linked after submit
+                    RentalId = 0,
                     PaymentType = "Deposit",
                     PaymentMethod = request.DepositType == "Cash" ? "Cash" : "Card",
                     Amount = request.DepositAmount,
@@ -230,14 +269,10 @@ public class RentalService(RentalDataContext context)
                 session.Attach(depositPayment);
             }
 
-            // Submit all changes in a single transaction
             var result = await session.SubmitChanges("CheckIn");
 
             if (result.Success)
             {
-                // Update deposit and accessories with the new RentalId
-                // Note: In a real implementation, you'd need to link these after the insert
-                // For now, we'll rely on sequential IDs or a second update
                 return CheckInResult.CreateSuccess(rental.RentalId);
             }
 
@@ -247,6 +282,39 @@ public class RentalService(RentalDataContext context)
         {
             return CheckInResult.CreateFailure($"Check-in error: {ex.Message}");
         }
+    }
+
+    private async Task<CheckInResult> CheckInWithMotorbikeAsync(CheckInRequest request, Motorbike motorbike, PersistenceSession session, string username)
+    {
+        // Legacy path for Motorbike entities
+        var rental = new Rental
+        {
+            RentedFromShopId = request.ShopId,
+            RenterId = request.RenterId,
+            VehicleId = request.VehicleId,
+            DurationType = RentalDurationType.Daily,
+            StartDate = request.StartDate,
+            ExpectedEndDate = request.ExpectedEndDate,
+            MileageStart = request.MileageStart,
+            RentalRate = request.RentalRate,
+            TotalAmount = request.TotalAmount,
+            InsuranceId = request.InsuranceId,
+            Status = "Active",
+            Notes = request.Notes,
+            VehicleName = $"{motorbike.Brand} {motorbike.Model}"
+        };
+        session.Attach(rental);
+
+        // Update motorbike status
+        motorbike.Status = "Rented";
+        motorbike.Mileage = request.MileageStart;
+        session.Attach(motorbike);
+
+        // Rest of check-in logic...
+        var result = await session.SubmitChanges("CheckIn");
+        return result.Success
+            ? CheckInResult.CreateSuccess(rental.RentalId)
+            : CheckInResult.CreateFailure(result.Message ?? "Check-in failed");
     }
 
     public async Task<CheckOutResult> CheckOutAsync(CheckOutRequest request, string username)
@@ -260,28 +328,73 @@ public class RentalService(RentalDataContext context)
             if (rental == null)
                 return CheckOutResult.CreateFailure("Rental not found");
 
+            // 2. Load vehicle (try Vehicle first, then Motorbike for backward compat)
+            Vehicle? vehicle = await this.Context.LoadOneAsync<Vehicle>(v => v.VehicleId == rental.VehicleId);
+            Motorbike? motorbike = null;
+
+            if (vehicle == null)
+            {
+                motorbike = await this.Context.LoadOneAsync<Motorbike>(m => m.MotorbikeId == rental.VehicleId);
+                if (motorbike == null)
+                    return CheckOutResult.CreateFailure("Vehicle not found");
+            }
+
+            // 3. Validate return shop for pooled vehicles
+            int returnShopId = request.ReturnShopId ?? rental.RentedFromShopId;
+
+            if (vehicle != null && vehicle.IsPooled && PoolService != null)
+            {
+                var pool = await PoolService.GetPoolByIdAsync(vehicle.VehiclePoolId!.Value);
+                if (pool != null && !pool.ShopIds.Contains(returnShopId))
+                {
+                    return CheckOutResult.CreateFailure("This shop cannot accept returns for this pooled vehicle");
+                }
+            }
+            else if (vehicle != null && !vehicle.IsPooled && returnShopId != rental.RentedFromShopId)
+            {
+                return CheckOutResult.CreateFailure("Non-pooled vehicles must be returned to the rental shop");
+            }
+
+            // 4. Update rental
             rental.ActualEndDate = request.ActualEndDate;
+            rental.ReturnedToShopId = returnShopId;
             rental.MileageEnd = request.MileageEnd;
             rental.Status = "Completed";
             if (!string.IsNullOrEmpty(request.Notes))
                 rental.Notes = (rental.Notes ?? "") + "\n" + request.Notes;
             session.Attach(rental);
 
-            // 2. Calculate additional charges
+            // 5. Calculate additional charges
             decimal additionalCharges = 0;
-            int extraDays = CalculateExtraDays(rental.ExpectedEndDate, request.ActualEndDate);
-            if (extraDays > 0)
+            int extraDays = 0;
+
+            if (rental.DurationType == RentalDurationType.Daily)
             {
-                additionalCharges += extraDays * rental.DailyRate;
+                extraDays = CalculateExtraDays(rental.ExpectedEndDate, request.ActualEndDate);
+                if (extraDays > 0)
+                {
+                    additionalCharges += extraDays * rental.RentalRate;
+                }
+            }
+            else
+            {
+                // Interval rental overtime
+                var expectedEnd = rental.StartDate.AddMinutes(rental.IntervalMinutes ?? 60);
+                if (request.ActualEndDate > expectedEnd)
+                {
+                    var extraMinutes = (request.ActualEndDate - expectedEnd).TotalMinutes;
+                    // Charge at hourly rate (prorated)
+                    additionalCharges += (decimal)(extraMinutes / 60) * rental.RentalRate;
+                }
             }
 
-            // 3. Process damage reports
+            // 6. Process damage reports
             foreach (var damageInfo in request.DamageReports ?? [])
             {
                 var damageReport = new DamageReport
                 {
                     RentalId = request.RentalId,
-                    MotorbikeId = rental.MotorbikeId,
+                    MotorbikeId = rental.VehicleId,
                     Description = damageInfo.Description,
                     Severity = damageInfo.Severity,
                     EstimatedCost = damageInfo.EstimatedCost,
@@ -292,7 +405,7 @@ public class RentalService(RentalDataContext context)
                 additionalCharges += damageInfo.EstimatedCost;
             }
 
-            // 4. Update deposit status
+            // 7. Update deposit status
             var deposit = await this.Context.LoadOneAsync<Deposit>(d => d.RentalId == request.RentalId);
             decimal refundAmount = 0;
             if (deposit != null)
@@ -315,9 +428,16 @@ public class RentalService(RentalDataContext context)
                 session.Attach(deposit);
             }
 
-            // 5. Update motorbike status back to "Available"
-            var motorbike = await this.Context.LoadOneAsync<Motorbike>(m => m.MotorbikeId == rental.MotorbikeId);
-            if (motorbike != null)
+            // 8. Update vehicle status and location
+            if (vehicle != null)
+            {
+                vehicle.Status = VehicleStatus.Available;
+                vehicle.CurrentShopId = returnShopId; // Update location for pooled vehicles
+                if (vehicle.SupportsMileageTracking && request.MileageEnd > 0)
+                    vehicle.Mileage = request.MileageEnd;
+                session.Attach(vehicle);
+            }
+            else if (motorbike != null)
             {
                 motorbike.Status = "Available";
                 if (request.MileageEnd > 0)
@@ -325,7 +445,7 @@ public class RentalService(RentalDataContext context)
                 session.Attach(motorbike);
             }
 
-            // 6. Create payment record for additional charges
+            // 9. Create payment record for additional charges
             if (additionalCharges > 0)
             {
                 var payment = new Payment
@@ -336,12 +456,14 @@ public class RentalService(RentalDataContext context)
                     Amount = additionalCharges,
                     Status = "Completed",
                     PaidOn = DateTimeOffset.Now,
-                    Notes = $"Extra days: {extraDays}, Damage charges: {additionalCharges - (extraDays * rental.DailyRate)}"
+                    Notes = rental.DurationType == RentalDurationType.Daily
+                        ? $"Extra days: {extraDays}, Damage charges: {additionalCharges - (extraDays * rental.RentalRate)}"
+                        : $"Overtime charges: {additionalCharges}"
                 };
                 session.Attach(payment);
             }
 
-            // 7. Create payment record for deposit refund
+            // 10. Create payment record for deposit refund
             if (refundAmount > 0 && request.RefundDeposit)
             {
                 var refundPayment = new Payment
@@ -365,7 +487,8 @@ public class RentalService(RentalDataContext context)
                     rentalId: request.RentalId,
                     additionalCharges: additionalCharges,
                     refundAmount: refundAmount,
-                    extraDays: extraDays
+                    extraDays: extraDays,
+                    isCrossShopReturn: returnShopId != rental.RentedFromShopId
                 );
             }
 
@@ -401,12 +524,22 @@ public class RentalService(RentalDataContext context)
             session.Attach(deposit);
         }
 
-        // Make motorbike available again
-        var motorbike = await this.Context.LoadOneAsync<Motorbike>(m => m.MotorbikeId == rental.MotorbikeId);
-        if (motorbike != null && motorbike.Status == "Rented")
+        // Make vehicle available again
+        var vehicle = await this.Context.LoadOneAsync<Vehicle>(v => v.VehicleId == rental.VehicleId);
+        if (vehicle != null && vehicle.Status == VehicleStatus.Rented)
         {
-            motorbike.Status = "Available";
-            session.Attach(motorbike);
+            vehicle.Status = VehicleStatus.Available;
+            session.Attach(vehicle);
+        }
+        else
+        {
+            // Fallback for Motorbike
+            var motorbike = await this.Context.LoadOneAsync<Motorbike>(m => m.MotorbikeId == rental.VehicleId);
+            if (motorbike != null && motorbike.Status == "Rented")
+            {
+                motorbike.Status = "Available";
+                session.Attach(motorbike);
+            }
         }
 
         return await session.SubmitChanges("Cancel");
@@ -421,11 +554,14 @@ public class RentalService(RentalDataContext context)
         if (rental.Status != "Active")
             return SubmitOperation.CreateFailure("Can only extend active rentals");
 
+        if (rental.DurationType == RentalDurationType.FixedInterval)
+            return SubmitOperation.CreateFailure("Cannot extend interval-based rentals. Start a new session instead.");
+
         if (newEndDate <= rental.ExpectedEndDate)
             return SubmitOperation.CreateFailure("New end date must be after current expected end date");
 
         int additionalDays = (int)(newEndDate.Date - rental.ExpectedEndDate.Date).TotalDays;
-        decimal additionalAmount = additionalDays * rental.DailyRate;
+        decimal additionalAmount = additionalDays * rental.RentalRate;
 
         using var session = this.Context.OpenSession(username);
 
@@ -443,16 +579,16 @@ public class RentalService(RentalDataContext context)
         {
             using var session = this.Context.OpenSession("tourist");
 
-            // 1. Check if motorbike is available for the requested dates
+            // 1. Check if vehicle is available for the requested dates
             var hasConflict = await this.Context.ExistAsync(
                 this.Context.Rentals
-                    .Where(r => r.MotorbikeId == request.MotorbikeId)
+                    .Where(r => r.VehicleId == request.VehicleId)
                     .Where(r => r.Status == "Active" || r.Status == "Reserved")
                     .Where(r => r.StartDate < request.EndDate && r.ExpectedEndDate > request.StartDate));
 
             if (hasConflict)
             {
-                return ReservationResult.CreateFailure("This motorbike is not available for the selected dates.");
+                return ReservationResult.CreateFailure("This vehicle is not available for the selected dates.");
             }
 
             // 2. Create or find renter from contact info
@@ -463,7 +599,6 @@ public class RentalService(RentalDataContext context)
             if (existingRenter != null)
             {
                 renterId = existingRenter.RenterId;
-                // Update info if needed
                 existingRenter.FullName = request.RenterName;
                 existingRenter.Nationality = request.RenterNationality;
                 existingRenter.PassportNo = request.RenterPassport;
@@ -481,19 +616,25 @@ public class RentalService(RentalDataContext context)
                     PassportNo = request.RenterPassport
                 };
                 session.Attach(newRenter);
-                renterId = 0; // Will be assigned after submit
+                renterId = 0;
             }
 
             // 3. Create reservation (rental with "Reserved" status)
             var rental = new Rental
             {
-                ShopId = request.ShopId,
+                RentedFromShopId = request.ShopId,
                 RenterId = renterId,
-                MotorbikeId = request.MotorbikeId,
+                VehicleId = request.VehicleId,
+                DurationType = request.DurationType,
+                IntervalMinutes = request.IntervalMinutes,
                 StartDate = request.StartDate,
                 ExpectedEndDate = request.EndDate,
-                DailyRate = request.DailyRate,
+                RentalRate = request.RentalRate,
                 TotalAmount = request.TotalAmount,
+                IncludeDriver = request.IncludeDriver,
+                IncludeGuide = request.IncludeGuide,
+                DriverFee = request.DriverFee,
+                GuideFee = request.GuideFee,
                 InsuranceId = request.InsuranceId,
                 Status = "Reserved",
                 Notes = BuildReservationNotes(request)
@@ -530,15 +671,11 @@ public class RentalService(RentalDataContext context)
         return $"MR-{DateTime.Now:yyMMdd}-{Guid.NewGuid().ToString()[..6].ToUpper()}";
     }
 
-    /// <summary>
-    /// Gets rental history for a tourist by email or phone
-    /// </summary>
     public async Task<List<Rental>> GetRentalHistoryForTouristAsync(int shopId, string? email, string? phone)
     {
         if (string.IsNullOrWhiteSpace(email) && string.IsNullOrWhiteSpace(phone))
             return [];
 
-        // First find the renter
         var renter = await this.Context.LoadOneAsync<Renter>(r =>
             r.ShopId == shopId &&
             ((email != null && r.Email == email) || (phone != null && r.Phone == phone)));
@@ -546,7 +683,6 @@ public class RentalService(RentalDataContext context)
         if (renter == null)
             return [];
 
-        // Then get their rentals
         var rentals = await this.Context.LoadAsync(
             this.Context.Rentals
                 .Where(r => r.RenterId == renter.RenterId)
@@ -570,16 +706,16 @@ public class RentalService(RentalDataContext context)
 
     private static string GetDefaultAgreementText()
     {
-        return @"MOTORBIKE RENTAL AGREEMENT
+        return @"VEHICLE RENTAL AGREEMENT
 
 I agree to the following terms and conditions:
 
-1. I will return the motorbike in the same condition as received.
+1. I will return the vehicle in the same condition as received.
 2. I am responsible for any damage caused during the rental period.
 3. I will not exceed the agreed rental period without prior notification.
 4. I have a valid driving license for this vehicle type.
 5. I will follow all traffic laws and regulations.
-6. I will not sublet or lend the motorbike to any third party.
+6. I will not sublet or lend the vehicle to any third party.
 
 By signing below, I acknowledge that I have read, understood, and agree to these terms.";
     }
@@ -593,14 +729,24 @@ public class CheckInRequest
 {
     public int ShopId { get; set; }
     public int RenterId { get; set; }
-    public int MotorbikeId { get; set; }
+    public int VehicleId { get; set; }
     public DateTimeOffset StartDate { get; set; }
     public DateTimeOffset ExpectedEndDate { get; set; }
     public int MileageStart { get; set; }
-    public decimal DailyRate { get; set; }
+    public decimal RentalRate { get; set; }
     public decimal TotalAmount { get; set; }
     public int? InsuranceId { get; set; }
     public string? Notes { get; set; }
+
+    // Duration type for different vehicle types
+    public RentalDurationType DurationType { get; set; } = RentalDurationType.Daily;
+    public int? IntervalMinutes { get; set; }
+
+    // Driver/Guide options
+    public bool IncludeDriver { get; set; }
+    public bool IncludeGuide { get; set; }
+    public decimal DriverFee { get; set; }
+    public decimal GuideFee { get; set; }
 
     // Payment info
     public string PaymentMethod { get; set; } = "Cash";
@@ -619,6 +765,13 @@ public class CheckInRequest
     public string? AgreementText { get; set; }
     public string? SignatureImagePath { get; set; }
     public string? SignedByIp { get; set; }
+
+    // Backward compatibility
+    [Obsolete("Use VehicleId instead")]
+    public int MotorbikeId { get => VehicleId; set => VehicleId = value; }
+
+    [Obsolete("Use RentalRate instead")]
+    public decimal DailyRate { get => RentalRate; set => RentalRate = value; }
 }
 
 public class AccessorySelection
@@ -637,6 +790,9 @@ public class CheckOutRequest
     public string? PaymentMethod { get; set; }
     public bool RefundDeposit { get; set; } = true;
     public decimal? DeductionAmount { get; set; }
+
+    // For cross-shop returns (pooled vehicles)
+    public int? ReturnShopId { get; set; }
 
     public List<DamageReportInfo>? DamageReports { get; set; }
 }
@@ -676,14 +832,16 @@ public class CheckOutResult
     public decimal AdditionalCharges { get; set; }
     public decimal RefundAmount { get; set; }
     public int ExtraDays { get; set; }
+    public bool IsCrossShopReturn { get; set; }
 
-    public static CheckOutResult CreateSuccess(int rentalId, decimal additionalCharges, decimal refundAmount, int extraDays) => new()
+    public static CheckOutResult CreateSuccess(int rentalId, decimal additionalCharges, decimal refundAmount, int extraDays, bool isCrossShopReturn = false) => new()
     {
         Success = true,
         RentalId = rentalId,
         AdditionalCharges = additionalCharges,
         RefundAmount = refundAmount,
-        ExtraDays = extraDays
+        ExtraDays = extraDays,
+        IsCrossShopReturn = isCrossShopReturn
     };
 
     public static CheckOutResult CreateFailure(string message) => new()
@@ -696,12 +854,22 @@ public class CheckOutResult
 public class ReservationRequest
 {
     public int ShopId { get; set; }
-    public int MotorbikeId { get; set; }
+    public int VehicleId { get; set; }
     public DateTimeOffset StartDate { get; set; }
     public DateTimeOffset EndDate { get; set; }
     public int? InsuranceId { get; set; }
-    public decimal DailyRate { get; set; }
+    public decimal RentalRate { get; set; }
     public decimal TotalAmount { get; set; }
+
+    // Duration type
+    public RentalDurationType DurationType { get; set; } = RentalDurationType.Daily;
+    public int? IntervalMinutes { get; set; }
+
+    // Driver/Guide options
+    public bool IncludeDriver { get; set; }
+    public bool IncludeGuide { get; set; }
+    public decimal DriverFee { get; set; }
+    public decimal GuideFee { get; set; }
 
     // Contact info
     public string RenterName { get; set; } = string.Empty;
@@ -711,6 +879,13 @@ public class ReservationRequest
     public string? RenterPassport { get; set; }
     public string? HotelName { get; set; }
     public string? Notes { get; set; }
+
+    // Backward compatibility
+    [Obsolete("Use VehicleId instead")]
+    public int MotorbikeId { get => VehicleId; set => VehicleId = value; }
+
+    [Obsolete("Use RentalRate instead")]
+    public decimal DailyRate { get => RentalRate; set => RentalRate = value; }
 }
 
 public class ReservationResult

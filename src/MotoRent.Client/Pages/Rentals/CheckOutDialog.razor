@@ -3,7 +3,9 @@
 @inherits LocalizedDialogBase<Rental, CheckOutDialog>
 @inject RentalService RentalService
 @inject RenterService RenterService
-@inject MotorbikeService MotorbikeService
+@inject VehicleService VehicleService
+@inject VehiclePoolService VehiclePoolService
+@inject ShopService ShopService
 @inject MaintenanceService MaintenanceService
 
 <div class="modal-body">
@@ -49,8 +51,8 @@
                     <div class="fw-bold">@m_renterName</div>
                 </div>
                 <div class="col-6">
-                    <div class="subheader text-secondary">Motorbike</div>
-                    <div class="fw-bold">@m_motorbikeName</div>
+                    <div class="subheader text-secondary">@GetVehicleTypeLabel()</div>
+                    <div class="fw-bold">@m_vehicleName</div>
                 </div>
                 <div class="col-6">
                     <div class="subheader text-secondary">Start Date</div>
@@ -58,7 +60,16 @@
                 </div>
                 <div class="col-6">
                     <div class="subheader text-secondary">Expected Return</div>
-                    <div>@FormatDate(Entity.ExpectedEndDate)</div>
+                    <div>
+                        @if (m_isIntervalRental)
+                        {
+                            @Entity.ExpectedEndDate.ToString("HH:mm")
+                        }
+                        else
+                        {
+                            @FormatDate(Entity.ExpectedEndDate)
+                        }
+                    </div>
                 </div>
             </div>
 
@@ -67,29 +78,61 @@
             <h4 class="mb-3">Return Information</h4>
 
             <div class="row g-3">
-                <div class="col-12 col-sm-6">
-                    <label class="form-label">Actual Return Date</label>
-                    <input type="date" class="form-control" @bind="m_actualReturnDate" />
-                </div>
-                <div class="col-12 col-sm-6">
-                    <label class="form-label">Mileage at Return (km)</label>
-                    <input type="number" class="form-control" @bind="m_mileageEnd" min="@Entity.MileageStart" />
-                </div>
+                @if (!m_isIntervalRental)
+                {
+                    <div class="col-12 col-sm-6">
+                        <label class="form-label">Actual Return Date</label>
+                        <input type="date" class="form-control" @bind="m_actualReturnDate" />
+                    </div>
+                }
+                @if (m_showMileage)
+                {
+                    <div class="col-12 col-sm-6">
+                        <label class="form-label">Mileage at Return (km)</label>
+                        <input type="number" class="form-control" @bind="m_mileageEnd" min="@Entity.MileageStart" />
+                    </div>
+                }
             </div>
 
-            @if (m_extraDays > 0)
+            @* Cross-shop return for pooled vehicles *@
+            @if (m_isPooledVehicle && m_poolShops.Count > 1)
+            {
+                <div class="mt-3">
+                    <label class="form-label">
+                        <i class="ti ti-share me-1 text-purple"></i>
+                        Return Location
+                    </label>
+                    <select class="form-select" @bind="m_returnToShopId">
+                        @foreach (var shop in m_poolShops)
+                        {
+                            <option value="@shop.ShopId">
+                                @shop.Name @(shop.ShopId == this.ShopId ? "(Current Shop)" : "")
+                            </option>
+                        }
+                    </select>
+                    @if (m_returnToShopId != this.ShopId)
+                    {
+                        <small class="text-purple">
+                            <i class="ti ti-info-circle me-1"></i>
+                            Cross-shop return: Vehicle will be transferred to the selected shop.
+                        </small>
+                    }
+                </div>
+            }
+
+            @if (m_extraDays > 0 && !m_isIntervalRental)
             {
                 <div class="alert alert-warning mt-3">
                     <div class="d-flex align-items-center">
                         <i class="ti ti-alert-triangle me-2"></i>
                         <div>
                             <strong>Late Return:</strong> @m_extraDays day(s) past expected return date.
-                            Additional charge: @FormatCurrency(m_extraDays * Entity.DailyRate)
+                            Additional charge: @FormatCurrency(m_extraDays * Entity.RentalRate)
                         </div>
                     </div>
                 </div>
             }
-            else if (m_extraDays < 0)
+            else if (m_extraDays < 0 && !m_isIntervalRental)
             {
                 <div class="alert alert-info mt-3">
                     <div class="d-flex align-items-center">
@@ -124,7 +167,7 @@
                             <i class="ti ti-circle-check text-success fs-2 me-3"></i>
                             <div>
                                 <div class="fw-bold">No Damage</div>
-                                <small class="text-secondary">Motorbike returned in good condition</small>
+                                <small class="text-secondary">Vehicle returned in good condition</small>
                             </div>
                         </div>
                     </div>
@@ -309,7 +352,7 @@
                         <div class="flex-grow-1">
                             <strong>Maintenance Notice</strong>
                             <div class="mt-1">
-                                This motorbike has
+                                This vehicle has
                                 @if (m_maintenanceOverdueCount > 0)
                                 {
                                     <span class="badge bg-danger mx-1">@m_maintenanceOverdueCount overdue</span>
@@ -352,8 +395,16 @@
 
     // Rental details
     private string m_renterName = "";
-    private string m_motorbikeName = "";
+    private string m_vehicleName = "";
+    private Vehicle? m_vehicle;
     private decimal m_depositAmount;
+    private bool m_isIntervalRental;
+    private bool m_showMileage;
+
+    // Cross-shop return for pooled vehicles
+    private bool m_isPooledVehicle;
+    private List<Shop> m_poolShops = [];
+    private int m_returnToShopId;
 
     // Return details
     private DateTime? m_actualReturnDate;
@@ -376,18 +427,28 @@
     private bool m_acknowledgeMaintenanceWarning;
 
     // Calculated values
-    private int m_extraDays => this.m_actualReturnDate.HasValue
+    private int m_extraDays => this.m_actualReturnDate.HasValue && !this.m_isIntervalRental
         ? Math.Max(0, (int)(this.m_actualReturnDate.Value - this.Entity.ExpectedEndDate.Date).TotalDays)
         : 0;
 
-    private decimal m_extraDaysCharge => this.m_extraDays * this.Entity.DailyRate;
+    private decimal m_extraDaysCharge => this.m_extraDays * this.Entity.RentalRate;
     private decimal m_totalAdditional => this.m_extraDaysCharge + (this.m_damageLevel != "None" ? this.m_damageEstimate : 0);
     private decimal m_refundAmount => Math.Max(0, this.m_depositAmount - this.m_totalAdditional);
 
-    private bool CanComplete => this.m_actualReturnDate.HasValue &&
-                                this.m_mileageEnd >= this.Entity.MileageStart &&
+    private bool CanComplete => (this.m_actualReturnDate.HasValue || this.m_isIntervalRental) &&
+                                (!this.m_showMileage || this.m_mileageEnd >= this.Entity.MileageStart) &&
                                 (this.m_refundAmount == 0 || this.m_refundProcessed) &&
                                 (!this.m_hasMaintenanceWarning || this.m_acknowledgeMaintenanceWarning);
+
+    private string GetVehicleTypeLabel() => this.m_vehicle?.VehicleType switch
+    {
+        VehicleType.Motorbike => "Motorbike",
+        VehicleType.Car => "Car",
+        VehicleType.JetSki => "Jet Ski",
+        VehicleType.Boat => "Boat",
+        VehicleType.Van => "Van",
+        _ => "Vehicle"
+    };
 
     protected override async Task OnInitializedAsync()
     {
@@ -397,27 +458,47 @@
             // Set defaults
             this.m_actualReturnDate = DateTime.Today;
             this.m_mileageEnd = this.Entity.MileageStart;
+            this.m_returnToShopId = this.ShopId;
 
             // Load renter name
             var renter = await this.DataContext.LoadOneAsync<Renter>(r => r.RenterId == this.Entity.RenterId);
             this.m_renterName = renter?.FullName ?? "Unknown";
 
-            // Load motorbike name
-            var motorbike = await this.DataContext.LoadOneAsync<Motorbike>(m => m.MotorbikeId == this.Entity.MotorbikeId);
-            this.m_motorbikeName = motorbike != null ? $"{motorbike.Brand} {motorbike.Model} ({motorbike.LicensePlate})" : "Unknown";
-            if (motorbike != null)
-                this.m_mileageEnd = motorbike.Mileage;
+            // Load vehicle
+            var vehicleId = this.Entity.VehicleId;
+            this.m_vehicle = vehicleId > 0
+                ? await this.DataContext.LoadOneAsync<Vehicle>(v => v.VehicleId == vehicleId)
+                : null;
+            if (this.m_vehicle != null)
+            {
+                this.m_vehicleName = $"{this.m_vehicle.Brand} {this.m_vehicle.Model} ({this.m_vehicle.LicensePlate})";
+                this.m_mileageEnd = this.m_vehicle.Mileage ?? 0;
+                this.m_isIntervalRental = this.Entity.DurationType == RentalDurationType.FixedInterval;
+                this.m_showMileage = this.m_vehicle.VehicleType == VehicleType.Motorbike ||
+                                     this.m_vehicle.VehicleType == VehicleType.Car ||
+                                     this.m_vehicle.VehicleType == VehicleType.Van;
+
+                // Check if vehicle is in a pool for cross-shop returns
+                if (this.m_vehicle.VehiclePoolId.HasValue)
+                {
+                    this.m_isPooledVehicle = true;
+                    this.m_poolShops = await this.VehiclePoolService.GetShopsInPoolAsync(this.m_vehicle.VehiclePoolId.Value);
+                }
+            }
 
             // Load deposit
             var deposit = await this.DataContext.LoadOneAsync<Deposit>(d => d.RentalId == this.Entity.RentalId);
             this.m_depositAmount = deposit?.Amount ?? 0;
 
-            // Check maintenance status
-            var maintenanceSummary = await this.MaintenanceService.GetMotorbikeMaintenanceSummaryAsync(
-                this.Entity.MotorbikeId, DateTimeOffset.Now);
-            this.m_maintenanceOverdueCount = maintenanceSummary.OverdueCount;
-            this.m_maintenanceDueSoonCount = maintenanceSummary.DueSoonCount;
-            this.m_hasMaintenanceWarning = maintenanceSummary.OverallStatus != MaintenanceStatus.Ok;
+            // Check maintenance status (only for vehicles that track mileage)
+            if (this.m_showMileage && this.m_vehicle != null)
+            {
+                var maintenanceSummary = await this.MaintenanceService.GetMotorbikeMaintenanceSummaryAsync(
+                    this.m_vehicle.VehicleId, DateTimeOffset.Now);
+                this.m_maintenanceOverdueCount = maintenanceSummary.OverdueCount;
+                this.m_maintenanceDueSoonCount = maintenanceSummary.DueSoonCount;
+                this.m_hasMaintenanceWarning = maintenanceSummary.OverallStatus != MaintenanceStatus.Ok;
+            }
         }
         catch (Exception ex)
         {
@@ -441,7 +522,7 @@
 
     private async Task CompleteCheckOut()
     {
-        if (!this.m_actualReturnDate.HasValue) return;
+        if (!this.m_actualReturnDate.HasValue && !this.m_isIntervalRental) return;
 
         this.Saving = true;
         try
@@ -449,11 +530,15 @@
             var request = new CheckOutRequest
             {
                 RentalId = this.Entity.RentalId,
-                ActualEndDate = new DateTimeOffset(this.m_actualReturnDate.Value, TimeSpan.Zero),
-                MileageEnd = this.m_mileageEnd,
+                ActualEndDate = this.m_isIntervalRental
+                    ? DateTimeOffset.Now
+                    : new DateTimeOffset(this.m_actualReturnDate!.Value, TimeSpan.Zero),
+                MileageEnd = this.m_showMileage ? this.m_mileageEnd : 0,
                 Notes = this.m_notes,
                 PaymentMethod = this.m_refundMethod,
-                RefundDeposit = this.m_refundAmount > 0
+                RefundDeposit = this.m_refundAmount > 0,
+                // Cross-shop return
+                ReturnShopId = this.m_isPooledVehicle ? this.m_returnToShopId : null
             };
 
             if (this.m_damageLevel != "None" && !string.IsNullOrEmpty(this.m_damageDescription))
@@ -472,7 +557,12 @@
 
             if (result.Success)
             {
-                this.ShowSuccess($"Check-out completed. Refund: {FormatCurrency(result.RefundAmount)}");
+                var message = $"Check-out completed.";
+                if (this.m_refundAmount > 0)
+                    message += $" Refund: {FormatCurrency(result.RefundAmount)}";
+                if (this.m_returnToShopId != this.ShopId)
+                    message += $" Vehicle transferred to {this.m_poolShops.FirstOrDefault(s => s.ShopId == this.m_returnToShopId)?.Name}";
+                this.ShowSuccess(message);
                 this.Close();
             }
             else
