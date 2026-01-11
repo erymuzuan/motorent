@@ -12,11 +12,21 @@ public class InsuranceService(RentalDataContext context)
         int page = 1,
         int pageSize = 20)
     {
-        var query = this.Context.Insurances
-            .Where(i => i.ShopId == shopId)
-            .OrderByDescending(i => i.InsuranceId);
+        // Load all and filter in memory (Repository doesn't handle complex expressions)
+        var all = await this.Context.LoadAsync(this.Context.Insurances, 1, 1000, false);
+        var filtered = all.ItemCollection
+            .Where(i => i.ShopId == shopId || i.ShopId == 0)
+            .OrderByDescending(i => i.InsuranceId)
+            .ToList();
 
-        return await this.Context.LoadAsync(query, page, pageSize, includeTotalRows: true);
+        var result = new LoadOperation<Insurance>
+        {
+            Page = page,
+            PageSize = pageSize,
+            TotalRows = filtered.Count,
+            ItemCollection = filtered.Skip((page - 1) * pageSize).Take(pageSize).ToList()
+        };
+        return result;
     }
 
     public async Task<Insurance?> GetInsuranceByIdAsync(int insuranceId)
@@ -26,12 +36,11 @@ public class InsuranceService(RentalDataContext context)
 
     public async Task<List<Insurance>> GetActiveInsurancesAsync(int shopId)
     {
-        var result = await this.Context.LoadAsync(
-            this.Context.Insurances
-                .Where(i => i.ShopId == shopId && i.IsActive),
-            page: 1, size: 100, includeTotalRows: false);
-
-        return result.ItemCollection;
+        // Load all and filter in memory (Repository doesn't handle && expressions)
+        var all = await this.Context.LoadAsync(this.Context.Insurances, 1, 1000, false);
+        return all.ItemCollection
+            .Where(i => (i.ShopId == shopId || i.ShopId == 0) && i.IsActive)
+            .ToList();
     }
 
     public async Task<SubmitOperation> CreateInsuranceAsync(Insurance insurance, string username)
@@ -70,11 +79,10 @@ public class InsuranceService(RentalDataContext context)
 
     public async Task<Dictionary<bool, int>> GetActiveCountsAsync(int shopId)
     {
-        var allInsurance = await this.Context.LoadAsync(
-            this.Context.Insurances.Where(i => i.ShopId == shopId),
-            page: 1, size: 1000, includeTotalRows: false);
-
-        return allInsurance.ItemCollection
+        // Load all and filter in memory
+        var all = await this.Context.LoadAsync(this.Context.Insurances, 1, 1000, false);
+        return all.ItemCollection
+            .Where(i => i.ShopId == shopId || i.ShopId == 0)
             .GroupBy(i => i.IsActive)
             .ToDictionary(g => g.Key, g => g.Count());
     }

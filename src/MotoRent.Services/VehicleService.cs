@@ -434,3 +434,4 @@ public class VehicleAvailability
     public int CurrentLocationShopId { get; set; }
     public string? CurrentLocationShopName { get; set; }
 }
+
