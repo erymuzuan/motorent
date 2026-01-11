@@ -52,7 +52,7 @@ Common error patterns:
 Once build succeeds:
 1. Get browser tab context with `tabs_context_mcp`
 2. Create a new tab with `tabs_create_mcp`
-3. Navigate to `https://localhost:7103` (or red the configured port in environment variable `MOTO_BaseUrl`)
+3. Navigate to url configured in environment variable `MOTO_BaseUrl`
 4. Use `read_page`, `find`, and `computer` tools to interact with the app
 5. Verify the feature works as expected
 
@@ -64,7 +64,7 @@ If browser verification fails:
 3. Wait for rebuild
 4. Verify again in browser
 5. Repeat until feature works correctly
-6. if the server "Unable to apply hot reload because of a rude edit" , Press "Ctrl + R" to restart
+6. if the server output "Unable to apply hot reload because of a rude edit" or when changes don't seem to be applying correctly. Press "Ctrl + R" to restart the watch
 
 ## Example session
 
