@@ -16,18 +16,15 @@ public class DocumentsController : ControllerBase
 {
     private readonly DocumentOcrService m_ocrService;
     private readonly IRequestContext m_requestContext;
-    private readonly IConfiguration m_configuration;
     private readonly ILogger<DocumentsController> m_logger;
 
     public DocumentsController(
         DocumentOcrService ocrService,
         IRequestContext requestContext,
-        IConfiguration configuration,
         ILogger<DocumentsController> logger)
     {
         m_ocrService = ocrService;
         m_requestContext = requestContext;
-        m_configuration = configuration;
         m_logger = logger;
     }
 
@@ -68,7 +65,7 @@ public class DocumentsController : ControllerBase
         try
         {
             // Get upload path from configuration
-            var basePath = m_configuration["FileStorage:BasePath"] ?? "uploads";
+            var basePath = MotoConfig.FileStorageBasePath;
             var accountNo = m_requestContext.GetAccountNo();
             var uploadDir = Path.Combine(Directory.GetCurrentDirectory(), basePath, accountNo ?? "default", "documents");
 
@@ -194,7 +191,7 @@ public class DocumentsController : ControllerBase
     [HttpGet("file/{*filePath}")]
     public IActionResult GetDocumentFile(string filePath)
     {
-        var basePath = m_configuration["FileStorage:BasePath"] ?? "uploads";
+        var basePath = MotoConfig.FileStorageBasePath;
         var fullPath = Path.Combine(Directory.GetCurrentDirectory(), basePath, filePath);
 
         if (!System.IO.File.Exists(fullPath))
@@ -260,7 +257,7 @@ public class DocumentsController : ControllerBase
 
     private string GetRelativePath(string fullPath)
     {
-        var basePath = m_configuration["FileStorage:BasePath"] ?? "uploads";
+        var basePath = MotoConfig.FileStorageBasePath;
         var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), basePath);
         if (fullPath.StartsWith(uploadsDir))
         {

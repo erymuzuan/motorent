@@ -1,8 +1,8 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using MotoRent.Domain.Core;
 using MotoRent.Domain.DataContext;
 using MotoRent.Domain.Entities;
 
@@ -12,7 +12,6 @@ public class DocumentOcrService
 {
     private readonly RentalDataContext m_context;
     private readonly IHttpClientFactory m_httpClientFactory;
-    private readonly IConfiguration m_configuration;
     private readonly ILogger<DocumentOcrService> m_logger;
 
     private static readonly JsonSerializerOptions s_jsonOptions = new()
@@ -25,12 +24,10 @@ public class DocumentOcrService
     public DocumentOcrService(
         RentalDataContext context,
         IHttpClientFactory httpClientFactory,
-        IConfiguration configuration,
         ILogger<DocumentOcrService> logger)
     {
         m_context = context;
         m_httpClientFactory = httpClientFactory;
-        m_configuration = configuration;
         m_logger = logger;
     }
 
@@ -39,8 +36,8 @@ public class DocumentOcrService
         string documentType,
         CancellationToken cancellationToken = default)
     {
-        var apiKey = m_configuration["Gemini:ApiKey"];
-        var model = m_configuration["Gemini:Model"] ?? "gemini-2.0-flash";
+        var apiKey = MotoConfig.GeminiApiKey;
+        var model = MotoConfig.GeminiModel;
 
         if (string.IsNullOrEmpty(apiKey))
         {

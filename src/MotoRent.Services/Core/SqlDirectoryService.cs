@@ -2,7 +2,6 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using MotoRent.Domain.Core;
 using MotoRent.Domain.DataContext;
@@ -15,16 +14,10 @@ namespace MotoRent.Services.Core;
 public class SqlDirectoryService : IDirectoryService
 {
     private readonly CoreDataContext m_context;
-    private readonly IConfiguration m_configuration;
 
-    // Super admin list from configuration
-    private static string[]? s_superAdmins;
-
-    public SqlDirectoryService(CoreDataContext context, IConfiguration configuration)
+    public SqlDirectoryService(CoreDataContext context)
     {
         m_context = context;
-        m_configuration = configuration;
-        s_superAdmins ??= configuration["SUPER_ADMIN"]?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [];
     }
 
     #region User Management
@@ -129,7 +122,7 @@ public class SqlDirectoryService : IDirectoryService
         var claims = new List<Claim>();
 
         // Check if super admin (no account required)
-        if (s_superAdmins?.Contains(userName, StringComparer.OrdinalIgnoreCase) == true)
+        if (MotoConfig.SuperAdmins.Contains(userName, StringComparer.OrdinalIgnoreCase))
         {
             claims.Add(new Claim(ClaimTypes.Name, userName));
             claims.Add(new Claim(ClaimTypes.Role, UserAccount.SUPER_ADMIN));
@@ -225,7 +218,7 @@ public class SqlDirectoryService : IDirectoryService
         var claims = await GetClaimsAsync(userName, account);
         var claimsList = claims.ToList();
 
-        var secret = m_configuration["JWT_SECRET"] ?? "motorent-default-jwt-secret-key-2024";
+        var secret = MotoConfig.JwtSecret;
         var key = Encoding.ASCII.GetBytes(secret);
 
         var tokenHandler = new JwtSecurityTokenHandler();
@@ -248,7 +241,7 @@ public class SqlDirectoryService : IDirectoryService
     {
         try
         {
-            var secret = m_configuration["JWT_SECRET"] ?? "motorent-default-jwt-secret-key-2024";
+            var secret = MotoConfig.JwtSecret;
             var key = Encoding.ASCII.GetBytes(secret);
 
             var tokenHandler = new JwtSecurityTokenHandler();

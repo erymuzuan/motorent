@@ -1,6 +1,5 @@
 using System.Text.RegularExpressions;
 using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Configuration;
 using MotoRent.Domain.Core;
 using MotoRent.Domain.DataContext;
 
@@ -15,20 +14,17 @@ public partial class SqlSubscriptionService : ISubscriptionService
     private readonly IDirectoryService m_directoryService;
     private readonly IRequestContext m_requestContext;
     private readonly QueryProvider m_queryProvider;
-    private readonly IConfiguration m_configuration;
 
     public SqlSubscriptionService(
         CoreDataContext context,
         IDirectoryService directoryService,
         IRequestContext requestContext,
-        QueryProvider queryProvider,
-        IConfiguration configuration)
+        QueryProvider queryProvider)
     {
         m_context = context;
         m_directoryService = directoryService;
         m_requestContext = requestContext;
         m_queryProvider = queryProvider;
-        m_configuration = configuration;
     }
 
     #region Organization Management
@@ -139,7 +135,7 @@ public partial class SqlSubscriptionService : ISubscriptionService
         }
 
         // Read and execute the schema template
-        var databaseFolder = m_configuration["DatabaseSource"] ?? "database";
+        var databaseFolder = MotoConfig.DatabaseSource;
         var schemaFile = Path.Combine(databaseFolder, "001-create-schema.sql");
 
         if (!File.Exists(schemaFile))

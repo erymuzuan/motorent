@@ -16,10 +16,8 @@ builder.Services.AddHttpContextAccessor();
 // Add request context for user/timezone services
 builder.Services.AddScoped<IRequestContext, MotoRentRequestContext>();
 
-// Add MotoRent data context
-var connectionString = builder.Configuration.GetConnectionString("MotoRent")
-    ?? "Server=localhost;Database=MotoRent;Trusted_Connection=True;TrustServerCertificate=True;";
-builder.Services.AddMotoRentDataContext(connectionString);
+// Add MotoRent data context (uses environment variable MOTO_SqlConnectionString)
+builder.Services.AddMotoRentDataContext(MotoConfig.SqlConnectionString);
 
 // Add MotoRent services
 builder.Services.AddScoped<MotorbikeService>();
@@ -72,27 +70,27 @@ var authBuilder = builder.Services.AddAuthentication(options =>
     options.ExpireTimeSpan = TimeSpan.FromMinutes(10);
 });
 
-// Add Google authentication only if configured
-var googleClientId = builder.Configuration["Authentication:Google:ClientId"];
+// Add Google authentication only if configured (uses MOTO_GoogleClientId, MOTO_GoogleClientSecret)
+var googleClientId = MotoConfig.GoogleClientId;
 if (!string.IsNullOrEmpty(googleClientId))
 {
     authBuilder.AddGoogle(options =>
     {
         options.ClientId = googleClientId;
-        options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"] ?? "";
+        options.ClientSecret = MotoConfig.GoogleClientSecret ?? "";
         options.SignInScheme = "ExternalAuth";
         options.CallbackPath = "/signin-google";
     });
 }
 
-// Add Microsoft authentication only if configured
-var microsoftClientId = builder.Configuration["Authentication:Microsoft:ClientId"];
+// Add Microsoft authentication only if configured (uses MOTO_MicrosoftClientId, MOTO_MicrosoftClientSecret)
+var microsoftClientId = MotoConfig.MicrosoftClientId;
 if (!string.IsNullOrEmpty(microsoftClientId))
 {
     authBuilder.AddMicrosoftAccount(options =>
     {
         options.ClientId = microsoftClientId;
-        options.ClientSecret = builder.Configuration["Authentication:Microsoft:ClientSecret"] ?? "";
+        options.ClientSecret = MotoConfig.MicrosoftClientSecret ?? "";
         options.SignInScheme = "ExternalAuth";
         options.CallbackPath = "/signin-microsoft";
     });
