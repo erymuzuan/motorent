@@ -8,11 +8,14 @@ using MotoRent.Domain.Entities;
 
 namespace MotoRent.Services;
 
-public class DocumentOcrService
+public class DocumentOcrService(
+    RentalDataContext context,
+    IHttpClientFactory httpClientFactory,
+    ILogger<DocumentOcrService> logger)
 {
-    private readonly RentalDataContext m_context;
-    private readonly IHttpClientFactory m_httpClientFactory;
-    private readonly ILogger<DocumentOcrService> m_logger;
+    private RentalDataContext Context { get; } = context;
+    private IHttpClientFactory HttpClientFactory { get; } = httpClientFactory;
+    private ILogger<DocumentOcrService> Logger { get; } = logger;
 
     private static readonly JsonSerializerOptions s_jsonOptions = new()
     {
@@ -20,16 +23,6 @@ public class DocumentOcrService
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         WriteIndented = true
     };
-
-    public DocumentOcrService(
-        RentalDataContext context,
-        IHttpClientFactory httpClientFactory,
-        ILogger<DocumentOcrService> logger)
-    {
-        m_context = context;
-        m_httpClientFactory = httpClientFactory;
-        m_logger = logger;
-    }
 
     public async Task<ExtractedDocumentData> ExtractDocumentDataAsync(
         string imagePath,
@@ -41,7 +34,7 @@ public class DocumentOcrService
 
         if (string.IsNullOrEmpty(apiKey))
         {
-            m_logger.LogWarning("Gemini API key not configured, returning empty extraction");
+            this.Logger.LogWarning("Gemini API key not configured, returning empty extraction");
             return new ExtractedDocumentData { DocumentType = documentType };
         }
 
@@ -52,7 +45,7 @@ public class DocumentOcrService
         var prompt = GetExtractionPrompt(documentType);
         var request = CreateGeminiRequest(base64Image, mimeType, prompt);
 
-        var client = m_httpClientFactory.CreateClient("Gemini");
+        var client = this.HttpClientFactory.CreateClient("Gemini");
         var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}";
 
         try
@@ -63,13 +56,13 @@ public class DocumentOcrService
             var geminiResponse = await response.Content.ReadFromJsonAsync<GeminiResponse>(s_jsonOptions, cancellationToken);
             var rawJson = geminiResponse?.Candidates?.FirstOrDefault()?.Content?.Parts?.FirstOrDefault()?.Text ?? "{}";
 
-            m_logger.LogInformation("Gemini OCR response received for {DocumentType}", documentType);
+            this.Logger.LogInformation("Gemini OCR response received for {DocumentType}", documentType);
 
-            return ParseExtractedData(rawJson, documentType);
+            return this.ParseExtractedData(rawJson, documentType);
         }
         catch (Exception ex)
         {
-            m_logger.LogError(ex, "Failed to extract document data from Gemini API");
+            this.Logger.LogError(ex, "Failed to extract document data from Gemini API");
             return new ExtractedDocumentData { DocumentType = documentType, Error = ex.Message };
         }
     }
@@ -92,7 +85,7 @@ public class DocumentOcrService
             IsVerified = false
         };
 
-        using var session = m_context.OpenSession(username);
+        using var session = this.Context.OpenSession(username);
         session.Attach(document);
         await session.SubmitChanges("DocumentUpload");
 
@@ -101,7 +94,7 @@ public class DocumentOcrService
 
     public async Task<SubmitOperation> VerifyDocumentAsync(int documentId, bool isVerified, string username)
     {
-        var document = await m_context.LoadOneAsync<Document>(d => d.DocumentId == documentId);
+        var document = await this.Context.LoadOneAsync<Document>(d => d.DocumentId == documentId);
         if (document == null)
         {
             return SubmitOperation.CreateFailure("Document not found");
@@ -109,23 +102,23 @@ public class DocumentOcrService
 
         document.IsVerified = isVerified;
 
-        using var session = m_context.OpenSession(username);
+        using var session = this.Context.OpenSession(username);
         session.Attach(document);
         return await session.SubmitChanges("DocumentVerification");
     }
 
     public async Task<Document?> GetDocumentByIdAsync(int documentId)
     {
-        return await m_context.LoadOneAsync<Document>(d => d.DocumentId == documentId);
+        return await this.Context.LoadOneAsync<Document>(d => d.DocumentId == documentId);
     }
 
     public async Task<List<Document>> GetDocumentsByRenterAsync(int renterId)
     {
-        var query = m_context.Documents
+        var query = this.Context.Documents
             .Where(d => d.RenterId == renterId)
             .OrderByDescending(d => d.UploadedOn);
 
-        var result = await m_context.LoadAsync(query, page: 1, size: 50, includeTotalRows: false);
+        var result = await this.Context.LoadAsync(query, page: 1, size: 50, includeTotalRows: false);
         return result.ItemCollection;
     }
 
@@ -140,11 +133,11 @@ public class DocumentOcrService
             }
             catch (Exception ex)
             {
-                m_logger.LogWarning(ex, "Failed to delete document file: {ImagePath}", document.ImagePath);
+                this.Logger.LogWarning(ex, "Failed to delete document file: {ImagePath}", document.ImagePath);
             }
         }
 
-        using var session = m_context.OpenSession(username);
+        using var session = this.Context.OpenSession(username);
         session.Delete(document);
         return await session.SubmitChanges("DocumentDelete");
     }
@@ -315,7 +308,7 @@ public class DocumentOcrService
         }
         catch (JsonException ex)
         {
-            m_logger.LogWarning(ex, "Failed to parse Gemini response JSON");
+            this.Logger.LogWarning(ex, "Failed to parse Gemini response JSON");
             return new ExtractedDocumentData
             {
                 DocumentType = documentType,

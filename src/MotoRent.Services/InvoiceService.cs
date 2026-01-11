@@ -3,58 +3,53 @@ using MotoRent.Domain.Entities;
 
 namespace MotoRent.Services;
 
-public class InvoiceService
+public class InvoiceService(RentalDataContext context)
 {
-    private readonly RentalDataContext m_context;
-
-    public InvoiceService(RentalDataContext context)
-    {
-        m_context = context;
-    }
+    private RentalDataContext Context { get; } = context;
 
     public async Task<InvoiceData?> GenerateInvoiceAsync(int rentalId)
     {
         // Load rental
-        var rental = await m_context.LoadOneAsync<Rental>(r => r.RentalId == rentalId);
+        var rental = await this.Context.LoadOneAsync<Rental>(r => r.RentalId == rentalId);
         if (rental == null) return null;
 
         // Load renter
-        var renter = await m_context.LoadOneAsync<Renter>(r => r.RenterId == rental.RenterId);
+        var renter = await this.Context.LoadOneAsync<Renter>(r => r.RenterId == rental.RenterId);
 
         // Load motorbike
-        var motorbike = await m_context.LoadOneAsync<Motorbike>(m => m.MotorbikeId == rental.MotorbikeId);
+        var motorbike = await this.Context.LoadOneAsync<Motorbike>(m => m.MotorbikeId == rental.MotorbikeId);
 
         // Load shop
-        var shop = await m_context.LoadOneAsync<Shop>(s => s.ShopId == rental.ShopId);
+        var shop = await this.Context.LoadOneAsync<Shop>(s => s.ShopId == rental.ShopId);
 
         // Load deposit
-        var deposit = await m_context.LoadOneAsync<Deposit>(d => d.RentalId == rentalId);
+        var deposit = await this.Context.LoadOneAsync<Deposit>(d => d.RentalId == rentalId);
 
         // Load insurance if applicable
         Insurance? insurance = null;
         if (rental.InsuranceId.HasValue)
         {
-            insurance = await m_context.LoadOneAsync<Insurance>(i => i.InsuranceId == rental.InsuranceId);
+            insurance = await this.Context.LoadOneAsync<Insurance>(i => i.InsuranceId == rental.InsuranceId);
         }
 
         // Load accessories
-        var accessories = await m_context.LoadAsync(
-            m_context.RentalAccessories.Where(ra => ra.RentalId == rentalId),
+        var accessories = await this.Context.LoadAsync(
+            this.Context.RentalAccessories.Where(ra => ra.RentalId == rentalId),
             page: 1, size: 100, includeTotalRows: false);
 
         var accessoryIds = accessories.ItemCollection.Select(ra => ra.AccessoryId).ToList();
         var accessoryDetails = new List<Accessory>();
         if (accessoryIds.Count != 0)
         {
-            var accResult = await m_context.LoadAsync(
-                m_context.Accessories.Where(a => accessoryIds.Contains(a.AccessoryId)),
+            var accResult = await this.Context.LoadAsync(
+                this.Context.Accessories.Where(a => accessoryIds.Contains(a.AccessoryId)),
                 page: 1, size: 100, includeTotalRows: false);
             accessoryDetails = accResult.ItemCollection.ToList();
         }
 
         // Load payments
-        var payments = await m_context.LoadAsync(
-            m_context.Payments.Where(p => p.RentalId == rentalId),
+        var payments = await this.Context.LoadAsync(
+            this.Context.Payments.Where(p => p.RentalId == rentalId),
             page: 1, size: 100, includeTotalRows: false);
 
         // Calculate values
@@ -209,9 +204,9 @@ public class InvoiceData
     public string RentalStatus { get; set; } = "";
 
     // Calculated
-    public decimal TotalPaid => Payments.Where(p => p.PaymentType != "Refund").Sum(p => p.Amount);
-    public decimal TotalRefunded => Payments.Where(p => p.PaymentType == "Refund").Sum(p => p.Amount);
-    public decimal BalanceDue => Total - TotalPaid + TotalRefunded;
+    public decimal TotalPaid => this.Payments.Where(p => p.PaymentType != "Refund").Sum(p => p.Amount);
+    public decimal TotalRefunded => this.Payments.Where(p => p.PaymentType == "Refund").Sum(p => p.Amount);
+    public decimal BalanceDue => this.Total - this.TotalPaid + this.TotalRefunded;
 }
 
 public class InvoiceLineItem

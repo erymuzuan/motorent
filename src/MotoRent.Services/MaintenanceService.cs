@@ -3,24 +3,19 @@ using MotoRent.Domain.Entities;
 
 namespace MotoRent.Services;
 
-public class MaintenanceService
+public class MaintenanceService(RentalDataContext context)
 {
-    private readonly RentalDataContext m_context;
+    private RentalDataContext Context { get; } = context;
 
     // Warning thresholds
     private const int c_warningDays = 7;
     private const int c_warningKm = 200;
 
-    public MaintenanceService(RentalDataContext context)
-    {
-        m_context = context;
-    }
-
     #region ServiceType CRUD
 
     public async Task<LoadOperation<ServiceType>> GetServiceTypesAsync(int shopId, bool activeOnly = true)
     {
-        var query = m_context.ServiceTypes
+        var query = this.Context.ServiceTypes
             .Where(st => st.ShopId == shopId);
 
         if (activeOnly)
@@ -28,31 +23,31 @@ public class MaintenanceService
 
         query = query.OrderBy(st => st.SortOrder);
 
-        return await m_context.LoadAsync(query, page: 1, size: 100, includeTotalRows: false);
+        return await this.Context.LoadAsync(query, page: 1, size: 100, includeTotalRows: false);
     }
 
     public async Task<ServiceType?> GetServiceTypeByIdAsync(int serviceTypeId)
     {
-        return await m_context.LoadOneAsync<ServiceType>(st => st.ServiceTypeId == serviceTypeId);
+        return await this.Context.LoadOneAsync<ServiceType>(st => st.ServiceTypeId == serviceTypeId);
     }
 
     public async Task<SubmitOperation> CreateServiceTypeAsync(ServiceType serviceType, string username)
     {
-        using var session = m_context.OpenSession(username);
+        using var session = this.Context.OpenSession(username);
         session.Attach(serviceType);
         return await session.SubmitChanges("CreateServiceType");
     }
 
     public async Task<SubmitOperation> UpdateServiceTypeAsync(ServiceType serviceType, string username)
     {
-        using var session = m_context.OpenSession(username);
+        using var session = this.Context.OpenSession(username);
         session.Attach(serviceType);
         return await session.SubmitChanges("UpdateServiceType");
     }
 
     public async Task<SubmitOperation> DeleteServiceTypeAsync(ServiceType serviceType, string username)
     {
-        using var session = m_context.OpenSession(username);
+        using var session = this.Context.OpenSession(username);
         session.Delete(serviceType);
         return await session.SubmitChanges("DeleteServiceType");
     }
@@ -67,7 +62,7 @@ public class MaintenanceService
             new() { ShopId = shopId, Name = "General Service", Description = "Full vehicle inspection and maintenance", DaysInterval = 180, KmInterval = 15000, SortOrder = 4, IsActive = true }
         };
 
-        using var session = m_context.OpenSession(username);
+        using var session = this.Context.OpenSession(username);
         foreach (var st in defaults)
             session.Attach(st);
         return await session.SubmitChanges("CreateDefaultServiceTypes");
@@ -79,8 +74,8 @@ public class MaintenanceService
 
     public async Task<List<MaintenanceSchedule>> GetSchedulesForMotorbikeAsync(int motorbikeId)
     {
-        var result = await m_context.LoadAsync(
-            m_context.MaintenanceSchedules.Where(ms => ms.MotorbikeId == motorbikeId),
+        var result = await this.Context.LoadAsync(
+            this.Context.MaintenanceSchedules.Where(ms => ms.MotorbikeId == motorbikeId),
             page: 1, size: 100, includeTotalRows: false);
         return result.ItemCollection.ToList();
     }
@@ -88,29 +83,29 @@ public class MaintenanceService
     public async Task<List<MaintenanceScheduleWithStatus>> GetSchedulesWithStatusForMotorbikeAsync(
         int motorbikeId, int currentMileage, DateTimeOffset today)
     {
-        var schedules = await GetSchedulesForMotorbikeAsync(motorbikeId);
-        return schedules.Select(s => CreateScheduleWithStatus(s, currentMileage, today)).ToList();
+        var schedules = await this.GetSchedulesForMotorbikeAsync(motorbikeId);
+        return schedules.Select(s => this.CreateScheduleWithStatus(s, currentMileage, today)).ToList();
     }
 
     public async Task<SubmitOperation> RecordServiceAsync(RecordServiceRequest request, string username)
     {
         // Load or create the maintenance schedule for this service type
-        var schedule = await m_context.LoadOneAsync<MaintenanceSchedule>(
+        var schedule = await this.Context.LoadOneAsync<MaintenanceSchedule>(
             ms => ms.MotorbikeId == request.MotorbikeId && ms.ServiceTypeId == request.ServiceTypeId);
 
-        var serviceType = await m_context.LoadOneAsync<ServiceType>(
+        var serviceType = await this.Context.LoadOneAsync<ServiceType>(
             st => st.ServiceTypeId == request.ServiceTypeId);
 
         if (serviceType == null)
             return SubmitOperation.CreateFailure("Service type not found");
 
-        var motorbike = await m_context.LoadOneAsync<Motorbike>(
+        var motorbike = await this.Context.LoadOneAsync<Motorbike>(
             m => m.MotorbikeId == request.MotorbikeId);
 
         if (motorbike == null)
             return SubmitOperation.CreateFailure("Motorbike not found");
 
-        using var session = m_context.OpenSession(username);
+        using var session = this.Context.OpenSession(username);
 
         if (schedule == null)
         {
@@ -145,19 +140,19 @@ public class MaintenanceService
     public async Task<SubmitOperation> InitializeSchedulesForMotorbikeAsync(int motorbikeId, int shopId, string username)
     {
         // Get all active service types for the shop
-        var serviceTypesResult = await GetServiceTypesAsync(shopId, activeOnly: true);
-        var motorbike = await m_context.LoadOneAsync<Motorbike>(m => m.MotorbikeId == motorbikeId);
+        var serviceTypesResult = await this.GetServiceTypesAsync(shopId, activeOnly: true);
+        var motorbike = await this.Context.LoadOneAsync<Motorbike>(m => m.MotorbikeId == motorbikeId);
 
         if (motorbike == null)
             return SubmitOperation.CreateFailure("Motorbike not found");
 
-        using var session = m_context.OpenSession(username);
+        using var session = this.Context.OpenSession(username);
         int created = 0;
 
         foreach (var st in serviceTypesResult.ItemCollection)
         {
             // Check if schedule already exists
-            var existing = await m_context.LoadOneAsync<MaintenanceSchedule>(
+            var existing = await this.Context.LoadOneAsync<MaintenanceSchedule>(
                 ms => ms.MotorbikeId == motorbikeId && ms.ServiceTypeId == st.ServiceTypeId);
 
             if (existing == null)
@@ -211,7 +206,7 @@ public class MaintenanceService
     public MaintenanceScheduleWithStatus CreateScheduleWithStatus(
         MaintenanceSchedule schedule, int currentMileage, DateTimeOffset today)
     {
-        var status = CalculateStatus(
+        var status = this.CalculateStatus(
             schedule.NextDueDate, schedule.NextDueMileage,
             currentMileage, today);
 
@@ -231,15 +226,15 @@ public class MaintenanceService
         int shopId, DateTimeOffset today, int limit = 10)
     {
         // Get all motorbikes for the shop (excluding those already in maintenance)
-        var bikesResult = await m_context.LoadAsync(
-            m_context.Motorbikes.Where(m => m.ShopId == shopId && m.Status != "Maintenance"),
+        var bikesResult = await this.Context.LoadAsync(
+            this.Context.Motorbikes.Where(m => m.ShopId == shopId && m.Status != "Maintenance"),
             page: 1, size: 1000, includeTotalRows: false);
 
         var alerts = new List<MaintenanceAlertItem>();
 
         foreach (var bike in bikesResult.ItemCollection)
         {
-            var schedules = await GetSchedulesWithStatusForMotorbikeAsync(
+            var schedules = await this.GetSchedulesWithStatusForMotorbikeAsync(
                 bike.MotorbikeId, bike.Mileage, today);
 
             foreach (var schedule in schedules.Where(s => s.Status != MaintenanceStatus.Ok))
@@ -268,11 +263,11 @@ public class MaintenanceService
     public async Task<MotorbikeMaintenanceSummary> GetMotorbikeMaintenanceSummaryAsync(
         int motorbikeId, DateTimeOffset today)
     {
-        var motorbike = await m_context.LoadOneAsync<Motorbike>(m => m.MotorbikeId == motorbikeId);
+        var motorbike = await this.Context.LoadOneAsync<Motorbike>(m => m.MotorbikeId == motorbikeId);
         if (motorbike == null)
             return new MotorbikeMaintenanceSummary { MotorbikeId = motorbikeId };
 
-        var schedules = await GetSchedulesWithStatusForMotorbikeAsync(
+        var schedules = await this.GetSchedulesWithStatusForMotorbikeAsync(
             motorbikeId, motorbike.Mileage, today);
 
         return new MotorbikeMaintenanceSummary
@@ -292,15 +287,15 @@ public class MaintenanceService
     public async Task<ShopMaintenanceSummary> GetShopMaintenanceSummaryAsync(
         int shopId, DateTimeOffset today)
     {
-        var bikesResult = await m_context.LoadAsync(
-            m_context.Motorbikes.Where(m => m.ShopId == shopId),
+        var bikesResult = await this.Context.LoadAsync(
+            this.Context.Motorbikes.Where(m => m.ShopId == shopId),
             page: 1, size: 1000, includeTotalRows: false);
 
         int overdueBikes = 0, dueSoonBikes = 0, okBikes = 0;
 
         foreach (var bike in bikesResult.ItemCollection)
         {
-            var summary = await GetMotorbikeMaintenanceSummaryAsync(bike.MotorbikeId, today);
+            var summary = await this.GetMotorbikeMaintenanceSummaryAsync(bike.MotorbikeId, today);
             switch (summary.OverallStatus)
             {
                 case MaintenanceStatus.Overdue: overdueBikes++; break;

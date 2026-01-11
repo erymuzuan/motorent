@@ -11,27 +11,22 @@ namespace MotoRent.Services.Core;
 /// <summary>
 /// SQL-based directory service for user authentication, claims generation, and organization management.
 /// </summary>
-public class SqlDirectoryService : IDirectoryService
+public class SqlDirectoryService(CoreDataContext context) : IDirectoryService
 {
-    private readonly CoreDataContext m_context;
-
-    public SqlDirectoryService(CoreDataContext context)
-    {
-        m_context = context;
-    }
+    private CoreDataContext Context { get; } = context;
 
     #region User Management
 
     public async Task<User?> GetUserAsync(string userName)
     {
-        return await m_context.LoadOneAsync<User>(u => u.UserName == userName);
+        return await this.Context.LoadOneAsync<User>(u => u.UserName == userName);
     }
 
     public async Task<IEnumerable<User>> GetUsersAsync(string accountNo)
     {
         // Load all users and filter by account in memory (since AccountCollection is in JSON)
-        var query = m_context.Users.OrderBy(u => u.UserName);
-        var result = await m_context.LoadAsync(query, page: 1, size: 1000, includeTotalRows: false);
+        var query = this.Context.Users.OrderBy(u => u.UserName);
+        var result = await this.Context.LoadAsync(query, page: 1, size: 1000, includeTotalRows: false);
 
         return result.ItemCollection
             .Where(u => u.AccountCollection.Any(a => a.AccountNo == accountNo));
@@ -39,20 +34,20 @@ public class SqlDirectoryService : IDirectoryService
 
     public async Task<IEnumerable<User>> GetUsersInRoleAsync(string accountNo, string role)
     {
-        var users = await GetUsersAsync(accountNo);
+        var users = await this.GetUsersAsync(accountNo);
         return users.Where(u => u.HasRole(accountNo, role));
     }
 
     public async Task SaveUserProfileAsync(User user)
     {
-        using var session = m_context.OpenSession("system");
+        using var session = this.Context.OpenSession("system");
         session.Attach(user);
         await session.SubmitChanges("SaveUserProfile");
     }
 
     public async Task<UserAuthenticationStatus> AuthenticateAsync(string userName, string password)
     {
-        var user = await GetUserAsync(userName);
+        var user = await this.GetUserAsync(userName);
 
         if (user == null)
             return UserAuthenticationStatus.NotFound;
@@ -66,7 +61,7 @@ public class SqlDirectoryService : IDirectoryService
         if (string.IsNullOrWhiteSpace(user.Salt) || string.IsNullOrWhiteSpace(user.HashedPassword))
             return UserAuthenticationStatus.Unauthenticated;
 
-        if (!VerifyPassword(password, user.Salt, user.HashedPassword))
+        if (!this.VerifyPassword(password, user.Salt, user.HashedPassword))
             return UserAuthenticationStatus.Unauthenticated;
 
         return UserAuthenticationStatus.Authenticated;
@@ -78,22 +73,22 @@ public class SqlDirectoryService : IDirectoryService
 
     public async Task<Organization?> GetOrganizationAsync(string accountNo)
     {
-        return await m_context.LoadOneAsync<Organization>(o => o.AccountNo == accountNo);
+        return await this.Context.LoadOneAsync<Organization>(o => o.AccountNo == accountNo);
     }
 
     public async Task<IEnumerable<Organization>> GetOrganizationsAsync()
     {
-        var query = m_context.Organizations
+        var query = this.Context.Organizations
             .Where(o => o.IsActive)
             .OrderBy(o => o.Name);
 
-        var result = await m_context.LoadAsync(query, page: 1, size: 1000, includeTotalRows: false);
+        var result = await this.Context.LoadAsync(query, page: 1, size: 1000, includeTotalRows: false);
         return result.ItemCollection;
     }
 
     public async Task SaveOrganizationAsync(Organization organization)
     {
-        using var session = m_context.OpenSession("system");
+        using var session = this.Context.OpenSession("system");
         session.Attach(organization);
         await session.SubmitChanges("SaveOrganization");
     }
@@ -104,16 +99,16 @@ public class SqlDirectoryService : IDirectoryService
 
     public async Task<string?> GetAccountNoAsync(string userName)
     {
-        var user = await GetUserAsync(userName);
+        var user = await this.GetUserAsync(userName);
         return user?.AccountNo;
     }
 
     public async Task<string[]> GetSubscriptionsAsync(string userName)
     {
-        var user = await GetUserAsync(userName);
+        var user = await this.GetUserAsync(userName);
         if (user?.AccountNo == null) return [];
 
-        var org = await GetOrganizationAsync(user.AccountNo);
+        var org = await this.GetOrganizationAsync(user.AccountNo);
         return org?.Subscriptions ?? [];
     }
 
@@ -132,7 +127,7 @@ public class SqlDirectoryService : IDirectoryService
             // If account is specified, also load that account's claims
             if (!string.IsNullOrWhiteSpace(account))
             {
-                var org = await GetOrganizationAsync(account);
+                var org = await this.GetOrganizationAsync(account);
                 if (org != null)
                 {
                     claims.Add(new Claim("AccountNo", account));
@@ -147,7 +142,7 @@ public class SqlDirectoryService : IDirectoryService
                     }
 
                     // Also load the user's tenant-specific roles if they have an account
-                    var superAdminUser = await GetUserAsync(userName);
+                    var superAdminUser = await this.GetUserAsync(userName);
                     if (superAdminUser != null)
                     {
                         var superAdminAccount = superAdminUser.AccountCollection.FirstOrDefault(a => a.AccountNo == account);
@@ -169,10 +164,10 @@ public class SqlDirectoryService : IDirectoryService
         if (string.IsNullOrWhiteSpace(account))
             return [];
 
-        var user = await GetUserAsync(userName);
+        var user = await this.GetUserAsync(userName);
         if (user == null) return [];
 
-        var organization = await GetOrganizationAsync(account);
+        var organization = await this.GetOrganizationAsync(account);
         if (organization == null) return [];
 
         // Basic claims
@@ -215,7 +210,7 @@ public class SqlDirectoryService : IDirectoryService
 
     public async Task<string> CreateJwtTokenAsync(string userName, string account)
     {
-        var claims = await GetClaimsAsync(userName, account);
+        var claims = await this.GetClaimsAsync(userName, account);
         var claimsList = claims.ToList();
 
         var secret = MotoConfig.JwtSecret;
@@ -289,7 +284,7 @@ public class SqlDirectoryService : IDirectoryService
 
     public bool VerifyPassword(string password, string salt, string hashedPassword)
     {
-        var hash = HashPassword(password, salt);
+        var hash = this.HashPassword(password, salt);
         return hash == hashedPassword;
     }
 

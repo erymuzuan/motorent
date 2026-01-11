@@ -8,39 +8,52 @@ namespace MotoRent.Services.Core;
 /// <summary>
 /// SQL-based service for managing tenant subscriptions and schema provisioning.
 /// </summary>
-public partial class SqlSubscriptionService : ISubscriptionService
+public partial class SqlSubscriptionService(
+    CoreDataContext context,
+    IDirectoryService directoryService,
+    IRequestContext requestContext,
+    QueryProvider queryProvider) : ISubscriptionService
 {
-    private readonly CoreDataContext m_context;
-    private readonly IDirectoryService m_directoryService;
-    private readonly IRequestContext m_requestContext;
-    private readonly QueryProvider m_queryProvider;
+    // Static readonly for table creation order
+    private static readonly string[] s_tableOrder =
+    [
+        "MotoRent.Shop.sql",
+        "MotoRent.Renter.sql",
+        "MotoRent.Document.sql",
+        "MotoRent.Motorbike.sql",
+        "MotoRent.Insurance.sql",
+        "MotoRent.Accessory.sql",
+        "MotoRent.ServiceType.sql",
+        "MotoRent.MaintenanceSchedule.sql",
+        "MotoRent.Rental.sql",
+        "MotoRent.RentalAccessory.sql",
+        "MotoRent.Deposit.sql",
+        "MotoRent.Payment.sql",
+        "MotoRent.DamageReport.sql",
+        "MotoRent.DamagePhoto.sql",
+        "MotoRent.RentalAgreement.sql"
+    ];
 
-    public SqlSubscriptionService(
-        CoreDataContext context,
-        IDirectoryService directoryService,
-        IRequestContext requestContext,
-        QueryProvider queryProvider)
-    {
-        m_context = context;
-        m_directoryService = directoryService;
-        m_requestContext = requestContext;
-        m_queryProvider = queryProvider;
-    }
+    // Private get properties from constructor injection
+    private CoreDataContext Context { get; } = context;
+    private IDirectoryService DirectoryService { get; } = directoryService;
+    private IRequestContext RequestContext { get; } = requestContext;
+    private QueryProvider QueryProvider { get; } = queryProvider;
 
     #region Organization Management
 
     public async Task<Organization?> GetOrgAsync()
     {
-        var accountNo = m_requestContext.GetAccountNo();
+        var accountNo = this.RequestContext.GetAccountNo();
         if (string.IsNullOrWhiteSpace(accountNo)) return null;
 
-        return await m_directoryService.GetOrganizationAsync(accountNo);
+        return await this.DirectoryService.GetOrganizationAsync(accountNo);
     }
 
     public async Task<IEnumerable<Organization>> GetAllOrganizationsAsync()
     {
-        var query = m_context.Organizations.OrderBy(o => o.Name);
-        var result = await m_context.LoadAsync(query, page: 1, size: 1000, includeTotalRows: false);
+        var query = this.Context.Organizations.OrderBy(o => o.Name);
+        var result = await this.Context.LoadAsync(query, page: 1, size: 1000, includeTotalRows: false);
         return result.ItemCollection;
     }
 
@@ -49,14 +62,14 @@ public partial class SqlSubscriptionService : ISubscriptionService
         progressCallback?.Invoke(new ProvisioningProgress { Message = $"Creating organization {organization.Name}..." });
 
         // Save the organization first
-        using var session = m_context.OpenSession("system");
+        using var session = this.Context.OpenSession("system");
         session.Attach(organization);
         await session.SubmitChanges("CreateOrganization");
 
         progressCallback?.Invoke(new ProvisioningProgress { Message = $"Organization saved. Creating schema [{organization.AccountNo}]..." });
 
         // Create the schema and tables
-        await CreateSchemaAsync(organization.AccountNo, progressCallback);
+        await this.CreateSchemaAsync(organization.AccountNo, progressCallback);
 
         progressCallback?.Invoke(new ProvisioningProgress { Message = $"Organization {organization.Name} created successfully!", Status = ProgressStatus.Done });
 
@@ -65,8 +78,8 @@ public partial class SqlSubscriptionService : ISubscriptionService
 
     public async Task<bool> IsAccountNoAvailableAsync(string accountNo)
     {
-        var existing = await m_directoryService.GetOrganizationAsync(accountNo);
-        return existing == null;
+        var existing = await this.DirectoryService.GetOrganizationAsync(accountNo);
+        return existing is null;
     }
 
     public Task<string> CreateAccountNoAsync(string suggestedNo)
@@ -110,7 +123,7 @@ public partial class SqlSubscriptionService : ISubscriptionService
         try
         {
             var schemaSql = $"CREATE SCHEMA [{accountNo}] AUTHORIZATION [dbo]";
-            await using var schemaConn = m_queryProvider.CreateConnection();
+            await using var schemaConn = this.QueryProvider.CreateConnection();
             await using var schemaCommand = new SqlCommand(schemaSql, schemaConn);
             await schemaConn.OpenAsync();
             await schemaCommand.ExecuteNonQueryAsync();
@@ -156,27 +169,7 @@ public partial class SqlSubscriptionService : ISubscriptionService
 
         progressCallback?.Invoke(new ProvisioningProgress { Message = $"Reading table scripts from {tablesFolder}..." });
 
-        // Define table creation order (respecting dependencies)
-        var tableOrder = new[]
-        {
-            "MotoRent.Shop.sql",
-            "MotoRent.Renter.sql",
-            "MotoRent.Document.sql",
-            "MotoRent.Motorbike.sql",
-            "MotoRent.Insurance.sql",
-            "MotoRent.Accessory.sql",
-            "MotoRent.ServiceType.sql",
-            "MotoRent.MaintenanceSchedule.sql",
-            "MotoRent.Rental.sql",
-            "MotoRent.RentalAccessory.sql",
-            "MotoRent.Deposit.sql",
-            "MotoRent.Payment.sql",
-            "MotoRent.DamageReport.sql",
-            "MotoRent.DamagePhoto.sql",
-            "MotoRent.RentalAgreement.sql"
-        };
-
-        foreach (var tableFile in tableOrder)
+        foreach (var tableFile in s_tableOrder)
         {
             var filePath = Path.Combine(tablesFolder, tableFile);
             if (!File.Exists(filePath))
@@ -201,7 +194,7 @@ public partial class SqlSubscriptionService : ISubscriptionService
 
                 try
                 {
-                    await using var conn = m_queryProvider.CreateConnection();
+                    await using var conn = this.QueryProvider.CreateConnection();
                     await using var cmd = new SqlCommand(batch, conn);
                     await conn.OpenAsync();
                     await cmd.ExecuteNonQueryAsync();
@@ -244,7 +237,7 @@ public partial class SqlSubscriptionService : ISubscriptionService
 
         var tables = new List<string>();
 
-        await using (var conn = m_queryProvider.CreateConnection())
+        await using (var conn = this.QueryProvider.CreateConnection())
         {
             await using var cmd = new SqlCommand(tablesSql, conn);
             await conn.OpenAsync();
@@ -258,14 +251,14 @@ public partial class SqlSubscriptionService : ISubscriptionService
         // Drop all tables
         foreach (var table in tables)
         {
-            await using var conn = m_queryProvider.CreateConnection();
+            await using var conn = this.QueryProvider.CreateConnection();
             await using var cmd = new SqlCommand($"DROP TABLE [{accountNo}].[{table}]", conn);
             await conn.OpenAsync();
             await cmd.ExecuteNonQueryAsync();
         }
 
         // Drop the schema
-        await using (var conn = m_queryProvider.CreateConnection())
+        await using (var conn = this.QueryProvider.CreateConnection())
         {
             await using var cmd = new SqlCommand($"DROP SCHEMA [{accountNo}]", conn);
             await conn.OpenAsync();
@@ -273,12 +266,12 @@ public partial class SqlSubscriptionService : ISubscriptionService
         }
 
         // Get all users in this organization
-        var users = (await GetUsersAsync(accountNo)).ToList();
+        var users = (await this.GetUsersAsync(accountNo)).ToList();
 
         // Remove users who only belong to this organization
         foreach (var user in users.Where(u => u.AccountCollection.Count == 1))
         {
-            await using var conn = m_queryProvider.CreateConnection();
+            await using var conn = this.QueryProvider.CreateConnection();
             await using var cmd = new SqlCommand($"DELETE FROM [Core].[User] WHERE [UserId] = {user.UserId}", conn);
             await conn.OpenAsync();
             await cmd.ExecuteNonQueryAsync();
@@ -288,11 +281,11 @@ public partial class SqlSubscriptionService : ISubscriptionService
         foreach (var user in users.Where(u => u.AccountCollection.Count > 1))
         {
             user.AccountCollection.RemoveAll(a => a.AccountNo == accountNo);
-            await m_directoryService.SaveUserProfileAsync(user);
+            await this.DirectoryService.SaveUserProfileAsync(user);
         }
 
         // Delete the organization
-        await using (var conn = m_queryProvider.CreateConnection())
+        await using (var conn = this.QueryProvider.CreateConnection())
         {
             await using var cmd = new SqlCommand($"DELETE FROM [Core].[Organization] WHERE [OrganizationId] = {organization.OrganizationId}", conn);
             await conn.OpenAsync();
@@ -317,7 +310,7 @@ public partial class SqlSubscriptionService : ISubscriptionService
 
     public async Task<IEnumerable<User>> GetUsersAsync(string accountNo)
     {
-        return await m_directoryService.GetUsersAsync(accountNo);
+        return await this.DirectoryService.GetUsersAsync(accountNo);
     }
 
     public async Task AddUserToOrganizationAsync(User user, string accountNo, params string[] roles)
@@ -342,7 +335,7 @@ public partial class SqlSubscriptionService : ISubscriptionService
             user.AccountCollection.Last().Roles.AddRange(roles);
         }
 
-        await m_directoryService.SaveUserProfileAsync(user);
+        await this.DirectoryService.SaveUserProfileAsync(user);
     }
 
     public async Task RemoveUserFromOrganizationAsync(User user, string accountNo)
@@ -352,14 +345,14 @@ public partial class SqlSubscriptionService : ISubscriptionService
         if (user.AccountCollection.Count == 0)
         {
             // Delete the user entirely
-            await using var conn = m_queryProvider.CreateConnection();
+            await using var conn = this.QueryProvider.CreateConnection();
             await using var cmd = new SqlCommand($"DELETE FROM [Core].[User] WHERE [UserId] = {user.UserId}", conn);
             await conn.OpenAsync();
             await cmd.ExecuteNonQueryAsync();
         }
         else
         {
-            await m_directoryService.SaveUserProfileAsync(user);
+            await this.DirectoryService.SaveUserProfileAsync(user);
         }
     }
 

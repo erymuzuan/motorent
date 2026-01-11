@@ -3,14 +3,9 @@ using MotoRent.Domain.Entities;
 
 namespace MotoRent.Services;
 
-public class RentalService
+public class RentalService(RentalDataContext context)
 {
-    private readonly RentalDataContext m_context;
-
-    public RentalService(RentalDataContext context)
-    {
-        m_context = context;
-    }
+    private RentalDataContext Context { get; } = context;
 
     #region CRUD Operations
 
@@ -23,7 +18,7 @@ public class RentalService
         int page = 1,
         int pageSize = 20)
     {
-        var query = m_context.Rentals
+        var query = this.Context.Rentals
             .Where(r => r.ShopId == shopId);
 
         if (!string.IsNullOrWhiteSpace(status))
@@ -43,31 +38,31 @@ public class RentalService
 
         query = query.OrderByDescending(r => r.RentalId);
 
-        return await m_context.LoadAsync(query, page, pageSize, includeTotalRows: true);
+        return await this.Context.LoadAsync(query, page, pageSize, includeTotalRows: true);
     }
 
     public async Task<Rental?> GetRentalByIdAsync(int rentalId)
     {
-        return await m_context.LoadOneAsync<Rental>(r => r.RentalId == rentalId);
+        return await this.Context.LoadOneAsync<Rental>(r => r.RentalId == rentalId);
     }
 
     public async Task<SubmitOperation> CreateRentalAsync(Rental rental, string username)
     {
-        using var session = m_context.OpenSession(username);
+        using var session = this.Context.OpenSession(username);
         session.Attach(rental);
         return await session.SubmitChanges("Create");
     }
 
     public async Task<SubmitOperation> UpdateRentalAsync(Rental rental, string username)
     {
-        using var session = m_context.OpenSession(username);
+        using var session = this.Context.OpenSession(username);
         session.Attach(rental);
         return await session.SubmitChanges("Update");
     }
 
     public async Task<SubmitOperation> DeleteRentalAsync(Rental rental, string username)
     {
-        using var session = m_context.OpenSession(username);
+        using var session = this.Context.OpenSession(username);
         session.Delete(rental);
         return await session.SubmitChanges("Delete");
     }
@@ -78,8 +73,8 @@ public class RentalService
 
     public async Task<Dictionary<string, int>> GetStatusCountsAsync(int shopId)
     {
-        var allRentals = await m_context.LoadAsync(
-            m_context.Rentals.Where(r => r.ShopId == shopId),
+        var allRentals = await this.Context.LoadAsync(
+            this.Context.Rentals.Where(r => r.ShopId == shopId),
             page: 1, size: 10000, includeTotalRows: false);
 
         return allRentals.ItemCollection
@@ -92,8 +87,8 @@ public class RentalService
         var todayStart = today.Date;
         var todayEnd = todayStart.AddDays(1);
 
-        var rentals = await m_context.LoadAsync(
-            m_context.Rentals
+        var rentals = await this.Context.LoadAsync(
+            this.Context.Rentals
                 .Where(r => r.ShopId == shopId && r.Status == "Active")
                 .Where(r => r.ExpectedEndDate >= todayStart && r.ExpectedEndDate < todayEnd),
             page: 1, size: 1000, includeTotalRows: false);
@@ -105,8 +100,8 @@ public class RentalService
     {
         var todayStart = today.Date;
 
-        var rentals = await m_context.LoadAsync(
-            m_context.Rentals
+        var rentals = await this.Context.LoadAsync(
+            this.Context.Rentals
                 .Where(r => r.ShopId == shopId && r.Status == "Active")
                 .Where(r => r.ExpectedEndDate < todayStart),
             page: 1, size: 1000, includeTotalRows: false);
@@ -116,8 +111,8 @@ public class RentalService
 
     public async Task<List<Rental>> GetActiveRentalsForMotorbikeAsync(int motorbikeId)
     {
-        var rentals = await m_context.LoadAsync(
-            m_context.Rentals
+        var rentals = await this.Context.LoadAsync(
+            this.Context.Rentals
                 .Where(r => r.MotorbikeId == motorbikeId)
                 .Where(r => r.Status == "Active" || r.Status == "Reserved"),
             page: 1, size: 100, includeTotalRows: false);
@@ -133,7 +128,7 @@ public class RentalService
     {
         try
         {
-            using var session = m_context.OpenSession(username);
+            using var session = this.Context.OpenSession(username);
 
             // 1. Create rental
             var rental = new Rental
@@ -193,7 +188,7 @@ public class RentalService
             }
 
             // 5. Update motorbike status to "Rented"
-            var motorbike = await m_context.LoadOneAsync<Motorbike>(m => m.MotorbikeId == request.MotorbikeId);
+            var motorbike = await this.Context.LoadOneAsync<Motorbike>(m => m.MotorbikeId == request.MotorbikeId);
             if (motorbike != null)
             {
                 motorbike.Status = "Rented";
@@ -258,10 +253,10 @@ public class RentalService
     {
         try
         {
-            using var session = m_context.OpenSession(username);
+            using var session = this.Context.OpenSession(username);
 
             // 1. Load and update rental
-            var rental = await m_context.LoadOneAsync<Rental>(r => r.RentalId == request.RentalId);
+            var rental = await this.Context.LoadOneAsync<Rental>(r => r.RentalId == request.RentalId);
             if (rental == null)
                 return CheckOutResult.CreateFailure("Rental not found");
 
@@ -298,7 +293,7 @@ public class RentalService
             }
 
             // 4. Update deposit status
-            var deposit = await m_context.LoadOneAsync<Deposit>(d => d.RentalId == request.RentalId);
+            var deposit = await this.Context.LoadOneAsync<Deposit>(d => d.RentalId == request.RentalId);
             decimal refundAmount = 0;
             if (deposit != null)
             {
@@ -321,7 +316,7 @@ public class RentalService
             }
 
             // 5. Update motorbike status back to "Available"
-            var motorbike = await m_context.LoadOneAsync<Motorbike>(m => m.MotorbikeId == rental.MotorbikeId);
+            var motorbike = await this.Context.LoadOneAsync<Motorbike>(m => m.MotorbikeId == rental.MotorbikeId);
             if (motorbike != null)
             {
                 motorbike.Status = "Available";
@@ -384,21 +379,21 @@ public class RentalService
 
     public async Task<SubmitOperation> CancelRentalAsync(int rentalId, string reason, string username)
     {
-        var rental = await GetRentalByIdAsync(rentalId);
+        var rental = await this.GetRentalByIdAsync(rentalId);
         if (rental == null)
             return SubmitOperation.CreateFailure("Rental not found");
 
         if (rental.Status == "Completed")
             return SubmitOperation.CreateFailure("Cannot cancel a completed rental");
 
-        using var session = m_context.OpenSession(username);
+        using var session = this.Context.OpenSession(username);
 
         rental.Status = "Cancelled";
         rental.Notes = (rental.Notes ?? "") + $"\nCancelled: {reason}";
         session.Attach(rental);
 
         // Refund deposit if held
-        var deposit = await m_context.LoadOneAsync<Deposit>(d => d.RentalId == rentalId);
+        var deposit = await this.Context.LoadOneAsync<Deposit>(d => d.RentalId == rentalId);
         if (deposit != null && deposit.Status == "Held")
         {
             deposit.Status = "Refunded";
@@ -407,7 +402,7 @@ public class RentalService
         }
 
         // Make motorbike available again
-        var motorbike = await m_context.LoadOneAsync<Motorbike>(m => m.MotorbikeId == rental.MotorbikeId);
+        var motorbike = await this.Context.LoadOneAsync<Motorbike>(m => m.MotorbikeId == rental.MotorbikeId);
         if (motorbike != null && motorbike.Status == "Rented")
         {
             motorbike.Status = "Available";
@@ -419,7 +414,7 @@ public class RentalService
 
     public async Task<SubmitOperation> ExtendRentalAsync(int rentalId, DateTimeOffset newEndDate, string username)
     {
-        var rental = await GetRentalByIdAsync(rentalId);
+        var rental = await this.GetRentalByIdAsync(rentalId);
         if (rental == null)
             return SubmitOperation.CreateFailure("Rental not found");
 
@@ -432,7 +427,7 @@ public class RentalService
         int additionalDays = (int)(newEndDate.Date - rental.ExpectedEndDate.Date).TotalDays;
         decimal additionalAmount = additionalDays * rental.DailyRate;
 
-        using var session = m_context.OpenSession(username);
+        using var session = this.Context.OpenSession(username);
 
         rental.ExpectedEndDate = newEndDate;
         rental.TotalAmount += additionalAmount;
@@ -446,11 +441,11 @@ public class RentalService
     {
         try
         {
-            using var session = m_context.OpenSession("tourist");
+            using var session = this.Context.OpenSession("tourist");
 
             // 1. Check if motorbike is available for the requested dates
-            var conflictingRentals = await m_context.LoadAsync(
-                m_context.Rentals
+            var conflictingRentals = await this.Context.LoadAsync(
+                this.Context.Rentals
                     .Where(r => r.MotorbikeId == request.MotorbikeId)
                     .Where(r => r.Status == "Active" || r.Status == "Reserved")
                     .Where(r => r.StartDate < request.EndDate && r.ExpectedEndDate > request.StartDate),
@@ -462,7 +457,7 @@ public class RentalService
             }
 
             // 2. Create or find renter from contact info
-            var existingRenter = await m_context.LoadOneAsync<Renter>(
+            var existingRenter = await this.Context.LoadOneAsync<Renter>(
                 r => r.Phone == request.RenterPhone || r.Email == request.RenterEmail);
 
             int renterId;
@@ -545,7 +540,7 @@ public class RentalService
             return [];
 
         // First find the renter
-        var renter = await m_context.LoadOneAsync<Renter>(r =>
+        var renter = await this.Context.LoadOneAsync<Renter>(r =>
             r.ShopId == shopId &&
             ((email != null && r.Email == email) || (phone != null && r.Phone == phone)));
 
@@ -553,8 +548,8 @@ public class RentalService
             return [];
 
         // Then get their rentals
-        var rentals = await m_context.LoadAsync(
-            m_context.Rentals
+        var rentals = await this.Context.LoadAsync(
+            this.Context.Rentals
                 .Where(r => r.RenterId == renter.RenterId)
                 .OrderByDescending(r => r.RentalId),
             page: 1, size: 100, includeTotalRows: false);
