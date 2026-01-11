@@ -18,6 +18,27 @@ public enum ProgressStatus
 }
 
 /// <summary>
+/// Information for creating the initial administrator when provisioning an organization.
+/// </summary>
+public class OrganizationAdminInfo
+{
+    /// <summary>
+    /// Administrator's full name.
+    /// </summary>
+    public string FullName { get; set; } = "";
+
+    /// <summary>
+    /// Administrator's email (used as username).
+    /// </summary>
+    public string Email { get; set; } = "";
+
+    /// <summary>
+    /// Authentication provider (Google, Microsoft).
+    /// </summary>
+    public string Provider { get; set; } = User.GOOGLE;
+}
+
+/// <summary>
 /// Service for managing tenant subscriptions and schema provisioning.
 /// </summary>
 public interface ISubscriptionService
@@ -52,6 +73,14 @@ public interface ISubscriptionService
     /// <param name="organization">The organization to create.</param>
     /// <param name="progressCallback">Optional callback for progress updates.</param>
     Task<Organization> CreateOrganizationAsync(Organization organization, Action<ProvisioningProgress>? progressCallback = null);
+
+    /// <summary>
+    /// Creates and saves a new organization with its schema and initial administrator.
+    /// </summary>
+    /// <param name="organization">The organization to create.</param>
+    /// <param name="adminInfo">Administrator information for the initial user.</param>
+    /// <param name="progressCallback">Optional callback for progress updates.</param>
+    Task<Organization> CreateOrganizationWithAdminAsync(Organization organization, OrganizationAdminInfo adminInfo, Action<ProvisioningProgress>? progressCallback = null);
 
     /// <summary>
     /// Validates and generates a valid AccountNo from a suggested value.

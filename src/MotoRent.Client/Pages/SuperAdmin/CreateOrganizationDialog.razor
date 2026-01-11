@@ -1,36 +1,88 @@
 @using MotoRent.Domain.Core
+@using MotoRent.Client.Controls
 @inherits MotoRentComponentBase
 @inject ISubscriptionService SubscriptionService
 
 <form id="create-org-form" @onsubmit="CreateOrganization" @onsubmit:preventDefault>
     <div class="modal-body">
         <div class="row g-3">
-            <div class="col-md-6">
-                <label class="form-label required">Organization Name</label>
-                <input type="text" class="form-control" @bind="m_organization.Name" required />
-            </div>
-            <div class="col-md-6">
-                <label class="form-label">Account No (Schema)</label>
-                <input type="text" class="form-control" @bind="m_accountNo"
-                       placeholder="Auto-generated if empty" />
-                <small class="form-hint">Unique identifier for database schema</small>
+            <!-- Organization Logo -->
+            <div class="col-12">
+                <div class="row align-items-center">
+                    <div class="col-auto">
+                        <ImageUpload StoreId="@m_organization.LogoStoreId"
+                                     StoreIdChanged="@(id => m_organization.LogoStoreId = id)"
+                                     Title="Organization Logo"
+                                     HelpHint="Upload your company logo (recommended: 200x200px)" />
+                    </div>
+                    <div class="col">
+                        <div class="mb-3">
+                            <label class="form-label required">Organization Name</label>
+                            <input type="text" class="form-control" @bind="m_organization.Name" required />
+                        </div>
+                        <div>
+                            <label class="form-label">Account No (Schema)</label>
+                            <input type="text" class="form-control" @bind="m_accountNo"
+                                   placeholder="Auto-generated if empty" />
+                            <small class="form-hint">Unique identifier for database schema</small>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="col-12">
-                <h4 class="subheader mt-2 mb-2">Contact Information</h4>
+                <hr class="my-2" />
+                <h4 class="subheader mt-2 mb-2">
+                    <i class="ti ti-user-shield me-2"></i>Administrator Account
+                </h4>
+                <small class="form-hint d-block mb-3">
+                    This person will be the organization administrator with full access.
+                </small>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label required">Admin Full Name</label>
+                <input type="text" class="form-control" @bind="m_adminName" required
+                       placeholder="e.g., John Smith" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label required">Admin Email</label>
+                <input type="email" class="form-control" @bind="m_adminEmail" required
+                       placeholder="e.g., john@example.com" />
+                <small class="form-hint">This will be used as the login username</small>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label required">Authentication Provider</label>
+                <select class="form-select" @bind="m_adminProvider">
+                    <option value="@User.GOOGLE">Google</option>
+                    <option value="@User.MICROSOFT">Microsoft</option>
+                </select>
+                <small class="form-hint">How the admin will sign in</small>
+            </div>
+
+            <div class="col-12">
+                <hr class="my-2" />
+                <h4 class="subheader mt-2 mb-2">
+                    <i class="ti ti-mail me-2"></i>Organization Contact
+                </h4>
             </div>
 
             <div class="col-md-6">
                 <label class="form-label">Email</label>
-                <input type="email" class="form-control" @bind="m_organization.Email" />
+                <input type="email" class="form-control" @bind="m_organization.Email"
+                       placeholder="contact@company.com" />
             </div>
             <div class="col-md-6">
                 <label class="form-label">Phone</label>
-                <input type="tel" class="form-control" @bind="m_organization.Phone" />
+                <input type="tel" class="form-control" @bind="m_organization.Phone"
+                       placeholder="+66 XX XXX XXXX" />
             </div>
 
             <div class="col-12">
-                <h4 class="subheader mt-2 mb-2">Address</h4>
+                <hr class="my-2" />
+                <h4 class="subheader mt-2 mb-2">
+                    <i class="ti ti-map-pin me-2"></i>Address
+                </h4>
             </div>
 
             <div class="col-12">
@@ -55,7 +107,10 @@
             </div>
 
             <div class="col-12">
-                <h4 class="subheader mt-2 mb-2">Regional Settings</h4>
+                <hr class="my-2" />
+                <h4 class="subheader mt-2 mb-2">
+                    <i class="ti ti-world me-2"></i>Regional Settings
+                </h4>
             </div>
 
             <div class="col-md-4">
@@ -128,6 +183,11 @@
     private bool m_isCreating;
     private string m_progressMessage = "";
 
+    // Admin fields
+    private string m_adminName = "";
+    private string m_adminEmail = "";
+    private string m_adminProvider = User.GOOGLE;
+
     private void Cancel() => this.ModalInstance?.Cancel();
 
     private async Task CreateOrganization()
@@ -135,6 +195,18 @@
         if (string.IsNullOrWhiteSpace(this.m_organization.Name))
         {
             this.ShowError("Organization name is required");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(this.m_adminName))
+        {
+            this.ShowError("Administrator name is required");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(this.m_adminEmail))
+        {
+            this.ShowError("Administrator email is required");
             return;
         }
 
@@ -165,8 +237,16 @@
             this.m_organization.AccountNo = this.m_accountNo;
             this.m_organization.Timezone = this.m_timezone;
 
-            // Create the organization with schema
-            await this.SubscriptionService.CreateOrganizationAsync(this.m_organization, progress =>
+            // Create admin info
+            var adminInfo = new OrganizationAdminInfo
+            {
+                FullName = this.m_adminName,
+                Email = this.m_adminEmail,
+                Provider = this.m_adminProvider
+            };
+
+            // Create the organization with schema and admin
+            await this.SubscriptionService.CreateOrganizationWithAdminAsync(this.m_organization, adminInfo, progress =>
             {
                 this.m_progressMessage = progress.Message;
                 this.InvokeAsync(this.StateHasChanged);

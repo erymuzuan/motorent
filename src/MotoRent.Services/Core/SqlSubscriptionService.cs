@@ -76,6 +76,61 @@ public partial class SqlSubscriptionService(
         return organization;
     }
 
+    public async Task<Organization> CreateOrganizationWithAdminAsync(Organization organization, OrganizationAdminInfo adminInfo, Action<ProvisioningProgress>? progressCallback = null)
+    {
+        progressCallback?.Invoke(new ProvisioningProgress { Message = $"Creating organization {organization.Name}..." });
+
+        // Save the organization first
+        using var session = this.Context.OpenSession("system");
+        session.Attach(organization);
+        await session.SubmitChanges("CreateOrganization");
+
+        progressCallback?.Invoke(new ProvisioningProgress { Message = $"Organization saved. Creating schema [{organization.AccountNo}]..." });
+
+        // Create the schema and tables
+        await this.CreateSchemaAsync(organization.AccountNo, progressCallback);
+
+        // Create or update the admin user
+        progressCallback?.Invoke(new ProvisioningProgress { Message = $"Setting up administrator {adminInfo.Email}..." });
+
+        var existingUser = await this.DirectoryService.GetUserAsync(adminInfo.Email);
+
+        if (existingUser != null)
+        {
+            // User exists, add them to this organization as OrgAdmin
+            await this.AddUserToOrganizationAsync(existingUser, organization.AccountNo, UserAccount.ORG_ADMIN);
+            progressCallback?.Invoke(new ProvisioningProgress { Message = $"Existing user {adminInfo.Email} added as administrator." });
+        }
+        else
+        {
+            // Create new user
+            var newUser = new User
+            {
+                UserName = adminInfo.Email,
+                Email = adminInfo.Email,
+                FullName = adminInfo.FullName,
+                CredentialProvider = adminInfo.Provider,
+                Language = organization.Language
+            };
+
+            // Add the organization account with OrgAdmin role
+            var userAccount = new UserAccount
+            {
+                AccountNo = organization.AccountNo,
+                IsFavourite = true
+            };
+            userAccount.Roles.Add(UserAccount.ORG_ADMIN);
+            newUser.AccountCollection.Add(userAccount);
+
+            await this.DirectoryService.SaveUserProfileAsync(newUser);
+            progressCallback?.Invoke(new ProvisioningProgress { Message = $"Administrator {adminInfo.Email} created successfully." });
+        }
+
+        progressCallback?.Invoke(new ProvisioningProgress { Message = $"Organization {organization.Name} created successfully!", Status = ProgressStatus.Done });
+
+        return organization;
+    }
+
     public async Task<bool> IsAccountNoAvailableAsync(string accountNo)
     {
         var existing = await this.DirectoryService.GetOrganizationAsync(accountNo);
