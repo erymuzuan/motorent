@@ -64,9 +64,17 @@
 
             <div class="col-12">
                 <hr class="my-2" />
-                <h4 class="subheader mt-2 mb-2">
-                    <i class="ti ti-mail me-2"></i>Organization Contact
-                </h4>
+                <div class="d-flex align-items-center gap-2 mt-2 mb-2">
+                    <h4 class="subheader mb-0">
+                        <i class="ti ti-mail me-2"></i>Organization Contact
+                    </h4>
+                    <button type="button" class="btn btn-sm btn-ghost-secondary"
+                            @onclick="CopyAdminToContact"
+                            disabled="@string.IsNullOrWhiteSpace(m_adminEmail)"
+                            title="Copy admin email to contact">
+                        <i class="ti ti-copy me-1"></i>Copy from Admin
+                    </button>
+                </div>
             </div>
 
             <div class="col-md-6">
@@ -191,6 +199,14 @@
     private string m_adminProvider = User.GOOGLE;
 
     private void Cancel() => this.ModalInstance?.Cancel();
+
+    private void CopyAdminToContact()
+    {
+        if (!string.IsNullOrWhiteSpace(this.m_adminEmail))
+        {
+            this.m_organization.Email = this.m_adminEmail;
+        }
+    }
 
     private async Task CreateOrganization()
     {

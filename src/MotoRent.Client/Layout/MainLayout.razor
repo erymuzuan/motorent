@@ -1,4 +1,5 @@
 @inherits LayoutComponentBase
+@using MotoRent.Domain.Core
 @inject IJSRuntime JS
 @inject IRequestContext RequestContext
 
@@ -48,6 +49,16 @@
                     <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
                         <a href="/account/profile" class="dropdown-item">Profile</a>
                         <a href="/account/settings" class="dropdown-item">Settings</a>
+
+                        @* Show Super Admin link for super admins (not when impersonating) *@
+                        <AuthorizeView Roles="@UserAccount.SUPER_ADMIN">
+                            <Authorized>
+                                <div class="dropdown-divider"></div>
+                                <a href="/super-admin/start-page" class="dropdown-item text-purple">
+                                    <i class="ti ti-shield-cog me-2"></i>Super Admin
+                                </a>
+                            </Authorized>
+                        </AuthorizeView>
 
                         @* Show impersonation status when impersonating *@
                         <AuthorizeView Policy="@UserAccount.POLICY_SUPER_ADMIN_IMPERSONATE">

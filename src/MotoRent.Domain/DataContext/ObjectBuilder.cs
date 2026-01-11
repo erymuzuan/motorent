@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace MotoRent.Domain.DataContext;
@@ -13,24 +14,33 @@ public static class ObjectBuilder
         s_scopeFactory = serviceProvider.GetService<IServiceScopeFactory>();
     }
 
-    public static T GetObject<T>() where T : class
+    /// <summary>
+    /// Gets the service provider from the current HTTP context scope if available,
+    /// otherwise returns the root service provider.
+    /// </summary>
+    private static IServiceProvider GetCurrentScopeProvider()
     {
         if (s_serviceProvider == null)
             throw new InvalidOperationException("ObjectBuilder has not been configured. Call Configure() first.");
 
-        // Try to get from root provider first (for singletons)
-        var service = s_serviceProvider.GetService(typeof(T)) as T;
+        // Try to get from HttpContext scope first (for scoped services in web requests)
+        var httpContextAccessor = s_serviceProvider.GetService<IHttpContextAccessor>();
+        var httpContext = httpContextAccessor?.HttpContext;
+        if (httpContext?.RequestServices != null)
+        {
+            return httpContext.RequestServices;
+        }
+
+        return s_serviceProvider;
+    }
+
+    public static T GetObject<T>() where T : class
+    {
+        var provider = GetCurrentScopeProvider();
+
+        var service = provider.GetService(typeof(T)) as T;
         if (service != null)
             return service;
-
-        // Create a scope for scoped services
-        if (s_scopeFactory != null)
-        {
-            using var scope = s_scopeFactory.CreateScope();
-            service = scope.ServiceProvider.GetService(typeof(T)) as T;
-            if (service != null)
-                return service;
-        }
 
         throw new InvalidOperationException($"Service of type {typeof(T).Name} is not registered.");
     }
@@ -40,16 +50,7 @@ public static class ObjectBuilder
         if (s_serviceProvider == null)
             return null;
 
-        var service = s_serviceProvider.GetService(typeof(T)) as T;
-        if (service != null)
-            return service;
-
-        if (s_scopeFactory != null)
-        {
-            using var scope = s_scopeFactory.CreateScope();
-            return scope.ServiceProvider.GetService(typeof(T)) as T;
-        }
-
-        return null;
+        var provider = GetCurrentScopeProvider();
+        return provider.GetService(typeof(T)) as T;
     }
 }

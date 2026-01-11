@@ -1,0 +1,1 @@
+dotnet watch --project .\src\MotoRent.Server\MotoRent.Server.csproj

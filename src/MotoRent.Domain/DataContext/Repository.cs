@@ -9,14 +9,23 @@ namespace MotoRent.Domain.DataContext;
 public class Repository<T> : IRepository<T> where T : Entity
 {
     private readonly QueryProvider m_provider;
-    private readonly string m_tableName;
     private readonly string m_idColumn;
 
     public Repository(QueryProvider provider)
     {
         m_provider = provider;
-        m_tableName = $"[MotoRent].[{typeof(T).Name}]";
         m_idColumn = $"{typeof(T).Name}Id";
+    }
+
+    /// <summary>
+    /// Gets the table name with the correct tenant schema from IRequestContext.
+    /// The schema is determined dynamically per-request to support multi-tenancy.
+    /// </summary>
+    private string GetTableName()
+    {
+        var requestContext = ObjectBuilder.GetObjectOrDefault<IRequestContext>();
+        var schema = requestContext?.GetSchema() ?? "MotoRent";
+        return $"[{schema}].[{typeof(T).Name}]";
     }
 
     public async Task<T?> LoadOneAsync(IQueryable<T> query)
@@ -55,7 +64,7 @@ public class Repository<T> : IRepository<T> where T : Entity
         // Get total count if requested
         if (includeTotalRows)
         {
-            var countSql = $"SELECT COUNT(*) FROM {m_tableName} {whereClause}";
+            var countSql = $"SELECT COUNT(*) FROM {GetTableName()} {whereClause}";
             await using var countCmd = new SqlCommand(countSql, connection);
             AddWhereParameters(countCmd, typedQuery.Predicates);
             result.TotalRows = (int)(await countCmd.ExecuteScalarAsync() ?? 0);
@@ -65,7 +74,7 @@ public class Repository<T> : IRepository<T> where T : Entity
         var offset = (page - 1) * size;
         var sql = $@"
             SELECT [{m_idColumn}], [Json], [CreatedBy], [ChangedBy], [CreatedTimestamp], [ChangedTimestamp]
-            FROM {m_tableName}
+            FROM {GetTableName()}
             {whereClause}
             {orderClause}
             OFFSET {offset} ROWS FETCH NEXT {size} ROWS ONLY";
@@ -96,7 +105,7 @@ public class Repository<T> : IRepository<T> where T : Entity
         await connection.OpenAsync();
 
         var sql = $@"
-            INSERT INTO {m_tableName} ([Json], [CreatedBy], [ChangedBy], [CreatedTimestamp], [ChangedTimestamp])
+            INSERT INTO {GetTableName()} ([Json], [CreatedBy], [ChangedBy], [CreatedTimestamp], [ChangedTimestamp])
             OUTPUT INSERTED.[{m_idColumn}]
             VALUES (@Json, @Username, @Username, @Timestamp, @Timestamp)";
 
@@ -124,7 +133,7 @@ public class Repository<T> : IRepository<T> where T : Entity
         await connection.OpenAsync();
 
         var sql = $@"
-            UPDATE {m_tableName}
+            UPDATE {GetTableName()}
             SET [Json] = @Json, [ChangedBy] = @Username, [ChangedTimestamp] = @Timestamp
             WHERE [{m_idColumn}] = @Id";
 
@@ -145,7 +154,7 @@ public class Repository<T> : IRepository<T> where T : Entity
         await using var connection = m_provider.CreateConnection();
         await connection.OpenAsync();
 
-        var sql = $"DELETE FROM {m_tableName} WHERE [{m_idColumn}] = @Id";
+        var sql = $"DELETE FROM {GetTableName()} WHERE [{m_idColumn}] = @Id";
 
         await using var cmd = new SqlCommand(sql, connection);
         cmd.Parameters.AddWithValue("@Id", entity.GetId());
@@ -164,7 +173,7 @@ public class Repository<T> : IRepository<T> where T : Entity
         await connection.OpenAsync();
 
         var whereClause = BuildWhereClause(typedQuery.Predicates);
-        var sql = $"SELECT COUNT(*) FROM {m_tableName} {whereClause}";
+        var sql = $"SELECT COUNT(*) FROM {GetTableName()} {whereClause}";
 
         await using var cmd = new SqlCommand(sql, connection);
         AddWhereParameters(cmd, typedQuery.Predicates);
@@ -189,7 +198,7 @@ public class Repository<T> : IRepository<T> where T : Entity
         await connection.OpenAsync();
 
         var whereClause = BuildWhereClause(typedQuery.Predicates);
-        var sql = $"SELECT ISNULL(SUM([{columnName}]), 0) FROM {m_tableName} {whereClause}";
+        var sql = $"SELECT ISNULL(SUM([{columnName}]), 0) FROM {GetTableName()} {whereClause}";
 
         await using var cmd = new SqlCommand(sql, connection);
         AddWhereParameters(cmd, typedQuery.Predicates);
@@ -209,7 +218,7 @@ public class Repository<T> : IRepository<T> where T : Entity
         await connection.OpenAsync();
 
         var whereClause = BuildWhereClause(typedQuery.Predicates);
-        var sql = $"SELECT MAX([{columnName}]) FROM {m_tableName} {whereClause}";
+        var sql = $"SELECT MAX([{columnName}]) FROM {GetTableName()} {whereClause}";
 
         await using var cmd = new SqlCommand(sql, connection);
         AddWhereParameters(cmd, typedQuery.Predicates);
@@ -229,7 +238,7 @@ public class Repository<T> : IRepository<T> where T : Entity
         await connection.OpenAsync();
 
         var whereClause = BuildWhereClause(typedQuery.Predicates);
-        var sql = $"SELECT MIN([{columnName}]) FROM {m_tableName} {whereClause}";
+        var sql = $"SELECT MIN([{columnName}]) FROM {GetTableName()} {whereClause}";
 
         await using var cmd = new SqlCommand(sql, connection);
         AddWhereParameters(cmd, typedQuery.Predicates);
@@ -249,7 +258,7 @@ public class Repository<T> : IRepository<T> where T : Entity
         await connection.OpenAsync();
 
         var whereClause = BuildWhereClause(typedQuery.Predicates);
-        var sql = $"SELECT ISNULL(AVG(CAST([{columnName}] AS DECIMAL(18,4))), 0) FROM {m_tableName} {whereClause}";
+        var sql = $"SELECT ISNULL(AVG(CAST([{columnName}] AS DECIMAL(18,4))), 0) FROM {GetTableName()} {whereClause}";
 
         await using var cmd = new SqlCommand(sql, connection);
         AddWhereParameters(cmd, typedQuery.Predicates);
@@ -270,7 +279,7 @@ public class Repository<T> : IRepository<T> where T : Entity
 
         var whereClause = BuildWhereClause(typedQuery.Predicates);
         var orderClause = BuildOrderClause(typedQuery.OrderByColumns);
-        var sql = $"SELECT TOP 1 [{columnName}] FROM {m_tableName} {whereClause} {orderClause}";
+        var sql = $"SELECT TOP 1 [{columnName}] FROM {GetTableName()} {whereClause} {orderClause}";
 
         await using var cmd = new SqlCommand(sql, connection);
         AddWhereParameters(cmd, typedQuery.Predicates);
@@ -297,7 +306,7 @@ public class Repository<T> : IRepository<T> where T : Entity
         await connection.OpenAsync();
 
         var whereClause = BuildWhereClause(typedQuery.Predicates);
-        var sql = $"SELECT DISTINCT [{columnName}] FROM {m_tableName} {whereClause}";
+        var sql = $"SELECT DISTINCT [{columnName}] FROM {GetTableName()} {whereClause}";
 
         await using var cmd = new SqlCommand(sql, connection);
         AddWhereParameters(cmd, typedQuery.Predicates);

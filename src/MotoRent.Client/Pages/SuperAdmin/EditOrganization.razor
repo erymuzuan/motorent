@@ -1,0 +1,369 @@
+@page "/super-admin/organizations/{AccountNo}/edit"
+@rendermode InteractiveServer
+@using MotoRent.Domain.Core
+@using MotoRent.Client.Controls
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = UserAccount.SUPER_ADMIN)]
+@inherits MotoRentComponentBase
+@inject IDirectoryService DirectoryService
+
+<PageTitle>Edit Organization - MotoRent</PageTitle>
+
+<div class="container-xl mt-4">
+    <!-- Page Header -->
+    <div class="page-header d-print-none mb-4">
+        <div class="row align-items-center">
+            <div class="col-auto">
+                <a href="/super-admin/organizations" class="btn btn-ghost-secondary btn-icon">
+                    <i class="ti ti-arrow-left"></i>
+                </a>
+            </div>
+            <div class="col">
+                <h2 class="page-title">Edit Organization</h2>
+                <p class="text-secondary mb-0">@m_organization.Name (@AccountNo)</p>
+            </div>
+            <div class="col-auto">
+                @if (m_organization.IsActive)
+                {
+                    <span class="badge bg-success">Active</span>
+                }
+                else
+                {
+                    <span class="badge bg-danger">Inactive</span>
+                }
+            </div>
+        </div>
+    </div>
+
+    @if (m_loading)
+    {
+        <div class="card">
+            <div class="card-body">
+                <div class="progress progress-sm">
+                    <div class="progress-bar progress-bar-indeterminate"></div>
+                </div>
+                <p class="text-center text-secondary mt-3">Loading organization...</p>
+            </div>
+        </div>
+    }
+    else if (m_organization.OrganizationId == 0)
+    {
+        <div class="card">
+            <div class="card-body">
+                <div class="empty">
+                    <div class="empty-icon">
+                        <i class="ti ti-alert-circle"></i>
+                    </div>
+                    <p class="empty-title">Organization not found</p>
+                    <p class="empty-subtitle text-secondary">
+                        The organization with account number "@AccountNo" could not be found.
+                    </p>
+                    <div class="empty-action">
+                        <a href="/super-admin/organizations" class="btn btn-primary">
+                            <i class="ti ti-arrow-left me-1"></i>Back to Organizations
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <form id="edit-org-form" @onsubmit="SaveOrganization" @onsubmit:preventDefault>
+            <div class="row">
+                <!-- Left Column: Basic Info & Logo -->
+                <div class="col-lg-4">
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="ti ti-building me-2"></i>Organization
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3 text-center">
+                                <ImageUpload StoreId="@m_organization.LogoStoreId"
+                                             StoreIdChanged="@(id => m_organization.LogoStoreId = id)"
+                                             Title="Organization Logo"
+                                             HelpHint="Upload logo (200x200px)"
+                                             NoImage=""
+                                             HideImage="@string.IsNullOrEmpty(m_organization.LogoStoreId)" />
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label required">Organization Name</label>
+                                <input type="text" class="form-control" @bind="m_organization.Name" required />
+                            </div>
+
+                            <div>
+                                <label class="form-label">Account No (Schema)</label>
+                                <input type="text" class="form-control bg-light" value="@m_organization.AccountNo" disabled />
+                                <small class="form-hint">Cannot be changed after creation</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Regional Settings Card -->
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="ti ti-world me-2"></i>Regional Settings
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">Currency</label>
+                                <select class="form-select" @bind="m_organization.Currency">
+                                    <option value="THB">THB - Thai Baht</option>
+                                    <option value="USD">USD - US Dollar</option>
+                                    <option value="EUR">EUR - Euro</option>
+                                    <option value="MYR">MYR - Malaysian Ringgit</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Language</label>
+                                <select class="form-select" @bind="m_organization.Language">
+                                    <option value="th-TH">Thai</option>
+                                    <option value="en">English</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label">Timezone (UTC offset)</label>
+                                <input type="number" class="form-control" @bind="m_timezone" min="-12" max="14" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Status Card -->
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="ti ti-toggle-left me-2"></i>Status
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <label class="form-check form-switch">
+                                <input type="checkbox" class="form-check-input" @bind="m_organization.IsActive" />
+                                <span class="form-check-label">
+                                    @if (m_organization.IsActive)
+                                    {
+                                        <span class="text-success">Active</span>
+                                        <small class="d-block text-secondary">Users can access this organization</small>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-danger">Inactive</span>
+                                        <small class="d-block text-secondary">Users cannot access this organization</small>
+                                    }
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Contact, Address -->
+                <div class="col-lg-8">
+                    <!-- Organization Contact Card -->
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="ti ti-mail me-2"></i>Organization Contact
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Email</label>
+                                    <input type="email" class="form-control" @bind="m_organization.Email"
+                                           placeholder="contact@company.com" />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Phone</label>
+                                    <input type="tel" class="form-control" @bind="m_organization.Phone"
+                                           placeholder="+66 XX XXX XXXX" />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Website</label>
+                                    <input type="url" class="form-control" @bind="m_organization.WebSite"
+                                           placeholder="https://www.example.com" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Address Card -->
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="ti ti-map-pin me-2"></i>Address
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label class="form-label">Street</label>
+                                    <input type="text" class="form-control" @bind="m_organization.Address.Street"
+                                           placeholder="123 Patong Beach Road" />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">City</label>
+                                    <input type="text" class="form-control" @bind="m_organization.Address.City"
+                                           placeholder="Patong" />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Province/State</label>
+                                    <input type="text" class="form-control" @bind="m_organization.Address.Province"
+                                           placeholder="Phuket" />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Postal Code</label>
+                                    <input type="text" class="form-control" @bind="m_organization.Address.PostalCode"
+                                           placeholder="83150" />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Country</label>
+                                    <input type="text" class="form-control" @bind="m_organization.Address.Country" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Business Details Card -->
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="ti ti-file-text me-2"></i>Business Details
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Company Registration No</label>
+                                    <input type="text" class="form-control" @bind="m_organization.CompanyNo"
+                                           placeholder="Company registration number" />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Tax No</label>
+                                    <input type="text" class="form-control" @bind="m_organization.TaxNo"
+                                           placeholder="Tax identification number" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="card">
+                <div class="card-footer d-flex justify-content-between">
+                    <a href="/super-admin/organizations" class="btn btn-ghost-secondary">
+                        <i class="ti ti-arrow-left me-1"></i>Cancel
+                    </a>
+                    <button type="submit" class="btn btn-primary" disabled="@m_isSaving">
+                        @if (m_isSaving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            <span>Saving...</span>
+                        }
+                        else
+                        {
+                            <i class="ti ti-device-floppy me-1"></i>
+                            <span>Save Changes</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </form>
+    }
+</div>
+
+@code {
+    [Parameter] public new string AccountNo { get; set; } = "";
+
+    private Organization m_organization = new() { Address = new Address() };
+    private double m_timezone = 7;
+    private bool m_loading = true;
+    private bool m_isSaving;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadOrganizationAsync();
+    }
+
+    private async Task LoadOrganizationAsync()
+    {
+        this.m_loading = true;
+        try
+        {
+            var org = await this.DirectoryService.GetOrganizationAsync(this.AccountNo);
+            if (org != null)
+            {
+                // Clone the organization for editing
+                this.m_organization = new Organization
+                {
+                    OrganizationId = org.OrganizationId,
+                    AccountNo = org.AccountNo,
+                    Name = org.Name,
+                    Currency = org.Currency,
+                    Timezone = org.Timezone,
+                    Language = org.Language,
+                    FirstDay = org.FirstDay,
+                    Subscriptions = org.Subscriptions,
+                    IsActive = org.IsActive,
+                    WebSite = org.WebSite,
+                    DefaultStartPage = org.DefaultStartPage,
+                    CompanyNo = org.CompanyNo,
+                    TaxNo = org.TaxNo,
+                    LogoStoreId = org.LogoStoreId,
+                    SmallLogoStoreId = org.SmallLogoStoreId,
+                    Email = org.Email,
+                    Phone = org.Phone,
+                    Address = new Address
+                    {
+                        Street = org.Address?.Street,
+                        City = org.Address?.City,
+                        Province = org.Address?.Province,
+                        PostalCode = org.Address?.PostalCode,
+                        Country = org.Address?.Country ?? "Thailand"
+                    }
+                };
+                this.m_timezone = this.m_organization.Timezone ?? 7;
+            }
+        }
+        catch (Exception ex)
+        {
+            this.ShowError($"Error loading organization: {ex.Message}");
+        }
+        finally
+        {
+            this.m_loading = false;
+        }
+    }
+
+    private async Task SaveOrganization()
+    {
+        if (string.IsNullOrWhiteSpace(this.m_organization.Name))
+        {
+            this.ShowError("Organization name is required");
+            return;
+        }
+
+        this.m_isSaving = true;
+
+        try
+        {
+            this.m_organization.Timezone = this.m_timezone;
+            await this.DirectoryService.SaveOrganizationAsync(this.m_organization);
+
+            this.ShowSuccess($"Organization '{this.m_organization.Name}' updated successfully!");
+            this.NavigationManager.NavigateTo("/super-admin/organizations");
+        }
+        catch (Exception ex)
+        {
+            this.ShowError($"Error saving organization: {ex.Message}");
+        }
+        finally
+        {
+            this.m_isSaving = false;
+        }
+    }
+}

@@ -130,13 +130,50 @@ CREATE TABLE [MotoRent].[Entity]
 - `Cancelled` - Booking cancelled
 
 ## User Roles
+
+### Platform Role (Core Schema)
 | Role | Constant | Description |
 |------|----------|-------------|
-| Super Admin | `administrator` | Platform administrator with full access |
-| Org Admin | `OrgAdmin` | Organization owner/manager |
+| Super Admin | `SUPER_ADMIN` (`administrator`) | Platform administrator - manages organizations, users, invites, logs |
+
+### Tenant Roles (Tenant Schema)
+| Role | Constant | Description |
+|------|----------|-------------|
+| Org Admin | `OrgAdmin` | Organization/shop owner - full tenant access |
 | Shop Manager | `ShopManager` | Manages a shop location |
 | Staff | `Staff` | Rental desk staff |
 | Mechanic | `Mechanic` | Maintenance staff |
+
+### Role Groups (defined in `UserAccount.cs`)
+- **AllRoles**: OrgAdmin, ShopManager, Staff, Mechanic
+- **ManagementRoles**: OrgAdmin, ShopManager
+- **RentalRoles**: OrgAdmin, ShopManager, Staff
+- **MaintenanceRoles**: OrgAdmin, ShopManager, Mechanic
+
+## Navigation Menu Visibility
+
+The NavMenu shows **tenant menus only** - SuperAdmin without impersonation sees no menus (uses dropdown to access `/super-admin/start-page`).
+
+| Menu | Visible To | Role Group |
+|------|------------|------------|
+| Dashboard | All tenant users | AllRoles |
+| Rentals | OrgAdmin, ShopManager, Staff | RentalRoles |
+| Finance | OrgAdmin, ShopManager | ManagementRoles |
+| Inventory | OrgAdmin, ShopManager, Mechanic | MaintenanceRoles |
+| Customers | OrgAdmin, ShopManager, Staff | RentalRoles |
+| Settings | OrgAdmin, ShopManager | ManagementRoles |
+
+### SuperAdmin Access
+- **Not impersonating**: Access only `/super-admin/*` pages via user dropdown menu
+- **Impersonating**: Gets impersonated user's tenant roles, sees menus accordingly
+
+### Super Admin Pages (`/super-admin/*`)
+- Organizations - Manage tenants
+- Users - Manage system users
+- Impersonate - Support user impersonation
+- Registration Invites - Manage invite codes
+- System Logs - View error logs
+- System Settings - Global configuration
 
 ## Authentication
 - **Providers**: Google, Microsoft OAuth 2.0

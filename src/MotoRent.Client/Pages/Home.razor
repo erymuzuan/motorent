@@ -1,7 +1,11 @@
 @page "/"
 @using Microsoft.AspNetCore.Authorization
+@using MotoRent.Domain.Entities
 @attribute [Authorize(Policy = "RequireTenantStaff")]
 @inherits LocalizedComponentBase<Home>
+@inject MotorbikeService MotorbikeService
+@inject RentalService RentalService
+@inject PaymentService PaymentService
 
 <MotoRentPageTitle>Dashboard</MotoRentPageTitle>
 
@@ -19,13 +23,10 @@
                         </span>
                     </div>
                 </div>
-                <div class="h1 mb-3">12</div>
+                <div class="h1 mb-3">@m_activeRentals</div>
                 <div class="d-flex mb-2">
                     <div>
-                        <span class="text-success d-inline-flex align-items-center lh-1">
-                            <i class="ti ti-trending-up me-1"></i> 8%
-                        </span>
-                        <span class="text-secondary">vs last week</span>
+                        <span class="text-secondary">currently rented out</span>
                     </div>
                 </div>
             </div>
@@ -43,10 +44,10 @@
                         </span>
                     </div>
                 </div>
-                <div class="h1 mb-3">24</div>
+                <div class="h1 mb-3">@m_availableBikes</div>
                 <div class="d-flex mb-2">
                     <div>
-                        <span class="text-secondary">out of 36 total</span>
+                        <span class="text-secondary">out of @m_totalBikes total</span>
                     </div>
                 </div>
             </div>
@@ -64,7 +65,7 @@
                         </span>
                     </div>
                 </div>
-                <div class="h1 mb-3">5</div>
+                <div class="h1 mb-3">@m_dueToday</div>
                 <div class="d-flex mb-2">
                     <div>
                         <span class="text-secondary">returns scheduled</span>
@@ -85,13 +86,10 @@
                         </span>
                     </div>
                 </div>
-                <div class="h1 mb-3">8,500</div>
+                <div class="h1 mb-3">@m_todayRevenue.ToString("N0")</div>
                 <div class="d-flex mb-2">
                     <div>
-                        <span class="text-success d-inline-flex align-items-center lh-1">
-                            <i class="ti ti-trending-up me-1"></i> 12%
-                        </span>
-                        <span class="text-secondary">vs yesterday</span>
+                        <span class="text-secondary">THB collected today</span>
                     </div>
                 </div>
             </div>
@@ -165,14 +163,85 @@
 </div>
 
 @code {
-    private record RentalSummary(string RenterName, string MotorbikeName, DateTime StartDate, string Status);
+    // Dashboard stats
+    private int m_activeRentals;
+    private int m_availableBikes;
+    private int m_totalBikes;
+    private int m_dueToday;
+    private decimal m_todayRevenue;
+    private bool m_loading = true;
 
-    private List<RentalSummary> m_recentRentals =
-    [
-        new("John Smith", "Honda Click 125", DateTime.Today.AddDays(-2), "Active"),
-        new("Maria Garcia", "Yamaha Aerox 155", DateTime.Today.AddDays(-1), "Active"),
-        new("James Wilson", "Honda PCX 160", DateTime.Today, "Active"),
-        new("Sophie Chen", "Yamaha NMAX 155", DateTime.Today.AddDays(-3), "Active"),
-        new("Alex Brown", "Honda Click 125", DateTime.Today.AddDays(-5), "Completed")
-    ];
+    // Recent rentals data
+    private List<RecentRentalItem> m_recentRentals = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDashboardDataAsync();
+    }
+
+    private async Task LoadDashboardDataAsync()
+    {
+        m_loading = true;
+        try
+        {
+            // Get motorbike stats
+            var bikeStats = await MotorbikeService.GetStatusCountsAsync(ShopId);
+            m_availableBikes = bikeStats.GetValueOrDefault("Available", 0);
+            m_totalBikes = bikeStats.Values.Sum();
+
+            // Get rental stats
+            var rentalStats = await RentalService.GetStatusCountsAsync(ShopId);
+            m_activeRentals = rentalStats.GetValueOrDefault("Active", 0);
+
+            // Get due today count
+            var todaysDueRentals = await RentalService.GetTodaysDueReturnsAsync(ShopId, DateTimeOffset.Now);
+            m_dueToday = todaysDueRentals.Count;
+
+            // Get today's revenue
+            var todayStart = DateTimeOffset.Now.Date;
+            var todayEnd = todayStart.AddDays(1);
+            var paymentSummary = await PaymentService.GetPaymentSummaryAsync(ShopId, todayStart, todayEnd);
+            m_todayRevenue = paymentSummary.TotalAmount;
+
+            // Load recent rentals
+            await LoadRecentRentalsAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading dashboard data");
+            ShowError("Failed to load dashboard data");
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private async Task LoadRecentRentalsAsync()
+    {
+        m_recentRentals.Clear();
+
+        // Get recent rentals
+        var rentalsResult = await RentalService.GetRentalsAsync(ShopId, pageSize: 5);
+
+        foreach (var rental in rentalsResult.ItemCollection)
+        {
+            // Get renter name
+            var renter = await DataContext.LoadOneAsync<Renter>(r => r.RenterId == rental.RenterId);
+            var renterName = renter?.FullName ?? "Unknown";
+
+            // Get motorbike name
+            var motorbike = await DataContext.LoadOneAsync<Motorbike>(m => m.MotorbikeId == rental.MotorbikeId);
+            var motorbikeName = motorbike != null ? $"{motorbike.Brand} {motorbike.Model}" : "Unknown";
+
+            m_recentRentals.Add(new RecentRentalItem(
+                renterName,
+                motorbikeName,
+                rental.StartDate.DateTime,
+                rental.Status ?? "Unknown"
+            ));
+        }
+    }
+
+    private record RecentRentalItem(string RenterName, string MotorbikeName, DateTime StartDate, string Status);
 }

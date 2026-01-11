@@ -16,10 +16,151 @@
     </button>
 </TablerHeader>
 
+@* Summary Stats Cards *@
+<div class="row row-deck row-cards mb-4">
+    <div class="col-sm-6 col-lg-3">
+        <div class="card card-sm">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-auto">
+                        <span class="bg-primary text-white avatar">
+                            <i class="ti ti-motorbike"></i>
+                        </span>
+                    </div>
+                    <div class="col">
+                        <div class="font-weight-medium">
+                            @m_statusCounts.Values.Sum() Motorbikes
+                        </div>
+                        <div class="text-secondary">
+                            Total Fleet
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card card-sm cursor-pointer @(m_statusFilter == "Available" ? "border-success border-2" : "")"
+             @onclick="@(() => FilterByStatus("Available"))">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-auto">
+                        <span class="bg-success text-white avatar">
+                            <i class="ti ti-circle-check"></i>
+                        </span>
+                    </div>
+                    <div class="col">
+                        <div class="font-weight-medium">
+                            @m_statusCounts.GetValueOrDefault("Available", 0) Available
+                        </div>
+                        <div class="text-secondary">
+                            Ready to rent
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card card-sm cursor-pointer @(m_statusFilter == "Rented" ? "border-primary border-2" : "")"
+             @onclick="@(() => FilterByStatus("Rented"))">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-auto">
+                        <span class="bg-primary text-white avatar">
+                            <i class="ti ti-key"></i>
+                        </span>
+                    </div>
+                    <div class="col">
+                        <div class="font-weight-medium">
+                            @m_statusCounts.GetValueOrDefault("Rented", 0) Rented
+                        </div>
+                        <div class="text-secondary">
+                            Currently out
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card card-sm cursor-pointer @(m_statusFilter == "Maintenance" ? "border-warning border-2" : "")"
+             @onclick="@(() => FilterByStatus("Maintenance"))">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-auto">
+                        <span class="bg-warning text-white avatar">
+                            <i class="ti ti-tool"></i>
+                        </span>
+                    </div>
+                    <div class="col">
+                        <div class="font-weight-medium">
+                            @m_statusCounts.GetValueOrDefault("Maintenance", 0) Maintenance
+                        </div>
+                        <div class="text-secondary">
+                            Being serviced
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* Utilization Progress Bar *@
+@if (m_statusCounts.Values.Sum() > 0)
+{
+    <div class="card mb-4">
+        <div class="card-body py-3">
+            <div class="d-flex align-items-center mb-2">
+                <div class="subheader">Fleet Utilization</div>
+                <div class="ms-auto">
+                    <span class="text-primary fw-bold">@GetUtilizationPercentage()%</span> in use
+                </div>
+            </div>
+            <div class="progress progress-sm">
+                @{
+                    var total = m_statusCounts.Values.Sum();
+                    var availablePercent = total > 0 ? (m_statusCounts.GetValueOrDefault("Available", 0) * 100 / total) : 0;
+                    var rentedPercent = total > 0 ? (m_statusCounts.GetValueOrDefault("Rented", 0) * 100 / total) : 0;
+                    var maintenancePercent = total > 0 ? (m_statusCounts.GetValueOrDefault("Maintenance", 0) * 100 / total) : 0;
+                }
+                <div class="progress-bar bg-success" style="width: @availablePercent%" role="progressbar"
+                     aria-valuenow="@availablePercent" aria-valuemin="0" aria-valuemax="100"
+                     data-bs-toggle="tooltip" title="Available: @m_statusCounts.GetValueOrDefault("Available", 0)">
+                </div>
+                <div class="progress-bar bg-primary" style="width: @rentedPercent%" role="progressbar"
+                     aria-valuenow="@rentedPercent" aria-valuemin="0" aria-valuemax="100"
+                     data-bs-toggle="tooltip" title="Rented: @m_statusCounts.GetValueOrDefault("Rented", 0)">
+                </div>
+                <div class="progress-bar bg-warning" style="width: @maintenancePercent%" role="progressbar"
+                     aria-valuenow="@maintenancePercent" aria-valuemin="0" aria-valuemax="100"
+                     data-bs-toggle="tooltip" title="Maintenance: @m_statusCounts.GetValueOrDefault("Maintenance", 0)">
+                </div>
+            </div>
+            <div class="d-flex mt-2">
+                <div class="d-flex align-items-center me-4">
+                    <span class="legend me-2 bg-success"></span>
+                    <span class="text-secondary small">Available</span>
+                </div>
+                <div class="d-flex align-items-center me-4">
+                    <span class="legend me-2 bg-primary"></span>
+                    <span class="text-secondary small">Rented</span>
+                </div>
+                <div class="d-flex align-items-center">
+                    <span class="legend me-2 bg-warning"></span>
+                    <span class="text-secondary small">Maintenance</span>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* Search and View Toggle *@
 <div class="card mb-3">
     <div class="card-body">
         <div class="row g-3 align-items-center">
-            <div class="col-md-4">
+            <div class="col-md-5">
                 <div class="input-icon">
                     <span class="input-icon-addon">
                         <i class="ti ti-search"></i>
@@ -36,13 +177,31 @@
                     <option value="Maintenance">Maintenance</option>
                 </select>
             </div>
-            <div class="col-md-6 text-end">
-                @foreach (var (status, count) in m_statusCounts)
+            <div class="col-md-2">
+                <select class="form-select" @bind="m_brandFilter" @bind:after="LoadDataAsync">
+                    <option value="">All Brands</option>
+                    @foreach (var brand in m_availableBrands)
+                    {
+                        <option value="@brand">@brand</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3 text-end">
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn @(m_viewMode == "table" ? "btn-primary" : "btn-outline-primary")"
+                            @onclick="@(() => m_viewMode = "table")" title="Table View">
+                        <i class="ti ti-list"></i>
+                    </button>
+                    <button type="button" class="btn @(m_viewMode == "card" ? "btn-primary" : "btn-outline-primary")"
+                            @onclick="@(() => m_viewMode = "card")" title="Card View">
+                        <i class="ti ti-layout-grid"></i>
+                    </button>
+                </div>
+                @if (!string.IsNullOrEmpty(m_statusFilter) || !string.IsNullOrEmpty(m_brandFilter) || !string.IsNullOrEmpty(m_searchTerm))
                 {
-                    <span class="badge @GetStatusBadgeClass(status) cursor-pointer me-1"
-                          @onclick="@(() => FilterByStatus(status))">
-                        @status: @count
-                    </span>
+                    <button type="button" class="btn btn-ghost-secondary ms-2" @onclick="ClearFilters">
+                        <i class="ti ti-x me-1"></i>Clear
+                    </button>
                 }
             </div>
         </div>
@@ -50,100 +209,294 @@
 </div>
 
 <LoadingSkeleton Loading="@m_loading" Mode="LoadingSkeleton.PlaceholderMode.Table" Rows="10" Columns="8">
-    <div class="card">
-        <div class="table-responsive">
-            <table class="table table-vcenter card-table table-striped table-hover">
-                <thead>
-                    <tr>
-                        <th>License Plate</th>
-                        <th>Brand</th>
-                        <th>Model</th>
-                        <th>CC</th>
-                        <th>Color</th>
-                        <th>Year</th>
-                        <th>Daily Rate</th>
-                        <th>Status</th>
-                        <th>Maintenance</th>
-                        <th class="w-1">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @if (m_motorbikes.Count == 0)
-                    {
+    @if (m_viewMode == "table")
+    {
+        @* Table View *@
+        <div class="card">
+            <div class="table-responsive">
+                <table class="table table-vcenter card-table table-hover">
+                    <thead>
                         <tr>
-                            <td colspan="10" class="text-center text-secondary py-4">
-                                <i class="ti ti-motorbike mb-2" style="font-size: 2rem;"></i>
-                                <div>No motorbikes found</div>
-                            </td>
+                            <th class="w-1"></th>
+                            <th>Motorbike</th>
+                            <th>Specs</th>
+                            <th>Pricing</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-center">Maintenance</th>
+                            <th class="w-1">Actions</th>
                         </tr>
-                    }
-                    else
-                    {
-                        @foreach (var motorbike in m_motorbikes)
+                    </thead>
+                    <tbody>
+                        @if (m_motorbikes.Count == 0)
                         {
-                            <tr class="cursor-pointer" @onclick="@(() => OpenEditDialog(motorbike))">
-                                <td>
-                                    <strong>@motorbike.LicensePlate</strong>
+                            <tr>
+                                <td colspan="7" class="text-center py-5">
+                                    <div class="empty">
+                                        <div class="empty-icon">
+                                            <i class="ti ti-motorbike" style="font-size: 3rem;"></i>
+                                        </div>
+                                        <p class="empty-title">No motorbikes found</p>
+                                        <p class="empty-subtitle text-secondary">
+                                            @if (!string.IsNullOrEmpty(m_searchTerm) || !string.IsNullOrEmpty(m_statusFilter))
+                                            {
+                                                <span>Try adjusting your search or filter criteria</span>
+                                            }
+                                            else
+                                            {
+                                                <span>Get started by adding your first motorbike to the inventory</span>
+                                            }
+                                        </p>
+                                        <div class="empty-action">
+                                            <button type="button" class="btn btn-primary" @onclick="OpenAddDialog">
+                                                <i class="ti ti-plus me-1"></i>
+                                                Add Motorbike
+                                            </button>
+                                        </div>
+                                    </div>
                                 </td>
-                                <td>@motorbike.Brand</td>
-                                <td>@motorbike.Model</td>
-                                <td>@motorbike.EngineCC</td>
-                                <td>@motorbike.Color</td>
-                                <td>@motorbike.Year</td>
-                                <td class="text-primary fw-bold">@FormatCurrency(motorbike.DailyRate)</td>
-                                <td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var motorbike in m_motorbikes)
+                            {
+                                <tr class="cursor-pointer" @onclick="@(() => OpenEditDialog(motorbike))">
+                                    <td>
+                                        <span class="avatar avatar-md rounded @GetStatusAvatarClass(motorbike.Status)"
+                                              style="background-image: url('@GetMotorbikeImage(motorbike)')">
+                                            @if (string.IsNullOrEmpty(motorbike.ImagePath))
+                                            {
+                                                <i class="ti ti-motorbike"></i>
+                                            }
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex flex-column">
+                                            <span class="fw-bold text-primary">@motorbike.LicensePlate</span>
+                                            <span class="text-secondary">@motorbike.Brand @motorbike.Model</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex flex-column">
+                                            <span>
+                                                <i class="ti ti-engine text-secondary me-1"></i>@motorbike.EngineCC cc
+                                            </span>
+                                            <span class="text-secondary small">
+                                                <i class="ti ti-palette me-1"></i>@motorbike.Color &bull;
+                                                <i class="ti ti-calendar me-1"></i>@motorbike.Year
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex flex-column">
+                                            <span class="fw-bold text-success">@FormatCurrency(motorbike.DailyRate)/day</span>
+                                            <span class="text-secondary small">
+                                                Deposit: @FormatCurrency(motorbike.DepositAmount)
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge @GetStatusBadgeClass(motorbike.Status) @GetStatusBadgeStyle(motorbike.Status)">
+                                            <i class="ti @GetStatusIcon(motorbike.Status) me-1"></i>
+                                            @motorbike.Status
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        @if (m_maintenanceSummaries.TryGetValue(motorbike.MotorbikeId, out var summary))
+                                        {
+                                            <span class="badge @GetMaintenanceBadgeClass(summary.OverallStatus)">
+                                                <i class="ti @GetMaintenanceIcon(summary.OverallStatus) me-1"></i>
+                                                @GetMaintenanceLabel(summary)
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-azure-lt text-azure">
+                                                <i class="ti ti-shield-check me-1"></i>OK
+                                            </span>
+                                        }
+                                    </td>
+                                    <td @onclick:stopPropagation="true">
+                                        <div class="dropdown">
+                                            <button class="btn btn-icon btn-ghost-secondary" data-bs-toggle="dropdown">
+                                                <i class="ti ti-dots-vertical"></i>
+                                            </button>
+                                            <div class="dropdown-menu dropdown-menu-end">
+                                                <a class="dropdown-item" href="javascript:void(0)" @onclick="@(() => OpenEditDialog(motorbike))">
+                                                    <i class="ti ti-edit me-2"></i>Edit Details
+                                                </a>
+                                                <a class="dropdown-item" href="javascript:void(0)" @onclick="@(() => ViewMaintenanceHistory(motorbike))">
+                                                    <i class="ti ti-history me-2"></i>Maintenance History
+                                                </a>
+                                                <div class="dropdown-divider"></div>
+                                                <a class="dropdown-item text-danger" href="javascript:void(0)" @onclick="@(() => ConfirmDelete(motorbike))">
+                                                    <i class="ti ti-trash me-2"></i>Delete
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+            @if (m_motorbikes.Count > 0)
+            {
+                <div class="card-footer d-flex align-items-center justify-content-between">
+                    <p class="m-0 text-secondary">
+                        Showing <strong>@m_motorbikes.Count</strong> of <strong>@m_statusCounts.Values.Sum()</strong> motorbikes
+                    </p>
+                    <div class="d-flex gap-2">
+                        @foreach (var (status, count) in m_statusCounts.Where(x => x.Value > 0))
+                        {
+                            <span class="badge @GetStatusBadgeClass(status) @GetStatusBadgeStyle(status)">
+                                <i class="ti @GetStatusIcon(status) me-1"></i>@status: @count
+                            </span>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        @* Card View *@
+        @if (m_motorbikes.Count == 0)
+        {
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <div class="empty">
+                        <div class="empty-icon">
+                            <i class="ti ti-motorbike" style="font-size: 3rem;"></i>
+                        </div>
+                        <p class="empty-title">No motorbikes found</p>
+                        <p class="empty-subtitle text-secondary">
+                            @if (!string.IsNullOrEmpty(m_searchTerm) || !string.IsNullOrEmpty(m_statusFilter))
+                            {
+                                <span>Try adjusting your search or filter criteria</span>
+                            }
+                            else
+                            {
+                                <span>Get started by adding your first motorbike to the inventory</span>
+                            }
+                        </p>
+                        <div class="empty-action">
+                            <button type="button" class="btn btn-primary" @onclick="OpenAddDialog">
+                                <i class="ti ti-plus me-1"></i>
+                                Add Motorbike
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="row row-cards">
+                @foreach (var motorbike in m_motorbikes)
+                {
+                    <div class="col-sm-6 col-lg-4 col-xl-3">
+                        <div class="card card-sm cursor-pointer" @onclick="@(() => OpenEditDialog(motorbike))">
+                            <div class="card-img-top img-responsive img-responsive-16by9"
+                                 style="background-image: url('@GetMotorbikeImage(motorbike)'); background-color: #f8fafc;">
+                                @if (string.IsNullOrEmpty(motorbike.ImagePath))
+                                {
+                                    <div class="d-flex align-items-center justify-content-center h-100">
+                                        <i class="ti ti-motorbike text-secondary" style="font-size: 4rem; opacity: 0.3;"></i>
+                                    </div>
+                                }
+                                <div class="position-absolute top-0 end-0 m-2">
                                     <span class="badge @GetStatusBadgeClass(motorbike.Status)">
                                         @motorbike.Status
                                     </span>
-                                </td>
-                                <td>
-                                    @if (m_maintenanceSummaries.TryGetValue(motorbike.MotorbikeId, out var summary))
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="d-flex align-items-center justify-content-between mb-2">
+                                    <span class="badge bg-primary-lt fw-bold">@motorbike.LicensePlate</span>
+                                    @if (m_maintenanceSummaries.TryGetValue(motorbike.MotorbikeId, out var summary) && summary.OverallStatus != MaintenanceStatus.Ok)
                                     {
                                         <MaintenanceStatusBadge Status="@summary.OverallStatus"
                                                                  OverdueCount="@summary.OverdueCount"
                                                                  DueSoonCount="@summary.DueSoonCount" />
                                     }
-                                    else
-                                    {
-                                        <span class="text-secondary">-</span>
-                                    }
-                                </td>
-                                <td @onclick:stopPropagation="true">
-                                    <div class="btn-list flex-nowrap">
-                                        <button type="button" class="btn btn-icon btn-ghost-primary"
-                                                title="Edit" @onclick="@(() => OpenEditDialog(motorbike))">
+                                </div>
+                                <h3 class="card-title mb-1">@motorbike.Brand @motorbike.Model</h3>
+                                <div class="text-secondary mb-3">
+                                    <span class="me-2"><i class="ti ti-engine me-1"></i>@motorbike.EngineCC cc</span>
+                                    <span class="me-2"><i class="ti ti-palette me-1"></i>@motorbike.Color</span>
+                                    <span><i class="ti ti-calendar me-1"></i>@motorbike.Year</span>
+                                </div>
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div>
+                                        <span class="h3 text-success mb-0">@FormatCurrency(motorbike.DailyRate)</span>
+                                        <span class="text-secondary">/day</span>
+                                    </div>
+                                    <div class="btn-group" @onclick:stopPropagation="true">
+                                        <button type="button" class="btn btn-sm btn-outline-primary"
+                                                @onclick="@(() => OpenEditDialog(motorbike))">
                                             <i class="ti ti-edit"></i>
                                         </button>
-                                        <button type="button" class="btn btn-icon btn-ghost-danger"
-                                                title="Delete" @onclick="@(() => ConfirmDelete(motorbike))">
+                                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                                @onclick="@(() => ConfirmDelete(motorbike))">
                                             <i class="ti ti-trash"></i>
                                         </button>
                                     </div>
-                                </td>
-                            </tr>
+                                </div>
+                            </div>
+                            @if (motorbike.Mileage > 0 || motorbike.LastServiceDate.HasValue)
+                            {
+                                <div class="card-footer">
+                                    <div class="d-flex text-secondary small">
+                                        @if (motorbike.Mileage > 0)
+                                        {
+                                            <span class="me-3">
+                                                <i class="ti ti-gauge me-1"></i>@motorbike.Mileage.ToString("N0") km
+                                            </span>
+                                        }
+                                        @if (motorbike.LastServiceDate.HasValue)
+                                        {
+                                            <span>
+                                                <i class="ti ti-tool me-1"></i>Service: @motorbike.LastServiceDate.Value.ToString("dd MMM yyyy")
+                                            </span>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+            <div class="card mt-3">
+                <div class="card-footer d-flex align-items-center justify-content-between">
+                    <p class="m-0 text-secondary">
+                        Showing <strong>@m_motorbikes.Count</strong> of <strong>@m_statusCounts.Values.Sum()</strong> motorbikes
+                    </p>
+                    <div class="d-flex gap-2">
+                        @foreach (var (status, count) in m_statusCounts.Where(x => x.Value > 0))
+                        {
+                            <span class="badge @GetStatusBadgeClass(status) @GetStatusBadgeStyle(status)">
+                                <i class="ti @GetStatusIcon(status) me-1"></i>@status: @count
+                            </span>
                         }
-                    }
-                </tbody>
-            </table>
-        </div>
-        @if (m_motorbikes.Count > 0)
-        {
-            <div class="card-footer d-flex align-items-center">
-                <p class="m-0 text-secondary">
-                    Showing <strong>@m_motorbikes.Count</strong> motorbikes
-                </p>
+                    </div>
+                </div>
             </div>
         }
-    </div>
+    }
 </LoadingSkeleton>
 
 @code {
     private List<Motorbike> m_motorbikes = [];
     private Dictionary<string, int> m_statusCounts = new();
     private Dictionary<int, MotorbikeMaintenanceSummary> m_maintenanceSummaries = new();
+    private List<string> m_availableBrands = [];
     private bool m_loading = true;
     private string? m_searchTerm;
     private string? m_statusFilter;
+    private string? m_brandFilter;
+    private string m_viewMode = "table";
     private System.Timers.Timer? m_debounceTimer;
 
     protected override async Task OnInitializedAsync()
@@ -163,8 +516,22 @@
                 page: 1,
                 pageSize: 100);
 
-            this.m_motorbikes = result.ItemCollection;
+            // Apply brand filter client-side for now
+            this.m_motorbikes = string.IsNullOrEmpty(this.m_brandFilter)
+                ? result.ItemCollection
+                : result.ItemCollection.Where(m => m.Brand == this.m_brandFilter).ToList();
+
             this.m_statusCounts = await this.MotorbikeService.GetStatusCountsAsync(this.ShopId);
+
+            // Get unique brands for filter dropdown
+            if (this.m_availableBrands.Count == 0)
+            {
+                this.m_availableBrands = result.ItemCollection
+                    .Select(m => m.Brand)
+                    .Distinct()
+                    .OrderBy(b => b)
+                    .ToList();
+            }
 
             // Load maintenance summaries for each motorbike
             this.m_maintenanceSummaries.Clear();
@@ -209,6 +576,14 @@
         await this.LoadDataAsync();
     }
 
+    private async Task ClearFilters()
+    {
+        this.m_searchTerm = null;
+        this.m_statusFilter = null;
+        this.m_brandFilter = null;
+        await this.LoadDataAsync();
+    }
+
     private async Task OpenAddDialog()
     {
         var motorbike = new Motorbike
@@ -248,6 +623,12 @@
         }
     }
 
+    private async Task ViewMaintenanceHistory(Motorbike motorbike)
+    {
+        // TODO: Open maintenance history dialog or navigate to maintenance page
+        this.ShowInfo($"Maintenance history for {motorbike.LicensePlate}");
+    }
+
     private async Task ConfirmDelete(Motorbike motorbike)
     {
         var itemName = $"{motorbike.Brand} {motorbike.Model} ({motorbike.LicensePlate})";
@@ -266,13 +647,77 @@
         }
     }
 
+    private int GetUtilizationPercentage()
+    {
+        var total = this.m_statusCounts.Values.Sum();
+        if (total == 0) return 0;
+        var rented = this.m_statusCounts.GetValueOrDefault("Rented", 0);
+        return (int)Math.Round((decimal)rented / total * 100);
+    }
+
     private static string GetStatusBadgeClass(string? status) => status switch
     {
-        "Available" => "bg-success",
-        "Rented" => "bg-primary",
-        "Maintenance" => "bg-warning",
-        _ => "bg-secondary"
+        "Available" => "bg-teal-lt text-teal",
+        "Rented" => "bg-indigo-lt text-indigo",
+        "Maintenance" => "bg-orange-lt text-orange",
+        _ => "bg-secondary-lt text-secondary"
     };
+
+    private static string GetStatusBadgeStyle(string? status) => "badge-pill px-3";
+
+    private static string GetStatusAvatarClass(string? status) => status switch
+    {
+        "Available" => "bg-teal-lt",
+        "Rented" => "bg-indigo-lt",
+        "Maintenance" => "bg-orange-lt",
+        _ => "bg-secondary-lt"
+    };
+
+    private static string GetStatusIcon(string? status) => status switch
+    {
+        "Available" => "ti-circle-check",
+        "Rented" => "ti-steering-wheel",
+        "Maintenance" => "ti-settings",
+        _ => "ti-circle"
+    };
+
+    private static string GetMaintenanceBadgeClass(MaintenanceStatus status) => status switch
+    {
+        MaintenanceStatus.Ok => "bg-azure-lt text-azure",
+        MaintenanceStatus.DueSoon => "bg-yellow-lt text-yellow",
+        MaintenanceStatus.Overdue => "bg-red-lt text-red",
+        _ => "bg-secondary-lt text-secondary"
+    };
+
+    private static string GetMaintenanceIcon(MaintenanceStatus status) => status switch
+    {
+        MaintenanceStatus.Ok => "ti-shield-check",
+        MaintenanceStatus.DueSoon => "ti-clock-exclamation",
+        MaintenanceStatus.Overdue => "ti-alert-triangle",
+        _ => "ti-help"
+    };
+
+    private static string GetMaintenanceLabel(MotorbikeMaintenanceSummary summary) => summary.OverallStatus switch
+    {
+        MaintenanceStatus.Ok => "OK",
+        MaintenanceStatus.DueSoon => $"Due Soon ({summary.DueSoonCount})",
+        MaintenanceStatus.Overdue => $"Overdue ({summary.OverdueCount})",
+        _ => "Unknown"
+    };
+
+    private static string GetMotorbikeImage(Motorbike motorbike)
+    {
+        if (!string.IsNullOrEmpty(motorbike.ImagePath))
+            return motorbike.ImagePath;
+
+        // Return placeholder based on brand
+        return motorbike.Brand?.ToLower() switch
+        {
+            "honda" => "/images/bikes/honda-placeholder.png",
+            "yamaha" => "/images/bikes/yamaha-placeholder.png",
+            _ => "/images/bikes/default-placeholder.png"
+        };
+    }
 
     public void Dispose()
     {

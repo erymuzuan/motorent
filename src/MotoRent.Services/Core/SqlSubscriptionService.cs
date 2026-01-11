@@ -44,7 +44,7 @@ public partial class SqlSubscriptionService(
 
     public async Task<Organization?> GetOrgAsync()
     {
-        var accountNo = this.RequestContext.GetAccountNo();
+        var accountNo = await this.RequestContext.GetAccountNoAsync();
         if (string.IsNullOrWhiteSpace(accountNo)) return null;
 
         return await this.DirectoryService.GetOrganizationAsync(accountNo);
@@ -139,8 +139,15 @@ public partial class SqlSubscriptionService(
 
     public Task<string> CreateAccountNoAsync(string suggestedNo)
     {
-        // Remove invalid characters, keep only alphanumeric and underscore
-        var sanitized = AccountNoRegex().Replace(suggestedNo, "");
+        // Convert to PascalCase: split by non-alphanumeric, capitalize each word
+        var words = PascalCaseSplitRegex().Split(suggestedNo)
+            .Where(w => !string.IsNullOrWhiteSpace(w))
+            .Select(ToPascalCaseWord);
+
+        var pascalCased = string.Concat(words);
+
+        // Remove any remaining non-ASCII alphanumeric characters
+        var sanitized = AccountNoRegex().Replace(pascalCased, "");
 
         // If all characters were invalid, generate a new one
         if (string.IsNullOrWhiteSpace(sanitized))
@@ -151,7 +158,7 @@ public partial class SqlSubscriptionService(
         // Ensure it doesn't start with a number
         if (char.IsDigit(sanitized[0]))
         {
-            sanitized = "T" + sanitized;
+            sanitized = "Org" + sanitized;
         }
 
         // Limit length to 50 characters
@@ -163,7 +170,28 @@ public partial class SqlSubscriptionService(
         return Task.FromResult(sanitized);
     }
 
-    [GeneratedRegex("[^a-zA-Z0-9_]")]
+    private static string ToPascalCaseWord(string word)
+    {
+        if (string.IsNullOrEmpty(word)) return "";
+
+        // Keep only ASCII letters and digits
+        var chars = word.Where(c => char.IsAsciiLetterOrDigit(c)).ToArray();
+        if (chars.Length == 0) return "";
+
+        // Capitalize first letter, lowercase the rest
+        chars[0] = char.ToUpperInvariant(chars[0]);
+        for (var i = 1; i < chars.Length; i++)
+        {
+            chars[i] = char.ToLowerInvariant(chars[i]);
+        }
+
+        return new string(chars);
+    }
+
+    [GeneratedRegex(@"[^a-zA-Z0-9]+")]
+    private static partial Regex PascalCaseSplitRegex();
+
+    [GeneratedRegex("[^a-zA-Z0-9]")]
     private static partial Regex AccountNoRegex();
 
     #endregion

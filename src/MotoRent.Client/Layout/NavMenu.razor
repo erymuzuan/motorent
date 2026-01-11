@@ -1,103 +1,130 @@
-@* Tabler horizontal navigation menu *@
+@* Tabler horizontal navigation menu - Only visible for tenant users (not SuperAdmin without impersonation) *@
+@using MotoRent.Domain.Core
+
+@* These menus are for tenant operations - only visible to users with tenant roles *@
+@* SuperAdmin without impersonation should NOT see these menus *@
 
 <ul class="navbar-nav">
-    <li class="nav-item">
-        <a class="nav-link" href="/">
-            <span class="nav-link-icon">
-                <i class="ti ti-dashboard"></i>
-            </span>
-            <span class="nav-link-title">Dashboard</span>
-        </a>
-    </li>
+    @* Dashboard - visible to tenant users with any role *@
+    <AuthorizeView Roles="@TenantRoles">
+        <li class="nav-item">
+            <a class="nav-link" href="/">
+                <span class="nav-link-icon">
+                    <i class="ti ti-dashboard"></i>
+                </span>
+                <span class="nav-link-title">Dashboard</span>
+            </a>
+        </li>
+    </AuthorizeView>
 
-    <li class="nav-item dropdown">
-        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown" role="button" aria-expanded="false">
-            <span class="nav-link-icon">
-                <i class="ti ti-receipt"></i>
-            </span>
-            <span class="nav-link-title">Rentals</span>
-        </a>
-        <div class="dropdown-menu">
-            <a class="dropdown-item" href="/rentals">
-                <i class="ti ti-list me-2"></i>Active Rentals
+    @* Rentals - visible to RentalRoles (OrgAdmin, ShopManager, Staff) *@
+    <AuthorizeView Roles="@RentalRoles">
+        <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown" role="button" aria-expanded="false">
+                <span class="nav-link-icon">
+                    <i class="ti ti-receipt"></i>
+                </span>
+                <span class="nav-link-title">Rentals</span>
             </a>
-            <a class="dropdown-item" href="/rentals/checkin">
-                <i class="ti ti-login me-2"></i>Check-In
-            </a>
-            <a class="dropdown-item" href="/rentals/checkout">
-                <i class="ti ti-logout me-2"></i>Check-Out
-            </a>
-        </div>
-    </li>
+            <div class="dropdown-menu">
+                <a class="dropdown-item" href="/rentals">
+                    <i class="ti ti-list me-2"></i>Active Rentals
+                </a>
+                <a class="dropdown-item" href="/rentals/checkin">
+                    <i class="ti ti-login me-2"></i>Check-In
+                </a>
+                <a class="dropdown-item" href="/rentals/checkout">
+                    <i class="ti ti-logout me-2"></i>Check-Out
+                </a>
+            </div>
+        </li>
+    </AuthorizeView>
 
-    <li class="nav-item dropdown">
-        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown" role="button" aria-expanded="false">
-            <span class="nav-link-icon">
-                <i class="ti ti-building-bank"></i>
-            </span>
-            <span class="nav-link-title">Finance</span>
-        </a>
-        <div class="dropdown-menu">
-            <a class="dropdown-item" href="/payments">
-                <i class="ti ti-credit-card me-2"></i>Payments
+    @* Finance - visible to ManagementRoles (OrgAdmin, ShopManager) *@
+    <AuthorizeView Roles="@ManagementRoles">
+        <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown" role="button" aria-expanded="false">
+                <span class="nav-link-icon">
+                    <i class="ti ti-building-bank"></i>
+                </span>
+                <span class="nav-link-title">Finance</span>
             </a>
-            <a class="dropdown-item" href="/deposits">
-                <i class="ti ti-wallet me-2"></i>Deposits
-            </a>
-            <a class="dropdown-item" href="/reports">
-                <i class="ti ti-chart-bar me-2"></i>Reports
-            </a>
-        </div>
-    </li>
+            <div class="dropdown-menu">
+                <a class="dropdown-item" href="/payments">
+                    <i class="ti ti-credit-card me-2"></i>Payments
+                </a>
+                <a class="dropdown-item" href="/deposits">
+                    <i class="ti ti-wallet me-2"></i>Deposits
+                </a>
+                <a class="dropdown-item" href="/reports">
+                    <i class="ti ti-chart-bar me-2"></i>Reports
+                </a>
+            </div>
+        </li>
+    </AuthorizeView>
 
-    <li class="nav-item dropdown">
-        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown" role="button" aria-expanded="false">
-            <span class="nav-link-icon">
-                <i class="ti ti-motorbike"></i>
-            </span>
-            <span class="nav-link-title">Inventory</span>
-        </a>
-        <div class="dropdown-menu">
-            <a class="dropdown-item" href="/motorbikes">
-                <i class="ti ti-bike me-2"></i>Motorbikes
+    @* Inventory - visible to MaintenanceRoles (OrgAdmin, ShopManager, Mechanic) *@
+    <AuthorizeView Roles="@MaintenanceRoles">
+        <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown" role="button" aria-expanded="false">
+                <span class="nav-link-icon">
+                    <i class="ti ti-motorbike"></i>
+                </span>
+                <span class="nav-link-title">Inventory</span>
             </a>
-            <a class="dropdown-item" href="/accessories">
-                <i class="ti ti-headphones me-2"></i>Accessories
-            </a>
-        </div>
-    </li>
+            <div class="dropdown-menu">
+                <a class="dropdown-item" href="/motorbikes">
+                    <i class="ti ti-bike me-2"></i>Motorbikes
+                </a>
+                <a class="dropdown-item" href="/accessories">
+                    <i class="ti ti-headphones me-2"></i>Accessories
+                </a>
+            </div>
+        </li>
+    </AuthorizeView>
 
-    <li class="nav-item dropdown">
-        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown" role="button" aria-expanded="false">
-            <span class="nav-link-icon">
-                <i class="ti ti-users"></i>
-            </span>
-            <span class="nav-link-title">Customers</span>
-        </a>
-        <div class="dropdown-menu">
-            <a class="dropdown-item" href="/renters">
-                <i class="ti ti-user-plus me-2"></i>Renters
+    @* Customers - visible to RentalRoles (OrgAdmin, ShopManager, Staff) *@
+    <AuthorizeView Roles="@RentalRoles">
+        <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown" role="button" aria-expanded="false">
+                <span class="nav-link-icon">
+                    <i class="ti ti-users"></i>
+                </span>
+                <span class="nav-link-title">Customers</span>
             </a>
-        </div>
-    </li>
+            <div class="dropdown-menu">
+                <a class="dropdown-item" href="/renters">
+                    <i class="ti ti-user-plus me-2"></i>Renters
+                </a>
+            </div>
+        </li>
+    </AuthorizeView>
 
-    <li class="nav-item dropdown">
-        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown" role="button" aria-expanded="false">
-            <span class="nav-link-icon">
-                <i class="ti ti-settings"></i>
-            </span>
-            <span class="nav-link-title">Settings</span>
-        </a>
-        <div class="dropdown-menu">
-            <a class="dropdown-item" href="/insurance">
-                <i class="ti ti-shield-check me-2"></i>Insurance
+    @* Settings - visible to ManagementRoles (OrgAdmin, ShopManager) *@
+    <AuthorizeView Roles="@ManagementRoles">
+        <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown" role="button" aria-expanded="false">
+                <span class="nav-link-icon">
+                    <i class="ti ti-settings"></i>
+                </span>
+                <span class="nav-link-title">Settings</span>
             </a>
-            <a class="dropdown-item" href="/shop">
-                <i class="ti ti-building-store me-2"></i>Shop Settings
-            </a>
-        </div>
-    </li>
-
-    @* Support menu for SuperAdmin *@
-    <SupportMenu />
+            <div class="dropdown-menu">
+                <a class="dropdown-item" href="/insurance">
+                    <i class="ti ti-shield-check me-2"></i>Insurance
+                </a>
+                <a class="dropdown-item" href="/shop">
+                    <i class="ti ti-building-store me-2"></i>Shop Settings
+                </a>
+            </div>
+        </li>
+    </AuthorizeView>
 </ul>
+
+@code {
+    // Tenant roles - excludes SUPER_ADMIN (platform admin)
+    private static readonly string TenantRoles = string.Join(",", UserAccount.AllRoles);
+    private static readonly string RentalRoles = string.Join(",", UserAccount.RentalRoles);
+    private static readonly string ManagementRoles = string.Join(",", UserAccount.ManagementRoles);
+    private static readonly string MaintenanceRoles = string.Join(",", UserAccount.MaintenanceRoles);
+}

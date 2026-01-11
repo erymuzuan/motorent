@@ -9,7 +9,7 @@ namespace MotoRent.Domain.Core;
 /// </summary>
 public static class MotoConfig
 {
-    private const string Prefix = "MOTO_";
+    private const string PREFIX = "MOTO_";
 
     // Connection Strings
     public static string SqlConnectionString => GetEnvironmentVariable("SqlConnectionString") ??
@@ -60,7 +60,7 @@ public static class MotoConfig
 
     public static string? GetEnvironmentVariable(string setting, bool usePrefix = true)
     {
-        var prefix = usePrefix ? Prefix : "";
+        var prefix = usePrefix ? PREFIX : "";
 
         // Check Process level first (highest priority)
         var process = Environment.GetEnvironmentVariable($"{prefix}{setting}",
