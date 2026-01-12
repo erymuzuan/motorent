@@ -17,8 +17,6 @@ public class CoreDataContext
     public Query<AccessToken> AccessTokens { get; }
     public Query<RegistrationInvite> RegistrationInvites { get; }
     public Query<LogEntry> LogEntries { get; }
-    public Query<Comment> Comments { get; }
-    public Query<Follow> Follows { get; }
     public Query<SupportRequest> SupportRequests { get; }
 
     private QueryProvider QueryProvider { get; }
@@ -34,8 +32,6 @@ public class CoreDataContext
         AccessTokens = new Query<AccessToken>(provider);
         RegistrationInvites = new Query<RegistrationInvite>(provider);
         LogEntries = new Query<LogEntry>(provider);
-        Comments = new Query<Comment>(provider);
-        Follows = new Query<Follow>(provider);
         SupportRequests = new Query<SupportRequest>(provider);
     }
 

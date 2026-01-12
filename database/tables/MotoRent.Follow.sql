@@ -1,6 +1,6 @@
--- Follow Table
--- Track users following entities for notifications
-CREATE TABLE [Core].[Follow]
+-- Follow Table (Tenant-specific)
+-- Track users following entities for notifications within a tenant
+CREATE TABLE [MotoRent].[Follow]
 (
     [FollowId]          INT            NOT NULL PRIMARY KEY IDENTITY(1,1),
     -- Computed columns from JSON
@@ -18,5 +18,5 @@ CREATE TABLE [Core].[Follow]
 )
 GO
 
-CREATE INDEX [IX_Follow_EntityId_User_Type] ON [Core].[Follow]([EntityId], [User], [Type])
+CREATE INDEX [IX_Follow_EntityId_User_Type] ON [MotoRent].[Follow]([EntityId], [User], [Type])
 GO

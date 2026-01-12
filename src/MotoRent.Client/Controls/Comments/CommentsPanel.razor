@@ -88,8 +88,6 @@
     [Parameter] public string? Title { get; set; }
     [Parameter] public string? ObjectWebId { get; set; }
 
-    [Inject] private CoreDataContext CoreDataContext { get; set; } = null!;
-
     private List<Comment> Comments { get; } = [];
     private string? m_newCommentText;
     private bool m_loading;
@@ -122,14 +120,14 @@
         m_sortDescending = descending;
         m_orderText = descending ? "Newest first" : "Oldest first";
 
-        var query = CoreDataContext.Comments
+        var query = DataContext.CreateQuery<Comment>()
             .Where(x => x.Type == EntityType && x.EntityId == EntityId);
 
         query = descending
             ? query.OrderByDescending(x => x.CommentId)
             : query.OrderBy(x => x.CommentId);
 
-        var lo = await CoreDataContext.LoadAsync(query, size: 100);
+        var lo = await DataContext.LoadAsync(query, size: 100);
         Comments.Clear();
         Comments.AddRange(lo.ItemCollection);
     }
@@ -157,7 +155,7 @@
                 AccountNo = AccountNo
             };
 
-            using var session = CoreDataContext.OpenSession(UserName);
+            using var session = DataContext.OpenSession(UserName);
             session.Attach(comment);
             await session.SubmitChanges("AddComment");
 

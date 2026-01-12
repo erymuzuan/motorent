@@ -99,8 +99,6 @@
     [Parameter] public bool IsReply { get; set; }
     [Parameter] public EventCallback<Comment> OnReplyAdded { get; set; }
 
-    [Inject] private CoreDataContext CoreDataContext { get; set; } = null!;
-
     private bool m_showReplyInput;
     private string? m_replyText;
     private bool m_busy;
@@ -162,7 +160,7 @@
                 });
             }
 
-            using var session = CoreDataContext.OpenSession(UserName);
+            using var session = DataContext.OpenSession(UserName);
             session.Attach(Comment);
             await session.SubmitChanges("CommentExpression");
 
@@ -200,7 +198,7 @@
                 ReplyTo = Comment.CommentId
             };
 
-            using var session = CoreDataContext.OpenSession(UserName);
+            using var session = DataContext.OpenSession(UserName);
             session.Attach(reply);
             await session.SubmitChanges("AddReply");
 
