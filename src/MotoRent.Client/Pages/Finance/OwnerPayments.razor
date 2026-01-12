@@ -1,0 +1,359 @@
+@page "/finance/owner-payments"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Policy = "RequireTenantManager")]
+@inherits LocalizedComponentBase<OwnerPayments>
+@inject OwnerPaymentService OwnerPaymentService
+@inject VehicleOwnerService VehicleOwnerService
+
+<MotoRentPageTitle>Owner Payments</MotoRentPageTitle>
+
+<TablerHeader Title="Owner Payments" PreTitle="Third-Party Fleet">
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-secondary" @onclick="ExportAsync" disabled="@m_loading">
+            <i class="ti ti-download me-1"></i>
+            Export
+        </button>
+    </div>
+</TablerHeader>
+
+@* Summary Cards *@
+<div class="row row-deck mb-3">
+    <div class="col-sm-6 col-lg-3">
+        <div class="card card-sm">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-auto">
+                        <span class="bg-warning text-white avatar">
+                            <i class="ti ti-clock"></i>
+                        </span>
+                    </div>
+                    <div class="col">
+                        <div class="font-weight-medium">Pending Payments</div>
+                        <div class="text-secondary">
+                            @m_pendingCount payments
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <div class="h2 mb-0">@m_pendingTotal.ToString("N0") THB</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card card-sm">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-auto">
+                        <span class="bg-success text-white avatar">
+                            <i class="ti ti-check"></i>
+                        </span>
+                    </div>
+                    <div class="col">
+                        <div class="font-weight-medium">Paid This Month</div>
+                        <div class="text-secondary">
+                            @m_paidCount payments
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <div class="h2 mb-0">@m_paidTotal.ToString("N0") THB</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* Filters *@
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">Owner</label>
+                <select class="form-select" @bind="m_ownerFilter" @bind:after="LoadDataAsync">
+                    <option value="">All Owners</option>
+                    @foreach (var owner in m_owners)
+                    {
+                        <option value="@owner.VehicleOwnerId">@owner.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Status</label>
+                <select class="form-select" @bind="m_statusFilter" @bind:after="LoadDataAsync">
+                    <option value="">All Status</option>
+                    <option value="@OwnerPaymentStatus.Pending">Pending</option>
+                    <option value="@OwnerPaymentStatus.Paid">Paid</option>
+                    <option value="@OwnerPaymentStatus.Cancelled">Cancelled</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">From Date</label>
+                <input type="date" class="form-control" @bind="m_fromDate" @bind:after="LoadDataAsync" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">To Date</label>
+                <input type="date" class="form-control" @bind="m_toDate" @bind:after="LoadDataAsync" />
+            </div>
+            <div class="col-md-3 text-end">
+                <button type="button" class="btn btn-ghost-secondary" @onclick="ClearFilters">
+                    <i class="ti ti-x me-1"></i>
+                    Clear Filters
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* Payments Table *@
+<LoadingSkeleton Loading="@m_loading" Mode="LoadingSkeleton.PlaceholderMode.Table">
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-vcenter card-table">
+                <thead>
+                    <tr>
+                        <th>Owner</th>
+                        <th>Vehicle</th>
+                        <th>Rental Period</th>
+                        <th>Payment Model</th>
+                        <th class="text-end">Amount</th>
+                        <th>Status</th>
+                        <th class="w-1"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var payment in m_payments)
+                    {
+                        <tr class="@(payment.Status == OwnerPaymentStatus.Cancelled ? "text-secondary" : "")">
+                            <td>
+                                <div class="font-weight-medium">@payment.VehicleOwnerName</div>
+                            </td>
+                            <td>
+                                <div>@payment.VehicleName</div>
+                            </td>
+                            <td>
+                                <div>@payment.RentalStartDate.ToString("dd MMM") - @payment.RentalEndDate.ToString("dd MMM yyyy")</div>
+                                <div class="text-secondary small">@payment.RentalDays day(s)</div>
+                            </td>
+                            <td>
+                                @if (payment.PaymentModel is OwnerPaymentModel.DailyRate)
+                                {
+                                    <span>@payment.CalculationRate.ToString("N0") THB/day</span>
+                                }
+                                else
+                                {
+                                    <span>@((payment.CalculationRate * 100).ToString("N0"))% of @payment.GrossRentalAmount.ToString("N0")</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                <span class="h4 mb-0">@payment.Amount.ToString("N0")</span>
+                                <span class="text-secondary">THB</span>
+                            </td>
+                            <td>
+                                @switch (payment.Status)
+                                {
+                                    case OwnerPaymentStatus.Pending:
+                                        <span class="badge bg-warning">Pending</span>
+                                        break;
+                                    case OwnerPaymentStatus.Paid:
+                                        <span class="badge bg-success">Paid</span>
+                                        if (payment.PaidOn is { } paidOn)
+                                        {
+                                            <div class="text-secondary small">@paidOn.ToString("dd MMM")</div>
+                                        }
+                                        break;
+                                    case OwnerPaymentStatus.Cancelled:
+                                        <span class="badge bg-secondary">Cancelled</span>
+                                        break;
+                                }
+                            </td>
+                            <td>
+                                @if (payment.Status == OwnerPaymentStatus.Pending)
+                                {
+                                    <div class="btn-list flex-nowrap">
+                                        <button type="button" class="btn btn-sm btn-success"
+                                                @onclick="@(() => OpenMarkAsPaidDialog(payment))">
+                                            <i class="ti ti-check me-1"></i>
+                                            Mark Paid
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-ghost-danger"
+                                                @onclick="@(() => CancelPayment(payment))">
+                                            <i class="ti ti-x"></i>
+                                        </button>
+                                    </div>
+                                }
+                                else if (payment.Status == OwnerPaymentStatus.Paid)
+                                {
+                                    <button type="button" class="btn btn-sm btn-ghost-secondary"
+                                            @onclick="@(() => ViewPaymentDetails(payment))">
+                                        <i class="ti ti-eye"></i>
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</LoadingSkeleton>
+
+@if (!m_loading && m_payments.Count == 0)
+{
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <i class="ti ti-receipt-off mb-3" style="font-size: 3rem; color: var(--tblr-secondary);"></i>
+            <h3 class="text-secondary">No owner payments found</h3>
+            <p class="text-secondary">
+                @if (string.IsNullOrEmpty(m_ownerFilter) && m_statusFilter is null && m_fromDate is null && m_toDate is null)
+                {
+                    <span>Owner payments will appear here when rentals of third-party vehicles are completed.</span>
+                }
+                else
+                {
+                    <span>Try adjusting your filters.</span>
+                }
+            </p>
+        </div>
+    </div>
+}
+
+@code {
+    private List<OwnerPayment> m_payments = [];
+    private List<VehicleOwner> m_owners = [];
+    private bool m_loading = true;
+    private string? m_ownerFilter;
+    private OwnerPaymentStatus? m_statusFilter;
+    private DateTime? m_fromDate;
+    private DateTime? m_toDate;
+
+    // Summary stats
+    private decimal m_pendingTotal;
+    private int m_pendingCount;
+    private decimal m_paidTotal;
+    private int m_paidCount;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Default to current month
+        var now = DateTime.Now;
+        this.m_fromDate = new DateTime(now.Year, now.Month, 1);
+        this.m_toDate = this.m_fromDate.Value.AddMonths(1).AddDays(-1);
+
+        await this.LoadOwnersAsync();
+        await this.LoadDataAsync();
+    }
+
+    private async Task LoadOwnersAsync()
+    {
+        try
+        {
+            var result = await this.VehicleOwnerService.GetOwnersAsync(null, null, 1, 100);
+            this.m_owners = result.ItemCollection;
+        }
+        catch
+        {
+            this.m_owners = [];
+        }
+    }
+
+    private async Task LoadDataAsync()
+    {
+        this.m_loading = true;
+        try
+        {
+            int? ownerId = string.IsNullOrEmpty(this.m_ownerFilter) ? null : int.Parse(this.m_ownerFilter);
+            DateTimeOffset? fromDate = this.m_fromDate.HasValue ? new DateTimeOffset(this.m_fromDate.Value) : null;
+            DateTimeOffset? toDate = this.m_toDate.HasValue ? new DateTimeOffset(this.m_toDate.Value.AddDays(1)) : null;
+
+            var result = await this.OwnerPaymentService.GetPaymentsAsync(
+                ownerId,
+                this.m_statusFilter,
+                fromDate,
+                toDate,
+                page: 1,
+                pageSize: 100);
+
+            this.m_payments = result.ItemCollection;
+
+            // Calculate summaries
+            this.m_pendingTotal = this.m_payments.Where(p => p.Status == OwnerPaymentStatus.Pending).Sum(p => p.Amount);
+            this.m_pendingCount = this.m_payments.Count(p => p.Status == OwnerPaymentStatus.Pending);
+            this.m_paidTotal = this.m_payments.Where(p => p.Status == OwnerPaymentStatus.Paid).Sum(p => p.Amount);
+            this.m_paidCount = this.m_payments.Count(p => p.Status == OwnerPaymentStatus.Paid);
+        }
+        catch (Exception ex)
+        {
+            this.ShowError($"Error loading payments: {ex.Message}");
+        }
+        finally
+        {
+            this.m_loading = false;
+        }
+    }
+
+    private async Task ClearFilters()
+    {
+        this.m_ownerFilter = null;
+        this.m_statusFilter = null;
+        this.m_fromDate = null;
+        this.m_toDate = null;
+        await this.LoadDataAsync();
+    }
+
+    private async Task OpenMarkAsPaidDialog(OwnerPayment payment)
+    {
+        var result = await this.DialogService
+            .Create<MarkAsPaidDialog>("Mark Payment as Paid")
+            .WithParameter(x => x.Payment, payment)
+            .ShowDialogAsync();
+
+        if (!result.Cancelled)
+        {
+            await this.LoadDataAsync();
+            this.ShowSuccess($"Payment of {payment.Amount:N0} THB marked as paid");
+        }
+    }
+
+    private async Task CancelPayment(OwnerPayment payment)
+    {
+        if (!await this.DialogService.ConfirmYesNoAsync(
+            $"Are you sure you want to cancel this payment of {payment.Amount:N0} THB to {payment.VehicleOwnerName}?",
+            "Cancel Payment"))
+            return;
+
+        var result = await this.OwnerPaymentService.CancelPaymentAsync(
+            payment.OwnerPaymentId,
+            "Cancelled by user",
+            this.UserName);
+
+        if (result.Success)
+        {
+            await this.LoadDataAsync();
+            this.ShowSuccess("Payment cancelled");
+        }
+        else
+        {
+            this.ShowError($"Failed to cancel: {result.Message}");
+        }
+    }
+
+    private async Task ViewPaymentDetails(OwnerPayment payment)
+    {
+        var message = $"Payment Details:\n" +
+                      $"- Amount: {payment.Amount:N0} THB\n" +
+                      $"- Method: {payment.PaymentMethod ?? "Not specified"}\n" +
+                      $"- Reference: {payment.PaymentRef ?? "None"}\n" +
+                      $"- Paid On: {payment.PaidOn?.ToString("dd MMM yyyy HH:mm") ?? "N/A"}\n" +
+                      $"- Notes: {payment.Notes ?? "None"}";
+
+        await this.DialogService.ShowMessageAsync(message, "Payment Details");
+    }
+
+    private async Task ExportAsync()
+    {
+        // TODO: Implement export functionality
+        this.ShowInfo("Export feature coming soon");
+        await Task.CompletedTask;
+    }
+}

@@ -1,0 +1,120 @@
+@inherits LocalizedDialogBase<OwnerPayment, MarkAsPaidDialog>
+@inject OwnerPaymentService OwnerPaymentService
+
+<form id="@FormId" @onsubmit="SaveAsync" @onsubmit:preventDefault>
+    <div class="modal-body">
+        @* Payment Summary *@
+        <div class="alert alert-info mb-3">
+            <div class="d-flex">
+                <div class="flex-fill">
+                    <div class="mb-2">
+                        <strong>Owner:</strong> @Payment.VehicleOwnerName
+                    </div>
+                    <div class="mb-2">
+                        <strong>Vehicle:</strong> @Payment.VehicleName
+                    </div>
+                    <div>
+                        <strong>Period:</strong> @Payment.RentalStartDate.ToString("dd MMM") - @Payment.RentalEndDate.ToString("dd MMM yyyy")
+                        (@Payment.RentalDays day(s))
+                    </div>
+                </div>
+                <div class="text-end">
+                    <div class="text-secondary">Amount Due</div>
+                    <div class="h2 mb-0">@Payment.Amount.ToString("N0") THB</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label required">Payment Method</label>
+                <select class="form-select" @bind="m_paymentMethod" required>
+                    <option value="">Select method...</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                    <option value="PromptPay">PromptPay</option>
+                    <option value="Cash">Cash</option>
+                    <option value="Cheque">Cheque</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Payment Reference</label>
+                <input type="text" class="form-control" @bind="m_paymentRef"
+                       placeholder="Transaction ID, cheque number, etc." />
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Notes</label>
+                <textarea class="form-control" @bind="m_notes" rows="2"
+                          placeholder="Additional notes about this payment..."></textarea>
+            </div>
+        </div>
+    </div>
+</form>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
+        Cancel
+    </button>
+    <button type="submit" form="@FormId" class="btn btn-success" disabled="@Saving">
+        @if (Saving)
+        {
+            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+        }
+        <i class="ti ti-check me-1"></i>
+        Confirm Payment
+    </button>
+</div>
+
+@code {
+    [Parameter]
+    public OwnerPayment Payment { get; set; } = new();
+
+    private string? m_paymentMethod;
+    private string? m_paymentRef;
+    private string? m_notes;
+
+    protected override void OnInitialized()
+    {
+        this.FormValid = true;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrEmpty(this.m_paymentMethod))
+        {
+            this.ShowError("Please select a payment method");
+            return;
+        }
+
+        this.Saving = true;
+
+        try
+        {
+            var result = await this.OwnerPaymentService.MarkAsPaidAsync(
+                this.Payment.OwnerPaymentId,
+                this.m_paymentMethod,
+                this.m_paymentRef,
+                this.m_notes,
+                this.UserName);
+
+            if (result.Success)
+            {
+                this.Close();
+            }
+            else
+            {
+                this.ShowError($"Failed to mark as paid: {result.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            this.ShowError($"Error: {ex.Message}");
+        }
+        finally
+        {
+            this.Saving = false;
+        }
+    }
+}

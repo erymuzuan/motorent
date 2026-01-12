@@ -1,6 +1,7 @@
 @using MotoRent.Domain.Entities
 @inherits LocalizedDialogBase<Vehicle, VehicleDialog>
 @inject VehicleService VehicleService
+@inject VehicleOwnerService VehicleOwnerService
 
 <form id="@FormId" @onsubmit="SaveAsync" @onsubmit:preventDefault>
     <div class="modal-body">
@@ -250,6 +251,91 @@
                 <textarea class="form-control" @bind="Entity.Notes" rows="3"
                           placeholder="Additional notes about this vehicle..."></textarea>
             </div>
+
+            @* Third-Party Owner Section *@
+            <div class="col-12">
+                <hr class="my-2" />
+                <h4 class="mb-3">
+                    <i class="ti ti-user-dollar me-1"></i>Third-Party Owner
+                </h4>
+            </div>
+
+            <div class="col-12">
+                <label class="form-check form-switch">
+                    <input type="checkbox" class="form-check-input" @bind="m_isThirdPartyOwned" />
+                    <span class="form-check-label">This vehicle is owned by a third party</span>
+                </label>
+                <small class="form-hint">Enable to track owner payments when this vehicle is rented</small>
+            </div>
+
+            @if (m_isThirdPartyOwned)
+            {
+                <div class="col-md-6">
+                    <label class="form-label required">Owner</label>
+                    <select class="form-select" @bind="Entity.VehicleOwnerId" required>
+                        <option value="">Select owner...</option>
+                        @foreach (var owner in m_owners)
+                        {
+                            <option value="@owner.VehicleOwnerId">@owner.Name</option>
+                        }
+                    </select>
+                    @if (m_owners.Count == 0)
+                    {
+                        <small class="text-warning">
+                            <i class="ti ti-alert-triangle me-1"></i>
+                            No owners configured. <a href="/settings/vehicle-owners" target="_blank">Add an owner first</a>.
+                        </small>
+                    }
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label required">Payment Model</label>
+                    <select class="form-select" @bind="Entity.OwnerPaymentModel" required>
+                        <option value="@OwnerPaymentModel.DailyRate">Daily Rate</option>
+                        <option value="@OwnerPaymentModel.RevenueShare">Revenue Share (%)</option>
+                    </select>
+                </div>
+
+                @if (Entity.OwnerPaymentModel is OwnerPaymentModel.DailyRate or null)
+                {
+                    <div class="col-md-6">
+                        <label class="form-label required">Owner Daily Rate (THB)</label>
+                        <div class="input-group">
+                            <span class="input-group-text">฿</span>
+                            <input type="number" class="form-control" @bind="Entity.OwnerDailyRate"
+                                   min="0" step="50" placeholder="200" required />
+                        </div>
+                        <small class="text-secondary">Fixed amount paid to owner per rental day</small>
+                    </div>
+                }
+                else
+                {
+                    <div class="col-md-6">
+                        <label class="form-label required">Revenue Share (%)</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" @bind="m_revenueSharePercent"
+                                   min="0" max="100" step="5" placeholder="30" required />
+                            <span class="input-group-text">%</span>
+                        </div>
+                        <small class="text-secondary">Percentage of gross rental rate paid to owner</small>
+                    </div>
+                }
+
+                <div class="col-12">
+                    <div class="alert alert-info py-2 mb-0">
+                        <i class="ti ti-info-circle me-1"></i>
+                        <strong>How it works:</strong>
+                        @if (Entity.OwnerPaymentModel is OwnerPaymentModel.DailyRate or null)
+                        {
+                            <span>Owner receives a fixed payment per rental day, regardless of what the customer pays.</span>
+                        }
+                        else
+                        {
+                            <span>Owner receives a percentage of the rental rate only (excludes insurance, accessories, and extras).</span>
+                        }
+                    </div>
+                </div>
+            }
         </div>
     </div>
 </form>
@@ -270,11 +356,44 @@
 
 @code {
     private DateTime? m_lastServiceDate;
+    private bool m_isThirdPartyOwned;
+    private decimal? m_revenueSharePercent;
+    private List<VehicleOwner> m_owners = [];
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         this.m_lastServiceDate = this.Entity.LastServiceDate?.DateTime;
         this.FormValid = true;
+
+        // Initialize third-party owner state from Entity
+        this.m_isThirdPartyOwned = this.Entity is { VehicleOwnerId: > 0 };
+
+        // Convert decimal to percentage for display (0.30 -> 30)
+        if (this.Entity.OwnerRevenueSharePercent is { } share)
+        {
+            this.m_revenueSharePercent = share * 100;
+        }
+
+        // Load owners
+        await this.LoadOwnersAsync();
+    }
+
+    private async Task LoadOwnersAsync()
+    {
+        try
+        {
+            var result = await this.VehicleOwnerService.GetOwnersAsync(
+                isActive: true,
+                searchTerm: null,
+                page: 1,
+                pageSize: 100);
+            this.m_owners = result.ItemCollection;
+        }
+        catch
+        {
+            // Silently fail - owners dropdown will be empty
+            this.m_owners = [];
+        }
     }
 
     private void OnVehicleTypeChanged(VehicleType type)
@@ -327,6 +446,34 @@
             this.Entity.LastServiceDate = this.m_lastServiceDate.HasValue
                 ? new DateTimeOffset(this.m_lastServiceDate.Value)
                 : null;
+
+            // Handle third-party owner fields
+            if (this.m_isThirdPartyOwned)
+            {
+                // Convert percentage to decimal (30 -> 0.30)
+                if (this.Entity.OwnerPaymentModel is OwnerPaymentModel.RevenueShare && this.m_revenueSharePercent is { } percent)
+                {
+                    this.Entity.OwnerRevenueSharePercent = percent / 100m;
+                    this.Entity.OwnerDailyRate = null; // Clear daily rate when using revenue share
+                }
+                else
+                {
+                    this.Entity.OwnerRevenueSharePercent = null; // Clear percentage when using daily rate
+                }
+
+                // Set owner name for denormalization
+                var selectedOwner = this.m_owners.FirstOrDefault(o => o.VehicleOwnerId == this.Entity.VehicleOwnerId);
+                this.Entity.VehicleOwnerName = selectedOwner?.Name;
+            }
+            else
+            {
+                // Clear all owner fields when not third-party owned
+                this.Entity.VehicleOwnerId = null;
+                this.Entity.VehicleOwnerName = null;
+                this.Entity.OwnerPaymentModel = null;
+                this.Entity.OwnerDailyRate = null;
+                this.Entity.OwnerRevenueSharePercent = null;
+            }
 
             var result = this.IsNew
                 ? await this.VehicleService.CreateVehicleAsync(this.Entity, this.UserName)

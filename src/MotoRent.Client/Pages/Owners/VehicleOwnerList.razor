@@ -1,0 +1,300 @@
+@page "/settings/vehicle-owners"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Policy = "RequireTenantManager")]
+@inherits LocalizedComponentBase<VehicleOwnerList>
+@inject VehicleOwnerService VehicleOwnerService
+
+<MotoRentPageTitle>Vehicle Owners</MotoRentPageTitle>
+
+<TablerHeader Title="Vehicle Owners" PreTitle="Third-Party Fleet">
+    <button type="button" class="btn btn-primary" @onclick="OpenAddDialog">
+        <i class="ti ti-plus me-1"></i>
+        Add Owner
+    </button>
+</TablerHeader>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-3 align-items-center">
+            <div class="col-md-4">
+                <div class="input-icon">
+                    <span class="input-icon-addon">
+                        <i class="ti ti-search"></i>
+                    </span>
+                    <input type="text" class="form-control" placeholder="Search by name, phone, email..."
+                           @bind="m_searchTerm" @bind:event="oninput" @onkeyup="OnSearchKeyUp" />
+                </div>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" @bind="m_activeFilter" @bind:after="LoadDataAsync">
+                    <option value="">All Status</option>
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                </select>
+            </div>
+            <div class="col-md-6 text-end">
+                <span class="badge bg-success me-1">Active: @m_activeCount</span>
+                <span class="badge bg-secondary">Inactive: @m_inactiveCount</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<LoadingSkeleton Loading="@m_loading" Mode="LoadingSkeleton.PlaceholderMode.Card">
+    <div class="row row-cards">
+        @foreach (var owner in m_owners)
+        {
+            <div class="col-sm-6 col-lg-4">
+                <div class="card @(owner.IsActive ? "" : "card-inactive")">
+                    <div class="card-header">
+                        <div class="d-flex w-100 justify-content-between">
+                            <div>
+                                <h3 class="card-title mb-1">@owner.Name</h3>
+                                <div class="text-secondary">
+                                    @if (m_vehicleCounts.TryGetValue(owner.VehicleOwnerId, out var count))
+                                    {
+                                        <span>@count vehicle(s)</span>
+                                    }
+                                </div>
+                            </div>
+                            <span class="badge @(owner.IsActive ? "bg-success" : "bg-secondary")">
+                                @(owner.IsActive ? "Active" : "Inactive")
+                            </span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-2">
+                            <i class="ti ti-phone text-secondary me-2"></i>
+                            @owner.Phone
+                        </div>
+                        @if (!string.IsNullOrEmpty(owner.Email))
+                        {
+                            <div class="mb-2">
+                                <i class="ti ti-mail text-secondary me-2"></i>
+                                @owner.Email
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(owner.BankName))
+                        {
+                            <div class="mb-2">
+                                <i class="ti ti-building-bank text-secondary me-2"></i>
+                                @owner.BankName
+                                @if (!string.IsNullOrEmpty(owner.BankAccountNumber))
+                                {
+                                    <span class="text-secondary ms-1">
+                                        (...@owner.BankAccountNumber[^4..])
+                                    </span>
+                                }
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(owner.PromptPayId))
+                        {
+                            <div>
+                                <i class="ti ti-qrcode text-secondary me-2"></i>
+                                PromptPay: @owner.PromptPayId
+                            </div>
+                        }
+                    </div>
+                    <div class="card-footer">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="btn-list">
+                                <button type="button" class="btn btn-sm btn-outline-primary"
+                                        @onclick="@(() => OpenEditDialog(owner))">
+                                    Edit
+                                </button>
+                                <button type="button" class="btn btn-sm @(owner.IsActive ? "btn-outline-warning" : "btn-outline-success")"
+                                        @onclick="@(() => ToggleActiveStatus(owner))">
+                                    @(owner.IsActive ? "Deactivate" : "Activate")
+                                </button>
+                            </div>
+                            <button type="button" class="btn btn-icon btn-ghost-danger"
+                                    @onclick="@(() => ConfirmDelete(owner))">
+                                <i class="ti ti-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</LoadingSkeleton>
+
+@if (!m_loading && m_owners.Count == 0)
+{
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <i class="ti ti-users mb-3" style="font-size: 3rem; color: var(--tblr-secondary);"></i>
+            <h3 class="text-secondary">No vehicle owners found</h3>
+            <p class="text-secondary">
+                @if (string.IsNullOrEmpty(m_searchTerm) && string.IsNullOrEmpty(m_activeFilter))
+                {
+                    <span>Click "Add Owner" to register a third-party vehicle owner.</span>
+                }
+                else
+                {
+                    <span>Try adjusting your search filters.</span>
+                }
+            </p>
+        </div>
+    </div>
+}
+
+<style>
+    .card-inactive {
+        opacity: 0.7;
+    }
+</style>
+
+@code {
+    private List<VehicleOwner> m_owners = [];
+    private Dictionary<int, int> m_vehicleCounts = [];
+    private bool m_loading = true;
+    private string? m_searchTerm;
+    private string? m_activeFilter;
+    private int m_activeCount;
+    private int m_inactiveCount;
+    private System.Timers.Timer? m_debounceTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await this.LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        this.m_loading = true;
+        try
+        {
+            bool? activeFilter = this.m_activeFilter switch
+            {
+                "true" => true,
+                "false" => false,
+                _ => null
+            };
+
+            var result = await this.VehicleOwnerService.GetOwnersAsync(
+                activeFilter,
+                this.m_searchTerm,
+                page: 1,
+                pageSize: 100);
+
+            this.m_owners = result.ItemCollection;
+
+            // Load vehicle counts for each owner
+            this.m_vehicleCounts.Clear();
+            foreach (var owner in this.m_owners)
+            {
+                var count = await this.VehicleOwnerService.GetOwnerVehicleCountAsync(owner.VehicleOwnerId);
+                this.m_vehicleCounts[owner.VehicleOwnerId] = count;
+            }
+
+            var allOwners = await this.VehicleOwnerService.GetOwnersAsync(null, null, 1, 1000);
+            this.m_activeCount = allOwners.ItemCollection.Count(o => o.IsActive);
+            this.m_inactiveCount = allOwners.ItemCollection.Count(o => !o.IsActive);
+        }
+        catch (Exception ex)
+        {
+            this.ShowError($"Error loading data: {ex.Message}");
+        }
+        finally
+        {
+            this.m_loading = false;
+        }
+    }
+
+    private void OnSearchKeyUp(KeyboardEventArgs e)
+    {
+        this.m_debounceTimer?.Stop();
+        this.m_debounceTimer?.Dispose();
+        this.m_debounceTimer = new System.Timers.Timer(300);
+        this.m_debounceTimer.Elapsed += async (_, _) =>
+        {
+            this.m_debounceTimer?.Stop();
+            await this.InvokeAsync(async () =>
+            {
+                await this.LoadDataAsync();
+                this.StateHasChanged();
+            });
+        };
+        this.m_debounceTimer.Start();
+    }
+
+    private async Task OpenAddDialog()
+    {
+        var owner = new VehicleOwner
+        {
+            IsActive = true
+        };
+
+        var result = await this.DialogService
+            .Create<VehicleOwnerDialog>("Add Vehicle Owner")
+            .WithParameter(x => x.Entity, owner)
+            .WithParameter(x => x.IsNew, true)
+            .Large()
+            .ShowDialogAsync();
+
+        if (!result.Cancelled)
+        {
+            await this.LoadDataAsync();
+            this.ShowSuccess("Vehicle owner added successfully");
+        }
+    }
+
+    private async Task OpenEditDialog(VehicleOwner owner)
+    {
+        var result = await this.DialogService
+            .Create<VehicleOwnerDialog>("Edit Vehicle Owner")
+            .WithParameter(x => x.Entity, owner.Clone())
+            .WithParameter(x => x.IsNew, false)
+            .Large()
+            .ShowDialogAsync();
+
+        if (!result.Cancelled)
+        {
+            await this.LoadDataAsync();
+            this.ShowSuccess("Vehicle owner updated successfully");
+        }
+    }
+
+    private async Task ToggleActiveStatus(VehicleOwner owner)
+    {
+        var action = owner.IsActive ? "deactivate" : "activate";
+        if (!await this.DialogService.ConfirmYesNoAsync(
+            $"Are you sure you want to {action} '{owner.Name}'?",
+            $"Confirm {action}"))
+            return;
+
+        var result = await this.VehicleOwnerService.SetActiveStatusAsync(owner.VehicleOwnerId, !owner.IsActive, this.UserName);
+        if (result.Success)
+        {
+            await this.LoadDataAsync();
+            this.ShowSuccess($"Vehicle owner {action}d successfully");
+        }
+        else
+        {
+            this.ShowError($"Failed to {action} owner: {result.Message}");
+        }
+    }
+
+    private async Task ConfirmDelete(VehicleOwner owner)
+    {
+        if (!await this.ConfirmDeleteAsync(owner.Name ?? "this owner"))
+            return;
+
+        var deleteResult = await this.VehicleOwnerService.DeleteOwnerAsync(owner, this.UserName);
+        if (deleteResult.Success)
+        {
+            await this.LoadDataAsync();
+            this.ShowSuccess("Vehicle owner deleted successfully");
+        }
+        else
+        {
+            this.ShowError($"Delete failed: {deleteResult.Message}");
+        }
+    }
+
+    public void Dispose()
+    {
+        this.m_debounceTimer?.Dispose();
+    }
+}

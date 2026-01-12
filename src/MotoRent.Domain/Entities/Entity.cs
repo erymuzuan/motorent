@@ -21,6 +21,9 @@ namespace MotoRent.Domain.Entities;
 [JsonDerivedType(typeof(DamagePhoto), nameof(DamagePhoto))]
 [JsonDerivedType(typeof(RentalAgreement), nameof(RentalAgreement))]
 [JsonDerivedType(typeof(VehicleImage), nameof(VehicleImage))]
+// Third-party owner entities
+[JsonDerivedType(typeof(VehicleOwner), nameof(VehicleOwner))]
+[JsonDerivedType(typeof(OwnerPayment), nameof(OwnerPayment))]
 // Maintenance entities
 [JsonDerivedType(typeof(ServiceType), nameof(ServiceType))]
 [JsonDerivedType(typeof(MaintenanceSchedule), nameof(MaintenanceSchedule))]

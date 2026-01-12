@@ -479,6 +479,46 @@ public class RentalService(RentalDataContext context, VehiclePoolService? poolSe
                 session.Attach(refundPayment);
             }
 
+            // 11. Create owner payment if vehicle is third-party owned
+            if (vehicle is { IsThirdPartyOwned: true })
+            {
+                var owner = await this.Context.LoadOneAsync<VehicleOwner>(
+                    o => o.VehicleOwnerId == vehicle.VehicleOwnerId);
+
+                if (owner is not null)
+                {
+                    var ownerPayment = new OwnerPayment
+                    {
+                        VehicleOwnerId = owner.VehicleOwnerId,
+                        VehicleId = vehicle.VehicleId,
+                        RentalId = rental.RentalId,
+                        PaymentModel = vehicle.OwnerPaymentModel ?? OwnerPaymentModel.DailyRate,
+                        RentalStartDate = rental.StartDate,
+                        RentalEndDate = request.ActualEndDate,
+                        VehicleOwnerName = owner.Name,
+                        VehicleName = vehicle.DisplayName,
+                        Status = OwnerPaymentStatus.Pending
+                    };
+
+                    if (vehicle.OwnerPaymentModel is OwnerPaymentModel.DailyRate)
+                    {
+                        ownerPayment.RentalDays = rental.RentalDays;
+                        ownerPayment.GrossRentalAmount = rental.TotalAmount;
+                        ownerPayment.CalculationRate = vehicle.OwnerDailyRate ?? 0;
+                        ownerPayment.Amount = ownerPayment.RentalDays * ownerPayment.CalculationRate;
+                    }
+                    else // RevenueShare - GROSS rental only
+                    {
+                        ownerPayment.RentalDays = rental.RentalDays;
+                        ownerPayment.GrossRentalAmount = rental.RentalRate * rental.RentalDays;
+                        ownerPayment.CalculationRate = vehicle.OwnerRevenueSharePercent ?? 0;
+                        ownerPayment.Amount = ownerPayment.GrossRentalAmount * ownerPayment.CalculationRate;
+                    }
+
+                    session.Attach(ownerPayment);
+                }
+            }
+
             var result = await session.SubmitChanges("CheckOut");
 
             if (result.Success)

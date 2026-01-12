@@ -23,6 +23,11 @@ CREATE TABLE [<schema>].[Vehicle]
     -- Driver/Guide Fees
     [DriverDailyFee] AS CAST(JSON_VALUE([Json], '$.DriverDailyFee') AS DECIMAL(10,2)),
     [GuideDailyFee] AS CAST(JSON_VALUE([Json], '$.GuideDailyFee') AS DECIMAL(10,2)),
+    -- Third-Party Owner
+    [VehicleOwnerId] AS CAST(JSON_VALUE([Json], '$.VehicleOwnerId') AS INT),
+    [OwnerPaymentModel] AS CAST(JSON_VALUE([Json], '$.OwnerPaymentModel') AS NVARCHAR(20)),
+    [OwnerDailyRate] AS CAST(JSON_VALUE([Json], '$.OwnerDailyRate') AS DECIMAL(10,2)),
+    [OwnerRevenueSharePercent] AS CAST(JSON_VALUE([Json], '$.OwnerRevenueSharePercent') AS DECIMAL(5,4)),
     -- JSON storage
     [Json] NVARCHAR(MAX) NOT NULL,
     -- Audit columns
@@ -43,4 +48,6 @@ GO
 CREATE INDEX IX_Vehicle_VehicleType_Status ON [<schema>].[Vehicle]([VehicleType], [Status])
 GO
 CREATE UNIQUE INDEX IX_Vehicle_LicensePlate ON [<schema>].[Vehicle]([LicensePlate])
+GO
+CREATE INDEX IX_Vehicle_VehicleOwnerId ON [<schema>].[Vehicle]([VehicleOwnerId]) WHERE [VehicleOwnerId] IS NOT NULL
 GO
