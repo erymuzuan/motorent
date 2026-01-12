@@ -1,5 +1,6 @@
 using MotoRent.Domain.DataContext;
 using MotoRent.Domain.Entities;
+using MotoRent.Domain.Extensions;
 
 namespace MotoRent.Services;
 
@@ -74,7 +75,7 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
         // Query vehicles at any of the pooled shops OR vehicles in pools accessible to this shop
         var query = this.Context.CreateQuery<Vehicle>()
             .Where(v =>
-                pooledShopIds.Contains(v.CurrentShopId) ||
+                pooledShopIds.IsInList(v.CurrentShopId) ||
                 (v.VehiclePoolId != null && v.VehiclePoolId > 0));
 
         if (vehicleType.HasValue)

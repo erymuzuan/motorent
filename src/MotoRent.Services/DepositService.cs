@@ -1,5 +1,6 @@
 using MotoRent.Domain.DataContext;
 using MotoRent.Domain.Entities;
+using MotoRent.Domain.Extensions;
 
 namespace MotoRent.Services;
 
@@ -23,7 +24,7 @@ public class DepositService(RentalDataContext context)
         var rentalIds = rentals.ItemCollection.Select(r => r.RentalId).ToList();
 
         var query = this.Context.CreateQuery<Deposit>()
-            .Where(d => rentalIds.Contains(d.RentalId));
+            .Where(d => rentalIds.IsInList(d.RentalId));
 
         if (!string.IsNullOrWhiteSpace(status))
         {
@@ -66,7 +67,7 @@ public class DepositService(RentalDataContext context)
 
         // Get all deposits for those rentals
         var deposits = await this.Context.LoadAsync(
-            this.Context.CreateQuery<Deposit>().Where(d => rentalIds.Contains(d.RentalId)),
+            this.Context.CreateQuery<Deposit>().Where(d => rentalIds.IsInList(d.RentalId)),
             page: 1, size: 10000, includeTotalRows: false);
 
         return deposits.ItemCollection
@@ -84,7 +85,7 @@ public class DepositService(RentalDataContext context)
 
         var heldDeposits = await this.Context.LoadAsync(
             this.Context.CreateQuery<Deposit>()
-                .Where(d => rentalIds.Contains(d.RentalId))
+                .Where(d => rentalIds.IsInList(d.RentalId))
                 .Where(d => d.Status == "Held"),
             page: 1, size: 10000, includeTotalRows: false);
 
@@ -154,7 +155,7 @@ public class DepositService(RentalDataContext context)
 
         // Get deposits
         var depositQuery = this.Context.CreateQuery<Deposit>()
-            .Where(d => rentalIds.Contains(d.RentalId));
+            .Where(d => rentalIds.IsInList(d.RentalId));
 
         if (!string.IsNullOrWhiteSpace(status))
         {
@@ -168,13 +169,13 @@ public class DepositService(RentalDataContext context)
         // Get renter info
         var renterIds = rentals.ItemCollection.Select(r => r.RenterId).Distinct().ToList();
         var rentersResult = await this.Context.LoadAsync(
-            this.Context.CreateQuery<Renter>().Where(r => renterIds.Contains(r.RenterId)),
+            this.Context.CreateQuery<Renter>().Where(r => renterIds.IsInList(r.RenterId)),
             page: 1, size: 10000, includeTotalRows: false);
 
         // Get motorbike info
         var motorbikeIds = rentals.ItemCollection.Select(r => r.MotorbikeId).Distinct().ToList();
         var motorbikesResult = await this.Context.LoadAsync(
-            this.Context.CreateQuery<Motorbike>().Where(m => motorbikeIds.Contains(m.MotorbikeId)),
+            this.Context.CreateQuery<Motorbike>().Where(m => motorbikeIds.IsInList(m.MotorbikeId)),
             page: 1, size: 10000, includeTotalRows: false);
 
         var rentersDict = rentersResult.ItemCollection.ToDictionary(r => r.RenterId);
