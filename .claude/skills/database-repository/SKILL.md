@@ -45,23 +45,21 @@ CREATE INDEX IX_Rental_ShopId_Status ON [MotoRent].[Rental]([ShopId], [Status])
 // RentalDataContext.cs
 public partial class RentalDataContext
 {
-    // Query properties for IDE autocomplete
-    public Query<Rental> Rentals { get; }
-    public Query<Renter> Renters { get; }
-    public Query<Motorbike> Motorbikes { get; }
-    public Query<Shop> Shops { get; }
-
     private QueryProvider QueryProvider { get; }
 
     public RentalDataContext() : this(ObjectBuilder.GetObject<QueryProvider>()) { }
+     /// <summary>
+    /// Creates a new query for the specified entity type.
+    /// Preferred pattern over using Query properties directly.
+    /// </summary>
+    public Query<T> CreateQuery<T>() where T : Entity, new()
+    {
+        return new Query<T>(this.QueryProvider);
+    }
 
     public RentalDataContext(QueryProvider provider)
     {
         this.QueryProvider = provider;
-        this.Rentals = new Query<Rental>(provider);
-        this.Renters = new Query<Renter>(provider);
-        this.Motorbikes = new Query<Motorbike>(provider);
-        this.Shops = new Query<Shop>(provider);
     }
 
     // Preferred: Use CreateQuery<T> instead of Query properties
@@ -152,7 +150,7 @@ var context = new RentalDataContext();
 var rental = await context.LoadOneAsync<Rental>(r => r.RentalId == id);
 
 // Load with pagination
-var query = context.Rentals
+var query = context.CreateQuery<Rental>()
     .Where(r => r.ShopId == shopId && r.Status == "Active")
     .OrderByDescending(r => r.StartDate);
 

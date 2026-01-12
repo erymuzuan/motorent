@@ -1,20 +1,60 @@
 # Code Standards
 
-C# coding conventions and patterns for MotoRent.
+C# coding conventions, naming patterns, and file organization standards for the MotoRent project.
 
-## Naming Conventions
+## C# Coding Standards
+- **Framework**: .NET 10
+- **Language Version**: C# 14 or latest
+- **Nullable Reference Types**: Enabled
+- **Pattern**: Use modern C# features (pattern matching, records, init-only properties)
+- **Async/Await**: Prefer async methods for I/O operations
+- **Naming Conventions**:
+  - PascalCase for classes, methods, properties
+  - camelCase for local variables and parameters
+  - Prefix interfaces with `I`
+  - Prefix for private instance members is `m_`
+  - Prefix for static fields is `s_`
+  - Prefix for constants is `c_` or PascalCase
 
-| Element | Convention | Example |
-|---------|------------|---------|
-| Class | PascalCase | `RentalService` |
-| Interface | IPascalCase | `IRentalService` |
-| Method | PascalCase | `GetActiveRentals()` |
-| Property | PascalCase | `RentalId` |
-| Parameter | camelCase | `rentalId` |
-| Local variable | camelCase | `activeRentals` |
-| Private field | m_camelCase | `m_rentals` |
-| Constant | PascalCase | `MaxDailyRate` |
-| Static readonly | s_camelCase | `s_defaultOptions` |
+## Service Injection Pattern
+```csharp
+// In ServicesExtensions.cs
+builder.Services.AddScoped<IMotorbikeService, MotorbikeService>();
+services.AddSingleton<IRepository<Motorbike>, SqlJsonRepository<Motorbike>>();
+```
+
+```csharp
+// use constructor injection
+// ALWAYS use "this" keyword when referencing any instance member of the current class
+// ALWAYS use "base" keyword when referencing any base class member
+public class MotorbikeService(RentalDataContext context) : IMotorbikeService
+{
+    // use private get property
+    private RentalDataContext Context {get;} = context;
+
+    public async Task DoSomethingAsync(int id)
+    {
+        // do NOT omit `this` keyword
+        var motorbike = await this.Context.LoadOneAsync<Motorbike>(m => m.MotorbikeId == id);
+        // the rest of the code
+
+        if (SelectedShopId > 0 && rc.ShopId != SelectedShopId) // WRONG
+        if (this.SelectedShopId > 0 && rc.ShopId != this.SelectedShopId) // CORRECT
+    }
+}
+```
+
+## Pattern Matching
+```csharp
+var boolVar = isTrue ? "yes" : "no";
+// for a simple boolean, but when isTrue is complex expression, use pattern
+var result = someValue switch
+{
+    > 0 => "positive",
+    < 0 => "negative",
+    _ => "zero"
+};
+```
 
 ## File Organization
 
@@ -30,7 +70,7 @@ namespace MotoRent.Services;
 public class RentalService
 {
     // 4. Constants
-    private const int MaxRentalDays = 30;
+    private const int c_maxRentalDays = 30;
 
     // 5. Static fields
     private static readonly JsonSerializerOptions s_options = new();
@@ -51,7 +91,7 @@ public class RentalService
     // 9. Public methods
     public async Task<Rental?> GetRentalAsync(int id)
     {
-        return await m_context.LoadOneAsync<Rental>(r => r.RentalId == id);
+        return await this.m_context.LoadOneAsync<Rental>(r => r.RentalId == id);
     }
 
     // 10. Private methods
@@ -67,7 +107,7 @@ public class RentalService
 ```csharp
 // Properties
 public int RentalId { get; set; }
-public string FullName => $"{FirstName} {LastName}";
+public string FullName => "${this.FirstName} {this.LastName}";
 
 // Methods (single expression)
 public override int GetId() => this.RentalId;
@@ -76,7 +116,7 @@ public override void SetId(int value) => this.RentalId = value;
 // Methods (multiple statements - use block body)
 public async Task SaveAsync()
 {
-    using var session = m_context.OpenSession();
+    using var session = this.m_context.OpenSession();
     session.Attach(this);
     await session.SubmitChanges("Save");
 }
@@ -112,7 +152,7 @@ private List<Rental> m_rentals = [];
 private Dictionary<int, Rental> m_cache = [];
 
 // LINQ patterns
-var activeRentals = m_rentals
+var activeRentals = this.m_rentals
     .Where(r => r.Status == "Active")
     .OrderByDescending(r => r.StartDate)
     .ToList();
@@ -133,17 +173,17 @@ public async Task<Rental?> LoadRentalAsync(int id)
 // Always await or return
 public async Task ProcessAsync()
 {
-    await DoWorkAsync();
+    await this.DoWorkAsync();
 }
 
 // Fire and forget (rare, use with caution)
-_ = Task.Run(async () => await BackgroundWorkAsync());
+_ = Task.Run(async () => await this.BackgroundWorkAsync());
 
 // Parallel operations
 await Task.WhenAll(
-    LoadRentalsAsync(),
-    LoadMotorbikesAsync(),
-    LoadRentersAsync()
+    this.LoadRentalsAsync(),
+    this.LoadMotorbikesAsync(),
+    this.LoadRentersAsync()
 );
 ```
 
@@ -188,9 +228,9 @@ public class Rental : Entity
 
 @page "/rentals"
 @inject RentalDataContext DataContext
-@inject ISnackbar Snackbar
+@inject ToastService ToastService
 
-<PageTitle>Rentals</PageTitle>
+<MotoRentPageTitle>Rentals</MotoRentPageTitle>
 
 @* Component markup *@
 
@@ -202,7 +242,7 @@ public class Rental : Entity
     // Lifecycle methods
     protected override async Task OnInitializedAsync()
     {
-        await LoadDataAsync();
+        await this.LoadDataAsync();
     }
 
     // Event handlers
@@ -214,15 +254,16 @@ public class Rental : Entity
     // Private methods
     private async Task LoadDataAsync()
     {
-        m_loading = true;
+        if (this.m_loading) return; // Prevent double loading
+        this.m_loading = true;
         try
         {
-            var result = await DataContext.LoadAsync(DataContext.Rentals);
-            m_rentals = result.ItemCollection.ToList();
+            var result = await this.DataContext.LoadAsync(this.DataContext.Rentals);
+            this.m_rentals = result.ItemCollection.ToList();
         }
         finally
         {
-            m_loading = false;
+            this.m_loading = false;
         }
     }
 }
@@ -234,16 +275,16 @@ public class Rental : Entity
 // Use try-catch for expected errors
 try
 {
-    await ProcessRentalAsync(rental);
+    await this.ProcessRentalAsync(rental);
 }
 catch (ValidationException ex)
 {
-    Snackbar.Add(ex.Message, Severity.Warning);
+    this.ToastService.ShowWarning(ex.Message);
 }
 catch (Exception ex)
 {
-    Logger.LogError(ex, "Failed to process rental {RentalId}", rental.RentalId);
-    Snackbar.Add("An error occurred", Severity.Error);
+    this.Logger.LogError(ex, "Failed to process rental {RentalId}", rental.RentalId);
+    this.ToastService.ShowError("An error occurred");
 }
 
 // Throw for programming errors
@@ -269,8 +310,36 @@ public async Task<Rental?> GetRentalAsync(int rentalId)
 // GOOD: (no comment needed for i++)
 ```
 
+## The `this` Keyword Rule (IMPORTANT)
+
+**Always use `this` when referencing instance members:**
+
+```csharp
+// WRONG - missing this keyword
+m_loading = true;
+DataContext.LoadAsync(query);
+ShowSuccess("Saved");
+
+// CORRECT - always use this
+this.m_loading = true;
+this.DataContext.LoadAsync(query);
+this.ShowSuccess("Saved");
+```
+
+This applies to:
+- Private fields (`this.m_field`)
+- Properties (`this.PropertyName`)
+- Methods (`this.MethodName()`)
+- Injected services (`this.DataContext`, `this.DialogService`)
+
+**Why?**
+- Clearer distinction between local variables and instance members
+- Prevents accidental shadowing
+- Consistent with rx-erp codebase patterns
+- Easier to identify dependencies in code
+
 ## Source
-- Based on: `D:\project\work\rx-erp` patterns
+- Based on: `E:\project\work\rx-erp` patterns
 - Microsoft C# Coding Conventions
 
 ```

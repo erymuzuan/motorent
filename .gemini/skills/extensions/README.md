@@ -1,6 +1,6 @@
 # Extension Methods
 
-Generic extension methods for common operations.
+Generic extension methods for strings, collections, DateTime, decimals, and entities.
 
 ## String Extensions
 

@@ -7,9 +7,7 @@ Multi-language support patterns for MotoRent (English/Thai) using localized base
 ### Inherit from Localized Base Classes
 
 ```razor
-@* Page with localization *@
-@page "/motorbikes"
-@inherits LocalizedComponentBase<Motorbikes>
+@* Page with localization *@@page "/motorbikes"@inherits LocalizedComponentBase<Motorbikes>
 
 @* Dialog with localization *@
 @inherits LocalizedDialogBase<Motorbike, MotorbikeDialog>
@@ -86,31 +84,27 @@ Standard keys for `CommonLocalizer`:
 <data name="Edit"><value>Edit</value></data>
 <data name="Add"><value>Add</value></data>
 <data name="Search"><value>Search</value></data>
-<data name="BackToList"><value>Back to List</value></data>
-<data name="Previous"><value>Previous</value></data>
-<data name="Next"><value>Next</value></data>
 <data name="Actions"><value>Actions</value></data>
 <data name="Loading"><value>Loading...</value></data>
 <data name="NoData"><value>No data available</value></data>
 <data name="ConfirmDelete"><value>Are you sure you want to delete this item?</value></data>
 <data name="Success"><value>Operation completed successfully</value></data>
 <data name="Error"><value>An error occurred. Please try again.</value></data>
-<data name="Renter"><value>Renter</value></data>
-<data name="Motorbike"><value>Motorbike</value></data>
-<data name="Configure"><value>Configure</value></data>
-<data name="Deposit"><value>Deposit</value></data>
-<data name="Agreement"><value>Agreement</value></data>
-<data name="AddRenter"><value>Add Renter</value></data>
+
+<!-- CommonResources.th.resx -->
+<data name="Save"><value>บันทึก</value></data>
+<data name="Cancel"><value>ยกเลิก</value></data>
+<data name="Delete"><value>ลบ</value></data>
+<data name="Edit"><value>แก้ไข</value></data>
+<data name="Add"><value>เพิ่ม</value></data>
+<data name="Search"><value>ค้นหา</value></data>
+<data name="Actions"><value>การดำเนินการ</value></data>
+<data name="Loading"><value>กำลังโหลด...</value></data>
+<data name="NoData"><value>ไม่มีข้อมูล</value></data>
+<data name="ConfirmDelete"><value>คุณแน่ใจหรือไม่ว่าต้องการลบรายการนี้?</value></data>
+<data name="Success"><value>ดำเนินการสำเร็จ</value></data>
+<data name="Error"><value>เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง</value></data>
 ```
-
-## Mandatory Base Class
-
-**All new Blazor components and pages MUST inherit from `LocalizedComponentBase<T>`** to ensure consistent localization support.
-
-```razor
-@inherits LocalizedComponentBase<MyComponentName>
-```
-
 
 ## Thai Language Reference
 
@@ -262,6 +256,6 @@ app.UseRequestLocalization();
 ## Source
 - Base classes: `src/MotoRent.Client/Controls/`
 - Resources: `src/MotoRent.Client/Resources/`
-- From: `D:\project\work\rx-erp` localization patterns
+- From: `..\rx-erp` localization patterns
 
 ```

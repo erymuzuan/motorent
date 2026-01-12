@@ -1,6 +1,6 @@
 # Rental Workflow
 
-Check-in and check-out business logic for MotoRent.
+Check-in and check-out business logic and workflow for motorbike processes, including damage documentation.
 
 ## Workflow Overview
 
@@ -55,7 +55,7 @@ public class RentalService
     public async Task<Rental> CheckInAsync(CheckInRequest request)
     {
         // Validate motorbike availability
-        var motorbike = await m_context.LoadOneAsync<Motorbike>(
+        var motorbike = await this.m_context.LoadOneAsync<Motorbike>(
             m => m.MotorbikeId == request.MotorbikeId);
 
         if (motorbike is null)
@@ -85,7 +85,7 @@ public class RentalService
         // Add insurance if selected
         if (request.InsuranceId.HasValue)
         {
-            var insurance = await m_context.LoadOneAsync<Insurance>(
+            var insurance = await this.m_context.LoadOneAsync<Insurance>(
                 i => i.InsuranceId == request.InsuranceId);
             rental.TotalAmount += days * insurance!.DailyRate;
         }
@@ -105,7 +105,7 @@ public class RentalService
         motorbike.Status = "Rented";
 
         // Save all
-        using var session = m_context.OpenSession();
+        using var session = this.m_context.OpenSession();
         session.Attach(rental);
         session.Attach(deposit);
         session.Attach(motorbike);
@@ -184,7 +184,7 @@ public class CheckInRequest
 ```csharp
 public async Task<CheckOutResult> CheckOutAsync(CheckOutRequest request)
 {
-    var rental = await m_context.LoadOneAsync<Rental>(
+    var rental = await this.m_context.LoadOneAsync<Rental>(
         r => r.RentalId == request.RentalId);
 
     if (rental is null)
@@ -193,7 +193,7 @@ public async Task<CheckOutResult> CheckOutAsync(CheckOutRequest request)
     if (rental.Status != "Active")
         throw new ValidationException("Rental is not active");
 
-    var motorbike = await m_context.LoadOneAsync<Motorbike>(
+    var motorbike = await this.m_context.LoadOneAsync<Motorbike>(
         m => m.MotorbikeId == rental.MotorbikeId);
 
     // Calculate actual rental period
@@ -207,7 +207,7 @@ public async Task<CheckOutResult> CheckOutAsync(CheckOutRequest request)
     decimal insuranceAmount = 0;
     if (rental.InsuranceId.HasValue)
     {
-        var insurance = await m_context.LoadOneAsync<Insurance>(
+        var insurance = await this.m_context.LoadOneAsync<Insurance>(
             i => i.InsuranceId == rental.InsuranceId);
         insuranceAmount = (decimal)actualDays * insurance!.DailyRate;
     }
@@ -219,7 +219,7 @@ public async Task<CheckOutResult> CheckOutAsync(CheckOutRequest request)
     decimal insuranceCoverage = 0;
     if (rental.InsuranceId.HasValue && damageAmount > 0)
     {
-        var insurance = await m_context.LoadOneAsync<Insurance>(
+        var insurance = await this.m_context.LoadOneAsync<Insurance>(
             i => i.InsuranceId == rental.InsuranceId);
         insuranceCoverage = Math.Min(damageAmount - insurance!.Deductible, insurance.MaxCoverage);
         insuranceCoverage = Math.Max(0, insuranceCoverage);
@@ -227,7 +227,7 @@ public async Task<CheckOutResult> CheckOutAsync(CheckOutRequest request)
 
     // Final calculation
     var totalCharges = rentalAmount + insuranceAmount + damageAmount - insuranceCoverage;
-    var deposit = await m_context.LoadOneAsync<Deposit>(d => d.DepositId == rental.DepositId);
+    var deposit = await this.m_context.LoadOneAsync<Deposit>(d => d.DepositId == rental.DepositId);
     var depositAmount = deposit?.Amount ?? 0;
 
     var balanceDue = totalCharges - depositAmount;
@@ -246,7 +246,7 @@ public async Task<CheckOutResult> CheckOutAsync(CheckOutRequest request)
     }
 
     // Save
-    using var session = m_context.OpenSession();
+    using var session = this.m_context.OpenSession();
     session.Attach(rental);
     session.Attach(motorbike);
     if (deposit is not null)
@@ -283,7 +283,7 @@ public async Task<DamageReport> RecordDamageAsync(DamageRequest request)
         ReportedOn = DateTimeOffset.Now
     };
 
-    using var session = m_context.OpenSession();
+    using var session = this.m_context.OpenSession();
     session.Attach(damage);
     await session.SubmitChanges("RecordDamage");
 
@@ -294,7 +294,7 @@ public async Task<DamageReport> RecordDamageAsync(DamageRequest request)
         {
             DamageReportId = damage.DamageReportId,
             PhotoType = photo.Type,  // Before, After
-            ImagePath = await SavePhotoAsync(photo.Stream),
+            ImagePath = await this.SavePhotoAsync(photo.Stream),
             CapturedOn = DateTimeOffset.Now
         };
         session.Attach(damagePhoto);
@@ -335,8 +335,8 @@ public async Task<DamageReport> RecordDamageAsync(DamageRequest request)
     </MudStep>
 
     <MudStep Title="Confirm" Icon="@Icons.Material.Filled.Check">
-        <CheckInSummary Request="BuildRequest()" />
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CompleteCheckIn">
+        <CheckInSummary Request="this.BuildRequest()" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="this.CompleteCheckIn">
             Complete Check-In
         </MudButton>
     </MudStep>

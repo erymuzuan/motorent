@@ -1,6 +1,6 @@
 # Database Repository Pattern
 
-Custom repository pattern with JSON storage, adapted from rx-erp.
+Custom repository pattern and DataContext implementation for JSON-based storage with computed columns.
 
 ## Pattern Overview
 
@@ -41,10 +41,6 @@ CREATE INDEX IX_Rental_ShopId_Status ON [MotoRent].[Rental]([ShopId], [Status])
 // RentalDataContext.cs
 public partial class RentalDataContext
 {
-    public IQueryable<Rental> Rentals { get; }
-    public IQueryable<Renter> Renters { get; }
-    public IQueryable<Motorbike> Motorbikes { get; }
-    public IQueryable<Shop> Shops { get; }
 
     private QueryProvider QueryProvider { get; }
 
@@ -53,10 +49,12 @@ public partial class RentalDataContext
     public RentalDataContext(QueryProvider provider)
     {
         this.QueryProvider = provider;
-        this.Rentals = new Query<Rental>(provider);
-        this.Renters = new Query<Renter>(provider);
-        this.Motorbikes = new Query<Motorbike>(provider);
-        this.Shops = new Query<Shop>(provider);
+    }
+
+    // Preferred: Use CreateQuery<T> instead of Query properties
+    public Query<T> CreateQuery<T>() where T : Entity, new()
+    {
+        return new Query<T>(this.QueryProvider);
     }
 
     public async Task<T?> LoadOneAsync<T>(Expression<Func<T, bool>> predicate) where T : Entity
@@ -73,7 +71,17 @@ public partial class RentalDataContext
         return await repos.LoadAsync(query, page, size, includeTotalRows);
     }
 
-    public PersistenceSession OpenSession() => new PersistenceSession(this);
+    // Aggregate methods
+    public async Task<int> GetCountAsync<T>(IQueryable<T> query) where T : Entity;
+    public async Task<bool> ExistAsync<T>(IQueryable<T> query) where T : Entity;
+    public async Task<TResult> GetSumAsync<T, TResult>(IQueryable<T> query, Expression<Func<T, TResult>> selector);
+    public async Task<TResult> GetMaxAsync<T, TResult>(IQueryable<T> query, Expression<Func<T, TResult>> selector);
+    public async Task<TResult> GetMinAsync<T, TResult>(IQueryable<T> query, Expression<Func<T, TResult>> selector);
+    public async Task<decimal> GetAverageAsync<T>(IQueryable<T> query, Expression<Func<T, decimal>> selector);
+    public async Task<TResult?> GetScalarAsync<T, TResult>(IQueryable<T> query, Expression<Func<T, TResult>> selector);
+    public async Task<List<TResult>> GetDistinctAsync<T, TResult>(IQueryable<T> query, Expression<Func<T, TResult>> selector);
+
+    public PersistenceSession OpenSession(string username = "system") => new PersistenceSession(this, username);
 }
 ```
 
@@ -131,7 +139,7 @@ var context = new RentalDataContext();
 var rental = await context.LoadOneAsync<Rental>(r => r.RentalId == id);
 
 // Load with pagination
-var query = context.Rentals
+var query = context.CreateQuery<Rental>()
     .Where(r => r.ShopId == shopId && r.Status == "Active")
     .OrderByDescending(r => r.StartDate);
 
@@ -181,6 +189,58 @@ session.Delete(rental!);
 await session.SubmitChanges("Delete");
 ```
 
+### Aggregate Methods
+
+Use aggregate methods instead of `LoadAsync` when you only need counts or sums:
+
+```csharp
+var context = new RentalDataContext();
+
+// Count
+var activeRentals = await context.GetCountAsync(
+    context.Rentals.Where(r => r.ShopId == shopId && r.Status == "Active"));
+
+// Exists check
+var hasOverdue = await context.ExistAsync(
+    context.Rentals.Where(r => r.ShopId == shopId && r.Status == "Overdue"));
+
+// Sum
+var totalRevenue = await context.GetSumAsync(
+    context.Payments.Where(p => p.ShopId == shopId),
+    p => p.Amount);
+
+// Max/Min
+var latestRentalDate = await context.GetMaxAsync(
+    context.Rentals.Where(r => r.ShopId == shopId),
+    r => r.StartDate);
+
+// Average
+var avgDailyRate = await context.GetAverageAsync(
+    context.Rentals.Where(r => r.ShopId == shopId),
+    r => r.DailyRate);
+
+// Distinct values
+var uniqueStatuses = await context.GetDistinctAsync(
+    context.Rentals.Where(r => r.ShopId == shopId),
+    r => r.Status);
+```
+
+### Using CreateQuery<T> (Preferred Pattern)
+
+```csharp
+// Instead of using Query properties:
+var query = context.Rentals
+    .Where(r => r.ShopId == shopId)
+    .OrderByDescending(r => r.StartDate);
+
+// Use CreateQuery<T> for better flexibility:
+var query = context.CreateQuery<Rental>()
+    .Where(r => r.ShopId == shopId)
+    .OrderByDescending(r => r.StartDate);
+
+var result = await context.LoadAsync(query, page: 1, size: 20);
+```
+
 ## Best Practices
 
 | Practice | Description |
@@ -189,8 +249,10 @@ await session.SubmitChanges("Delete");
 | Descriptive operations | Use meaningful operation names for messaging |
 | Clone for dialogs | Always clone entities before passing to edit dialogs |
 | Batch related changes | Attach multiple entities in single session |
+| Use aggregates for stats | Use `GetCountAsync`, `GetSumAsync` instead of loading all entities |
+| CreateQuery over properties | Prefer `CreateQuery<T>()` over Query properties for flexibility |
 
 ## Source
-- From: `D:\project\work\rx-erp` repository pattern
+- From: `E:\project\work\rx-erp` repository pattern
 
 ```

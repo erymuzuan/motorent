@@ -1,6 +1,6 @@
 # Gemini OCR Integration
 
-Document OCR using Google Gemini Flash API.
+Document OCR using Google Gemini Flash API for extracting data from passports and licenses.
 
 ## Overview
 
@@ -12,7 +12,7 @@ Document OCR using Google Gemini Flash API.
 
 ## API Configuration
 
-```csharp
+```json
 // appsettings.json
 {
   "Gemini": {
