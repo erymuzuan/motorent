@@ -20,6 +20,7 @@ public partial class RentalDataContext
     public Query<Payment> Payments { get; }
     public Query<DamageReport> DamageReports { get; }
     public Query<DamagePhoto> DamagePhotos { get; }
+    public Query<VehicleImage> VehicleImages { get; }
     public Query<RentalAgreement> RentalAgreements { get; }
     public Query<ServiceType> ServiceTypes { get; }
     public Query<MaintenanceSchedule> MaintenanceSchedules { get; }
@@ -45,6 +46,7 @@ public partial class RentalDataContext
         this.Payments = new Query<Payment>(provider);
         this.DamageReports = new Query<DamageReport>(provider);
         this.DamagePhotos = new Query<DamagePhoto>(provider);
+        this.VehicleImages = new Query<VehicleImage>(provider);
         this.RentalAgreements = new Query<RentalAgreement>(provider);
         this.ServiceTypes = new Query<ServiceType>(provider);
         this.MaintenanceSchedules = new Query<MaintenanceSchedule>(provider);

@@ -12,10 +12,29 @@
 <MotoRentPageTitle>Fleet Management</MotoRentPageTitle>
 
 <TablerHeader Title="Fleet Management" PreTitle="Vehicle Inventory">
-    <button type="button" class="btn btn-primary" @onclick="OpenAddDialog">
-        <i class="ti ti-plus me-1"></i>
-        Add Vehicle
-    </button>
+    <div class="dropdown">
+        <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="ti ti-plus me-1"></i>
+            Add Vehicle
+        </button>
+        <div class="dropdown-menu dropdown-menu-end">
+            <a class="dropdown-item" href="/vehicles/motorbike/new">
+                <i class="ti ti-motorbike me-2"></i>Motorbike
+            </a>
+            <a class="dropdown-item" href="/vehicles/car/new">
+                <i class="ti ti-car me-2"></i>Car
+            </a>
+            <a class="dropdown-item" href="/vehicles/jetski/new">
+                <i class="ti ti-sailboat me-2"></i>Jet Ski
+            </a>
+            <a class="dropdown-item" href="/vehicles/boat/new">
+                <i class="ti ti-ship me-2"></i>Boat
+            </a>
+            <a class="dropdown-item" href="/vehicles/van/new">
+                <i class="ti ti-bus me-2"></i>Van
+            </a>
+        </div>
+    </div>
 </TablerHeader>
 
 @* Vehicle Type Tabs *@
@@ -235,10 +254,29 @@
                                             }
                                         </p>
                                         <div class="empty-action">
-                                            <button type="button" class="btn btn-primary" @onclick="OpenAddDialog">
-                                                <i class="ti ti-plus me-1"></i>
-                                                Add Vehicle
-                                            </button>
+                                            <div class="dropdown">
+                                                <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown">
+                                                    <i class="ti ti-plus me-1"></i>
+                                                    Add Vehicle
+                                                </button>
+                                                <div class="dropdown-menu">
+                                                    <a class="dropdown-item" href="/vehicles/motorbike/new">
+                                                        <i class="ti ti-motorbike me-2"></i>Motorbike
+                                                    </a>
+                                                    <a class="dropdown-item" href="/vehicles/car/new">
+                                                        <i class="ti ti-car me-2"></i>Car
+                                                    </a>
+                                                    <a class="dropdown-item" href="/vehicles/jetski/new">
+                                                        <i class="ti ti-sailboat me-2"></i>Jet Ski
+                                                    </a>
+                                                    <a class="dropdown-item" href="/vehicles/boat/new">
+                                                        <i class="ti ti-ship me-2"></i>Boat
+                                                    </a>
+                                                    <a class="dropdown-item" href="/vehicles/van/new">
+                                                        <i class="ti ti-bus me-2"></i>Van
+                                                    </a>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </td>
@@ -248,7 +286,7 @@
                         {
                             @foreach (var vehicle in m_vehicles)
                             {
-                                <tr class="cursor-pointer" @onclick="@(() => OpenEditDialog(vehicle))">
+                                <tr class="cursor-pointer" @onclick="@(() => NavigateToEdit(vehicle))">
                                     <td>
                                         <span class="avatar avatar-md rounded @GetStatusAvatarClass(vehicle.Status)"
                                               style="background-image: url('@GetVehicleImage(vehicle)')">
@@ -323,7 +361,7 @@
                                                 <i class="ti ti-dots-vertical"></i>
                                             </button>
                                             <div class="dropdown-menu dropdown-menu-end">
-                                                <a class="dropdown-item" href="javascript:void(0)" @onclick="@(() => OpenEditDialog(vehicle))">
+                                                <a class="dropdown-item" href="/vehicles/@vehicle.VehicleId/edit">
                                                     <i class="ti ti-edit me-2"></i>Edit Details
                                                 </a>
                                                 @if (!vehicle.IsPooled)
@@ -384,10 +422,29 @@
                             }
                         </p>
                         <div class="empty-action">
-                            <button type="button" class="btn btn-primary" @onclick="OpenAddDialog">
-                                <i class="ti ti-plus me-1"></i>
-                                Add Vehicle
-                            </button>
+                            <div class="dropdown">
+                                <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown">
+                                    <i class="ti ti-plus me-1"></i>
+                                    Add Vehicle
+                                </button>
+                                <div class="dropdown-menu">
+                                    <a class="dropdown-item" href="/vehicles/motorbike/new">
+                                        <i class="ti ti-motorbike me-2"></i>Motorbike
+                                    </a>
+                                    <a class="dropdown-item" href="/vehicles/car/new">
+                                        <i class="ti ti-car me-2"></i>Car
+                                    </a>
+                                    <a class="dropdown-item" href="/vehicles/jetski/new">
+                                        <i class="ti ti-sailboat me-2"></i>Jet Ski
+                                    </a>
+                                    <a class="dropdown-item" href="/vehicles/boat/new">
+                                        <i class="ti ti-ship me-2"></i>Boat
+                                    </a>
+                                    <a class="dropdown-item" href="/vehicles/van/new">
+                                        <i class="ti ti-bus me-2"></i>Van
+                                    </a>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -399,7 +456,7 @@
                 @foreach (var vehicle in m_vehicles)
                 {
                     <div class="col-sm-6 col-lg-4 col-xl-3">
-                        <div class="card card-sm cursor-pointer" @onclick="@(() => OpenEditDialog(vehicle))">
+                        <div class="card card-sm cursor-pointer" @onclick="@(() => NavigateToEdit(vehicle))">
                             <div class="card-img-top img-responsive img-responsive-16by9"
                                  style="background-image: url('@GetVehicleImage(vehicle)'); background-color: #f8fafc;">
                                 @if (string.IsNullOrEmpty(vehicle.ImagePath))
@@ -461,10 +518,9 @@
                                         }
                                     </div>
                                     <div class="btn-group" @onclick:stopPropagation="true">
-                                        <button type="button" class="btn btn-sm btn-outline-primary"
-                                                @onclick="@(() => OpenEditDialog(vehicle))">
+                                        <a href="/vehicles/@vehicle.VehicleId/edit" class="btn btn-sm btn-outline-primary">
                                             <i class="ti ti-edit"></i>
-                                        </button>
+                                        </a>
                                         <button type="button" class="btn btn-sm btn-outline-danger"
                                                 @onclick="@(() => ConfirmDelete(vehicle))">
                                             <i class="ti ti-trash"></i>
@@ -591,45 +647,9 @@
 
     private int GetStatusCount(VehicleStatus status) => m_statusCounts.GetValueOrDefault(status, 0);
 
-    private async Task OpenAddDialog()
+    private void NavigateToEdit(Vehicle vehicle)
     {
-        var vehicle = new Vehicle
-        {
-            HomeShopId = this.ShopId,
-            CurrentShopId = this.ShopId,
-            Status = VehicleStatus.Available,
-            VehicleType = m_vehicleTypeFilter ?? VehicleType.Motorbike,
-            Year = DateTime.Now.Year
-        };
-
-        var result = await this.DialogService
-            .Create<VehicleDialog>("Add Vehicle")
-            .WithParameter(x => x.Entity, vehicle)
-            .WithParameter(x => x.IsNew, true)
-            .Large()
-            .ShowDialogAsync();
-
-        if (!result.Cancelled)
-        {
-            await this.LoadDataAsync();
-            this.ShowSuccess("Vehicle added successfully");
-        }
-    }
-
-    private async Task OpenEditDialog(Vehicle vehicle)
-    {
-        var result = await this.DialogService
-            .Create<VehicleDialog>("Edit Vehicle")
-            .WithParameter(x => x.Entity, vehicle.Clone())
-            .WithParameter(x => x.IsNew, false)
-            .Large()
-            .ShowDialogAsync();
-
-        if (!result.Cancelled)
-        {
-            await this.LoadDataAsync();
-            this.ShowSuccess("Vehicle updated successfully");
-        }
+        this.NavigationManager.NavigateTo($"/vehicles/{vehicle.VehicleId}/edit");
     }
 
     private async Task AssignToPool(Vehicle vehicle)
