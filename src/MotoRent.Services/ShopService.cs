@@ -13,7 +13,7 @@ public class ShopService(RentalDataContext context)
         int page = 1,
         int pageSize = 20)
     {
-        var query = this.Context.Shops.AsQueryable();
+        var query = this.Context.CreateQuery<Shop>().AsQueryable();
 
         if (isActive.HasValue)
         {
@@ -42,7 +42,7 @@ public class ShopService(RentalDataContext context)
     public async Task<List<Shop>> GetActiveShopsAsync()
     {
         var result = await this.Context.LoadAsync(
-            this.Context.Shops.Where(s => s.IsActive),
+            this.Context.CreateQuery<Shop>().Where(s => s.IsActive),
             page: 1, size: 100, includeTotalRows: false);
         return result.ItemCollection;
     }
@@ -70,7 +70,7 @@ public class ShopService(RentalDataContext context)
     {
         // Check if shop has any vehicles (either registered at or currently at this shop)
         var vehicleCount = await this.Context.GetCountAsync(
-            this.Context.Vehicles.Where(v => v.HomeShopId == shop.ShopId || v.CurrentShopId == shop.ShopId));
+            this.Context.CreateQuery<Vehicle>().Where(v => v.HomeShopId == shop.ShopId || v.CurrentShopId == shop.ShopId));
         if (vehicleCount > 0)
         {
             return SubmitOperation.CreateFailure(
@@ -79,7 +79,7 @@ public class ShopService(RentalDataContext context)
 
         // Check if shop has any rentals
         var rentalCount = await this.Context.GetCountAsync(
-            this.Context.Rentals.Where(r => r.RentedFromShopId == shop.ShopId || r.ReturnedToShopId == shop.ShopId));
+            this.Context.CreateQuery<Rental>().Where(r => r.RentedFromShopId == shop.ShopId || r.ReturnedToShopId == shop.ShopId));
         if (rentalCount > 0)
         {
             return SubmitOperation.CreateFailure(
@@ -110,19 +110,19 @@ public class ShopService(RentalDataContext context)
 
         // Count motorbikes
         var bikes = await this.Context.LoadAsync(
-            this.Context.Motorbikes.Where(m => m.ShopId == shopId),
+            this.Context.CreateQuery<Motorbike>().Where(m => m.ShopId == shopId),
             page: 1, size: 1000, includeTotalRows: true);
         stats["TotalMotorbikes"] = bikes.TotalRows;
 
         // Count active rentals
         var rentals = await this.Context.LoadAsync(
-            this.Context.Rentals.Where(r => r.ShopId == shopId && r.Status == "Active"),
+            this.Context.CreateQuery<Rental>().Where(r => r.ShopId == shopId && r.Status == "Active"),
             page: 1, size: 1000, includeTotalRows: true);
         stats["ActiveRentals"] = rentals.TotalRows;
 
         // Count renters
         var renters = await this.Context.LoadAsync(
-            this.Context.Renters.Where(r => r.ShopId == shopId),
+            this.Context.CreateQuery<Renter>().Where(r => r.ShopId == shopId),
             page: 1, size: 1000, includeTotalRows: true);
         stats["TotalRenters"] = renters.TotalRows;
 

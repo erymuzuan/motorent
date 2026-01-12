@@ -114,7 +114,7 @@ public class DocumentOcrService(
 
     public async Task<List<Document>> GetDocumentsByRenterAsync(int renterId)
     {
-        var query = this.Context.Documents
+        var query = this.Context.CreateQuery<Document>()
             .Where(d => d.RenterId == renterId)
             .OrderByDescending(d => d.UploadedOn);
 

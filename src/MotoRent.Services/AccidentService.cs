@@ -20,7 +20,7 @@ public class AccidentService(RentalDataContext context)
         int page = 1,
         int pageSize = 20)
     {
-        var query = this.Context.Accidents
+        var query = this.Context.CreateQuery<Accident>()
             .Where(a => a.ShopId == shopId)
             .OrderByDescending(a => a.AccidentDate);
 
@@ -64,7 +64,7 @@ public class AccidentService(RentalDataContext context)
         var dateStr = accidentDate.ToString("yyyyMMdd");
         var prefix = $"ACC-{dateStr}-";
 
-        var query = this.Context.Accidents
+        var query = this.Context.CreateQuery<Accident>()
             .Where(a => a.ReferenceNo.StartsWith(prefix))
             .OrderByDescending(a => a.AccidentId);
 
@@ -162,7 +162,7 @@ public class AccidentService(RentalDataContext context)
 
     public async Task<List<AccidentParty>> GetPartiesAsync(int accidentId)
     {
-        var query = this.Context.AccidentParties
+        var query = this.Context.CreateQuery<AccidentParty>()
             .Where(p => p.AccidentId == accidentId)
             .OrderBy(p => p.AccidentPartyId);
 
@@ -190,7 +190,7 @@ public class AccidentService(RentalDataContext context)
 
     public async Task<List<AccidentDocument>> GetDocumentsAsync(int accidentId)
     {
-        var query = this.Context.AccidentDocuments
+        var query = this.Context.CreateQuery<AccidentDocument>()
             .Where(d => d.AccidentId == accidentId)
             .OrderByDescending(d => d.UploadedDate);
 
@@ -224,7 +224,7 @@ public class AccidentService(RentalDataContext context)
 
     public async Task<List<AccidentCost>> GetCostsAsync(int accidentId)
     {
-        var query = this.Context.AccidentCosts
+        var query = this.Context.CreateQuery<AccidentCost>()
             .Where(c => c.AccidentId == accidentId)
             .OrderByDescending(c => c.AccidentCostId);
 
@@ -265,7 +265,7 @@ public class AccidentService(RentalDataContext context)
 
     public async Task<List<AccidentNote>> GetNotesAsync(int accidentId)
     {
-        var query = this.Context.AccidentNotes
+        var query = this.Context.CreateQuery<AccidentNote>()
             .Where(n => n.AccidentId == accidentId)
             .OrderByDescending(n => n.AccidentNoteId);
 
@@ -342,7 +342,7 @@ public class AccidentService(RentalDataContext context)
 
     public async Task<AccidentStatistics> GetStatisticsAsync(int shopId, DateTimeOffset? fromDate = null, DateTimeOffset? toDate = null)
     {
-        var query = this.Context.Accidents
+        var query = this.Context.CreateQuery<Accident>()
             .Where(a => a.ShopId == shopId);
 
         var result = await this.Context.LoadAsync(query, 1, 1000, true);

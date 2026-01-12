@@ -13,7 +13,7 @@ public class RenterService(RentalDataContext context)
         int page = 1,
         int pageSize = 20)
     {
-        var query = this.Context.Renters
+        var query = this.Context.CreateQuery<Renter>()
             .Where(r => r.ShopId == shopId)
             .OrderByDescending(r => r.RenterId);
 
@@ -42,7 +42,7 @@ public class RenterService(RentalDataContext context)
 
     public async Task<Renter?> GetRenterByPassportAsync(string passportNo)
     {
-        var query = this.Context.Renters.Where(r => r.PassportNo == passportNo);
+        var query = this.Context.CreateQuery<Renter>().Where(r => r.PassportNo == passportNo);
         var result = await this.Context.LoadAsync(query, page: 1, size: 1, includeTotalRows: false);
         return result.ItemCollection.FirstOrDefault();
     }
@@ -70,7 +70,7 @@ public class RenterService(RentalDataContext context)
 
     public async Task<List<Document>> GetRenterDocumentsAsync(int renterId)
     {
-        var query = this.Context.Documents
+        var query = this.Context.CreateQuery<Document>()
             .Where(d => d.RenterId == renterId)
             .OrderByDescending(d => d.DocumentId);
 
@@ -80,7 +80,7 @@ public class RenterService(RentalDataContext context)
 
     public async Task<int> GetActiveRentalCountAsync(int renterId)
     {
-        var query = this.Context.Rentals
+        var query = this.Context.CreateQuery<Rental>()
             .Where(r => r.RenterId == renterId && r.Status == "Active");
 
         return await this.Context.GetCountAsync(query);

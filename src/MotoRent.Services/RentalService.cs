@@ -19,7 +19,7 @@ public class RentalService(RentalDataContext context, VehiclePoolService? poolSe
         int page = 1,
         int pageSize = 20)
     {
-        var query = this.Context.Rentals
+        var query = this.Context.CreateQuery<Rental>()
             .Where(r => r.RentedFromShopId == shopId || r.ReturnedToShopId == shopId);
 
         if (!string.IsNullOrWhiteSpace(status))
@@ -75,7 +75,7 @@ public class RentalService(RentalDataContext context, VehiclePoolService? poolSe
     public async Task<Dictionary<string, int>> GetStatusCountsAsync(int shopId)
     {
         var allRentals = await this.Context.LoadAsync(
-            this.Context.Rentals.Where(r => r.RentedFromShopId == shopId),
+            this.Context.CreateQuery<Rental>().Where(r => r.RentedFromShopId == shopId),
             page: 1, size: 10000, includeTotalRows: false);
 
         return allRentals.ItemCollection
@@ -89,7 +89,7 @@ public class RentalService(RentalDataContext context, VehiclePoolService? poolSe
         var todayEnd = todayStart.AddDays(1);
 
         var rentals = await this.Context.LoadAsync(
-            this.Context.Rentals
+            this.Context.CreateQuery<Rental>()
                 .Where(r => r.RentedFromShopId == shopId && r.Status == "Active")
                 .Where(r => r.ExpectedEndDate >= todayStart && r.ExpectedEndDate < todayEnd),
             page: 1, size: 1000, includeTotalRows: false);
@@ -102,7 +102,7 @@ public class RentalService(RentalDataContext context, VehiclePoolService? poolSe
         var todayStart = today.Date;
 
         var rentals = await this.Context.LoadAsync(
-            this.Context.Rentals
+            this.Context.CreateQuery<Rental>()
                 .Where(r => r.RentedFromShopId == shopId && r.Status == "Active")
                 .Where(r => r.ExpectedEndDate < todayStart),
             page: 1, size: 1000, includeTotalRows: false);
@@ -113,7 +113,7 @@ public class RentalService(RentalDataContext context, VehiclePoolService? poolSe
     public async Task<List<Rental>> GetActiveRentalsForVehicleAsync(int vehicleId)
     {
         var rentals = await this.Context.LoadAsync(
-            this.Context.Rentals
+            this.Context.CreateQuery<Rental>()
                 .Where(r => r.VehicleId == vehicleId)
                 .Where(r => r.Status == "Active" || r.Status == "Reserved"),
             page: 1, size: 100, includeTotalRows: false);
@@ -621,7 +621,7 @@ public class RentalService(RentalDataContext context, VehiclePoolService? poolSe
 
             // 1. Check if vehicle is available for the requested dates
             var hasConflict = await this.Context.ExistAsync(
-                this.Context.Rentals
+                this.Context.CreateQuery<Rental>()
                     .Where(r => r.VehicleId == request.VehicleId)
                     .Where(r => r.Status == "Active" || r.Status == "Reserved")
                     .Where(r => r.StartDate < request.EndDate && r.ExpectedEndDate > request.StartDate));
@@ -724,7 +724,7 @@ public class RentalService(RentalDataContext context, VehiclePoolService? poolSe
             return [];
 
         var rentals = await this.Context.LoadAsync(
-            this.Context.Rentals
+            this.Context.CreateQuery<Rental>()
                 .Where(r => r.RenterId == renter.RenterId)
                 .OrderByDescending(r => r.RentalId),
             page: 1, size: 100, includeTotalRows: false);

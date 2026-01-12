@@ -13,7 +13,7 @@ public class AccessoryService(RentalDataContext context)
         int page = 1,
         int pageSize = 20)
     {
-        var query = this.Context.Accessories
+        var query = this.Context.CreateQuery<Accessory>()
             .Where(a => a.ShopId == shopId)
             .OrderByDescending(a => a.AccessoryId);
 
@@ -39,7 +39,7 @@ public class AccessoryService(RentalDataContext context)
     public async Task<List<Accessory>> GetAvailableAccessoriesAsync(int shopId)
     {
         var result = await this.Context.LoadAsync(
-            this.Context.Accessories
+            this.Context.CreateQuery<Accessory>()
                 .Where(a => a.ShopId == shopId && a.QuantityAvailable > 0),
             page: 1, size: 100, includeTotalRows: false);
 
@@ -64,7 +64,7 @@ public class AccessoryService(RentalDataContext context)
     {
         // Check if any rentals use this accessory
         var rentalCount = await this.Context.GetCountAsync(
-            this.Context.RentalAccessories.Where(ra => ra.AccessoryId == accessory.AccessoryId));
+            this.Context.CreateQuery<RentalAccessory>().Where(ra => ra.AccessoryId == accessory.AccessoryId));
         if (rentalCount > 0)
         {
             return SubmitOperation.CreateFailure(
@@ -79,7 +79,7 @@ public class AccessoryService(RentalDataContext context)
     public async Task<(int Total, int IncludedFree)> GetAccessoryCountsAsync(int shopId)
     {
         var allAccessories = await this.Context.LoadAsync(
-            this.Context.Accessories.Where(a => a.ShopId == shopId),
+            this.Context.CreateQuery<Accessory>().Where(a => a.ShopId == shopId),
             page: 1, size: 1000, includeTotalRows: false);
 
         var total = allAccessories.ItemCollection.Count;

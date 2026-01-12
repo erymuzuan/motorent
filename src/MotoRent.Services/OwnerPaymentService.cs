@@ -20,7 +20,7 @@ public class OwnerPaymentService(RentalDataContext context)
         int page = 1,
         int pageSize = 20)
     {
-        var query = this.Context.OwnerPayments.AsQueryable();
+        var query = this.Context.CreateQuery<OwnerPayment>().AsQueryable();
 
         if (vehicleOwnerId.HasValue)
         {

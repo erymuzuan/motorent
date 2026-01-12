@@ -56,7 +56,7 @@ public class InvoiceService(RentalDataContext context)
 
         // Load accessories
         var accessories = await this.Context.LoadAsync(
-            this.Context.RentalAccessories.Where(ra => ra.RentalId == rentalId),
+            this.Context.CreateQuery<RentalAccessory>().Where(ra => ra.RentalId == rentalId),
             page: 1, size: 100, includeTotalRows: false);
 
         var accessoryIds = accessories.ItemCollection.Select(ra => ra.AccessoryId).ToList();
@@ -64,14 +64,14 @@ public class InvoiceService(RentalDataContext context)
         if (accessoryIds.Count != 0)
         {
             var accResult = await this.Context.LoadAsync(
-                this.Context.Accessories.Where(a => accessoryIds.Contains(a.AccessoryId)),
+                this.Context.CreateQuery<Accessory>().Where(a => accessoryIds.Contains(a.AccessoryId)),
                 page: 1, size: 100, includeTotalRows: false);
             accessoryDetails = accResult.ItemCollection.ToList();
         }
 
         // Load payments
         var payments = await this.Context.LoadAsync(
-            this.Context.Payments.Where(p => p.RentalId == rentalId),
+            this.Context.CreateQuery<Payment>().Where(p => p.RentalId == rentalId),
             page: 1, size: 100, includeTotalRows: false);
 
         // Determine duration type and calculate accordingly

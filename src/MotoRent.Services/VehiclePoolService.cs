@@ -19,7 +19,7 @@ public class VehiclePoolService(RentalDataContext context)
         int page = 1,
         int pageSize = 20)
     {
-        var query = this.Context.VehiclePools.OrderBy(p => p.Name);
+        var query = this.Context.CreateQuery<VehiclePool>().OrderBy(p => p.Name);
 
         if (isActive.HasValue)
         {
@@ -48,7 +48,7 @@ public class VehiclePoolService(RentalDataContext context)
     public async Task<List<VehiclePool>> GetActivePoolsAsync()
     {
         var result = await this.Context.LoadAsync(
-            this.Context.VehiclePools.Where(p => p.IsActive),
+            this.Context.CreateQuery<VehiclePool>().Where(p => p.IsActive),
             page: 1, size: 100, includeTotalRows: false);
         return result.ItemCollection;
     }
@@ -81,7 +81,7 @@ public class VehiclePoolService(RentalDataContext context)
             return [];
 
         var shops = await this.Context.LoadAsync(
-            this.Context.Shops.Where(s => s.IsActive),
+            this.Context.CreateQuery<Shop>().Where(s => s.IsActive),
             page: 1, size: 100, includeTotalRows: false);
 
         return shops.ItemCollection
@@ -136,7 +136,7 @@ public class VehiclePoolService(RentalDataContext context)
     {
         // Check if any vehicles are assigned to this pool
         var vehiclesInPool = await this.Context.GetCountAsync(
-            this.Context.Vehicles.Where(v => v.VehiclePoolId == pool.VehiclePoolId));
+            this.Context.CreateQuery<Vehicle>().Where(v => v.VehiclePoolId == pool.VehiclePoolId));
 
         if (vehiclesInPool > 0)
         {
@@ -189,7 +189,7 @@ public class VehiclePoolService(RentalDataContext context)
 
         // Check if any vehicles at this shop are in this pool
         var vehiclesAtShop = await this.Context.GetCountAsync(
-            this.Context.Vehicles
+            this.Context.CreateQuery<Vehicle>()
                 .Where(v => v.VehiclePoolId == vehiclePoolId)
                 .Where(v => v.HomeShopId == shopId || v.CurrentShopId == shopId));
 
@@ -216,7 +216,7 @@ public class VehiclePoolService(RentalDataContext context)
             return new PoolStatistics();
 
         var vehicles = await this.Context.LoadAsync(
-            this.Context.Vehicles.Where(v => v.VehiclePoolId == vehiclePoolId),
+            this.Context.CreateQuery<Vehicle>().Where(v => v.VehiclePoolId == vehiclePoolId),
             page: 1, size: 1000, includeTotalRows: false);
 
         var stats = new PoolStatistics

@@ -24,14 +24,14 @@ public class DamageReportService(RentalDataContext context)
     {
         // Get rentals for the shop to filter damage reports
         var rentals = await Context.LoadAsync(
-            Context.Rentals.Where(r => r.RentedFromShopId == shopId),
+            Context.CreateQuery<Rental>().Where(r => r.RentedFromShopId == shopId),
             page: 1, size: 10000, includeTotalRows: false);
 
         var rentalIds = rentals.ItemCollection.Select(r => r.RentalId).ToHashSet();
 
         // Load all damage reports and filter in memory (custom query provider doesn't support Contains)
         var allDamageReports = await Context.LoadAsync(
-            Context.DamageReports,
+            Context.CreateQuery<DamageReport>(),
             page: 1, size: 10000, includeTotalRows: false);
 
         var filteredReports = allDamageReports.ItemCollection
@@ -81,7 +81,7 @@ public class DamageReportService(RentalDataContext context)
     public async Task<List<DamageReport>> GetByRentalAsync(int rentalId)
     {
         var result = await Context.LoadAsync(
-            Context.DamageReports.Where(d => d.RentalId == rentalId),
+            Context.CreateQuery<DamageReport>().Where(d => d.RentalId == rentalId),
             page: 1, size: 100, includeTotalRows: false);
 
         return result.ItemCollection;
@@ -94,7 +94,7 @@ public class DamageReportService(RentalDataContext context)
     {
         // DamageReport may have MotorbikeId for backwards compatibility
         var result = await Context.LoadAsync(
-            Context.DamageReports.Where(d => d.MotorbikeId == vehicleId),
+            Context.CreateQuery<DamageReport>().Where(d => d.MotorbikeId == vehicleId),
             page: 1, size: 100, includeTotalRows: false);
 
         return result.ItemCollection.OrderByDescending(d => d.ReportedOn).ToList();
@@ -119,14 +119,14 @@ public class DamageReportService(RentalDataContext context)
     {
         // Get rentals for the shop
         var rentals = await Context.LoadAsync(
-            Context.Rentals.Where(r => r.RentedFromShopId == shopId),
+            Context.CreateQuery<Rental>().Where(r => r.RentedFromShopId == shopId),
             page: 1, size: 10000, includeTotalRows: false);
 
         var rentalIds = rentals.ItemCollection.Select(r => r.RentalId).ToHashSet();
 
         // Load all damage reports and filter in memory (custom query provider doesn't support Contains)
         var allDamageReports = await Context.LoadAsync(
-            Context.DamageReports,
+            Context.CreateQuery<DamageReport>(),
             page: 1, size: 10000, includeTotalRows: false);
 
         var filteredReports = allDamageReports.ItemCollection
@@ -151,21 +151,21 @@ public class DamageReportService(RentalDataContext context)
         // Get renter info - load all and filter in memory
         var renterIds = rentals.ItemCollection.Select(r => r.RenterId).Distinct().ToHashSet();
         var allRenters = await Context.LoadAsync(
-            Context.Renters,
+            Context.CreateQuery<Renter>(),
             page: 1, size: 10000, includeTotalRows: false);
         var rentersResult = allRenters.ItemCollection.Where(r => renterIds.Contains(r.RenterId)).ToList();
 
         // Get vehicle info - load all and filter in memory
         var vehicleIds = rentals.ItemCollection.Select(r => r.VehicleId).Distinct().ToHashSet();
         var allVehicles = await Context.LoadAsync(
-            Context.Vehicles,
+            Context.CreateQuery<Vehicle>(),
             page: 1, size: 10000, includeTotalRows: false);
         var vehiclesResult = allVehicles.ItemCollection.Where(v => vehicleIds.Contains(v.VehicleId)).ToList();
 
         // Get damage photos - load all and filter in memory
         var damageReportIds = damageReportsList.Select(d => d.DamageReportId).ToHashSet();
         var allPhotos = await Context.LoadAsync(
-            Context.DamagePhotos,
+            Context.CreateQuery<DamagePhoto>(),
             page: 1, size: 10000, includeTotalRows: false);
         var photosResult = allPhotos.ItemCollection.Where(p => damageReportIds.Contains(p.DamageReportId)).ToList();
 
@@ -230,7 +230,7 @@ public class DamageReportService(RentalDataContext context)
     public async Task<List<DamagePhoto>> GetPhotosAsync(int damageReportId)
     {
         var result = await Context.LoadAsync(
-            Context.DamagePhotos.Where(p => p.DamageReportId == damageReportId),
+            Context.CreateQuery<DamagePhoto>().Where(p => p.DamageReportId == damageReportId),
             page: 1, size: 100, includeTotalRows: false);
 
         return result.ItemCollection;
@@ -272,14 +272,14 @@ public class DamageReportService(RentalDataContext context)
     public async Task<Dictionary<string, int>> GetStatusCountsAsync(int shopId)
     {
         var rentals = await Context.LoadAsync(
-            Context.Rentals.Where(r => r.RentedFromShopId == shopId),
+            Context.CreateQuery<Rental>().Where(r => r.RentedFromShopId == shopId),
             page: 1, size: 10000, includeTotalRows: false);
 
         var rentalIds = rentals.ItemCollection.Select(r => r.RentalId).ToHashSet();
 
         // Load all damage reports and filter in memory (custom query provider doesn't support Contains)
         var allDamageReports = await Context.LoadAsync(
-            Context.DamageReports,
+            Context.CreateQuery<DamageReport>(),
             page: 1, size: 10000, includeTotalRows: false);
 
         var shopDamageReports = allDamageReports.ItemCollection
@@ -297,14 +297,14 @@ public class DamageReportService(RentalDataContext context)
     public async Task<DamageCostSummary> GetCostSummaryAsync(int shopId)
     {
         var rentals = await Context.LoadAsync(
-            Context.Rentals.Where(r => r.RentedFromShopId == shopId),
+            Context.CreateQuery<Rental>().Where(r => r.RentedFromShopId == shopId),
             page: 1, size: 10000, includeTotalRows: false);
 
         var rentalIds = rentals.ItemCollection.Select(r => r.RentalId).ToHashSet();
 
         // Load all damage reports and filter in memory (custom query provider doesn't support Contains)
         var allDamageReports = await Context.LoadAsync(
-            Context.DamageReports,
+            Context.CreateQuery<DamageReport>(),
             page: 1, size: 10000, includeTotalRows: false);
 
         var shopDamageReports = allDamageReports.ItemCollection

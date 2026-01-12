@@ -15,7 +15,7 @@ public class MaintenanceService(RentalDataContext context)
 
     public async Task<LoadOperation<ServiceType>> GetServiceTypesAsync(int shopId, bool activeOnly = true)
     {
-        var query = this.Context.ServiceTypes
+        var query = this.Context.CreateQuery<ServiceType>()
             .Where(st => st.ShopId == shopId);
 
         if (activeOnly)
@@ -75,7 +75,7 @@ public class MaintenanceService(RentalDataContext context)
     public async Task<List<MaintenanceSchedule>> GetSchedulesForMotorbikeAsync(int motorbikeId)
     {
         var result = await this.Context.LoadAsync(
-            this.Context.MaintenanceSchedules.Where(ms => ms.MotorbikeId == motorbikeId),
+            this.Context.CreateQuery<MaintenanceSchedule>().Where(ms => ms.MotorbikeId == motorbikeId),
             page: 1, size: 100, includeTotalRows: false);
         return result.ItemCollection.ToList();
     }
@@ -227,7 +227,7 @@ public class MaintenanceService(RentalDataContext context)
     {
         // Get all motorbikes for the shop (excluding those already in maintenance)
         var bikesResult = await this.Context.LoadAsync(
-            this.Context.Motorbikes.Where(m => m.ShopId == shopId && m.Status != "Maintenance"),
+            this.Context.CreateQuery<Motorbike>().Where(m => m.ShopId == shopId && m.Status != "Maintenance"),
             page: 1, size: 1000, includeTotalRows: false);
 
         var alerts = new List<MaintenanceAlertItem>();
@@ -288,7 +288,7 @@ public class MaintenanceService(RentalDataContext context)
         int shopId, DateTimeOffset today)
     {
         var bikesResult = await this.Context.LoadAsync(
-            this.Context.Motorbikes.Where(m => m.ShopId == shopId),
+            this.Context.CreateQuery<Motorbike>().Where(m => m.ShopId == shopId),
             page: 1, size: 1000, includeTotalRows: false);
 
         int overdueBikes = 0, dueSoonBikes = 0, okBikes = 0;

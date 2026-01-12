@@ -22,14 +22,14 @@ public class PaymentService(RentalDataContext context)
     {
         // Get rental IDs for this shop first
         var rentals = await this.Context.LoadAsync(
-            this.Context.Rentals.Where(r => r.ShopId == shopId),
+            this.Context.CreateQuery<Rental>().Where(r => r.ShopId == shopId),
             page: 1, size: 10000, includeTotalRows: false);
 
         var rentalIds = rentals.ItemCollection.Select(r => r.RentalId).ToHashSet();
 
         // Load all payments and filter in memory (since Contains isn't supported in expression trees)
         var allPaymentsResult = await this.Context.LoadAsync(
-            this.Context.Payments.OrderByDescending(p => p.PaymentId),
+            this.Context.CreateQuery<Payment>().OrderByDescending(p => p.PaymentId),
             page: 1, size: 10000, includeTotalRows: false);
 
         var payments = allPaymentsResult.ItemCollection
@@ -87,7 +87,7 @@ public class PaymentService(RentalDataContext context)
     public async Task<List<Payment>> GetPaymentsByRentalIdAsync(int rentalId)
     {
         var result = await this.Context.LoadAsync(
-            this.Context.Payments.Where(p => p.RentalId == rentalId),
+            this.Context.CreateQuery<Payment>().Where(p => p.RentalId == rentalId),
             page: 1, size: 100, includeTotalRows: false);
 
         return result.ItemCollection.ToList();

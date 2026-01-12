@@ -31,7 +31,7 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
         }
 
         // Non-pooled: only vehicles at this specific shop
-        var query = this.Context.Vehicles
+        var query = this.Context.CreateQuery<Vehicle>()
             .Where(v => v.HomeShopId == shopId || v.CurrentShopId == shopId);
 
         if (vehicleType.HasValue)
@@ -72,7 +72,7 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
         var pooledShopIds = await PoolService.GetPooledShopIdsAsync(shopId);
 
         // Query vehicles at any of the pooled shops OR vehicles in pools accessible to this shop
-        var query = this.Context.Vehicles
+        var query = this.Context.CreateQuery<Vehicle>()
             .Where(v =>
                 pooledShopIds.Contains(v.CurrentShopId) ||
                 (v.VehiclePoolId != null && v.VehiclePoolId > 0));
@@ -125,7 +125,7 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
 
         // Load all vehicles and filter in memory for Available status
         // Note: Repository enum comparison has issues with SQL translation, so we filter in memory
-        var allVehicles = await this.Context.LoadAsync(this.Context.Vehicles, 1, 500, false);
+        var allVehicles = await this.Context.LoadAsync(this.Context.CreateQuery<Vehicle>(), 1, 500, false);
 
         // Filter in memory for Available status only (shop filter relaxed for now)
         var localVehicles = allVehicles.ItemCollection
@@ -155,7 +155,7 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
 
         if (accessiblePoolIds.Count > 0)
         {
-            var pooledQuery = this.Context.Vehicles
+            var pooledQuery = this.Context.CreateQuery<Vehicle>()
                 .Where(v => v.VehiclePoolId != null && v.VehiclePoolId > 0)
                 .Where(v => v.Status == VehicleStatus.Available);
 
@@ -204,7 +204,7 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
     public async Task<List<Vehicle>> GetVehiclesByTypeAsync(int shopId, VehicleType vehicleType)
     {
         var result = await this.Context.LoadAsync(
-            this.Context.Vehicles
+            this.Context.CreateQuery<Vehicle>()
                 .Where(v => v.HomeShopId == shopId || v.CurrentShopId == shopId)
                 .Where(v => v.VehicleType == vehicleType),
             page: 1, size: 500, includeTotalRows: false);
@@ -217,7 +217,7 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
     /// </summary>
     public async Task<Dictionary<VehicleStatus, int>> GetStatusCountsAsync(int shopId, VehicleType? vehicleType = null)
     {
-        var query = this.Context.Vehicles
+        var query = this.Context.CreateQuery<Vehicle>()
             .Where(v => v.HomeShopId == shopId || v.CurrentShopId == shopId);
 
         if (vehicleType.HasValue)
@@ -238,7 +238,7 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
     public async Task<Dictionary<VehicleType, int>> GetTypeCountsAsync(int shopId)
     {
         var allVehicles = await this.Context.LoadAsync(
-            this.Context.Vehicles.Where(v => v.HomeShopId == shopId || v.CurrentShopId == shopId),
+            this.Context.CreateQuery<Vehicle>().Where(v => v.HomeShopId == shopId || v.CurrentShopId == shopId),
             page: 1, size: 1000, includeTotalRows: false);
 
         return allVehicles.ItemCollection
@@ -283,7 +283,7 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
     {
         // Check for active rentals
         var activeRentals = await this.Context.GetCountAsync(
-            this.Context.Rentals
+            this.Context.CreateQuery<Rental>()
                 .Where(r => r.VehicleId == vehicle.VehicleId)
                 .Where(r => r.Status == "Active" || r.Status == "Reserved"));
 

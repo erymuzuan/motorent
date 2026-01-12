@@ -13,7 +13,7 @@ public class InsuranceService(RentalDataContext context)
         int pageSize = 20)
     {
         // Load all and filter in memory (Repository doesn't handle complex expressions)
-        var all = await this.Context.LoadAsync(this.Context.Insurances, 1, 1000, false);
+        var all = await this.Context.LoadAsync(this.Context.CreateQuery<Insurance>(), 1, 1000, false);
         var filtered = all.ItemCollection
             .Where(i => i.ShopId == shopId || i.ShopId == 0)
             .OrderByDescending(i => i.InsuranceId)
@@ -37,7 +37,7 @@ public class InsuranceService(RentalDataContext context)
     public async Task<List<Insurance>> GetActiveInsurancesAsync(int shopId)
     {
         // Load all and filter in memory (Repository doesn't handle && expressions)
-        var all = await this.Context.LoadAsync(this.Context.Insurances, 1, 1000, false);
+        var all = await this.Context.LoadAsync(this.Context.CreateQuery<Insurance>(), 1, 1000, false);
         return all.ItemCollection
             .Where(i => (i.ShopId == shopId || i.ShopId == 0) && i.IsActive)
             .ToList();
@@ -61,7 +61,7 @@ public class InsuranceService(RentalDataContext context)
     {
         // Check if any rentals use this insurance
         var rentalCount = await this.Context.GetCountAsync(
-            this.Context.Rentals.Where(r => r.InsuranceId == insurance.InsuranceId));
+            this.Context.CreateQuery<Rental>().Where(r => r.InsuranceId == insurance.InsuranceId));
         if (rentalCount > 0)
         {
             return SubmitOperation.CreateFailure(
@@ -89,7 +89,7 @@ public class InsuranceService(RentalDataContext context)
     public async Task<Dictionary<bool, int>> GetActiveCountsAsync(int shopId)
     {
         // Load all and filter in memory
-        var all = await this.Context.LoadAsync(this.Context.Insurances, 1, 1000, false);
+        var all = await this.Context.LoadAsync(this.Context.CreateQuery<Insurance>(), 1, 1000, false);
         return all.ItemCollection
             .Where(i => i.ShopId == shopId || i.ShopId == 0)
             .GroupBy(i => i.IsActive)

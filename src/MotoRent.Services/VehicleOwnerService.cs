@@ -18,7 +18,7 @@ public class VehicleOwnerService(RentalDataContext context)
         int page = 1,
         int pageSize = 20)
     {
-        var query = this.Context.VehicleOwners.AsQueryable();
+        var query = this.Context.CreateQuery<VehicleOwner>().AsQueryable();
 
         if (isActive.HasValue)
         {
@@ -47,7 +47,7 @@ public class VehicleOwnerService(RentalDataContext context)
     public async Task<List<VehicleOwner>> GetActiveOwnersAsync()
     {
         var result = await this.Context.LoadAsync(
-            this.Context.VehicleOwners.Where(o => o.IsActive),
+            this.Context.CreateQuery<VehicleOwner>().Where(o => o.IsActive),
             page: 1, size: 500, includeTotalRows: false);
         return result.ItemCollection;
     }
@@ -60,7 +60,7 @@ public class VehicleOwnerService(RentalDataContext context)
     public async Task<List<Vehicle>> GetOwnerVehiclesAsync(int ownerId)
     {
         var result = await this.Context.LoadAsync(
-            this.Context.Vehicles.Where(v => v.VehicleOwnerId == ownerId),
+            this.Context.CreateQuery<Vehicle>().Where(v => v.VehicleOwnerId == ownerId),
             page: 1, size: 500, includeTotalRows: false);
         return result.ItemCollection;
     }
@@ -68,7 +68,7 @@ public class VehicleOwnerService(RentalDataContext context)
     public async Task<int> GetOwnerVehicleCountAsync(int ownerId)
     {
         return await this.Context.GetCountAsync(
-            this.Context.Vehicles.Where(v => v.VehicleOwnerId == ownerId));
+            this.Context.CreateQuery<Vehicle>().Where(v => v.VehicleOwnerId == ownerId));
     }
 
     #endregion
@@ -102,7 +102,7 @@ public class VehicleOwnerService(RentalDataContext context)
 
         // Check for pending payments
         var pendingPayments = await this.Context.GetCountAsync(
-            this.Context.OwnerPayments.Where(p =>
+            this.Context.CreateQuery<OwnerPayment>().Where(p =>
                 p.VehicleOwnerId == owner.VehicleOwnerId &&
                 p.Status == OwnerPaymentStatus.Pending));
 

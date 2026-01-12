@@ -26,7 +26,7 @@ public class VehicleImageService(RentalDataContext context, IBinaryStore binaryS
     public async Task<List<VehicleImage>> GetImagesForVehicleAsync(int vehicleId)
     {
         var result = await this.Context.LoadAsync(
-            this.Context.VehicleImages
+            this.Context.CreateQuery<VehicleImage>()
                 .Where(vi => vi.VehicleId == vehicleId)
                 .OrderBy(vi => vi.DisplayOrder),
             page: 1, size: MaxImagesPerVehicle, includeTotalRows: false);
@@ -58,7 +58,7 @@ public class VehicleImageService(RentalDataContext context, IBinaryStore binaryS
     public async Task<int> GetImageCountAsync(int vehicleId)
     {
         return await this.Context.GetCountAsync(
-            this.Context.VehicleImages.Where(vi => vi.VehicleId == vehicleId));
+            this.Context.CreateQuery<VehicleImage>().Where(vi => vi.VehicleId == vehicleId));
     }
 
     #endregion

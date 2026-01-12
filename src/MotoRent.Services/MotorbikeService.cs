@@ -14,7 +14,7 @@ public class MotorbikeService(RentalDataContext context)
         int page = 1,
         int pageSize = 20)
     {
-        var query = this.Context.Motorbikes
+        var query = this.Context.CreateQuery<Motorbike>()
             .Where(m => m.ShopId == shopId);
 
         if (!string.IsNullOrWhiteSpace(status))
@@ -83,7 +83,7 @@ public class MotorbikeService(RentalDataContext context)
     public async Task<Dictionary<string, int>> GetStatusCountsAsync(int shopId)
     {
         var allBikes = await this.Context.LoadAsync(
-            this.Context.Motorbikes.Where(m => m.ShopId == shopId),
+            this.Context.CreateQuery<Motorbike>().Where(m => m.ShopId == shopId),
             page: 1, size: 1000, includeTotalRows: false);
 
         return allBikes.ItemCollection
@@ -97,7 +97,7 @@ public class MotorbikeService(RentalDataContext context)
     public async Task<IEnumerable<Motorbike>> GetAvailableMotorbikesAsync(int shopId)
     {
         var result = await this.Context.LoadAsync(
-            this.Context.Motorbikes
+            this.Context.CreateQuery<Motorbike>()
                 .Where(m => m.ShopId == shopId)
                 .Where(m => m.Status == "Available"),
             page: 1, size: 100, includeTotalRows: false);
