@@ -24,6 +24,22 @@ public class Shop : Entity
     public string? TermsAndConditions { get; set; }
     public bool IsActive { get; set; } = true;
 
+    #region Operating Hours
+
+    /// <summary>
+    /// Default weekly hours template for auto-populating ShopSchedule entries.
+    /// Index by DayOfWeek (0 = Sunday, 6 = Saturday).
+    /// </summary>
+    public List<DailyHoursTemplate> DefaultHours { get; set; } = [];
+
+    /// <summary>
+    /// Out-of-hours fee bands for pickup/dropoff outside operating hours.
+    /// Each band defines a time range and associated fee.
+    /// </summary>
+    public List<OutOfHoursBand> OutOfHoursBands { get; set; } = [];
+
+    #endregion
+
     public override int GetId() => this.ShopId;
     public override void SetId(int value) => this.ShopId = value;
 }

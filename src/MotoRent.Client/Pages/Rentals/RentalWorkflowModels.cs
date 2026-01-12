@@ -1,4 +1,5 @@
 using MotoRent.Domain.Entities;
+using MotoRent.Services;
 
 namespace MotoRent.Client.Pages.Rentals;
 
@@ -19,13 +20,26 @@ public class RentalConfig
     public decimal DriverDailyFee { get; set; }
     public decimal GuideDailyFee { get; set; }
 
+    // Pick-up/Drop-off location options
+    public int? PickupLocationId { get; set; }
+    public ServiceLocation? PickupLocation { get; set; }
+    public TimeSpan PickupTime { get; set; } = new(10, 0, 0);
+
+    public int? DropoffLocationId { get; set; }
+    public ServiceLocation? DropoffLocation { get; set; }
+    public TimeSpan DropoffTime { get; set; } = new(10, 0, 0);
+
+    // Location and out-of-hours pricing (calculated by RentalPricingService)
+    public LocationPricing? LocationPricing { get; set; }
+
     // Pricing
     public decimal VehicleTotal { get; set; }
     public decimal InsuranceTotal { get; set; }
     public decimal AccessoriesTotal { get; set; }
     public decimal DriverTotal => IncludeDriver ? DriverDailyFee * Days : 0;
     public decimal GuideTotal => IncludeGuide ? GuideDailyFee * Days : 0;
-    public decimal TotalAmount => VehicleTotal + InsuranceTotal + AccessoriesTotal + DriverTotal + GuideTotal;
+    public decimal LocationFeesTotal => LocationPricing?.TotalLocationFees ?? 0;
+    public decimal TotalAmount => VehicleTotal + InsuranceTotal + AccessoriesTotal + DriverTotal + GuideTotal + LocationFeesTotal;
     public int Days => Math.Max(1, (int)(EndDate.Date - StartDate.Date).TotalDays + 1);
 
     // Backward compatibility

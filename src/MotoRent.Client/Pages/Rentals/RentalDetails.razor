@@ -285,6 +285,13 @@
                                         <td class="text-end">@FormatCurrency(m_accessoriesTotal)</td>
                                     </tr>
                                 }
+                                @if (m_locationFeesTotal > 0)
+                                {
+                                    <tr>
+                                        <td>@Localizer["LocationFees"]</td>
+                                        <td class="text-end">@FormatCurrency(m_locationFeesTotal)</td>
+                                    </tr>
+                                }
                             </tbody>
                             <tfoot>
                                 <tr class="fw-bold">
@@ -496,6 +503,138 @@
                     </div>
                 }
 
+                @* Pickup/Dropoff Location Card *@
+                @if (m_rental.PickupLocationId.HasValue || m_rental.DropoffLocationId.HasValue ||
+                     m_rental.IsOutOfHoursPickup || m_rental.IsOutOfHoursDropoff)
+                {
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="ti ti-map-pin me-2"></i>
+                                @Localizer["PickupDropoffLocations"]
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                @* Pickup Location *@
+                                <div class="col-md-6">
+                                    <div class="datagrid">
+                                        <div class="datagrid-item">
+                                            <div class="datagrid-title">@Localizer["PickupLocation"]</div>
+                                            <div class="datagrid-content">
+                                                @if (!string.IsNullOrEmpty(m_rental.PickupLocationName))
+                                                {
+                                                    <span class="fw-bold">
+                                                        <i class="ti ti-map-pin me-1 text-primary"></i>
+                                                        @m_rental.PickupLocationName
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-secondary">At Shop</span>
+                                                }
+                                            </div>
+                                        </div>
+                                        @if (m_rental.ScheduledPickupTime.HasValue)
+                                        {
+                                            <div class="datagrid-item">
+                                                <div class="datagrid-title">@Localizer["PickupTime"]</div>
+                                                <div class="datagrid-content">
+                                                    @m_rental.ScheduledPickupTime.Value.ToString(@"hh\:mm")
+                                                </div>
+                                            </div>
+                                        }
+                                        @if (m_rental.PickupLocationFee > 0)
+                                        {
+                                            <div class="datagrid-item">
+                                                <div class="datagrid-title">@Localizer["LocationFee"]</div>
+                                                <div class="datagrid-content text-secondary">
+                                                    @FormatCurrency(m_rental.PickupLocationFee)
+                                                </div>
+                                            </div>
+                                        }
+                                        @if (m_rental.IsOutOfHoursPickup && m_rental.OutOfHoursPickupFee > 0)
+                                        {
+                                            <div class="datagrid-item">
+                                                <div class="datagrid-title">@Localizer["OutOfHoursFee"]</div>
+                                                <div class="datagrid-content text-warning">
+                                                    @FormatCurrency(m_rental.OutOfHoursPickupFee)
+                                                    @if (!string.IsNullOrEmpty(m_rental.OutOfHoursPickupBand))
+                                                    {
+                                                        <span class="text-secondary ms-1">(@m_rental.OutOfHoursPickupBand)</span>
+                                                    }
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+
+                                @* Dropoff Location *@
+                                <div class="col-md-6">
+                                    <div class="datagrid">
+                                        <div class="datagrid-item">
+                                            <div class="datagrid-title">@Localizer["DropoffLocation"]</div>
+                                            <div class="datagrid-content">
+                                                @if (!string.IsNullOrEmpty(m_rental.DropoffLocationName))
+                                                {
+                                                    <span class="fw-bold">
+                                                        <i class="ti ti-map-pin me-1 text-primary"></i>
+                                                        @m_rental.DropoffLocationName
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-secondary">At Shop</span>
+                                                }
+                                            </div>
+                                        </div>
+                                        @if (m_rental.ScheduledDropoffTime.HasValue)
+                                        {
+                                            <div class="datagrid-item">
+                                                <div class="datagrid-title">@Localizer["DropoffTime"]</div>
+                                                <div class="datagrid-content">
+                                                    @m_rental.ScheduledDropoffTime.Value.ToString(@"hh\:mm")
+                                                </div>
+                                            </div>
+                                        }
+                                        @if (m_rental.DropoffLocationFee > 0)
+                                        {
+                                            <div class="datagrid-item">
+                                                <div class="datagrid-title">@Localizer["LocationFee"]</div>
+                                                <div class="datagrid-content text-secondary">
+                                                    @FormatCurrency(m_rental.DropoffLocationFee)
+                                                </div>
+                                            </div>
+                                        }
+                                        @if (m_rental.IsOutOfHoursDropoff && m_rental.OutOfHoursDropoffFee > 0)
+                                        {
+                                            <div class="datagrid-item">
+                                                <div class="datagrid-title">@Localizer["OutOfHoursFee"]</div>
+                                                <div class="datagrid-content text-warning">
+                                                    @FormatCurrency(m_rental.OutOfHoursDropoffFee)
+                                                    @if (!string.IsNullOrEmpty(m_rental.OutOfHoursDropoffBand))
+                                                    {
+                                                        <span class="text-secondary ms-1">(@m_rental.OutOfHoursDropoffBand)</span>
+                                                    }
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+
+                            @* Total Location Fees *@
+                            @if (m_locationFeesTotal > 0)
+                            {
+                                <div class="mt-3 pt-3 border-top d-flex justify-content-between align-items-center">
+                                    <span class="text-secondary">@Localizer["TotalLocationFees"]</span>
+                                    <span class="fw-bold text-primary">@FormatCurrency(m_locationFeesTotal)</span>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+
                 @* Payments Table *@
                 <div class="card mb-3">
                     <div class="card-header">
@@ -695,6 +834,7 @@
     private bool m_isDueToday;
     private int m_daysOverdue;
     private decimal m_accessoriesTotal;
+    private decimal m_locationFeesTotal;
     private decimal m_grandTotal;
     private decimal m_totalPaid;
 
@@ -772,11 +912,14 @@
 
             // Calculate totals
             m_accessoriesTotal = m_accessories.Sum(a => a.ChargedAmount);
+            m_locationFeesTotal = m_rental.PickupLocationFee + m_rental.OutOfHoursPickupFee +
+                                  m_rental.DropoffLocationFee + m_rental.OutOfHoursDropoffFee;
             m_grandTotal = m_rental.TotalAmount
                          + (m_insurance?.DailyRate ?? 0) * m_rental.RentalDays
                          + m_rental.DriverFee
                          + m_rental.GuideFee
-                         + m_accessoriesTotal;
+                         + m_accessoriesTotal
+                         + m_locationFeesTotal;
             m_totalPaid = m_payments
                 .Where(p => p.Status == "Completed" && p.PaymentType != "Refund")
                 .Sum(p => p.Amount);

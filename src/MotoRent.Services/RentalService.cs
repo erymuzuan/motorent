@@ -181,7 +181,23 @@ public class RentalService(RentalDataContext context, VehiclePoolService? poolSe
                 InsuranceId = request.InsuranceId,
                 Status = "Active",
                 Notes = request.Notes,
-                VehicleName = $"{vehicle.Brand} {vehicle.Model}"
+                VehicleName = $"{vehicle.Brand} {vehicle.Model}",
+                // Pick-up location and fees
+                PickupLocationId = request.PickupLocationId,
+                PickupLocationName = request.PickupLocationName,
+                ScheduledPickupTime = request.ScheduledPickupTime,
+                PickupLocationFee = request.PickupLocationFee,
+                OutOfHoursPickupFee = request.OutOfHoursPickupFee,
+                IsOutOfHoursPickup = request.IsOutOfHoursPickup,
+                OutOfHoursPickupBand = request.OutOfHoursPickupBand,
+                // Expected drop-off location and fees
+                DropoffLocationId = request.DropoffLocationId,
+                DropoffLocationName = request.DropoffLocationName,
+                ScheduledDropoffTime = request.ScheduledDropoffTime,
+                DropoffLocationFee = request.DropoffLocationFee,
+                OutOfHoursDropoffFee = request.OutOfHoursDropoffFee,
+                IsOutOfHoursDropoff = request.IsOutOfHoursDropoff,
+                OutOfHoursDropoffBand = request.OutOfHoursDropoffBand
             };
             session.Attach(rental);
 
@@ -362,6 +378,24 @@ public class RentalService(RentalDataContext context, VehiclePoolService? poolSe
             rental.Status = "Completed";
             if (!string.IsNullOrEmpty(request.Notes))
                 rental.Notes = (rental.Notes ?? "") + "\n" + request.Notes;
+
+            // Update drop-off location and fees (may override check-in values)
+            if (request.DropoffLocationId.HasValue)
+            {
+                rental.DropoffLocationId = request.DropoffLocationId;
+                rental.DropoffLocationName = request.DropoffLocationName;
+            }
+            if (request.ScheduledDropoffTime.HasValue)
+                rental.ScheduledDropoffTime = request.ScheduledDropoffTime;
+            if (request.DropoffLocationFee > 0)
+                rental.DropoffLocationFee = request.DropoffLocationFee;
+            if (request.OutOfHoursDropoffFee > 0 || request.IsOutOfHoursDropoff)
+            {
+                rental.OutOfHoursDropoffFee = request.OutOfHoursDropoffFee;
+                rental.IsOutOfHoursDropoff = request.IsOutOfHoursDropoff;
+                rental.OutOfHoursDropoffBand = request.OutOfHoursDropoffBand;
+            }
+
             session.Attach(rental);
 
             // 5. Calculate additional charges
@@ -806,6 +840,24 @@ public class CheckInRequest
     public string? SignatureImagePath { get; set; }
     public string? SignedByIp { get; set; }
 
+    // Pick-up location and fees
+    public int? PickupLocationId { get; set; }
+    public string? PickupLocationName { get; set; }
+    public TimeSpan? ScheduledPickupTime { get; set; }
+    public decimal PickupLocationFee { get; set; }
+    public decimal OutOfHoursPickupFee { get; set; }
+    public bool IsOutOfHoursPickup { get; set; }
+    public string? OutOfHoursPickupBand { get; set; }
+
+    // Expected drop-off location and fees (for reservations)
+    public int? DropoffLocationId { get; set; }
+    public string? DropoffLocationName { get; set; }
+    public TimeSpan? ScheduledDropoffTime { get; set; }
+    public decimal DropoffLocationFee { get; set; }
+    public decimal OutOfHoursDropoffFee { get; set; }
+    public bool IsOutOfHoursDropoff { get; set; }
+    public string? OutOfHoursDropoffBand { get; set; }
+
     // Backward compatibility
     [Obsolete("Use VehicleId instead")]
     public int MotorbikeId { get => VehicleId; set => VehicleId = value; }
@@ -833,6 +885,15 @@ public class CheckOutRequest
 
     // For cross-shop returns (pooled vehicles)
     public int? ReturnShopId { get; set; }
+
+    // Drop-off location and fees
+    public int? DropoffLocationId { get; set; }
+    public string? DropoffLocationName { get; set; }
+    public TimeSpan? ScheduledDropoffTime { get; set; }
+    public decimal DropoffLocationFee { get; set; }
+    public decimal OutOfHoursDropoffFee { get; set; }
+    public bool IsOutOfHoursDropoff { get; set; }
+    public string? OutOfHoursDropoffBand { get; set; }
 
     public List<DamageReportInfo>? DamageReports { get; set; }
 }

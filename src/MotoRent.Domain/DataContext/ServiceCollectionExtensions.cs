@@ -13,6 +13,8 @@ public static class ServiceCollectionExtensions
 
         // Register repositories for MotoRent operational entities (singleton since they're stateless)
         services.AddSingleton<IRepository<Shop>, Repository<Shop>>();
+        services.AddSingleton<IRepository<ShopSchedule>, Repository<ShopSchedule>>();
+        services.AddSingleton<IRepository<ServiceLocation>, Repository<ServiceLocation>>();
         services.AddSingleton<IRepository<Renter>, Repository<Renter>>();
         services.AddSingleton<IRepository<Document>, Repository<Document>>();
         services.AddSingleton<IRepository<Vehicle>, Repository<Vehicle>>();

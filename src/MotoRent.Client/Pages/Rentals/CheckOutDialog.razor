@@ -8,6 +8,9 @@
 @inject VehiclePoolService VehiclePoolService
 @inject ShopService ShopService
 @inject MaintenanceService MaintenanceService
+@inject ServiceLocationService LocationService
+@inject OperatingHoursService HoursService
+@inject RentalPricingService PricingService
 
 <div class="checkout-dialog">
     @if (m_loading)
@@ -150,6 +153,61 @@
                         <div class="info-banner info-purple mt-2">
                             <i class="ti ti-info-circle"></i>
                             <span>Vehicle will be transferred to the selected shop</span>
+                        </div>
+                    }
+                </div>
+            }
+
+            @* Drop-off Service Location *@
+            @if (m_dropoffLocations.Count > 0)
+            {
+                <div class="form-section">
+                    <h5 class="section-title">
+                        <i class="ti ti-map-pin text-teal"></i>
+                        Drop-off Service Location
+                    </h5>
+                    <select class="form-select" @bind="m_dropoffLocationId" @bind:after="OnDropoffLocationChanged">
+                        <option value="0">At Shop (Free)</option>
+                        @foreach (var location in m_dropoffLocations)
+                        {
+                            <option value="@location.ServiceLocationId">
+                                @location.Name
+                                @if (location.DropoffFee > 0)
+                                {
+                                    @($" (+{FormatCurrency(location.DropoffFee)})")
+                                }
+                            </option>
+                        }
+                    </select>
+
+                    @if (m_dropoffLocationId > 0)
+                    {
+                        <div class="mt-3">
+                            <label class="form-label">Drop-off Time</label>
+                            <input type="time" class="form-control"
+                                   value="@m_dropoffTime.ToString(@"hh\:mm")"
+                                   @onchange="OnDropoffTimeChanged" />
+                            @if (m_dropoffOutOfHoursBand != null)
+                            {
+                                <small class="text-warning mt-1 d-block">
+                                    <i class="ti ti-clock-exclamation me-1"></i>
+                                    @m_dropoffOutOfHoursBand.BandName: +@FormatCurrency(m_dropoffOutOfHoursBand.Fee)
+                                </small>
+                            }
+                        </div>
+                    }
+
+                    @if (m_dropoffLocationFee > 0 || m_dropoffOutOfHoursFee > 0)
+                    {
+                        <div class="info-banner info-blue mt-3">
+                            <i class="ti ti-info-circle"></i>
+                            <span>
+                                Drop-off fees: <strong>@FormatCurrency(m_dropoffLocationFee + m_dropoffOutOfHoursFee)</strong>
+                                @if (m_dropoffLocationFee > 0 && m_dropoffOutOfHoursFee > 0)
+                                {
+                                    @($" (Location: {FormatCurrency(m_dropoffLocationFee)}, Out-of-hours: {FormatCurrency(m_dropoffOutOfHoursFee)})")
+                                }
+                            </span>
                         </div>
                     }
                 </div>
@@ -355,6 +413,22 @@
                     <div class="settlement-row text-danger">
                         <span>Damage (@m_damageLevel)</span>
                         <span>+@FormatCurrency(m_damageEstimate)</span>
+                    </div>
+                }
+
+                @if (m_dropoffLocationFee > 0)
+                {
+                    <div class="settlement-row text-secondary">
+                        <span><i class="ti ti-map-pin me-1"></i>@m_selectedDropoffLocation?.Name</span>
+                        <span>+@FormatCurrency(m_dropoffLocationFee)</span>
+                    </div>
+                }
+
+                @if (m_dropoffOutOfHoursFee > 0)
+                {
+                    <div class="settlement-row text-warning">
+                        <span><i class="ti ti-clock me-1"></i>@m_dropoffOutOfHoursBand?.BandName</span>
+                        <span>+@FormatCurrency(m_dropoffOutOfHoursFee)</span>
                     </div>
                 }
 
@@ -1068,13 +1142,23 @@
     private int m_maintenanceDueSoonCount;
     private bool m_acknowledgeMaintenanceWarning;
 
+    // Drop-off service location
+    private List<ServiceLocation> m_dropoffLocations = [];
+    private int m_dropoffLocationId;
+    private ServiceLocation? m_selectedDropoffLocation;
+    private TimeSpan m_dropoffTime = new(10, 0, 0);
+    private decimal m_dropoffLocationFee;
+    private decimal m_dropoffOutOfHoursFee;
+    private OutOfHoursResult? m_dropoffOutOfHoursBand;
+
     // Calculated values
     private int m_extraDays => this.m_actualReturnDate.HasValue && !this.m_isIntervalRental
         ? Math.Max(0, (int)(this.m_actualReturnDate.Value - this.Entity.ExpectedEndDate.Date).TotalDays)
         : 0;
 
     private decimal m_extraDaysCharge => this.m_extraDays * this.Entity.RentalRate;
-    private decimal m_totalAdditional => this.m_extraDaysCharge + (this.m_damageLevel != "None" ? this.m_damageEstimate : 0);
+    private decimal m_dropoffTotalFees => this.m_dropoffLocationFee + this.m_dropoffOutOfHoursFee;
+    private decimal m_totalAdditional => this.m_extraDaysCharge + (this.m_damageLevel != "None" ? this.m_damageEstimate : 0) + this.m_dropoffTotalFees;
     private decimal m_refundAmount => Math.Max(0, this.m_depositAmount - this.m_totalAdditional);
 
     private bool CanComplete => (this.m_actualReturnDate.HasValue || this.m_isIntervalRental) &&
@@ -1141,6 +1225,22 @@
                 this.m_maintenanceDueSoonCount = maintenanceSummary.DueSoonCount;
                 this.m_hasMaintenanceWarning = maintenanceSummary.OverallStatus != MaintenanceStatus.Ok;
             }
+
+            // Load dropoff service locations
+            this.m_dropoffLocations = await this.LocationService.GetActiveLocationsAsync(
+                this.ShopId, pickupOnly: null, dropoffOnly: true);
+
+            // Check if rental already has a dropoff location configured
+            if (this.Entity.DropoffLocationId.HasValue)
+            {
+                this.m_dropoffLocationId = this.Entity.DropoffLocationId.Value;
+                this.m_selectedDropoffLocation = this.m_dropoffLocations.FirstOrDefault(l => l.ServiceLocationId == this.m_dropoffLocationId);
+                this.m_dropoffLocationFee = this.Entity.DropoffLocationFee;
+                if (this.Entity.ScheduledDropoffTime.HasValue)
+                {
+                    this.m_dropoffTime = this.Entity.ScheduledDropoffTime.Value;
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -1167,6 +1267,45 @@
         this.m_damagePhotoPaths = photoPaths;
     }
 
+    private async Task OnDropoffLocationChanged()
+    {
+        this.m_selectedDropoffLocation = this.m_dropoffLocations.FirstOrDefault(l => l.ServiceLocationId == this.m_dropoffLocationId);
+
+        if (this.m_selectedDropoffLocation != null)
+        {
+            this.m_dropoffLocationFee = this.m_selectedDropoffLocation.DropoffFee;
+            await this.CalculateDropoffOutOfHoursFeeAsync();
+        }
+        else
+        {
+            this.m_dropoffLocationFee = 0;
+            this.m_dropoffOutOfHoursFee = 0;
+            this.m_dropoffOutOfHoursBand = null;
+        }
+    }
+
+    private async Task OnDropoffTimeChanged(ChangeEventArgs e)
+    {
+        if (TimeSpan.TryParse(e.Value?.ToString(), out var time))
+        {
+            this.m_dropoffTime = time;
+            await this.CalculateDropoffOutOfHoursFeeAsync();
+        }
+    }
+
+    private async Task CalculateDropoffOutOfHoursFeeAsync()
+    {
+        if (!this.m_actualReturnDate.HasValue && !this.m_isIntervalRental) return;
+
+        var dropoffDate = this.m_isIntervalRental ? DateTime.Today : this.m_actualReturnDate!.Value;
+        var dropoffDateTime = new DateTimeOffset(
+            DateTime.SpecifyKind(dropoffDate, DateTimeKind.Utc), TimeSpan.Zero)
+            .Add(this.m_dropoffTime);
+
+        this.m_dropoffOutOfHoursBand = await this.HoursService.GetOutOfHoursFeeAsync(this.ShopId, dropoffDateTime);
+        this.m_dropoffOutOfHoursFee = this.m_dropoffOutOfHoursBand?.Fee ?? 0;
+    }
+
     private async Task CompleteCheckOut()
     {
         if (!this.m_actualReturnDate.HasValue && !this.m_isIntervalRental) return;
@@ -1185,7 +1324,15 @@
                 PaymentMethod = this.m_refundMethod,
                 RefundDeposit = this.m_refundAmount > 0,
                 // Cross-shop return
-                ReturnShopId = this.m_isPooledVehicle ? this.m_returnToShopId : null
+                ReturnShopId = this.m_isPooledVehicle ? this.m_returnToShopId : null,
+                // Drop-off service location
+                DropoffLocationId = this.m_dropoffLocationId > 0 ? this.m_dropoffLocationId : null,
+                DropoffLocationName = this.m_selectedDropoffLocation?.Name,
+                ScheduledDropoffTime = this.m_dropoffLocationId > 0 ? this.m_dropoffTime : null,
+                DropoffLocationFee = this.m_dropoffLocationFee,
+                OutOfHoursDropoffFee = this.m_dropoffOutOfHoursFee,
+                IsOutOfHoursDropoff = this.m_dropoffOutOfHoursBand != null,
+                OutOfHoursDropoffBand = this.m_dropoffOutOfHoursBand?.BandName
             };
 
             if (this.m_damageLevel != "None" && !string.IsNullOrEmpty(this.m_damageDescription))
