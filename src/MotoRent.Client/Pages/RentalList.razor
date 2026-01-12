@@ -1,5 +1,6 @@
 @page "/rentals"
 @using Microsoft.AspNetCore.Authorization
+@using MotoRent.Client.Pages.Rentals
 @attribute [Authorize(Policy = "RequireTenantStaff")]
 @inherits LocalizedComponentBase<RentalList>
 @inject RentalService RentalService
@@ -309,26 +310,15 @@
 
     private async Task OpenCheckOutDialog(RentalViewModel rental)
     {
-        if (!await this.DialogService.ConfirmAsync(
-            $"Check out {rental.RenterName} returning {rental.VehicleBrandModel}?"))
-            return;
+        var result = await this.DialogService
+            .Create<CheckOutDialog>($"Check Out - {rental.RenterName}")
+            .WithParameter(x => x.Entity, rental.Rental)
+            .Large()
+            .ShowDialogAsync();
 
-        var request = new CheckOutRequest
-        {
-            RentalId = rental.Rental.RentalId,
-            ActualEndDate = DateTimeOffset.Now,
-            MileageEnd = rental.Rental.MileageStart + 50
-        };
-
-        var result = await this.RentalService.CheckOutAsync(request, this.UserName);
-        if (result.Success)
+        if (!result.Cancelled)
         {
             await this.LoadDataAsync();
-            this.ShowSuccess($"Check-out completed. Refund: {FormatCurrency(result.RefundAmount)}");
-        }
-        else
-        {
-            this.ShowError($"Check-out failed: {result.Message}");
         }
     }
 
