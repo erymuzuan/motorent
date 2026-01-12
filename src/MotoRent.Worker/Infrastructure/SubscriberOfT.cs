@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using MotoRent.Domain.DataContext;
 using MotoRent.Domain.Entities;
 using MotoRent.Domain.Messaging;
 
@@ -10,6 +11,16 @@ namespace MotoRent.Worker.Infrastructure;
 /// <typeparam name="T">Entity type to process.</typeparam>
 public abstract class Subscriber<T> : Subscriber where T : Entity
 {
+    /// <summary>
+    /// Tenant data context for rental operations.
+    /// </summary>
+    protected RentalDataContext DataContext => ObjectBuilder.GetObject<RentalDataContext>();
+
+    /// <summary>
+    /// Core data context for cross-tenant operations.
+    /// </summary>
+    protected CoreDataContext CoreDataContext => ObjectBuilder.GetObject<CoreDataContext>();
+
     /// <summary>
     /// Process the typed entity message.
     /// </summary>
