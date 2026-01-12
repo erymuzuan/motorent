@@ -1,0 +1,994 @@
+@page "/rentals/view/{RentalId:int}"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Policy = "RequireTenantStaff")]
+@inherits LocalizedComponentBase<RentalDetails>
+@inject RentalService RentalService
+@inject RenterService RenterService
+@inject VehicleService VehicleService
+@inject PaymentService PaymentService
+@inject DepositService DepositService
+@inject AccessoryService AccessoryService
+@inject InsuranceService InsuranceService
+@inject ShopService ShopService
+
+<MotoRentPageTitle>@Localizer["RentalDetails"] #@RentalId</MotoRentPageTitle>
+
+<TablerHeader Title="@m_headerTitle" PreTitle="@Localizer["RentalDetails"]">
+    <a href="/rentals" class="btn btn-ghost-secondary me-2">
+        <i class="ti ti-arrow-left me-1"></i>
+        @Localizer["BackToRentals"]
+    </a>
+    @if (m_rental != null)
+    {
+        @* Action buttons based on status *@
+        @if (m_rental.Status == "Reserved")
+        {
+            <button type="button" class="btn btn-primary me-2" @onclick="StartRental">
+                <i class="ti ti-player-play me-1"></i>
+                @Localizer["StartRental"]
+            </button>
+        }
+        @if (m_rental.Status == "Active")
+        {
+            <button type="button" class="btn btn-success me-2" @onclick="OpenCheckOutDialog">
+                <i class="ti ti-logout me-1"></i>
+                @Localizer["CheckOut"]
+            </button>
+            @if (m_rental.DurationType == RentalDurationType.Daily)
+            {
+                <button type="button" class="btn btn-warning me-2" @onclick="ExtendRental">
+                    <i class="ti ti-calendar-plus me-1"></i>
+                    @Localizer["Extend"]
+                </button>
+            }
+        }
+        @if (m_rental.Status is "Active" or "Reserved")
+        {
+            <button type="button" class="btn btn-outline-danger me-2" @onclick="CancelRental">
+                <i class="ti ti-x me-1"></i>
+                @Localizer["Cancel"]
+            </button>
+        }
+        <button type="button" class="btn btn-outline-primary me-2" @onclick="ViewInvoice">
+            <i class="ti ti-receipt me-1"></i>
+            @Localizer["ViewInvoice"]
+        </button>
+        @if (m_rental.Status is "Active" or "Completed")
+        {
+            <button type="button" class="btn btn-outline-secondary" @onclick="AddPayment">
+                <i class="ti ti-cash me-1"></i>
+                @Localizer["AddPayment"]
+            </button>
+        }
+    }
+</TablerHeader>
+
+<LoadingSkeleton Loading="@m_loading" Mode="LoadingSkeleton.PlaceholderMode.Card" Rows="6">
+    @if (m_notFound)
+    {
+        <div class="alert alert-danger">
+            <div class="d-flex">
+                <div class="me-3">
+                    <i class="ti ti-alert-circle" style="font-size: 2rem;"></i>
+                </div>
+                <div>
+                    <h4 class="alert-title">@Localizer["RentalNotFound"]</h4>
+                    <div class="text-secondary">
+                        @Localizer["RentalNotFoundDesc", RentalId]
+                    </div>
+                    <div class="mt-3">
+                        <a href="/rentals" class="btn btn-outline-danger">
+                            <i class="ti ti-arrow-left me-1"></i>
+                            @Localizer["BackToRentals"]
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else if (m_rental != null)
+    {
+        @* Alerts for special conditions *@
+        @if (m_isOverdue)
+        {
+            <div class="alert alert-danger mb-3">
+                <div class="d-flex align-items-center">
+                    <i class="ti ti-alert-triangle me-2"></i>
+                    <strong>@Localizer["OverdueAlert", m_daysOverdue]</strong>
+                </div>
+            </div>
+        }
+        else if (m_isDueToday)
+        {
+            <div class="alert alert-warning mb-3">
+                <div class="d-flex align-items-center">
+                    <i class="ti ti-clock me-2"></i>
+                    <strong>@Localizer["DueToday"]</strong>
+                </div>
+            </div>
+        }
+
+        @if (m_rental.IsCrossShopReturn && m_returnShop != null)
+        {
+            <div class="alert alert-info mb-3">
+                <div class="d-flex align-items-center">
+                    <i class="ti ti-map-pin me-2"></i>
+                    <strong>@Localizer["CrossShopReturn", m_returnShop.Name]</strong>
+                </div>
+            </div>
+        }
+
+        <div class="row g-3">
+            @* Left Column *@
+            <div class="col-lg-4">
+                @* Summary Card *@
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="ti ti-file-description me-2"></i>
+                            @Localizer["Summary"]
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <span class="badge @GetStatusBadgeClass(m_rental.Status)" style="font-size: 0.9rem;">
+                                @m_rental.Status
+                            </span>
+                        </div>
+                        <div class="datagrid">
+                            <div class="datagrid-item">
+                                <div class="datagrid-title">@Localizer["Duration"]</div>
+                                <div class="datagrid-content">@m_rental.DurationDisplay</div>
+                            </div>
+                            <div class="datagrid-item">
+                                <div class="datagrid-title">@Localizer["StartDate"]</div>
+                                <div class="datagrid-content">@FormatDateTime(m_rental.StartDate)</div>
+                            </div>
+                            <div class="datagrid-item">
+                                <div class="datagrid-title">@Localizer["ExpectedEnd"]</div>
+                                <div class="datagrid-content">@FormatDateTime(m_rental.ExpectedEndDate)</div>
+                            </div>
+                            @if (m_rental.ActualEndDate.HasValue)
+                            {
+                                <div class="datagrid-item">
+                                    <div class="datagrid-title">@Localizer["ActualEnd"]</div>
+                                    <div class="datagrid-content">@FormatDateTime(m_rental.ActualEndDate)</div>
+                                </div>
+                            }
+                            <div class="datagrid-item">
+                                <div class="datagrid-title">@Localizer["Rate"]</div>
+                                <div class="datagrid-content">
+                                    @FormatCurrency(m_rental.RentalRate)
+                                    @if (m_rental.DurationType == RentalDurationType.Daily)
+                                    {
+                                        <span class="text-secondary">/day</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-secondary">/@(m_rental.IntervalMinutes)min</span>
+                                    }
+                                </div>
+                            </div>
+                            <div class="datagrid-item">
+                                <div class="datagrid-title">@Localizer["TotalAmount"]</div>
+                                <div class="datagrid-content fw-bold text-primary">@FormatCurrency(m_rental.TotalAmount)</div>
+                            </div>
+                        </div>
+                        @if (!string.IsNullOrEmpty(m_rental.Notes))
+                        {
+                            <div class="mt-3">
+                                <div class="subheader">@Localizer["Notes"]</div>
+                                <div class="text-secondary">@m_rental.Notes</div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                @* Deposit Card *@
+                @if (m_deposit != null)
+                {
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="ti ti-wallet me-2"></i>
+                                @Localizer["Deposit"]
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="datagrid">
+                                <div class="datagrid-item">
+                                    <div class="datagrid-title">@Localizer["DepositType"]</div>
+                                    <div class="datagrid-content">@m_deposit.DepositType</div>
+                                </div>
+                                <div class="datagrid-item">
+                                    <div class="datagrid-title">@Localizer["Amount"]</div>
+                                    <div class="datagrid-content fw-bold">@FormatCurrency(m_deposit.Amount)</div>
+                                </div>
+                                <div class="datagrid-item">
+                                    <div class="datagrid-title">@Localizer["Status"]</div>
+                                    <div class="datagrid-content">
+                                        <span class="badge @GetDepositStatusBadgeClass(m_deposit.Status)">
+                                            @m_deposit.Status
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="datagrid-item">
+                                    <div class="datagrid-title">@Localizer["CollectedOn"]</div>
+                                    <div class="datagrid-content">@FormatDateTime(m_deposit.CollectedOn)</div>
+                                </div>
+                                @if (!string.IsNullOrEmpty(m_deposit.CardLast4))
+                                {
+                                    <div class="datagrid-item">
+                                        <div class="datagrid-title">@Localizer["Card"]</div>
+                                        <div class="datagrid-content">**** @m_deposit.CardLast4</div>
+                                    </div>
+                                }
+                                @if (!string.IsNullOrEmpty(m_deposit.TransactionRef))
+                                {
+                                    <div class="datagrid-item">
+                                        <div class="datagrid-title">@Localizer["Reference"]</div>
+                                        <div class="datagrid-content">@m_deposit.TransactionRef</div>
+                                    </div>
+                                }
+                                @if (m_deposit.RefundedOn.HasValue)
+                                {
+                                    <div class="datagrid-item">
+                                        <div class="datagrid-title">@Localizer["RefundedOn"]</div>
+                                        <div class="datagrid-content">@FormatDateTime(m_deposit.RefundedOn)</div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                @* Financial Summary Card *@
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="ti ti-calculator me-2"></i>
+                            @Localizer["FinancialSummary"]
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm">
+                            <tbody>
+                                <tr>
+                                    <td>@Localizer["RentalAmount"]</td>
+                                    <td class="text-end">@FormatCurrency(m_rental.TotalAmount)</td>
+                                </tr>
+                                @if (m_insurance != null)
+                                {
+                                    <tr>
+                                        <td>@Localizer["Insurance"] (@m_insurance.Name)</td>
+                                        <td class="text-end">@FormatCurrency(m_insurance.DailyRate * m_rental.RentalDays)</td>
+                                    </tr>
+                                }
+                                @if (m_rental.IncludeDriver && m_rental.DriverFee > 0)
+                                {
+                                    <tr>
+                                        <td>@Localizer["DriverFee"]</td>
+                                        <td class="text-end">@FormatCurrency(m_rental.DriverFee)</td>
+                                    </tr>
+                                }
+                                @if (m_rental.IncludeGuide && m_rental.GuideFee > 0)
+                                {
+                                    <tr>
+                                        <td>@Localizer["GuideFee"]</td>
+                                        <td class="text-end">@FormatCurrency(m_rental.GuideFee)</td>
+                                    </tr>
+                                }
+                                @if (m_accessoriesTotal > 0)
+                                {
+                                    <tr>
+                                        <td>@Localizer["Accessories"]</td>
+                                        <td class="text-end">@FormatCurrency(m_accessoriesTotal)</td>
+                                    </tr>
+                                }
+                            </tbody>
+                            <tfoot>
+                                <tr class="fw-bold">
+                                    <td>@Localizer["Total"]</td>
+                                    <td class="text-end text-primary">@FormatCurrency(m_grandTotal)</td>
+                                </tr>
+                                @if (m_deposit != null && m_deposit.Status == "Held")
+                                {
+                                    <tr>
+                                        <td>@Localizer["DepositHeld"]</td>
+                                        <td class="text-end text-warning">@FormatCurrency(m_deposit.Amount)</td>
+                                    </tr>
+                                }
+                                <tr>
+                                    <td>@Localizer["TotalPaid"]</td>
+                                    <td class="text-end text-success">@FormatCurrency(m_totalPaid)</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            @* Right Column *@
+            <div class="col-lg-8">
+                @* Renter Details Card *@
+                @if (m_renter != null)
+                {
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="ti ti-user me-2"></i>
+                                @Localizer["RenterDetails"]
+                            </h3>
+                            <div class="card-actions">
+                                <a href="/renters/@m_renter.RenterId" class="btn btn-ghost-primary btn-sm">
+                                    <i class="ti ti-external-link me-1"></i>
+                                    @Localizer["ViewProfile"]
+                                </a>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="datagrid">
+                                        <div class="datagrid-item">
+                                            <div class="datagrid-title">@Localizer["FullName"]</div>
+                                            <div class="datagrid-content fw-bold">@m_renter.FullName</div>
+                                        </div>
+                                        <div class="datagrid-item">
+                                            <div class="datagrid-title">@Localizer["Phone"]</div>
+                                            <div class="datagrid-content">
+                                                <a href="tel:@m_renter.Phone" class="text-reset">
+                                                    @m_renter.Phone
+                                                    <i class="ti ti-phone ms-1"></i>
+                                                </a>
+                                            </div>
+                                        </div>
+                                        @if (!string.IsNullOrEmpty(m_renter.Email))
+                                        {
+                                            <div class="datagrid-item">
+                                                <div class="datagrid-title">@Localizer["Email"]</div>
+                                                <div class="datagrid-content">
+                                                    <a href="mailto:@m_renter.Email" class="text-reset">
+                                                        @m_renter.Email
+                                                        <i class="ti ti-mail ms-1"></i>
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        }
+                                        @if (!string.IsNullOrEmpty(m_renter.Nationality))
+                                        {
+                                            <div class="datagrid-item">
+                                                <div class="datagrid-title">@Localizer["Nationality"]</div>
+                                                <div class="datagrid-content">@m_renter.Nationality</div>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="datagrid">
+                                        @if (!string.IsNullOrEmpty(m_renter.PassportNo))
+                                        {
+                                            <div class="datagrid-item">
+                                                <div class="datagrid-title">@Localizer["PassportNo"]</div>
+                                                <div class="datagrid-content">@m_renter.PassportNo</div>
+                                            </div>
+                                        }
+                                        @if (!string.IsNullOrEmpty(m_renter.DrivingLicenseNo))
+                                        {
+                                            <div class="datagrid-item">
+                                                <div class="datagrid-title">@Localizer["DrivingLicense"]</div>
+                                                <div class="datagrid-content">
+                                                    @m_renter.DrivingLicenseNo
+                                                    @if (!string.IsNullOrEmpty(m_renter.DrivingLicenseCountry))
+                                                    {
+                                                        <span class="text-secondary">(@m_renter.DrivingLicenseCountry)</span>
+                                                    }
+                                                </div>
+                                            </div>
+                                        }
+                                        @if (!string.IsNullOrEmpty(m_renter.HotelName))
+                                        {
+                                            <div class="datagrid-item">
+                                                <div class="datagrid-title">@Localizer["Hotel"]</div>
+                                                <div class="datagrid-content">@m_renter.HotelName</div>
+                                            </div>
+                                        }
+                                        @if (!string.IsNullOrEmpty(m_renter.EmergencyContact))
+                                        {
+                                            <div class="datagrid-item">
+                                                <div class="datagrid-title">@Localizer["EmergencyContact"]</div>
+                                                <div class="datagrid-content">
+                                                    <a href="tel:@m_renter.EmergencyContact" class="text-reset">
+                                                        @m_renter.EmergencyContact
+                                                        <i class="ti ti-phone ms-1"></i>
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                @* Vehicle Details Card *@
+                @if (m_vehicle != null)
+                {
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="ti ti-motorbike me-2"></i>
+                                @Localizer["VehicleDetails"]
+                            </h3>
+                            <div class="card-actions">
+                                <a href="/inventory/vehicles/@m_vehicle.VehicleId" class="btn btn-ghost-primary btn-sm">
+                                    <i class="ti ti-external-link me-1"></i>
+                                    @Localizer["ViewVehicle"]
+                                </a>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                @if (!string.IsNullOrEmpty(m_vehicle.ImagePath))
+                                {
+                                    <div class="col-md-4">
+                                        <img src="@m_vehicle.ImagePath" alt="@m_vehicle.DisplayName"
+                                             class="img-fluid rounded" style="max-height: 200px; object-fit: cover;" />
+                                    </div>
+                                }
+                                <div class="@(!string.IsNullOrEmpty(m_vehicle.ImagePath) ? "col-md-8" : "col-12")">
+                                    <div class="datagrid">
+                                        <div class="datagrid-item">
+                                            <div class="datagrid-title">@Localizer["Vehicle"]</div>
+                                            <div class="datagrid-content fw-bold">@m_vehicle.DisplayName</div>
+                                        </div>
+                                        <div class="datagrid-item">
+                                            <div class="datagrid-title">@Localizer["LicensePlate"]</div>
+                                            <div class="datagrid-content">
+                                                <span class="badge bg-primary-lt">@m_vehicle.LicensePlate</span>
+                                            </div>
+                                        </div>
+                                        <div class="datagrid-item">
+                                            <div class="datagrid-title">@Localizer["Type"]</div>
+                                            <div class="datagrid-content">@m_vehicle.VehicleType</div>
+                                        </div>
+                                        @if (!string.IsNullOrEmpty(m_vehicle.Color))
+                                        {
+                                            <div class="datagrid-item">
+                                                <div class="datagrid-title">@Localizer["Color"]</div>
+                                                <div class="datagrid-content">@m_vehicle.Color</div>
+                                            </div>
+                                        }
+                                        <div class="datagrid-item">
+                                            <div class="datagrid-title">@Localizer["Year"]</div>
+                                            <div class="datagrid-content">@m_vehicle.Year</div>
+                                        </div>
+                                        @if (m_vehicle.EngineCC.HasValue)
+                                        {
+                                            <div class="datagrid-item">
+                                                <div class="datagrid-title">@Localizer["Engine"]</div>
+                                                <div class="datagrid-content">@m_vehicle.EngineCC CC</div>
+                                            </div>
+                                        }
+                                        @if (m_vehicle.SupportsMileageTracking)
+                                        {
+                                            <div class="datagrid-item">
+                                                <div class="datagrid-title">@Localizer["MileageStart"]</div>
+                                                <div class="datagrid-content">@m_rental.MileageStart.ToString("N0") km</div>
+                                            </div>
+                                            @if (m_rental.MileageEnd.HasValue)
+                                            {
+                                                <div class="datagrid-item">
+                                                    <div class="datagrid-title">@Localizer["MileageEnd"]</div>
+                                                    <div class="datagrid-content">@m_rental.MileageEnd.Value.ToString("N0") km</div>
+                                                </div>
+                                                <div class="datagrid-item">
+                                                    <div class="datagrid-title">@Localizer["Distance"]</div>
+                                                    <div class="datagrid-content">@((m_rental.MileageEnd.Value - m_rental.MileageStart).ToString("N0")) km</div>
+                                                </div>
+                                            }
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                @* Payments Table *@
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="ti ti-cash me-2"></i>
+                            @Localizer["Payments"]
+                        </h3>
+                        @if (m_rental.Status is "Active" or "Completed")
+                        {
+                            <div class="card-actions">
+                                <button type="button" class="btn btn-ghost-primary btn-sm" @onclick="AddPayment">
+                                    <i class="ti ti-plus me-1"></i>
+                                    @Localizer["AddPayment"]
+                                </button>
+                            </div>
+                        }
+                    </div>
+                    @if (m_payments.Count > 0)
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-vcenter card-table">
+                                <thead>
+                                    <tr>
+                                        <th>@Localizer["Date"]</th>
+                                        <th>@Localizer["Type"]</th>
+                                        <th>@Localizer["Method"]</th>
+                                        <th>@Localizer["Reference"]</th>
+                                        <th class="text-end">@Localizer["Amount"]</th>
+                                        <th>@Localizer["Status"]</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var payment in m_payments)
+                                    {
+                                        <tr>
+                                            <td>@FormatDateTime(payment.PaidOn)</td>
+                                            <td>
+                                                <span class="badge @GetPaymentTypeBadgeClass(payment.PaymentType)">
+                                                    @payment.PaymentType
+                                                </span>
+                                            </td>
+                                            <td>@payment.PaymentMethod</td>
+                                            <td class="text-secondary">@(payment.TransactionRef ?? "-")</td>
+                                            <td class="text-end @(payment.PaymentType == "Refund" ? "text-danger" : "")">
+                                                @(payment.PaymentType == "Refund" ? "-" : "")@FormatCurrency(payment.Amount)
+                                            </td>
+                                            <td>
+                                                <span class="badge @GetPaymentStatusBadgeClass(payment.Status)">
+                                                    @payment.Status
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="card-body text-center text-secondary py-4">
+                            <i class="ti ti-cash mb-2" style="font-size: 2rem;"></i>
+                            <div>@Localizer["NoPayments"]</div>
+                        </div>
+                    }
+                </div>
+
+                @* Damage Reports *@
+                @if (m_damageReports.Count > 0 || m_rental.Status is "Active" or "Completed")
+                {
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="ti ti-alert-triangle me-2"></i>
+                                @Localizer["DamageReports"]
+                            </h3>
+                            @if (m_rental.Status is "Active" or "Completed")
+                            {
+                                <div class="card-actions">
+                                    <button type="button" class="btn btn-ghost-warning btn-sm" @onclick="RecordDamage">
+                                        <i class="ti ti-plus me-1"></i>
+                                        @Localizer["RecordDamage"]
+                                    </button>
+                                </div>
+                            }
+                        </div>
+                        @if (m_damageReports.Count > 0)
+                        {
+                            <div class="list-group list-group-flush">
+                                @foreach (var damage in m_damageReports)
+                                {
+                                    <div class="list-group-item">
+                                        <div class="row align-items-center">
+                                            <div class="col-auto">
+                                                <span class="badge @GetSeverityBadgeClass(damage.Severity)">
+                                                    @damage.Severity
+                                                </span>
+                                            </div>
+                                            <div class="col">
+                                                <div class="fw-bold">@damage.Description</div>
+                                                <div class="text-secondary small">
+                                                    @Localizer["EstimatedCost"]: @FormatCurrency(damage.EstimatedCost)
+                                                    @if (damage.ActualCost.HasValue)
+                                                    {
+                                                        <span> | @Localizer["ActualCost"]: @FormatCurrency(damage.ActualCost.Value)</span>
+                                                    }
+                                                </div>
+                                            </div>
+                                            <div class="col-auto">
+                                                <span class="badge @GetDamageStatusBadgeClass(damage.Status)">
+                                                    @damage.Status
+                                                </span>
+                                            </div>
+                                            <div class="col-auto text-secondary small">
+                                                @FormatDateTime(damage.ReportedOn)
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="card-body text-center text-secondary py-4">
+                                <i class="ti ti-check mb-2" style="font-size: 2rem;"></i>
+                                <div>@Localizer["NoDamages"]</div>
+                            </div>
+                        }
+                    </div>
+                }
+
+                @* Accessories *@
+                @if (m_accessories.Count > 0)
+                {
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="ti ti-package me-2"></i>
+                                @Localizer["Accessories"]
+                            </h3>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-vcenter card-table">
+                                <thead>
+                                    <tr>
+                                        <th>@Localizer["Accessory"]</th>
+                                        <th class="text-center">@Localizer["Quantity"]</th>
+                                        <th class="text-end">@Localizer["Charged"]</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var acc in m_accessories)
+                                    {
+                                        <tr>
+                                            <td>@acc.Name</td>
+                                            <td class="text-center">@acc.Quantity</td>
+                                            <td class="text-end">
+                                                @if (acc.ChargedAmount > 0)
+                                                {
+                                                    @FormatCurrency(acc.ChargedAmount)
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-success-lt">Free</span>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</LoadingSkeleton>
+
+@code {
+    [Parameter] public int RentalId { get; set; }
+
+    private bool m_loading = true;
+    private bool m_notFound;
+    private string m_headerTitle = "";
+
+    private Rental? m_rental;
+    private Renter? m_renter;
+    private Vehicle? m_vehicle;
+    private Deposit? m_deposit;
+    private Insurance? m_insurance;
+    private Shop? m_shop;
+    private Shop? m_returnShop;
+    private List<Payment> m_payments = [];
+    private List<DamageReport> m_damageReports = [];
+    private List<AccessoryWithName> m_accessories = [];
+
+    private bool m_isOverdue;
+    private bool m_isDueToday;
+    private int m_daysOverdue;
+    private decimal m_accessoriesTotal;
+    private decimal m_grandTotal;
+    private decimal m_totalPaid;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        m_loading = true;
+        m_notFound = false;
+        try
+        {
+            m_rental = await RentalService.GetRentalByIdAsync(RentalId);
+            if (m_rental == null)
+            {
+                m_notFound = true;
+                return;
+            }
+
+            m_headerTitle = $"Rental #{m_rental.RentalId} - {m_rental.VehicleName ?? "Vehicle"}";
+
+            // Load related entities in parallel
+            var renterTask = DataContext.LoadOneAsync<Renter>(r => r.RenterId == m_rental.RenterId);
+            var vehicleTask = DataContext.LoadOneAsync<Vehicle>(v => v.VehicleId == m_rental.VehicleId);
+            var depositTask = m_rental.DepositId.HasValue
+                ? DataContext.LoadOneAsync<Deposit>(d => d.DepositId == m_rental.DepositId.Value)
+                : Task.FromResult<Deposit?>(null);
+            var shopTask = DataContext.LoadOneAsync<Shop>(s => s.ShopId == m_rental.RentedFromShopId);
+
+            await Task.WhenAll(renterTask, vehicleTask, depositTask, shopTask);
+
+            m_renter = await renterTask;
+            m_vehicle = await vehicleTask;
+            m_deposit = await depositTask;
+            m_shop = await shopTask;
+
+            // Load insurance if applicable
+            if (m_rental.InsuranceId.HasValue)
+            {
+                m_insurance = await DataContext.LoadOneAsync<Insurance>(i => i.InsuranceId == m_rental.InsuranceId.Value);
+            }
+
+            // Load return shop if cross-shop return
+            if (m_rental.ReturnedToShopId.HasValue && m_rental.ReturnedToShopId != m_rental.RentedFromShopId)
+            {
+                m_returnShop = await DataContext.LoadOneAsync<Shop>(s => s.ShopId == m_rental.ReturnedToShopId.Value);
+            }
+
+            // Load payments
+            var paymentsResult = await PaymentService.GetPaymentsByRentalIdAsync(m_rental.RentalId);
+            m_payments = paymentsResult.ToList();
+
+            // Load damage reports
+            var damagesQuery = DataContext.CreateQuery<DamageReport>()
+                .Where(d => d.RentalId == m_rental.RentalId)
+                .OrderByDescending(d => d.ReportedOn);
+            var damagesResult = await DataContext.LoadAsync(damagesQuery, 1, 100, false);
+            m_damageReports = damagesResult.ItemCollection.ToList();
+
+            // Load accessories
+            await LoadAccessoriesAsync();
+
+            // Calculate status flags
+            var today = DateTimeOffset.Now.Date;
+            m_isDueToday = m_rental.Status == "Active" && m_rental.ExpectedEndDate.Date == today;
+            m_isOverdue = m_rental.Status == "Active" && m_rental.ExpectedEndDate.Date < today;
+            m_daysOverdue = m_isOverdue ? (int)(today - m_rental.ExpectedEndDate.Date).TotalDays : 0;
+
+            // Calculate totals
+            m_accessoriesTotal = m_accessories.Sum(a => a.ChargedAmount);
+            m_grandTotal = m_rental.TotalAmount
+                         + (m_insurance?.DailyRate ?? 0) * m_rental.RentalDays
+                         + m_rental.DriverFee
+                         + m_rental.GuideFee
+                         + m_accessoriesTotal;
+            m_totalPaid = m_payments
+                .Where(p => p.Status == "Completed" && p.PaymentType != "Refund")
+                .Sum(p => p.Amount);
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error loading rental: {ex.Message}");
+            Logger.LogError(ex, "Failed to load rental {RentalId}", RentalId);
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private async Task LoadAccessoriesAsync()
+    {
+        m_accessories.Clear();
+        var accessoriesQuery = DataContext.CreateQuery<RentalAccessory>()
+            .Where(ra => ra.RentalId == m_rental!.RentalId);
+        var result = await DataContext.LoadAsync(accessoriesQuery, 1, 50, false);
+
+        foreach (var ra in result.ItemCollection)
+        {
+            var accessory = await DataContext.LoadOneAsync<Accessory>(a => a.AccessoryId == ra.AccessoryId);
+            m_accessories.Add(new AccessoryWithName
+            {
+                Name = accessory?.Name ?? "Unknown",
+                Quantity = ra.Quantity,
+                ChargedAmount = ra.ChargedAmount
+            });
+        }
+    }
+
+    #region Actions
+
+    private async Task StartRental()
+    {
+        if (m_rental == null) return;
+
+        if (!await DialogService.ConfirmAsync($"Start rental for {m_renter?.FullName}?"))
+            return;
+
+        m_rental.Status = "Active";
+        var result = await RentalService.UpdateRentalAsync(m_rental, UserName);
+        if (result.Success)
+        {
+            await LoadDataAsync();
+            ShowSuccess("Rental started");
+        }
+        else
+        {
+            ShowError($"Failed to start rental: {result.Message}");
+        }
+    }
+
+    private async Task OpenCheckOutDialog()
+    {
+        if (m_rental == null) return;
+
+        if (!await DialogService.ConfirmAsync(
+            $"Check out {m_renter?.FullName} returning {m_vehicle?.DisplayName}?"))
+            return;
+
+        var request = new CheckOutRequest
+        {
+            RentalId = m_rental.RentalId,
+            ActualEndDate = DateTimeOffset.Now,
+            MileageEnd = m_rental.MileageStart + 50
+        };
+
+        var result = await RentalService.CheckOutAsync(request, UserName);
+        if (result.Success)
+        {
+            await LoadDataAsync();
+            ShowSuccess($"Check-out completed. Refund: {FormatCurrency(result.RefundAmount)}");
+        }
+        else
+        {
+            ShowError($"Check-out failed: {result.Message}");
+        }
+    }
+
+    private async Task ExtendRental()
+    {
+        if (m_rental == null) return;
+
+        if (!await DialogService.ConfirmAsync($"Extend rental by 1 day? New end date: {FormatDate(m_rental.ExpectedEndDate.AddDays(1))}"))
+            return;
+
+        var newEndDate = m_rental.ExpectedEndDate.AddDays(1);
+        var result = await RentalService.ExtendRentalAsync(m_rental.RentalId, newEndDate, UserName);
+        if (result.Success)
+        {
+            await LoadDataAsync();
+            ShowSuccess("Rental extended successfully");
+        }
+        else
+        {
+            ShowError($"Extension failed: {result.Message}");
+        }
+    }
+
+    private async Task CancelRental()
+    {
+        if (m_rental == null) return;
+
+        if (!await DialogService.ConfirmYesNoAsync(
+            $"Cancel rental for {m_renter?.FullName}? The deposit will be refunded.",
+            "Cancel Rental"))
+            return;
+
+        var result = await RentalService.CancelRentalAsync(m_rental.RentalId, "Cancelled by staff", UserName);
+        if (result.Success)
+        {
+            await LoadDataAsync();
+            ShowSuccess("Rental cancelled and deposit refunded");
+        }
+        else
+        {
+            ShowError($"Cancellation failed: {result.Message}");
+        }
+    }
+
+    private async Task ViewInvoice()
+    {
+        if (m_rental == null) return;
+
+        await DialogService
+            .Create<InvoiceDialog>("Invoice")
+            .WithParameter(x => x.RentalId, m_rental.RentalId)
+            .Large()
+            .ShowDialogAsync();
+    }
+
+    private async Task AddPayment()
+    {
+        // TODO: Implement PaymentDialog
+        ShowInfo("Payment dialog will be implemented");
+        await Task.CompletedTask;
+    }
+
+    private async Task RecordDamage()
+    {
+        // TODO: Implement DamageReportDialog
+        ShowInfo("Damage report dialog will be implemented");
+        await Task.CompletedTask;
+    }
+
+    #endregion
+
+    #region Badge Helpers
+
+    private static string GetStatusBadgeClass(string? status) => status switch
+    {
+        "Active" => "bg-primary",
+        "Reserved" => "bg-info",
+        "Completed" => "bg-success",
+        "Cancelled" => "bg-danger",
+        _ => "bg-secondary"
+    };
+
+    private static string GetDepositStatusBadgeClass(string status) => status switch
+    {
+        "Held" => "bg-warning",
+        "Refunded" => "bg-success",
+        "Forfeited" => "bg-danger",
+        _ => "bg-secondary"
+    };
+
+    private static string GetPaymentTypeBadgeClass(string type) => type switch
+    {
+        "Rental" => "bg-primary",
+        "Deposit" => "bg-warning",
+        "Insurance" => "bg-info",
+        "Accessory" => "bg-secondary",
+        "Refund" => "bg-danger",
+        "Additional" => "bg-danger",
+        _ => "bg-secondary"
+    };
+
+    private static string GetPaymentStatusBadgeClass(string status) => status switch
+    {
+        "Completed" => "bg-success",
+        "Pending" => "bg-warning",
+        "Refunded" => "bg-danger",
+        _ => "bg-secondary"
+    };
+
+    private static string GetSeverityBadgeClass(string severity) => severity switch
+    {
+        "Minor" => "bg-info",
+        "Moderate" => "bg-warning",
+        "Major" => "bg-danger",
+        _ => "bg-secondary"
+    };
+
+    private static string GetDamageStatusBadgeClass(string status) => status switch
+    {
+        "Pending" => "bg-warning",
+        "Charged" => "bg-success",
+        "Waived" => "bg-secondary",
+        "InsuranceClaim" => "bg-info",
+        _ => "bg-secondary"
+    };
+
+    #endregion
+
+    private class AccessoryWithName
+    {
+        public string Name { get; set; } = "";
+        public int Quantity { get; set; }
+        public decimal ChargedAmount { get; set; }
+    }
+}
