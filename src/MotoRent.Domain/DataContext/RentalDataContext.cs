@@ -5,35 +5,6 @@ namespace MotoRent.Domain.DataContext;
 
 public partial class RentalDataContext
 {
-    public Query<Shop> Shops { get; }
-    public Query<Renter> Renters { get; }
-    public Query<Document> Documents { get; }
-    public Query<Vehicle> Vehicles { get; }
-    public Query<VehiclePool> VehiclePools { get; }
-    [Obsolete("Use Vehicles instead")]
-    public Query<Motorbike> Motorbikes { get; }
-    public Query<Rental> Rentals { get; }
-    public Query<Deposit> Deposits { get; }
-    public Query<Insurance> Insurances { get; }
-    public Query<Accessory> Accessories { get; }
-    public Query<RentalAccessory> RentalAccessories { get; }
-    public Query<Payment> Payments { get; }
-    public Query<DamageReport> DamageReports { get; }
-    public Query<DamagePhoto> DamagePhotos { get; }
-    public Query<VehicleImage> VehicleImages { get; }
-    public Query<RentalAgreement> RentalAgreements { get; }
-    public Query<ServiceType> ServiceTypes { get; }
-    public Query<MaintenanceSchedule> MaintenanceSchedules { get; }
-    // Third-party owner entities
-    public Query<VehicleOwner> VehicleOwners { get; }
-    public Query<OwnerPayment> OwnerPayments { get; }
-    // Accident entities
-    public Query<Accident> Accidents { get; }
-    public Query<AccidentParty> AccidentParties { get; }
-    public Query<AccidentDocument> AccidentDocuments { get; }
-    public Query<AccidentCost> AccidentCosts { get; }
-    public Query<AccidentNote> AccidentNotes { get; }
-
     private QueryProvider QueryProvider { get; }
 
     public RentalDataContext() : this(ObjectBuilder.GetObject<QueryProvider>()) { }
@@ -41,33 +12,6 @@ public partial class RentalDataContext
     public RentalDataContext(QueryProvider provider)
     {
         this.QueryProvider = provider;
-        this.Shops = new Query<Shop>(provider);
-        this.Renters = new Query<Renter>(provider);
-        this.Documents = new Query<Document>(provider);
-        this.Vehicles = new Query<Vehicle>(provider);
-        this.VehiclePools = new Query<VehiclePool>(provider);
-        this.Motorbikes = new Query<Motorbike>(provider);
-        this.Rentals = new Query<Rental>(provider);
-        this.Deposits = new Query<Deposit>(provider);
-        this.Insurances = new Query<Insurance>(provider);
-        this.Accessories = new Query<Accessory>(provider);
-        this.RentalAccessories = new Query<RentalAccessory>(provider);
-        this.Payments = new Query<Payment>(provider);
-        this.DamageReports = new Query<DamageReport>(provider);
-        this.DamagePhotos = new Query<DamagePhoto>(provider);
-        this.VehicleImages = new Query<VehicleImage>(provider);
-        this.RentalAgreements = new Query<RentalAgreement>(provider);
-        this.ServiceTypes = new Query<ServiceType>(provider);
-        this.MaintenanceSchedules = new Query<MaintenanceSchedule>(provider);
-        // Third-party owner entities
-        this.VehicleOwners = new Query<VehicleOwner>(provider);
-        this.OwnerPayments = new Query<OwnerPayment>(provider);
-        // Accident entities
-        this.Accidents = new Query<Accident>(provider);
-        this.AccidentParties = new Query<AccidentParty>(provider);
-        this.AccidentDocuments = new Query<AccidentDocument>(provider);
-        this.AccidentCosts = new Query<AccidentCost>(provider);
-        this.AccidentNotes = new Query<AccidentNote>(provider);
     }
 
     /// <summary>
