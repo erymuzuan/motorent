@@ -3,32 +3,32 @@
 @using MotoRent.Domain
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize(Policy = "RequireTenantStaff")]
-@inject NavigationManager NavigationManager
+@inherits LocalizedComponentBase<Index>
 
-<PageTitle>Staff Home - MotoRent</PageTitle>
+<PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 @* Main Action Cards *@
 <div class="row g-3 mb-4">
     <div class="col-6">
         <StaffActionCard Icon="ti-login"
-                         Title="New Check-In"
-                         Subtitle="Start a rental"
+                         Title="@Localizer["NewCheckIn"]"
+                         Subtitle="@Localizer["NewCheckInSubtitle"]"
                          IconColor="primary"
                          OnClick="@(() => NavigationManager.NavigateTo("/rentals/checkin"))" />
     </div>
 
     <div class="col-6">
         <StaffActionCard Icon="ti-logout"
-                         Title="Return Bike"
-                         Subtitle="Process return"
+                         Title="@Localizer["ReturnBike"]"
+                         Subtitle="@Localizer["ReturnBikeSubtitle"]"
                          IconColor="secondary"
                          OnClick="@(() => NavigationManager.NavigateTo("/staff/return"))" />
     </div>
 
     <div class="col-6">
         <StaffActionCard Icon="ti-receipt"
-                         Title="Active"
-                         Subtitle="Current rentals"
+                         Title="@Localizer["Active"]"
+                         Subtitle="@Localizer["ActiveSubtitle"]"
                          IconColor="success"
                          BadgeCount="@m_activeCount"
                          BadgeColor="success"
@@ -37,8 +37,8 @@
 
     <div class="col-6">
         <StaffActionCard Icon="ti-alert-triangle"
-                         Title="Overdue"
-                         Subtitle="Needs attention"
+                         Title="@Localizer["Overdue"]"
+                         Subtitle="@Localizer["OverdueSubtitle"]"
                          IconColor="danger"
                          BadgeCount="@m_overdueCount"
                          BadgeColor="danger"
@@ -52,7 +52,7 @@
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h4 class="card-title mb-0">
                 <i class="ti ti-clock me-2" style="vertical-align: middle;"></i>
-                Due Today
+                @Localizer["DueToday"]
             </h4>
             <span class="badge bg-warning">@m_dueTodayRentals.Count</span>
         </div>
@@ -66,7 +66,7 @@
         else if (m_dueTodayRentals.Count == 0)
         {
             <div class="alert alert-info">
-                No bikes due for return today
+                @Localizer["NoBikesDueToday"]
             </div>
         }
         else
@@ -85,11 +85,11 @@
                                 </div>
                                 <div class="text-end">
                                     <div class="@(rental.IsOverdue ? "text-danger" : "text-warning") small">
-                                        @(rental.IsOverdue ? "OVERDUE" : rental.DueTime?.ToString("HH:mm") ?? "Today")
+                                        @(rental.IsOverdue ? Localizer["OverdueLabel"] : rental.DueTime?.ToString("HH:mm") ?? Localizer["Today"])
                                     </div>
                                     <button type="button" class="btn btn-sm btn-ghost-primary"
                                             @onclick="@(() => ProcessReturn(rental.RentalId))">
-                                        Return
+                                        @Localizer["Return"]
                                     </button>
                                 </div>
                             </div>
@@ -102,7 +102,7 @@
             {
                 <button type="button" class="btn btn-ghost-primary w-100 mt-2"
                         @onclick="@(() => NavigationManager.NavigateTo("/staff/rentals?filter=duetoday"))">
-                    View All (@m_dueTodayRentals.Count)
+                    @Localizer["ViewAllCount", m_dueTodayRentals.Count]
                 </button>
             }
         }
@@ -113,15 +113,15 @@
 <div class="row g-2 mt-4">
     <div class="col-4 text-center">
         <div class="h3 text-primary mb-0">@m_availableBikes</div>
-        <small class="text-secondary">Available</small>
+        <small class="text-secondary">@Localizer["Available"]</small>
     </div>
     <div class="col-4 text-center border-start border-end">
         <div class="h3 text-success mb-0">@m_activeCount</div>
-        <small class="text-secondary">Rented</small>
+        <small class="text-secondary">@Localizer["Rented"]</small>
     </div>
     <div class="col-4 text-center">
         <div class="h3 text-warning mb-0">@m_maintenanceCount</div>
-        <small class="text-secondary">Maintenance</small>
+        <small class="text-secondary">@Localizer["Maintenance"]</small>
     </div>
 </div>
 

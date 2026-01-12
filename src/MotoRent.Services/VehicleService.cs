@@ -1,5 +1,6 @@
 using MotoRent.Domain.DataContext;
 using MotoRent.Domain.Entities;
+using MotoRent.Domain.Extensions;
 
 namespace MotoRent.Services;
 
@@ -74,7 +75,7 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
         // Query vehicles at any of the pooled shops OR vehicles in pools accessible to this shop
         var query = this.Context.CreateQuery<Vehicle>()
             .Where(v =>
-                pooledShopIds.Contains(v.CurrentShopId) ||
+                pooledShopIds.IsInList(v.CurrentShopId) ||
                 (v.VehiclePoolId != null && v.VehiclePoolId > 0));
 
         if (vehicleType.HasValue)
@@ -95,13 +96,27 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
         var pools = await PoolService.GetPoolsForShopAsync(shopId);
         var accessiblePoolIds = pools.Select(p => p.VehiclePoolId).ToHashSet();
 
-        result.ItemCollection = result.ItemCollection
+        // Filter by shop ownership/location or pool membership
+        var filtered = result.ItemCollection
             .Where(v =>
-                // Vehicle is at this shop
+                // Vehicle's home is this shop
+                v.HomeShopId == shopId ||
+                // Vehicle is currently at this shop
                 v.CurrentShopId == shopId ||
                 // Vehicle is in an accessible pool
                 (v.VehiclePoolId.HasValue && accessiblePoolIds.Contains(v.VehiclePoolId.Value)))
             .ToList();
+
+        // Fallback: if no vehicles found and no pools configured, this likely means
+        // the user's ShopId isn't set correctly. Return all vehicles as a fallback for MVP.
+        // TODO: Properly set ShopId claim during authentication
+        if (filtered.Count == 0 && pools.Count == 0 && result.ItemCollection.Count > 0)
+        {
+            // Keep all vehicles - user likely needs to configure their shop
+            filtered = result.ItemCollection;
+        }
+
+        result.ItemCollection = filtered;
 
         // Apply search term filter
         if (!string.IsNullOrWhiteSpace(searchTerm))

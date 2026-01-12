@@ -252,6 +252,51 @@ var query = context.CreateQuery<Rental>()
 var result = await context.LoadAsync(query, page: 1, size: 20);
 ```
 
+### WHERE IN Queries (IsInList)
+
+**IMPORTANT**: Due to C# 14 expression tree changes, you cannot use `.Contains()` directly in LINQ Where clauses for SQL IN translation. Use the `IsInList` extension method instead.
+
+```csharp
+using MotoRent.Domain.Extensions;
+
+// WRONG - Does NOT translate to SQL IN clause:
+var rentalIds = new[] { 1, 2, 3 };
+var query = context.CreateQuery<Payment>()
+    .Where(p => rentalIds.Contains(p.RentalId));  // Does NOT work!
+
+// CORRECT - Use IsInList for SQL IN clause:
+var rentalIds = new[] { 1, 2, 3 };
+var query = context.CreateQuery<Payment>()
+    .Where(p => rentalIds.IsInList(p.RentalId));  // Translates to: WHERE [RentalId] IN (1, 2, 3)
+
+var result = await context.LoadAsync(query, page: 1, size: 100);
+```
+
+The `IsInList` extension method is defined in `MotoRent.Domain.Extensions.CollectionExtension`:
+
+```csharp
+namespace MotoRent.Domain.Extensions;
+
+public static class CollectionExtension
+{
+    /// <summary>
+    /// Checks if an item is in a list. This method is recognized by the query provider
+    /// and translated to SQL IN clause. Use this instead of List.Contains() in LINQ Where clauses.
+    /// </summary>
+    public static bool IsInList<T>(this IEnumerable<T> list, T item)
+    {
+        return list.Contains(item);
+    }
+}
+```
+
+**Note**: For in-memory filtering (after data is loaded), you can still use `.Contains()`:
+```csharp
+// In-memory filtering - .Contains() is fine here:
+var result = await context.LoadAsync(query, page: 1, size: 1000);
+var filtered = result.ItemCollection.Where(r => rentalIds.Contains(r.RentalId)).ToList();
+```
+
 ## Best Practices
 
 | Practice | Description |
@@ -262,6 +307,7 @@ var result = await context.LoadAsync(query, page: 1, size: 20);
 | Batch related changes | Attach multiple entities in single session |
 | Use aggregates for stats | Use `GetCountAsync`, `GetSumAsync` instead of loading all entities |
 | CreateQuery over properties | Prefer `CreateQuery<T>()` over Query properties for flexibility |
+| IsInList for WHERE IN | Use `ids.IsInList(e.Property)` for SQL IN clauses, not `.Contains()` |
 
 ## Source
 - From: `E:\project\work\rx-erp` repository pattern

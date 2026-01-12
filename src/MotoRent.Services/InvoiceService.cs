@@ -1,5 +1,6 @@
 using MotoRent.Domain.DataContext;
 using MotoRent.Domain.Entities;
+using MotoRent.Domain.Extensions;
 
 namespace MotoRent.Services;
 
@@ -64,7 +65,7 @@ public class InvoiceService(RentalDataContext context)
         if (accessoryIds.Count != 0)
         {
             var accResult = await this.Context.LoadAsync(
-                this.Context.CreateQuery<Accessory>().Where(a => accessoryIds.Contains(a.AccessoryId)),
+                this.Context.CreateQuery<Accessory>().Where(a => accessoryIds.IsInList(a.AccessoryId)),
                 page: 1, size: 100, includeTotalRows: false);
             accessoryDetails = accResult.ItemCollection.ToList();
         }
