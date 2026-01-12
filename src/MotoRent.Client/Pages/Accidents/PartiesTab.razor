@@ -1,0 +1,136 @@
+@using MotoRent.Domain.Entities
+@inherits MotoRentComponentBase
+@inject AccidentService AccidentService
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0">Parties Involved</h4>
+    <button type="button" class="btn btn-primary btn-sm" @onclick="AddParty">
+        <i class="ti ti-plus me-1"></i>
+        Add Party
+    </button>
+</div>
+
+@if (Parties.Count == 0)
+{
+    <div class="text-center text-secondary py-4">
+        <i class="ti ti-users mb-2" style="font-size: 2rem;"></i>
+        <div>No parties added yet</div>
+    </div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-vcenter">
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Name</th>
+                    <th>Contact</th>
+                    <th>Status</th>
+                    <th class="w-1"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var party in Parties)
+                {
+                    <tr>
+                        <td>
+                            <span class="badge bg-secondary-lt">@party.PartyType</span>
+                        </td>
+                        <td>
+                            <div class="fw-bold">@party.Name</div>
+                            @if (!string.IsNullOrEmpty(party.Organization))
+                            {
+                                <small class="text-secondary">@party.Organization</small>
+                            }
+                        </td>
+                        <td>
+                            @if (!string.IsNullOrEmpty(party.Phone))
+                            {
+                                <div><i class="ti ti-phone me-1"></i>@party.Phone</div>
+                            }
+                            @if (!string.IsNullOrEmpty(party.Email))
+                            {
+                                <small class="text-secondary">@party.Email</small>
+                            }
+                        </td>
+                        <td>
+                            @if (party.IsInjured)
+                            {
+                                <span class="badge bg-danger-lt">Injured</span>
+                            }
+                            @if (party.IsAtFault == true)
+                            {
+                                <span class="badge bg-warning-lt">At Fault @(party.FaultPercentage.HasValue ? $"({party.FaultPercentage}%)" : "")</span>
+                            }
+                        </td>
+                        <td>
+                            <div class="btn-list flex-nowrap">
+                                <button type="button" class="btn btn-icon btn-ghost-primary btn-sm" @onclick="@(() => EditParty(party))">
+                                    <i class="ti ti-edit"></i>
+                                </button>
+                                <button type="button" class="btn btn-icon btn-ghost-danger btn-sm" @onclick="@(() => DeleteParty(party))">
+                                    <i class="ti ti-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int AccidentId { get; set; }
+
+    [Parameter]
+    public List<AccidentParty> Parties { get; set; } = [];
+
+    [Parameter]
+    public EventCallback OnChanged { get; set; }
+
+    private async Task AddParty()
+    {
+        var party = new AccidentParty { AccidentId = AccidentId };
+        var result = await DialogService
+            .Create<AddPartyDialog>("Add Party")
+            .WithParameter(x => x.Entity, party)
+            .WithParameter(x => x.IsNew, true)
+            .Large()
+            .ShowDialogAsync();
+
+        if (!result.Cancelled)
+        {
+            await OnChanged.InvokeAsync();
+        }
+    }
+
+    private async Task EditParty(AccidentParty party)
+    {
+        var result = await DialogService
+            .Create<AddPartyDialog>("Edit Party")
+            .WithParameter(x => x.Entity, party.Clone())
+            .WithParameter(x => x.IsNew, false)
+            .Large()
+            .ShowDialogAsync();
+
+        if (!result.Cancelled)
+        {
+            await OnChanged.InvokeAsync();
+        }
+    }
+
+    private async Task DeleteParty(AccidentParty party)
+    {
+        if (!await ConfirmDeleteAsync($"{party.Name}"))
+            return;
+
+        var deleteResult = await AccidentService.DeletePartyAsync(party, UserName);
+        if (deleteResult.Success)
+        {
+            await OnChanged.InvokeAsync();
+        }
+    }
+}

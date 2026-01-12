@@ -1,0 +1,305 @@
+@inherits LocalizedDialogBase<Accident, ReportAccidentDialog>
+@inject AccidentService AccidentService
+@inject VehicleService VehicleService
+@inject RentalService RentalService
+
+<form id="@FormId" @onsubmit="SaveAsync" @onsubmit:preventDefault>
+    <div class="modal-body">
+        <ul class="nav nav-tabs mb-3" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button type="button" class="nav-link @(m_activeTab == "basic" ? "active" : "")"
+                        @onclick="@(() => m_activeTab = "basic")">
+                    <i class="ti ti-alert-triangle me-1"></i>
+                    @Localizer["BasicInfo"]
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button type="button" class="nav-link @(m_activeTab == "details" ? "active" : "")"
+                        @onclick="@(() => m_activeTab = "details")">
+                    <i class="ti ti-file-description me-1"></i>
+                    @Localizer["Details"]
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button type="button" class="nav-link @(m_activeTab == "classification" ? "active" : "")"
+                        @onclick="@(() => m_activeTab = "classification")">
+                    <i class="ti ti-category me-1"></i>
+                    @Localizer["Classification"]
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+            @* Basic Info Tab *@
+            <div class="tab-pane fade @(m_activeTab == "basic" ? "show active" : "")">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label required">@Localizer["Vehicle"]</label>
+                        <select class="form-select" @bind="Entity.VehicleId" @bind:after="OnVehicleChanged" required>
+                            <option value="0">@Localizer["SelectVehicle"]</option>
+                            @foreach (var vehicle in m_vehicles)
+                            {
+                                <option value="@vehicle.VehicleId">@vehicle.LicensePlate - @vehicle.Brand @vehicle.Model</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">@Localizer["LinkedRental"]</label>
+                        <select class="form-select" @bind="Entity.RentalId" @bind:after="OnRentalChanged">
+                            <option value="">@Localizer["NoRental"]</option>
+                            @foreach (var rental in m_activeRentals)
+                            {
+                                <option value="@rental.RentalId">@rental.RenterName - @FormatDate(rental.StartDate)</option>
+                            }
+                        </select>
+                        <small class="form-hint">@Localizer["RentalHint"]</small>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label required">@Localizer["AccidentDate"]</label>
+                        <input type="datetime-local" class="form-control"
+                               value="@m_accidentDateStr" @onchange="OnAccidentDateChanged" required />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label required">@Localizer["Title"]</label>
+                        <input type="text" class="form-control" @bind="Entity.Title" required
+                               placeholder="@Localizer["TitlePlaceholder"]" />
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label required">@Localizer["Location"]</label>
+                        <input type="text" class="form-control" @bind="Entity.Location" required
+                               placeholder="@Localizer["LocationPlaceholder"]" />
+                    </div>
+                </div>
+            </div>
+
+            @* Details Tab *@
+            <div class="tab-pane fade @(m_activeTab == "details" ? "show active" : "")">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label required">@Localizer["Description"]</label>
+                        <textarea class="form-control" @bind="Entity.Description" rows="5" required
+                                  placeholder="@Localizer["DescriptionPlaceholder"]"></textarea>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">@Localizer["GpsCoordinates"]</label>
+                        <input type="text" class="form-control" @bind="Entity.GpsCoordinates"
+                               placeholder="@Localizer["GpsPlaceholder"]" />
+                        <small class="form-hint">@Localizer["GpsHint"]</small>
+                    </div>
+                </div>
+            </div>
+
+            @* Classification Tab *@
+            <div class="tab-pane fade @(m_activeTab == "classification" ? "show active" : "")">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label required">@Localizer["Severity"]</label>
+                        <select class="form-select" @bind="Entity.Severity" required>
+                            @foreach (var severity in Enum.GetValues<AccidentSeverity>())
+                            {
+                                <option value="@severity">@GetSeverityDescription(severity)</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">@Localizer["EstimatedCost"]</label>
+                        <div class="input-group">
+                            <span class="input-group-text">THB</span>
+                            <input type="number" class="form-control" @bind="Entity.TotalEstimatedCost"
+                                   min="0" step="100" placeholder="0" />
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-check form-switch">
+                            <input type="checkbox" class="form-check-input" @bind="Entity.PoliceInvolved" />
+                            <span class="form-check-label">@Localizer["PoliceInvolved"]</span>
+                        </label>
+                    </div>
+
+                    @if (Entity.PoliceInvolved)
+                    {
+                        <div class="col-md-6">
+                            <label class="form-label">@Localizer["PoliceCaseNumber"]</label>
+                            <input type="text" class="form-control" @bind="Entity.PoliceCaseNumber"
+                                   placeholder="@Localizer["CaseNumberPlaceholder"]" />
+                        </div>
+                    }
+
+                    <div class="col-md-6">
+                        <label class="form-check form-switch">
+                            <input type="checkbox" class="form-check-input" @bind="Entity.InsuranceClaimFiled" />
+                            <span class="form-check-label">@Localizer["InsuranceClaimFiled"]</span>
+                        </label>
+                    </div>
+
+                    @if (Entity.InsuranceClaimFiled)
+                    {
+                        <div class="col-md-6">
+                            <label class="form-label">@Localizer["InsuranceClaimNumber"]</label>
+                            <input type="text" class="form-control" @bind="Entity.InsuranceClaimNumber"
+                                   placeholder="@Localizer["ClaimNumberPlaceholder"]" />
+                        </div>
+                    }
+
+                    <div class="col-12">
+                        <label class="form-label">@Localizer["ReserveAmount"]</label>
+                        <div class="input-group">
+                            <span class="input-group-text">THB</span>
+                            <input type="number" class="form-control" @bind="Entity.ReserveAmount"
+                                   min="0" step="100" placeholder="0" />
+                        </div>
+                        <small class="form-hint">@Localizer["ReserveHint"]</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
+        @Localizer["Cancel"]
+    </button>
+    <button type="submit" form="@FormId" class="btn btn-primary" disabled="@Saving">
+        @if (Saving)
+        {
+            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+        }
+        <i class="ti ti-device-floppy me-1"></i>
+        @Localizer["ReportAccident"]
+    </button>
+</div>
+
+@code {
+    private string m_activeTab = "basic";
+    private List<Vehicle> m_vehicles = [];
+    private List<RentalInfo> m_activeRentals = [];
+    private string m_accidentDateStr = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        FormValid = true;
+
+        // Set default values
+        Entity.ShopId = ShopId;
+        Entity.AccidentDate = DateTimeOffset.Now;
+        Entity.Severity = AccidentSeverity.Minor;
+        m_accidentDateStr = Entity.AccidentDate.ToString("yyyy-MM-ddTHH:mm");
+
+        // Load vehicles
+        var vehiclesResult = await VehicleService.GetVehiclesAsync(ShopId, page: 1, pageSize: 500);
+        m_vehicles = vehiclesResult.ItemCollection;
+    }
+
+    private async Task OnVehicleChanged()
+    {
+        if (Entity.VehicleId > 0)
+        {
+            var vehicle = m_vehicles.FirstOrDefault(v => v.VehicleId == Entity.VehicleId);
+            if (vehicle != null)
+            {
+                Entity.VehicleName = $"{vehicle.Brand} {vehicle.Model}";
+                Entity.VehicleLicensePlate = vehicle.LicensePlate;
+            }
+
+            // Load active rentals for this vehicle
+            await LoadActiveRentals();
+        }
+        else
+        {
+            Entity.VehicleName = null;
+            Entity.VehicleLicensePlate = null;
+            m_activeRentals.Clear();
+        }
+    }
+
+    private async Task LoadActiveRentals()
+    {
+        var activeRentals = await RentalService.GetActiveRentalsForVehicleAsync(Entity.VehicleId);
+        m_activeRentals = activeRentals.Select(r => new RentalInfo
+        {
+            RentalId = r.RentalId,
+            RenterName = r.RenterName ?? "Unknown",
+            StartDate = r.StartDate
+        }).ToList();
+    }
+
+    private void OnRentalChanged()
+    {
+        if (Entity.RentalId.HasValue && Entity.RentalId > 0)
+        {
+            var rental = m_activeRentals.FirstOrDefault(r => r.RentalId == Entity.RentalId);
+            Entity.RenterName = rental?.RenterName;
+        }
+        else
+        {
+            Entity.RenterName = null;
+        }
+    }
+
+    private void OnAccidentDateChanged(ChangeEventArgs e)
+    {
+        if (DateTime.TryParse(e.Value?.ToString(), out var date))
+        {
+            Entity.AccidentDate = new DateTimeOffset(date);
+            m_accidentDateStr = date.ToString("yyyy-MM-ddTHH:mm");
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (Entity.VehicleId == 0)
+        {
+            ShowError("Please select a vehicle");
+            return;
+        }
+
+        Saving = true;
+        try
+        {
+            var result = await AccidentService.CreateAccidentAsync(Entity, UserName);
+
+            if (result.Success)
+            {
+                Close();
+            }
+            else
+            {
+                ShowError($"Failed to report accident: {result.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error: {ex.Message}");
+        }
+        finally
+        {
+            Saving = false;
+        }
+    }
+
+    private static string GetSeverityDescription(AccidentSeverity severity) => severity switch
+    {
+        AccidentSeverity.Minor => "Minor - Scratches, scuffs (cosmetic)",
+        AccidentSeverity.Moderate => "Moderate - Dents, mechanical damage",
+        AccidentSeverity.Major => "Major - Significant damage, expensive repair",
+        AccidentSeverity.Injury => "Injury - Personal injury occurred",
+        AccidentSeverity.Hospitalization => "Hospitalization - Hospital treatment required",
+        AccidentSeverity.Fatality => "Fatality - Death occurred",
+        _ => severity.ToString()
+    };
+
+    private class RentalInfo
+    {
+        public int RentalId { get; set; }
+        public string RenterName { get; set; } = "";
+        public DateTimeOffset StartDate { get; set; }
+    }
+}

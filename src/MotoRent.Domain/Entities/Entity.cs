@@ -27,6 +27,12 @@ namespace MotoRent.Domain.Entities;
 // Maintenance entities
 [JsonDerivedType(typeof(ServiceType), nameof(ServiceType))]
 [JsonDerivedType(typeof(MaintenanceSchedule), nameof(MaintenanceSchedule))]
+// Accident entities
+[JsonDerivedType(typeof(Accident), nameof(Accident))]
+[JsonDerivedType(typeof(AccidentParty), nameof(AccidentParty))]
+[JsonDerivedType(typeof(AccidentDocument), nameof(AccidentDocument))]
+[JsonDerivedType(typeof(AccidentCost), nameof(AccidentCost))]
+[JsonDerivedType(typeof(AccidentNote), nameof(AccidentNote))]
 // Core multi-tenant entities
 [JsonDerivedType(typeof(Organization), nameof(Organization))]
 [JsonDerivedType(typeof(User), nameof(User))]
