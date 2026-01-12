@@ -1,0 +1,273 @@
+@page "/super-admin/support-requests"
+@rendermode InteractiveServer
+@inherits MotoRentComponentBase
+@using Microsoft.AspNetCore.Authorization
+@using MotoRent.Domain.Core
+@using MotoRent.Domain.Helps
+@using TaskStatus = MotoRent.Domain.Helps.TaskStatus
+@using MotoRent.Domain.DataContext
+@attribute [Authorize(Roles = UserAccount.SUPER_ADMIN)]
+@inject CoreDataContext CoreDataContext
+
+<PageTitle>Support Requests - MotoRent</PageTitle>
+
+<div class="container-xl mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="mb-1">Support Requests</h4>
+            <p class="text-secondary mb-0">Manage customer support tickets across all tenants</p>
+        </div>
+    </div>
+
+    @* Filters *@
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Status</label>
+                    <select class="form-select" @bind="m_statusFilter" @bind:after="LoadAsync">
+                        <option value="">All Statuses</option>
+                        @foreach (var status in Enum.GetValues<TaskStatus>())
+                        {
+                            <option value="@status">@status</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Priority</label>
+                    <select class="form-select" @bind="m_priorityFilter" @bind:after="LoadAsync">
+                        <option value="">All Priorities</option>
+                        @foreach (var priority in Enum.GetValues<TaskPriority>())
+                        {
+                            <option value="@priority">@priority</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Account</label>
+                    <input type="text" class="form-control" placeholder="Filter by account..."
+                           @bind="m_accountFilter" @bind:after="LoadAsync" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Search</label>
+                    <input type="text" class="form-control" placeholder="Search by title or No..."
+                           @bind="m_searchFilter" @bind:after="LoadAsync" />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (m_loading)
+    {
+        <div class="progress progress-sm mb-4">
+            <div class="progress-bar progress-bar-indeterminate"></div>
+        </div>
+    }
+
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-vcenter card-table table-striped">
+                <thead>
+                    <tr>
+                        <th>No</th>
+                        <th>Title</th>
+                        <th>Account</th>
+                        <th>Requested By</th>
+                        <th>Status</th>
+                        <th>Priority</th>
+                        <th>Created</th>
+                        <th>Response Time</th>
+                        <th class="w-1"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var sr in m_requests)
+                    {
+                        <tr>
+                            <td>
+                                <a href="/super-admin/support-requests/@sr.SupportRequestId">
+                                    <strong>@sr.No</strong>
+                                </a>
+                            </td>
+                            <td>
+                                <div class="text-truncate" style="max-width: 250px;" title="@sr.Title">
+                                    @sr.Title
+                                </div>
+                            </td>
+                            <td>@sr.AccountNo</td>
+                            <td>@sr.RequestedBy</td>
+                            <td>
+                                <span class="badge @GetStatusBadgeClass(sr.Status)">@sr.Status</span>
+                            </td>
+                            <td>
+                                <span class="badge @GetPriorityBadgeClass(sr.Priority)">@sr.Priority</span>
+                            </td>
+                            <td>
+                                <span title="@sr.Timestamp.ToString("g")">@GetTimeAgo(sr.Timestamp)</span>
+                            </td>
+                            <td>
+                                @if (sr.TotalMinutesResponded.HasValue)
+                                {
+                                    <span class="text-success">@FormatMinutes(sr.TotalMinutesResponded.Value)</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">-</span>
+                                }
+                            </td>
+                            <td>
+                                <a href="/super-admin/support-requests/@sr.SupportRequestId" class="btn btn-sm btn-ghost-secondary">
+                                    <i class="ti ti-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (m_requests.Count == 0 && !m_loading)
+        {
+            <div class="card-body">
+                <div class="empty">
+                    <div class="empty-icon">
+                        <i class="ti ti-headset" style="font-size: 3rem;"></i>
+                    </div>
+                    <p class="empty-title">No support requests found</p>
+                    <p class="empty-subtitle text-secondary">
+                        Support requests are created when users mention support in comments.
+                    </p>
+                </div>
+            </div>
+        }
+
+        @* Pagination *@
+        @if (m_totalRows > m_pageSize)
+        {
+            <div class="card-footer d-flex align-items-center">
+                <p class="m-0 text-secondary">
+                    Showing @(((m_page - 1) * m_pageSize) + 1) to @Math.Min(m_page * m_pageSize, m_totalRows) of @m_totalRows entries
+                </p>
+                <ul class="pagination m-0 ms-auto">
+                    <li class="page-item @(m_page == 1 ? "disabled" : "")">
+                        <a class="page-link" href="javascript:" @onclick="() => GoToPage(m_page - 1)">
+                            <i class="ti ti-chevron-left"></i>
+                        </a>
+                    </li>
+                    @for (var i = 1; i <= m_totalPages; i++)
+                    {
+                        var pageNum = i;
+                        <li class="page-item @(m_page == pageNum ? "active" : "")">
+                            <a class="page-link" href="javascript:" @onclick="() => GoToPage(pageNum)">@pageNum</a>
+                        </li>
+                    }
+                    <li class="page-item @(m_page == m_totalPages ? "disabled" : "")">
+                        <a class="page-link" href="javascript:" @onclick="() => GoToPage(m_page + 1)">
+                            <i class="ti ti-chevron-right"></i>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<SupportRequest> m_requests = [];
+    private bool m_loading = true;
+
+    private string? m_statusFilter;
+    private string? m_priorityFilter;
+    private string? m_accountFilter;
+    private string? m_searchFilter;
+
+    private int m_page = 1;
+    private int m_pageSize = 20;
+    private int m_totalRows;
+    private int m_totalPages => (int)Math.Ceiling((double)m_totalRows / m_pageSize);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        m_loading = true;
+        try
+        {
+            var query = CoreDataContext.SupportRequests.AsQueryable();
+
+            // Apply filters
+            if (!string.IsNullOrEmpty(m_statusFilter) && Enum.TryParse<TaskStatus>(m_statusFilter, out var status))
+                query = query.Where(x => x.Status == status);
+
+            if (!string.IsNullOrEmpty(m_priorityFilter) && Enum.TryParse<TaskPriority>(m_priorityFilter, out var priority))
+                query = query.Where(x => x.Priority == priority);
+
+            if (!string.IsNullOrEmpty(m_accountFilter))
+                query = query.Where(x => x.AccountNo != null && x.AccountNo.Contains(m_accountFilter));
+
+            if (!string.IsNullOrEmpty(m_searchFilter))
+                query = query.Where(x =>
+                    (x.Title != null && x.Title.Contains(m_searchFilter)) ||
+                    (x.No != null && x.No.Contains(m_searchFilter)));
+
+            query = query.OrderByDescending(x => x.SupportRequestId);
+
+            var lo = await CoreDataContext.LoadAsync(query, m_page, m_pageSize, includeTotalRows: true);
+            m_requests = lo.ItemCollection.ToList();
+            m_totalRows = lo.TotalRows;
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error loading support requests: {ex.Message}");
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private async Task GoToPage(int page)
+    {
+        if (page < 1 || page > m_totalPages) return;
+        m_page = page;
+        await LoadAsync();
+    }
+
+    private string GetStatusBadgeClass(TaskStatus status) => status switch
+    {
+        TaskStatus.Ready => "bg-info",
+        TaskStatus.InProgress => "bg-warning",
+        TaskStatus.Done => "bg-success",
+        TaskStatus.Cancelled => "bg-secondary",
+        TaskStatus.Error => "bg-danger",
+        _ => "bg-secondary"
+    };
+
+    private string GetPriorityBadgeClass(TaskPriority priority) => priority switch
+    {
+        TaskPriority.High => "bg-danger",
+        TaskPriority.Medium => "bg-warning",
+        TaskPriority.Low => "bg-info",
+        _ => "bg-secondary"
+    };
+
+    private string GetTimeAgo(DateTimeOffset timestamp)
+    {
+        var diff = DateTimeOffset.Now - timestamp;
+        if (diff.TotalMinutes < 1) return "just now";
+        if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes}m ago";
+        if (diff.TotalHours < 24) return $"{(int)diff.TotalHours}h ago";
+        if (diff.TotalDays < 7) return $"{(int)diff.TotalDays}d ago";
+        return timestamp.ToString("MMM d");
+    }
+
+    private string FormatMinutes(double minutes)
+    {
+        if (minutes < 60) return $"{minutes:F0}m";
+        if (minutes < 1440) return $"{minutes / 60:F1}h";
+        return $"{minutes / 1440:F1}d";
+    }
+}
