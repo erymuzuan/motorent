@@ -1,168 +1,187 @@
 @inherits LayoutComponentBase
+@using MotoRent.Domain.Tourist
+@using MotoRent.Services.Tourist
+@using MotoRent.Client.Layout.Templates
 @inject NavigationManager NavigationManager
+@inject ITenantResolverService TenantResolver
 @inject IJSRuntime JS
 
 <ModalContainer />
 <ToastContainer />
 
-<div class="tourist-layout d-flex flex-column" style="min-height: 100vh;">
-    @* Minimal Top Header *@
-    <header class="navbar navbar-expand-md d-print-none tourist-header" style="flex-shrink: 0;">
-        <div class="container-xl">
-            <h1 class="navbar-brand navbar-brand-autodark d-flex align-items-center mb-0">
-                <i class="ti ti-motorbike me-2" style="font-size: 1.5rem;"></i>
-                <span style="font-weight: 600;">MotoRent</span>
-            </h1>
-
-            <div class="navbar-nav flex-row ms-auto">
-                @* Language Selector *@
-                <div class="nav-item dropdown">
-                    <a href="#" class="nav-link px-2" data-bs-toggle="dropdown" aria-label="Select language">
-                        <i class="ti ti-language"></i>
-                    </a>
-                    <div class="dropdown-menu dropdown-menu-end">
-                        <a class="dropdown-item d-flex align-items-center gap-2 @(m_currentLanguage == "en" ? "active" : "")"
-                           href="#" @onclick="@(() => SetLanguage("en"))" @onclick:preventDefault>
-                            <span>🇬🇧</span>
-                            <span>English</span>
-                        </a>
-                        <a class="dropdown-item d-flex align-items-center gap-2 @(m_currentLanguage == "th" ? "active" : "")"
-                           href="#" @onclick="@(() => SetLanguage("th"))" @onclick:preventDefault>
-                            <span>🇹🇭</span>
-                            <span>ภาษาไทย</span>
-                        </a>
-                        <a class="dropdown-item d-flex align-items-center gap-2 @(m_currentLanguage == "ru" ? "active" : "")"
-                           href="#" @onclick="@(() => SetLanguage("ru"))" @onclick:preventDefault>
-                            <span>🇷🇺</span>
-                            <span>Русский</span>
-                        </a>
-                        <a class="dropdown-item d-flex align-items-center gap-2 @(m_currentLanguage == "zh" ? "active" : "")"
-                           href="#" @onclick="@(() => SetLanguage("zh"))" @onclick:preventDefault>
-                            <span>🇨🇳</span>
-                            <span>中文</span>
-                        </a>
-                    </div>
+@* Cascade tenant context to all tourist components *@
+<CascadingValue Value="m_tenantContext" IsFixed="false">
+    @if (m_loading)
+    {
+        @* Loading State *@
+        <div class="d-flex justify-content-center align-items-center" style="min-height: 100vh;">
+            <div class="text-center">
+                <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status">
+                    <span class="visually-hidden">Loading...</span>
                 </div>
-
-                @* Theme Toggle *@
-                <a href="#" class="nav-link px-2" @onclick="ToggleTheme" @onclick:preventDefault>
-                    @if (m_isDarkMode)
-                    {
-                        <i class="ti ti-sun"></i>
-                    }
-                    else
-                    {
-                        <i class="ti ti-moon"></i>
-                    }
-                </a>
-
-                @* My Rentals Link *@
-                <a href="/my-rentals" class="btn btn-ghost-secondary d-flex align-items-center ms-2">
-                    <i class="ti ti-receipt me-1"></i>
-                    <span class="d-none d-md-inline">My Rentals</span>
-                </a>
+                <p class="text-secondary">Loading rental shop...</p>
             </div>
         </div>
-    </header>
+    }
+    else if (m_tenantContext?.IsLoaded == true)
+    {
+        @* Inject dynamic theme CSS variables and tourist CSS *@
+        <HeadContent>
+            <link rel="stylesheet" href="css/tourist.css" />
+            <style>
+                :root {
+                    --tenant-primary: @m_tenantContext.Branding.PrimaryColor;
+                    --tenant-secondary: @m_tenantContext.Branding.SecondaryColor;
+                    --tenant-accent: @m_tenantContext.Branding.AccentColor;
+                    --tenant-text-on-primary: @m_tenantContext.Branding.TextOnPrimary;
+                }
 
-    @* Main Content *@
-    <main class="tourist-content flex-grow-1">
-        @Body
-    </main>
+                /* Override Tabler primary color for tenant branding */
+                .btn-primary {
+                    --tblr-btn-bg: var(--tenant-primary);
+                    --tblr-btn-border-color: var(--tenant-primary);
+                    --tblr-btn-hover-bg: var(--tenant-secondary);
+                    --tblr-btn-hover-border-color: var(--tenant-secondary);
+                }
 
-    @* Footer *@
-    <footer class="tourist-footer py-5" style="background: var(--tblr-bg-surface); border-top: 1px solid var(--tblr-border-color); margin-top: auto;">
-        <div class="container-xl">
-            <div class="row g-4">
-                <div class="col-12 col-md-4">
-                    <div class="d-flex flex-column gap-2">
-                        <div class="d-flex align-items-center gap-2 mb-2">
-                            <i class="ti ti-motorbike" style="font-size: 1.5rem;"></i>
-                            <h5 class="mb-0">MotoRent</h5>
-                        </div>
-                        <p class="text-secondary small mb-0">
-                            Your trusted motorbike rental service in Thailand.
-                            Quality bikes, fair prices, great service.
-                        </p>
-                    </div>
-                </div>
+                .btn-outline-primary {
+                    --tblr-btn-color: var(--tenant-primary);
+                    --tblr-btn-border-color: var(--tenant-primary);
+                    --tblr-btn-hover-bg: var(--tenant-primary);
+                    --tblr-btn-hover-border-color: var(--tenant-primary);
+                }
 
-                <div class="col-12 col-md-4">
-                    <h6 class="fw-semibold mb-3">Contact Us</h6>
-                    <div class="d-flex flex-column gap-2">
-                        <div class="d-flex align-items-center gap-2">
-                            <i class="ti ti-phone text-secondary"></i>
-                            <span class="small">+66 76 123 4567</span>
-                        </div>
-                        <div class="d-flex align-items-center gap-2">
-                            <i class="ti ti-mail text-secondary"></i>
-                            <span class="small">info@motorent.th</span>
-                        </div>
-                        <div class="d-flex align-items-center gap-2">
-                            <i class="ti ti-message-circle text-secondary"></i>
-                            <span class="small">Line: @@motorent</span>
-                        </div>
-                    </div>
-                </div>
+                .text-primary {
+                    color: var(--tenant-primary) !important;
+                }
 
-                <div class="col-12 col-md-4">
-                    <h6 class="fw-semibold mb-3">Quick Links</h6>
-                    <div class="d-flex flex-column gap-1">
-                        <a href="/browse" class="link-secondary small">Browse Bikes</a>
-                        <a href="/my-rentals" class="link-secondary small">My Rentals</a>
-                        <a href="#" class="link-secondary small">Terms & Conditions</a>
-                        <a href="#" class="link-secondary small">FAQ</a>
-                    </div>
-                </div>
-            </div>
+                .bg-primary {
+                    background-color: var(--tenant-primary) !important;
+                }
 
-            <hr class="my-4">
+                /* Tourist hero gradient */
+                .tourist-hero {
+                    background: linear-gradient(135deg, var(--tenant-primary) 0%, var(--tenant-secondary) 100%);
+                    color: var(--tenant-text-on-primary);
+                }
 
-            <div class="d-flex flex-wrap justify-content-between align-items-center">
-                <span class="text-secondary small">
-                    &copy; @DateTime.Now.Year MotoRent. All rights reserved.
-                </span>
-                <div class="d-flex gap-1">
-                    <a href="#" class="btn btn-icon btn-ghost-secondary btn-sm" aria-label="Facebook">
-                        <i class="ti ti-brand-facebook"></i>
-                    </a>
-                    <a href="#" class="btn btn-icon btn-ghost-secondary btn-sm" aria-label="Instagram">
-                        <i class="ti ti-brand-instagram"></i>
-                    </a>
-                </div>
-            </div>
-        </div>
-    </footer>
-</div>
+                .tourist-header {
+                    border-bottom: 2px solid var(--tenant-primary);
+                }
+            </style>
+            @if (!string.IsNullOrEmpty(m_tenantContext.Branding.CustomCss))
+            {
+                <style>@((MarkupString)m_tenantContext.Branding.CustomCss)</style>
+            }
+        </HeadContent>
+
+        @* Render layout based on template selection *@
+        @switch (m_tenantContext.Branding.LayoutTemplate?.ToLower())
+        {
+            case "classic":
+                <ClassicTouristTemplate Context="@m_tenantContext">@Body</ClassicTouristTemplate>
+                break;
+            case "minimal":
+                <MinimalTouristTemplate Context="@m_tenantContext">@Body</MinimalTouristTemplate>
+                break;
+            default:
+                <ModernTouristTemplate Context="@m_tenantContext">@Body</ModernTouristTemplate>
+                break;
+        }
+    }
+    else
+    {
+        @* Tenant Not Found *@
+        <TenantNotFound />
+    }
+</CascadingValue>
 
 @code {
-    private bool m_isDarkMode;
-    private string m_currentLanguage = "en";
+    private TenantContext? m_tenantContext;
+    private bool m_loading = true;
+    private string? m_currentAccountNo;
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnInitializedAsync()
     {
-        if (firstRender)
+        // Subscribe to navigation changes to detect tenant changes
+        NavigationManager.LocationChanged += OnLocationChanged;
+        await LoadTenantFromUrl();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var accountNo = ExtractAccountNoFromUrl();
+        if (accountNo != m_currentAccountNo)
         {
-            await this.ApplyTheme();
+            await LoadTenantFromUrl();
         }
     }
 
-    private void SetLanguage(string lang)
+    private async void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
     {
-        this.m_currentLanguage = lang;
-        // TODO: Implement actual language switching via culture
-        // NavigationManager.NavigateTo(NavigationManager.Uri, forceLoad: true);
+        var accountNo = ExtractAccountNoFromUrl();
+        if (accountNo != m_currentAccountNo)
+        {
+            await LoadTenantFromUrl();
+            await InvokeAsync(StateHasChanged);
+        }
     }
 
-    private async Task ToggleTheme()
+    private async Task LoadTenantFromUrl()
     {
-        this.m_isDarkMode = !this.m_isDarkMode;
-        await this.ApplyTheme();
+        var accountNo = ExtractAccountNoFromUrl();
+        m_currentAccountNo = accountNo;
+
+        if (string.IsNullOrEmpty(accountNo))
+        {
+            m_tenantContext = null;
+            m_loading = false;
+            return;
+        }
+
+        try
+        {
+            m_loading = true;
+            m_tenantContext = await TenantResolver.ResolveByAccountNoAsync(accountNo);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading tenant: {ex.Message}");
+            m_tenantContext = null;
+        }
+        finally
+        {
+            m_loading = false;
+        }
     }
 
-    private async Task ApplyTheme()
+    private string? ExtractAccountNoFromUrl()
     {
-        var theme = this.m_isDarkMode ? "dark" : "light";
-        await this.JS.InvokeVoidAsync("eval", $"document.body.setAttribute('data-bs-theme', '{theme}')");
+        try
+        {
+            var uri = new Uri(NavigationManager.Uri);
+            var path = uri.AbsolutePath;
+
+            // Pattern: /tourist/{accountNo}/...
+            if (path.StartsWith("/tourist/", StringComparison.OrdinalIgnoreCase))
+            {
+                var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+                if (segments.Length >= 2)
+                {
+                    return segments[1];
+                }
+            }
+        }
+        catch
+        {
+            // Ignore URL parsing errors
+        }
+
+        return null;
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= OnLocationChanged;
     }
 }

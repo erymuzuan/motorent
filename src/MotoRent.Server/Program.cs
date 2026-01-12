@@ -11,6 +11,8 @@ using MotoRent.Server.Services;
 using MotoRent.Services;
 using MotoRent.Services.Core;
 using MotoRent.Services.Storage;
+using MotoRent.Services.Tourist;
+using MotoRent.Server.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,7 +20,22 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddHttpContextAccessor();
 
 // Add request context for user/timezone services
-builder.Services.AddScoped<IRequestContext, MotoRentRequestContext>();
+// Uses TouristRequestContext for /tourist/* paths (URL-based tenant resolution)
+// Uses MotoRentRequestContext for authenticated pages (claims-based tenant resolution)
+builder.Services.AddScoped<IRequestContext>(sp =>
+{
+    var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
+    var path = httpContextAccessor.HttpContext?.Request.Path.Value ?? "";
+
+    // Use TouristRequestContext for tourist pages
+    if (path.StartsWith("/tourist/", StringComparison.OrdinalIgnoreCase))
+    {
+        return new TouristRequestContext(httpContextAccessor);
+    }
+
+    // Use standard context for authenticated pages
+    return new MotoRentRequestContext(httpContextAccessor);
+});
 
 // Add MotoRent data context (uses environment variable MOTO_SqlConnectionString)
 builder.Services.AddMotoRentDataContext(MotoConfig.SqlConnectionString);
@@ -52,6 +69,10 @@ builder.Services.AddHttpClient("Gemini", client => { client.Timeout = TimeSpan.F
 // Add Core services
 builder.Services.AddScoped<IDirectoryService, SqlDirectoryService>();
 builder.Services.AddScoped<ISubscriptionService, SqlSubscriptionService>();
+builder.Services.AddScoped<OrganizationService>();
+
+// Add Tourist services (for multi-tenant tourist pages)
+builder.Services.AddScoped<ITenantResolverService, TenantResolverService>();
 
 // Add Binary Storage (AWS S3)
 builder.Services.AddSingleton<IBinaryStore, S3BinaryStore>();
@@ -184,6 +205,10 @@ else
 app.UseHttpsRedirection();
 
 app.UseStaticFiles();
+
+// Tenant domain resolution middleware (for custom domains and subdomains)
+// Must be before authentication so tourist pages work for anonymous users
+app.UseTenantDomainResolution();
 
 // Localization middleware
 app.UseRequestLocalization();

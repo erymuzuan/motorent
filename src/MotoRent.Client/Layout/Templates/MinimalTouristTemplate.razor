@@ -1,0 +1,114 @@
+@using MotoRent.Domain.Tourist
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JS
+
+@* Minimal layout - Clean, content-focused, typography-centric *@
+<div class="tourist-layout minimal-template d-flex flex-column" style="min-height: 100vh;">
+    @* Minimal Header *@
+    <header class="py-4 border-bottom d-print-none" style="flex-shrink: 0;">
+        <div class="container-xl d-flex justify-content-between align-items-center">
+            @* Brand - Text-based, elegant *@
+            <a href="@GetTenantUrl("")" class="text-decoration-none">
+                @if (!string.IsNullOrEmpty(Context?.LogoUrl))
+                {
+                    <img src="@Context.LogoUrl" alt="@Context?.OrganizationName" style="max-height: 36px;" />
+                }
+                else
+                {
+                    <span class="fs-4 fw-light" style="color: var(--tenant-primary, #00897B); letter-spacing: -0.5px;">
+                        @(Context?.OrganizationName ?? "MotoRent")
+                    </span>
+                }
+            </a>
+
+            @* Simple Navigation *@
+            <nav class="d-flex align-items-center gap-4">
+                <a href="@GetTenantUrl("browse")" class="text-muted text-decoration-none @GetActiveClass("browse")"
+                   style="font-size: 0.9375rem;">Browse</a>
+                <a href="@GetTenantUrl("my-rentals")" class="text-muted text-decoration-none @GetActiveClass("my-rentals")"
+                   style="font-size: 0.9375rem;">My Rentals</a>
+
+                @* Minimal Controls *@
+                <div class="d-flex gap-2 ms-2 ps-2 border-start">
+                    <a href="#" class="text-muted" @onclick="ToggleTheme" @onclick:preventDefault aria-label="Toggle theme">
+                        <i class="ti ti-@(m_isDarkMode ? "sun" : "moon")" style="font-size: 1.125rem;"></i>
+                    </a>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    @* Main Content - Maximum breathing room *@
+    <main class="tourist-content flex-grow-1">
+        @ChildContent
+    </main>
+
+    @* Minimal Footer *@
+    <footer class="py-4 border-top text-center" style="margin-top: auto;">
+        <div class="container-xl">
+            <div class="d-flex flex-wrap justify-content-center align-items-center gap-3 text-muted small">
+                <span>&copy; @DateTime.Now.Year @(Context?.OrganizationName ?? "MotoRent")</span>
+                @if (!string.IsNullOrEmpty(Context?.Phone))
+                {
+                    <span class="border-start ps-3">
+                        <i class="ti ti-phone me-1"></i>@Context.Phone
+                    </span>
+                }
+                @if (!string.IsNullOrEmpty(Context?.Email))
+                {
+                    <span class="border-start ps-3 d-none d-md-inline">
+                        <i class="ti ti-mail me-1"></i>@Context.Email
+                    </span>
+                }
+            </div>
+        </div>
+    </footer>
+</div>
+
+<style>
+    .minimal-template .nav-link:hover,
+    .minimal-template a.text-muted:hover {
+        color: var(--tenant-primary, #00897B) !important;
+    }
+
+    .minimal-template a.active {
+        color: var(--tenant-primary, #00897B) !important;
+        font-weight: 500;
+    }
+</style>
+
+@code {
+    [Parameter] public TenantContext? Context { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private bool m_isDarkMode;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await ApplyTheme();
+    }
+
+    private string GetTenantUrl(string path)
+    {
+        if (string.IsNullOrEmpty(Context?.AccountNo)) return $"/{path}";
+        return $"/tourist/{Context.AccountNo}/{path}";
+    }
+
+    private string GetActiveClass(string path)
+    {
+        var currentPath = new Uri(NavigationManager.Uri).AbsolutePath;
+        return currentPath.Contains(path, StringComparison.OrdinalIgnoreCase) ? "active" : "";
+    }
+
+    private async Task ToggleTheme()
+    {
+        m_isDarkMode = !m_isDarkMode;
+        await ApplyTheme();
+    }
+
+    private async Task ApplyTheme()
+    {
+        var theme = m_isDarkMode ? "dark" : "light";
+        await JS.InvokeVoidAsync("eval", $"document.body.setAttribute('data-bs-theme', '{theme}')");
+    }
+}

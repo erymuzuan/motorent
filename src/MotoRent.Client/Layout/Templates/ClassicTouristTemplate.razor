@@ -1,0 +1,136 @@
+@using MotoRent.Domain.Tourist
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JS
+
+@* Classic layout - Traditional header with contact info, navigation bar below *@
+<div class="tourist-layout classic-template d-flex flex-column" style="min-height: 100vh;">
+    @* Top Info Bar *@
+    <div class="bg-dark text-white py-2 d-print-none" style="font-size: 0.875rem;">
+        <div class="container-xl d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div class="d-flex align-items-center gap-3">
+                @if (!string.IsNullOrEmpty(Context?.LogoUrl))
+                {
+                    <img src="@Context.LogoUrl" alt="@Context?.OrganizationName" style="max-height: 40px;" />
+                }
+                <div>
+                    <strong>@(Context?.OrganizationName ?? "MotoRent")</strong>
+                    @if (!string.IsNullOrEmpty(Context?.Branding?.Tagline))
+                    {
+                        <span class="text-white-50 ms-2">- @Context.Branding.Tagline</span>
+                    }
+                </div>
+            </div>
+            <div class="d-flex gap-3 flex-wrap">
+                @if (!string.IsNullOrEmpty(Context?.Phone))
+                {
+                    <a href="tel:@Context.Phone" class="text-white text-decoration-none">
+                        <i class="ti ti-phone me-1"></i>@Context.Phone
+                    </a>
+                }
+                @if (!string.IsNullOrEmpty(Context?.Email))
+                {
+                    <a href="mailto:@Context.Email" class="text-white text-decoration-none d-none d-md-inline">
+                        <i class="ti ti-mail me-1"></i>@Context.Email
+                    </a>
+                }
+            </div>
+        </div>
+    </div>
+
+    @* Main Navigation Bar *@
+    <nav class="navbar navbar-expand-md d-print-none" style="background: var(--tenant-primary, #00897B);">
+        <div class="container-xl">
+            <button class="navbar-toggler border-0 text-white" type="button" data-bs-toggle="collapse" data-bs-target="#classicNav">
+                <i class="ti ti-menu-2"></i>
+            </button>
+
+            <div class="collapse navbar-collapse" id="classicNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a href="@GetTenantUrl("")" class="nav-link text-white @GetActiveClass("")">
+                            <i class="ti ti-home me-1"></i>Home
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="@GetTenantUrl("browse")" class="nav-link text-white @GetActiveClass("browse")">
+                            <i class="ti ti-motorbike me-1"></i>Our Fleet
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="@GetTenantUrl("my-rentals")" class="nav-link text-white @GetActiveClass("my-rentals")">
+                            <i class="ti ti-receipt me-1"></i>My Rentals
+                        </a>
+                    </li>
+                </ul>
+
+                <div class="navbar-nav ms-auto flex-row gap-1">
+                    @* Language *@
+                    <div class="nav-item dropdown">
+                        <a href="#" class="nav-link text-white px-2" data-bs-toggle="dropdown">
+                            <i class="ti ti-language"></i>
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-end">
+                            <a class="dropdown-item @(m_currentLanguage == "en" ? "active" : "")"
+                               href="#" @onclick="@(() => SetLanguage("en"))" @onclick:preventDefault>English</a>
+                            <a class="dropdown-item @(m_currentLanguage == "th" ? "active" : "")"
+                               href="#" @onclick="@(() => SetLanguage("th"))" @onclick:preventDefault>ภาษาไทย</a>
+                        </div>
+                    </div>
+                    @* Theme *@
+                    <a href="#" class="nav-link text-white px-2" @onclick="ToggleTheme" @onclick:preventDefault>
+                        <i class="ti ti-@(m_isDarkMode ? "sun" : "moon")"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    @* Main Content *@
+    <main class="tourist-content flex-grow-1 py-4">
+        @ChildContent
+    </main>
+
+    @* Footer *@
+    <TenantFooter Context="@Context" Style="classic" />
+</div>
+
+@code {
+    [Parameter] public TenantContext? Context { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private bool m_isDarkMode;
+    private string m_currentLanguage = "en";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await ApplyTheme();
+    }
+
+    private string GetTenantUrl(string path)
+    {
+        if (string.IsNullOrEmpty(Context?.AccountNo)) return $"/{path}";
+        return $"/tourist/{Context.AccountNo}/{path}";
+    }
+
+    private string GetActiveClass(string path)
+    {
+        var currentPath = new Uri(NavigationManager.Uri).AbsolutePath;
+        if (string.IsNullOrEmpty(path))
+            return currentPath.EndsWith(Context?.AccountNo ?? "") ? "active" : "";
+        return currentPath.Contains(path, StringComparison.OrdinalIgnoreCase) ? "active" : "";
+    }
+
+    private void SetLanguage(string lang) => m_currentLanguage = lang;
+
+    private async Task ToggleTheme()
+    {
+        m_isDarkMode = !m_isDarkMode;
+        await ApplyTheme();
+    }
+
+    private async Task ApplyTheme()
+    {
+        var theme = m_isDarkMode ? "dark" : "light";
+        await JS.InvokeVoidAsync("eval", $"document.body.setAttribute('data-bs-theme', '{theme}')");
+    }
+}

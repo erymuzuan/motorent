@@ -1,0 +1,137 @@
+@using MotoRent.Domain.Tourist
+
+@* Reusable footer component for tourist layouts *@
+<footer class="tourist-footer py-5" style="background: var(--tblr-bg-surface); border-top: 1px solid var(--tblr-border-color); margin-top: auto;">
+    <div class="container-xl">
+        <div class="row g-4">
+            @* Brand Column *@
+            <div class="col-12 col-md-4">
+                <div class="d-flex flex-column gap-2">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        @if (!string.IsNullOrEmpty(Context?.SmallLogoUrl ?? Context?.LogoUrl))
+                        {
+                            <img src="@(Context?.SmallLogoUrl ?? Context?.LogoUrl)" alt="@Context?.OrganizationName"
+                                 style="max-height: 32px;" />
+                        }
+                        else
+                        {
+                            <i class="ti ti-motorbike" style="font-size: 1.5rem; color: var(--tenant-primary, #00897B);"></i>
+                        }
+                        <h5 class="mb-0">@(Context?.OrganizationName ?? "MotoRent")</h5>
+                    </div>
+                    @if (!string.IsNullOrEmpty(Context?.Branding?.Tagline))
+                    {
+                        <p class="text-secondary small mb-0">@Context.Branding.Tagline</p>
+                    }
+                    else
+                    {
+                        <p class="text-secondary small mb-0">
+                            Your trusted motorbike rental service in Thailand.
+                            Quality bikes, fair prices, great service.
+                        </p>
+                    }
+                </div>
+            </div>
+
+            @* Contact Column *@
+            @if (Context?.Branding?.ShowContactInfo != false)
+            {
+                <div class="col-12 col-md-4">
+                    <h6 class="fw-semibold mb-3">Contact Us</h6>
+                    <div class="d-flex flex-column gap-2">
+                        @if (!string.IsNullOrEmpty(Context?.Phone))
+                        {
+                            <a href="tel:@Context.Phone" class="d-flex align-items-center gap-2 text-decoration-none">
+                                <i class="ti ti-phone text-secondary"></i>
+                                <span class="small">@Context.Phone</span>
+                            </a>
+                        }
+                        @if (!string.IsNullOrEmpty(Context?.Email))
+                        {
+                            <a href="mailto:@Context.Email" class="d-flex align-items-center gap-2 text-decoration-none">
+                                <i class="ti ti-mail text-secondary"></i>
+                                <span class="small">@Context.Email</span>
+                            </a>
+                        }
+                        @if (!string.IsNullOrEmpty(Context?.WebSite))
+                        {
+                            <a href="@Context.WebSite" target="_blank" class="d-flex align-items-center gap-2 text-decoration-none">
+                                <i class="ti ti-world text-secondary"></i>
+                                <span class="small">@Context.WebSite</span>
+                            </a>
+                        }
+                    </div>
+                </div>
+            }
+
+            @* Quick Links Column *@
+            <div class="col-12 col-md-4">
+                <h6 class="fw-semibold mb-3">Quick Links</h6>
+                <div class="d-flex flex-column gap-1">
+                    <a href="@GetTenantUrl("browse")" class="link-secondary small">Browse Bikes</a>
+                    <a href="@GetTenantUrl("my-rentals")" class="link-secondary small">My Rentals</a>
+                    <a href="#" class="link-secondary small">Terms & Conditions</a>
+                    <a href="#" class="link-secondary small">FAQ</a>
+                </div>
+            </div>
+        </div>
+
+        <hr class="my-4">
+
+        <div class="d-flex flex-wrap justify-content-between align-items-center">
+            <span class="text-secondary small">
+                @if (!string.IsNullOrEmpty(Context?.Branding?.FooterText))
+                {
+                    @((MarkupString)Context.Branding.FooterText)
+                }
+                else
+                {
+                    <span>&copy; @DateTime.Now.Year @(Context?.OrganizationName ?? "MotoRent"). All rights reserved.</span>
+                }
+            </span>
+            @* Social Links *@
+            <div class="d-flex gap-1">
+                @if (Context?.Branding?.SocialLinks != null)
+                {
+                    foreach (var link in Context.Branding.SocialLinks)
+                    {
+                        var parts = link.Split(':');
+                        if (parts.Length >= 2)
+                        {
+                            var platform = parts[0].ToLower();
+                            var url = string.Join(":", parts.Skip(1));
+                            <a href="@url" target="_blank" class="btn btn-icon btn-ghost-secondary btn-sm"
+                               aria-label="@platform">
+                                <i class="ti ti-brand-@platform"></i>
+                            </a>
+                        }
+                    }
+                }
+                else
+                {
+                    <a href="#" class="btn btn-icon btn-ghost-secondary btn-sm" aria-label="Facebook">
+                        <i class="ti ti-brand-facebook"></i>
+                    </a>
+                    <a href="#" class="btn btn-icon btn-ghost-secondary btn-sm" aria-label="Instagram">
+                        <i class="ti ti-brand-instagram"></i>
+                    </a>
+                }
+            </div>
+        </div>
+    </div>
+</footer>
+
+@code {
+    [Parameter]
+    public TenantContext? Context { get; set; }
+
+    [Parameter]
+    public string Style { get; set; } = "modern";
+
+    private string GetTenantUrl(string path)
+    {
+        if (string.IsNullOrEmpty(Context?.AccountNo))
+            return $"/{path}";
+        return $"/tourist/{Context.AccountNo}/{path}";
+    }
+}

@@ -1,25 +1,40 @@
-@page "/browse"
-@page "/browse/{ShopSlug}"
+@page "/tourist/{AccountNo}/browse"
+@page "/tourist/{AccountNo}/browse/{SelectedShopId:int}"
 @using Microsoft.AspNetCore.Authorization
 @attribute [AllowAnonymous]
-@inherits MotoRentComponentBase
+@inherits TouristComponentBase
 @using MotoRent.Domain.Entities
 @using MotoRent.Services
 @using MotoRent.Client.Components.Tourist
+@using MotoRent.Client.Controls
 @inject MotorbikeService MotorbikeService
 @inject ShopService ShopService
 @inject IJSRuntime JS
 
-<PageTitle>Browse Motorbikes - MotoRent</PageTitle>
+<PageTitle>Browse Motorbikes - @TenantName</PageTitle>
 
-@* Hero Section *@
-<div class="bg-primary text-white py-5 mb-4" style="background: linear-gradient(135deg, #00897B 0%, #004D40 100%);">
+@* Hero Section - Uses tenant branding colors *@
+<div class="tourist-hero py-5 mb-4">
     <div class="container-xl">
         <div class="d-flex flex-column align-items-center gap-2 text-center">
-            <i class="ti ti-motorbike fs-1"></i>
+            @if (!string.IsNullOrEmpty(TenantLogo))
+            {
+                <img src="@TenantLogo" alt="@TenantName" style="max-height: 60px; margin-bottom: 0.5rem;" />
+            }
+            else
+            {
+                <i class="ti ti-motorbike fs-1"></i>
+            }
             <h1 class="mb-0">Rent a Motorbike</h1>
             <p class="fs-5 mb-0" style="opacity: 0.9;">
-                Explore Thailand on two wheels - Easy booking, great prices
+                @if (!string.IsNullOrEmpty(TenantBranding.Tagline))
+                {
+                    @TenantBranding.Tagline
+                }
+                else
+                {
+                    <span>Explore Thailand on two wheels - Easy booking, great prices</span>
+                }
             </p>
         </div>
     </div>
@@ -214,7 +229,8 @@
 </div>
 
 @code {
-    [Parameter] public string? ShopSlug { get; set; }
+    [Parameter] public new string AccountNo { get; set; } = "";
+    [Parameter] public int? SelectedShopId { get; set; }
 
     private List<Motorbike> m_motorbikes = [];
     private List<Motorbike> m_filteredMotorbikes = [];
@@ -238,7 +254,9 @@
     {
         try
         {
-            var favJson = await this.JS.InvokeAsync<string?>("localStorage.getItem", "motorent-favorites");
+            // Use tenant-specific localStorage key
+            var storageKey = $"motorent-favorites-{TenantAccountNo}";
+            var favJson = await this.JS.InvokeAsync<string?>("localStorage.getItem", storageKey);
             if (!string.IsNullOrEmpty(favJson))
             {
                 var ids = System.Text.Json.JsonSerializer.Deserialize<int[]>(favJson);
@@ -253,8 +271,9 @@
     {
         try
         {
+            var storageKey = $"motorent-favorites-{TenantAccountNo}";
             var json = System.Text.Json.JsonSerializer.Serialize(this.m_favorites.ToArray());
-            await this.JS.InvokeVoidAsync("localStorage.setItem", "motorent-favorites", json);
+            await this.JS.InvokeVoidAsync("localStorage.setItem", storageKey, json);
         }
         catch { /* Ignore localStorage errors */ }
     }
@@ -286,7 +305,9 @@
         this.m_loading = true;
         try
         {
-            var result = await this.MotorbikeService.GetAvailableMotorbikesAsync(this.ShopId);
+            // Use SelectedShopId from URL if provided, otherwise use default ShopId
+            var shopId = this.SelectedShopId ?? this.ShopId;
+            var result = await this.MotorbikeService.GetAvailableMotorbikesAsync(shopId);
             this.m_motorbikes = result.ToList();
             this.ApplyFilters();
         }
@@ -328,19 +349,10 @@
         this.m_filteredMotorbikes = filtered.ToList();
     }
 
-    private async Task ViewDetails(Motorbike bike)
+    private void ViewDetails(Motorbike bike)
     {
-        var result = await this.DialogService
-            .Create<MotorbikeDetailsDialog>($"{bike.Brand} {bike.Model}")
-            .WithParameter(x => x.Motorbike, bike)
-            .WithParameter(x => x.DateRange, new MotorbikeDetailsDialog.DateRangeSelection(this.m_startDate, this.m_endDate))
-            .Medium()
-            .ShowAndGetDataAsync<bool>();
-
-        if (result)
-        {
-            await this.StartReservation(bike);
-        }
+        // Navigate to the vehicle details page
+        NavigationManager.NavigateTo(TenantUrl($"vehicle/{bike.MotorbikeId}"));
     }
 
     private async Task StartReservation(Motorbike bike)

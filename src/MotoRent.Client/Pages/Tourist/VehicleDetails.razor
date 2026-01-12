@@ -1,0 +1,423 @@
+@page "/tourist/{AccountNo}/vehicle/{VehicleId:int}"
+@using Microsoft.AspNetCore.Authorization
+@attribute [AllowAnonymous]
+@inherits TouristComponentBase
+@using MotoRent.Domain.Entities
+@using MotoRent.Domain.Storage
+@using MotoRent.Services
+@using MotoRent.Client.Controls
+@inject MotorbikeService MotorbikeService
+@inject VehicleImageService VehicleImageService
+@inject IBinaryStore BinaryStore
+
+<PageTitle>@(m_vehicle != null ? $"{m_vehicle.Brand} {m_vehicle.Model}" : "Vehicle Details") - @TenantName</PageTitle>
+
+<div class="container-xl py-4">
+    @if (m_loading)
+    {
+        <div class="card">
+            <div class="card-body py-5">
+                <div class="d-flex justify-content-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else if (m_vehicle == null)
+    {
+        <div class="card">
+            <div class="card-body py-5 text-center">
+                <i class="ti ti-alert-circle fs-1 text-warning mb-3"></i>
+                <h3>Vehicle Not Found</h3>
+                <p class="text-secondary">The vehicle you're looking for doesn't exist or is no longer available.</p>
+                <a href="@BrowseUrl" class="btn btn-primary">
+                    <i class="ti ti-arrow-left me-1"></i>
+                    Back to Browse
+                </a>
+            </div>
+        </div>
+    }
+    else
+    {
+        @* Breadcrumb *@
+        <nav class="mb-4" aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item">
+                    <a href="@TenantUrl("")">Home</a>
+                </li>
+                <li class="breadcrumb-item">
+                    <a href="@BrowseUrl">Browse</a>
+                </li>
+                <li class="breadcrumb-item active" aria-current="page">@m_vehicle.Brand @m_vehicle.Model</li>
+            </ol>
+        </nav>
+
+        <div class="row g-4">
+            @* Left Column: Images *@
+            <div class="col-lg-7">
+                <div class="card">
+                    @* Main Image *@
+                    <div class="ratio ratio-16x9 bg-light">
+                        @if (!string.IsNullOrEmpty(m_selectedImageUrl))
+                        {
+                            <img src="@m_selectedImageUrl" alt="@m_vehicle.Brand @m_vehicle.Model"
+                                 class="w-100 h-100" style="object-fit: contain;" />
+                        }
+                        else
+                        {
+                            <div class="d-flex align-items-center justify-content-center">
+                                <i class="ti ti-motorbike text-secondary" style="font-size: 8rem;"></i>
+                            </div>
+                        }
+                    </div>
+
+                    @* Thumbnail Gallery *@
+                    @if (m_imageUrls.Count > 1)
+                    {
+                        <div class="card-footer">
+                            <div class="d-flex gap-2 overflow-auto py-2">
+                                @foreach (var imageUrl in m_imageUrls)
+                                {
+                                    <div class="cursor-pointer border rounded @(m_selectedImageUrl == imageUrl ? "border-primary border-2" : "")"
+                                         style="flex-shrink: 0;"
+                                         @onclick="@(() => m_selectedImageUrl = imageUrl)">
+                                        <img src="@imageUrl" alt="Vehicle image"
+                                             style="width: 80px; height: 60px; object-fit: cover;" class="rounded" />
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                @* Specifications *@
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="ti ti-list-details me-2"></i>
+                            Specifications
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-6 col-md-4">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="avatar avatar-sm bg-primary-lt">
+                                        <i class="ti ti-engine text-primary"></i>
+                                    </div>
+                                    <div>
+                                        <small class="text-secondary d-block">Engine</small>
+                                        <strong>@(m_vehicle.EngineCC)cc</strong>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="avatar avatar-sm bg-info-lt">
+                                        <i class="ti ti-palette text-info"></i>
+                                    </div>
+                                    <div>
+                                        <small class="text-secondary d-block">Color</small>
+                                        <strong>@(m_vehicle.Color ?? "Various")</strong>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="avatar avatar-sm bg-success-lt">
+                                        <i class="ti ti-calendar text-success"></i>
+                                    </div>
+                                    <div>
+                                        <small class="text-secondary d-block">Year</small>
+                                        <strong>@(m_vehicle.Year > 0 ? m_vehicle.Year.ToString() : "N/A")</strong>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="avatar avatar-sm bg-warning-lt">
+                                        <i class="ti ti-road text-warning"></i>
+                                    </div>
+                                    <div>
+                                        <small class="text-secondary d-block">Mileage</small>
+                                        <strong>@(m_vehicle.Mileage > 0 ? $"{m_vehicle.Mileage:N0} km" : "N/A")</strong>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="avatar avatar-sm bg-purple-lt">
+                                        <i class="ti ti-license text-purple"></i>
+                                    </div>
+                                    <div>
+                                        <small class="text-secondary d-block">Plate</small>
+                                        <strong>@m_vehicle.LicensePlate</strong>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="avatar avatar-sm bg-teal-lt">
+                                        <i class="ti ti-@(m_vehicle.Status == "Available" ? "circle-check" : "clock") text-teal"></i>
+                                    </div>
+                                    <div>
+                                        <small class="text-secondary d-block">Status</small>
+                                        <span class="badge @GetStatusBadgeClass(m_vehicle.Status)">@m_vehicle.Status</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                @* Description *@
+                @if (!string.IsNullOrEmpty(m_vehicle.Notes))
+                {
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="ti ti-info-circle me-2"></i>
+                                Description
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-0">@m_vehicle.Notes</p>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            @* Right Column: Booking Widget *@
+            <div class="col-lg-5">
+                <div class="card sticky-top" style="top: 80px;">
+                    <div class="card-header">
+                        <div>
+                            <h2 class="card-title mb-1">@m_vehicle.Brand @m_vehicle.Model</h2>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge bg-secondary-lt text-secondary">@(m_vehicle.EngineCC)cc</span>
+                                @if (!string.IsNullOrEmpty(m_vehicle.Color))
+                                {
+                                    <span class="badge bg-light text-dark">@m_vehicle.Color</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        @* Price Display *@
+                        <div class="d-flex justify-content-between align-items-baseline mb-4">
+                            <div>
+                                <span class="display-6 fw-bold text-primary">@FormatTenantCurrency(m_vehicle.DailyRate)</span>
+                                <span class="text-secondary">/day</span>
+                            </div>
+                            @{
+                                var weeklyRate = m_vehicle.DailyRate * 7 * 0.9m; // 10% discount for weekly
+                            }
+                            <div class="text-end">
+                                <small class="text-secondary">Weekly:</small>
+                                <span class="fw-bold">@FormatTenantCurrency(weeklyRate)</span>
+                            </div>
+                        </div>
+
+                        @* Date Selection *@
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Rental Period</label>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <label class="form-label small text-secondary">Start Date</label>
+                                    <input type="date" class="form-control" @bind="m_startDate"
+                                           min="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small text-secondary">End Date</label>
+                                    <input type="date" class="form-control" @bind="m_endDate"
+                                           min="@(m_startDate?.ToString("yyyy-MM-dd") ?? DateTime.Today.ToString("yyyy-MM-dd"))" />
+                                </div>
+                            </div>
+                        </div>
+
+                        @* Price Calculation *@
+                        @if (m_startDate.HasValue && m_endDate.HasValue && m_endDate > m_startDate)
+                        {
+                            var days = (m_endDate.Value - m_startDate.Value).Days;
+                            var total = days * m_vehicle.DailyRate;
+                            <div class="alert alert-success mb-4">
+                                <div class="d-flex justify-content-between">
+                                    <span>@days day(s) x @FormatTenantCurrency(m_vehicle.DailyRate)</span>
+                                    <strong>@FormatTenantCurrency(total)</strong>
+                                </div>
+                            </div>
+                        }
+
+                        @* Action Buttons *@
+                        @if (m_vehicle.Status == "Available")
+                        {
+                            <button type="button" class="btn btn-primary btn-lg w-100 mb-3" @onclick="StartReservation">
+                                <i class="ti ti-calendar-event me-2"></i>
+                                Reserve Now
+                            </button>
+                        }
+                        else
+                        {
+                            <div class="alert alert-warning mb-3">
+                                <i class="ti ti-alert-triangle me-2"></i>
+                                This vehicle is currently not available for booking.
+                            </div>
+                        }
+
+                        <a href="@BrowseUrl" class="btn btn-outline-secondary w-100">
+                            <i class="ti ti-arrow-left me-1"></i>
+                            Back to Browse
+                        </a>
+                    </div>
+
+                    @* What's Included *@
+                    <div class="card-footer">
+                        <h5 class="mb-3">What's Included</h5>
+                        <div class="d-flex flex-column gap-2">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="ti ti-circle-check text-success"></i>
+                                <span>Helmet (1 included)</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="ti ti-circle-check text-success"></i>
+                                <span>Basic insurance coverage</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="ti ti-circle-check text-success"></i>
+                                <span>24/7 roadside assistance</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="ti ti-circle-check text-success"></i>
+                                <span>Unlimited mileage</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* Similar Bikes *@
+        @if (m_similarBikes.Count > 0)
+        {
+            <div class="mt-5">
+                <h3 class="mb-4">
+                    <i class="ti ti-arrows-shuffle me-2"></i>
+                    Similar Bikes
+                </h3>
+                <div class="row g-4">
+                    @foreach (var bike in m_similarBikes)
+                    {
+                        <div class="col-12 col-sm-6 col-lg-3">
+                            <a href="@VehicleUrl(bike.MotorbikeId)" class="card h-100 text-decoration-none">
+                                @if (!string.IsNullOrEmpty(bike.ImagePath))
+                                {
+                                    <img src="@bike.ImagePath" class="card-img-top"
+                                         style="height: 140px; object-fit: cover;" />
+                                }
+                                else
+                                {
+                                    <div class="card-img-top bg-light d-flex align-items-center justify-content-center"
+                                         style="height: 140px;">
+                                        <i class="ti ti-motorbike text-secondary" style="font-size: 3rem;"></i>
+                                    </div>
+                                }
+                                <div class="card-body">
+                                    <h5 class="card-title mb-1">@bike.Brand @bike.Model</h5>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="badge bg-secondary-lt">@(bike.EngineCC)cc</span>
+                                        <span class="fw-bold text-primary">@FormatTenantCurrency(bike.DailyRate)/day</span>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public new string AccountNo { get; set; } = "";
+    [Parameter] public int VehicleId { get; set; }
+
+    private Motorbike? m_vehicle;
+    private List<string> m_imageUrls = [];
+    private List<Motorbike> m_similarBikes = [];
+    private string? m_selectedImageUrl;
+    private bool m_loading = true;
+
+    private DateTime? m_startDate = DateTime.Today;
+    private DateTime? m_endDate = DateTime.Today.AddDays(3);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadVehicleAsync();
+    }
+
+    private async Task LoadVehicleAsync()
+    {
+        m_loading = true;
+        try
+        {
+            m_vehicle = await MotorbikeService.GetMotorbikeByIdAsync(VehicleId);
+
+            if (m_vehicle != null)
+            {
+                // Load images and convert to URLs
+                var images = await VehicleImageService.GetImagesForVehicleAsync(VehicleId);
+                m_imageUrls = images
+                    .Where(img => !string.IsNullOrEmpty(img.StoreId))
+                    .Select(img => BinaryStore.GetImageUrl(img.StoreId))
+                    .ToList();
+
+                // Set selected image
+                m_selectedImageUrl = m_vehicle.ImagePath ?? m_imageUrls.FirstOrDefault();
+
+                // Load similar bikes (same engine class)
+                var allBikes = await MotorbikeService.GetAvailableMotorbikesAsync(m_vehicle.ShopId);
+                m_similarBikes = allBikes
+                    .Where(b => b.MotorbikeId != VehicleId)
+                    .Where(b => Math.Abs(b.EngineCC - m_vehicle.EngineCC) <= 25) // Similar engine size
+                    .Take(4)
+                    .ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error loading vehicle: {ex.Message}");
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private async Task StartReservation()
+    {
+        if (m_vehicle == null) return;
+
+        var result = await DialogService
+            .Create<ReservationDialog>("Make a Reservation")
+            .WithParameter(x => x.Motorbike, m_vehicle)
+            .WithParameter(x => x.DateRange, new ReservationDialog.DateRangeSelection(m_startDate, m_endDate))
+            .Medium()
+            .ShowAndGetDataAsync<int?>();
+
+        if (result.HasValue)
+        {
+            ShowSuccess("Reservation submitted successfully! We'll contact you shortly.");
+            NavigateToTenant("my-rentals");
+        }
+    }
+
+    private static string GetStatusBadgeClass(string? status) => status switch
+    {
+        "Available" => "bg-success",
+        "Rented" => "bg-warning",
+        "Maintenance" => "bg-danger",
+        _ => "bg-secondary"
+    };
+}

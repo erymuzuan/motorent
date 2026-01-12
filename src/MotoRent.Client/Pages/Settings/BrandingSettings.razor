@@ -1,0 +1,405 @@
+@page "/settings/branding"
+@using Microsoft.AspNetCore.Authorization
+@using MotoRent.Domain.Tourist
+@using MotoRent.Domain.Core
+@attribute [Authorize(Policy = "RequireTenantManager")]
+@inherits MotoRentComponentBase
+@inject OrganizationService OrganizationService
+
+<MotoRentPageTitle>Branding Settings</MotoRentPageTitle>
+
+<TablerHeader Title="Branding Settings" PreTitle="Tourist Portal">
+    <button type="button" class="btn btn-primary" @onclick="SaveSettings" disabled="@m_saving">
+        @if (m_saving)
+        {
+            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+        }
+        <i class="ti ti-device-floppy me-1"></i>
+        Save Changes
+    </button>
+</TablerHeader>
+
+<div class="alert alert-info mb-4">
+    <div class="d-flex">
+        <div>
+            <i class="ti ti-brush me-2"></i>
+        </div>
+        <div>
+            <h4 class="alert-title">Customize Your Tourist Portal</h4>
+            <div class="text-secondary">
+                Configure the look and feel of your tourist-facing pages. Tourists can access your portal at:
+                <code>/tourist/@AccountNo/browse</code>
+            </div>
+        </div>
+    </div>
+</div>
+
+<LoadingSkeleton Loading="@m_loading" Mode="LoadingSkeleton.PlaceholderMode.Card">
+    @if (m_organization != null && m_branding != null)
+    {
+        <div class="row">
+            @* Settings Form *@
+            <div class="col-lg-7">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="ti ti-palette me-2"></i>
+                            Colors
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Primary Color</label>
+                                <div class="input-group">
+                                    <span class="input-group-text p-1">
+                                        <input type="color" class="form-control form-control-color border-0 p-0"
+                                               style="width: 30px; height: 30px;"
+                                               @bind="m_branding.PrimaryColor" />
+                                    </span>
+                                    <input type="text" class="form-control" @bind="m_branding.PrimaryColor"
+                                           placeholder="#00897B" />
+                                </div>
+                                <small class="text-secondary">Main buttons and accents</small>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Secondary Color</label>
+                                <div class="input-group">
+                                    <span class="input-group-text p-1">
+                                        <input type="color" class="form-control form-control-color border-0 p-0"
+                                               style="width: 30px; height: 30px;"
+                                               @bind="m_branding.SecondaryColor" />
+                                    </span>
+                                    <input type="text" class="form-control" @bind="m_branding.SecondaryColor"
+                                           placeholder="#004D40" />
+                                </div>
+                                <small class="text-secondary">Hover states and gradients</small>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Accent Color</label>
+                                <div class="input-group">
+                                    <span class="input-group-text p-1">
+                                        <input type="color" class="form-control form-control-color border-0 p-0"
+                                               style="width: 30px; height: 30px;"
+                                               @bind="m_branding.AccentColor" />
+                                    </span>
+                                    <input type="text" class="form-control" @bind="m_branding.AccentColor"
+                                           placeholder="#26A69A" />
+                                </div>
+                                <small class="text-secondary">Highlights and links</small>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Text on Primary</label>
+                                <div class="input-group">
+                                    <span class="input-group-text p-1">
+                                        <input type="color" class="form-control form-control-color border-0 p-0"
+                                               style="width: 30px; height: 30px;"
+                                               @bind="m_branding.TextOnPrimary" />
+                                    </span>
+                                    <input type="text" class="form-control" @bind="m_branding.TextOnPrimary"
+                                           placeholder="#FFFFFF" />
+                                </div>
+                                <small class="text-secondary">Text color on primary background</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="ti ti-layout me-2"></i>
+                            Layout & Content
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Layout Template</label>
+                                <select class="form-select" @bind="m_branding.LayoutTemplate">
+                                    <option value="Modern">Modern - Full-width, card-based design</option>
+                                    <option value="Classic">Classic - Traditional header with nav bar</option>
+                                    <option value="Minimal">Minimal - Clean, typography-focused</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Tagline</label>
+                                <input type="text" class="form-control" @bind="m_branding.Tagline"
+                                       placeholder="Your catchy tagline here" maxlength="100" />
+                                <small class="text-secondary">Displayed in the hero section</small>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Footer Text</label>
+                                <textarea class="form-control" @bind="m_branding.FooterText" rows="2"
+                                          placeholder="Additional footer information, disclaimers, etc."></textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Hero Image URL</label>
+                                <input type="url" class="form-control" @bind="m_branding.HeroImageUrl"
+                                       placeholder="https://example.com/hero.jpg" />
+                                <small class="text-secondary">Background image for hero section</small>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check form-switch mt-4">
+                                    <input type="checkbox" class="form-check-input"
+                                           @bind="m_branding.ShowContactInfo" id="showContact" />
+                                    <label class="form-check-label" for="showContact">
+                                        Show contact info in footer
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="ti ti-share me-2"></i>
+                            Social Links
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">
+                                    <i class="ti ti-brand-facebook me-1"></i>Facebook
+                                </label>
+                                <input type="url" class="form-control" @bind="m_facebookUrl"
+                                       placeholder="https://facebook.com/yourpage" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">
+                                    <i class="ti ti-brand-instagram me-1"></i>Instagram
+                                </label>
+                                <input type="url" class="form-control" @bind="m_instagramUrl"
+                                       placeholder="https://instagram.com/yourpage" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">
+                                    <i class="ti ti-brand-line me-1"></i>Line
+                                </label>
+                                <input type="text" class="form-control" @bind="m_lineId"
+                                       placeholder="@@yourlineid" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">
+                                    <i class="ti ti-brand-whatsapp me-1"></i>WhatsApp
+                                </label>
+                                <input type="text" class="form-control" @bind="m_whatsappNumber"
+                                       placeholder="+66xxxxxxxxx" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* Live Preview *@
+            <div class="col-lg-5">
+                <div class="card sticky-top" style="top: 80px;">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="ti ti-eye me-2"></i>
+                            Live Preview
+                        </h3>
+                        <div class="card-actions">
+                            <a href="/tourist/@AccountNo/browse" target="_blank" class="btn btn-ghost-primary btn-sm">
+                                <i class="ti ti-external-link me-1"></i>
+                                Open Portal
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        @* Mini Preview *@
+                        <div class="preview-container" style="transform: scale(0.6); transform-origin: top left; height: 400px; overflow: hidden;">
+                            <div style="width: 166.67%; background: #f8f9fa; min-height: 600px;">
+                                @* Header Preview *@
+                                <div style="background: @m_branding.PrimaryColor; color: @m_branding.TextOnPrimary; padding: 1rem;">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <strong>@m_organization.Name</strong>
+                                        <div class="d-flex gap-2">
+                                            <span style="font-size: 0.8rem;">Browse</span>
+                                            <span style="font-size: 0.8rem;">My Rentals</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                @* Hero Preview *@
+                                <div style="background: linear-gradient(135deg, @m_branding.PrimaryColor 0%, @m_branding.SecondaryColor 100%);
+                                            color: @m_branding.TextOnPrimary; padding: 2rem; text-align: center;">
+                                    <h4 class="mb-2">Rent a Motorbike</h4>
+                                    <p style="opacity: 0.9; font-size: 0.9rem;">
+                                        @(m_branding.Tagline ?? "Explore Thailand on two wheels")
+                                    </p>
+                                </div>
+
+                                @* Content Preview *@
+                                <div style="padding: 1rem;">
+                                    <div class="d-flex gap-2 mb-3">
+                                        <span class="badge" style="background: @m_branding.PrimaryColor; color: @m_branding.TextOnPrimary;">
+                                            All Bikes
+                                        </span>
+                                        <span class="badge" style="border: 1px solid @m_branding.PrimaryColor; color: @m_branding.PrimaryColor; background: transparent;">
+                                            Scooter
+                                        </span>
+                                    </div>
+
+                                    @* Sample Card *@
+                                    <div class="card mb-2" style="max-width: 200px;">
+                                        <div style="height: 80px; background: #dee2e6;"></div>
+                                        <div class="card-body p-2">
+                                            <small class="fw-bold">Honda Click 125</small>
+                                            <div class="d-flex justify-content-between align-items-center mt-1">
+                                                <small style="color: @m_branding.PrimaryColor;">350 THB/day</small>
+                                                <button type="button" class="btn btn-sm"
+                                                        style="background: @m_branding.PrimaryColor; color: @m_branding.TextOnPrimary; font-size: 0.7rem; padding: 0.2rem 0.5rem;">
+                                                    Reserve
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                @* Footer Preview *@
+                                <div style="background: #1d273b; color: white; padding: 1rem; margin-top: 1rem;">
+                                    <small>&copy; @DateTime.Now.Year @m_organization.Name</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <small class="text-secondary">
+                            <i class="ti ti-info-circle me-1"></i>
+                            Preview is approximate. Open portal for full view.
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</LoadingSkeleton>
+
+@code {
+    private Organization? m_organization;
+    private TenantBranding? m_branding;
+    private bool m_loading = true;
+    private bool m_saving;
+
+    // Social links (stored in SocialLinks array)
+    private string? m_facebookUrl;
+    private string? m_instagramUrl;
+    private string? m_lineId;
+    private string? m_whatsappNumber;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadOrganizationAsync();
+    }
+
+    private async Task LoadOrganizationAsync()
+    {
+        m_loading = true;
+        try
+        {
+            m_organization = await OrganizationService.GetOrganizationByAccountNoAsync(AccountNo);
+            if (m_organization != null)
+            {
+                // Clone branding to avoid modifying original before save
+                m_branding = new TenantBranding
+                {
+                    PrimaryColor = m_organization.Branding.PrimaryColor,
+                    SecondaryColor = m_organization.Branding.SecondaryColor,
+                    AccentColor = m_organization.Branding.AccentColor,
+                    TextOnPrimary = m_organization.Branding.TextOnPrimary,
+                    LayoutTemplate = m_organization.Branding.LayoutTemplate,
+                    CustomCss = m_organization.Branding.CustomCss,
+                    HeroImageUrl = m_organization.Branding.HeroImageUrl,
+                    FooterText = m_organization.Branding.FooterText,
+                    ShowContactInfo = m_organization.Branding.ShowContactInfo,
+                    Tagline = m_organization.Branding.Tagline,
+                    SocialLinks = m_organization.Branding.SocialLinks
+                };
+
+                // Parse social links
+                ParseSocialLinks();
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error loading organization: {ex.Message}");
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private void ParseSocialLinks()
+    {
+        if (m_branding?.SocialLinks == null) return;
+
+        foreach (var link in m_branding.SocialLinks)
+        {
+            if (link.Contains("facebook", StringComparison.OrdinalIgnoreCase))
+                m_facebookUrl = link;
+            else if (link.Contains("instagram", StringComparison.OrdinalIgnoreCase))
+                m_instagramUrl = link;
+            else if (link.StartsWith("line:", StringComparison.OrdinalIgnoreCase))
+                m_lineId = link[5..];
+            else if (link.StartsWith("whatsapp:", StringComparison.OrdinalIgnoreCase))
+                m_whatsappNumber = link[9..];
+        }
+    }
+
+    private string[] BuildSocialLinks()
+    {
+        var links = new List<string>();
+
+        if (!string.IsNullOrWhiteSpace(m_facebookUrl))
+            links.Add(m_facebookUrl);
+        if (!string.IsNullOrWhiteSpace(m_instagramUrl))
+            links.Add(m_instagramUrl);
+        if (!string.IsNullOrWhiteSpace(m_lineId))
+            links.Add($"line:{m_lineId}");
+        if (!string.IsNullOrWhiteSpace(m_whatsappNumber))
+            links.Add($"whatsapp:{m_whatsappNumber}");
+
+        return links.ToArray();
+    }
+
+    private async Task SaveSettings()
+    {
+        if (m_branding == null) return;
+
+        m_saving = true;
+        try
+        {
+            // Build social links array
+            m_branding.SocialLinks = BuildSocialLinks();
+
+            var result = await OrganizationService.UpdateBrandingAsync(
+                AccountNo,
+                m_branding,
+                UserName);
+
+            if (result.Success)
+            {
+                ShowSuccess("Branding settings saved successfully");
+                // Reload to ensure we have latest data
+                await LoadOrganizationAsync();
+            }
+            else
+            {
+                ShowError(result.Message ?? "Failed to save settings");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error saving settings: {ex.Message}");
+        }
+        finally
+        {
+            m_saving = false;
+        }
+    }
+}

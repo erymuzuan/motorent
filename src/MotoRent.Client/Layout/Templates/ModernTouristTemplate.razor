@@ -1,0 +1,147 @@
+@using MotoRent.Domain.Tourist
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JS
+
+@* Modern layout - Full-width design, card-based, floating navigation *@
+<div class="tourist-layout modern-template d-flex flex-column" style="min-height: 100vh;">
+    @* Sticky Top Navigation *@
+    <header class="navbar navbar-expand-md sticky-top bg-white shadow-sm d-print-none" style="flex-shrink: 0;">
+        <div class="container-xl">
+            @* Brand *@
+            <a href="@GetTenantUrl("")" class="navbar-brand d-flex align-items-center">
+                @if (!string.IsNullOrEmpty(Context?.SmallLogoUrl ?? Context?.LogoUrl))
+                {
+                    <img src="@(Context?.SmallLogoUrl ?? Context?.LogoUrl)" alt="@Context?.OrganizationName"
+                         style="max-height: 40px;" />
+                }
+                else
+                {
+                    <i class="ti ti-motorbike me-2" style="font-size: 1.5rem; color: var(--tenant-primary, #00897B);"></i>
+                    <span class="fw-semibold" style="color: var(--tenant-primary, #00897B);">
+                        @(Context?.OrganizationName ?? "MotoRent")
+                    </span>
+                }
+            </a>
+
+            @* Mobile Toggle *@
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            @* Navigation Items *@
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a href="@GetTenantUrl("browse")" class="nav-link @GetActiveClass("browse")">
+                            <i class="ti ti-motorbike me-1 d-md-none"></i>
+                            Browse Bikes
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="@GetTenantUrl("my-rentals")" class="nav-link @GetActiveClass("my-rentals")">
+                            <i class="ti ti-receipt me-1 d-md-none"></i>
+                            My Rentals
+                        </a>
+                    </li>
+                </ul>
+
+                <div class="navbar-nav flex-row ms-md-3 gap-1">
+                    @* Language Selector *@
+                    <div class="nav-item dropdown">
+                        <a href="#" class="nav-link px-2" data-bs-toggle="dropdown" aria-label="Select language">
+                            <i class="ti ti-language"></i>
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-end">
+                            <a class="dropdown-item d-flex align-items-center gap-2 @(m_currentLanguage == "en" ? "active" : "")"
+                               href="#" @onclick="@(() => SetLanguage("en"))" @onclick:preventDefault>
+                                <span>🇬🇧</span><span>English</span>
+                            </a>
+                            <a class="dropdown-item d-flex align-items-center gap-2 @(m_currentLanguage == "th" ? "active" : "")"
+                               href="#" @onclick="@(() => SetLanguage("th"))" @onclick:preventDefault>
+                                <span>🇹🇭</span><span>ภาษาไทย</span>
+                            </a>
+                            <a class="dropdown-item d-flex align-items-center gap-2 @(m_currentLanguage == "ru" ? "active" : "")"
+                               href="#" @onclick="@(() => SetLanguage("ru"))" @onclick:preventDefault>
+                                <span>🇷🇺</span><span>Русский</span>
+                            </a>
+                            <a class="dropdown-item d-flex align-items-center gap-2 @(m_currentLanguage == "zh" ? "active" : "")"
+                               href="#" @onclick="@(() => SetLanguage("zh"))" @onclick:preventDefault>
+                                <span>🇨🇳</span><span>中文</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    @* Theme Toggle *@
+                    <a href="#" class="nav-link px-2" @onclick="ToggleTheme" @onclick:preventDefault aria-label="Toggle theme">
+                        @if (m_isDarkMode)
+                        {
+                            <i class="ti ti-sun"></i>
+                        }
+                        else
+                        {
+                            <i class="ti ti-moon"></i>
+                        }
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    @* Main Content Area *@
+    <main class="tourist-content flex-grow-1">
+        @ChildContent
+    </main>
+
+    @* Footer *@
+    <TenantFooter Context="@Context" Style="modern" />
+</div>
+
+@code {
+    [Parameter]
+    public TenantContext? Context { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private bool m_isDarkMode;
+    private string m_currentLanguage = "en";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await ApplyTheme();
+        }
+    }
+
+    private string GetTenantUrl(string path)
+    {
+        if (string.IsNullOrEmpty(Context?.AccountNo))
+            return $"/{path}";
+        return $"/tourist/{Context.AccountNo}/{path}";
+    }
+
+    private string GetActiveClass(string path)
+    {
+        var currentPath = new Uri(NavigationManager.Uri).AbsolutePath;
+        return currentPath.Contains(path, StringComparison.OrdinalIgnoreCase) ? "active" : "";
+    }
+
+    private void SetLanguage(string lang)
+    {
+        m_currentLanguage = lang;
+        // TODO: Implement actual language switching via culture
+    }
+
+    private async Task ToggleTheme()
+    {
+        m_isDarkMode = !m_isDarkMode;
+        await ApplyTheme();
+    }
+
+    private async Task ApplyTheme()
+    {
+        var theme = m_isDarkMode ? "dark" : "light";
+        await JS.InvokeVoidAsync("eval", $"document.body.setAttribute('data-bs-theme', '{theme}')");
+    }
+}
