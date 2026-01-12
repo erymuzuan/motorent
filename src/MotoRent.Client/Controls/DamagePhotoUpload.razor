@@ -1,0 +1,237 @@
+@using System.Net.Http.Headers
+@using System.Text.Json
+@inherits MotoRentComponentBase
+@inject HttpClient Http
+
+<div class="damage-photo-upload">
+    @if (m_photos.Count > 0)
+    {
+        <div class="row g-2 mb-3">
+            @foreach (var photo in m_photos)
+            {
+                <div class="col-4 col-md-3">
+                    <div class="position-relative">
+                        <img src="@photo.PreviewUrl" alt="Damage photo"
+                             class="img-thumbnail w-100" style="height: 100px; object-fit: cover;" />
+                        <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1"
+                                @onclick="@(() => RemovePhoto(photo))" title="Remove">
+                            <i class="ti ti-x"></i>
+                        </button>
+                        <span class="badge bg-dark position-absolute bottom-0 start-0 m-1">
+                            @photo.PhotoType
+                        </span>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    @if (m_photos.Count < MaxPhotos)
+    {
+        <div class="row g-2">
+            <div class="col-6">
+                <div class="upload-dropzone d-flex flex-column align-items-center justify-content-center p-3"
+                     style="border: 2px dashed var(--tblr-border-color); border-radius: 8px; cursor: pointer;"
+                     @onclick="() => TriggerFileSelect()">
+                    @if (m_uploading)
+                    {
+                        <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                        <small class="mt-1">Uploading...</small>
+                    }
+                    else
+                    {
+                        <i class="ti ti-photo-plus text-primary fs-3"></i>
+                        <small class="mt-1">Add Photo</small>
+                    }
+                </div>
+                <InputFile @ref="m_fileInput" OnChange="OnFileSelected" accept="image/*"
+                           style="display: none;" />
+            </div>
+            <div class="col-6">
+                <button type="button" class="upload-dropzone btn btn-outline-secondary w-100 h-100 d-flex flex-column align-items-center justify-content-center p-3"
+                        style="border: 2px dashed var(--tblr-border-color); border-radius: 8px;"
+                        @onclick="OpenCamera" disabled="@m_uploading">
+                    <i class="ti ti-camera text-secondary fs-3"></i>
+                    <small class="mt-1">Take Photo</small>
+                </button>
+                <input type="file" @ref="m_cameraInput" accept="image/*" capture="environment"
+                       @onchange="OnCameraCapture" style="display: none;" />
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="text-center text-secondary">
+            <small>Maximum @MaxPhotos photos reached</small>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(m_error))
+    {
+        <div class="alert alert-danger mt-2 py-2">
+            <small>@m_error</small>
+        </div>
+    }
+</div>
+
+<style>
+    .upload-dropzone:hover {
+        border-color: var(--tblr-primary) !important;
+        background: var(--tblr-bg-surface-secondary);
+    }
+</style>
+
+@code {
+    [Parameter]
+    public int? RentalId { get; set; }
+
+    [Parameter]
+    public string PhotoType { get; set; } = "After";
+
+    [Parameter]
+    public int MaxPhotos { get; set; } = 5;
+
+    [Parameter]
+    public EventCallback<List<string>> OnPhotosChanged { get; set; }
+
+    private InputFile? m_fileInput;
+    private ElementReference m_cameraInput;
+    private List<DamagePhotoItem> m_photos = [];
+    private bool m_uploading;
+    private string? m_error;
+
+    private class DamagePhotoItem
+    {
+        public string FilePath { get; set; } = string.Empty;
+        public string PreviewUrl { get; set; } = string.Empty;
+        public string PhotoType { get; set; } = "After";
+    }
+
+    private async Task TriggerFileSelect()
+    {
+        if (m_uploading) return;
+        // Note: This requires JS interop to click the hidden input
+        // For now, we use the InputFile component directly
+    }
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file == null) return;
+        await ProcessFile(file);
+    }
+
+    private async Task OnCameraCapture(ChangeEventArgs e)
+    {
+        // Camera capture handled by native HTML5 input
+    }
+
+    private async Task OpenCamera()
+    {
+        // Trigger camera input - requires JS interop
+    }
+
+    private async Task ProcessFile(IBrowserFile file)
+    {
+        if (file.Size > 10 * 1024 * 1024)
+        {
+            m_error = "File size exceeds 10MB limit";
+            return;
+        }
+
+        m_uploading = true;
+        m_error = null;
+        StateHasChanged();
+
+        try
+        {
+            // Create form data
+            var content = new MultipartFormDataContent();
+
+            using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            ms.Position = 0;
+
+            var fileContent = new StreamContent(ms);
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
+            content.Add(fileContent, "file", file.Name);
+            content.Add(new StringContent(PhotoType), "photoType");
+
+            if (RentalId.HasValue)
+            {
+                content.Add(new StringContent(RentalId.Value.ToString()), "rentalId");
+            }
+
+            // Upload to API
+            var response = await Http.PostAsync("/api/damage-photos/upload", content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var json = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<DamagePhotoUploadResponse>(json, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+
+                if (result != null)
+                {
+                    // Create preview URL
+                    var buffer = new byte[ms.Length];
+                    ms.Position = 0;
+                    await ms.ReadAsync(buffer);
+                    var previewUrl = $"data:{file.ContentType};base64,{Convert.ToBase64String(buffer)}";
+
+                    m_photos.Add(new DamagePhotoItem
+                    {
+                        FilePath = result.FilePath,
+                        PreviewUrl = previewUrl,
+                        PhotoType = PhotoType
+                    });
+
+                    await NotifyPhotosChanged();
+                }
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                m_error = $"Upload failed: {error}";
+            }
+        }
+        catch (Exception ex)
+        {
+            m_error = $"Error uploading photo: {ex.Message}";
+        }
+        finally
+        {
+            m_uploading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RemovePhoto(DamagePhotoItem photo)
+    {
+        m_photos.Remove(photo);
+        await NotifyPhotosChanged();
+    }
+
+    private async Task NotifyPhotosChanged()
+    {
+        var paths = m_photos.Select(p => p.FilePath).ToList();
+        await OnPhotosChanged.InvokeAsync(paths);
+    }
+
+    public List<string> GetPhotoPaths() => m_photos.Select(p => p.FilePath).ToList();
+
+    public void Clear()
+    {
+        m_photos.Clear();
+        StateHasChanged();
+    }
+
+    private class DamagePhotoUploadResponse
+    {
+        public string FilePath { get; set; } = string.Empty;
+        public string PhotoType { get; set; } = string.Empty;
+    }
+}

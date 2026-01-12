@@ -1,0 +1,280 @@
+@using MotoRent.Domain.Entities
+@inherits LocalizedDialogBase<DamageReport, DamageReportDialog>
+@inject DamageReportService DamageReportService
+
+<div class="modal-body">
+    <div class="row g-3 mb-3">
+        <div class="col-6">
+            <div class="subheader text-secondary">Renter</div>
+            <div class="fw-bold">@RenterName</div>
+        </div>
+        <div class="col-6">
+            <div class="subheader text-secondary">Vehicle</div>
+            <div class="fw-bold">@VehicleName</div>
+        </div>
+        <div class="col-6">
+            <div class="subheader text-secondary">Reported On</div>
+            <div>@FormatDate(Entity.ReportedOn)</div>
+        </div>
+        <div class="col-6">
+            <div class="subheader text-secondary">Current Status</div>
+            <span class="badge @GetStatusBadgeClass(Entity.Status)">@Entity.Status</span>
+        </div>
+    </div>
+
+    <hr class="my-3" />
+
+    <h4 class="mb-3">Damage Details</h4>
+
+    <div class="row g-3 mb-3">
+        <div class="col-12">
+            <div class="subheader text-secondary">Severity</div>
+            <span class="badge @GetSeverityBadgeClass(Entity.Severity) fs-6">
+                <i class="ti @GetSeverityIcon(Entity.Severity) me-1"></i>
+                @Entity.Severity
+            </span>
+        </div>
+        <div class="col-12">
+            <div class="subheader text-secondary">Description</div>
+            <div class="border rounded p-2 bg-light">
+                @if (string.IsNullOrEmpty(Entity.Description))
+                {
+                    <span class="text-secondary">No description provided</span>
+                }
+                else
+                {
+                    @Entity.Description
+                }
+            </div>
+        </div>
+        <div class="col-6">
+            <div class="subheader text-secondary">Estimated Cost</div>
+            <div class="h4 text-warning mb-0">@FormatCurrency(Entity.EstimatedCost)</div>
+        </div>
+        <div class="col-6">
+            <div class="subheader text-secondary">Actual Cost</div>
+            @if (Entity.ActualCost.HasValue)
+            {
+                <div class="h4 text-success mb-0">@FormatCurrency(Entity.ActualCost.Value)</div>
+            }
+            else
+            {
+                <div class="text-secondary">Not recorded</div>
+            }
+        </div>
+    </div>
+
+    @if (Photos.Count > 0)
+    {
+        <hr class="my-3" />
+
+        <h4 class="mb-3">
+            <i class="ti ti-photo me-2"></i>
+            Damage Photos (@Photos.Count)
+        </h4>
+
+        <div class="row g-2">
+            @foreach (var photo in Photos)
+            {
+                <div class="col-6 col-md-4">
+                    <div class="position-relative">
+                        <a href="/api/damage-photos/file/@photo.ImagePath" target="_blank">
+                            <img src="/api/damage-photos/file/@photo.ImagePath" alt="Damage photo"
+                                 class="img-thumbnail w-100" style="height: 150px; object-fit: cover;" />
+                        </a>
+                        <span class="badge bg-dark position-absolute bottom-0 start-0 m-2">
+                            @photo.PhotoType
+                        </span>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    @if (IsUpdateMode && Entity.Status == "Pending")
+    {
+        <hr class="my-3" />
+
+        <h4 class="mb-3">
+            <i class="ti ti-edit me-2"></i>
+            Update Status
+        </h4>
+
+        <div class="mb-3">
+            <label class="form-label">New Status</label>
+            <div class="form-selectgroup form-selectgroup-boxes d-flex flex-column gap-2">
+                <label class="form-selectgroup-item flex-fill">
+                    <input type="radio" name="new-status" value="Charged" class="form-selectgroup-input"
+                           checked="@(m_newStatus == "Charged")" @onchange="@(() => m_newStatus = "Charged")" />
+                    <div class="form-selectgroup-label d-flex align-items-center p-3">
+                        <div class="me-3">
+                            <span class="form-selectgroup-check"></span>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <i class="ti ti-currency-dollar text-success fs-2 me-3"></i>
+                            <div>
+                                <div class="fw-bold">Charged</div>
+                                <small class="text-secondary">Renter has paid for the damage</small>
+                            </div>
+                        </div>
+                    </div>
+                </label>
+
+                <label class="form-selectgroup-item flex-fill">
+                    <input type="radio" name="new-status" value="Waived" class="form-selectgroup-input"
+                           checked="@(m_newStatus == "Waived")" @onchange="@(() => m_newStatus = "Waived")" />
+                    <div class="form-selectgroup-label d-flex align-items-center p-3">
+                        <div class="me-3">
+                            <span class="form-selectgroup-check"></span>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <i class="ti ti-discount-off text-secondary fs-2 me-3"></i>
+                            <div>
+                                <div class="fw-bold">Waived</div>
+                                <small class="text-secondary">Damage charge has been waived</small>
+                            </div>
+                        </div>
+                    </div>
+                </label>
+
+                <label class="form-selectgroup-item flex-fill">
+                    <input type="radio" name="new-status" value="InsuranceClaim" class="form-selectgroup-input"
+                           checked="@(m_newStatus == "InsuranceClaim")" @onchange="@(() => m_newStatus = "InsuranceClaim")" />
+                    <div class="form-selectgroup-label d-flex align-items-center p-3">
+                        <div class="me-3">
+                            <span class="form-selectgroup-check"></span>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <i class="ti ti-shield-check text-info fs-2 me-3"></i>
+                            <div>
+                                <div class="fw-bold">Insurance Claim</div>
+                                <small class="text-secondary">Submitted to insurance</small>
+                            </div>
+                        </div>
+                    </div>
+                </label>
+            </div>
+        </div>
+
+        @if (m_newStatus == "Charged")
+        {
+            <div class="mb-3">
+                <label class="form-label">Actual Repair Cost (THB)</label>
+                <div class="input-group">
+                    <span class="input-group-text">฿</span>
+                    <input type="number" class="form-control" @bind="m_actualCost"
+                           min="0" max="100000" step="100" />
+                </div>
+                <small class="text-secondary">Estimated was @FormatCurrency(Entity.EstimatedCost)</small>
+            </div>
+        }
+
+        <div class="mb-3">
+            <label class="form-label">Notes (optional)</label>
+            <textarea class="form-control" @bind="m_notes" rows="2"
+                      placeholder="Any additional notes..."></textarea>
+        </div>
+    }
+</div>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
+        @(IsUpdateMode ? "Cancel" : "Close")
+    </button>
+    @if (IsUpdateMode && Entity.Status == "Pending")
+    {
+        <button type="button" class="btn btn-success" disabled="@(!CanUpdate)" @onclick="UpdateStatus">
+            @if (Saving)
+            {
+                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+            }
+            <i class="ti ti-check me-1"></i>
+            Update Status
+        </button>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string RenterName { get; set; } = "";
+
+    [Parameter]
+    public string VehicleName { get; set; } = "";
+
+    [Parameter]
+    public List<DamagePhoto> Photos { get; set; } = [];
+
+    [Parameter]
+    public bool IsUpdateMode { get; set; }
+
+    private string m_newStatus = "Charged";
+    private decimal m_actualCost;
+    private string? m_notes;
+
+    private bool CanUpdate => !string.IsNullOrEmpty(m_newStatus);
+
+    protected override void OnInitialized()
+    {
+        m_actualCost = Entity.EstimatedCost;
+    }
+
+    private async Task UpdateStatus()
+    {
+        if (!CanUpdate) return;
+
+        Saving = true;
+        try
+        {
+            var actualCost = m_newStatus == "Charged" ? m_actualCost : (decimal?)null;
+            var result = await DamageReportService.UpdateStatusAsync(
+                Entity.DamageReportId,
+                m_newStatus,
+                actualCost,
+                m_notes,
+                UserName);
+
+            if (result.Success)
+            {
+                ShowSuccess($"Damage report marked as {m_newStatus}");
+                Close();
+            }
+            else
+            {
+                ShowError($"Failed to update: {result.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error: {ex.Message}");
+        }
+        finally
+        {
+            Saving = false;
+        }
+    }
+
+    private static string GetSeverityBadgeClass(string? severity) => severity switch
+    {
+        "Minor" => "bg-info",
+        "Moderate" => "bg-warning",
+        "Major" => "bg-danger",
+        _ => "bg-secondary"
+    };
+
+    private static string GetSeverityIcon(string? severity) => severity switch
+    {
+        "Minor" => "ti-info-circle",
+        "Moderate" => "ti-alert-triangle",
+        "Major" => "ti-alert-octagon",
+        _ => "ti-help"
+    };
+
+    private static string GetStatusBadgeClass(string? status) => status switch
+    {
+        "Pending" => "bg-warning",
+        "Charged" => "bg-success",
+        "Waived" => "bg-secondary",
+        "InsuranceClaim" => "bg-info",
+        _ => "bg-secondary"
+    };
+}

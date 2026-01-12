@@ -1,5 +1,6 @@
 @using MotoRent.Domain.Entities
 @using MotoRent.Client.Components.Shared
+@using MotoRent.Client.Controls
 @inherits LocalizedDialogBase<Rental, CheckOutDialog>
 @inject RentalService RentalService
 @inject RenterService RenterService
@@ -246,7 +247,23 @@
                     </div>
                 </div>
 
-                <div class="alert alert-info">
+                <hr class="my-3" />
+
+                <h4 class="mb-3">
+                    <i class="ti ti-photo me-2"></i>
+                    Damage Photos
+                </h4>
+                <p class="text-secondary mb-3">
+                    Take photos of the damage for documentation. These will be attached to the damage report.
+                </p>
+
+                <DamagePhotoUpload @ref="m_damagePhotoUpload"
+                                   RentalId="@Entity.RentalId"
+                                   PhotoType="After"
+                                   MaxPhotos="5"
+                                   OnPhotosChanged="OnDamagePhotosChanged" />
+
+                <div class="alert alert-info mt-3">
                     <i class="ti ti-info-circle me-2"></i>
                     This amount will be deducted from the deposit if applicable.
                 </div>
@@ -415,6 +432,8 @@
     private string m_damageLevel = "None";
     private string? m_damageDescription;
     private decimal m_damageEstimate;
+    private DamagePhotoUpload? m_damagePhotoUpload;
+    private List<string> m_damagePhotoPaths = [];
 
     // Settlement
     private string m_refundMethod = "Cash";
@@ -520,6 +539,11 @@
             return "No refund needed - deposit covers all charges";
     }
 
+    private void OnDamagePhotosChanged(List<string> photoPaths)
+    {
+        this.m_damagePhotoPaths = photoPaths;
+    }
+
     private async Task CompleteCheckOut()
     {
         if (!this.m_actualReturnDate.HasValue && !this.m_isIntervalRental) return;
@@ -548,7 +572,8 @@
                     {
                         Description = this.m_damageDescription,
                         Severity = this.m_damageLevel,
-                        EstimatedCost = this.m_damageEstimate
+                        EstimatedCost = this.m_damageEstimate,
+                        PhotoPaths = this.m_damagePhotoPaths.Count > 0 ? this.m_damagePhotoPaths : null
                     }
                 ];
             }
