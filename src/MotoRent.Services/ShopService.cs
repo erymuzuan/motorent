@@ -68,6 +68,24 @@ public class ShopService(RentalDataContext context)
 
     public async Task<SubmitOperation> DeleteShopAsync(Shop shop, string username)
     {
+        // Check if shop has any vehicles (either registered at or currently at this shop)
+        var vehicleCount = await this.Context.GetCountAsync(
+            this.Context.Vehicles.Where(v => v.HomeShopId == shop.ShopId || v.CurrentShopId == shop.ShopId));
+        if (vehicleCount > 0)
+        {
+            return SubmitOperation.CreateFailure(
+                $"Cannot delete shop with {vehicleCount} vehicle(s). Please deactivate instead or reassign vehicles first.");
+        }
+
+        // Check if shop has any rentals
+        var rentalCount = await this.Context.GetCountAsync(
+            this.Context.Rentals.Where(r => r.RentedFromShopId == shop.ShopId || r.ReturnedToShopId == shop.ShopId));
+        if (rentalCount > 0)
+        {
+            return SubmitOperation.CreateFailure(
+                $"Cannot delete shop with {rentalCount} rental record(s). Please deactivate instead.");
+        }
+
         using var session = this.Context.OpenSession(username);
         session.Delete(shop);
         return await session.SubmitChanges("Delete");
