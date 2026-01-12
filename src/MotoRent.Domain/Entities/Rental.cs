@@ -243,6 +243,84 @@ public class Rental : Entity
 
     #endregion
 
+    #region Pick-up/Drop-off Locations
+
+    /// <summary>
+    /// Where the vehicle will be picked up. Null = at shop.
+    /// </summary>
+    public int? PickupLocationId { get; set; }
+
+    /// <summary>
+    /// Where the vehicle will be dropped off. Null = at shop.
+    /// </summary>
+    public int? DropoffLocationId { get; set; }
+
+    /// <summary>
+    /// Denormalized pickup location name for display.
+    /// </summary>
+    public string? PickupLocationName { get; set; }
+
+    /// <summary>
+    /// Denormalized drop-off location name for display.
+    /// </summary>
+    public string? DropoffLocationName { get; set; }
+
+    /// <summary>
+    /// Scheduled pickup time (for out-of-hours tracking).
+    /// </summary>
+    public TimeSpan? ScheduledPickupTime { get; set; }
+
+    /// <summary>
+    /// Scheduled drop-off time (for out-of-hours tracking).
+    /// </summary>
+    public TimeSpan? ScheduledDropoffTime { get; set; }
+
+    #endregion
+
+    #region Location and Out-of-Hours Fees
+
+    /// <summary>
+    /// Fee captured for pickup location at rental time.
+    /// </summary>
+    public decimal PickupLocationFee { get; set; }
+
+    /// <summary>
+    /// Fee captured for drop-off location at rental time.
+    /// </summary>
+    public decimal DropoffLocationFee { get; set; }
+
+    /// <summary>
+    /// Fee captured for out-of-hours pickup.
+    /// </summary>
+    public decimal OutOfHoursPickupFee { get; set; }
+
+    /// <summary>
+    /// Fee captured for out-of-hours drop-off.
+    /// </summary>
+    public decimal OutOfHoursDropoffFee { get; set; }
+
+    /// <summary>
+    /// Whether pickup was scheduled outside operating hours.
+    /// </summary>
+    public bool IsOutOfHoursPickup { get; set; }
+
+    /// <summary>
+    /// Whether drop-off was scheduled outside operating hours.
+    /// </summary>
+    public bool IsOutOfHoursDropoff { get; set; }
+
+    /// <summary>
+    /// Name of the out-of-hours band for pickup (e.g., "Late Evening").
+    /// </summary>
+    public string? OutOfHoursPickupBand { get; set; }
+
+    /// <summary>
+    /// Name of the out-of-hours band for drop-off (e.g., "Night").
+    /// </summary>
+    public string? OutOfHoursDropoffBand { get; set; }
+
+    #endregion
+
     public override int GetId() => this.RentalId;
     public override void SetId(int value) => this.RentalId = value;
 

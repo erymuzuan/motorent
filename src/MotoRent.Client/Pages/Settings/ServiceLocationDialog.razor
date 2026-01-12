@@ -1,0 +1,172 @@
+@inherits LocalizedDialogBase<ServiceLocation, ServiceLocationDialog>
+@inject ServiceLocationService LocationService
+
+<form id="@FormId" @onsubmit="SaveAsync" @onsubmit:preventDefault>
+    <div class="modal-body">
+        <div class="row g-3">
+            <div class="col-md-8">
+                <label class="form-label required">Location Name</label>
+                <input type="text" class="form-control" @bind="Entity.Name" required
+                       placeholder="e.g., Phuket International Airport" />
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label required">Type</label>
+                <select class="form-select" @bind="Entity.LocationType" required>
+                    @foreach (var type in Enum.GetValues<ServiceLocationType>())
+                    {
+                        <option value="@type">@type</option>
+                    }
+                </select>
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Address</label>
+                <textarea class="form-control" @bind="Entity.Address" rows="2"
+                          placeholder="Full address for navigation"></textarea>
+            </div>
+
+            <div class="col-12">
+                <hr class="my-2" />
+                <h6 class="mb-3">Pickup Service</h6>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-check form-switch">
+                    <input type="checkbox" class="form-check-input" @bind="Entity.PickupAvailable" />
+                    <span class="form-check-label">Pickup Available</span>
+                </label>
+                <small class="form-hint">Allow vehicle pickup from this location</small>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Pickup Fee (THB)</label>
+                <div class="input-group">
+                    <span class="input-group-text">฿</span>
+                    <input type="number" class="form-control" @bind="Entity.PickupFee"
+                           min="0" step="50" disabled="@(!Entity.PickupAvailable)" />
+                </div>
+            </div>
+
+            <div class="col-12">
+                <hr class="my-2" />
+                <h6 class="mb-3">Dropoff Service</h6>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-check form-switch">
+                    <input type="checkbox" class="form-check-input" @bind="Entity.DropoffAvailable" />
+                    <span class="form-check-label">Dropoff Available</span>
+                </label>
+                <small class="form-hint">Allow vehicle dropoff at this location</small>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Dropoff Fee (THB)</label>
+                <div class="input-group">
+                    <span class="input-group-text">฿</span>
+                    <input type="number" class="form-control" @bind="Entity.DropoffFee"
+                           min="0" step="50" disabled="@(!Entity.DropoffAvailable)" />
+                </div>
+            </div>
+
+            <div class="col-12">
+                <hr class="my-2" />
+                <h6 class="mb-3">Additional Information</h6>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Estimated Travel Time</label>
+                <div class="input-group">
+                    <input type="number" class="form-control" @bind="Entity.EstimatedTravelMinutes"
+                           min="0" placeholder="0" />
+                    <span class="input-group-text">minutes</span>
+                </div>
+                <small class="form-hint">Approximate travel time from shop</small>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Display Order</label>
+                <input type="number" class="form-control" @bind="Entity.DisplayOrder"
+                       min="0" placeholder="0" />
+                <small class="form-hint">Lower numbers appear first</small>
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Staff Notes</label>
+                <textarea class="form-control" @bind="Entity.StaffNotes" rows="2"
+                          placeholder="Internal notes for staff (e.g., meeting point, parking instructions)"></textarea>
+            </div>
+
+            <div class="col-12">
+                <label class="form-check form-switch">
+                    <input type="checkbox" class="form-check-input" @bind="Entity.IsActive" />
+                    <span class="form-check-label">Active</span>
+                </label>
+                <small class="form-hint">Inactive locations won't appear in selection lists</small>
+            </div>
+        </div>
+    </div>
+</form>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
+        Cancel
+    </button>
+    <button type="submit" form="@FormId" class="btn btn-primary" disabled="@Saving">
+        @if (Saving)
+        {
+            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+        }
+        <i class="ti ti-device-floppy me-1"></i>
+        @SaveButtonText
+    </button>
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        this.FormValid = true;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(this.Entity.Name))
+        {
+            this.ShowError("Location name is required");
+            return;
+        }
+
+        if (!this.Entity.PickupAvailable && !this.Entity.DropoffAvailable)
+        {
+            this.ShowError("At least one service (pickup or dropoff) must be available");
+            return;
+        }
+
+        this.Saving = true;
+
+        try
+        {
+            var result = this.IsNew
+                ? await this.LocationService.CreateLocationAsync(this.Entity, this.UserName)
+                : await this.LocationService.UpdateLocationAsync(this.Entity, this.UserName);
+
+            if (result.Success)
+            {
+                this.Close();
+            }
+            else
+            {
+                this.ShowError($"Save failed: {result.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            this.ShowError($"Error: {ex.Message}");
+        }
+        finally
+        {
+            this.Saving = false;
+        }
+    }
+}

@@ -12,6 +12,20 @@
                 </button>
             </li>
             <li class="nav-item" role="presentation">
+                <button type="button" class="nav-link @(m_activeTab == "hours" ? "active" : "")"
+                        @onclick="@(() => m_activeTab = "hours")">
+                    <i class="ti ti-clock me-1"></i>
+                    Operating Hours
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button type="button" class="nav-link @(m_activeTab == "fees" ? "active" : "")"
+                        @onclick="@(() => m_activeTab = "fees")">
+                    <i class="ti ti-currency-baht me-1"></i>
+                    Out-of-Hours Fees
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
                 <button type="button" class="nav-link @(m_activeTab == "terms" ? "active" : "")"
                         @onclick="@(() => m_activeTab = "terms")">
                     <i class="ti ti-file-text me-1"></i>
@@ -77,6 +91,157 @@
                         <small class="form-hint">Inactive shops won't appear in selection lists</small>
                     </div>
                 </div>
+            </div>
+
+            @* Operating Hours Tab *@
+            <div class="tab-pane fade @(m_activeTab == "hours" ? "show active" : "")">
+                <div class="mb-3">
+                    <h6 class="mb-1">Default Weekly Hours</h6>
+                    <p class="text-secondary small mb-3">
+                        Set the default operating hours for each day. These will be used to auto-populate the calendar.
+                    </p>
+                </div>
+
+                @if (Entity.DefaultHours.Count == 0)
+                {
+                    <div class="alert alert-info d-flex align-items-center mb-3">
+                        <i class="ti ti-info-circle me-2"></i>
+                        <span>No default hours configured. Click below to set up standard hours.</span>
+                    </div>
+                    <button type="button" class="btn btn-outline-primary mb-3" @onclick="InitializeDefaultHours">
+                        <i class="ti ti-clock-plus me-1"></i>
+                        Initialize Default Hours (Mon-Sun 08:00-18:00)
+                    </button>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-vcenter table-sm">
+                            <thead>
+                                <tr>
+                                    <th style="width: 120px;">Day</th>
+                                    <th style="width: 80px;">Open</th>
+                                    <th style="width: 120px;">From</th>
+                                    <th style="width: 120px;">To</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var dayHours in Entity.DefaultHours.OrderBy(d => ((int)d.DayOfWeek + 6) % 7))
+                                {
+                                    <tr class="@(dayHours.IsOpen ? "" : "text-secondary")">
+                                        <td>@dayHours.DayOfWeek.ToString()</td>
+                                        <td>
+                                            <label class="form-check form-switch mb-0">
+                                                <input type="checkbox" class="form-check-input"
+                                                       checked="@dayHours.IsOpen"
+                                                       @onchange="@(e => dayHours.IsOpen = (bool)(e.Value ?? false))" />
+                                            </label>
+                                        </td>
+                                        <td>
+                                            <input type="time" class="form-control form-control-sm"
+                                                   value="@dayHours.OpenTime.ToString(@"hh\:mm")"
+                                                   disabled="@(!dayHours.IsOpen)"
+                                                   @onchange="@(e => dayHours.OpenTime = TimeSpan.Parse(e.Value?.ToString() ?? "08:00"))" />
+                                        </td>
+                                        <td>
+                                            <input type="time" class="form-control form-control-sm"
+                                                   value="@dayHours.CloseTime.ToString(@"hh\:mm")"
+                                                   disabled="@(!dayHours.IsOpen)"
+                                                   @onchange="@(e => dayHours.CloseTime = TimeSpan.Parse(e.Value?.ToString() ?? "18:00"))" />
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+
+            @* Out-of-Hours Fees Tab *@
+            <div class="tab-pane fade @(m_activeTab == "fees" ? "show active" : "")">
+                <div class="mb-3">
+                    <h6 class="mb-1">Out-of-Hours Fee Bands</h6>
+                    <p class="text-secondary small mb-3">
+                        Define fee bands for pickup/dropoff outside operating hours. Each band specifies a time range and fee.
+                    </p>
+                </div>
+
+                @if (Entity.OutOfHoursBands.Count > 0)
+                {
+                    <div class="table-responsive mb-3">
+                        <table class="table table-vcenter table-sm">
+                            <thead>
+                                <tr>
+                                    <th style="width: 150px;">Name</th>
+                                    <th style="width: 120px;">From</th>
+                                    <th style="width: 120px;">To</th>
+                                    <th style="width: 120px;">Fee (THB)</th>
+                                    <th style="width: 60px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var band in Entity.OutOfHoursBands)
+                                {
+                                    <tr>
+                                        <td>
+                                            <input type="text" class="form-control form-control-sm"
+                                                   @bind="band.Name" placeholder="e.g., Evening" />
+                                        </td>
+                                        <td>
+                                            <input type="time" class="form-control form-control-sm"
+                                                   value="@band.StartTime.ToString(@"hh\:mm")"
+                                                   @onchange="@(e => band.StartTime = TimeSpan.Parse(e.Value?.ToString() ?? "18:00"))" />
+                                        </td>
+                                        <td>
+                                            <input type="time" class="form-control form-control-sm"
+                                                   value="@band.EndTime.ToString(@"hh\:mm")"
+                                                   @onchange="@(e => band.EndTime = TimeSpan.Parse(e.Value?.ToString() ?? "20:00"))" />
+                                        </td>
+                                        <td>
+                                            <input type="number" class="form-control form-control-sm"
+                                                   @bind="band.Fee" min="0" step="50" />
+                                        </td>
+                                        <td class="text-end">
+                                            <button type="button" class="btn btn-icon btn-ghost-danger btn-sm"
+                                                    @onclick="@(() => RemoveBand(band))">
+                                                <i class="ti ti-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-info d-flex align-items-center mb-3">
+                        <i class="ti ti-info-circle me-2"></i>
+                        <span>No fee bands configured. Pickup/dropoff outside hours will have no extra charge.</span>
+                    </div>
+                }
+
+                <div class="btn-list">
+                    <button type="button" class="btn btn-outline-primary btn-sm" @onclick="AddBand">
+                        <i class="ti ti-plus me-1"></i>
+                        Add Band
+                    </button>
+                    @if (Entity.OutOfHoursBands.Count == 0)
+                    {
+                        <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="InsertDefaultBands">
+                            <i class="ti ti-template me-1"></i>
+                            Insert Default Bands
+                        </button>
+                    }
+                </div>
+
+                @if (Entity.OutOfHoursBands.Any(b => b.StartTime > b.EndTime))
+                {
+                    <div class="alert alert-warning mt-3 d-flex align-items-center">
+                        <i class="ti ti-alert-triangle me-2"></i>
+                        <span>One or more bands span overnight (e.g., 22:00-06:00). This is supported.</span>
+                    </div>
+                }
             </div>
 
             @* Terms & Conditions Tab *@
@@ -205,4 +370,79 @@
             By signing this agreement, the renter acknowledges having read and accepted these terms.
             """;
     }
+
+    #region Operating Hours Helpers
+
+    private void InitializeDefaultHours()
+    {
+        this.Entity.DefaultHours.Clear();
+        foreach (DayOfWeek day in Enum.GetValues<DayOfWeek>())
+        {
+            this.Entity.DefaultHours.Add(new DailyHoursTemplate
+            {
+                DayOfWeek = day,
+                IsOpen = true,
+                OpenTime = new TimeSpan(8, 0, 0),
+                CloseTime = new TimeSpan(18, 0, 0)
+            });
+        }
+    }
+
+    #endregion
+
+    #region Out-of-Hours Fees Helpers
+
+    private void AddBand()
+    {
+        this.Entity.OutOfHoursBands.Add(new OutOfHoursBand
+        {
+            Name = "",
+            StartTime = new TimeSpan(18, 0, 0),
+            EndTime = new TimeSpan(20, 0, 0),
+            Fee = 200
+        });
+    }
+
+    private void RemoveBand(OutOfHoursBand band)
+    {
+        this.Entity.OutOfHoursBands.Remove(band);
+    }
+
+    private void InsertDefaultBands()
+    {
+        this.Entity.OutOfHoursBands.Clear();
+        this.Entity.OutOfHoursBands.AddRange(
+        [
+            new OutOfHoursBand
+            {
+                Name = "Early Morning",
+                StartTime = new TimeSpan(6, 0, 0),
+                EndTime = new TimeSpan(8, 0, 0),
+                Fee = 200
+            },
+            new OutOfHoursBand
+            {
+                Name = "Evening",
+                StartTime = new TimeSpan(18, 0, 0),
+                EndTime = new TimeSpan(20, 0, 0),
+                Fee = 200
+            },
+            new OutOfHoursBand
+            {
+                Name = "Late Evening",
+                StartTime = new TimeSpan(20, 0, 0),
+                EndTime = new TimeSpan(22, 0, 0),
+                Fee = 300
+            },
+            new OutOfHoursBand
+            {
+                Name = "Night",
+                StartTime = new TimeSpan(22, 0, 0),
+                EndTime = new TimeSpan(6, 0, 0),
+                Fee = 500
+            }
+        ]);
+    }
+
+    #endregion
 }

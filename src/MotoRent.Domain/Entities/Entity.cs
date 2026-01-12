@@ -6,6 +6,8 @@ namespace MotoRent.Domain.Entities;
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "$type")]
 // MotoRent operational entities
 [JsonDerivedType(typeof(Shop), nameof(Shop))]
+[JsonDerivedType(typeof(ShopSchedule), nameof(ShopSchedule))]
+[JsonDerivedType(typeof(ServiceLocation), nameof(ServiceLocation))]
 [JsonDerivedType(typeof(Renter), nameof(Renter))]
 [JsonDerivedType(typeof(Document), nameof(Document))]
 [JsonDerivedType(typeof(Vehicle), nameof(Vehicle))]

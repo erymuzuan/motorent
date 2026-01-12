@@ -5,8 +5,9 @@ namespace MotoRent.Services;
 /// <summary>
 /// Service for calculating rental pricing based on vehicle type and duration.
 /// </summary>
-public class RentalPricingService
+public class RentalPricingService(OperatingHoursService? hoursService = null)
 {
+    private OperatingHoursService? HoursService { get; } = hoursService;
     /// <summary>
     /// Calculates rental pricing based on vehicle and rental configuration.
     /// </summary>
@@ -274,6 +275,119 @@ public class RentalPricingService
 
         return options;
     }
+
+    #region Location and Out-of-Hours Pricing
+
+    /// <summary>
+    /// Calculates pickup/dropoff location fees and out-of-hours fees.
+    /// </summary>
+    public async Task<LocationPricing> CalculateLocationPricingAsync(
+        int shopId,
+        DateTimeOffset pickupDateTime,
+        DateTimeOffset? dropoffDateTime,
+        ServiceLocation? pickupLocation,
+        ServiceLocation? dropoffLocation)
+    {
+        var pricing = new LocationPricing();
+
+        // Pickup location fee
+        if (pickupLocation != null)
+        {
+            pricing.PickupLocationFee = pickupLocation.PickupFee;
+            pricing.PickupLocationName = pickupLocation.Name;
+        }
+
+        // Dropoff location fee
+        if (dropoffLocation != null)
+        {
+            pricing.DropoffLocationFee = dropoffLocation.DropoffFee;
+            pricing.DropoffLocationName = dropoffLocation.Name;
+        }
+
+        // Out-of-hours fees (requires OperatingHoursService)
+        if (this.HoursService != null)
+        {
+            // Pickup out-of-hours check
+            var pickupResult = await this.HoursService.GetOutOfHoursFeeAsync(shopId, pickupDateTime);
+            if (pickupResult != null)
+            {
+                pricing.IsOutOfHoursPickup = true;
+                pricing.OutOfHoursPickupFee = pickupResult.Fee;
+                pricing.OutOfHoursPickupBand = pickupResult.BandName;
+            }
+
+            // Dropoff out-of-hours check
+            if (dropoffDateTime.HasValue)
+            {
+                var dropoffResult = await this.HoursService.GetOutOfHoursFeeAsync(shopId, dropoffDateTime.Value);
+                if (dropoffResult != null)
+                {
+                    pricing.IsOutOfHoursDropoff = true;
+                    pricing.OutOfHoursDropoffFee = dropoffResult.Fee;
+                    pricing.OutOfHoursDropoffBand = dropoffResult.BandName;
+                }
+            }
+        }
+
+        pricing.CalculateTotal();
+        return pricing;
+    }
+
+    /// <summary>
+    /// Calculates location pricing synchronously using pre-loaded data.
+    /// </summary>
+    public LocationPricing CalculateLocationPricing(
+        ShopSchedule pickupSchedule,
+        ShopSchedule? dropoffSchedule,
+        List<OutOfHoursBand> bands,
+        TimeSpan pickupTime,
+        TimeSpan? dropoffTime,
+        ServiceLocation? pickupLocation,
+        ServiceLocation? dropoffLocation)
+    {
+        var pricing = new LocationPricing();
+
+        // Location fees
+        if (pickupLocation != null)
+        {
+            pricing.PickupLocationFee = pickupLocation.PickupFee;
+            pricing.PickupLocationName = pickupLocation.Name;
+        }
+
+        if (dropoffLocation != null)
+        {
+            pricing.DropoffLocationFee = dropoffLocation.DropoffFee;
+            pricing.DropoffLocationName = dropoffLocation.Name;
+        }
+
+        // Out-of-hours fees (using pre-loaded data)
+        if (this.HoursService != null && bands.Count > 0)
+        {
+            var pickupResult = this.HoursService.CalculateOutOfHoursFee(pickupSchedule, bands, pickupTime);
+            if (pickupResult != null)
+            {
+                pricing.IsOutOfHoursPickup = true;
+                pricing.OutOfHoursPickupFee = pickupResult.Fee;
+                pricing.OutOfHoursPickupBand = pickupResult.BandName;
+            }
+
+            if (dropoffTime.HasValue && dropoffSchedule != null)
+            {
+                var dropoffResult = this.HoursService.CalculateOutOfHoursFee(dropoffSchedule, bands, dropoffTime.Value);
+                if (dropoffResult != null)
+                {
+                    pricing.IsOutOfHoursDropoff = true;
+                    pricing.OutOfHoursDropoffFee = dropoffResult.Fee;
+                    pricing.OutOfHoursDropoffBand = dropoffResult.BandName;
+                }
+            }
+        }
+
+        pricing.CalculateTotal();
+        return pricing;
+    }
+
+    #endregion
 }
 
 /// <summary>
@@ -331,4 +445,55 @@ public class IntervalOption
     public int Minutes { get; set; }
     public decimal Rate { get; set; }
     public string Label { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Calculated location and out-of-hours pricing breakdown.
+/// </summary>
+public class LocationPricing
+{
+    // Pickup location
+    public decimal PickupLocationFee { get; set; }
+    public string? PickupLocationName { get; set; }
+
+    // Dropoff location
+    public decimal DropoffLocationFee { get; set; }
+    public string? DropoffLocationName { get; set; }
+
+    // Out-of-hours pickup
+    public bool IsOutOfHoursPickup { get; set; }
+    public decimal OutOfHoursPickupFee { get; set; }
+    public string? OutOfHoursPickupBand { get; set; }
+
+    // Out-of-hours dropoff
+    public bool IsOutOfHoursDropoff { get; set; }
+    public decimal OutOfHoursDropoffFee { get; set; }
+    public string? OutOfHoursDropoffBand { get; set; }
+
+    // Total
+    public decimal TotalLocationFees { get; set; }
+
+    /// <summary>
+    /// Calculates the total of all location and out-of-hours fees.
+    /// </summary>
+    public void CalculateTotal()
+    {
+        this.TotalLocationFees = this.PickupLocationFee + this.DropoffLocationFee +
+                                 this.OutOfHoursPickupFee + this.OutOfHoursDropoffFee;
+    }
+
+    /// <summary>
+    /// Whether any location fees apply.
+    /// </summary>
+    public bool HasLocationFees => this.PickupLocationFee > 0 || this.DropoffLocationFee > 0;
+
+    /// <summary>
+    /// Whether any out-of-hours fees apply.
+    /// </summary>
+    public bool HasOutOfHoursFees => this.OutOfHoursPickupFee > 0 || this.OutOfHoursDropoffFee > 0;
+
+    /// <summary>
+    /// Whether any fees apply at all.
+    /// </summary>
+    public bool HasAnyFees => this.TotalLocationFees > 0;
 }

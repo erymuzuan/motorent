@@ -1,0 +1,406 @@
+@page "/settings/service-locations"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Policy = "RequireTenantManager")]
+@inherits LocalizedComponentBase<ServiceLocations>
+@inject ServiceLocationService LocationService
+@inject ShopService ShopService
+
+<MotoRentPageTitle>Service Locations</MotoRentPageTitle>
+
+<TablerHeader Title="Service Locations" PreTitle="Settings">
+    <button type="button" class="btn btn-primary" @onclick="OpenAddDialog" disabled="@(m_selectedShopId == 0)">
+        <i class="ti ti-plus me-1"></i>
+        Add Location
+    </button>
+</TablerHeader>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-3 align-items-center">
+            <div class="col-md-4">
+                <label class="form-label">Shop</label>
+                <select class="form-select" @bind="m_selectedShopId" @bind:after="LoadDataAsync">
+                    <option value="0">Select shop...</option>
+                    @foreach (var shop in m_shops)
+                    {
+                        <option value="@shop.ShopId">@shop.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Location Type</label>
+                <select class="form-select" @bind="m_typeFilter" @bind:after="LoadDataAsync">
+                    <option value="">All Types</option>
+                    @foreach (var type in Enum.GetValues<ServiceLocationType>())
+                    {
+                        <option value="@type">@type.ToString()</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Status</label>
+                <select class="form-select" @bind="m_activeFilter" @bind:after="LoadDataAsync">
+                    <option value="">All Status</option>
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">&nbsp;</label>
+                <div class="input-icon">
+                    <span class="input-icon-addon">
+                        <i class="ti ti-search"></i>
+                    </span>
+                    <input type="text" class="form-control" placeholder="Search..."
+                           @bind="m_searchTerm" @bind:event="oninput" @onkeyup="OnSearchKeyUp" />
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (m_selectedShopId == 0)
+{
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <i class="ti ti-building-store mb-3" style="font-size: 3rem; color: var(--tblr-secondary);"></i>
+            <h3 class="text-secondary">Select a shop</h3>
+            <p class="text-secondary">Choose a shop to view and manage its service locations.</p>
+        </div>
+    </div>
+}
+else
+{
+    <LoadingSkeleton Loading="@m_loading" Mode="LoadingSkeleton.PlaceholderMode.Table">
+        <div class="card">
+            <div class="table-responsive">
+                <table class="table table-vcenter card-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Type</th>
+                            <th class="text-end">Pickup Fee</th>
+                            <th class="text-end">Dropoff Fee</th>
+                            <th>Status</th>
+                            <th style="width: 120px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (m_locations.Count == 0)
+                        {
+                            <tr>
+                                <td colspan="6" class="text-center text-secondary py-4">
+                                    <i class="ti ti-map-pin mb-2" style="font-size: 2rem;"></i>
+                                    <div>No locations found. Add your first service location.</div>
+                                </td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var location in m_locations)
+                            {
+                                <tr class="@(location.IsActive ? "" : "text-secondary")">
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <span class="avatar avatar-sm me-2 @GetLocationTypeColor(location.LocationType)">
+                                                <i class="@GetLocationTypeIcon(location.LocationType)"></i>
+                                            </span>
+                                            <div>
+                                                <div class="fw-medium">@location.Name</div>
+                                                @if (!string.IsNullOrEmpty(location.Address))
+                                                {
+                                                    <small class="text-secondary">@location.Address</small>
+                                                }
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge @GetLocationTypeBadgeClass(location.LocationType)">
+                                            @location.LocationType
+                                        </span>
+                                    </td>
+                                    <td class="text-end">
+                                        @if (location.PickupAvailable)
+                                        {
+                                            <span>@FormatCurrency(location.PickupFee)</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-secondary">N/A</span>
+                                        }
+                                    </td>
+                                    <td class="text-end">
+                                        @if (location.DropoffAvailable)
+                                        {
+                                            <span>@FormatCurrency(location.DropoffFee)</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-secondary">N/A</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (location.IsActive)
+                                        {
+                                            <span class="badge bg-success">Active</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">Inactive</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <div class="btn-list flex-nowrap">
+                                            <button type="button" class="btn btn-sm btn-ghost-primary"
+                                                    @onclick="@(() => OpenEditDialog(location))">
+                                                <i class="ti ti-edit"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm @(location.IsActive ? "btn-ghost-warning" : "btn-ghost-success")"
+                                                    @onclick="@(() => ToggleActiveStatus(location))">
+                                                <i class="ti @(location.IsActive ? "ti-eye-off" : "ti-eye")"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-ghost-danger"
+                                                    @onclick="@(() => ConfirmDelete(location))">
+                                                <i class="ti ti-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </LoadingSkeleton>
+
+    @if (m_selectedShopId > 0 && m_locations.Count == 0 && !m_loading)
+    {
+        <div class="mt-3">
+            <button type="button" class="btn btn-outline-primary" @onclick="CreateDefaultLocations">
+                <i class="ti ti-template me-1"></i>
+                Create Default Locations
+            </button>
+            <small class="text-secondary ms-2">
+                (Airport, Hotel, Ferry Terminal for this area)
+            </small>
+        </div>
+    }
+}
+
+@code {
+    private List<Shop> m_shops = [];
+    private List<ServiceLocation> m_locations = [];
+    private bool m_loading;
+    private int m_selectedShopId;
+    private string? m_searchTerm;
+    private string? m_typeFilter;
+    private string? m_activeFilter;
+    private System.Timers.Timer? m_debounceTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Load shops
+        var shopsResult = await this.ShopService.GetShopsAsync(null, true, 1, 100);
+        this.m_shops = shopsResult.ItemCollection;
+
+        // Auto-select first shop if available
+        if (this.m_shops.Count > 0)
+        {
+            this.m_selectedShopId = this.m_shops[0].ShopId;
+            await this.LoadDataAsync();
+        }
+    }
+
+    private async Task LoadDataAsync()
+    {
+        if (this.m_selectedShopId == 0)
+        {
+            this.m_locations.Clear();
+            return;
+        }
+
+        this.m_loading = true;
+        try
+        {
+            ServiceLocationType? typeFilter = string.IsNullOrEmpty(this.m_typeFilter)
+                ? null
+                : Enum.Parse<ServiceLocationType>(this.m_typeFilter);
+
+            bool? activeFilter = this.m_activeFilter switch
+            {
+                "true" => true,
+                "false" => false,
+                _ => null
+            };
+
+            var result = await this.LocationService.GetLocationsAsync(
+                this.m_selectedShopId,
+                this.m_searchTerm,
+                typeFilter,
+                activeFilter,
+                page: 1,
+                pageSize: 100);
+
+            this.m_locations = result.ItemCollection;
+        }
+        catch (Exception ex)
+        {
+            this.ShowError($"Error loading data: {ex.Message}");
+        }
+        finally
+        {
+            this.m_loading = false;
+        }
+    }
+
+    private void OnSearchKeyUp(KeyboardEventArgs e)
+    {
+        this.m_debounceTimer?.Stop();
+        this.m_debounceTimer?.Dispose();
+        this.m_debounceTimer = new System.Timers.Timer(300);
+        this.m_debounceTimer.Elapsed += async (_, _) =>
+        {
+            this.m_debounceTimer?.Stop();
+            await this.InvokeAsync(async () =>
+            {
+                await this.LoadDataAsync();
+                this.StateHasChanged();
+            });
+        };
+        this.m_debounceTimer.Start();
+    }
+
+    private async Task OpenAddDialog()
+    {
+        var location = new ServiceLocation
+        {
+            ShopId = this.m_selectedShopId,
+            IsActive = true,
+            PickupAvailable = true,
+            DropoffAvailable = true
+        };
+
+        var result = await this.DialogService
+            .Create<ServiceLocationDialog>("Add Service Location")
+            .WithParameter(x => x.Entity, location)
+            .WithParameter(x => x.IsNew, true)
+            .Large()
+            .ShowDialogAsync();
+
+        if (!result.Cancelled)
+        {
+            await this.LoadDataAsync();
+            this.ShowSuccess("Location added successfully");
+        }
+    }
+
+    private async Task OpenEditDialog(ServiceLocation location)
+    {
+        var result = await this.DialogService
+            .Create<ServiceLocationDialog>("Edit Service Location")
+            .WithParameter(x => x.Entity, location.Clone())
+            .WithParameter(x => x.IsNew, false)
+            .Large()
+            .ShowDialogAsync();
+
+        if (!result.Cancelled)
+        {
+            await this.LoadDataAsync();
+            this.ShowSuccess("Location updated successfully");
+        }
+    }
+
+    private async Task ToggleActiveStatus(ServiceLocation location)
+    {
+        var action = location.IsActive ? "deactivate" : "activate";
+        if (!await this.DialogService.ConfirmYesNoAsync(
+            $"Are you sure you want to {action} '{location.Name}'?",
+            $"Confirm {action}"))
+            return;
+
+        var result = await this.LocationService.SetActiveStatusAsync(
+            location.ServiceLocationId, !location.IsActive, this.UserName);
+
+        if (result.Success)
+        {
+            await this.LoadDataAsync();
+            this.ShowSuccess($"Location {action}d successfully");
+        }
+        else
+        {
+            this.ShowError($"Failed to {action} location: {result.Message}");
+        }
+    }
+
+    private async Task ConfirmDelete(ServiceLocation location)
+    {
+        if (!await this.ConfirmDeleteAsync(location.Name ?? "this location"))
+            return;
+
+        var deleteResult = await this.LocationService.DeleteLocationAsync(location, this.UserName);
+        if (deleteResult.Success)
+        {
+            await this.LoadDataAsync();
+            this.ShowSuccess("Location deleted successfully");
+        }
+        else
+        {
+            this.ShowError($"Delete failed: {deleteResult.Message}");
+        }
+    }
+
+    private async Task CreateDefaultLocations()
+    {
+        var shop = this.m_shops.FirstOrDefault(s => s.ShopId == this.m_selectedShopId);
+        if (shop == null) return;
+
+        var result = await this.LocationService.CreateDefaultLocationsAsync(
+            this.m_selectedShopId, shop.Location, this.UserName);
+
+        if (result.Success)
+        {
+            await this.LoadDataAsync();
+            this.ShowSuccess("Default locations created");
+        }
+        else
+        {
+            this.ShowError($"Failed to create defaults: {result.Message}");
+        }
+    }
+
+    private static string GetLocationTypeIcon(ServiceLocationType type) => type switch
+    {
+        ServiceLocationType.Shop => "ti ti-building-store",
+        ServiceLocationType.Airport => "ti ti-plane",
+        ServiceLocationType.Hotel => "ti ti-building",
+        ServiceLocationType.FerryTerminal => "ti ti-sailboat",
+        ServiceLocationType.BusStation => "ti ti-bus",
+        _ => "ti ti-map-pin"
+    };
+
+    private static string GetLocationTypeColor(ServiceLocationType type) => type switch
+    {
+        ServiceLocationType.Shop => "bg-primary-lt",
+        ServiceLocationType.Airport => "bg-azure-lt",
+        ServiceLocationType.Hotel => "bg-purple-lt",
+        ServiceLocationType.FerryTerminal => "bg-teal-lt",
+        ServiceLocationType.BusStation => "bg-orange-lt",
+        _ => "bg-secondary-lt"
+    };
+
+    private static string GetLocationTypeBadgeClass(ServiceLocationType type) => type switch
+    {
+        ServiceLocationType.Shop => "bg-primary-lt text-primary",
+        ServiceLocationType.Airport => "bg-azure-lt text-azure",
+        ServiceLocationType.Hotel => "bg-purple-lt text-purple",
+        ServiceLocationType.FerryTerminal => "bg-teal-lt text-teal",
+        ServiceLocationType.BusStation => "bg-orange-lt text-orange",
+        _ => "bg-secondary-lt text-secondary"
+    };
+
+    public void Dispose()
+    {
+        this.m_debounceTimer?.Dispose();
+    }
+}
