@@ -27,13 +27,13 @@ Multi-language support patterns for MotoRent (English/Thai) using localized base
 
 ```razor
 @* Component-specific strings *@<MudText>@Localizer["PageTitle"]</MudText>
-<MudTextField Label="@Localizer["LicensePlate"]" />
+<Component Label="@Localizer["LicensePlate"]" />
 
-@* Shared strings (buttons, common labels) *@<MudButton>@CommonLocalizer["Save"]</MudButton>
-<MudButton>@CommonLocalizer["Cancel"]</MudButton>
-<MudButton>@CommonLocalizer["Delete"]</MudButton>
+@* Shared strings (buttons, common labels) *@<Component>@CommonLocalizer["Save"]</Component>
+<Component>@CommonLocalizer["Cancel"]</Component>
+<Component>@CommonLocalizer["Delete"]</Component>
 
-@* With parameters *@<MudText>@Localizer["WelcomeMessage", userName, shopName]</MudText>
+@* With parameters *@<Component>@Localizer["WelcomeMessage", userName, shopName]</Component>
 ```
 
 ## Naming Conventions for Keys
@@ -143,7 +143,6 @@ app.UseRequestLocalization();
 
 ## Component Examples
 
-### Page with Localization
 
 ```razor
 @page "/motorbikes"
@@ -178,7 +177,6 @@ app.UseRequestLocalization();
 }
 ```
 
-### Dialog with Localization
 
 ```razor
 @inherits LocalizedDialogBase<Motorbike, MotorbikeDialog>
@@ -230,16 +228,7 @@ app.UseRequestLocalization();
 
 ## Culture Switching
 
-```razor
-@inject NavigationManager Navigation
-
-<MudSelect T="string" Value="@m_currentCulture" ValueChanged="OnCultureChanged"
-           Label="Language" Style="width: 120px;">
-    <MudSelectItem Value="@("en")">English</MudSelectItem>
-    <MudSelectItem Value="@("th")">ไทย</MudSelectItem>
-</MudSelect>
-
-@code {
+```csharp
     private string m_currentCulture = CultureInfo.CurrentCulture.TwoLetterISOLanguageName;
 
     private void OnCultureChanged(string culture)
@@ -250,10 +239,10 @@ app.UseRequestLocalization();
             $"Culture/Set?culture={Uri.EscapeDataString(culture)}&redirectUri={Uri.EscapeDataString(uri)}",
             forceLoad: true);
     }
-}
+
 ```
 
 ## Source
 - Base classes: `src/MotoRent.Client/Controls/`
 - Resources: `src/MotoRent.Client/Resources/`
-- From: `D:\project\work\rx-erp` localization patterns
+- From: `..\rx-erp` localization patterns
