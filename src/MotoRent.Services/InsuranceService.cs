@@ -59,6 +59,15 @@ public class InsuranceService(RentalDataContext context)
 
     public async Task<SubmitOperation> DeleteInsuranceAsync(Insurance insurance, string username)
     {
+        // Check if any rentals use this insurance
+        var rentalCount = await this.Context.GetCountAsync(
+            this.Context.Rentals.Where(r => r.InsuranceId == insurance.InsuranceId));
+        if (rentalCount > 0)
+        {
+            return SubmitOperation.CreateFailure(
+                $"Cannot delete insurance with {rentalCount} rental(s). Please deactivate instead.");
+        }
+
         using var session = this.Context.OpenSession(username);
         session.Delete(insurance);
         return await session.SubmitChanges("Delete");

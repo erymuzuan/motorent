@@ -62,6 +62,15 @@ public class AccessoryService(RentalDataContext context)
 
     public async Task<SubmitOperation> DeleteAccessoryAsync(Accessory accessory, string username)
     {
+        // Check if any rentals use this accessory
+        var rentalCount = await this.Context.GetCountAsync(
+            this.Context.RentalAccessories.Where(ra => ra.AccessoryId == accessory.AccessoryId));
+        if (rentalCount > 0)
+        {
+            return SubmitOperation.CreateFailure(
+                $"Cannot delete accessory with {rentalCount} rental usage(s). Please remove from inventory instead.");
+        }
+
         using var session = this.Context.OpenSession(username);
         session.Delete(accessory);
         return await session.SubmitChanges("Delete");
