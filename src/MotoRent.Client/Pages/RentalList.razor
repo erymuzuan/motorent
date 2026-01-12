@@ -9,164 +9,689 @@
 
 <MotoRentPageTitle>Rentals</MotoRentPageTitle>
 
-<TablerHeader Title="Rentals" PreTitle="Operations">
-    <a href="/rentals/checkin" class="btn btn-primary">
-        <i class="ti ti-plus me-1"></i>
-        New Check-In
-    </a>
-</TablerHeader>
+<div class="rentals-page">
+    @* Hero Header with Quick Stats *@
+    <div class="rental-header mb-4">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+            <div>
+                <h1 class="page-title mb-1">Rentals</h1>
+                <p class="text-secondary mb-0">Manage your active rentals</p>
+            </div>
+            <a href="/rentals/checkin" class="btn btn-primary btn-lg rounded-pill px-4 shadow-sm">
+                <i class="ti ti-plus me-2"></i>
+                New Check-In
+            </a>
+        </div>
+    </div>
 
-<div class="card mb-3">
-    <div class="card-body">
-        <div class="row g-3 align-items-center">
-            <div class="col-auto">
-                <div class="btn-group" role="group">
-                    <button type="button" class="btn @(m_activeTab == "Active" ? "btn-primary" : "btn-outline-primary")"
-                            @onclick="@(() => SetActiveTab("Active"))">
-                        Active @(m_statusCounts.GetValueOrDefault("Active", 0))
-                    </button>
-                    <button type="button" class="btn @(m_activeTab == "DueToday" ? "btn-warning" : (m_dueTodayCount > 0 ? "btn-outline-warning" : "btn-outline-secondary"))"
-                            @onclick="@(() => SetActiveTab("DueToday"))">
-                        Due Today @m_dueTodayCount
-                    </button>
-                    <button type="button" class="btn @(m_activeTab == "Overdue" ? "btn-danger" : (m_overdueCount > 0 ? "btn-outline-danger" : "btn-outline-secondary"))"
-                            @onclick="@(() => SetActiveTab("Overdue"))">
-                        Overdue @m_overdueCount
-                    </button>
-                    <button type="button" class="btn @(m_activeTab == "Completed" ? "btn-success" : "btn-outline-success")"
-                            @onclick="@(() => SetActiveTab("Completed"))">
-                        Completed @(m_statusCounts.GetValueOrDefault("Completed", 0))
-                    </button>
-                    <button type="button" class="btn @(m_activeTab == "All" ? "btn-dark" : "btn-outline-dark")"
-                            @onclick="@(() => SetActiveTab("All"))">
-                        All
-                    </button>
+    @* Quick Stats Cards *@
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="stat-card stat-card-active @(m_activeTab == "Active" ? "active" : "")" @onclick="@(() => SetActiveTab("Active"))">
+                <div class="stat-icon">
+                    <i class="ti ti-motorbike"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value">@(m_statusCounts.GetValueOrDefault("Active", 0))</div>
+                    <div class="stat-label">Active</div>
                 </div>
             </div>
-            <div class="col-auto ms-auto">
-                <div class="input-icon">
-                    <span class="input-icon-addon">
-                        <i class="ti ti-search"></i>
-                    </span>
-                    <input type="text" class="form-control" placeholder="Search renter, vehicle..."
-                           @bind="m_searchTerm" @bind:event="oninput" @onkeyup="OnSearchKeyUp" />
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card stat-card-warning @(m_activeTab == "DueToday" ? "active" : "") @(m_dueTodayCount > 0 ? "has-items" : "")" @onclick="@(() => SetActiveTab("DueToday"))">
+                <div class="stat-icon">
+                    <i class="ti ti-clock-hour-4"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value">@m_dueTodayCount</div>
+                    <div class="stat-label">Due Today</div>
+                </div>
+                @if (m_dueTodayCount > 0)
+                {
+                    <span class="stat-badge pulse"></span>
+                }
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card stat-card-danger @(m_activeTab == "Overdue" ? "active" : "") @(m_overdueCount > 0 ? "has-items" : "")" @onclick="@(() => SetActiveTab("Overdue"))">
+                <div class="stat-icon">
+                    <i class="ti ti-alert-triangle"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value">@m_overdueCount</div>
+                    <div class="stat-label">Overdue</div>
+                </div>
+                @if (m_overdueCount > 0)
+                {
+                    <span class="stat-badge pulse"></span>
+                }
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card stat-card-success @(m_activeTab == "Completed" ? "active" : "")" @onclick="@(() => SetActiveTab("Completed"))">
+                <div class="stat-icon">
+                    <i class="ti ti-circle-check"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value">@(m_statusCounts.GetValueOrDefault("Completed", 0))</div>
+                    <div class="stat-label">Completed</div>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
-<LoadingSkeleton Loading="@m_loading" Mode="LoadingSkeleton.PlaceholderMode.Table" Rows="10" Columns="7">
-    <div class="card">
-        <div class="table-responsive">
-            <table class="table table-vcenter card-table table-striped table-hover">
-                <thead>
-                    <tr>
-                        <th>Renter</th>
-                        <th>Vehicle</th>
-                        <th>Period</th>
-                        <th>Days</th>
-                        <th>Amount</th>
-                        <th>Status</th>
-                        <th class="w-1">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @if (m_filteredRentals.Count == 0)
-                    {
-                        <tr>
-                            <td colspan="7" class="text-center text-secondary py-4">
-                                <i class="ti ti-car mb-2" style="font-size: 2rem;"></i>
-                                <div>No rentals found</div>
-                                <a href="/rentals/checkin" class="btn btn-outline-primary btn-sm mt-2">
-                                    Create New Check-In
-                                </a>
-                            </td>
-                        </tr>
-                    }
-                    else
-                    {
-                        @foreach (var rental in m_filteredRentals)
-                        {
-                            <tr class="cursor-pointer" @onclick="@(() => ViewRentalDetails(rental))">
-                                <td>
-                                    <div class="fw-bold">@rental.RenterName</div>
-                                    <small class="text-secondary">@rental.RenterPhone</small>
-                                </td>
-                                <td>
-                                    <div>@rental.VehicleBrandModel</div>
-                                    <small class="text-primary">@rental.VehicleLicensePlate</small>
-                                </td>
-                                <td>
-                                    <div>@FormatDate(rental.Rental.StartDate)</div>
-                                    <small class="text-secondary">to @FormatDate(rental.Rental.ExpectedEndDate)</small>
-                                </td>
-                                <td>@rental.Days</td>
-                                <td class="text-primary fw-bold">@FormatCurrency(rental.Rental.TotalAmount)</td>
-                                <td>
-                                    <div class="d-flex flex-column gap-1">
-                                        <span class="badge @GetStatusBadgeClass(rental.Rental.Status)">
-                                            @rental.Rental.Status
-                                        </span>
-                                        @if (rental.IsOverdue)
-                                        {
-                                            <span class="badge bg-danger-lt">@rental.DaysOverdue day(s) overdue</span>
-                                        }
-                                        else if (rental.IsDueToday)
-                                        {
-                                            <span class="badge bg-warning-lt">Due Today</span>
-                                        }
-                                    </div>
-                                </td>
-                                <td @onclick:stopPropagation="true">
-                                    <div class="btn-list flex-nowrap">
-                                        @if (rental.Rental.Status == "Active")
-                                        {
-                                            <button type="button" class="btn btn-icon btn-ghost-success" title="Check Out"
-                                                    @onclick="@(() => OpenCheckOutDialog(rental))">
-                                                <i class="ti ti-logout"></i>
-                                            </button>
-                                            <button type="button" class="btn btn-icon btn-ghost-warning" title="Extend"
-                                                    @onclick="@(() => ExtendRental(rental))">
-                                                <i class="ti ti-calendar-plus"></i>
-                                            </button>
-                                        }
-                                        @if (rental.Rental.Status == "Reserved")
-                                        {
-                                            <button type="button" class="btn btn-icon btn-ghost-primary" title="Start Rental"
-                                                    @onclick="@(() => StartRental(rental))">
-                                                <i class="ti ti-player-play"></i>
-                                            </button>
-                                        }
-                                        @if (rental.Rental.Status is "Active" or "Reserved")
-                                        {
-                                            <button type="button" class="btn btn-icon btn-ghost-danger" title="Cancel"
-                                                    @onclick="@(() => CancelRental(rental))">
-                                                <i class="ti ti-x"></i>
-                                            </button>
-                                        }
-                                        <button type="button" class="btn btn-icon btn-ghost-primary" title="View Invoice"
-                                                @onclick="@(() => ViewInvoice(rental))">
-                                            <i class="ti ti-receipt"></i>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        }
-                    }
-                </tbody>
-            </table>
+    @* Search Bar *@
+    <div class="search-container mb-4">
+        <div class="input-group input-group-lg shadow-sm rounded-pill overflow-hidden">
+            <span class="input-group-text bg-white border-0 ps-4">
+                <i class="ti ti-search text-secondary"></i>
+            </span>
+            <input type="text" class="form-control border-0 py-3"
+                   placeholder="Search by renter name, vehicle, or plate..."
+                   @bind="m_searchTerm" @bind:event="oninput" @onkeyup="OnSearchKeyUp" />
+            @if (!string.IsNullOrEmpty(m_searchTerm))
+            {
+                <button class="btn btn-link text-secondary border-0" @onclick="ClearSearch">
+                    <i class="ti ti-x"></i>
+                </button>
+            }
         </div>
-        @if (m_filteredRentals.Count > 0)
+    </div>
+
+    @* Filter Pills *@
+    <div class="filter-pills-container mb-4">
+        <div class="filter-pills d-flex gap-2 overflow-auto pb-2">
+            <button type="button" class="filter-pill @(m_activeTab == "All" ? "active" : "")"
+                    @onclick="@(() => SetActiveTab("All"))">
+                <span>All</span>
+            </button>
+            <button type="button" class="filter-pill filter-pill-primary @(m_activeTab == "Active" ? "active" : "")"
+                    @onclick="@(() => SetActiveTab("Active"))">
+                <i class="ti ti-motorbike me-1"></i>
+                <span>Active</span>
+            </button>
+            <button type="button" class="filter-pill filter-pill-warning @(m_activeTab == "DueToday" ? "active" : "")"
+                    @onclick="@(() => SetActiveTab("DueToday"))">
+                <i class="ti ti-clock me-1"></i>
+                <span>Due Today</span>
+            </button>
+            <button type="button" class="filter-pill filter-pill-danger @(m_activeTab == "Overdue" ? "active" : "")"
+                    @onclick="@(() => SetActiveTab("Overdue"))">
+                <i class="ti ti-alert-triangle me-1"></i>
+                <span>Overdue</span>
+            </button>
+            <button type="button" class="filter-pill filter-pill-success @(m_activeTab == "Completed" ? "active" : "")"
+                    @onclick="@(() => SetActiveTab("Completed"))">
+                <i class="ti ti-check me-1"></i>
+                <span>Completed</span>
+            </button>
+        </div>
+    </div>
+
+    @* Rental Cards *@
+    <LoadingSkeleton Loading="@m_loading" Mode="LoadingSkeleton.PlaceholderMode.Card" Rows="4">
+        @if (m_filteredRentals.Count == 0)
         {
-            <div class="card-footer d-flex align-items-center">
-                <p class="m-0 text-secondary">
-                    Showing <strong>@m_filteredRentals.Count</strong> rentals
-                </p>
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <i class="ti ti-motorbike"></i>
+                </div>
+                <h3>No rentals found</h3>
+                <p class="text-secondary">@GetEmptyStateMessage()</p>
+                <a href="/rentals/checkin" class="btn btn-primary btn-lg rounded-pill px-4 mt-3">
+                    <i class="ti ti-plus me-2"></i>
+                    Create New Check-In
+                </a>
             </div>
         }
-    </div>
-</LoadingSkeleton>
+        else
+        {
+            <div class="rental-cards">
+                @foreach (var rental in m_filteredRentals)
+                {
+                    <div class="rental-card @GetCardClass(rental)" @onclick="@(() => ViewRentalDetails(rental))">
+                        @* Status Ribbon *@
+                        <div class="rental-status-ribbon @GetStatusRibbonClass(rental)">
+                            @if (rental.IsOverdue)
+                            {
+                                <i class="ti ti-alert-triangle me-1"></i>
+                                <span>@rental.DaysOverdue day(s) overdue</span>
+                            }
+                            else if (rental.IsDueToday)
+                            {
+                                <i class="ti ti-clock me-1"></i>
+                                <span>Due Today</span>
+                            }
+                            else
+                            {
+                                <span>@rental.Rental.Status</span>
+                            }
+                        </div>
+
+                        <div class="rental-card-body">
+                            @* Main Info Row *@
+                            <div class="rental-main-info">
+                                <div class="renter-info">
+                                    <div class="renter-avatar">
+                                        <i class="ti ti-user"></i>
+                                    </div>
+                                    <div class="renter-details">
+                                        <h4 class="renter-name">@rental.RenterName</h4>
+                                        <span class="renter-phone">
+                                            <i class="ti ti-phone me-1"></i>
+                                            @rental.RenterPhone
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="rental-amount">
+                                    <span class="amount-value">@FormatCurrency(rental.Rental.TotalAmount)</span>
+                                    <span class="amount-label">@rental.Days days</span>
+                                </div>
+                            </div>
+
+                            @* Vehicle Info *@
+                            <div class="vehicle-info">
+                                <div class="vehicle-icon">
+                                    <i class="ti ti-motorbike"></i>
+                                </div>
+                                <div class="vehicle-details">
+                                    <span class="vehicle-model">@rental.VehicleBrandModel</span>
+                                    <span class="vehicle-plate">@rental.VehicleLicensePlate</span>
+                                </div>
+                            </div>
+
+                            @* Period Info *@
+                            <div class="period-info">
+                                <div class="period-dates">
+                                    <div class="period-start">
+                                        <span class="period-label">From</span>
+                                        <span class="period-value">@FormatDateShort(rental.Rental.StartDate)</span>
+                                    </div>
+                                    <div class="period-arrow">
+                                        <i class="ti ti-arrow-right"></i>
+                                    </div>
+                                    <div class="period-end">
+                                        <span class="period-label">To</span>
+                                        <span class="period-value">@FormatDateShort(rental.Rental.ExpectedEndDate)</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        @* Action Buttons *@
+                        <div class="rental-card-actions" @onclick:stopPropagation="true">
+                            @if (rental.Rental.Status == "Active")
+                            {
+                                <button type="button" class="action-btn action-btn-checkout"
+                                        @onclick="@(() => OpenCheckOutDialog(rental))">
+                                    <i class="ti ti-logout"></i>
+                                    <span>Check Out</span>
+                                </button>
+                                <button type="button" class="action-btn action-btn-extend"
+                                        @onclick="@(() => ExtendRental(rental))">
+                                    <i class="ti ti-calendar-plus"></i>
+                                    <span>Extend</span>
+                                </button>
+                                <button type="button" class="action-btn action-btn-cancel"
+                                        @onclick="@(() => CancelRental(rental))">
+                                    <i class="ti ti-x"></i>
+                                    <span>Cancel</span>
+                                </button>
+                            }
+                            @if (rental.Rental.Status == "Reserved")
+                            {
+                                <button type="button" class="action-btn action-btn-start"
+                                        @onclick="@(() => StartRental(rental))">
+                                    <i class="ti ti-player-play"></i>
+                                    <span>Start</span>
+                                </button>
+                                <button type="button" class="action-btn action-btn-cancel"
+                                        @onclick="@(() => CancelRental(rental))">
+                                    <i class="ti ti-x"></i>
+                                    <span>Cancel</span>
+                                </button>
+                            }
+                            <button type="button" class="action-btn action-btn-invoice"
+                                    @onclick="@(() => ViewInvoice(rental))">
+                                <i class="ti ti-receipt"></i>
+                                <span>Invoice</span>
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div class="results-count text-center text-secondary py-3">
+                Showing <strong>@m_filteredRentals.Count</strong> rentals
+            </div>
+        }
+    </LoadingSkeleton>
+</div>
+
+<style>
+    .rentals-page {
+        padding: 1rem;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    .page-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--tblr-body-color);
+    }
+
+    /* Stat Cards */
+    .stat-card {
+        background: var(--tblr-bg-surface);
+        border-radius: 16px;
+        padding: 1.25rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        box-shadow: var(--tblr-box-shadow-card);
+        border: 2px solid var(--tblr-border-color);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--tblr-box-shadow);
+    }
+
+    .stat-card.active {
+        border-color: currentColor;
+    }
+
+    .stat-card-active { color: var(--tblr-primary); }
+    .stat-card-active .stat-icon { background: rgba(var(--tblr-primary-rgb), 0.15); }
+    .stat-card-warning { color: var(--tblr-warning); }
+    .stat-card-warning .stat-icon { background: rgba(var(--tblr-warning-rgb), 0.15); }
+    .stat-card-danger { color: var(--tblr-danger); }
+    .stat-card-danger .stat-icon { background: rgba(var(--tblr-danger-rgb), 0.15); }
+    .stat-card-success { color: var(--tblr-success); }
+    .stat-card-success .stat-icon { background: rgba(var(--tblr-success-rgb), 0.15); }
+
+    .stat-card.has-items {
+        animation: attention-pulse 2s infinite;
+    }
+
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+    }
+
+    .stat-value {
+        font-size: 1.75rem;
+        font-weight: 700;
+        line-height: 1;
+    }
+
+    .stat-label {
+        font-size: 0.875rem;
+        opacity: 0.8;
+    }
+
+    .stat-badge {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        width: 12px;
+        height: 12px;
+        background: currentColor;
+        border-radius: 50%;
+    }
+
+    .stat-badge.pulse {
+        animation: pulse-ring 1.5s infinite;
+    }
+
+    @@keyframes pulse-ring {
+        0% { box-shadow: 0 0 0 0 currentColor; opacity: 1; }
+        100% { box-shadow: 0 0 0 12px currentColor; opacity: 0; }
+    }
+
+    @@keyframes attention-pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.02); }
+    }
+
+    /* Search Container */
+    .search-container .input-group {
+        background: var(--tblr-bg-surface);
+    }
+
+    .search-container .form-control:focus {
+        box-shadow: none;
+    }
+
+    /* Filter Pills */
+    .filter-pills-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+
+    .filter-pills-container::-webkit-scrollbar {
+        display: none;
+    }
+
+    .filter-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.625rem 1.25rem;
+        border-radius: 50px;
+        border: 2px solid var(--tblr-border-color);
+        background: var(--tblr-bg-surface);
+        color: var(--tblr-body-color);
+        font-weight: 500;
+        font-size: 0.9rem;
+        white-space: nowrap;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+
+    .filter-pill:hover {
+        border-color: var(--tblr-border-color-active);
+        background: var(--tblr-bg-surface-secondary);
+    }
+
+    .filter-pill.active {
+        background: var(--tblr-primary);
+        border-color: var(--tblr-primary);
+        color: white;
+    }
+
+    .filter-pill-primary.active { background: var(--tblr-primary); border-color: var(--tblr-primary); }
+    .filter-pill-warning.active { background: var(--tblr-warning); border-color: var(--tblr-warning); color: #000; }
+    .filter-pill-danger.active { background: var(--tblr-danger); border-color: var(--tblr-danger); }
+    .filter-pill-success.active { background: var(--tblr-success); border-color: var(--tblr-success); }
+
+    /* Rental Cards */
+    .rental-cards {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .rental-card {
+        background: var(--tblr-bg-surface);
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: var(--tblr-box-shadow-card);
+        transition: all 0.2s ease;
+        cursor: pointer;
+        border: 2px solid var(--tblr-border-color);
+    }
+
+    .rental-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--tblr-box-shadow);
+    }
+
+    .rental-card.card-overdue {
+        border-color: var(--tblr-danger);
+    }
+
+    .rental-card.card-due-today {
+        border-color: var(--tblr-warning);
+    }
+
+    /* Status Ribbon */
+    .rental-status-ribbon {
+        padding: 0.5rem 1rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .ribbon-active { background: var(--tblr-primary); color: white; }
+    .ribbon-overdue { background: var(--tblr-danger); color: white; }
+    .ribbon-due-today { background: var(--tblr-warning); color: #000; }
+    .ribbon-completed { background: var(--tblr-success); color: white; }
+    .ribbon-reserved { background: var(--tblr-info); color: white; }
+    .ribbon-cancelled { background: var(--tblr-secondary); color: white; }
+
+    .rental-card-body {
+        padding: 1.25rem;
+    }
+
+    /* Main Info */
+    .rental-main-info {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+    }
+
+    .renter-info {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .renter-avatar {
+        width: 48px;
+        height: 48px;
+        background: linear-gradient(135deg, var(--tblr-primary), var(--tblr-azure));
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.25rem;
+    }
+
+    .renter-name {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin: 0 0 0.25rem 0;
+    }
+
+    .renter-phone {
+        font-size: 0.85rem;
+        color: var(--tblr-secondary);
+    }
+
+    .rental-amount {
+        text-align: right;
+    }
+
+    .amount-value {
+        display: block;
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--tblr-primary);
+    }
+
+    .amount-label {
+        font-size: 0.8rem;
+        color: var(--tblr-secondary);
+    }
+
+    /* Vehicle Info */
+    .vehicle-info {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.875rem;
+        background: var(--tblr-bg-surface-secondary);
+        border-radius: 12px;
+        margin-bottom: 1rem;
+    }
+
+    .vehicle-icon {
+        width: 40px;
+        height: 40px;
+        background: var(--tblr-bg-surface);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--tblr-primary);
+        font-size: 1.25rem;
+        box-shadow: var(--tblr-box-shadow-card);
+    }
+
+    .vehicle-model {
+        display: block;
+        font-weight: 600;
+    }
+
+    .vehicle-plate {
+        display: block;
+        font-size: 0.85rem;
+        color: var(--tblr-primary);
+        font-weight: 500;
+    }
+
+    /* Period Info */
+    .period-dates {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+    }
+
+    .period-start, .period-end {
+        text-align: center;
+        flex: 1;
+    }
+
+    .period-label {
+        display: block;
+        font-size: 0.75rem;
+        color: var(--tblr-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .period-value {
+        display: block;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+    .period-arrow {
+        color: var(--tblr-secondary);
+    }
+
+    /* Action Buttons */
+    .rental-card-actions {
+        display: flex;
+        border-top: 1px solid var(--tblr-border-color);
+        background: var(--tblr-bg-surface-secondary);
+    }
+
+    .action-btn {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem 0.5rem;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        gap: 0.25rem;
+    }
+
+    .action-btn:not(:last-child) {
+        border-right: 1px solid var(--tblr-border-color);
+    }
+
+    .action-btn:hover {
+        background: var(--tblr-bg-surface-tertiary, rgba(0,0,0,0.05));
+    }
+
+    .action-btn i {
+        font-size: 1.25rem;
+    }
+
+    .action-btn span {
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--tblr-body-color);
+    }
+
+    .action-btn-checkout { color: var(--tblr-success); }
+    .action-btn-checkout:hover { background: rgba(var(--tblr-success-rgb), 0.15); }
+    .action-btn-extend { color: var(--tblr-warning); }
+    .action-btn-extend:hover { background: rgba(var(--tblr-warning-rgb), 0.15); }
+    .action-btn-cancel { color: var(--tblr-danger); }
+    .action-btn-cancel:hover { background: rgba(var(--tblr-danger-rgb), 0.15); }
+    .action-btn-start { color: var(--tblr-primary); }
+    .action-btn-start:hover { background: rgba(var(--tblr-primary-rgb), 0.15); }
+    .action-btn-invoice { color: var(--tblr-secondary); }
+    .action-btn-invoice:hover { background: rgba(var(--tblr-secondary-rgb), 0.15); }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+    }
+
+    .empty-state-icon {
+        width: 100px;
+        height: 100px;
+        background: var(--tblr-bg-surface-secondary);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1.5rem;
+        font-size: 2.5rem;
+        color: var(--tblr-secondary);
+    }
+
+    .empty-state h3 {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: var(--tblr-body-color);
+    }
+
+    /* Responsive */
+    @@media (max-width: 768px) {
+        .rentals-page {
+            padding: 0.75rem;
+        }
+
+        .stat-card {
+            padding: 1rem;
+        }
+
+        .stat-icon {
+            width: 40px;
+            height: 40px;
+            font-size: 1.25rem;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+        }
+
+        .rental-card-body {
+            padding: 1rem;
+        }
+
+        .action-btn {
+            padding: 0.75rem 0.25rem;
+        }
+    }
+</style>
 
 @code {
     private List<RentalViewModel> m_rentals = [];
@@ -277,6 +802,12 @@
         this.ApplyFilter();
     }
 
+    private void ClearSearch()
+    {
+        this.m_searchTerm = null;
+        this.ApplyFilter();
+    }
+
     private void OnSearchKeyUp(KeyboardEventArgs e)
     {
         this.m_debounceTimer?.Stop();
@@ -379,14 +910,40 @@
         }
     }
 
-    private static string GetStatusBadgeClass(string? status) => status switch
+    private static string GetCardClass(RentalViewModel rental)
     {
-        "Active" => "bg-primary",
-        "Reserved" => "bg-info",
-        "Completed" => "bg-success",
-        "Cancelled" => "bg-danger",
-        _ => "bg-secondary"
-    };
+        if (rental.IsOverdue) return "card-overdue";
+        if (rental.IsDueToday) return "card-due-today";
+        return "";
+    }
+
+    private static string GetStatusRibbonClass(RentalViewModel rental)
+    {
+        if (rental.IsOverdue) return "ribbon-overdue";
+        if (rental.IsDueToday) return "ribbon-due-today";
+        return rental.Rental.Status switch
+        {
+            "Active" => "ribbon-active",
+            "Completed" => "ribbon-completed",
+            "Reserved" => "ribbon-reserved",
+            "Cancelled" => "ribbon-cancelled",
+            _ => "ribbon-active"
+        };
+    }
+
+    private string GetEmptyStateMessage()
+    {
+        return this.m_activeTab switch
+        {
+            "Active" => "No active rentals at the moment",
+            "DueToday" => "No rentals due today",
+            "Overdue" => "Great! No overdue rentals",
+            "Completed" => "No completed rentals yet",
+            _ => "No rentals match your criteria"
+        };
+    }
+
+    private string FormatDateShort(DateTimeOffset date) => date.ToString("MMM d");
 
     public void Dispose()
     {

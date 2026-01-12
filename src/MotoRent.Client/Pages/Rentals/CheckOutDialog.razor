@@ -9,101 +9,135 @@
 @inject ShopService ShopService
 @inject MaintenanceService MaintenanceService
 
-<div class="modal-body">
+<div class="checkout-dialog">
     @if (m_loading)
     {
-        <div class="progress progress-sm mb-3">
-            <div class="progress-bar progress-bar-indeterminate"></div>
+        <div class="loading-overlay">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
         </div>
     }
 
-    <ul class="nav nav-tabs mb-3" role="tablist">
-        <li class="nav-item" role="presentation">
-            <button type="button" class="nav-link @(m_activeTab == 0 ? "active" : "")"
-                    @onclick="@(() => m_activeTab = 0)">
-                <i class="ti ti-clipboard-check me-1"></i>
-                Return Details
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button type="button" class="nav-link @(m_activeTab == 1 ? "active" : "")"
-                    @onclick="@(() => m_activeTab = 1)">
-                <i class="ti ti-alert-triangle me-1"></i>
-                Damage Assessment
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button type="button" class="nav-link @(m_activeTab == 2 ? "active" : "")"
-                    @onclick="@(() => m_activeTab = 2)">
-                <i class="ti ti-calculator me-1"></i>
-                Final Settlement
-            </button>
-        </li>
-    </ul>
+    @* Step Progress Indicator *@
+    <div class="step-progress">
+        <div class="step-item @(m_activeTab >= 0 ? "active" : "") @(m_activeTab > 0 ? "completed" : "")"
+             @onclick="@(() => m_activeTab = 0)">
+            <div class="step-circle">
+                @if (m_activeTab > 0)
+                {
+                    <i class="ti ti-check"></i>
+                }
+                else
+                {
+                    <span>1</span>
+                }
+            </div>
+            <div class="step-label">Return</div>
+        </div>
+        <div class="step-connector @(m_activeTab > 0 ? "active" : "")"></div>
+        <div class="step-item @(m_activeTab >= 1 ? "active" : "") @(m_activeTab > 1 ? "completed" : "")"
+             @onclick="@(() => m_activeTab = 1)">
+            <div class="step-circle">
+                @if (m_activeTab > 1)
+                {
+                    <i class="ti ti-check"></i>
+                }
+                else
+                {
+                    <span>2</span>
+                }
+            </div>
+            <div class="step-label">Damage</div>
+        </div>
+        <div class="step-connector @(m_activeTab > 1 ? "active" : "")"></div>
+        <div class="step-item @(m_activeTab >= 2 ? "active" : "")">
+            <div class="step-circle">
+                <span>3</span>
+            </div>
+            <div class="step-label">Settle</div>
+        </div>
+    </div>
 
-    <div class="tab-content">
+    <div class="step-content">
         @* Return Details Tab *@
-        <div class="tab-pane fade @(m_activeTab == 0 ? "show active" : "")">
-            <h4 class="mb-3">Rental Information</h4>
-
-            <div class="row g-3 mb-3">
-                <div class="col-6">
-                    <div class="subheader text-secondary">Renter</div>
-                    <div class="fw-bold">@m_renterName</div>
+        <div class="step-pane @(m_activeTab == 0 ? "active" : "")">
+            @* Rental Summary Card *@
+            <div class="summary-card">
+                <div class="summary-row">
+                    <div class="summary-item">
+                        <i class="ti ti-user summary-icon"></i>
+                        <div class="summary-text">
+                            <span class="summary-label">Renter</span>
+                            <span class="summary-value">@m_renterName</span>
+                        </div>
+                    </div>
+                    <div class="summary-item">
+                        <i class="ti ti-motorbike summary-icon"></i>
+                        <div class="summary-text">
+                            <span class="summary-label">@GetVehicleTypeLabel()</span>
+                            <span class="summary-value">@m_vehicleName</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="col-6">
-                    <div class="subheader text-secondary">@GetVehicleTypeLabel()</div>
-                    <div class="fw-bold">@m_vehicleName</div>
-                </div>
-                <div class="col-6">
-                    <div class="subheader text-secondary">Start Date</div>
-                    <div>@FormatDate(Entity.StartDate)</div>
-                </div>
-                <div class="col-6">
-                    <div class="subheader text-secondary">Expected Return</div>
-                    <div>
-                        @if (m_isIntervalRental)
-                        {
-                            @Entity.ExpectedEndDate.ToString("HH:mm")
-                        }
-                        else
-                        {
-                            @FormatDate(Entity.ExpectedEndDate)
-                        }
+                <div class="summary-dates">
+                    <div class="date-box">
+                        <span class="date-label">Started</span>
+                        <span class="date-value">@FormatDate(Entity.StartDate)</span>
+                    </div>
+                    <div class="date-arrow">
+                        <i class="ti ti-arrow-right"></i>
+                    </div>
+                    <div class="date-box">
+                        <span class="date-label">Expected</span>
+                        <span class="date-value">
+                            @if (m_isIntervalRental)
+                            {
+                                @Entity.ExpectedEndDate.ToString("HH:mm")
+                            }
+                            else
+                            {
+                                @FormatDate(Entity.ExpectedEndDate)
+                            }
+                        </span>
                     </div>
                 </div>
             </div>
 
-            <hr class="my-3" />
+            @* Return Form *@
+            <div class="form-section">
+                <h5 class="section-title">
+                    <i class="ti ti-calendar-check"></i>
+                    Return Information
+                </h5>
 
-            <h4 class="mb-3">Return Information</h4>
-
-            <div class="row g-3">
-                @if (!m_isIntervalRental)
-                {
-                    <div class="col-12 col-sm-6">
-                        <label class="form-label">Actual Return Date</label>
-                        <input type="date" class="form-control" @bind="m_actualReturnDate" />
-                    </div>
-                }
-                @if (m_showMileage)
-                {
-                    <div class="col-12 col-sm-6">
-                        <label class="form-label">Mileage at Return (km)</label>
-                        <input type="number" class="form-control" @bind="m_mileageEnd" min="@Entity.MileageStart" />
-                    </div>
-                }
+                <div class="form-grid">
+                    @if (!m_isIntervalRental)
+                    {
+                        <div class="form-group">
+                            <label class="form-label">Actual Return Date</label>
+                            <input type="date" class="form-control form-control-lg" @bind="m_actualReturnDate" />
+                        </div>
+                    }
+                    @if (m_showMileage)
+                    {
+                        <div class="form-group">
+                            <label class="form-label">Mileage at Return (km)</label>
+                            <input type="number" class="form-control form-control-lg" @bind="m_mileageEnd" min="@Entity.MileageStart" />
+                        </div>
+                    }
+                </div>
             </div>
 
             @* Cross-shop return for pooled vehicles *@
             @if (m_isPooledVehicle && m_poolShops.Count > 1)
             {
-                <div class="mt-3">
-                    <label class="form-label">
-                        <i class="ti ti-share me-1 text-purple"></i>
+                <div class="form-section">
+                    <h5 class="section-title">
+                        <i class="ti ti-share text-purple"></i>
                         Return Location
-                    </label>
-                    <select class="form-select" @bind="m_returnToShopId">
+                    </h5>
+                    <select class="form-select form-select-lg" @bind="m_returnToShopId">
                         @foreach (var shop in m_poolShops)
                         {
                             <option value="@shop.ShopId">
@@ -113,298 +147,887 @@
                     </select>
                     @if (m_returnToShopId != this.ShopId)
                     {
-                        <small class="text-purple">
-                            <i class="ti ti-info-circle me-1"></i>
-                            Cross-shop return: Vehicle will be transferred to the selected shop.
-                        </small>
+                        <div class="info-banner info-purple mt-2">
+                            <i class="ti ti-info-circle"></i>
+                            <span>Vehicle will be transferred to the selected shop</span>
+                        </div>
                     }
                 </div>
             }
 
+            @* Status Alerts *@
             @if (m_extraDays > 0 && !m_isIntervalRental)
             {
-                <div class="alert alert-warning mt-3">
-                    <div class="d-flex align-items-center">
-                        <i class="ti ti-alert-triangle me-2"></i>
-                        <div>
-                            <strong>Late Return:</strong> @m_extraDays day(s) past expected return date.
-                            Additional charge: @FormatCurrency(m_extraDays * Entity.RentalRate)
-                        </div>
+                <div class="status-alert status-warning">
+                    <div class="status-icon">
+                        <i class="ti ti-alert-triangle"></i>
+                    </div>
+                    <div class="status-content">
+                        <span class="status-title">Late Return</span>
+                        <span class="status-detail">@m_extraDays day(s) overdue · +@FormatCurrency(m_extraDays * Entity.RentalRate)</span>
                     </div>
                 </div>
             }
             else if (m_extraDays < 0 && !m_isIntervalRental)
             {
-                <div class="alert alert-info mt-3">
-                    <div class="d-flex align-items-center">
-                        <i class="ti ti-info-circle me-2"></i>
-                        <div>
-                            <strong>Early Return:</strong> Returning @Math.Abs(m_extraDays) day(s) early.
-                        </div>
+                <div class="status-alert status-info">
+                    <div class="status-icon">
+                        <i class="ti ti-clock"></i>
+                    </div>
+                    <div class="status-content">
+                        <span class="status-title">Early Return</span>
+                        <span class="status-detail">Returning @Math.Abs(m_extraDays) day(s) early</span>
                     </div>
                 </div>
             }
 
-            <div class="mt-3">
-                <label class="form-label">Return Notes</label>
+            <div class="form-section">
+                <label class="form-label">Return Notes (Optional)</label>
                 <textarea class="form-control" @bind="m_notes" rows="2"
-                          placeholder="Any additional notes about the return..."></textarea>
+                          placeholder="Any notes about the return..."></textarea>
+            </div>
+
+            @* Navigation Buttons *@
+            <div class="step-nav">
+                <div></div>
+                <button type="button" class="btn btn-primary btn-lg" @onclick="@(() => m_activeTab = 1)">
+                    Next: Damage Check
+                    <i class="ti ti-arrow-right ms-2"></i>
+                </button>
             </div>
         </div>
 
         @* Damage Assessment Tab *@
-        <div class="tab-pane fade @(m_activeTab == 1 ? "show active" : "")">
-            <h4 class="mb-3">Condition Assessment</h4>
+        <div class="step-pane @(m_activeTab == 1 ? "active" : "")">
+            <h5 class="section-title mb-3">
+                <i class="ti ti-clipboard-check"></i>
+                Vehicle Condition
+            </h5>
 
-            <div class="form-selectgroup form-selectgroup-boxes d-flex flex-column gap-2 mb-3">
-                <label class="form-selectgroup-item flex-fill">
-                    <input type="radio" name="damage-level" value="None" class="form-selectgroup-input"
-                           checked="@(m_damageLevel == "None")" @onchange="@(() => m_damageLevel = "None")" />
-                    <div class="form-selectgroup-label d-flex align-items-center p-3">
-                        <div class="me-3">
-                            <span class="form-selectgroup-check"></span>
-                        </div>
-                        <div class="d-flex align-items-center">
-                            <i class="ti ti-circle-check text-success fs-2 me-3"></i>
-                            <div>
-                                <div class="fw-bold">No Damage</div>
-                                <small class="text-secondary">Vehicle returned in good condition</small>
-                            </div>
-                        </div>
+            <div class="damage-options">
+                <div class="damage-option @(m_damageLevel == "None" ? "selected" : "") damage-none"
+                     @onclick="@(() => m_damageLevel = "None")">
+                    <div class="damage-icon">
+                        <i class="ti ti-circle-check"></i>
                     </div>
-                </label>
+                    <div class="damage-text">
+                        <span class="damage-title">No Damage</span>
+                        <span class="damage-desc">Good condition</span>
+                    </div>
+                    <div class="damage-check">
+                        @if (m_damageLevel == "None")
+                        {
+                            <i class="ti ti-check"></i>
+                        }
+                    </div>
+                </div>
 
-                <label class="form-selectgroup-item flex-fill">
-                    <input type="radio" name="damage-level" value="Minor" class="form-selectgroup-input"
-                           checked="@(m_damageLevel == "Minor")" @onchange="@(() => m_damageLevel = "Minor")" />
-                    <div class="form-selectgroup-label d-flex align-items-center p-3">
-                        <div class="me-3">
-                            <span class="form-selectgroup-check"></span>
-                        </div>
-                        <div class="d-flex align-items-center">
-                            <i class="ti ti-info-circle text-info fs-2 me-3"></i>
-                            <div>
-                                <div class="fw-bold">Minor Damage</div>
-                                <small class="text-secondary">Small scratches, scuffs - cosmetic only</small>
-                            </div>
-                        </div>
+                <div class="damage-option @(m_damageLevel == "Minor" ? "selected" : "") damage-minor"
+                     @onclick="@(() => m_damageLevel = "Minor")">
+                    <div class="damage-icon">
+                        <i class="ti ti-info-circle"></i>
                     </div>
-                </label>
+                    <div class="damage-text">
+                        <span class="damage-title">Minor</span>
+                        <span class="damage-desc">Scratches, scuffs</span>
+                    </div>
+                    <div class="damage-check">
+                        @if (m_damageLevel == "Minor")
+                        {
+                            <i class="ti ti-check"></i>
+                        }
+                    </div>
+                </div>
 
-                <label class="form-selectgroup-item flex-fill">
-                    <input type="radio" name="damage-level" value="Moderate" class="form-selectgroup-input"
-                           checked="@(m_damageLevel == "Moderate")" @onchange="@(() => m_damageLevel = "Moderate")" />
-                    <div class="form-selectgroup-label d-flex align-items-center p-3">
-                        <div class="me-3">
-                            <span class="form-selectgroup-check"></span>
-                        </div>
-                        <div class="d-flex align-items-center">
-                            <i class="ti ti-alert-triangle text-warning fs-2 me-3"></i>
-                            <div>
-                                <div class="fw-bold">Moderate Damage</div>
-                                <small class="text-secondary">Dents, broken parts, requires repair</small>
-                            </div>
-                        </div>
+                <div class="damage-option @(m_damageLevel == "Moderate" ? "selected" : "") damage-moderate"
+                     @onclick="@(() => m_damageLevel = "Moderate")">
+                    <div class="damage-icon">
+                        <i class="ti ti-alert-triangle"></i>
                     </div>
-                </label>
+                    <div class="damage-text">
+                        <span class="damage-title">Moderate</span>
+                        <span class="damage-desc">Dents, repairs needed</span>
+                    </div>
+                    <div class="damage-check">
+                        @if (m_damageLevel == "Moderate")
+                        {
+                            <i class="ti ti-check"></i>
+                        }
+                    </div>
+                </div>
 
-                <label class="form-selectgroup-item flex-fill">
-                    <input type="radio" name="damage-level" value="Major" class="form-selectgroup-input"
-                           checked="@(m_damageLevel == "Major")" @onchange="@(() => m_damageLevel = "Major")" />
-                    <div class="form-selectgroup-label d-flex align-items-center p-3">
-                        <div class="me-3">
-                            <span class="form-selectgroup-check"></span>
-                        </div>
-                        <div class="d-flex align-items-center">
-                            <i class="ti ti-alert-octagon text-danger fs-2 me-3"></i>
-                            <div>
-                                <div class="fw-bold">Major Damage</div>
-                                <small class="text-secondary">Significant damage, major repairs needed</small>
-                            </div>
-                        </div>
+                <div class="damage-option @(m_damageLevel == "Major" ? "selected" : "") damage-major"
+                     @onclick="@(() => m_damageLevel = "Major")">
+                    <div class="damage-icon">
+                        <i class="ti ti-alert-octagon"></i>
                     </div>
-                </label>
+                    <div class="damage-text">
+                        <span class="damage-title">Major</span>
+                        <span class="damage-desc">Significant damage</span>
+                    </div>
+                    <div class="damage-check">
+                        @if (m_damageLevel == "Major")
+                        {
+                            <i class="ti ti-check"></i>
+                        }
+                    </div>
+                </div>
             </div>
 
             @if (m_damageLevel != "None")
             {
-                <hr class="my-3" />
+                <div class="damage-details-section">
+                    <h5 class="section-title">
+                        <i class="ti ti-file-description"></i>
+                        Damage Details
+                    </h5>
 
-                <h4 class="mb-3">Damage Details</h4>
+                    <div class="form-group">
+                        <label class="form-label">Describe the damage</label>
+                        <textarea class="form-control" @bind="m_damageDescription" rows="3"
+                                  placeholder="What damage was found?"></textarea>
+                    </div>
 
-                <div class="mb-3">
-                    <label class="form-label">Damage Description</label>
-                    <textarea class="form-control" @bind="m_damageDescription" rows="3"
-                              placeholder="Describe the damage in detail..."></textarea>
-                </div>
+                    <div class="form-group">
+                        <label class="form-label">Estimated Repair Cost</label>
+                        <div class="cost-input">
+                            <span class="cost-currency">฿</span>
+                            <input type="number" class="form-control form-control-lg" @bind="m_damageEstimate"
+                                   min="0" max="100000" step="100" placeholder="0" />
+                        </div>
+                    </div>
 
-                <div class="mb-3">
-                    <label class="form-label">Estimated Repair Cost (THB)</label>
-                    <div class="input-group">
-                        <span class="input-group-text">฿</span>
-                        <input type="number" class="form-control" @bind="m_damageEstimate"
-                               min="0" max="100000" step="100" />
+                    <h5 class="section-title mt-4">
+                        <i class="ti ti-camera"></i>
+                        Damage Photos
+                    </h5>
+                    <p class="text-secondary small mb-3">
+                        Take photos for documentation
+                    </p>
+
+                    <DamagePhotoUpload @ref="m_damagePhotoUpload"
+                                       RentalId="@Entity.RentalId"
+                                       PhotoType="After"
+                                       MaxPhotos="5"
+                                       OnPhotosChanged="OnDamagePhotosChanged" />
+
+                    <div class="info-banner info-blue mt-3">
+                        <i class="ti ti-info-circle"></i>
+                        <span>Amount will be deducted from deposit</span>
                     </div>
                 </div>
-
-                <hr class="my-3" />
-
-                <h4 class="mb-3">
-                    <i class="ti ti-photo me-2"></i>
-                    Damage Photos
-                </h4>
-                <p class="text-secondary mb-3">
-                    Take photos of the damage for documentation. These will be attached to the damage report.
-                </p>
-
-                <DamagePhotoUpload @ref="m_damagePhotoUpload"
-                                   RentalId="@Entity.RentalId"
-                                   PhotoType="After"
-                                   MaxPhotos="5"
-                                   OnPhotosChanged="OnDamagePhotosChanged" />
-
-                <div class="alert alert-info mt-3">
-                    <i class="ti ti-info-circle me-2"></i>
-                    This amount will be deducted from the deposit if applicable.
-                </div>
             }
+
+            @* Navigation Buttons *@
+            <div class="step-nav">
+                <button type="button" class="btn btn-ghost-secondary btn-lg" @onclick="@(() => m_activeTab = 0)">
+                    <i class="ti ti-arrow-left me-2"></i>
+                    Back
+                </button>
+                <button type="button" class="btn btn-primary btn-lg" @onclick="@(() => m_activeTab = 2)">
+                    Next: Settlement
+                    <i class="ti ti-arrow-right ms-2"></i>
+                </button>
+            </div>
         </div>
 
         @* Final Settlement Tab *@
-        <div class="tab-pane fade @(m_activeTab == 2 ? "show active" : "")">
-            <h4 class="mb-3">Charges Summary</h4>
+        <div class="step-pane @(m_activeTab == 2 ? "active" : "")">
+            @* Charges Summary *@
+            <div class="settlement-card">
+                <h5 class="settlement-title">Charges Summary</h5>
 
-            <div class="card mb-3">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between mb-2">
-                        <span class="small">Original Rental</span>
-                        <span class="small">@FormatCurrency(Entity.TotalAmount) (Paid)</span>
+                <div class="settlement-row">
+                    <span>Original Rental</span>
+                    <span class="text-secondary">@FormatCurrency(Entity.TotalAmount) (Paid)</span>
+                </div>
+
+                @if (m_extraDays > 0)
+                {
+                    <div class="settlement-row text-warning">
+                        <span>Extra Days (@m_extraDays)</span>
+                        <span>+@FormatCurrency(m_extraDaysCharge)</span>
                     </div>
+                }
 
-                    @if (m_extraDays > 0)
-                    {
-                        <div class="d-flex justify-content-between mb-2">
-                            <span class="small text-warning">Extra Days (@m_extraDays)</span>
-                            <span class="small text-warning">+@FormatCurrency(m_extraDaysCharge)</span>
-                        </div>
-                    }
-
-                    @if (m_damageLevel != "None" && m_damageEstimate > 0)
-                    {
-                        <div class="d-flex justify-content-between mb-2">
-                            <span class="small text-danger">Damage (@m_damageLevel)</span>
-                            <span class="small text-danger">+@FormatCurrency(m_damageEstimate)</span>
-                        </div>
-                    }
-
-                    <hr class="my-2" />
-
-                    <div class="d-flex justify-content-between">
-                        <span class="fw-bold">Additional Due</span>
-                        <span class="fw-bold text-primary">@FormatCurrency(m_totalAdditional)</span>
+                @if (m_damageLevel != "None" && m_damageEstimate > 0)
+                {
+                    <div class="settlement-row text-danger">
+                        <span>Damage (@m_damageLevel)</span>
+                        <span>+@FormatCurrency(m_damageEstimate)</span>
                     </div>
+                }
+
+                <div class="settlement-total">
+                    <span>Additional Due</span>
+                    <span class="total-value">@FormatCurrency(m_totalAdditional)</span>
                 </div>
             </div>
 
-            <h4 class="mb-3">Deposit Settlement</h4>
+            @* Deposit Settlement *@
+            <div class="settlement-card">
+                <h5 class="settlement-title">Deposit Settlement</h5>
 
-            <div class="card mb-3">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between mb-2">
-                        <span class="small">Deposit Held</span>
-                        <span class="small">@FormatCurrency(m_depositAmount)</span>
-                    </div>
-
-                    @if (m_totalAdditional > 0)
-                    {
-                        <div class="d-flex justify-content-between mb-2">
-                            <span class="small">Deductions</span>
-                            <span class="small text-danger">-@FormatCurrency(Math.Min(m_totalAdditional, m_depositAmount))</span>
-                        </div>
-                    }
-
-                    <hr class="my-2" />
-
-                    <div class="d-flex justify-content-between">
-                        <span class="fw-bold">Refund Amount</span>
-                        <span class="h4 text-success mb-0">@FormatCurrency(m_refundAmount)</span>
-                    </div>
-
-                    @if (m_totalAdditional > m_depositAmount)
-                    {
-                        <div class="alert alert-warning mt-3 mb-0">
-                            <i class="ti ti-alert-triangle me-2"></i>
-                            Additional payment of @FormatCurrency(m_totalAdditional - m_depositAmount) is required from the renter.
-                        </div>
-                    }
+                <div class="settlement-row">
+                    <span>Deposit Held</span>
+                    <span>@FormatCurrency(m_depositAmount)</span>
                 </div>
+
+                @if (m_totalAdditional > 0)
+                {
+                    <div class="settlement-row text-danger">
+                        <span>Deductions</span>
+                        <span>-@FormatCurrency(Math.Min(m_totalAdditional, m_depositAmount))</span>
+                    </div>
+                }
+
+                <div class="refund-amount">
+                    <span class="refund-label">Refund Amount</span>
+                    <span class="refund-value @(m_refundAmount > 0 ? "text-success" : "")">
+                        @FormatCurrency(m_refundAmount)
+                    </span>
+                </div>
+
+                @if (m_totalAdditional > m_depositAmount)
+                {
+                    <div class="status-alert status-warning mt-3">
+                        <div class="status-icon">
+                            <i class="ti ti-alert-triangle"></i>
+                        </div>
+                        <div class="status-content">
+                            <span class="status-title">Payment Required</span>
+                            <span class="status-detail">Collect @FormatCurrency(m_totalAdditional - m_depositAmount) from renter</span>
+                        </div>
+                    </div>
+                }
             </div>
 
-            <h4 class="mb-3">Refund Method</h4>
+            @* Refund Method *@
+            <div class="form-section">
+                <h5 class="section-title">
+                    <i class="ti ti-wallet"></i>
+                    Refund Method
+                </h5>
 
-            <div class="btn-group w-100 mb-3" role="group">
-                <input type="radio" class="btn-check" name="refund-method" id="refund-cash" value="Cash"
-                       checked="@(m_refundMethod == "Cash")" @onchange="@(() => m_refundMethod = "Cash")" />
-                <label class="btn btn-outline-primary" for="refund-cash">Cash</label>
+                <div class="refund-methods">
+                    <div class="refund-method @(m_refundMethod == "Cash" ? "selected" : "")"
+                         @onclick="@(() => m_refundMethod = "Cash")">
+                        <i class="ti ti-cash"></i>
+                        <span>Cash</span>
+                    </div>
+                    <div class="refund-method @(m_refundMethod == "Card" ? "selected" : "")"
+                         @onclick="@(() => m_refundMethod = "Card")">
+                        <i class="ti ti-credit-card"></i>
+                        <span>Card</span>
+                    </div>
+                    <div class="refund-method @(m_refundMethod == "BankTransfer" ? "selected" : "")"
+                         @onclick="@(() => m_refundMethod = "BankTransfer")">
+                        <i class="ti ti-building-bank"></i>
+                        <span>Bank</span>
+                    </div>
+                </div>
 
-                <input type="radio" class="btn-check" name="refund-method" id="refund-card" value="Card"
-                       checked="@(m_refundMethod == "Card")" @onchange="@(() => m_refundMethod = "Card")" />
-                <label class="btn btn-outline-primary" for="refund-card">Return to Card</label>
-
-                <input type="radio" class="btn-check" name="refund-method" id="refund-bank" value="BankTransfer"
-                       checked="@(m_refundMethod == "BankTransfer")" @onchange="@(() => m_refundMethod = "BankTransfer")" />
-                <label class="btn btn-outline-primary" for="refund-bank">Bank Transfer</label>
+                <label class="confirm-check">
+                    <input type="checkbox" class="form-check-input" @bind="m_refundProcessed" />
+                    <span>@GetRefundConfirmationText()</span>
+                </label>
             </div>
-
-            <label class="form-check">
-                <input type="checkbox" class="form-check-input" @bind="m_refundProcessed" />
-                <span class="form-check-label">@GetRefundConfirmationText()</span>
-            </label>
 
             @if (m_hasMaintenanceWarning)
             {
-                <div class="alert alert-warning mt-3">
-                    <div class="d-flex align-items-start">
-                        <i class="ti ti-tool me-2 mt-1"></i>
-                        <div class="flex-grow-1">
-                            <strong>Maintenance Notice</strong>
-                            <div class="mt-1">
-                                This vehicle has
-                                @if (m_maintenanceOverdueCount > 0)
-                                {
-                                    <span class="badge bg-danger mx-1">@m_maintenanceOverdueCount overdue</span>
-                                }
-                                @if (m_maintenanceDueSoonCount > 0)
-                                {
-                                    <span class="badge bg-warning text-dark mx-1">@m_maintenanceDueSoonCount due soon</span>
-                                }
-                                service(s). Consider scheduling maintenance after this check-out.
-                            </div>
-                            <label class="form-check mt-2 mb-0">
-                                <input type="checkbox" class="form-check-input" @bind="m_acknowledgeMaintenanceWarning" />
-                                <span class="form-check-label">I acknowledge and will proceed with checkout</span>
-                            </label>
-                        </div>
+                <div class="status-alert status-warning">
+                    <div class="status-icon">
+                        <i class="ti ti-tool"></i>
+                    </div>
+                    <div class="status-content">
+                        <span class="status-title">Maintenance Notice</span>
+                        <span class="status-detail">
+                            @if (m_maintenanceOverdueCount > 0)
+                            {
+                                <span class="badge bg-danger me-1">@m_maintenanceOverdueCount overdue</span>
+                            }
+                            @if (m_maintenanceDueSoonCount > 0)
+                            {
+                                <span class="badge bg-warning text-dark">@m_maintenanceDueSoonCount due soon</span>
+                            }
+                        </span>
+                        <label class="confirm-check mt-2">
+                            <input type="checkbox" class="form-check-input" @bind="m_acknowledgeMaintenanceWarning" />
+                            <span>I acknowledge this</span>
+                        </label>
                     </div>
                 </div>
             }
+
+            @* Navigation Buttons *@
+            <div class="step-nav">
+                <button type="button" class="btn btn-ghost-secondary btn-lg" @onclick="@(() => m_activeTab = 1)">
+                    <i class="ti ti-arrow-left me-2"></i>
+                    Back
+                </button>
+                <button type="button" class="btn btn-success btn-lg" disabled="@(!CanComplete)" @onclick="CompleteCheckOut">
+                    @if (Saving)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                    }
+                    <i class="ti ti-check me-1"></i>
+                    Complete
+                </button>
+            </div>
         </div>
     </div>
 </div>
 
-<div class="modal-footer">
-    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
-        Cancel
-    </button>
-    <button type="button" class="btn btn-success" disabled="@(!CanComplete)" @onclick="CompleteCheckOut">
-        @if (Saving)
-        {
-            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+<style>
+    .checkout-dialog {
+        position: relative;
+        padding: 0;
+    }
+
+    .loading-overlay {
+        position: absolute;
+        inset: 0;
+        background: var(--tblr-bg-surface-tertiary);
+        opacity: 0.9;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+    }
+
+    /* Step Progress */
+    .step-progress {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem 1.5rem;
+        background: var(--tblr-bg-surface-secondary);
+        border-bottom: 1px solid var(--tblr-border-color);
+    }
+
+    .step-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        cursor: pointer;
+    }
+
+    .step-circle {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: var(--tblr-bg-surface);
+        border: 2px solid var(--tblr-border-color);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        color: var(--tblr-secondary-color);
+        transition: all 0.3s ease;
+    }
+
+    .step-item.active .step-circle {
+        background: var(--tblr-primary);
+        border-color: var(--tblr-primary);
+        color: white;
+    }
+
+    .step-item.completed .step-circle {
+        background: var(--tblr-success);
+        border-color: var(--tblr-success);
+        color: white;
+    }
+
+    .step-label {
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--tblr-secondary-color);
+        margin-top: 0.5rem;
+    }
+
+    .step-item.active .step-label {
+        color: var(--tblr-primary);
+    }
+
+    .step-connector {
+        width: 50px;
+        height: 2px;
+        background: var(--tblr-border-color);
+        margin: 0 0.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .step-connector.active {
+        background: var(--tblr-success);
+    }
+
+    /* Step Content */
+    .step-content {
+        padding: 1.25rem;
+    }
+
+    .step-pane {
+        display: none;
+    }
+
+    .step-pane.active {
+        display: block;
+        animation: fadeIn 0.3s ease;
+    }
+
+    @@keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Summary Card */
+    .summary-card {
+        background: var(--tblr-bg-surface-secondary);
+        border: 1px solid var(--tblr-border-color);
+        border-radius: 16px;
+        padding: 1rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .summary-row {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .summary-item {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .summary-icon {
+        width: 36px;
+        height: 36px;
+        background: var(--tblr-bg-surface);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--tblr-primary);
+        font-size: 1.1rem;
+        box-shadow: var(--tblr-box-shadow-card);
+    }
+
+    .summary-text {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .summary-label {
+        font-size: 0.7rem;
+        color: var(--tblr-secondary-color);
+        text-transform: uppercase;
+    }
+
+    .summary-value {
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+
+    .summary-dates {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: var(--tblr-bg-surface);
+        border-radius: 12px;
+        padding: 0.75rem;
+    }
+
+    .date-box {
+        text-align: center;
+        flex: 1;
+    }
+
+    .date-label {
+        display: block;
+        font-size: 0.7rem;
+        color: var(--tblr-secondary-color);
+        text-transform: uppercase;
+    }
+
+    .date-value {
+        display: block;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+    .date-arrow {
+        color: var(--tblr-secondary-color);
+    }
+
+    /* Form Section */
+    .form-section {
+        margin-bottom: 1.25rem;
+    }
+
+    .section-title {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--tblr-body-color);
+        margin-bottom: 0.75rem;
+    }
+
+    .section-title i {
+        color: var(--tblr-primary);
+    }
+
+    .form-grid {
+        display: grid;
+        gap: 1rem;
+    }
+
+    .form-group {
+        margin-bottom: 1rem;
+    }
+
+    .form-label {
+        font-size: 0.85rem;
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Status Alerts */
+    .status-alert {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.875rem;
+        border-radius: 12px;
+        margin-bottom: 1rem;
+    }
+
+    .status-alert.status-warning {
+        background: rgba(var(--tblr-warning-rgb), 0.15);
+    }
+
+    .status-alert.status-info {
+        background: rgba(var(--tblr-info-rgb), 0.15);
+    }
+
+    .status-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+    }
+
+    .status-warning .status-icon {
+        background: #f59e0b;
+        color: white;
+    }
+
+    .status-info .status-icon {
+        background: #3b82f6;
+        color: white;
+    }
+
+    .status-content {
+        flex: 1;
+    }
+
+    .status-title {
+        display: block;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+    .status-detail {
+        display: block;
+        font-size: 0.8rem;
+        color: var(--tblr-secondary-color);
+    }
+
+    /* Info Banners */
+    .info-banner {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem;
+        border-radius: 10px;
+        font-size: 0.8rem;
+    }
+
+    .info-banner.info-purple {
+        background: rgba(var(--tblr-purple-rgb), 0.15);
+        color: var(--tblr-purple);
+    }
+
+    .info-banner.info-blue {
+        background: rgba(var(--tblr-info-rgb), 0.15);
+        color: var(--tblr-info);
+    }
+
+    /* Damage Options */
+    .damage-options {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+
+    .damage-option {
+        background: var(--tblr-bg-surface);
+        border: 2px solid var(--tblr-border-color);
+        border-radius: 12px;
+        padding: 1rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        position: relative;
+    }
+
+    .damage-option:hover {
+        border-color: var(--tblr-border-color-active);
+        background: var(--tblr-bg-surface-secondary);
+    }
+
+    .damage-option.selected {
+        border-width: 2px;
+    }
+
+    .damage-none.selected { border-color: var(--tblr-success); background: rgba(var(--tblr-success-rgb), 0.1); }
+    .damage-minor.selected { border-color: var(--tblr-info); background: rgba(var(--tblr-info-rgb), 0.1); }
+    .damage-moderate.selected { border-color: var(--tblr-warning); background: rgba(var(--tblr-warning-rgb), 0.1); }
+    .damage-major.selected { border-color: var(--tblr-danger); background: rgba(var(--tblr-danger-rgb), 0.1); }
+
+    .damage-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .damage-none .damage-icon { background: rgba(var(--tblr-success-rgb), 0.15); color: var(--tblr-success); }
+    .damage-minor .damage-icon { background: rgba(var(--tblr-info-rgb), 0.15); color: var(--tblr-info); }
+    .damage-moderate .damage-icon { background: rgba(var(--tblr-warning-rgb), 0.15); color: var(--tblr-warning); }
+    .damage-major .damage-icon { background: rgba(var(--tblr-danger-rgb), 0.15); color: var(--tblr-danger); }
+
+    .damage-title {
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+    .damage-desc {
+        font-size: 0.75rem;
+        color: var(--tblr-secondary-color);
+    }
+
+    .damage-check {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .damage-option.selected .damage-check {
+        background: var(--tblr-primary);
+        color: white;
+    }
+
+    .damage-details-section {
+        margin-top: 1.25rem;
+        padding-top: 1.25rem;
+        border-top: 1px solid var(--tblr-border-color);
+    }
+
+    .cost-input {
+        position: relative;
+    }
+
+    .cost-currency {
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 1.25rem;
+        color: var(--tblr-secondary-color);
+    }
+
+    .cost-input input {
+        padding-left: 2.5rem;
+    }
+
+    /* Settlement Cards */
+    .settlement-card {
+        background: var(--tblr-bg-surface);
+        border: 1px solid var(--tblr-border-color);
+        border-radius: 16px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .settlement-title {
+        font-size: 0.9rem;
+        font-weight: 600;
+        margin-bottom: 0.75rem;
+        color: var(--tblr-body-color);
+    }
+
+    .settlement-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        font-size: 0.85rem;
+    }
+
+    .settlement-total {
+        display: flex;
+        justify-content: space-between;
+        padding-top: 0.75rem;
+        margin-top: 0.5rem;
+        border-top: 1px solid var(--tblr-border-color);
+        font-weight: 600;
+    }
+
+    .total-value {
+        color: var(--tblr-primary);
+    }
+
+    .refund-amount {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-top: 0.75rem;
+        margin-top: 0.5rem;
+        border-top: 1px solid var(--tblr-border-color);
+    }
+
+    .refund-label {
+        font-weight: 600;
+    }
+
+    .refund-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+
+    /* Refund Methods */
+    .refund-methods {
+        display: flex;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+
+    .refund-method {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 1rem;
+        background: var(--tblr-bg-surface);
+        border: 2px solid var(--tblr-border-color);
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .refund-method:hover {
+        border-color: var(--tblr-border-color-active);
+    }
+
+    .refund-method.selected {
+        border-color: var(--tblr-primary);
+        background: rgba(var(--tblr-primary-rgb), 0.1);
+    }
+
+    .refund-method i {
+        font-size: 1.5rem;
+        color: var(--tblr-secondary-color);
+    }
+
+    .refund-method.selected i {
+        color: var(--tblr-primary);
+    }
+
+    .refund-method span {
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+
+    .confirm-check {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        padding: 1rem;
+        background: var(--tblr-bg-surface-secondary);
+        border-radius: 12px;
+        cursor: pointer;
+    }
+
+    .confirm-check span {
+        font-size: 0.85rem;
+        line-height: 1.4;
+    }
+
+    /* Step Navigation */
+    .step-nav {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 1.5rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--tblr-border-color);
+    }
+
+    .step-nav .btn-lg {
+        padding: 0.75rem 1.5rem;
+        font-weight: 600;
+    }
+
+    /* Responsive */
+    @@media (max-width: 480px) {
+        .step-content {
+            padding: 1rem;
         }
-        <i class="ti ti-logout me-1"></i>
-        Complete Check-Out
-    </button>
-</div>
+
+        .damage-options {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .damage-option {
+            padding: 0.75rem;
+        }
+
+        .damage-icon {
+            width: 40px;
+            height: 40px;
+            font-size: 1.25rem;
+        }
+
+        .refund-methods {
+            flex-direction: row;
+        }
+
+        .refund-method {
+            padding: 0.75rem;
+        }
+    }
+</style>
 
 @code {
     private bool m_loading = true;
