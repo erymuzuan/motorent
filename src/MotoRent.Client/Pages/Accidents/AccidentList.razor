@@ -1,0 +1,353 @@
+@page "/accidents"
+@using Microsoft.AspNetCore.Authorization
+@using MotoRent.Domain.Entities
+@attribute [Authorize(Policy = "RequireTenantStaff")]
+@inherits LocalizedComponentBase<AccidentList>
+@inject AccidentService AccidentService
+@inject VehicleService VehicleService
+
+<MotoRentPageTitle>Accidents</MotoRentPageTitle>
+
+<TablerHeader Title="@Localizer["AccidentManagement"]" PreTitle="@Localizer["VehicleIncidents"]">
+    <button type="button" class="btn btn-primary" @onclick="OpenReportDialog">
+        <i class="ti ti-alert-triangle me-1"></i>
+        @Localizer["ReportAccident"]
+    </button>
+</TablerHeader>
+
+<div class="row g-3">
+    <!-- Left Column: Filters -->
+    <div class="col-lg-4">
+        <div class="card mb-3">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="ti ti-filter me-2"></i>@Localizer["Filters"]
+                </h3>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">@Localizer["Status"]</label>
+                    <select class="form-select" @bind="m_statusFilter" @bind:after="ApplyFilter">
+                        <option value="">@Localizer["AllStatuses"]</option>
+                        @foreach (var status in Enum.GetValues<AccidentStatus>())
+                        {
+                            <option value="@status">@status</option>
+                        }
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">@Localizer["Severity"]</label>
+                    <select class="form-select" @bind="m_severityFilter" @bind:after="ApplyFilter">
+                        <option value="">@Localizer["AllSeverities"]</option>
+                        @foreach (var severity in Enum.GetValues<AccidentSeverity>())
+                        {
+                            <option value="@severity">@severity</option>
+                        }
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">@Localizer["Search"]</label>
+                    <div class="input-icon">
+                        <span class="input-icon-addon">
+                            <i class="ti ti-search"></i>
+                        </span>
+                        <input type="text" class="form-control" placeholder="@Localizer["SearchPlaceholder"]"
+                               @bind="m_searchTerm" @bind:event="oninput" @onkeyup="OnSearchKeyUp" />
+                    </div>
+                </div>
+                <button type="button" class="btn btn-ghost-secondary w-100" @onclick="ClearFilters">
+                    <i class="ti ti-x me-1"></i>
+                    @Localizer["ClearFilters"]
+                </button>
+            </div>
+        </div>
+
+        <!-- Statistics Summary Card -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="ti ti-chart-bar me-2"></i>@Localizer["Summary"]
+                </h3>
+            </div>
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col-6">
+                        <div class="card card-sm bg-warning-lt">
+                            <div class="card-body p-2 text-center">
+                                <div class="h1 mb-0">@m_statistics.ReportedCount</div>
+                                <small class="text-warning">@Localizer["Reported"]</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="card card-sm bg-primary-lt">
+                            <div class="card-body p-2 text-center">
+                                <div class="h1 mb-0">@m_statistics.InProgressCount</div>
+                                <small class="text-primary">@Localizer["InProgress"]</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="card card-sm bg-success-lt">
+                            <div class="card-body p-2 text-center">
+                                <div class="h1 mb-0">@m_statistics.ResolvedCount</div>
+                                <small class="text-success">@Localizer["Resolved"]</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="card card-sm bg-dark-lt">
+                            <div class="card-body p-2 text-center">
+                                <div class="h1 mb-0">@m_statistics.TotalAccidents</div>
+                                <small class="text-dark">@Localizer["Total"]</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                @if (m_statistics.TotalEstimatedCost > 0)
+                {
+                    <hr class="my-3" />
+                    <div class="datagrid">
+                        <div class="datagrid-item">
+                            <div class="datagrid-title">@Localizer["EstimatedCost"]</div>
+                            <div class="datagrid-content text-warning">@FormatCurrency(m_statistics.TotalEstimatedCost)</div>
+                        </div>
+                        <div class="datagrid-item">
+                            <div class="datagrid-title">@Localizer["ActualCost"]</div>
+                            <div class="datagrid-content text-danger">@FormatCurrency(m_statistics.TotalActualCost)</div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Table -->
+    <div class="col-lg-8">
+        <LoadingSkeleton Loading="@m_loading" Mode="LoadingSkeleton.PlaceholderMode.Table" Rows="10" Columns="6">
+            <div class="card">
+                <div class="table-responsive">
+                    <table class="table table-vcenter card-table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>@Localizer["Reference"]</th>
+                                <th>@Localizer["Date"]</th>
+                                <th>@Localizer["Vehicle"]</th>
+                                <th>@Localizer["Severity"]</th>
+                                <th>@Localizer["Status"]</th>
+                                <th class="text-end">@Localizer["EstCost"]</th>
+                                <th class="w-1"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (m_filteredAccidents.Count == 0)
+                            {
+                                <tr>
+                                    <td colspan="7" class="text-center text-secondary py-4">
+                                        <i class="ti ti-alert-triangle mb-2" style="font-size: 2rem;"></i>
+                                        <div>@Localizer["NoAccidentsFound"]</div>
+                                    </td>
+                                </tr>
+                            }
+                            else
+                            {
+                                @foreach (var accident in m_filteredAccidents)
+                                {
+                                    <tr class="cursor-pointer" @onclick="@(() => ViewDetails(accident))">
+                                        <td>
+                                            <strong class="text-primary">@accident.ReferenceNo</strong>
+                                            <div class="small text-secondary text-truncate" style="max-width: 150px;">@accident.Title</div>
+                                        </td>
+                                        <td>
+                                            <div>@FormatDate(accident.AccidentDate)</div>
+                                            <small class="text-secondary">@FormatTime(accident.AccidentDate)</small>
+                                        </td>
+                                        <td>
+                                            <div>@accident.VehicleName</div>
+                                            <small class="text-primary">@accident.VehicleLicensePlate</small>
+                                        </td>
+                                        <td>
+                                            <span class="badge @GetSeverityBadgeClass(accident.Severity)">
+                                                @accident.Severity
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge @GetStatusBadgeClass(accident.Status)">
+                                                @accident.Status
+                                            </span>
+                                            @if (accident.PoliceInvolved)
+                                            {
+                                                <span class="badge bg-dark ms-1" title="Police Involved">
+                                                    <i class="ti ti-shield"></i>
+                                                </span>
+                                            }
+                                            @if (accident.InsuranceClaimFiled)
+                                            {
+                                                <span class="badge bg-info ms-1" title="Insurance Claim Filed">
+                                                    <i class="ti ti-file-dollar"></i>
+                                                </span>
+                                            }
+                                        </td>
+                                        <td class="text-end">
+                                            @if (accident.TotalEstimatedCost > 0)
+                                            {
+                                                <span class="text-warning">@FormatCurrency(accident.TotalEstimatedCost)</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-secondary">-</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <i class="ti ti-chevron-right text-secondary"></i>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                @if (m_filteredAccidents.Count > 0)
+                {
+                    <div class="card-footer d-flex align-items-center">
+                        <p class="m-0 text-secondary">
+                            @Localizer["Showing"] <strong>@m_filteredAccidents.Count</strong> @Localizer["accidents"]
+                        </p>
+                    </div>
+                }
+            </div>
+        </LoadingSkeleton>
+    </div>
+</div>
+
+@code {
+    private List<Accident> m_accidents = [];
+    private List<Accident> m_filteredAccidents = [];
+    private AccidentStatistics m_statistics = new();
+    private bool m_loading = true;
+    private string? m_searchTerm;
+    private string? m_statusFilter;
+    private string? m_severityFilter;
+    private System.Timers.Timer? m_debounceTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        m_loading = true;
+        try
+        {
+            var result = await AccidentService.GetAccidentsAsync(ShopId, page: 1, pageSize: 1000);
+            m_accidents = result.ItemCollection;
+
+            m_statistics = await AccidentService.GetStatisticsAsync(ShopId);
+
+            ApplyFilter();
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error loading data: {ex.Message}");
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private void ApplyFilter()
+    {
+        var filtered = m_accidents.AsEnumerable();
+
+        if (!string.IsNullOrEmpty(m_statusFilter) && Enum.TryParse<AccidentStatus>(m_statusFilter, out var status))
+            filtered = filtered.Where(a => a.Status == status);
+
+        if (!string.IsNullOrEmpty(m_severityFilter) && Enum.TryParse<AccidentSeverity>(m_severityFilter, out var severity))
+            filtered = filtered.Where(a => a.Severity == severity);
+
+        if (!string.IsNullOrWhiteSpace(m_searchTerm))
+        {
+            var term = m_searchTerm.ToLowerInvariant();
+            filtered = filtered.Where(a =>
+                (a.ReferenceNo?.ToLowerInvariant().Contains(term) ?? false) ||
+                (a.Title?.ToLowerInvariant().Contains(term) ?? false) ||
+                (a.VehicleName?.ToLowerInvariant().Contains(term) ?? false) ||
+                (a.VehicleLicensePlate?.ToLowerInvariant().Contains(term) ?? false) ||
+                (a.RenterName?.ToLowerInvariant().Contains(term) ?? false));
+        }
+
+        m_filteredAccidents = filtered.OrderByDescending(a => a.AccidentDate).ToList();
+    }
+
+    private void ClearFilters()
+    {
+        m_statusFilter = null;
+        m_severityFilter = null;
+        m_searchTerm = null;
+        ApplyFilter();
+    }
+
+    private void OnSearchKeyUp(KeyboardEventArgs e)
+    {
+        m_debounceTimer?.Stop();
+        m_debounceTimer?.Dispose();
+        m_debounceTimer = new System.Timers.Timer(300);
+        m_debounceTimer.Elapsed += async (_, _) =>
+        {
+            m_debounceTimer?.Stop();
+            await InvokeAsync(() =>
+            {
+                ApplyFilter();
+                StateHasChanged();
+            });
+        };
+        m_debounceTimer.Start();
+    }
+
+    private void ViewDetails(Accident accident)
+    {
+        NavigationManager.NavigateTo($"/accidents/{accident.AccidentId}");
+    }
+
+    private async Task OpenReportDialog()
+    {
+        var result = await DialogService
+            .Create<ReportAccidentDialog>("Report Accident")
+            .Large()
+            .ShowDialogAsync();
+
+        if (!result.Cancelled)
+        {
+            await LoadDataAsync();
+            ShowSuccess("Accident reported successfully");
+        }
+    }
+
+    private static string GetSeverityBadgeClass(AccidentSeverity severity) => severity switch
+    {
+        AccidentSeverity.Minor => "bg-blue-lt text-blue",
+        AccidentSeverity.Moderate => "bg-orange-lt text-orange",
+        AccidentSeverity.Major => "bg-red-lt text-red",
+        AccidentSeverity.Injury => "bg-pink-lt text-pink",
+        AccidentSeverity.Hospitalization => "bg-purple-lt text-purple",
+        AccidentSeverity.Fatality => "bg-dark text-white",
+        _ => "bg-secondary-lt text-secondary"
+    };
+
+    private static string GetStatusBadgeClass(AccidentStatus status) => status switch
+    {
+        AccidentStatus.Reported => "bg-warning-lt text-warning",
+        AccidentStatus.InProgress => "bg-primary-lt text-primary",
+        AccidentStatus.Resolved => "bg-success-lt text-success",
+        _ => "bg-secondary-lt text-secondary"
+    };
+
+    private string FormatTime(DateTimeOffset date) => date.ToString("HH:mm");
+
+    public void Dispose()
+    {
+        m_debounceTimer?.Dispose();
+    }
+}

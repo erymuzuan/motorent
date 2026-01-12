@@ -27,6 +27,12 @@ public partial class RentalDataContext
     // Third-party owner entities
     public Query<VehicleOwner> VehicleOwners { get; }
     public Query<OwnerPayment> OwnerPayments { get; }
+    // Accident entities
+    public Query<Accident> Accidents { get; }
+    public Query<AccidentParty> AccidentParties { get; }
+    public Query<AccidentDocument> AccidentDocuments { get; }
+    public Query<AccidentCost> AccidentCosts { get; }
+    public Query<AccidentNote> AccidentNotes { get; }
 
     private QueryProvider QueryProvider { get; }
 
@@ -56,6 +62,12 @@ public partial class RentalDataContext
         // Third-party owner entities
         this.VehicleOwners = new Query<VehicleOwner>(provider);
         this.OwnerPayments = new Query<OwnerPayment>(provider);
+        // Accident entities
+        this.Accidents = new Query<Accident>(provider);
+        this.AccidentParties = new Query<AccidentParty>(provider);
+        this.AccidentDocuments = new Query<AccidentDocument>(provider);
+        this.AccidentCosts = new Query<AccidentCost>(provider);
+        this.AccidentNotes = new Query<AccidentNote>(provider);
     }
 
     /// <summary>
