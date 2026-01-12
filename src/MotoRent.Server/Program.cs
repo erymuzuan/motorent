@@ -194,4 +194,4 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
     .AddAdditionalAssemblies(typeof(MotoRent.Client._Imports).Assembly);
 
-app.Run();
+app.Run(); 
