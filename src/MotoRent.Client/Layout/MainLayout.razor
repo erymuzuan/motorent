@@ -1,7 +1,11 @@
 @inherits LayoutComponentBase
 @using MotoRent.Domain.Core
+@using MotoRent.Domain.DataContext
+@using MotoRent.Domain.Storage
 @inject IJSRuntime JS
 @inject IRequestContext RequestContext
+@inject CoreDataContext CoreContext
+@inject IBinaryStore BinaryStore
 
 <ModalContainer />
 <ToastContainer />
@@ -38,9 +42,20 @@
                 <div class="nav-item dropdown">
                     <a href="#" class="nav-link d-flex lh-1 text-reset p-0" data-bs-toggle="dropdown"
                        aria-label="Open user menu">
-                        <span class="avatar avatar-sm bg-primary text-white">
-                            <i class="ti ti-user"></i>
-                        </span>
+                        @if (!string.IsNullOrWhiteSpace(m_userPhotoUrl))
+                        {
+                            <span class="avatar avatar-sm" style="background-image: url('@m_userPhotoUrl')"></span>
+                        }
+                        else if (!string.IsNullOrWhiteSpace(m_userInitials))
+                        {
+                            <span class="avatar avatar-sm bg-primary text-white">@m_userInitials</span>
+                        }
+                        else
+                        {
+                            <span class="avatar avatar-sm bg-primary text-white">
+                                <i class="ti ti-user"></i>
+                            </span>
+                        }
                         <div class="d-none d-xl-block ps-2">
                             <div>@(RequestContext.GetUserName() ?? "User")</div>
                             <div class="mt-1 small text-secondary">@(RequestContext.GetAccountNo() ?? "Not signed in")</div>
@@ -159,13 +174,59 @@
     private bool m_isDarkMode;
     private bool m_showInstallBanner = true;
     private bool m_isInstallable;
+    private string? m_userPhotoUrl;
+    private string? m_userInitials;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUserProfileAsync();
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
+            // Load user profile after first render (when auth is ready)
+            if (string.IsNullOrEmpty(m_userPhotoUrl) && string.IsNullOrEmpty(m_userInitials))
+            {
+                await LoadUserProfileAsync();
+                StateHasChanged();
+            }
             await this.CheckInstallability();
             await this.ApplyTheme();
+        }
+    }
+
+    private async Task LoadUserProfileAsync()
+    {
+        try
+        {
+            var userName = this.RequestContext.GetUserName();
+            if (string.IsNullOrEmpty(userName)) return;
+
+            var user = await this.CoreContext.LoadOneAsync<User>(u => u.UserName == userName);
+            if (user == null) return;
+
+            // Set photo URL if available
+            if (!string.IsNullOrWhiteSpace(user.PhotoStoreId))
+            {
+                m_userPhotoUrl = this.BinaryStore.GetImageUrl(user.PhotoStoreId);
+            }
+
+            // Set initials from full name
+            if (!string.IsNullOrWhiteSpace(user.FullName))
+            {
+                var parts = user.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                m_userInitials = parts.Length >= 2
+                    ? $"{parts[0][0]}{parts[1][0]}".ToUpper()
+                    : user.FullName.Length >= 2
+                        ? user.FullName[..2].ToUpper()
+                        : user.FullName.ToUpper();
+            }
+        }
+        catch
+        {
+            // Silently fail - avatar will show default icon
         }
     }
 
