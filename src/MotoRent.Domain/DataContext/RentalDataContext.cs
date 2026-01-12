@@ -1,17 +1,22 @@
 using System.Linq.Expressions;
 using MotoRent.Domain.Entities;
+using MotoRent.Domain.Messaging;
 
 namespace MotoRent.Domain.DataContext;
 
 public partial class RentalDataContext
 {
     private QueryProvider QueryProvider { get; }
+    private IMessageBroker? MessageBroker { get; }
+    private string? AccountNo { get; }
 
     public RentalDataContext() : this(ObjectBuilder.GetObject<QueryProvider>()) { }
 
-    public RentalDataContext(QueryProvider provider)
+    public RentalDataContext(QueryProvider provider, IMessageBroker? messageBroker = null, string? accountNo = null)
     {
         this.QueryProvider = provider;
+        this.MessageBroker = messageBroker;
+        this.AccountNo = accountNo;
     }
 
     /// <summary>
@@ -127,6 +132,7 @@ public partial class RentalDataContext
     internal async Task<SubmitOperation> SubmitChangesAsync(PersistenceSession session, string operation, string username)
     {
         int inserted = 0, updated = 0, deleted = 0;
+        var processedEntities = new List<(Entity Entity, CrudOperation Crud)>();
 
         try
         {
@@ -135,6 +141,7 @@ public partial class RentalDataContext
             {
                 await DeleteEntityAsync(entity);
                 deleted++;
+                processedEntities.Add((entity, CrudOperation.Deleted));
             }
 
             // Process attached entities (insert or update)
@@ -144,22 +151,56 @@ public partial class RentalDataContext
                 {
                     await InsertEntityAsync(entity, username);
                     inserted++;
+                    processedEntities.Add((entity, CrudOperation.Added));
                 }
                 else
                 {
                     await UpdateEntityAsync(entity, username);
                     updated++;
+                    processedEntities.Add((entity, CrudOperation.Changed));
                 }
             }
 
-            // TODO: Publish message to RabbitMQ if messaging is configured
-            // PublishMessage(session.AttachedCollection, operation);
+            // Publish messages to RabbitMQ if configured
+            if (MessageBroker != null)
+            {
+                foreach (var (entity, crud) in processedEntities)
+                {
+                    await PublishMessageAsync(entity, crud, operation, username);
+                }
+            }
 
             return SubmitOperation.CreateSuccess(inserted, updated, deleted);
         }
         catch (Exception ex)
         {
             return SubmitOperation.CreateFailure($"Submit failed: {ex.Message}", ex);
+        }
+    }
+
+    private async Task PublishMessageAsync(Entity entity, CrudOperation crud, string operation, string username)
+    {
+        if (MessageBroker == null) return;
+
+        try
+        {
+            var message = new BrokeredMessage(entity)
+            {
+                Entity = entity.GetType().Name,
+                EntityId = entity.GetId(),
+                Crud = crud,
+                Operation = operation,
+                Username = username,
+                AccountNo = AccountNo,
+                Id = Guid.NewGuid().ToString("N")
+            };
+
+            await MessageBroker.SendAsync(message);
+        }
+        catch (Exception)
+        {
+            // Log but don't fail the operation if message publishing fails
+            // The entity is already saved, messaging is async notification
         }
     }
 

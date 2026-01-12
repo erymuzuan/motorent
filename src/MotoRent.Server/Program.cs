@@ -80,6 +80,17 @@ builder.Services.AddScoped<ITenantResolverService, TenantResolverService>();
 // Add Binary Storage (AWS S3)
 builder.Services.AddSingleton<IBinaryStore, S3BinaryStore>();
 
+// Add Message Broker (RabbitMQ) - optional, enabled via config
+var rabbitMqEnabled = builder.Configuration.GetValue<bool>("RabbitMQ:Enabled");
+if (rabbitMqEnabled)
+{
+    builder.Services.AddSingleton<MotoRent.Domain.Messaging.IMessageBroker>(sp =>
+    {
+        var logger = sp.GetRequiredService<ILogger<MotoRent.Messaging.RabbitMqMessageBroker>>();
+        return new MotoRent.Messaging.RabbitMqMessageBroker(logger);
+    });
+}
+
 // Add JS Interop services
 builder.Services.AddScoped<FileUploadJsInterop>();
 
