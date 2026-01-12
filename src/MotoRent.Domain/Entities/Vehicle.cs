@@ -202,6 +202,46 @@ public class Vehicle : Entity
 
     #endregion
 
+    #region Third-Party Owner
+
+    /// <summary>
+    /// If this vehicle is owned by a third party, the owner's ID.
+    /// Null for company-owned vehicles.
+    /// </summary>
+    public int? VehicleOwnerId { get; set; }
+
+    /// <summary>
+    /// How the owner is compensated (DailyRate or RevenueShare).
+    /// Only applicable when VehicleOwnerId is set.
+    /// </summary>
+    public OwnerPaymentModel? OwnerPaymentModel { get; set; }
+
+    /// <summary>
+    /// For DailyRate model: fixed amount paid per rental day (e.g., 200 THB).
+    /// </summary>
+    public decimal? OwnerDailyRate { get; set; }
+
+    /// <summary>
+    /// For RevenueShare model: percentage of GROSS rental amount (e.g., 0.30 for 30%).
+    /// Applied only to rental rate, not insurance/accessories/damage/etc.
+    /// </summary>
+    public decimal? OwnerRevenueSharePercent { get; set; }
+
+    /// <summary>
+    /// Denormalized owner name for display purposes.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? VehicleOwnerName { get; set; }
+
+    /// <summary>
+    /// Checks if this vehicle is owned by a third party.
+    /// Uses C# pattern matching: is { VehicleOwnerId: > 0 }
+    /// </summary>
+    [JsonIgnore]
+    public bool IsThirdPartyOwned => this is { VehicleOwnerId: > 0 };
+
+    #endregion
+
     #region Denormalized Fields (for display)
 
     /// <summary>

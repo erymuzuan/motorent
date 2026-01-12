@@ -38,6 +38,9 @@ builder.Services.AddScoped<PaymentService>();
 builder.Services.AddScoped<DepositService>();
 builder.Services.AddScoped<InvoiceService>();
 builder.Services.AddScoped<MaintenanceService>();
+// Third-party owner services
+builder.Services.AddScoped<VehicleOwnerService>();
+builder.Services.AddScoped<OwnerPaymentService>();
 
 // Add HttpClient for external API calls (Gemini)
 builder.Services.AddHttpClient("Gemini", client => { client.Timeout = TimeSpan.FromSeconds(60); });

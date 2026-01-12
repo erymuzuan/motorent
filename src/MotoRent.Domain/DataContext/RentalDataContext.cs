@@ -23,6 +23,9 @@ public partial class RentalDataContext
     public Query<RentalAgreement> RentalAgreements { get; }
     public Query<ServiceType> ServiceTypes { get; }
     public Query<MaintenanceSchedule> MaintenanceSchedules { get; }
+    // Third-party owner entities
+    public Query<VehicleOwner> VehicleOwners { get; }
+    public Query<OwnerPayment> OwnerPayments { get; }
 
     private QueryProvider QueryProvider { get; }
 
@@ -48,6 +51,9 @@ public partial class RentalDataContext
         this.RentalAgreements = new Query<RentalAgreement>(provider);
         this.ServiceTypes = new Query<ServiceType>(provider);
         this.MaintenanceSchedules = new Query<MaintenanceSchedule>(provider);
+        // Third-party owner entities
+        this.VehicleOwners = new Query<VehicleOwner>(provider);
+        this.OwnerPayments = new Query<OwnerPayment>(provider);
     }
 
     /// <summary>
