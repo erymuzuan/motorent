@@ -141,7 +141,6 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
 app.UseRequestLocalization();
 ```
 
-## Component Examples
 
 
 ```razor
