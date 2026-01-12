@@ -18,7 +18,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h4 class="mb-1">Impersonate User</h4>
-            <p class="text-secondary mb-0">Sign in as another user to troubleshoot issues or test functionality</p>
+            <p class="text-secondary mb-0">Click on an organization badge to sign in as that user</p>
         </div>
         <a href="/super-admin/start-page" class="btn btn-ghost-primary">
             <i class="ti ti-arrow-left me-2"></i>
@@ -62,92 +62,97 @@
         </div>
     }
 
-    <!-- Users Table -->
-    <div class="card">
-        <div class="table-responsive">
-            <table class="table table-vcenter card-table table-striped">
-                <thead>
-                    <tr>
-                        <th>Username</th>
-                        <th>Full Name</th>
-                        <th>Email</th>
-                        <th>Provider</th>
-                        <th>Status</th>
-                        <th>Organizations</th>
-                        <th class="w-1"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var user in m_filteredUsers)
-                    {
-                        <tr>
-                            <td>@user.UserName</td>
-                            <td>@user.FullName</td>
-                            <td>@user.Email</td>
-                            <td>
-                                <span class="badge @GetProviderBadgeClass(user.CredentialProvider)">
-                                    @user.CredentialProvider
-                                </span>
-                            </td>
-                            <td>
-                                @if (user.IsLockedOut)
-                                {
-                                    <span class="badge bg-danger">Locked</span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-success">Active</span>
-                                }
-                            </td>
-                            <td>
-                                <div class="d-flex flex-wrap gap-1">
-                                    @foreach (var account in user.AccountCollection)
-                                    {
-                                        var org = m_organizations.FirstOrDefault(o => o.AccountNo == account.AccountNo);
-                                        <span class="badge bg-info-lt cursor-pointer"
-                                              title="@($"{org?.Name ?? account.AccountNo}\nRoles: {string.Join(", ", account.Roles)}")"
-                                              @onclick="@(() => ImpersonateUser(user, account))">
-                                            @account.AccountNo
-                                            <i class="ti ti-login ms-1" style="font-size: 0.75rem;"></i>
+    <!-- Users Grid -->
+    <div class="row row-cards">
+        @foreach (var user in m_filteredUsers)
+        {
+            <div class="col-12 col-lg-6">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-flex align-items-start">
+                            <!-- Avatar -->
+                            <span class="avatar avatar-lg rounded me-3 @(user.IsLockedOut ? "bg-red-lt" : "bg-primary-lt")">
+                                @GetInitials(user.FullName ?? user.UserName)
+                            </span>
+
+                            <!-- User Info -->
+                            <div class="flex-fill min-width-0">
+                                <div class="d-flex justify-content-between align-items-start mb-1">
+                                    <div>
+                                        <h4 class="card-title mb-0">@(user.FullName ?? user.UserName)</h4>
+                                        <div class="text-secondary small">@user.Email</div>
+                                    </div>
+                                    <div class="d-flex gap-1">
+                                        <span class="badge @GetProviderBadgeClass(user.CredentialProvider)">
+                                            @user.CredentialProvider
                                         </span>
-                                    }
-                                </div>
-                            </td>
-                            <td>
-                                <div class="dropdown">
-                                    <button type="button" class="btn btn-ghost-secondary btn-icon"
-                                            data-bs-toggle="dropdown">
-                                        <i class="ti ti-dots-vertical"></i>
-                                    </button>
-                                    <div class="dropdown-menu dropdown-menu-end">
-                                        <a class="dropdown-item" href="#" @onclick="@(() => ShowImpersonationUrls(user))" @onclick:preventDefault>
-                                            <i class="ti ti-copy me-2"></i>
-                                            Copy Impersonation URL
-                                        </a>
-                                        <a class="dropdown-item" href="#" @onclick="@(() => ViewUserDetails(user))" @onclick:preventDefault>
-                                            <i class="ti ti-eye me-2"></i>
-                                            View Details
-                                        </a>
+                                        @if (user.IsLockedOut)
+                                        {
+                                            <span class="badge bg-danger">Locked</span>
+                                        }
                                     </div>
                                 </div>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-        @if (m_filteredUsers.Count == 0 && !m_loading)
-        {
+
+                                <!-- Organizations with Impersonate Buttons -->
+                                <div class="mt-3">
+                                    <div class="text-secondary small mb-2">
+                                        <i class="ti ti-building me-1"></i>
+                                        Organizations (click to impersonate):
+                                    </div>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        @foreach (var account in user.AccountCollection)
+                                        {
+                                            var org = m_organizations.FirstOrDefault(o => o.AccountNo == account.AccountNo);
+                                            var orgName = org?.Name ?? account.AccountNo;
+                                            var roles = string.Join(", ", account.Roles);
+
+                                            <a href="@GetImpersonateUrl(user, account)"
+                                               class="btn btn-primary"
+                                               data-user="@user.UserName"
+                                               data-account="@account.AccountNo"
+                                               title="Impersonate as @user.UserName in @orgName (@roles)">
+                                                <i class="ti ti-login me-1"></i>
+                                                @orgName
+                                            </a>
+                                        }
+                                    </div>
+
+                                    <!-- Roles info -->
+                                    <div class="text-muted small mt-2">
+                                        @foreach (var account in user.AccountCollection)
+                                        {
+                                            var org = m_organizations.FirstOrDefault(o => o.AccountNo == account.AccountNo);
+                                            <div>
+                                                <span class="text-secondary">@(org?.Name ?? account.AccountNo):</span>
+                                                <span>@string.Join(", ", account.Roles)</span>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    @if (m_filteredUsers.Count == 0 && !m_loading)
+    {
+        <div class="card">
             <div class="card-body">
                 <div class="empty">
+                    <div class="empty-icon">
+                        <i class="ti ti-users-minus" style="font-size: 3rem;"></i>
+                    </div>
                     <p class="empty-title">No users found</p>
                     <p class="empty-subtitle text-secondary">
                         No users found matching your search criteria.
                     </p>
                 </div>
             </div>
-        }
-    </div>
+        </div>
+    }
 </div>
 
 @code {
@@ -233,38 +238,10 @@
         return user.AccountCollection.Any(a => a.AccountNo == this.m_organizationFilter);
     }
 
-    private void ImpersonateUser(User user, UserAccount account)
+    private string GetImpersonateUrl(User user, UserAccount account)
     {
         var hash = ComputeMd5Hash($"{user.UserName}:{account.AccountNo}");
-        var url = $"/account/impersonate?user={Uri.EscapeDataString(user.UserName)}&account={Uri.EscapeDataString(account.AccountNo)}&hash={hash}";
-        this.NavigationManager.NavigateTo(url, forceLoad: true);
-    }
-
-    private async Task ShowImpersonationUrls(User user)
-    {
-        await this.DialogService
-            .Create<ImpersonationUrlDialog>("Impersonation URLs")
-            .WithParameter(x => x.User, user)
-            .ShowDialogAsync();
-    }
-
-    private async Task ViewUserDetails(User user)
-    {
-        var accounts = string.Join("\n", user.AccountCollection.Select(a =>
-            $"  - {a.AccountNo}: {string.Join(", ", a.Roles)}"));
-
-        var message = $"""
-            Username: {user.UserName}
-            Full Name: {user.FullName}
-            Email: {user.Email}
-            Provider: {user.CredentialProvider}
-            Locked: {user.IsLockedOut}
-
-            Accounts:
-            {accounts}
-            """;
-
-        await this.DialogService.ShowMessageAsync(message, "User Details");
+        return $"/account/impersonate?user={Uri.EscapeDataString(user.UserName)}&account={Uri.EscapeDataString(account.AccountNo)}&hash={hash}";
     }
 
     private static string ComputeMd5Hash(string input)
@@ -280,4 +257,13 @@
         User.MICROSOFT => "bg-azure",
         _ => "bg-secondary"
     };
+
+    private static string GetInitials(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "?";
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2)
+            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
+        return name.Length >= 2 ? name[..2].ToUpper() : name.ToUpper();
+    }
 }
