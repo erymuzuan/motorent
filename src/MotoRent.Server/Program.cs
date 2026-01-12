@@ -10,8 +10,10 @@ using MotoRent.Server.Components;
 using MotoRent.Server.Services;
 using MotoRent.Services;
 using MotoRent.Services.Core;
+using MotoRent.Services.Search;
 using MotoRent.Services.Storage;
 using MotoRent.Services.Tourist;
+using MotoRent.Domain.Search;
 using MotoRent.Server.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -68,6 +70,31 @@ builder.Services.AddScoped<AccidentService>();
 
 // Add HttpClient for external API calls (Gemini)
 builder.Services.AddHttpClient("Gemini", client => { client.Timeout = TimeSpan.FromSeconds(60); });
+
+// Add OpenSearch HttpClient (optional, enabled via MOTO_OpenSearchHost env var)
+var openSearchHost = Environment.GetEnvironmentVariable("MOTO_OpenSearchHost");
+if (!string.IsNullOrEmpty(openSearchHost))
+{
+    var openSearchBasicAuth = Environment.GetEnvironmentVariable("MOTO_OpenSearchBasicAuth");
+    builder.Services.AddHttpClient("OpenSearchHost", client =>
+        {
+            client.BaseAddress = new Uri(openSearchHost);
+            if (!string.IsNullOrWhiteSpace(openSearchBasicAuth))
+            {
+                client.DefaultRequestHeaders.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Basic",
+                        Convert.ToBase64String(System.Text.Encoding.ASCII.GetBytes(openSearchBasicAuth)));
+            }
+        })
+        .ConfigurePrimaryHttpMessageHandler(() =>
+        {
+            var handler = new HttpClientHandler();
+            handler.ServerCertificateCustomValidationCallback = (_, _, _, _) => true;
+            return handler;
+        });
+
+    builder.Services.AddScoped<ISearchService, OpenSearchService>();
+}
 
 // Add Core services
 builder.Services.AddScoped<IDirectoryService, SqlDirectoryService>();
