@@ -216,7 +216,9 @@
     <div class="card">
         <div class="card-body">
             <label class="form-check">
-                <input class="form-check-input" type="checkbox" @bind="this.DepositInfo.IsCollected" />
+                <input class="form-check-input" type="checkbox"
+                       checked="@this.DepositInfo.IsCollected"
+                       @onchange="OnIsCollectedChanged" />
                 <span class="form-check-label">@GetConfirmationText()</span>
             </label>
         </div>
@@ -251,6 +253,12 @@
     {
         if (this.DepositInfo.Amount == 0)
             this.DepositInfo.Amount = this.RequiredAmount;
+    }
+
+    private async Task OnIsCollectedChanged(ChangeEventArgs e)
+    {
+        this.DepositInfo.IsCollected = (bool)(e.Value ?? false);
+        await this.DepositInfoChanged.InvokeAsync(this.DepositInfo);
     }
 
     private string GetConfirmationText()
