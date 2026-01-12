@@ -75,7 +75,6 @@
                                         Config="@m_rentalConfig"
                                         IntervalConfig="@m_intervalConfig"
                                         DepositInfo="@m_depositInfo"
-                                        @bind-SignatureData="m_signatureData"
                                         OnComplete="CompleteCheckIn" />
                 break;
         }
@@ -131,9 +130,6 @@
     // Step 4: Deposit information
     private DepositInfo m_depositInfo = new();
 
-    // Step 5: Signature data
-    private string? m_signatureData;
-
     private bool IsIntervalRental => this.m_selectedVehicle?.UsesIntervalPricing == true;
 
     private decimal GetRentalTotalAmount() =>
@@ -147,7 +143,7 @@
             1 => this.m_selectedVehicle != null,
             2 => this.IsIntervalRental ? this.m_intervalConfig.IsValid : this.m_rentalConfig.IsValid,
             3 => this.m_depositInfo.IsCollected,
-            4 => !string.IsNullOrEmpty(this.m_signatureData),
+            4 => true, // Completion validation is handled by AgreementSignatureStep
             _ => false
         };
     }
@@ -205,7 +201,7 @@
                 ShopId = this.ShopId,
                 RenterId = this.m_selectedRenter.RenterId,
                 VehicleId = this.m_selectedVehicle.VehicleId,
-                SignatureImagePath = this.m_signatureData,
+                SignatureImagePath = null, // Physical signature collected on printed agreement
                 SignedByIp = "127.0.0.1",
                 // Payment info
                 PaymentMethod = this.m_depositInfo.PaymentMethod,

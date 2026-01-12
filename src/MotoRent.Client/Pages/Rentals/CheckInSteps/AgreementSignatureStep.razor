@@ -1,12 +1,12 @@
 @inherits MotoRentComponentBase
-@using MotoRent.Client.Controls
 @using MotoRent.Domain.Entities
 @using MotoRent.Client.Pages.Rentals
+@inject IJSRuntime JS
 
 <div class="d-flex flex-column gap-4">
     <div>
         <h5 class="mb-1">Agreement & Signature</h5>
-        <p class="text-secondary mb-0">Review the rental summary and collect the renter's signature</p>
+        <p class="text-secondary mb-0">Review the rental summary and print the agreement for renter's signature</p>
     </div>
 
     <div class="row g-4">
@@ -157,32 +157,29 @@
 
             <div class="card mt-4">
                 <div class="card-body">
-                    <h6 class="card-title mb-3">Renter's Signature</h6>
+                    <h6 class="card-title mb-3">Print Agreement</h6>
 
-                    <SignaturePad @ref="m_signaturePad"
-                                  Width="100%"
-                                  Height="200"
-                                  OnSignatureChanged="OnSignatureChanged" />
+                    <p class="text-secondary mb-3">
+                        Print the rental agreement for the renter to sign. Keep the signed copy in the shop records.
+                    </p>
 
-                    <div class="mt-2">
-                        <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="ClearSignature">
-                            <i class="ti ti-eraser me-1"></i>
-                            Clear
-                        </button>
-                    </div>
+                    <button type="button" class="btn btn-outline-primary btn-lg w-100" @onclick="PrintAgreement">
+                        <i class="ti ti-printer me-2"></i>
+                        Print Agreement
+                    </button>
 
-                    @if (!string.IsNullOrEmpty(this.SignatureData))
+                    @if (m_agreementPrinted)
                     {
                         <div class="alert alert-success d-flex align-items-center gap-2 mt-3 py-2">
-                            <i class="ti ti-signature"></i>
-                            <span>Signature captured</span>
+                            <i class="ti ti-check"></i>
+                            <span>Agreement printed - collect signed copy from renter</span>
                         </div>
                     }
                     else
                     {
-                        <div class="alert alert-warning d-flex align-items-center gap-2 mt-3 py-2">
-                            <i class="ti ti-alert-triangle"></i>
-                            <span>Please have the renter sign above</span>
+                        <div class="alert alert-info d-flex align-items-center gap-2 mt-3 py-2">
+                            <i class="ti ti-info-circle"></i>
+                            <span>Print the agreement and have the renter sign the physical copy</span>
                         </div>
                     }
                 </div>
@@ -205,16 +202,13 @@
     [Parameter] public RentalConfig? Config { get; set; }
     [Parameter] public IntervalRentalConfig? IntervalConfig { get; set; }
     [Parameter] public DepositInfo? DepositInfo { get; set; }
-    [Parameter] public string? SignatureData { get; set; }
-    [Parameter] public EventCallback<string?> SignatureDataChanged { get; set; }
     [Parameter] public EventCallback OnComplete { get; set; }
 
-
-    private SignaturePad? m_signaturePad;
     private bool m_termsAccepted;
+    private bool m_agreementPrinted;
 
     private bool IsIntervalRental => this.Vehicle?.UsesIntervalPricing == true;
-    private bool CanComplete => this.m_termsAccepted && !string.IsNullOrEmpty(this.SignatureData);
+    private bool CanComplete => this.m_termsAccepted;
 
     private decimal GetTotalAmount() =>
         this.IsIntervalRental ? (this.IntervalConfig?.TotalAmount ?? 0) : (this.Config?.TotalAmount ?? 0);
@@ -265,19 +259,43 @@ I, the undersigned renter, agree to the following terms and conditions:
 
 By signing below, I acknowledge that I have read, understood, and agree to all terms and conditions stated above.";
 
-    private async Task OnSignatureChanged(string signatureData)
+    private async Task PrintAgreement()
     {
-        this.SignatureData = signatureData;
-        await this.SignatureDataChanged.InvokeAsync(signatureData);
+        // Open printable agreement in new window
+        var url = BuildPrintableAgreementUrl();
+        await this.JS.InvokeVoidAsync("window.open", url, "_blank");
+        this.m_agreementPrinted = true;
     }
 
-    private async Task ClearSignature()
+    private string BuildPrintableAgreementUrl()
     {
-        if (this.m_signaturePad != null)
+        var baseUrl = "/rentals/print-agreement";
+        var queryParams = new List<string>();
+
+        if (this.Renter != null)
+            queryParams.Add($"renterId={this.Renter.RenterId}");
+        if (this.Vehicle != null)
+            queryParams.Add($"vehicleId={this.Vehicle.VehicleId}");
+        if (this.IsIntervalRental && this.IntervalConfig != null)
         {
-            await this.m_signaturePad.Clear();
+            queryParams.Add($"interval={this.IntervalConfig.IntervalMinutes}");
+            queryParams.Add($"startTime={this.IntervalConfig.StartDateTime:o}");
+            queryParams.Add($"rate={this.IntervalConfig.RentalRate}");
+            queryParams.Add($"total={this.IntervalConfig.TotalAmount}");
         }
-        this.SignatureData = null;
-        await this.SignatureDataChanged.InvokeAsync(null);
+        else if (this.Config != null)
+        {
+            queryParams.Add($"startDate={this.Config.StartDate:yyyy-MM-dd}");
+            queryParams.Add($"endDate={this.Config.EndDate:yyyy-MM-dd}");
+            queryParams.Add($"days={this.Config.Days}");
+            queryParams.Add($"total={this.Config.TotalAmount}");
+        }
+        if (this.DepositInfo != null)
+        {
+            queryParams.Add($"depositType={this.DepositInfo.DepositType}");
+            queryParams.Add($"depositAmount={this.DepositInfo.Amount}");
+        }
+
+        return queryParams.Count > 0 ? $"{baseUrl}?{string.Join("&", queryParams)}" : baseUrl;
     }
 }
