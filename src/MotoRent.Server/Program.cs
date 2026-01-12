@@ -160,11 +160,10 @@ builder.Services.AddAuthorization(options =>
         policy.RequireRole(UserAccount.ORG_ADMIN)
             .RequireClaim("AccountNo"));
 
-    // Require authentication by default for all pages/endpoints
-    // Use [AllowAnonymous] attribute to allow anonymous access to specific endpoints
-    options.FallbackPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
-        .RequireAuthenticatedUser()
-        .Build();
+    // Note: We don't use FallbackPolicy here because:
+    // 1. It blocks the Blazor SignalR hub (/_blazor) for anonymous tourist pages
+    // 2. AuthorizeRouteView in Routes.razor handles page-level authorization
+    // 3. API controllers should use explicit [Authorize] attributes
 });
 
 // Add controllers for authentication endpoints
