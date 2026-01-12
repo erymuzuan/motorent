@@ -1,0 +1,150 @@
+@using MotoRent.Domain.Entities
+@inherits LocalizedDialogBase<AccidentCost, AddCostDialog>
+@inject AccidentService AccidentService
+
+<form id="@FormId" @onsubmit="SaveAsync" @onsubmit:preventDefault>
+    <div class="modal-body">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label required">Cost Type</label>
+                <select class="form-select" @bind="Entity.CostType" required>
+                    @foreach (var type in Enum.GetValues<AccidentCostType>())
+                    {
+                        <option value="@type">@type</option>
+                    }
+                </select>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-check form-switch pt-4">
+                    <input type="checkbox" class="form-check-input" @bind="Entity.IsCredit" />
+                    <span class="form-check-label">This is a credit (e.g., insurance payout)</span>
+                </label>
+            </div>
+
+            <div class="col-12">
+                <label class="form-label required">Description</label>
+                <input type="text" class="form-control" @bind="Entity.Description" required
+                       placeholder="Describe this cost" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label required">Estimated Amount</label>
+                <div class="input-group">
+                    <span class="input-group-text">THB</span>
+                    <input type="number" class="form-control" @bind="Entity.EstimatedAmount"
+                           min="0" step="100" required />
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Actual Amount</label>
+                <div class="input-group">
+                    <span class="input-group-text">THB</span>
+                    <input type="number" class="form-control" @bind="Entity.ActualAmount"
+                           min="0" step="100" placeholder="Leave empty if not paid yet" />
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Vendor / Payee</label>
+                <input type="text" class="form-control" @bind="Entity.VendorName"
+                       placeholder="Who will be paid / who paid" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Reference Number</label>
+                <input type="text" class="form-control" @bind="Entity.ReferenceNo"
+                       placeholder="Invoice, receipt number" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Paid Date</label>
+                <input type="date" class="form-control"
+                       value="@m_paidDateStr" @onchange="OnPaidDateChanged" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-check form-switch pt-4">
+                    <input type="checkbox" class="form-check-input" @bind="Entity.IsApproved" />
+                    <span class="form-check-label">Approved</span>
+                </label>
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Notes</label>
+                <textarea class="form-control" @bind="Entity.Notes" rows="2"
+                          placeholder="Additional notes"></textarea>
+            </div>
+        </div>
+    </div>
+</form>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">Cancel</button>
+    <button type="submit" form="@FormId" class="btn btn-primary" disabled="@Saving">
+        @if (Saving)
+        {
+            <span class="spinner-border spinner-border-sm me-2"></span>
+        }
+        <i class="ti ti-device-floppy me-1"></i>
+        @SaveButtonText
+    </button>
+</div>
+
+@code {
+    private string m_paidDateStr = "";
+
+    protected override void OnInitialized()
+    {
+        FormValid = true;
+        if (Entity.PaidDate.HasValue)
+        {
+            m_paidDateStr = Entity.PaidDate.Value.ToString("yyyy-MM-dd");
+        }
+    }
+
+    private void OnPaidDateChanged(ChangeEventArgs e)
+    {
+        if (DateTime.TryParse(e.Value?.ToString(), out var date))
+        {
+            Entity.PaidDate = new DateTimeOffset(date);
+            m_paidDateStr = date.ToString("yyyy-MM-dd");
+        }
+        else
+        {
+            Entity.PaidDate = null;
+            m_paidDateStr = "";
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        Saving = true;
+        try
+        {
+            if (Entity.IsApproved && string.IsNullOrEmpty(Entity.ApprovedBy))
+            {
+                Entity.ApprovedBy = UserName;
+            }
+
+            var result = await AccidentService.SaveCostAsync(Entity, UserName);
+            if (result.Success)
+            {
+                Close();
+            }
+            else
+            {
+                ShowError($"Save failed: {result.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error: {ex.Message}");
+        }
+        finally
+        {
+            Saving = false;
+        }
+    }
+}

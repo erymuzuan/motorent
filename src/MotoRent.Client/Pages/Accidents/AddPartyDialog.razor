@@ -1,0 +1,171 @@
+@using MotoRent.Domain.Entities
+@inherits LocalizedDialogBase<AccidentParty, AddPartyDialog>
+@inject AccidentService AccidentService
+
+<form id="@FormId" @onsubmit="SaveAsync" @onsubmit:preventDefault>
+    <div class="modal-body">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label required">Party Type</label>
+                <select class="form-select" @bind="Entity.PartyType" required>
+                    @foreach (var type in Enum.GetValues<AccidentPartyType>())
+                    {
+                        <option value="@type">@type</option>
+                    }
+                </select>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label required">Name</label>
+                <input type="text" class="form-control" @bind="Entity.Name" required
+                       placeholder="Full name or organization name" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Phone</label>
+                <input type="tel" class="form-control" @bind="Entity.Phone"
+                       placeholder="+66 XX XXX XXXX" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-control" @bind="Entity.Email"
+                       placeholder="email@example.com" />
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Address</label>
+                <textarea class="form-control" @bind="Entity.Address" rows="2"
+                          placeholder="Physical address"></textarea>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">ID Number</label>
+                <input type="text" class="form-control" @bind="Entity.IdNumber"
+                       placeholder="Passport, National ID, License" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Organization</label>
+                <input type="text" class="form-control" @bind="Entity.Organization"
+                       placeholder="Company or organization name" />
+            </div>
+
+            @if (Entity.PartyType == AccidentPartyType.PoliceOfficer)
+            {
+                <div class="col-md-6">
+                    <label class="form-label">Badge Number</label>
+                    <input type="text" class="form-control" @bind="Entity.BadgeNumber" />
+                </div>
+            }
+
+            @if (Entity.PartyType == AccidentPartyType.ThirdPartyDriver)
+            {
+                <div class="col-md-6">
+                    <label class="form-label">Vehicle License Plate</label>
+                    <input type="text" class="form-control" @bind="Entity.VehicleLicensePlate" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Insurance Policy No</label>
+                    <input type="text" class="form-control" @bind="Entity.InsurancePolicyNo" />
+                </div>
+            }
+
+            <div class="col-12">
+                <label class="form-label">Involvement Description</label>
+                <textarea class="form-control" @bind="Entity.InvolvementDescription" rows="2"
+                          placeholder="Describe how this party was involved"></textarea>
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-check form-switch">
+                    <input type="checkbox" class="form-check-input" @bind="Entity.IsInjured" />
+                    <span class="form-check-label">Injured</span>
+                </label>
+            </div>
+
+            @if (Entity.IsInjured)
+            {
+                <div class="col-md-8">
+                    <label class="form-label">Injury Description</label>
+                    <input type="text" class="form-control" @bind="Entity.InjuryDescription"
+                           placeholder="Describe injuries" />
+                </div>
+            }
+
+            <div class="col-md-4">
+                <label class="form-check form-switch">
+                    <input type="checkbox" class="form-check-input" @bind="m_isAtFault" />
+                    <span class="form-check-label">At Fault</span>
+                </label>
+            </div>
+
+            @if (m_isAtFault)
+            {
+                <div class="col-md-4">
+                    <label class="form-label">Fault Percentage</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control" @bind="Entity.FaultPercentage"
+                               min="0" max="100" />
+                        <span class="input-group-text">%</span>
+                    </div>
+                </div>
+            }
+
+            <div class="col-12">
+                <label class="form-label">Notes</label>
+                <textarea class="form-control" @bind="Entity.Notes" rows="2"
+                          placeholder="Additional notes"></textarea>
+            </div>
+        </div>
+    </div>
+</form>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">Cancel</button>
+    <button type="submit" form="@FormId" class="btn btn-primary" disabled="@Saving">
+        @if (Saving)
+        {
+            <span class="spinner-border spinner-border-sm me-2"></span>
+        }
+        <i class="ti ti-device-floppy me-1"></i>
+        @SaveButtonText
+    </button>
+</div>
+
+@code {
+    private bool m_isAtFault;
+
+    protected override void OnInitialized()
+    {
+        FormValid = true;
+        m_isAtFault = Entity.IsAtFault == true;
+    }
+
+    private async Task SaveAsync()
+    {
+        Saving = true;
+        try
+        {
+            Entity.IsAtFault = m_isAtFault ? true : null;
+
+            var result = await AccidentService.SavePartyAsync(Entity, UserName);
+            if (result.Success)
+            {
+                Close();
+            }
+            else
+            {
+                ShowError($"Save failed: {result.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error: {ex.Message}");
+        }
+        finally
+        {
+            Saving = false;
+        }
+    }
+}

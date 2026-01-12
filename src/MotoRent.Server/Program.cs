@@ -11,6 +11,8 @@ using MotoRent.Server.Services;
 using MotoRent.Services;
 using MotoRent.Services.Core;
 using MotoRent.Services.Storage;
+using MotoRent.Services.Tourist;
+using MotoRent.Server.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,7 +20,22 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddHttpContextAccessor();
 
 // Add request context for user/timezone services
-builder.Services.AddScoped<IRequestContext, MotoRentRequestContext>();
+// Uses TouristRequestContext for /tourist/* paths (URL-based tenant resolution)
+// Uses MotoRentRequestContext for authenticated pages (claims-based tenant resolution)
+builder.Services.AddScoped<IRequestContext>(sp =>
+{
+    var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
+    var path = httpContextAccessor.HttpContext?.Request.Path.Value ?? "";
+
+    // Use TouristRequestContext for tourist pages
+    if (path.StartsWith("/tourist/", StringComparison.OrdinalIgnoreCase))
+    {
+        return new TouristRequestContext(httpContextAccessor);
+    }
+
+    // Use standard context for authenticated pages
+    return new MotoRentRequestContext(httpContextAccessor);
+});
 
 // Add MotoRent data context (uses environment variable MOTO_SqlConnectionString)
 builder.Services.AddMotoRentDataContext(MotoConfig.SqlConnectionString);
@@ -43,6 +60,8 @@ builder.Services.AddScoped<DamageReportService>();
 // Third-party owner services
 builder.Services.AddScoped<VehicleOwnerService>();
 builder.Services.AddScoped<OwnerPaymentService>();
+// Accident services
+builder.Services.AddScoped<AccidentService>();
 
 // Add HttpClient for external API calls (Gemini)
 builder.Services.AddHttpClient("Gemini", client => { client.Timeout = TimeSpan.FromSeconds(60); });
@@ -50,6 +69,10 @@ builder.Services.AddHttpClient("Gemini", client => { client.Timeout = TimeSpan.F
 // Add Core services
 builder.Services.AddScoped<IDirectoryService, SqlDirectoryService>();
 builder.Services.AddScoped<ISubscriptionService, SqlSubscriptionService>();
+builder.Services.AddScoped<OrganizationService>();
+
+// Add Tourist services (for multi-tenant tourist pages)
+builder.Services.AddScoped<ITenantResolverService, TenantResolverService>();
 
 // Add Binary Storage (AWS S3)
 builder.Services.AddSingleton<IBinaryStore, S3BinaryStore>();
@@ -137,11 +160,10 @@ builder.Services.AddAuthorization(options =>
         policy.RequireRole(UserAccount.ORG_ADMIN)
             .RequireClaim("AccountNo"));
 
-    // Require authentication by default for all pages/endpoints
-    // Use [AllowAnonymous] attribute to allow anonymous access to specific endpoints
-    options.FallbackPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
-        .RequireAuthenticatedUser()
-        .Build();
+    // Note: We don't use FallbackPolicy here because:
+    // 1. It blocks the Blazor SignalR hub (/_blazor) for anonymous tourist pages
+    // 2. AuthorizeRouteView in Routes.razor handles page-level authorization
+    // 3. API controllers should use explicit [Authorize] attributes
 });
 
 // Add controllers for authentication endpoints
@@ -182,6 +204,10 @@ else
 app.UseHttpsRedirection();
 
 app.UseStaticFiles();
+
+// Tenant domain resolution middleware (for custom domains and subdomains)
+// Must be before authentication so tourist pages work for anonymous users
+app.UseTenantDomainResolution();
 
 // Localization middleware
 app.UseRequestLocalization();

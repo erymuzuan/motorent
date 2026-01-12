@@ -1,0 +1,121 @@
+@using MotoRent.Domain.Entities
+@inherits LocalizedDialogBase<AccidentDocument, AddDocumentDialog>
+@inject AccidentService AccidentService
+
+<form id="@FormId" @onsubmit="SaveAsync" @onsubmit:preventDefault>
+    <div class="modal-body">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label required">Document Type</label>
+                <select class="form-select" @bind="Entity.DocumentType" required>
+                    @foreach (var type in Enum.GetValues<AccidentDocumentType>())
+                    {
+                        <option value="@type">@type</option>
+                    }
+                </select>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Title</label>
+                <input type="text" class="form-control" @bind="Entity.Title"
+                       placeholder="Document title or description" />
+            </div>
+
+            <div class="col-12">
+                <label class="form-label required">File Name</label>
+                <input type="text" class="form-control" @bind="Entity.FileName" required
+                       placeholder="document.pdf" />
+                <small class="form-hint">Enter the file name (actual file upload coming soon)</small>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">File Path / URL</label>
+                <input type="text" class="form-control" @bind="Entity.FilePath"
+                       placeholder="/uploads/accidents/..." />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Document Date</label>
+                <input type="date" class="form-control"
+                       value="@m_documentDateStr" @onchange="OnDocumentDateChanged" />
+                <small class="form-hint">Date shown on the document</small>
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Notes</label>
+                <textarea class="form-control" @bind="Entity.Notes" rows="2"
+                          placeholder="Additional notes about this document"></textarea>
+            </div>
+        </div>
+    </div>
+</form>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">Cancel</button>
+    <button type="submit" form="@FormId" class="btn btn-primary" disabled="@Saving">
+        @if (Saving)
+        {
+            <span class="spinner-border spinner-border-sm me-2"></span>
+        }
+        <i class="ti ti-upload me-1"></i>
+        Save Document
+    </button>
+</div>
+
+@code {
+    private string m_documentDateStr = "";
+
+    protected override void OnInitialized()
+    {
+        FormValid = true;
+        if (Entity.DocumentDate.HasValue)
+        {
+            m_documentDateStr = Entity.DocumentDate.Value.ToString("yyyy-MM-dd");
+        }
+    }
+
+    private void OnDocumentDateChanged(ChangeEventArgs e)
+    {
+        if (DateTime.TryParse(e.Value?.ToString(), out var date))
+        {
+            Entity.DocumentDate = new DateTimeOffset(date);
+            m_documentDateStr = date.ToString("yyyy-MM-dd");
+        }
+        else
+        {
+            Entity.DocumentDate = null;
+            m_documentDateStr = "";
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        Saving = true;
+        try
+        {
+            // Set defaults for demo purposes
+            if (string.IsNullOrEmpty(Entity.FilePath))
+                Entity.FilePath = $"/uploads/accidents/{Entity.AccidentId}/{Entity.FileName}";
+            if (Entity.FileSize == 0)
+                Entity.FileSize = 1024; // Default 1KB
+
+            var result = await AccidentService.SaveDocumentAsync(Entity, UserName);
+            if (result.Success)
+            {
+                Close();
+            }
+            else
+            {
+                ShowError($"Save failed: {result.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error: {ex.Message}");
+        }
+        finally
+        {
+            Saving = false;
+        }
+    }
+}

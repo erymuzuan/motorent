@@ -1,0 +1,402 @@
+@page "/accidents/{AccidentId:int}"
+@using Microsoft.AspNetCore.Authorization
+@using MotoRent.Domain.Entities
+@attribute [Authorize(Policy = "RequireTenantStaff")]
+@inherits LocalizedComponentBase<AccidentDetails>
+@inject AccidentService AccidentService
+@inject VehicleService VehicleService
+
+<MotoRentPageTitle>@Localizer["Accident"] @m_accident?.ReferenceNo</MotoRentPageTitle>
+
+<TablerHeader Title="@m_accident?.Title" PreTitle="@m_accident?.ReferenceNo">
+    <a href="/accidents" class="btn btn-ghost-secondary me-2">
+        <i class="ti ti-arrow-left me-1"></i>
+        @Localizer["BackToList"]
+    </a>
+    @if (m_accident != null)
+    {
+        @if (m_accident.Status == AccidentStatus.Reported)
+        {
+            <button type="button" class="btn btn-primary me-2" @onclick="StartInvestigation">
+                <i class="ti ti-search me-1"></i>
+                @Localizer["StartInvestigation"]
+            </button>
+        }
+        @if (m_accident.Status == AccidentStatus.InProgress)
+        {
+            <button type="button" class="btn btn-success" @onclick="ResolveAccident">
+                <i class="ti ti-check me-1"></i>
+                @Localizer["Resolve"]
+            </button>
+        }
+    }
+</TablerHeader>
+
+<LoadingSkeleton Loading="@m_loading" Mode="LoadingSkeleton.PlaceholderMode.Card" Rows="6">
+    @if (m_notFound)
+    {
+        <div class="alert alert-danger">
+            <div class="d-flex">
+                <div class="me-3">
+                    <i class="ti ti-alert-circle" style="font-size: 2rem;"></i>
+                </div>
+                <div>
+                    <h4 class="alert-title">@Localizer["AccidentNotFound"]</h4>
+                    <div class="text-secondary">
+                        @Localizer["AccidentNotFoundDesc", AccidentId]
+                    </div>
+                    <div class="mt-3">
+                        <a href="/accidents" class="btn btn-outline-danger">
+                            <i class="ti ti-arrow-left me-1"></i>
+                            @Localizer["BackToList"]
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else if (m_accident != null)
+    {
+        <div class="row g-3">
+            @* Left Column: Summary *@
+            <div class="col-lg-4">
+                @* Status Card *@
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="ti ti-file-description me-2"></i>
+                            @Localizer["Summary"]
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3 d-flex gap-2">
+                            <span class="badge @GetStatusBadgeClass(m_accident.Status)" style="font-size: 0.9rem;">
+                                @m_accident.Status
+                            </span>
+                            <span class="badge @GetSeverityBadgeClass(m_accident.Severity)" style="font-size: 0.9rem;">
+                                @m_accident.Severity
+                            </span>
+                        </div>
+                        <div class="datagrid">
+                            <div class="datagrid-item">
+                                <div class="datagrid-title">@Localizer["Reference"]</div>
+                                <div class="datagrid-content fw-bold">@m_accident.ReferenceNo</div>
+                            </div>
+                            <div class="datagrid-item">
+                                <div class="datagrid-title">@Localizer["AccidentDate"]</div>
+                                <div class="datagrid-content">@FormatDateTime(m_accident.AccidentDate)</div>
+                            </div>
+                            <div class="datagrid-item">
+                                <div class="datagrid-title">@Localizer["ReportedDate"]</div>
+                                <div class="datagrid-content">@FormatDate(m_accident.ReportedDate)</div>
+                            </div>
+                            <div class="datagrid-item">
+                                <div class="datagrid-title">@Localizer["Vehicle"]</div>
+                                <div class="datagrid-content">@m_accident.VehicleName</div>
+                            </div>
+                            <div class="datagrid-item">
+                                <div class="datagrid-title">@Localizer["LicensePlate"]</div>
+                                <div class="datagrid-content text-primary">@m_accident.VehicleLicensePlate</div>
+                            </div>
+                            @if (!string.IsNullOrEmpty(m_accident.RenterName))
+                            {
+                                <div class="datagrid-item">
+                                    <div class="datagrid-title">@Localizer["Renter"]</div>
+                                    <div class="datagrid-content">@m_accident.RenterName</div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                @* Indicators Card *@
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="ti ti-flag me-2"></i>
+                            @Localizer["Indicators"]
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex flex-column gap-2">
+                            <div class="d-flex align-items-center">
+                                <i class="ti @(m_accident.PoliceInvolved ? "ti-shield-check text-success" : "ti-shield text-secondary") me-2"></i>
+                                <span>@Localizer["PoliceInvolved"]: @(m_accident.PoliceInvolved ? Localizer["Yes"] : Localizer["No"])</span>
+                            </div>
+                            @if (m_accident.PoliceInvolved && !string.IsNullOrEmpty(m_accident.PoliceCaseNumber))
+                            {
+                                <div class="ms-4 text-secondary small">
+                                    @Localizer["CaseNo"]: @m_accident.PoliceCaseNumber
+                                </div>
+                            }
+                            <div class="d-flex align-items-center">
+                                <i class="ti @(m_accident.InsuranceClaimFiled ? "ti-file-dollar text-info" : "ti-file text-secondary") me-2"></i>
+                                <span>@Localizer["InsuranceClaim"]: @(m_accident.InsuranceClaimFiled ? Localizer["Filed"] : Localizer["NotFiled"])</span>
+                            </div>
+                            @if (m_accident.InsuranceClaimFiled && !string.IsNullOrEmpty(m_accident.InsuranceClaimNumber))
+                            {
+                                <div class="ms-4 text-secondary small">
+                                    @Localizer["ClaimNo"]: @m_accident.InsuranceClaimNumber
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                @* Financial Summary Card *@
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="ti ti-currency-dollar me-2"></i>
+                            @Localizer["FinancialSummary"]
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="datagrid">
+                            <div class="datagrid-item">
+                                <div class="datagrid-title">@Localizer["Estimated"]</div>
+                                <div class="datagrid-content text-warning">@FormatCurrency(m_accident.TotalEstimatedCost)</div>
+                            </div>
+                            <div class="datagrid-item">
+                                <div class="datagrid-title">@Localizer["Actual"]</div>
+                                <div class="datagrid-content text-danger">@FormatCurrency(m_accident.TotalActualCost)</div>
+                            </div>
+                            <div class="datagrid-item">
+                                <div class="datagrid-title">@Localizer["InsurancePayout"]</div>
+                                <div class="datagrid-content text-success">@FormatCurrency(m_accident.InsurancePayoutReceived)</div>
+                            </div>
+                            <div class="datagrid-item">
+                                <div class="datagrid-title">@Localizer["NetCost"]</div>
+                                <div class="datagrid-content fw-bold">@FormatCurrency(m_accident.NetCost)</div>
+                            </div>
+                            <div class="datagrid-item">
+                                <div class="datagrid-title">@Localizer["Reserve"]</div>
+                                <div class="datagrid-content text-info">@FormatCurrency(m_accident.ReserveAmount)</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* Right Column: Tabs *@
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header">
+                        <ul class="nav nav-tabs card-header-tabs">
+                            <li class="nav-item">
+                                <a class="nav-link @(m_activeTab == "details" ? "active" : "")"
+                                   href="javascript:void(0)" @onclick="@(() => m_activeTab = "details")">
+                                    <i class="ti ti-info-circle me-1"></i>@Localizer["Details"]
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link @(m_activeTab == "parties" ? "active" : "")"
+                                   href="javascript:void(0)" @onclick="@(() => m_activeTab = "parties")">
+                                    <i class="ti ti-users me-1"></i>@Localizer["Parties"]
+                                    <span class="badge bg-primary ms-1">@m_parties.Count</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link @(m_activeTab == "documents" ? "active" : "")"
+                                   href="javascript:void(0)" @onclick="@(() => m_activeTab = "documents")">
+                                    <i class="ti ti-files me-1"></i>@Localizer["Documents"]
+                                    <span class="badge bg-primary ms-1">@m_documents.Count</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link @(m_activeTab == "costs" ? "active" : "")"
+                                   href="javascript:void(0)" @onclick="@(() => m_activeTab = "costs")">
+                                    <i class="ti ti-currency-dollar me-1"></i>@Localizer["Costs"]
+                                    <span class="badge bg-primary ms-1">@m_costs.Count</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link @(m_activeTab == "timeline" ? "active" : "")"
+                                   href="javascript:void(0)" @onclick="@(() => m_activeTab = "timeline")">
+                                    <i class="ti ti-timeline me-1"></i>@Localizer["Timeline"]
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="card-body">
+                        @switch (m_activeTab)
+                        {
+                            case "details":
+                                <DetailsTab Accident="@m_accident" />
+                                break;
+                            case "parties":
+                                <PartiesTab AccidentId="@AccidentId" Parties="@m_parties" OnChanged="LoadParties" />
+                                break;
+                            case "documents":
+                                <DocumentsTab AccidentId="@AccidentId" Documents="@m_documents" OnChanged="LoadDocuments" />
+                                break;
+                            case "costs":
+                                <CostsTab AccidentId="@AccidentId" Costs="@m_costs" OnChanged="LoadCosts" />
+                                break;
+                            case "timeline":
+                                <TimelineTab AccidentId="@AccidentId" Notes="@m_notes" OnChanged="LoadNotes" />
+                                break;
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* Resolution Info *@
+        @if (m_accident.Status == AccidentStatus.Resolved && m_accident.ResolvedDate.HasValue)
+        {
+            <div class="card mt-3">
+                <div class="card-status-top bg-success"></div>
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="ti ti-check me-2"></i>
+                        @Localizer["Resolution"]
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="datagrid">
+                        <div class="datagrid-item">
+                            <div class="datagrid-title">@Localizer["ResolvedOn"]</div>
+                            <div class="datagrid-content">@FormatDateTime(m_accident.ResolvedDate.Value)</div>
+                        </div>
+                        <div class="datagrid-item">
+                            <div class="datagrid-title">@Localizer["ResolvedBy"]</div>
+                            <div class="datagrid-content">@m_accident.ResolvedBy</div>
+                        </div>
+                    </div>
+                    @if (!string.IsNullOrEmpty(m_accident.ResolutionNotes))
+                    {
+                        <hr />
+                        <div>
+                            <strong>@Localizer["Notes"]:</strong>
+                            <p class="mb-0">@m_accident.ResolutionNotes</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    }
+</LoadingSkeleton>
+
+@code {
+    [Parameter]
+    public int AccidentId { get; set; }
+
+    private Accident? m_accident;
+    private List<AccidentParty> m_parties = [];
+    private List<AccidentDocument> m_documents = [];
+    private List<AccidentCost> m_costs = [];
+    private List<AccidentNote> m_notes = [];
+    private bool m_loading = true;
+    private bool m_notFound;
+    private string m_activeTab = "details";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        m_loading = true;
+        try
+        {
+            m_accident = await AccidentService.GetAccidentByIdAsync(AccidentId);
+            m_notFound = m_accident == null;
+
+            if (m_accident != null)
+            {
+                await Task.WhenAll(
+                    LoadParties(),
+                    LoadDocuments(),
+                    LoadCosts(),
+                    LoadNotes());
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error loading data: {ex.Message}");
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private async Task LoadParties()
+    {
+        m_parties = await AccidentService.GetPartiesAsync(AccidentId);
+        StateHasChanged();
+    }
+
+    private async Task LoadDocuments()
+    {
+        m_documents = await AccidentService.GetDocumentsAsync(AccidentId);
+        StateHasChanged();
+    }
+
+    private async Task LoadCosts()
+    {
+        m_costs = await AccidentService.GetCostsAsync(AccidentId);
+        StateHasChanged();
+    }
+
+    private async Task LoadNotes()
+    {
+        m_notes = await AccidentService.GetNotesAsync(AccidentId);
+        StateHasChanged();
+    }
+
+    private async Task StartInvestigation()
+    {
+        if (!await DialogService.ConfirmAsync("Start investigation for this accident?"))
+            return;
+
+        var result = await AccidentService.UpdateStatusAsync(AccidentId, AccidentStatus.InProgress, "Investigation started", UserName);
+        if (result.Success)
+        {
+            await LoadDataAsync();
+            ShowSuccess("Investigation started");
+        }
+        else
+        {
+            ShowError($"Failed: {result.Message}");
+        }
+    }
+
+    private async Task ResolveAccident()
+    {
+        var notes = await DialogService.PromptAsync("Resolution Notes", "Enter resolution notes (optional):");
+        if (notes == null) return; // Cancelled
+
+        var result = await AccidentService.UpdateStatusAsync(AccidentId, AccidentStatus.Resolved, notes, UserName);
+        if (result.Success)
+        {
+            await LoadDataAsync();
+            ShowSuccess("Accident resolved");
+        }
+        else
+        {
+            ShowError($"Failed: {result.Message}");
+        }
+    }
+
+    private static string GetStatusBadgeClass(AccidentStatus status) => status switch
+    {
+        AccidentStatus.Reported => "bg-warning-lt text-warning",
+        AccidentStatus.InProgress => "bg-primary-lt text-primary",
+        AccidentStatus.Resolved => "bg-success-lt text-success",
+        _ => "bg-secondary-lt text-secondary"
+    };
+
+    private static string GetSeverityBadgeClass(AccidentSeverity severity) => severity switch
+    {
+        AccidentSeverity.Minor => "bg-blue-lt text-blue",
+        AccidentSeverity.Moderate => "bg-orange-lt text-orange",
+        AccidentSeverity.Major => "bg-red-lt text-red",
+        AccidentSeverity.Injury => "bg-pink-lt text-pink",
+        AccidentSeverity.Hospitalization => "bg-purple-lt text-purple",
+        AccidentSeverity.Fatality => "bg-dark text-white",
+        _ => "bg-secondary-lt text-secondary"
+    };
+}

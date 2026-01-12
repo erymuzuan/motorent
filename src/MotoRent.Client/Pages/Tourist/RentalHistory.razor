@@ -1,13 +1,14 @@
-@page "/my-rentals"
+@page "/tourist/{AccountNo}/my-rentals"
 @using Microsoft.AspNetCore.Authorization
 @attribute [AllowAnonymous]
-@inherits MotoRentComponentBase
+@inherits TouristComponentBase
 @using MotoRent.Domain.Entities
 @using MotoRent.Services
+@using MotoRent.Client.Controls
 @inject RentalService RentalService
 @inject IJSRuntime JS
 
-<PageTitle>My Rentals - MotoRent</PageTitle>
+<PageTitle>My Rentals - @TenantName</PageTitle>
 
 <div class="container-xl py-4">
     <div class="d-flex flex-column gap-4">
@@ -16,7 +17,7 @@
                 <h2 class="mb-1">My Rentals</h2>
                 <p class="text-secondary mb-0">View your rental history and current reservations</p>
             </div>
-            <a href="/browse" class="btn btn-outline-primary">
+            <a href="@BrowseUrl" class="btn btn-outline-primary">
                 <i class="ti ti-motorbike me-1"></i>
                 Browse Motorbikes
             </a>
@@ -87,7 +88,7 @@
                         <p class="text-secondary mb-4">
                             You haven't made any rentals yet. Start exploring our motorbikes!
                         </p>
-                        <a href="/browse" class="btn btn-primary">Browse Motorbikes</a>
+                        <a href="@BrowseUrl" class="btn btn-primary">Browse Motorbikes</a>
                     </div>
                 </div>
             }
@@ -247,6 +248,8 @@
 </div>
 
 @code {
+    [Parameter] public new string AccountNo { get; set; } = "";
+
     private bool m_isVerified;
     private bool m_searching;
     private string? m_email;

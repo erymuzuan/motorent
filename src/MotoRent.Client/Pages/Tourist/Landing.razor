@@ -1,0 +1,406 @@
+@page "/tourist/{AccountNo}"
+@using Microsoft.AspNetCore.Authorization
+@attribute [AllowAnonymous]
+@inherits TouristComponentBase
+@using MotoRent.Domain.Entities
+@using MotoRent.Services
+@using MotoRent.Client.Controls
+@using MotoRent.Client.Components.Tourist
+@inject MotorbikeService MotorbikeService
+@inject ShopService ShopService
+
+<PageTitle>@TenantName - Motorbike Rentals</PageTitle>
+
+@* Hero Section with tenant branding *@
+<div class="tourist-hero" style="@GetHeroStyle()">
+    <div class="container-xl py-5">
+        <div class="row align-items-center">
+            <div class="col-lg-7">
+                <div class="d-flex flex-column gap-3">
+                    @if (!string.IsNullOrEmpty(TenantLogo))
+                    {
+                        <img src="@TenantLogo" alt="@TenantName" style="max-height: 80px; width: fit-content;" />
+                    }
+                    <h1 class="display-5 fw-bold mb-0">
+                        @if (!string.IsNullOrEmpty(TenantBranding.Tagline))
+                        {
+                            @TenantBranding.Tagline
+                        }
+                        else
+                        {
+                            <span>Explore Thailand on Two Wheels</span>
+                        }
+                    </h1>
+                    <p class="fs-5 mb-0" style="opacity: 0.9;">
+                        Rent quality motorbikes at great prices. Easy booking, flexible pickup, and 24/7 support.
+                    </p>
+                    <div class="d-flex gap-3 mt-2">
+                        <a href="@BrowseUrl" class="btn btn-lg btn-light">
+                            <i class="ti ti-motorbike me-2"></i>
+                            Browse Bikes
+                        </a>
+                        <a href="@MyRentalsUrl" class="btn btn-lg btn-outline-light">
+                            <i class="ti ti-receipt me-2"></i>
+                            My Rentals
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-5 d-none d-lg-block">
+                <div class="text-center">
+                    <i class="ti ti-motorbike" style="font-size: 12rem; opacity: 0.2;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container-xl py-5">
+    @* Quick Stats *@
+    <div class="row g-4 mb-5">
+        <div class="col-6 col-md-3">
+            <div class="card bg-primary-lt">
+                <div class="card-body text-center py-4">
+                    <div class="display-6 fw-bold text-primary">@m_availableBikesCount</div>
+                    <div class="text-secondary">Available Bikes</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card bg-success-lt">
+                <div class="card-body text-center py-4">
+                    <div class="display-6 fw-bold text-success">@m_shops.Count</div>
+                    <div class="text-secondary">Shop Locations</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card bg-info-lt">
+                <div class="card-body text-center py-4">
+                    <div class="display-6 fw-bold text-info">24/7</div>
+                    <div class="text-secondary">Support</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card bg-warning-lt">
+                <div class="card-body text-center py-4">
+                    <div class="display-6 fw-bold text-warning">
+                        <i class="ti ti-shield-check"></i>
+                    </div>
+                    <div class="text-secondary">Fully Insured</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Featured Bikes Section *@
+    @if (m_featuredBikes.Count > 0)
+    {
+        <div class="mb-5">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="mb-0">
+                    <i class="ti ti-star me-2 text-warning"></i>
+                    Featured Bikes
+                </h2>
+                <a href="@BrowseUrl" class="btn btn-outline-primary">
+                    View All <i class="ti ti-arrow-right ms-1"></i>
+                </a>
+            </div>
+            <div class="row g-4">
+                @foreach (var bike in m_featuredBikes.Take(4))
+                {
+                    <div class="col-12 col-sm-6 col-lg-3">
+                        <div class="card h-100">
+                            @if (!string.IsNullOrEmpty(bike.ImagePath))
+                            {
+                                <img src="@bike.ImagePath" class="card-img-top" alt="@bike.Brand @bike.Model"
+                                     style="height: 160px; object-fit: cover;" />
+                            }
+                            else
+                            {
+                                <div class="card-img-top bg-light d-flex align-items-center justify-content-center"
+                                     style="height: 160px;">
+                                    <i class="ti ti-motorbike text-secondary" style="font-size: 4rem;"></i>
+                                </div>
+                            }
+                            <div class="card-body">
+                                <h5 class="card-title mb-1">@bike.Brand @bike.Model</h5>
+                                <div class="d-flex align-items-center gap-2 mb-2">
+                                    <span class="badge bg-secondary-lt text-secondary">@(bike.EngineCC)cc</span>
+                                    @if (!string.IsNullOrEmpty(bike.Color))
+                                    {
+                                        <span class="badge bg-light text-dark">@bike.Color</span>
+                                    }
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="fs-4 fw-bold text-primary">
+                                        @FormatTenantCurrency(bike.DailyRate)<small class="text-secondary fw-normal">/day</small>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="card-footer">
+                                <a href="@BrowseUrl" class="btn btn-primary w-100">
+                                    <i class="ti ti-calendar-event me-1"></i>
+                                    Reserve Now
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    @* Shop Locations *@
+    @if (m_shops.Count > 0)
+    {
+        <div class="mb-5">
+            <h2 class="mb-4">
+                <i class="ti ti-map-pin me-2 text-danger"></i>
+                Our Locations
+            </h2>
+            <div class="row g-4">
+                @foreach (var shop in m_shops)
+                {
+                    <div class="col-12 col-md-6 col-lg-4">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <div class="d-flex align-items-start gap-3">
+                                    <div class="avatar avatar-lg bg-primary-lt">
+                                        <i class="ti ti-building-store text-primary"></i>
+                                    </div>
+                                    <div class="flex-fill">
+                                        <h4 class="mb-1">@shop.Name</h4>
+                                        @if (!string.IsNullOrEmpty(shop.Address))
+                                        {
+                                            <p class="text-secondary mb-2">
+                                                <i class="ti ti-map-pin me-1"></i>@shop.Address
+                                            </p>
+                                        }
+                                        <div class="d-flex flex-wrap gap-2">
+                                            @if (!string.IsNullOrEmpty(shop.Phone))
+                                            {
+                                                <a href="tel:@shop.Phone" class="btn btn-sm btn-outline-secondary">
+                                                    <i class="ti ti-phone me-1"></i>Call
+                                                </a>
+                                            }
+                                            @if (!string.IsNullOrEmpty(shop.Email))
+                                            {
+                                                <a href="mailto:@shop.Email" class="btn btn-sm btn-outline-secondary">
+                                                    <i class="ti ti-mail me-1"></i>Email
+                                                </a>
+                                            }
+                                            <a href="@TenantUrl($"browse/{shop.ShopId}")" class="btn btn-sm btn-primary">
+                                                <i class="ti ti-motorbike me-1"></i>View Bikes
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-footer bg-light">
+                                <small class="text-secondary">
+                                    <i class="ti ti-map-pin me-1"></i>@shop.Location
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    @* How It Works *@
+    <div class="card bg-light mb-5">
+        <div class="card-body p-4 p-lg-5">
+            <h2 class="text-center mb-5">How It Works</h2>
+            <div class="row g-4">
+                <div class="col-12 col-md-4">
+                    <div class="d-flex flex-column align-items-center gap-3 text-center">
+                        <div class="avatar avatar-xl bg-primary rounded-circle">
+                            <span class="text-white fs-2">1</span>
+                        </div>
+                        <h4>Browse & Select</h4>
+                        <p class="text-secondary mb-0">
+                            Choose from our wide selection of well-maintained motorbikes. Filter by size, type, or price.
+                        </p>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4">
+                    <div class="d-flex flex-column align-items-center gap-3 text-center">
+                        <div class="avatar avatar-xl bg-primary rounded-circle">
+                            <span class="text-white fs-2">2</span>
+                        </div>
+                        <h4>Reserve Online</h4>
+                        <p class="text-secondary mb-0">
+                            Pick your dates and complete the reservation in minutes. No payment required until pickup.
+                        </p>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4">
+                    <div class="d-flex flex-column align-items-center gap-3 text-center">
+                        <div class="avatar avatar-xl bg-primary rounded-circle">
+                            <span class="text-white fs-2">3</span>
+                        </div>
+                        <h4>Pick Up & Ride</h4>
+                        <p class="text-secondary mb-0">
+                            Visit our shop, show your ID, pay, and start your adventure. Return anytime during business hours.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="text-center mt-5">
+                <a href="@BrowseUrl" class="btn btn-primary btn-lg">
+                    <i class="ti ti-motorbike me-2"></i>
+                    Start Browsing
+                </a>
+            </div>
+        </div>
+    </div>
+
+    @* Contact Section *@
+    @if (TenantBranding.ShowContactInfo && TenantContext != null)
+    {
+        <div class="row g-4 mb-5">
+            <div class="col-12">
+                <h2 class="mb-4">
+                    <i class="ti ti-headset me-2"></i>
+                    Contact Us
+                </h2>
+            </div>
+            @if (!string.IsNullOrEmpty(TenantContext.Phone))
+            {
+                <div class="col-12 col-md-4">
+                    <div class="card h-100">
+                        <div class="card-body text-center py-4">
+                            <div class="avatar avatar-lg bg-success-lt mb-3">
+                                <i class="ti ti-phone text-success"></i>
+                            </div>
+                            <h5>Call Us</h5>
+                            <a href="tel:@TenantContext.Phone" class="fs-4 text-decoration-none">
+                                @TenantContext.Phone
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            }
+            @if (!string.IsNullOrEmpty(TenantContext.Email))
+            {
+                <div class="col-12 col-md-4">
+                    <div class="card h-100">
+                        <div class="card-body text-center py-4">
+                            <div class="avatar avatar-lg bg-info-lt mb-3">
+                                <i class="ti ti-mail text-info"></i>
+                            </div>
+                            <h5>Email Us</h5>
+                            <a href="mailto:@TenantContext.Email" class="fs-5 text-decoration-none">
+                                @TenantContext.Email
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            }
+            @if (TenantBranding.SocialLinks?.Length > 0)
+            {
+                <div class="col-12 col-md-4">
+                    <div class="card h-100">
+                        <div class="card-body text-center py-4">
+                            <div class="avatar avatar-lg bg-primary-lt mb-3">
+                                <i class="ti ti-brand-facebook text-primary"></i>
+                            </div>
+                            <h5>Follow Us</h5>
+                            <div class="d-flex justify-content-center gap-2">
+                                @foreach (var link in TenantBranding.SocialLinks)
+                                {
+                                    @if (link.Contains("facebook", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        <a href="@link" target="_blank" class="btn btn-icon btn-facebook">
+                                            <i class="ti ti-brand-facebook"></i>
+                                        </a>
+                                    }
+                                    else if (link.Contains("instagram", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        <a href="@link" target="_blank" class="btn btn-icon btn-instagram">
+                                            <i class="ti ti-brand-instagram"></i>
+                                        </a>
+                                    }
+                                    else if (link.StartsWith("line:", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        <a href="https://line.me/ti/p/@(link[5..])" target="_blank" class="btn btn-icon btn-success">
+                                            <i class="ti ti-brand-line"></i>
+                                        </a>
+                                    }
+                                    else if (link.StartsWith("whatsapp:", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        <a href="https://wa.me/@(link[9..])" target="_blank" class="btn btn-icon btn-success">
+                                            <i class="ti ti-brand-whatsapp"></i>
+                                        </a>
+                                    }
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public new string AccountNo { get; set; } = "";
+
+    private List<Motorbike> m_featuredBikes = [];
+    private List<Shop> m_shops = [];
+    private int m_availableBikesCount;
+    private bool m_loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        m_loading = true;
+        try
+        {
+            // Load shops
+            m_shops = await ShopService.GetActiveShopsAsync();
+
+            // Load available bikes count and featured bikes
+            if (m_shops.Count > 0)
+            {
+                var firstShopId = m_shops[0].ShopId;
+                var availableBikes = await MotorbikeService.GetAvailableMotorbikesAsync(firstShopId);
+                var bikesList = availableBikes.ToList();
+                m_availableBikesCount = bikesList.Count;
+
+                // Get featured bikes (top 4 by daily rate - assuming higher price = featured)
+                m_featuredBikes = bikesList
+                    .OrderByDescending(b => b.DailyRate)
+                    .Take(4)
+                    .ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error loading data: {ex.Message}");
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private string GetHeroStyle()
+    {
+        var style = $"background: linear-gradient(135deg, {TenantBranding.PrimaryColor} 0%, {TenantBranding.SecondaryColor} 100%); color: {TenantBranding.TextOnPrimary};";
+
+        if (!string.IsNullOrEmpty(TenantBranding.HeroImageUrl))
+        {
+            style = $"background: linear-gradient(135deg, {TenantBranding.PrimaryColor}dd 0%, {TenantBranding.SecondaryColor}dd 100%), url('{TenantBranding.HeroImageUrl}'); background-size: cover; background-position: center; color: {TenantBranding.TextOnPrimary};";
+        }
+
+        return style;
+    }
+}

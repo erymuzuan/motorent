@@ -1,4 +1,5 @@
 using MotoRent.Domain.Entities;
+using MotoRent.Domain.Tourist;
 
 namespace MotoRent.Domain.Core;
 
@@ -94,6 +95,22 @@ public class Organization : Entity
     /// Organization address.
     /// </summary>
     public Address Address { get; set; } = new();
+
+    #region Tourist Portal Configuration
+
+    /// <summary>
+    /// Custom domain for tourist-facing pages (e.g., "adam.co.th").
+    /// When set, requests to this domain are mapped to this tenant.
+    /// </summary>
+    public string? CustomDomain { get; set; }
+
+    /// <summary>
+    /// Branding configuration for tourist-facing pages.
+    /// Includes colors, layout template, custom CSS, etc.
+    /// </summary>
+    public TenantBranding Branding { get; set; } = new();
+
+    #endregion
 
     public override int GetId() => OrganizationId;
     public override void SetId(int value) => OrganizationId = value;
