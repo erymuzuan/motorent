@@ -1,0 +1,255 @@
+@using MotoRent.Domain.Entities
+@using MotoRent.Domain.Storage
+@using MotoRent.Services
+
+@inherits LocalizedComponentBase<VehicleImageGallery>
+@inject VehicleImageService VehicleImageService
+@inject IBinaryStore BinaryStore
+
+<div class="card mb-3">
+    <div class="card-header">
+        <h3 class="card-title">
+            <i class="ti ti-photo me-2"></i>@Localizer["VehicleImages"]
+        </h3>
+        <div class="card-actions">
+            <span class="badge bg-secondary">@m_images.Count / @VehicleImageService.MaxImagesPerVehicle</span>
+        </div>
+    </div>
+    <div class="card-body">
+        @if (m_loading)
+        {
+            <div class="d-flex justify-content-center py-3">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        }
+        else if (m_images.Count == 0)
+        {
+            <ImageUpload StoreId="@m_newImageStoreId"
+                         StoreIdChanged="OnImageUploaded"
+                         Title="@Localizer["UploadVehicleImage"]"
+                         HelpHint="@Localizer["DropImageHere"]" />
+        }
+        else
+        {
+            <div class="row g-3">
+                @foreach (var image in m_images)
+                {
+                    <div class="col-6 col-md-4 col-lg-2">
+                        <div class="card card-sm position-relative @(image.IsPrimary ? "border-primary border-2" : "")">
+                            <div class="card-img-top img-responsive img-responsive-1x1"
+                                 style="background-image: url('@GetImageUrl(image)'); background-size: cover; background-position: center;">
+                            </div>
+                            @* Primary star button *@
+                            <div class="position-absolute top-0 start-0 m-1">
+                                <button type="button"
+                                        class="btn btn-icon btn-sm @(image.IsPrimary ? "btn-primary" : "btn-ghost-secondary bg-white")"
+                                        @onclick="@(() => SetPrimaryAsync(image))"
+                                        @onclick:stopPropagation="true"
+                                        title="@(image.IsPrimary ? Localizer["PrimaryImage"] : Localizer["SetAsPrimary"])"
+                                        disabled="@(image.IsPrimary || m_saving)">
+                                    <i class="ti ti-star@(image.IsPrimary ? "-filled" : "")"></i>
+                                </button>
+                            </div>
+                            @* Delete button *@
+                            <div class="position-absolute top-0 end-0 m-1">
+                                <button type="button"
+                                        class="btn btn-icon btn-sm btn-ghost-danger bg-white"
+                                        @onclick="@(() => DeleteImageAsync(image))"
+                                        @onclick:stopPropagation="true"
+                                        title="@Localizer["DeleteImage"]"
+                                        disabled="@m_saving">
+                                    <i class="ti ti-trash"></i>
+                                </button>
+                            </div>
+                            @* Primary badge *@
+                            @if (image.IsPrimary)
+                            {
+                                <div class="position-absolute bottom-0 start-0 m-1">
+                                    <span class="badge bg-primary">@Localizer["Primary"]</span>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+                @* Upload placeholder if under limit *@
+                @if (m_images.Count < VehicleImageService.MaxImagesPerVehicle)
+                {
+                    <div class="col-6 col-md-4 col-lg-2">
+                        <div class="card card-sm h-100" style="min-height: 100px;">
+                            <div class="card-body p-0">
+                                <ImageUpload StoreId="@m_newImageStoreId"
+                                             StoreIdChanged="OnImageUploaded"
+                                             HelpHint="@Localizer["AddMore"]"
+                                             HideImage="true" />
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// The vehicle ID to show images for.
+    /// </summary>
+    [Parameter]
+    public int VehicleId { get; set; }
+
+    /// <summary>
+    /// Callback when the primary image changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<string?> PrimaryImageChanged { get; set; }
+
+    /// <summary>
+    /// Callback when images are modified (added/removed).
+    /// </summary>
+    [Parameter]
+    public EventCallback ImagesChanged { get; set; }
+
+    private List<VehicleImage> m_images = [];
+    private bool m_loading = true;
+    private bool m_saving;
+    private string? m_newImageStoreId;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (this.VehicleId > 0)
+        {
+            await LoadImagesAsync();
+        }
+        else
+        {
+            this.m_loading = false;
+        }
+    }
+
+    private async Task LoadImagesAsync()
+    {
+        this.m_loading = true;
+        try
+        {
+            this.m_images = await this.VehicleImageService.GetImagesForVehicleAsync(this.VehicleId);
+        }
+        catch (Exception ex)
+        {
+            this.ShowError($"Failed to load images: {ex.Message}");
+        }
+        finally
+        {
+            this.m_loading = false;
+        }
+    }
+
+    private async Task OnImageUploaded(string? storeId)
+    {
+        if (string.IsNullOrEmpty(storeId)) return;
+
+        this.m_saving = true;
+        try
+        {
+            var result = await this.VehicleImageService.AddImageAsync(
+                this.VehicleId, storeId, null, this.UserName);
+
+            if (result.Success)
+            {
+                await LoadImagesAsync();
+                this.m_newImageStoreId = null;
+                await NotifyChanges();
+            }
+            else
+            {
+                this.ShowError(result.Message ?? "Failed to add image");
+            }
+        }
+        catch (Exception ex)
+        {
+            this.ShowError($"Error adding image: {ex.Message}");
+        }
+        finally
+        {
+            this.m_saving = false;
+        }
+    }
+
+    private async Task SetPrimaryAsync(VehicleImage image)
+    {
+        if (image.IsPrimary) return;
+
+        this.m_saving = true;
+        try
+        {
+            var result = await this.VehicleImageService.SetPrimaryImageAsync(
+                this.VehicleId, image.VehicleImageId, this.UserName);
+
+            if (result.Success)
+            {
+                await LoadImagesAsync();
+                await NotifyChanges();
+            }
+            else
+            {
+                this.ShowError(result.Message ?? "Failed to set primary image");
+            }
+        }
+        catch (Exception ex)
+        {
+            this.ShowError($"Error: {ex.Message}");
+        }
+        finally
+        {
+            this.m_saving = false;
+        }
+    }
+
+    private async Task DeleteImageAsync(VehicleImage image)
+    {
+        if (!await this.ConfirmDeleteAsync("this image"))
+            return;
+
+        this.m_saving = true;
+        try
+        {
+            var result = await this.VehicleImageService.DeleteImageAsync(
+                image.VehicleImageId, this.UserName);
+
+            if (result.Success)
+            {
+                await LoadImagesAsync();
+                await NotifyChanges();
+                this.ShowSuccess("Image deleted");
+            }
+            else
+            {
+                this.ShowError(result.Message ?? "Failed to delete image");
+            }
+        }
+        catch (Exception ex)
+        {
+            this.ShowError($"Error: {ex.Message}");
+        }
+        finally
+        {
+            this.m_saving = false;
+        }
+    }
+
+    private async Task NotifyChanges()
+    {
+        var primary = this.m_images.FirstOrDefault(i => i.IsPrimary);
+        await this.PrimaryImageChanged.InvokeAsync(primary?.StoreId);
+        await this.ImagesChanged.InvokeAsync();
+    }
+
+    private string GetImageUrl(VehicleImage image)
+    {
+        if (string.IsNullOrEmpty(image.StoreId))
+            return "/images/no-image.png";
+
+        return this.BinaryStore.GetImageUrl(image.StoreId);
+    }
+}
