@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using MotoRent.Domain.Core;
+using MotoRent.Domain.Helps;
 
 namespace MotoRent.Domain.Entities;
 
@@ -42,6 +43,10 @@ namespace MotoRent.Domain.Entities;
 [JsonDerivedType(typeof(AccessToken), nameof(AccessToken))]
 [JsonDerivedType(typeof(RegistrationInvite), nameof(RegistrationInvite))]
 [JsonDerivedType(typeof(LogEntry), nameof(LogEntry))]
+// Help and support entities
+[JsonDerivedType(typeof(Comment), nameof(Comment))]
+[JsonDerivedType(typeof(Follow), nameof(Follow))]
+[JsonDerivedType(typeof(SupportRequest), nameof(SupportRequest))]
 public abstract class Entity
 {
     public string? WebId { get; set; }

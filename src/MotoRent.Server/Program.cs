@@ -194,6 +194,9 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
     options.AddSupportedUICultures(supportedCultures);
 });
 
+// Add SignalR for real-time features (comments, notifications)
+builder.Services.AddSignalR();
+
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
@@ -234,6 +237,9 @@ app.UseAntiforgery();
 
 // Map API controllers for authentication endpoints
 app.MapControllers();
+
+// Map SignalR hubs
+app.MapHub<MotoRent.Server.Hubs.CommentHub>("/hub-comments");
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()

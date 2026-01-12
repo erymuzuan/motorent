@@ -1,0 +1,223 @@
+@using MotoRent.Domain.Helps
+@using MotoRent.Domain.DataContext
+
+@inherits MotoRentComponentBase
+
+<div class="row py-3 @(IsReply ? "ms-5" : "")">
+    <div class="col-auto">
+        <span class="avatar avatar-sm @(IsReply ? "bg-secondary-subtle" : "bg-primary-subtle")">
+            @GetInitials(Comment.UserDisplayName ?? Comment.User)
+        </span>
+    </div>
+    <div class="col">
+        <div class="d-flex align-items-center gap-2">
+            <strong>@(Comment.UserDisplayName ?? Comment.User)</strong>
+            <small class="text-muted">@GetTimeAgo(Comment.Timestamp)</small>
+            @if (Comment.SupportComment)
+            {
+                <span class="badge bg-warning">
+                    <i class="ti ti-headset me-1"></i>Support
+                </span>
+            }
+        </div>
+        <div class="mt-1">
+            @((MarkupString)(Comment.Text ?? ""))
+        </div>
+
+        @* Reactions *@
+        @if (Comment.Expressions?.Any() == true)
+        {
+            <div class="d-flex gap-2 mt-2">
+                @foreach (var group in Comment.Expressions.GroupBy(x => x.Expression))
+                {
+                    <span class="badge bg-light text-dark" data-bs-toggle="tooltip" title="@string.Join(", ", group.Select(x => x.Name))">
+                        @GetExpressionIcon(group.Key) @group.Count()
+                    </span>
+                }
+            </div>
+        }
+
+        @* Actions *@
+        <div class="d-flex gap-2 mt-2">
+            <div class="dropdown">
+                <a href="javascript:" class="btn btn-sm btn-ghost-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                    React
+                </a>
+                <div class="dropdown-menu">
+                    <a class="dropdown-item" href="javascript:" @onclick="() => AddReaction(CommentExpression.Like)">👍 Like</a>
+                    <a class="dropdown-item" href="javascript:" @onclick="() => AddReaction(CommentExpression.Laugh)">😄 Laugh</a>
+                    <a class="dropdown-item" href="javascript:" @onclick="() => AddReaction(CommentExpression.Sad)">😢 Sad</a>
+                    <a class="dropdown-item" href="javascript:" @onclick="() => AddReaction(CommentExpression.Angry)">😠 Angry</a>
+                </div>
+            </div>
+
+            @if (!IsReply)
+            {
+                <a href="javascript:" class="btn btn-sm btn-ghost-secondary" @onclick="ToggleReply">
+                    <i class="ti ti-arrow-back-up me-1"></i>Reply
+                </a>
+            }
+
+            @if (!string.IsNullOrEmpty(Comment.ObjectUri))
+            {
+                <a href="@Comment.ObjectUri" class="btn btn-sm btn-ghost-secondary">
+                    <i class="ti ti-external-link me-1"></i>View
+                </a>
+            }
+        </div>
+
+        @* Reply input *@
+        @if (m_showReplyInput)
+        {
+            <div class="row mt-3">
+                <div class="col">
+                    <input type="text"
+                           @bind="m_replyText"
+                           class="form-control form-control-sm"
+                           placeholder="Write a reply..." />
+                </div>
+                <div class="col-auto">
+                    <button type="button"
+                            class="btn btn-sm btn-primary"
+                            @onclick="PostReply"
+                            disabled="@(string.IsNullOrWhiteSpace(m_replyText) || m_busy)">
+                        Reply
+                    </button>
+                    <button type="button"
+                            class="btn btn-sm btn-ghost-secondary"
+                            @onclick="() => m_showReplyInput = false">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public Comment Comment { get; set; } = null!;
+    [Parameter] public bool IsReply { get; set; }
+    [Parameter] public EventCallback<Comment> OnReplyAdded { get; set; }
+
+    [Inject] private CoreDataContext CoreDataContext { get; set; } = null!;
+
+    private bool m_showReplyInput;
+    private string? m_replyText;
+    private bool m_busy;
+
+    private string GetInitials(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "?";
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2)
+            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
+        return name[..Math.Min(2, name.Length)].ToUpper();
+    }
+
+    private string GetTimeAgo(DateTimeOffset timestamp)
+    {
+        var diff = DateTimeOffset.Now - timestamp;
+        if (diff.TotalMinutes < 1) return "just now";
+        if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes}m ago";
+        if (diff.TotalHours < 24) return $"{(int)diff.TotalHours}h ago";
+        if (diff.TotalDays < 7) return $"{(int)diff.TotalDays}d ago";
+        return timestamp.ToString("MMM d");
+    }
+
+    private string GetExpressionIcon(CommentExpression expression) => expression switch
+    {
+        CommentExpression.Like => "👍",
+        CommentExpression.Laugh => "😄",
+        CommentExpression.Sad => "😢",
+        CommentExpression.Angry => "😠",
+        CommentExpression.Kiss => "😘",
+        _ => "👍"
+    };
+
+    private void ToggleReply()
+    {
+        m_showReplyInput = !m_showReplyInput;
+        m_replyText = string.Empty;
+    }
+
+    private async Task AddReaction(CommentExpression expression)
+    {
+        try
+        {
+            Comment.Expressions ??= [];
+
+            // Check if user already reacted
+            var existing = Comment.Expressions.FirstOrDefault(x => x.User == UserName);
+            if (existing != null)
+            {
+                existing.Expression = expression;
+            }
+            else
+            {
+                Comment.Expressions.Add(new UserExpression
+                {
+                    Expression = expression,
+                    User = UserName,
+                    Name = UserName
+                });
+            }
+
+            using var session = CoreDataContext.OpenSession(UserName);
+            session.Attach(Comment);
+            await session.SubmitChanges("CommentExpression");
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to add reaction");
+            ShowError("Failed to add reaction");
+        }
+    }
+
+    private async Task PostReply()
+    {
+        if (string.IsNullOrWhiteSpace(m_replyText)) return;
+
+        try
+        {
+            m_busy = true;
+
+            var reply = new Comment
+            {
+                Text = m_replyText,
+                EntityId = Comment.EntityId,
+                Type = Comment.Type,
+                ObjectWebId = Comment.ObjectWebId,
+                ObjectUri = Comment.ObjectUri,
+                WebId = Guid.NewGuid().ToString("N"),
+                Timestamp = DateTimeOffset.Now,
+                Title = Comment.Title,
+                User = UserName,
+                UserDisplayName = UserName,
+                AccountNo = Comment.AccountNo,
+                Root = Comment.CommentId,
+                ReplyTo = Comment.CommentId
+            };
+
+            using var session = CoreDataContext.OpenSession(UserName);
+            session.Attach(reply);
+            await session.SubmitChanges("AddReply");
+
+            m_replyText = string.Empty;
+            m_showReplyInput = false;
+
+            await OnReplyAdded.InvokeAsync(reply);
+            ShowSuccess("Reply added");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to post reply");
+            ShowError("Failed to post reply");
+        }
+        finally
+        {
+            m_busy = false;
+        }
+    }
+}

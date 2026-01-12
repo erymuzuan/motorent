@@ -1,0 +1,184 @@
+@using MotoRent.Domain.Helps
+@using MotoRent.Domain.DataContext
+
+@inherits MotoRentComponentBase
+
+@if (EntityId > 0)
+{
+    <div class="card mt-3 d-print-none">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i class="ti ti-messages me-2"></i>
+                @CommonLocalizer["Comments"] (@Comments.Count)
+                @if (!string.IsNullOrEmpty(Title))
+                {
+                    <span class="text-muted">: @Title</span>
+                }
+            </h3>
+            <div class="card-actions">
+                <div class="dropdown">
+                    <a class="dropdown-toggle text-muted" href="#" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        @m_orderText
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-end">
+                        <a class="dropdown-item" href="javascript:" @onclick="() => SortComments(true)">Newest first</a>
+                        <a class="dropdown-item" href="javascript:" @onclick="() => SortComments(false)">Oldest first</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            @if (m_loading)
+            {
+                <div class="progress progress-sm mb-3">
+                    <div class="progress-bar progress-bar-indeterminate"></div>
+                </div>
+            }
+            else
+            {
+                <div class="divide-y">
+                    @* Display comments *@
+                    @foreach (var comment in Comments.Where(x => x.Root == null))
+                    {
+                        <CommentCard Comment="@comment" OnReplyAdded="OnReplyAdded" />
+
+                        @* Display replies *@
+                        @foreach (var reply in Comments.Where(x => x.Root == comment.CommentId).OrderBy(x => x.CommentId))
+                        {
+                            <CommentCard Comment="@reply" IsReply="true" />
+                        }
+                    }
+
+                    @* Add new comment *@
+                    <div class="row mt-4">
+                        <div class="col-auto d-none d-sm-block">
+                            <span class="avatar bg-primary-subtle">
+                                <i class="ti ti-message-plus"></i>
+                            </span>
+                        </div>
+                        <div class="col">
+                            <textarea @bind="m_newCommentText"
+                                      class="form-control"
+                                      rows="3"
+                                      placeholder="Add a comment..."></textarea>
+                            <div class="d-flex justify-content-end mt-2">
+                                <button type="button"
+                                        class="btn btn-primary"
+                                        @onclick="AddComment"
+                                        disabled="@(string.IsNullOrWhiteSpace(m_newCommentText) || m_busy)">
+                                    @if (m_busy)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                    }
+                                    <i class="ti ti-send me-1"></i>
+                                    Send
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int EntityId { get; set; }
+    [Parameter] public string? EntityType { get; set; }
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string? ObjectWebId { get; set; }
+
+    [Inject] private CoreDataContext CoreDataContext { get; set; } = null!;
+
+    private List<Comment> Comments { get; } = [];
+    private string? m_newCommentText;
+    private bool m_loading;
+    private bool m_busy;
+    private bool m_sortDescending = true;
+    private string m_orderText = "Newest first";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadComments();
+    }
+
+    private async Task LoadComments()
+    {
+        if (EntityId <= 0) return;
+
+        try
+        {
+            m_loading = true;
+            await SortComments(m_sortDescending);
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private async Task SortComments(bool descending)
+    {
+        m_sortDescending = descending;
+        m_orderText = descending ? "Newest first" : "Oldest first";
+
+        var query = CoreDataContext.Comments
+            .Where(x => x.Type == EntityType && x.EntityId == EntityId);
+
+        query = descending
+            ? query.OrderByDescending(x => x.CommentId)
+            : query.OrderBy(x => x.CommentId);
+
+        var lo = await CoreDataContext.LoadAsync(query, size: 100);
+        Comments.Clear();
+        Comments.AddRange(lo.ItemCollection);
+    }
+
+    private async Task AddComment()
+    {
+        if (string.IsNullOrWhiteSpace(m_newCommentText)) return;
+
+        try
+        {
+            m_busy = true;
+
+            var comment = new Comment
+            {
+                Text = m_newCommentText,
+                EntityId = EntityId,
+                Type = EntityType,
+                ObjectWebId = ObjectWebId,
+                ObjectUri = NavigationManager.Uri,
+                WebId = Guid.NewGuid().ToString("N"),
+                Timestamp = DateTimeOffset.Now,
+                Title = Title,
+                User = UserName,
+                UserDisplayName = UserName,
+                AccountNo = AccountNo
+            };
+
+            using var session = CoreDataContext.OpenSession(UserName);
+            session.Attach(comment);
+            await session.SubmitChanges("AddComment");
+
+            m_newCommentText = string.Empty;
+            Comments.Insert(0, comment);
+            ShowSuccess("Comment added");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to add comment");
+            ShowError("Failed to add comment");
+        }
+        finally
+        {
+            m_busy = false;
+        }
+    }
+
+    private void OnReplyAdded(Comment reply)
+    {
+        Comments.Add(reply);
+        StateHasChanged();
+    }
+}
