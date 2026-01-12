@@ -1,0 +1,350 @@
+@page "/account/profile"
+@rendermode InteractiveServer
+@inherits MotoRentComponentBase
+@using MotoRent.Domain.Core
+@using MotoRent.Domain.DataContext
+@using MotoRent.Domain.Storage
+@inject CoreDataContext CoreContext
+@inject IBinaryStore BinaryStore
+
+<PageTitle>My Profile - MotoRent</PageTitle>
+
+<div class="container-xl mt-4">
+    <div class="page-header mb-4">
+        <div class="row align-items-center">
+            <div class="col-auto">
+                <h2 class="page-title">
+                    <i class="ti ti-user me-2"></i>
+                    My Profile
+                </h2>
+            </div>
+        </div>
+    </div>
+
+    @if (m_loading)
+    {
+        <div class="card">
+            <div class="card-body">
+                <div class="progress progress-sm">
+                    <div class="progress-bar progress-bar-indeterminate"></div>
+                </div>
+            </div>
+        </div>
+    }
+    else if (m_user is null)
+    {
+        <div class="card">
+            <div class="card-body">
+                <div class="empty">
+                    <div class="empty-icon">
+                        <i class="ti ti-user-off" style="font-size: 3rem;"></i>
+                    </div>
+                    <p class="empty-title">User not found</p>
+                    <p class="empty-subtitle text-secondary">
+                        Unable to load your profile. Please try logging in again.
+                    </p>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="row row-cards">
+            <!-- Profile Photo Card -->
+            <div class="col-12 col-md-4">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <div class="mb-3">
+                            @if (!string.IsNullOrWhiteSpace(m_user.PhotoStoreId))
+                            {
+                                <span class="avatar avatar-xl rounded-circle" style="width: 120px; height: 120px;">
+                                    <img src="@GetPhotoUrl()" alt="Profile Photo"
+                                         style="width: 100%; height: 100%; object-fit: cover;" />
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="avatar avatar-xl rounded-circle bg-primary-lt text-primary"
+                                      style="width: 120px; height: 120px; font-size: 3rem;">
+                                    @GetInitials()
+                                </span>
+                            }
+                        </div>
+                        <h3 class="mb-1">@m_user.FullName</h3>
+                        <p class="text-secondary mb-3">@m_user.Email</p>
+
+                        <!-- Provider Badge -->
+                        <div class="mb-3">
+                            @if (m_user.CredentialProvider == User.GOOGLE)
+                            {
+                                <span class="badge bg-white border">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 48 48" class="me-1">
+                                        <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/>
+                                        <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/>
+                                        <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/>
+                                        <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/>
+                                    </svg>
+                                    Google Account
+                                </span>
+                            }
+                            else if (m_user.CredentialProvider == User.MICROSOFT)
+                            {
+                                <span class="badge bg-white border">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 21 21" class="me-1">
+                                        <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
+                                        <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
+                                        <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
+                                        <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+                                    </svg>
+                                    Microsoft Account
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">@m_user.CredentialProvider</span>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <ImageUpload StoreId="@m_user.PhotoStoreId"
+                                     StoreIdChanged="OnPhotoChanged"
+                                     Title="Profile Photo"
+                                     HelpHint="Click or drag to upload a new photo"
+                                     Capture="ImageUpload.CameraCapture.User" />
+                    </div>
+                </div>
+
+                <!-- Organizations Card -->
+                @if (m_user.AccountCollection.Count > 0)
+                {
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="ti ti-building me-2"></i>
+                                My Organizations
+                            </h3>
+                        </div>
+                        <div class="list-group list-group-flush">
+                            @foreach (var account in m_user.AccountCollection)
+                            {
+                                <div class="list-group-item">
+                                    <div class="row align-items-center">
+                                        <div class="col-auto">
+                                            <span class="avatar bg-primary-lt text-primary">
+                                                <i class="ti ti-building"></i>
+                                            </span>
+                                        </div>
+                                        <div class="col">
+                                            <div class="fw-medium">@account.AccountNo</div>
+                                            <div class="text-secondary small">
+                                                @string.Join(", ", account.Roles)
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <!-- Profile Details Card -->
+            <div class="col-12 col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="ti ti-edit me-2"></i>
+                            Profile Details
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-12 col-md-6">
+                                <label class="form-label">Email</label>
+                                <input type="email" class="form-control" value="@m_user.Email" readonly disabled />
+                                <small class="form-hint">Email cannot be changed</small>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label">Username</label>
+                                <input type="text" class="form-control" value="@m_user.UserName" readonly disabled />
+                                <small class="form-hint">Username cannot be changed</small>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label required">Full Name</label>
+                                <input type="text" class="form-control" @bind="m_user.FullName" placeholder="Enter your full name" />
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label">Nickname</label>
+                                <input type="text" class="form-control" @bind="m_user.NickName" placeholder="Enter a nickname" />
+                                <small class="form-hint">Optional display name</small>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label">Phone Number</label>
+                                <input type="tel" class="form-control" @bind="m_user.Telephone" placeholder="+66 XX XXX XXXX" />
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label">Language</label>
+                                <select class="form-select" @bind="m_user.Language">
+                                    <option value="">System Default</option>
+                                    <option value="en">English</option>
+                                    <option value="th">Thai</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer d-flex justify-content-end gap-2">
+                        <a href="/" class="btn btn-ghost-secondary">
+                            <i class="ti ti-x me-1"></i>
+                            Cancel
+                        </a>
+                        <button class="btn btn-primary" @onclick="SaveProfileAsync" disabled="@m_saving">
+                            @if (m_saving)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            }
+                            else
+                            {
+                                <i class="ti ti-device-floppy me-1"></i>
+                            }
+                            Save Changes
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Account Info Card -->
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="ti ti-info-circle me-2"></i>
+                            Account Information
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="datagrid">
+                            <div class="datagrid-item">
+                                <div class="datagrid-title">Account Created</div>
+                                <div class="datagrid-content">@FormatDateTime(m_user.CreatedTimestamp)</div>
+                            </div>
+                            <div class="datagrid-item">
+                                <div class="datagrid-title">Last Updated</div>
+                                <div class="datagrid-content">@FormatDateTime(m_user.ChangedTimestamp)</div>
+                            </div>
+                            <div class="datagrid-item">
+                                <div class="datagrid-title">Account Status</div>
+                                <div class="datagrid-content">
+                                    @if (m_user.IsLockedOut)
+                                    {
+                                        <span class="badge bg-danger">Locked</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-success">Active</span>
+                                    }
+                                </div>
+                            </div>
+                            <div class="datagrid-item">
+                                <div class="datagrid-title">User ID</div>
+                                <div class="datagrid-content text-secondary">@m_user.UserId</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private User? m_user;
+    private bool m_loading = true;
+    private bool m_saving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUserAsync();
+    }
+
+    private async Task LoadUserAsync()
+    {
+        m_loading = true;
+        try
+        {
+            var userName = this.RequestContext.GetUserName();
+            if (string.IsNullOrEmpty(userName))
+            {
+                return;
+            }
+
+            m_user = await this.CoreContext.LoadOneAsync<User>(u => u.UserName == userName);
+        }
+        catch (Exception ex)
+        {
+            this.ShowError($"Failed to load profile: {ex.Message}");
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private async Task SaveProfileAsync()
+    {
+        if (m_user is null) return;
+
+        m_saving = true;
+        try
+        {
+            using var session = this.CoreContext.OpenSession(this.UserName);
+            session.Attach(m_user);
+            var result = await session.SubmitChanges("UpdateProfile");
+
+            if (result.Success)
+            {
+                this.ShowSuccess("Profile updated successfully");
+            }
+            else
+            {
+                this.ShowError(result.Message ?? "Failed to save profile");
+            }
+        }
+        catch (Exception ex)
+        {
+            this.ShowError($"Failed to save profile: {ex.Message}");
+        }
+        finally
+        {
+            m_saving = false;
+        }
+    }
+
+    private async Task OnPhotoChanged(string? storeId)
+    {
+        if (m_user is null) return;
+
+        m_user.PhotoStoreId = storeId;
+        await SaveProfileAsync();
+    }
+
+    private string GetPhotoUrl()
+    {
+        if (string.IsNullOrWhiteSpace(m_user?.PhotoStoreId))
+            return "/images/no-image.png";
+
+        return this.BinaryStore.GetImageUrl(m_user.PhotoStoreId);
+    }
+
+    private string GetInitials()
+    {
+        if (string.IsNullOrWhiteSpace(m_user?.FullName))
+            return "?";
+
+        var parts = m_user.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2)
+            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
+
+        return m_user.FullName.Length >= 2
+            ? m_user.FullName[..2].ToUpper()
+            : m_user.FullName.ToUpper();
+    }
+}
