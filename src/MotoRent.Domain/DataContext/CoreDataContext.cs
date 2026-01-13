@@ -18,6 +18,7 @@ public class CoreDataContext
     public Query<RegistrationInvite> RegistrationInvites { get; }
     public Query<LogEntry> LogEntries { get; }
     public Query<SupportRequest> SupportRequests { get; }
+    public Query<VehicleModel> VehicleModels { get; }
 
     private QueryProvider QueryProvider { get; }
 
@@ -33,6 +34,7 @@ public class CoreDataContext
         RegistrationInvites = new Query<RegistrationInvite>(provider);
         LogEntries = new Query<LogEntry>(provider);
         SupportRequests = new Query<SupportRequest>(provider);
+        VehicleModels = new Query<VehicleModel>(provider);
     }
 
     /// <summary>

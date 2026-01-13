@@ -106,6 +106,9 @@ if (!string.IsNullOrEmpty(openSearchHost))
 builder.Services.AddScoped<IDirectoryService, SqlDirectoryService>();
 builder.Services.AddScoped<ISubscriptionService, SqlSubscriptionService>();
 builder.Services.AddScoped<OrganizationService>();
+// Vehicle lookup services (global, shared across all tenants)
+builder.Services.AddScoped<VehicleLookupService>();
+builder.Services.AddScoped<VehicleRecognitionService>();
 
 // Add Tourist services (for multi-tenant tourist pages)
 builder.Services.AddScoped<ITenantResolverService, TenantResolverService>();
