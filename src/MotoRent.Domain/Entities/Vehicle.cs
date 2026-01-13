@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using MotoRent.Domain.Search;
 
 namespace MotoRent.Domain.Entities;
 
@@ -6,7 +7,7 @@ namespace MotoRent.Domain.Entities;
 /// Represents a rentable vehicle in the fleet.
 /// Supports multiple vehicle types: Motorbike, Car, JetSki, Boat, Van.
 /// </summary>
-public class Vehicle : Entity
+public class Vehicle : Entity, ISearchable
 {
     public int VehicleId { get; set; }
 
@@ -260,6 +261,28 @@ public class Vehicle : Entity
 
     public override int GetId() => this.VehicleId;
     public override void SetId(int value) => this.VehicleId = value;
+
+    #region ISearchable Implementation
+
+    int ISearchable.Id => VehicleId;
+    string ISearchable.Title => $"{LicensePlate} - {DisplayName}";
+    string ISearchable.Status => Status.ToString();
+    string ISearchable.Text => string.Join(" ", LicensePlate, Brand, Model,
+        DisplayName, Color, VehiclePoolName, CurrentShopName, Notes);
+    string ISearchable.Summary => $"{DisplayName} ({LicensePlate}) - {Status}";
+    string ISearchable.Type => "Vehicle";
+    bool ISearchable.IsSearchResult { get; set; }
+
+    Dictionary<string, object>? ISearchable.CustomFields => new()
+    {
+        ["VehicleType"] = VehicleType.ToString(),
+        ["Brand"] = Brand ?? "",
+        ["Model"] = Model ?? "",
+        ["ShopId"] = CurrentShopId,
+        ["VehiclePoolId"] = VehiclePoolId ?? 0
+    };
+
+    #endregion
 
     #region Helper Properties
 

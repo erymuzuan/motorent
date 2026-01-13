@@ -1,10 +1,12 @@
+using MotoRent.Domain.Search;
+
 namespace MotoRent.Domain.Entities;
 
 /// <summary>
 /// Represents an accident/incident involving a company vehicle.
 /// Can be linked to a rental (optional) or be a standalone incident.
 /// </summary>
-public class Accident : Entity
+public class Accident : Entity, ISearchable
 {
     public int AccidentId { get; set; }
 
@@ -171,4 +173,29 @@ public class Accident : Entity
 
     public override int GetId() => this.AccidentId;
     public override void SetId(int value) => this.AccidentId = value;
+
+    #region ISearchable Implementation
+
+    int ISearchable.Id => AccidentId;
+    string ISearchable.Title => $"{ReferenceNo} - {Title}";
+    string ISearchable.Status => Status.ToString();
+    string ISearchable.Text => string.Join(" ", ReferenceNo, Title, Description,
+        Location, VehicleName, VehicleLicensePlate, RenterName);
+    string ISearchable.Summary => $"{ReferenceNo}: {Title} ({Status})";
+    string ISearchable.Type => "Accident";
+    bool ISearchable.IsSearchResult { get; set; }
+
+    static bool ISearchable.HasDate => true;
+    DateOnly? ISearchable.Date => DateOnly.FromDateTime(AccidentDate.DateTime);
+
+    Dictionary<string, object>? ISearchable.CustomFields => new()
+    {
+        ["Severity"] = Severity.ToString(),
+        ["VehicleId"] = VehicleId,
+        ["RentalId"] = RentalId ?? 0,
+        ["AccidentDate"] = AccidentDate.ToString("yyyy-MM-dd"),
+        ["ShopId"] = ShopId
+    };
+
+    #endregion
 }
