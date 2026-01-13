@@ -402,3 +402,61 @@ Always use Tabler icons (`ti ti-*`) for consistency:
 - **CommonLocalizer** Some commonly used text are already in CommonLocalizer class and should be used
 - **Formatted and C# interpolated string** should be localized from `$"Some text here {amount:C} and some more {count:N0} items here"` to `@Localizer["Name", $"{amount:c}", $"{count:N0}"]` and the translated text value should be `Some text here {0} and some more {1} items here`
 - **Razor.resx** for every razor files, 4 new files should be created at `<project_root>/Resources/<razor_path_from_project_root>/<razor>.<culture>.resx`
+
+## MotoRent CSS Classes (mr-* prefix)
+
+For enhanced UI components, use the `mr-` prefixed CSS classes defined in `site.css`. See the **css-styling** skill for complete documentation.
+
+### Quick Reference
+```html
+<!-- Gradient navbar wrapper -->
+<div class="mr-navbar-gradient">...</div>
+
+<!-- Primary action button with gradient -->
+<a href="/action" class="mr-btn-primary-action">
+    <i class="ti ti-plus"></i> Action
+</a>
+
+<!-- Summary cards grid -->
+<div class="mr-summary-cards">
+    <div class="mr-summary-card">...</div>
+</div>
+
+<!-- Enhanced card -->
+<div class="mr-card">
+    <div class="mr-card-header">...</div>
+    <div class="mr-card-body">...</div>
+</div>
+
+<!-- Status badges -->
+<span class="mr-status-badge mr-status-badge-success">Active</span>
+<span class="mr-status-badge mr-status-badge-warning">Pending</span>
+<span class="mr-status-badge mr-status-badge-danger">Overdue</span>
+
+<!-- Field labels and values -->
+<div class="mr-field-label">Label</div>
+<div class="mr-field-value mr-mono mr-highlight">1,350 THB</div>
+
+<!-- Filter tabs -->
+<div class="mr-filter-tabs">
+    <button class="mr-filter-tab active">All</button>
+</div>
+
+<!-- Animation -->
+<div class="mr-animate-in mr-animate-delay-1">...</div>
+
+<!-- Theme transition -->
+<div class="mr-theme-transition">...</div>
+```
+
+### Key CSS Variables
+```css
+/* Colors */
+var(--mr-accent-primary)    /* #0f766e - Primary teal */
+var(--mr-accent-light)      /* #14b8a6 - Light teal */
+var(--mr-text-primary)      /* Main text color */
+var(--mr-text-secondary)    /* Secondary text */
+var(--mr-text-muted)        /* Muted text */
+var(--mr-border-default)    /* Border color */
+var(--mr-bg-card)           /* Card background */
+```
