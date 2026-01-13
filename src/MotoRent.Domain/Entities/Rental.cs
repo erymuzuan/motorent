@@ -1,13 +1,12 @@
 using System.Text.Json.Serialization;
-using MotoRent.Domain.Search;
 
 namespace MotoRent.Domain.Entities;
 
-public class Rental : Entity, ISearchable
+public partial class Rental : Entity
 {
     public int RentalId { get; set; }
 
-    #region Shop and Location
+    // Shop and Location
 
     private int m_rentedFromShopId;
 
@@ -54,9 +53,7 @@ public class Rental : Entity, ISearchable
         set => RentedFromShopId = value;
     }
 
-    #endregion
-
-    #region Renter and Vehicle
+    // Renter and Vehicle
 
     public int RenterId { get; set; }
 
@@ -93,9 +90,7 @@ public class Rental : Entity, ISearchable
         set => VehicleId = value;
     }
 
-    #endregion
-
-    #region Duration and Timing
+    // Duration and Timing
 
     /// <summary>
     /// Type of rental duration (Daily or FixedInterval).
@@ -124,16 +119,12 @@ public class Rental : Entity, ISearchable
 
     public DateTimeOffset? ActualEndDate { get; set; }
 
-    #endregion
-
-    #region Mileage (for motorized vehicles)
+    // Mileage (for motorized vehicles)
 
     public int MileageStart { get; set; }
     public int? MileageEnd { get; set; }
 
-    #endregion
-
-    #region Pricing
+    // Pricing
 
     private decimal m_rentalRate;
 
@@ -172,9 +163,7 @@ public class Rental : Entity, ISearchable
 
     public decimal TotalAmount { get; set; }
 
-    #endregion
-
-    #region Driver/Guide Add-ons
+    // Driver/Guide Add-ons
 
     /// <summary>
     /// Whether a driver is included in the rental.
@@ -196,16 +185,12 @@ public class Rental : Entity, ISearchable
     /// </summary>
     public decimal GuideFee { get; set; }
 
-    #endregion
-
-    #region Status and Notes
+    // Status and Notes
 
     public string Status { get; set; } = "Reserved";  // Reserved, Active, Completed, Cancelled
     public string? Notes { get; set; }
 
-    #endregion
-
-    #region Denormalized for display
+    // Denormalized for display
 
     public string? RenterName { get; set; }
 
@@ -235,16 +220,12 @@ public class Rental : Entity, ISearchable
     /// </summary>
     public string? ReturnedToShopName { get; set; }
 
-    #endregion
-
-    #region Related Entities
+    // Related Entities
 
     public int? InsuranceId { get; set; }
     public int? DepositId { get; set; }
 
-    #endregion
-
-    #region Pick-up/Drop-off Locations
+    // Pick-up/Drop-off Locations
 
     /// <summary>
     /// Where the vehicle will be picked up. Null = at shop.
@@ -276,9 +257,7 @@ public class Rental : Entity, ISearchable
     /// </summary>
     public TimeSpan? ScheduledDropoffTime { get; set; }
 
-    #endregion
-
-    #region Location and Out-of-Hours Fees
+    // Location and Out-of-Hours Fees
 
     /// <summary>
     /// Fee captured for pickup location at rental time.
@@ -320,60 +299,6 @@ public class Rental : Entity, ISearchable
     /// </summary>
     public string? OutOfHoursDropoffBand { get; set; }
 
-    #endregion
-
     public override int GetId() => this.RentalId;
     public override void SetId(int value) => this.RentalId = value;
-
-    #region ISearchable Implementation
-
-    int ISearchable.Id => RentalId;
-    string ISearchable.Title => $"{RenterName} - {VehicleName}";
-    string ISearchable.Status => Status;
-    string ISearchable.Text => string.Join(" ", RenterName, VehicleName,
-        RentedFromShopName, PickupLocationName, DropoffLocationName, Notes);
-    string ISearchable.Summary => $"{VehicleName} rented by {RenterName} ({Status})";
-    string ISearchable.Type => "Rental";
-    bool ISearchable.IsSearchResult { get; set; }
-
-    static bool ISearchable.HasDate => true;
-    DateOnly? ISearchable.Date => DateOnly.FromDateTime(StartDate.DateTime);
-    bool ISearchable.SplitYear => true;
-
-    Dictionary<string, object>? ISearchable.CustomFields => new()
-    {
-        ["RenterId"] = RenterId,
-        ["VehicleId"] = VehicleId,
-        ["ShopId"] = RentedFromShopId,
-        ["StartDate"] = StartDate.ToString("yyyy-MM-dd"),
-        ["EndDate"] = ExpectedEndDate.ToString("yyyy-MM-dd")
-    };
-
-    #endregion
-
-    #region Calculated Properties
-
-    /// <summary>
-    /// Number of rental days (for Daily duration type).
-    /// </summary>
-    [JsonIgnore]
-    public int RentalDays => DurationType == RentalDurationType.Daily
-        ? Math.Max(1, (int)(ExpectedEndDate.Date - StartDate.Date).TotalDays + 1)
-        : 0;
-
-    /// <summary>
-    /// Human-readable duration display.
-    /// </summary>
-    [JsonIgnore]
-    public string DurationDisplay => DurationType == RentalDurationType.Daily
-        ? $"{RentalDays} day{(RentalDays > 1 ? "s" : "")}"
-        : $"{IntervalMinutes} minutes";
-
-    /// <summary>
-    /// Whether this was a cross-shop return.
-    /// </summary>
-    [JsonIgnore]
-    public bool IsCrossShopReturn => ReturnedToShopId.HasValue && ReturnedToShopId != RentedFromShopId;
-
-    #endregion
 }
