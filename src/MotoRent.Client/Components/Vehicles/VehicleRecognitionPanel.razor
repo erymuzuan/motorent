@@ -5,6 +5,7 @@
 @inject VehicleRecognitionService RecognitionService
 @inject VehicleLookupService LookupService
 @inject IBinaryStore BinaryStore
+@inject IJSRuntime JS
 
 <div class="card mb-3">
     <div class="card-header">
@@ -23,20 +24,18 @@
     <div class="card-body">
         @if (m_recognitionResult == null && !m_analyzing)
         {
-            <div class="dropzone @(m_isDragOver ? "dropzone-active" : "")"
+            <label for="vehicle-photo-input" class="dropzone @(m_isDragOver ? "dropzone-active" : "")"
                  @ondragenter="@(() => m_isDragOver = true)"
                  @ondragleave="@(() => m_isDragOver = false)"
-                 @ondrop="OnFileDrop"
                  @ondragover:preventDefault
-                 @onclick="TriggerFileInput"
-                 style="border: 2px dashed var(--tblr-border-color); border-radius: 8px; padding: 2rem; cursor: pointer; text-align: center;">
+                 style="border: 2px dashed var(--tblr-border-color); border-radius: 8px; padding: 2rem; cursor: pointer; text-align: center; display: block;">
                 <i class="ti ti-camera-plus" style="font-size: 3rem; color: var(--tblr-primary); opacity: 0.6;"></i>
                 <p class="mt-2 mb-1 fw-medium">Upload Vehicle Photo</p>
                 <p class="text-secondary mb-0">Click to select or drag and drop</p>
                 <small class="text-secondary">Gemini AI will identify make, model, color, and license plate</small>
                 <InputFile @ref="m_fileInput" OnChange="OnFileSelected" accept="image/*"
-                           style="display: none;" />
-            </div>
+                           id="vehicle-photo-input" style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0;" />
+            </label>
         }
         else if (m_analyzing)
         {
@@ -171,21 +170,9 @@
     private bool m_isDragOver;
     private string? m_previewImageUrl;
 
-    private void TriggerFileInput()
-    {
-        // InputFile doesn't have a public Click() method, but clicking the parent div triggers the hidden input
-    }
-
     private async Task OnFileSelected(InputFileChangeEventArgs e)
     {
         await ProcessFile(e.File);
-    }
-
-    private async Task OnFileDrop(DragEventArgs e)
-    {
-        m_isDragOver = false;
-        // Note: DragEventArgs doesn't directly contain files in Blazor Server
-        // The InputFile component handles this automatically when dropped on it
     }
 
     private async Task ProcessFile(IBrowserFile file)
