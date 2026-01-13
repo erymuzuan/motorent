@@ -6,7 +6,7 @@
 @inject AccidentService AccidentService
 @inject VehicleService VehicleService
 
-<MotoRentPageTitle>Accidents</MotoRentPageTitle>
+<MotoRentPageTitle>@Localizer["Accidents"]</MotoRentPageTitle>
 
 <TablerHeader Title="@Localizer["AccidentManagement"]" PreTitle="@Localizer["VehicleIncidents"]">
     <button type="button" class="btn btn-primary" @onclick="OpenReportDialog">
@@ -31,7 +31,7 @@
                         <option value="">@Localizer["AllStatuses"]</option>
                         @foreach (var status in Enum.GetValues<AccidentStatus>())
                         {
-                            <option value="@status">@status</option>
+                            <option value="@status">@Localizer[status.ToString()]</option>
                         }
                     </select>
                 </div>
@@ -41,7 +41,7 @@
                         <option value="">@Localizer["AllSeverities"]</option>
                         @foreach (var severity in Enum.GetValues<AccidentSeverity>())
                         {
-                            <option value="@severity">@severity</option>
+                            <option value="@severity">@Localizer[severity.ToString()]</option>
                         }
                     </select>
                 </div>
@@ -168,22 +168,22 @@
                                         </td>
                                         <td>
                                             <span class="badge @GetSeverityBadgeClass(accident.Severity)">
-                                                @accident.Severity
+                                                @Localizer[accident.Severity.ToString()]
                                             </span>
                                         </td>
                                         <td>
                                             <span class="badge @GetStatusBadgeClass(accident.Status)">
-                                                @accident.Status
+                                                @Localizer[accident.Status.ToString()]
                                             </span>
                                             @if (accident.PoliceInvolved)
                                             {
-                                                <span class="badge bg-dark ms-1" title="Police Involved">
+                                                <span class="badge bg-dark ms-1" title="@Localizer["PoliceInvolved"]">
                                                     <i class="ti ti-shield"></i>
                                                 </span>
                                             }
                                             @if (accident.InsuranceClaimFiled)
                                             {
-                                                <span class="badge bg-info ms-1" title="Insurance Claim Filed">
+                                                <span class="badge bg-info ms-1" title="@Localizer["InsuranceClaimFiled"]">
                                                     <i class="ti ti-file-dollar"></i>
                                                 </span>
                                             }
@@ -249,7 +249,7 @@
         }
         catch (Exception ex)
         {
-            ShowError($"Error loading data: {ex.Message}");
+            ShowError(Localizer["ErrorLoadingData", ex.Message]);
         }
         finally
         {
@@ -314,14 +314,14 @@
     private async Task OpenReportDialog()
     {
         var result = await DialogService
-            .Create<ReportAccidentDialog>("Report Accident")
+            .Create<ReportAccidentDialog>(Localizer["ReportAccident"])
             .Large()
             .ShowDialogAsync();
 
         if (!result.Cancelled)
         {
             await LoadDataAsync();
-            ShowSuccess("Accident reported successfully");
+            ShowSuccess(Localizer["AccidentReportedSuccessfully"]);
         }
     }
 

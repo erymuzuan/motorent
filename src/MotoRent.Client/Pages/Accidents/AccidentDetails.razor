@@ -71,10 +71,10 @@
                     <div class="card-body">
                         <div class="mb-3 d-flex gap-2">
                             <span class="badge @GetStatusBadgeClass(m_accident.Status)" style="font-size: 0.9rem;">
-                                @m_accident.Status
+                                @Localizer[m_accident.Status.ToString()]
                             </span>
                             <span class="badge @GetSeverityBadgeClass(m_accident.Severity)" style="font-size: 0.9rem;">
-                                @m_accident.Severity
+                                @Localizer[m_accident.Severity.ToString()]
                             </span>
                         </div>
                         <div class="datagrid">
@@ -329,7 +329,7 @@
         }
         catch (Exception ex)
         {
-            ShowError($"Error loading data: {ex.Message}");
+            ShowError(Localizer["ErrorLoadingData", ex.Message]);
         }
         finally
         {
@@ -363,35 +363,35 @@
 
     private async Task StartInvestigation()
     {
-        if (!await DialogService.ConfirmAsync("Start investigation for this accident?"))
+        if (!await DialogService.ConfirmAsync(Localizer["ConfirmStartInvestigation"]))
             return;
 
-        var result = await AccidentService.UpdateStatusAsync(m_accidentId, AccidentStatus.InProgress, "Investigation started", UserName);
+        var result = await AccidentService.UpdateStatusAsync(m_accidentId, AccidentStatus.InProgress, Localizer["InvestigationStarted"], UserName);
         if (result.Success)
         {
             await LoadDataAsync();
-            ShowSuccess("Investigation started");
+            ShowSuccess(Localizer["InvestigationStarted"]);
         }
         else
         {
-            ShowError($"Failed: {result.Message}");
+            ShowError(Localizer["Failed", result.Message]);
         }
     }
 
     private async Task ResolveAccident()
     {
-        var notes = await DialogService.PromptAsync("Resolution Notes", "Enter resolution notes (optional):");
+        var notes = await DialogService.PromptAsync(Localizer["ResolutionNotes"], Localizer["EnterResolutionNotes"]);
         if (notes == null) return; // Cancelled
 
         var result = await AccidentService.UpdateStatusAsync(m_accidentId, AccidentStatus.Resolved, notes, UserName);
         if (result.Success)
         {
             await LoadDataAsync();
-            ShowSuccess("Accident resolved");
+            ShowSuccess(Localizer["AccidentResolved"]);
         }
         else
         {
-            ShowError($"Failed: {result.Message}");
+            ShowError(Localizer["Failed", result.Message]);
         }
     }
 

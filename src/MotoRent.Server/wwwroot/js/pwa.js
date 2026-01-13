@@ -9,9 +9,13 @@ window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
 
-    // Notify Blazor that install is available
+    // Notify Blazor that install is available (if handler exists)
     if (window.DotNet) {
-        window.DotNet.invokeMethodAsync('MotoRent.Client', 'OnInstallAvailable');
+        window.DotNet.invokeMethodAsync('MotoRent.Client', 'OnInstallAvailable')
+            .catch(() => {
+                // Handler not registered - this is ok, MainLayout polls isInstallable instead
+                console.log('[PWA] OnInstallAvailable handler not registered');
+            });
     }
 });
 
@@ -21,7 +25,10 @@ window.addEventListener('appinstalled', () => {
     installPromptShown = true;
 
     if (window.DotNet) {
-        window.DotNet.invokeMethodAsync('MotoRent.Client', 'OnAppInstalled');
+        window.DotNet.invokeMethodAsync('MotoRent.Client', 'OnAppInstalled')
+            .catch(() => {
+                console.log('[PWA] OnAppInstalled handler not registered');
+            });
     }
 });
 

@@ -60,7 +60,7 @@ Localizer["DepositCollectedMessage"]    // "Deposit collected successfully"
 ## Resource File Structure
 
 ```
-src/MotoRent.Client/
+project/
 ├── Resources/
 │   ├── CommonResources.resx           # Shared strings (English)
 │   ├── CommonResources.th.resx        # Shared strings (Thai)
