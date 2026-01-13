@@ -1,10 +1,20 @@
 @using MotoRent.Client.Components.Vehicles
+@using MotoRent.Domain.Core
 @using MotoRent.Domain.Entities
+@using MotoRent.Domain.Lookups
 @inherits LocalizedComponentBase<VehicleForm>
+@inject VehicleLookupService LookupService
 
 <div class="row">
     @* Left Column: Basic Info & Images *@
     <div class="col-lg-4">
+        @* Quick Recognition Panel (for new vehicles only) *@
+        @if (IsNew)
+        {
+            <VehicleRecognitionPanel SuggestedVehicleType="@Entity.VehicleType"
+                                     OnApply="ApplyRecognitionResult" />
+        }
+
         @* Basic Info Card *@
         <div class="card mb-3">
             <div class="card-header">
@@ -448,6 +458,89 @@
         // Refresh if needed
     }
 
+    #region Recognition Integration
+
+    private List<string> m_lookupMakes = [];
+    private List<VehicleModel> m_lookupModels = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadLookupsAsync();
+    }
+
+    private async Task LoadLookupsAsync()
+    {
+        try
+        {
+            this.m_lookupMakes = await this.LookupService.GetMakesAsync(this.Entity.VehicleType);
+            this.m_lookupModels = await this.LookupService.GetModelsByTypeAsync(this.Entity.VehicleType);
+        }
+        catch
+        {
+            // Fall back to defaults if lookup service fails
+        }
+    }
+
+    private async Task ApplyRecognitionResult(VehicleRecognitionResult result)
+    {
+        if (result.VehicleType.HasValue)
+        {
+            await OnVehicleTypeChanged(result.VehicleType.Value);
+        }
+
+        if (!string.IsNullOrEmpty(result.RecognizedMake))
+        {
+            this.Entity.Brand = result.RecognizedMake;
+        }
+
+        if (!string.IsNullOrEmpty(result.RecognizedModel))
+        {
+            this.Entity.Model = result.RecognizedModel;
+        }
+
+        if (!string.IsNullOrEmpty(result.Color))
+        {
+            this.Entity.Color = result.Color;
+        }
+
+        if (result.Year.HasValue)
+        {
+            this.Entity.Year = result.Year.Value;
+        }
+
+        if (!string.IsNullOrEmpty(result.LicensePlate))
+        {
+            this.Entity.LicensePlate = result.LicensePlate;
+        }
+
+        if (result.EngineCC.HasValue && this.Entity.VehicleType == VehicleType.Motorbike)
+        {
+            this.Entity.EngineCC = result.EngineCC.Value;
+        }
+
+        if (result.Segment.HasValue && this.Entity.VehicleType == VehicleType.Car)
+        {
+            this.Entity.Segment = result.Segment.Value;
+        }
+
+        // If we have a matched lookup model, apply suggested pricing
+        if (result.MatchedVehicleModel != null)
+        {
+            if (result.MatchedVehicleModel.SuggestedDailyRate.HasValue && this.Entity.DailyRate == 0)
+            {
+                this.Entity.DailyRate = result.MatchedVehicleModel.SuggestedDailyRate.Value;
+            }
+            if (result.MatchedVehicleModel.SuggestedDeposit.HasValue && this.Entity.DepositAmount == 0)
+            {
+                this.Entity.DepositAmount = result.MatchedVehicleModel.SuggestedDeposit.Value;
+            }
+        }
+
+        this.StateHasChanged();
+    }
+
+    #endregion
+
     #region Helper Methods
 
     private static string GetVehicleTypeIcon(VehicleType type) => type switch
@@ -492,15 +585,22 @@
         _ => status.ToString()
     };
 
-    private List<string> GetBrandSuggestions() => Entity.VehicleType switch
+    private List<string> GetBrandSuggestions()
     {
-        VehicleType.Motorbike => ["Honda", "Yamaha", "Suzuki", "Kawasaki", "Vespa", "GPX"],
-        VehicleType.Car => ["Toyota", "Honda", "Mazda", "Nissan", "Mitsubishi", "Isuzu", "Mercedes", "BMW"],
-        VehicleType.JetSki => ["Yamaha", "Sea-Doo", "Kawasaki", "Honda"],
-        VehicleType.Boat => ["Yamaha", "Bayliner", "Sea Ray", "Boston Whaler"],
-        VehicleType.Van => ["Toyota", "Hyundai", "Mercedes", "Ford", "Nissan"],
-        _ => []
-    };
+        // Use lookup-based brands if available, fall back to defaults
+        if (this.m_lookupMakes.Count > 0)
+            return this.m_lookupMakes;
+
+        return Entity.VehicleType switch
+        {
+            VehicleType.Motorbike => ["Honda", "Yamaha", "Suzuki", "Kawasaki", "Vespa", "GPX"],
+            VehicleType.Car => ["Toyota", "Honda", "Mazda", "Nissan", "Mitsubishi", "Isuzu", "Mercedes", "BMW"],
+            VehicleType.JetSki => ["Yamaha", "Sea-Doo", "Kawasaki", "Honda"],
+            VehicleType.Boat => ["Yamaha", "Bayliner", "Sea Ray", "Boston Whaler"],
+            VehicleType.Van => ["Toyota", "Hyundai", "Mercedes", "Ford", "Nissan"],
+            _ => []
+        };
+    }
 
     private string GetModelPlaceholder() => Entity.VehicleType switch
     {

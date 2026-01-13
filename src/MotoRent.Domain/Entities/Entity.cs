@@ -47,6 +47,8 @@ namespace MotoRent.Domain.Entities;
 [JsonDerivedType(typeof(Comment), nameof(Comment))]
 [JsonDerivedType(typeof(Follow), nameof(Follow))]
 [JsonDerivedType(typeof(SupportRequest), nameof(SupportRequest))]
+// Global lookup entities
+[JsonDerivedType(typeof(VehicleModel), nameof(VehicleModel))]
 public abstract class Entity
 {
     public string? WebId { get; set; }

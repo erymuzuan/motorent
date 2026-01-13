@@ -1,0 +1,277 @@
+@using MotoRent.Domain.Core
+@using MotoRent.Domain.Entities
+@inherits MotoRentComponentBase
+@inject VehicleLookupService LookupService
+
+<form id="vehicle-model-form" @onsubmit="SaveModel" @onsubmit:preventDefault>
+    <div class="modal-body">
+        <div class="row g-3">
+            <!-- Basic Info -->
+            <div class="col-md-6">
+                <label class="form-label required">Make / Brand</label>
+                <input type="text" class="form-control" @bind="m_model.Make" required
+                       list="makes-list" placeholder="e.g., Honda, Toyota, Yamaha" />
+                <datalist id="makes-list">
+                    @foreach (var make in m_existingMakes)
+                    {
+                        <option value="@make" />
+                    }
+                </datalist>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label required">Model Name</label>
+                <input type="text" class="form-control" @bind="m_model.Model" required
+                       placeholder="e.g., Click 125, PCX 160, Camry" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label required">Vehicle Type</label>
+                <select class="form-select" @bind="m_model.VehicleType" required>
+                    @foreach (var type in Enum.GetValues<VehicleType>())
+                    {
+                        <option value="@type">@type</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Country of Origin</label>
+                <select class="form-select" @bind="m_model.CountryOfOrigin">
+                    <option value="">Not specified</option>
+                    <option value="Japan">Japan</option>
+                    <option value="Thailand">Thailand</option>
+                    <option value="Germany">Germany</option>
+                    <option value="South Korea">South Korea</option>
+                    <option value="Italy">Italy</option>
+                    <option value="USA">USA</option>
+                    <option value="China">China</option>
+                </select>
+            </div>
+
+            <!-- Type-Specific Fields -->
+            @if (m_model.VehicleType == VehicleType.Motorbike)
+            {
+                <div class="col-12">
+                    <h4 class="subheader mt-2 mb-2">Motorbike Specifications</h4>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Engine CC</label>
+                    <input type="number" class="form-control" @bind="m_model.EngineCC"
+                           min="50" max="2000" placeholder="e.g., 125, 150, 160" />
+                </div>
+            }
+            else if (m_model.VehicleType == VehicleType.Car)
+            {
+                <div class="col-12">
+                    <h4 class="subheader mt-2 mb-2">Car Specifications</h4>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Segment</label>
+                    <select class="form-select" @bind="m_model.Segment">
+                        <option value="">Not specified</option>
+                        @foreach (var segment in Enum.GetValues<CarSegment>())
+                        {
+                            <option value="@segment">@segment</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Engine (Liters)</label>
+                    <input type="number" class="form-control" @bind="m_model.EngineLiters"
+                           min="0.5" max="8" step="0.1" placeholder="e.g., 1.5, 2.0" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Seat Count</label>
+                    <input type="number" class="form-control" @bind="m_model.SeatCount"
+                           min="2" max="12" placeholder="e.g., 5, 7" />
+                </div>
+            }
+            else if (m_model.VehicleType == VehicleType.Van)
+            {
+                <div class="col-12">
+                    <h4 class="subheader mt-2 mb-2">Van Specifications</h4>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Seat Count</label>
+                    <input type="number" class="form-control" @bind="m_model.SeatCount"
+                           min="4" max="50" placeholder="e.g., 12, 15" />
+                </div>
+            }
+
+            <!-- Year Range -->
+            <div class="col-12">
+                <h4 class="subheader mt-2 mb-2">Production Years</h4>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Year From</label>
+                <input type="number" class="form-control" @bind="m_model.YearFrom"
+                       min="1990" max="@DateTime.Now.Year" placeholder="e.g., 2020" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Year To</label>
+                <input type="number" class="form-control" @bind="m_model.YearTo"
+                       min="1990" max="@(DateTime.Now.Year + 1)" placeholder="Leave empty if still in production" />
+            </div>
+
+            <!-- Suggested Pricing -->
+            <div class="col-12">
+                <h4 class="subheader mt-2 mb-2">Suggested Pricing (THB)</h4>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Suggested Daily Rate</label>
+                <div class="input-group">
+                    <span class="input-group-text">฿</span>
+                    <input type="number" class="form-control" @bind="m_model.SuggestedDailyRate"
+                           min="0" step="50" placeholder="e.g., 300, 500" />
+                </div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Suggested Deposit</label>
+                <div class="input-group">
+                    <span class="input-group-text">฿</span>
+                    <input type="number" class="form-control" @bind="m_model.SuggestedDeposit"
+                           min="0" step="500" placeholder="e.g., 2000, 5000" />
+                </div>
+            </div>
+
+            <!-- Aliases & Settings -->
+            <div class="col-12">
+                <h4 class="subheader mt-2 mb-2">Recognition Settings</h4>
+            </div>
+            <div class="col-12">
+                <label class="form-label">Aliases (for Gemini matching)</label>
+                <input type="text" class="form-control" @bind="m_aliasesText"
+                       placeholder="Comma-separated alternative names, e.g., PCX, PCX160, PCX 160cc" />
+                <small class="form-hint">Alternative names or spellings for this model to improve recognition accuracy</small>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Display Order</label>
+                <input type="number" class="form-control" @bind="m_model.DisplayOrder"
+                       min="1" max="999" />
+                <small class="form-hint">Lower numbers appear first in lists (default: 100)</small>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label mt-4">Status</label>
+                <label class="form-check form-switch">
+                    <input type="checkbox" class="form-check-input" @bind="m_model.IsActive" />
+                    <span class="form-check-label">@(m_model.IsActive ? "Active" : "Inactive")</span>
+                </label>
+            </div>
+        </div>
+    </div>
+</form>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel" disabled="@m_isSaving">
+        Cancel
+    </button>
+    <button type="submit" form="vehicle-model-form" class="btn btn-primary" disabled="@m_isSaving">
+        @if (m_isSaving)
+        {
+            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+            <span>Saving...</span>
+        }
+        else
+        {
+            <i class="ti ti-device-floppy me-1"></i>
+            <span>@(IsNew ? "Create Model" : "Save Changes")</span>
+        }
+    </button>
+</div>
+
+@code {
+    [CascadingParameter] private ModalInstance? ModalInstance { get; set; }
+    [Parameter] public VehicleModel Model { get; set; } = null!;
+    [Parameter] public bool IsNew { get; set; }
+
+    private VehicleModel m_model = new();
+    private List<string> m_existingMakes = [];
+    private string m_aliasesText = "";
+    private bool m_isSaving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        this.m_existingMakes = await this.LookupService.GetMakesAsync();
+    }
+
+    protected override void OnParametersSet()
+    {
+        // Clone the model for editing
+        this.m_model = new VehicleModel
+        {
+            VehicleModelId = this.Model.VehicleModelId,
+            Make = this.Model.Make,
+            Model = this.Model.Model,
+            VehicleType = this.Model.VehicleType,
+            Segment = this.Model.Segment,
+            EngineCC = this.Model.EngineCC,
+            EngineLiters = this.Model.EngineLiters,
+            SeatCount = this.Model.SeatCount,
+            YearFrom = this.Model.YearFrom,
+            YearTo = this.Model.YearTo,
+            IsActive = this.Model.IsActive,
+            DisplayOrder = this.Model.DisplayOrder,
+            Aliases = this.Model.Aliases ?? [],
+            SuggestedDailyRate = this.Model.SuggestedDailyRate,
+            SuggestedDeposit = this.Model.SuggestedDeposit,
+            ImageStoreId = this.Model.ImageStoreId,
+            CountryOfOrigin = this.Model.CountryOfOrigin
+        };
+
+        this.m_aliasesText = string.Join(", ", this.m_model.Aliases);
+    }
+
+    private void Cancel() => this.ModalInstance?.Cancel();
+
+    private async Task SaveModel()
+    {
+        if (string.IsNullOrWhiteSpace(this.m_model.Make))
+        {
+            this.ShowError("Make/Brand is required");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(this.m_model.Model))
+        {
+            this.ShowError("Model name is required");
+            return;
+        }
+
+        this.m_isSaving = true;
+
+        try
+        {
+            // Parse aliases from text
+            this.m_model.Aliases = this.m_aliasesText
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Distinct()
+                .ToArray();
+
+            SubmitOperation result;
+            if (this.IsNew)
+            {
+                result = await this.LookupService.CreateModelAsync(this.m_model, this.UserName);
+            }
+            else
+            {
+                result = await this.LookupService.UpdateModelAsync(this.m_model, this.UserName);
+            }
+
+            if (result.Success)
+            {
+                this.ModalInstance?.Close(this.m_model);
+            }
+            else
+            {
+                this.ShowError(result.Message ?? "Failed to save vehicle model.");
+            }
+        }
+        catch (Exception ex)
+        {
+            this.ShowError($"Error saving vehicle model: {ex.Message}");
+        }
+        finally
+        {
+            this.m_isSaving = false;
+        }
+    }
+}

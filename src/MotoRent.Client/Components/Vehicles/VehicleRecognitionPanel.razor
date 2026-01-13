@@ -1,0 +1,263 @@
+@using MotoRent.Domain.Core
+@using MotoRent.Domain.Entities
+@using MotoRent.Domain.Lookups
+@inherits MotoRentComponentBase
+@inject VehicleRecognitionService RecognitionService
+@inject VehicleLookupService LookupService
+@inject IBinaryStore BinaryStore
+
+<div class="card mb-3">
+    <div class="card-header">
+        <h3 class="card-title">
+            <i class="ti ti-camera me-2"></i>Quick Recognition
+        </h3>
+        <div class="card-actions">
+            @if (m_recognitionResult != null)
+            {
+                <button type="button" class="btn btn-ghost-secondary btn-sm" @onclick="Reset">
+                    <i class="ti ti-refresh me-1"></i>New Photo
+                </button>
+            }
+        </div>
+    </div>
+    <div class="card-body">
+        @if (m_recognitionResult == null && !m_analyzing)
+        {
+            <div class="dropzone @(m_isDragOver ? "dropzone-active" : "")"
+                 @ondragenter="@(() => m_isDragOver = true)"
+                 @ondragleave="@(() => m_isDragOver = false)"
+                 @ondrop="OnFileDrop"
+                 @ondragover:preventDefault
+                 @onclick="TriggerFileInput"
+                 style="border: 2px dashed var(--tblr-border-color); border-radius: 8px; padding: 2rem; cursor: pointer; text-align: center;">
+                <i class="ti ti-camera-plus" style="font-size: 3rem; color: var(--tblr-primary); opacity: 0.6;"></i>
+                <p class="mt-2 mb-1 fw-medium">Upload Vehicle Photo</p>
+                <p class="text-secondary mb-0">Click to select or drag and drop</p>
+                <small class="text-secondary">Gemini AI will identify make, model, color, and license plate</small>
+                <InputFile @ref="m_fileInput" OnChange="OnFileSelected" accept="image/*"
+                           style="display: none;" />
+            </div>
+        }
+        else if (m_analyzing)
+        {
+            <div class="text-center py-4">
+                <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;"></div>
+                <p class="mb-1 fw-medium">Analyzing vehicle photo...</p>
+                <p class="text-secondary mb-0">Gemini AI is identifying the vehicle</p>
+            </div>
+        }
+        else if (m_recognitionResult != null)
+        {
+            @if (!m_recognitionResult.IsSuccess)
+            {
+                <div class="alert alert-danger mb-3">
+                    <i class="ti ti-alert-circle me-2"></i>
+                    @m_recognitionResult.Error
+                </div>
+            }
+            else
+            {
+                <div class="row g-3">
+                    @* Preview Image *@
+                    @if (!string.IsNullOrEmpty(m_previewImageUrl))
+                    {
+                        <div class="col-md-4">
+                            <img src="@m_previewImageUrl" alt="Vehicle" class="rounded w-100"
+                                 style="max-height: 200px; object-fit: cover;" />
+                        </div>
+                    }
+
+                    @* Recognition Results *@
+                    <div class="@(string.IsNullOrEmpty(m_previewImageUrl) ? "col-12" : "col-md-8")">
+                        <h4 class="mb-3">
+                            @if (m_recognitionResult.HasLookupMatch)
+                            {
+                                <span class="badge bg-success me-2">
+                                    <i class="ti ti-check me-1"></i>Match Found
+                                </span>
+                            }
+                            else if (m_recognitionResult.SuggestAddToLookups)
+                            {
+                                <span class="badge bg-yellow me-2">
+                                    <i class="ti ti-bulb me-1"></i>New Model
+                                </span>
+                            }
+                            <span class="badge bg-azure-lt">
+                                @((m_recognitionResult.Confidence * 100).ToString("0"))% confidence
+                            </span>
+                        </h4>
+
+                        <dl class="row mb-0">
+                            @if (m_recognitionResult.VehicleType.HasValue)
+                            {
+                                <dt class="col-sm-4 text-secondary">Type</dt>
+                                <dd class="col-sm-8">@m_recognitionResult.VehicleType</dd>
+                            }
+                            @if (!string.IsNullOrEmpty(m_recognitionResult.RecognizedMake))
+                            {
+                                <dt class="col-sm-4 text-secondary">Make</dt>
+                                <dd class="col-sm-8"><strong>@m_recognitionResult.RecognizedMake</strong></dd>
+                            }
+                            @if (!string.IsNullOrEmpty(m_recognitionResult.RecognizedModel))
+                            {
+                                <dt class="col-sm-4 text-secondary">Model</dt>
+                                <dd class="col-sm-8"><strong>@m_recognitionResult.RecognizedModel</strong></dd>
+                            }
+                            @if (!string.IsNullOrEmpty(m_recognitionResult.Color))
+                            {
+                                <dt class="col-sm-4 text-secondary">Color</dt>
+                                <dd class="col-sm-8">@m_recognitionResult.Color</dd>
+                            }
+                            @if (m_recognitionResult.Year.HasValue)
+                            {
+                                <dt class="col-sm-4 text-secondary">Year</dt>
+                                <dd class="col-sm-8">@m_recognitionResult.Year</dd>
+                            }
+                            @if (!string.IsNullOrEmpty(m_recognitionResult.LicensePlate))
+                            {
+                                <dt class="col-sm-4 text-secondary">License Plate</dt>
+                                <dd class="col-sm-8">
+                                    <span class="badge bg-dark text-light fs-5 font-monospace">
+                                        @m_recognitionResult.LicensePlate
+                                    </span>
+                                </dd>
+                            }
+                            @if (m_recognitionResult.EngineCC.HasValue)
+                            {
+                                <dt class="col-sm-4 text-secondary">Engine</dt>
+                                <dd class="col-sm-8">@m_recognitionResult.EngineCC cc</dd>
+                            }
+                        </dl>
+
+                        @if (m_recognitionResult.SuggestAddToLookups && !m_recognitionResult.HasLookupMatch)
+                        {
+                            <div class="alert alert-warning mt-3 mb-0">
+                                <i class="ti ti-info-circle me-2"></i>
+                                This vehicle model is not in our database. Consider asking a super admin to add it to the global lookups.
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <div class="mt-3 d-flex gap-2">
+                    <button type="button" class="btn btn-primary" @onclick="ApplyRecognition">
+                        <i class="ti ti-check me-2"></i>Apply to Form
+                    </button>
+                    <button type="button" class="btn btn-ghost-secondary" @onclick="Reset">
+                        Try Another Photo
+                    </button>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// The vehicle type to suggest (will be updated by recognition).
+    /// </summary>
+    [Parameter]
+    public VehicleType? SuggestedVehicleType { get; set; }
+
+    /// <summary>
+    /// Callback when recognition results should be applied to the form.
+    /// </summary>
+    [Parameter]
+    public EventCallback<VehicleRecognitionResult> OnApply { get; set; }
+
+    private InputFile? m_fileInput;
+    private VehicleRecognitionResult? m_recognitionResult;
+    private bool m_analyzing;
+    private bool m_isDragOver;
+    private string? m_previewImageUrl;
+
+    private void TriggerFileInput()
+    {
+        // InputFile doesn't have a public Click() method, but clicking the parent div triggers the hidden input
+    }
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        await ProcessFile(e.File);
+    }
+
+    private async Task OnFileDrop(DragEventArgs e)
+    {
+        m_isDragOver = false;
+        // Note: DragEventArgs doesn't directly contain files in Blazor Server
+        // The InputFile component handles this automatically when dropped on it
+    }
+
+    private async Task ProcessFile(IBrowserFile file)
+    {
+        if (file == null)
+            return;
+
+        // Validate file type
+        if (!file.ContentType.StartsWith("image/"))
+        {
+            this.ShowError("Please select an image file.");
+            return;
+        }
+
+        // Validate file size (max 10MB)
+        if (file.Size > 10 * 1024 * 1024)
+        {
+            this.ShowError("Image file is too large. Maximum size is 10MB.");
+            return;
+        }
+
+        this.m_analyzing = true;
+        this.m_recognitionResult = null;
+        this.StateHasChanged();
+
+        try
+        {
+            // Read file to base64
+            using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            var base64 = Convert.ToBase64String(ms.ToArray());
+
+            // Create preview URL
+            m_previewImageUrl = $"data:{file.ContentType};base64,{base64}";
+
+            // Call recognition service
+            this.m_recognitionResult = await this.RecognitionService.RecognizeVehicleFromBase64Async(
+                base64,
+                file.ContentType);
+
+            if (this.m_recognitionResult.IsSuccess)
+            {
+                this.ShowSuccess("Vehicle recognized successfully!");
+            }
+        }
+        catch (Exception ex)
+        {
+            this.m_recognitionResult = new VehicleRecognitionResult
+            {
+                Error = $"Failed to process image: {ex.Message}"
+            };
+            this.ShowError(m_recognitionResult.Error);
+        }
+        finally
+        {
+            this.m_analyzing = false;
+        }
+    }
+
+    private async Task ApplyRecognition()
+    {
+        if (this.m_recognitionResult != null)
+        {
+            await this.OnApply.InvokeAsync(this.m_recognitionResult);
+            this.ShowInfo("Recognition results applied to form.");
+        }
+    }
+
+    private void Reset()
+    {
+        this.m_recognitionResult = null;
+        this.m_previewImageUrl = null;
+    }
+}
