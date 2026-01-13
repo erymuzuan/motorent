@@ -1,12 +1,12 @@
-@inherits MotoRentComponentBase
+@inherits LocalizedComponentBase<CheckIn>
 @using MotoRent.Domain.Entities
 @using MotoRent.Services
 @inject VehicleService VehicleService
 
 <div class="d-flex flex-column gap-4">
     <div>
-        <h5 class="mb-1">Select a Vehicle</h5>
-        <p class="text-secondary mb-0">Choose an available vehicle for this rental</p>
+        <h5 class="mb-1">@Localizer["SelectVehicle"]</h5>
+        <p class="text-secondary mb-0">@Localizer["SelectVehicleDesc"]</p>
     </div>
 
     @* Vehicle Type Filter Tabs *@
@@ -16,7 +16,7 @@
                 <li class="nav-item">
                     <a class="nav-link @(m_vehicleTypeFilter == null ? "active" : "")"
                        href="javascript:void(0)" @onclick="@(() => FilterByType(null))">
-                        <i class="ti ti-list me-1"></i>All
+                        <i class="ti ti-list me-1"></i>@Localizer["All"]
                         <span class="badge bg-secondary ms-1">@m_allVehicles.Count</span>
                     </a>
                 </li>
@@ -41,12 +41,12 @@
             <span class="input-icon-addon">
                 <i class="ti ti-search"></i>
             </span>
-            <input type="text" class="form-control" placeholder="Search by brand, model, license plate..."
+            <input type="text" class="form-control" placeholder="@Localizer["SearchRenterPlaceholder"]"
                    @bind="m_searchTerm" @bind:event="oninput" @onkeyup="OnSearchChanged" />
         </div>
 
         <select class="form-select" style="width: 150px;" @bind="m_brandFilter" @bind:after="ApplyFilters">
-            <option value="">All Brands</option>
+            <option value="">@Localizer["AllBrands"]</option>
             @foreach (var brand in m_brands)
             {
                 <option value="@brand">@brand</option>
@@ -56,11 +56,11 @@
         <div class="form-check form-switch ms-2">
             <input class="form-check-input" type="checkbox" id="includePooled"
                    @bind="m_includePooled" @bind:after="LoadVehicles">
-            <label class="form-check-label" for="includePooled">Include Pooled</label>
+            <label class="form-check-label" for="includePooled">@Localizer["IncludePooled"]</label>
         </div>
 
         <div class="ms-auto">
-            <span class="badge bg-success">@m_filteredVehicles.Count Available</span>
+            <span class="badge bg-success">@m_filteredVehicles.Count @Localizer["Available"]</span>
         </div>
     </div>
 
@@ -109,7 +109,7 @@
                             @if (vehicle.VehicleType == VehicleType.Motorbike && vehicle.EngineCC.HasValue)
                             {
                                 <div class="d-flex justify-content-between">
-                                    <small class="text-secondary">Engine</small>
+                                    <small class="text-secondary">@Localizer["Engine"]</small>
                                     <span>@vehicle.EngineCC cc</span>
                                 </div>
                             }
@@ -118,14 +118,14 @@
                                 @if (vehicle.Segment.HasValue)
                                 {
                                     <div class="d-flex justify-content-between">
-                                        <small class="text-secondary">Segment</small>
+                                        <small class="text-secondary">@Localizer["Segment"]</small>
                                         <span>@GetSegmentLabel(vehicle.Segment.Value)</span>
                                     </div>
                                 }
                                 @if (vehicle.SeatCount.HasValue)
                                 {
                                     <div class="d-flex justify-content-between">
-                                        <small class="text-secondary">Seats</small>
+                                        <small class="text-secondary">@Localizer["Seats"]</small>
                                         <span>@vehicle.SeatCount</span>
                                     </div>
                                 }
@@ -133,21 +133,21 @@
                             @if (vehicle.VehicleType == VehicleType.Boat && vehicle.PassengerCapacity.HasValue)
                             {
                                 <div class="d-flex justify-content-between">
-                                    <small class="text-secondary">Capacity</small>
-                                    <span>@vehicle.PassengerCapacity passengers</span>
+                                    <small class="text-secondary">@Localizer["Capacity"]</small>
+                                    <span>@vehicle.PassengerCapacity @Localizer["TourGuideDesc"]</span>
                                 </div>
                             }
                             @if (vehicle.Year > 0)
                             {
                                 <div class="d-flex justify-content-between">
-                                    <small class="text-secondary">Year</small>
+                                    <small class="text-secondary">@Localizer["Year"]</small>
                                     <span>@vehicle.Year</span>
                                 </div>
                             }
                             @if (!string.IsNullOrEmpty(vehicle.Color))
                             {
                                 <div class="d-flex justify-content-between">
-                                    <small class="text-secondary">Color</small>
+                                    <small class="text-secondary">@Localizer["Color"]</small>
                                     <span>@vehicle.Color</span>
                                 </div>
                             }
@@ -159,13 +159,13 @@
                                     @if (vehicle.HasDriverOption)
                                     {
                                         <span class="badge bg-azure-lt text-azure" style="font-size: 0.65rem;">
-                                            <i class="ti ti-steering-wheel"></i> Driver Available
+                                            <i class="ti ti-steering-wheel"></i> @Localizer["DriverAvailable"]
                                         </span>
                                     }
                                     @if (vehicle.HasGuideOption)
                                     {
                                         <span class="badge bg-teal-lt text-teal" style="font-size: 0.65rem;">
-                                            <i class="ti ti-map"></i> Guide Available
+                                            <i class="ti ti-map"></i> @Localizer["GuideAvailable"]
                                         </span>
                                     }
                                 </div>
@@ -177,7 +177,7 @@
                             @if (vehicle.UsesIntervalPricing)
                             {
                                 <div class="d-flex justify-content-between">
-                                    <span class="fw-medium">Hourly Rate</span>
+                                    <span class="fw-medium">@Localizer["HourlyRate"]</span>
                                     <span class="text-primary fw-semibold" style="font-size: 1.1rem;">
                                         @FormatCurrency(vehicle.Rate1Hour ?? 0)/hr
                                     </span>
@@ -196,14 +196,14 @@
                             else
                             {
                                 <div class="d-flex justify-content-between">
-                                    <span class="fw-medium">Daily Rate</span>
+                                    <span class="fw-medium">@Localizer["DailyRate"]</span>
                                     <span class="text-primary fw-semibold" style="font-size: 1.1rem;">
                                         @FormatCurrency(vehicle.DailyRate)
                                     </span>
                                 </div>
                             }
                             <div class="d-flex justify-content-between">
-                                <small class="text-secondary">Deposit</small>
+                                <small class="text-secondary">@Localizer["Deposit"]</small>
                                 <span>@FormatCurrency(vehicle.DepositAmount)</span>
                             </div>
 
@@ -212,7 +212,7 @@
                             {
                                 <div class="alert alert-warning py-1 px-2 mb-0 mt-2" style="font-size: 0.75rem;">
                                     <i class="ti ti-map-pin me-1"></i>
-                                    At another shop - may need pickup
+                                    @Localizer["AtAnotherShop"]
                                 </div>
                             }
                         </div>
@@ -226,10 +226,10 @@
     {
         <div class="alert alert-info">
             <i class="ti ti-info-circle me-2"></i>
-            No available vehicles found. All vehicles may be currently rented or under maintenance.
+            @Localizer["NoVehiclesFound"]
             @if (!m_includePooled)
             {
-                <span>Try enabling "Include Pooled" to see vehicles from partner shops.</span>
+                <span>@Localizer["IncludePooledHint"]</span>
             }
         </div>
     }
@@ -239,7 +239,7 @@
         <div class="alert alert-success d-flex align-items-center gap-2 mt-4">
             <i class="ti @GetVehicleTypeIcon(this.SelectedVehicle.VehicleType)"></i>
             <span>
-                Selected: <strong>@this.SelectedVehicle.Brand @this.SelectedVehicle.Model</strong>
+                @Localizer["Selected"]: <strong>@this.SelectedVehicle.Brand @this.SelectedVehicle.Model</strong>
                 (@this.SelectedVehicle.LicensePlate) -
                 @if (this.SelectedVehicle.UsesIntervalPricing)
                 {
@@ -369,14 +369,14 @@
         _ => "ti-car"
     };
 
-    private static string GetVehicleTypeLabel(VehicleType type) => type switch
+    private string GetVehicleTypeLabel(VehicleType type) => type switch
     {
-        VehicleType.Motorbike => "Motorbike",
-        VehicleType.Car => "Car",
-        VehicleType.JetSki => "Jet Ski",
-        VehicleType.Boat => "Boat",
-        VehicleType.Van => "Van",
-        _ => "Vehicle"
+        VehicleType.Motorbike => Localizer["Motorbike"],
+        VehicleType.Car => Localizer["Car"],
+        VehicleType.JetSki => Localizer["JetSki"],
+        VehicleType.Boat => Localizer["Boat"],
+        VehicleType.Van => Localizer["Van"],
+        _ => Localizer["Vehicle"]
     };
 
     private static string GetVehicleTypeAvatarClass(VehicleType type) => type switch
@@ -389,15 +389,15 @@
         _ => "bg-primary"
     };
 
-    private static string GetSegmentLabel(CarSegment segment) => segment switch
+    private string GetSegmentLabel(CarSegment segment) => segment switch
     {
-        CarSegment.SmallSedan => "Small Sedan",
-        CarSegment.BigSedan => "Big Sedan",
-        CarSegment.SUV => "SUV",
-        CarSegment.Pickup => "Pickup",
-        CarSegment.Hatchback => "Hatchback",
-        CarSegment.Minivan => "Minivan",
-        CarSegment.Luxury => "Luxury",
+        CarSegment.SmallSedan => Localizer["SmallSedan"],
+        CarSegment.BigSedan => Localizer["BigSedan"],
+        CarSegment.SUV => Localizer["SUV"],
+        CarSegment.Pickup => Localizer["Pickup"],
+        CarSegment.Hatchback => Localizer["Hatchback"],
+        CarSegment.Minivan => Localizer["Minivan"],
+        CarSegment.Luxury => Localizer["Luxury"],
         _ => segment.ToString()
     };
 }

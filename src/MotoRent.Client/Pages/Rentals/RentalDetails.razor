@@ -132,7 +132,7 @@
                     <div class="card-body">
                         <div class="mb-3">
                             <span class="badge @GetStatusBadgeClass(m_rental.Status)" style="font-size: 0.9rem;">
-                                @m_rental.Status
+                                @Localizer[m_rental.Status ?? ""]
                             </span>
                         </div>
                         <div class="datagrid">
@@ -161,7 +161,7 @@
                                     @FormatCurrency(m_rental.RentalRate)
                                     @if (m_rental.DurationType == RentalDurationType.Daily)
                                     {
-                                        <span class="text-secondary">/day</span>
+                                        <span class="text-secondary">/@Localizer["Days"]</span>
                                     }
                                     else
                                     {
@@ -208,7 +208,7 @@
                                     <div class="datagrid-title">@Localizer["Status"]</div>
                                     <div class="datagrid-content">
                                         <span class="badge @GetDepositStatusBadgeClass(m_deposit.Status)">
-                                            @m_deposit.Status
+                                            @Localizer[m_deposit.Status ?? ""]
                                         </span>
                                     </div>
                                 </div>
@@ -531,7 +531,7 @@
                                                 }
                                                 else
                                                 {
-                                                    <span class="text-secondary">At Shop</span>
+                                                    <span class="text-secondary">@Localizer["AtShopFree"]</span>
                                                 }
                                             </div>
                                         </div>
@@ -584,7 +584,7 @@
                                                 }
                                                 else
                                                 {
-                                                    <span class="text-secondary">At Shop</span>
+                                                    <span class="text-secondary">@Localizer["AtShopFree"]</span>
                                                 }
                                             </div>
                                         </div>
@@ -673,17 +673,17 @@
                                             <td>@FormatDateTime(payment.PaidOn)</td>
                                             <td>
                                                 <span class="badge @GetPaymentTypeBadgeClass(payment.PaymentType)">
-                                                    @payment.PaymentType
+                                                    @Localizer[payment.PaymentType ?? ""]
                                                 </span>
                                             </td>
-                                            <td>@payment.PaymentMethod</td>
+                                            <td>@Localizer[payment.PaymentMethod ?? ""]</td>
                                             <td class="text-secondary">@(payment.TransactionRef ?? "-")</td>
                                             <td class="text-end @(payment.PaymentType == "Refund" ? "text-danger" : "")">
                                                 @(payment.PaymentType == "Refund" ? "-" : "")@FormatCurrency(payment.Amount)
                                             </td>
                                             <td>
                                                 <span class="badge @GetPaymentStatusBadgeClass(payment.Status)">
-                                                    @payment.Status
+                                                    @Localizer[payment.Status ?? ""]
                                                 </span>
                                             </td>
                                         </tr>
@@ -729,7 +729,7 @@
                                         <div class="row align-items-center">
                                             <div class="col-auto">
                                                 <span class="badge @GetSeverityBadgeClass(damage.Severity)">
-                                                    @damage.Severity
+                                                    @Localizer[damage.Severity ?? ""]
                                                 </span>
                                             </div>
                                             <div class="col">
@@ -744,7 +744,7 @@
                                             </div>
                                             <div class="col-auto">
                                                 <span class="badge @GetDamageStatusBadgeClass(damage.Status)">
-                                                    @damage.Status
+                                                    @Localizer[damage.Status ?? ""]
                                                 </span>
                                             </div>
                                             <div class="col-auto text-secondary small">
@@ -879,7 +879,7 @@
                 return;
             }
 
-            m_headerTitle = $"Rental #{m_rental.RentalId} - {m_rental.VehicleName ?? "Vehicle"}";
+            m_headerTitle = $"{Localizer["Rental"]} #{m_rental.RentalId} - {m_rental.VehicleName ?? Localizer["Vehicle"].Value}";
 
             // Load related entities in parallel
             var renterTask = DataContext.LoadOneAsync<Renter>(r => r.RenterId == m_rental.RenterId);
@@ -944,7 +944,7 @@
         }
         catch (Exception ex)
         {
-            ShowError($"Error loading rental: {ex.Message}");
+            ShowError(Localizer["ErrorLoading", ex.Message]);
             Logger.LogError(ex, "Failed to load rental {RentalId}", m_rentalId);
         }
         finally
@@ -978,7 +978,7 @@
     {
         if (m_rental == null) return;
 
-        if (!await DialogService.ConfirmAsync($"Start rental for {m_renter?.FullName}?"))
+        if (!await DialogService.ConfirmAsync(Localizer["ConfirmStartRental", m_renter?.FullName ?? ""]))
             return;
 
         m_rental.Status = "Active";
@@ -986,11 +986,11 @@
         if (result.Success)
         {
             await LoadDataAsync();
-            ShowSuccess("Rental started");
+            ShowSuccess(Localizer["RentalStarted"]);
         }
         else
         {
-            ShowError($"Failed to start rental: {result.Message}");
+            ShowError(Localizer["StartRentalFailed", result.Message ?? ""]);
         }
     }
 
@@ -999,7 +999,7 @@
         if (m_rental == null) return;
 
         if (!await DialogService.ConfirmAsync(
-            $"Check out {m_renter?.FullName} returning {m_vehicle?.DisplayName}?"))
+            Localizer["ConfirmCheckOut", m_renter?.FullName ?? "", m_vehicle?.DisplayName ?? ""]))
             return;
 
         var request = new CheckOutRequest
@@ -1013,11 +1013,11 @@
         if (result.Success)
         {
             await LoadDataAsync();
-            ShowSuccess($"Check-out completed. Refund: {FormatCurrency(result.RefundAmount)}");
+            ShowSuccess(Localizer["CheckOutCompleted", FormatCurrency(result.RefundAmount)]);
         }
         else
         {
-            ShowError($"Check-out failed: {result.Message}");
+            ShowError(Localizer["CheckOutFailed", result.Message ?? ""]);
         }
     }
 
@@ -1025,7 +1025,7 @@
     {
         if (m_rental == null) return;
 
-        if (!await DialogService.ConfirmAsync($"Extend rental by 1 day? New end date: {FormatDate(m_rental.ExpectedEndDate.AddDays(1))}"))
+        if (!await DialogService.ConfirmAsync(Localizer["ConfirmExtend", FormatDate(m_rental.ExpectedEndDate.AddDays(1))]))
             return;
 
         var newEndDate = m_rental.ExpectedEndDate.AddDays(1);
@@ -1033,11 +1033,11 @@
         if (result.Success)
         {
             await LoadDataAsync();
-            ShowSuccess("Rental extended successfully");
+            ShowSuccess(Localizer["ExtendSuccess"]);
         }
         else
         {
-            ShowError($"Extension failed: {result.Message}");
+            ShowError(Localizer["ExtendFailed", result.Message ?? ""]);
         }
     }
 
@@ -1046,19 +1046,19 @@
         if (m_rental == null) return;
 
         if (!await DialogService.ConfirmYesNoAsync(
-            $"Cancel rental for {m_renter?.FullName}? The deposit will be refunded.",
-            "Cancel Rental"))
+            Localizer["ConfirmCancel", m_renter?.FullName ?? ""],
+            Localizer["CancelRental"]))
             return;
 
         var result = await RentalService.CancelRentalAsync(m_rental.RentalId, "Cancelled by staff", UserName);
         if (result.Success)
         {
             await LoadDataAsync();
-            ShowSuccess("Rental cancelled and deposit refunded");
+            ShowSuccess(Localizer["CancelSuccess"]);
         }
         else
         {
-            ShowError($"Cancellation failed: {result.Message}");
+            ShowError(Localizer["CancelFailed", result.Message ?? ""]);
         }
     }
 
@@ -1067,7 +1067,7 @@
         if (m_rental == null) return;
 
         await DialogService
-            .Create<InvoiceDialog>("Invoice")
+            .Create<InvoiceDialog>(Localizer["ViewInvoice"])
             .WithParameter(x => x.RentalId, m_rental.RentalId)
             .Large()
             .ShowDialogAsync();

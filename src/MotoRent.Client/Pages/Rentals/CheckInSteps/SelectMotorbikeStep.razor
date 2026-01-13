@@ -1,12 +1,12 @@
-@inherits MotoRentComponentBase
+@inherits LocalizedComponentBase<CheckIn>
 @using MotoRent.Domain.Entities
 @using MotoRent.Services
 @inject MotorbikeService MotorbikeService
 
 <div class="d-flex flex-column gap-4">
     <div>
-        <h5 class="mb-1">Select a Motorbike</h5>
-        <p class="text-secondary mb-0">Choose an available motorbike for this rental</p>
+        <h5 class="mb-1">@Localizer["SelectVehicle"]</h5>
+        <p class="text-secondary mb-0">@Localizer["SelectVehicleDesc"]</p>
     </div>
 
     <div class="d-flex flex-wrap gap-2 align-items-center">
@@ -14,12 +14,12 @@
             <span class="input-icon-addon">
                 <i class="ti ti-search"></i>
             </span>
-            <input type="text" class="form-control" placeholder="Search by brand, model, license plate..."
+            <input type="text" class="form-control" placeholder="@Localizer["SearchRenterPlaceholder"]"
                    @bind="m_searchTerm" @bind:event="oninput" @onkeyup="OnSearchChanged" />
         </div>
 
         <select class="form-select" style="width: 150px;" @bind="m_brandFilter" @bind:after="ApplyFilters">
-            <option value="">All Brands</option>
+            <option value="">@Localizer["AllBrands"]</option>
             @foreach (var brand in m_brands)
             {
                 <option value="@brand">@brand</option>
@@ -27,7 +27,7 @@
         </select>
 
         <div class="ms-auto">
-            <span class="badge bg-success">@m_availableCount Available</span>
+            <span class="badge bg-success">@m_availableCount @Localizer["Available"]</span>
         </div>
     </div>
 
@@ -64,30 +64,30 @@
                     <div class="card-body">
                         <div class="d-flex flex-column gap-1">
                             <div class="d-flex justify-content-between">
-                                <small class="text-secondary">Engine</small>
+                                <small class="text-secondary">@Localizer["Engine"]</small>
                                 <span>@motorbike.EngineCC cc</span>
                             </div>
                             <div class="d-flex justify-content-between">
-                                <small class="text-secondary">Year</small>
+                                <small class="text-secondary">@Localizer["Year"]</small>
                                 <span>@motorbike.Year</span>
                             </div>
                             <div class="d-flex justify-content-between">
-                                <small class="text-secondary">Color</small>
+                                <small class="text-secondary">@Localizer["Color"]</small>
                                 <span>@(motorbike.Color ?? "-")</span>
                             </div>
                             <div class="d-flex justify-content-between">
-                                <small class="text-secondary">Mileage</small>
+                                <small class="text-secondary">@Localizer["CurrentMileage"]</small>
                                 <span>@motorbike.Mileage.ToString("N0") km</span>
                             </div>
                             <hr class="my-2">
                             <div class="d-flex justify-content-between">
-                                <span class="fw-medium">Daily Rate</span>
+                                <span class="fw-medium">@Localizer["DailyRate"]</span>
                                 <span class="text-primary fw-semibold" style="font-size: 1.1rem;">
                                     @FormatCurrency(motorbike.DailyRate)
                                 </span>
                             </div>
                             <div class="d-flex justify-content-between">
-                                <small class="text-secondary">Deposit</small>
+                                <small class="text-secondary">@Localizer["Deposit"]</small>
                                 <span>@FormatCurrency(motorbike.DepositAmount)</span>
                             </div>
                         </div>
@@ -101,7 +101,7 @@
     {
         <div class="alert alert-info">
             <i class="ti ti-info-circle me-2"></i>
-            No available motorbikes found. All motorbikes may be currently rented or under maintenance.
+            @Localizer["NoVehiclesFound"]
         </div>
     }
 
@@ -110,8 +110,8 @@
         <div class="alert alert-success d-flex align-items-center gap-2 mt-4">
             <i class="ti ti-motorbike"></i>
             <span>
-                Selected: <strong>@this.SelectedMotorbike.Brand @this.SelectedMotorbike.Model</strong>
-                (@this.SelectedMotorbike.LicensePlate) - @FormatCurrency(this.SelectedMotorbike.DailyRate)/day
+                @Localizer["Selected"]: <strong>@this.SelectedMotorbike.Brand @this.SelectedMotorbike.Model</strong>
+                (@this.SelectedMotorbike.LicensePlate) - @FormatCurrency(this.SelectedMotorbike.DailyRate)/@Localizer["Days"]
             </span>
         </div>
     }
@@ -147,7 +147,7 @@
         }
         catch (Exception ex)
         {
-            this.ShowError($"Error loading motorbikes: {ex.Message}");
+            this.ShowError(this.Localizer["ErrorLoading", ex.Message]);
         }
         finally
         {

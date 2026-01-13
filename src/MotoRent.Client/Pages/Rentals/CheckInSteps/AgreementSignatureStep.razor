@@ -1,33 +1,33 @@
-@inherits MotoRentComponentBase
+@inherits LocalizedComponentBase<CheckIn>
 @using MotoRent.Domain.Entities
 @using MotoRent.Client.Pages.Rentals
 @inject IJSRuntime JS
 
 <div class="d-flex flex-column gap-4">
     <div>
-        <h5 class="mb-1">Agreement & Signature</h5>
-        <p class="text-secondary mb-0">Review the rental summary and print the agreement for renter's signature</p>
+        <h5 class="mb-1">@Localizer["AgreementSignature"]</h5>
+        <p class="text-secondary mb-0">@Localizer["AgreementSignatureDesc"]</p>
     </div>
 
     <div class="row g-4">
         <div class="col-12 col-md-6">
             <div class="card">
                 <div class="card-body">
-                    <h6 class="card-title mb-3">Rental Summary</h6>
+                    <h6 class="card-title mb-3">@Localizer["RentalSummary"]</h6>
 
                     @if (this.Renter != null && this.Vehicle != null)
                     {
                         <div class="d-flex flex-column gap-2">
                             <div class="d-flex justify-content-between">
-                                <small class="text-secondary">Renter</small>
+                                <small class="text-secondary">@Localizer["Renter"]</small>
                                 <span class="fw-medium">@this.Renter.FullName</span>
                             </div>
                             <div class="d-flex justify-content-between">
-                                <small class="text-secondary">Phone</small>
+                                <small class="text-secondary">@Localizer["Phone"]</small>
                                 <span>@this.Renter.Phone</span>
                             </div>
                             <div class="d-flex justify-content-between">
-                                <small class="text-secondary">Passport/ID</small>
+                                <small class="text-secondary">@Localizer["PassportID"]</small>
                                 <span>@(this.Renter.PassportNo ?? this.Renter.NationalIdNo ?? "-")</span>
                             </div>
 
@@ -38,13 +38,13 @@
                                 <span class="fw-medium">@this.Vehicle.Brand @this.Vehicle.Model</span>
                             </div>
                             <div class="d-flex justify-content-between">
-                                <small class="text-secondary">License Plate</small>
+                                <small class="text-secondary">@Localizer["LicensePlate"]</small>
                                 <span>@this.Vehicle.LicensePlate</span>
                             </div>
                             @if (this.Vehicle.Mileage.HasValue && this.Vehicle.Mileage > 0)
                             {
                                 <div class="d-flex justify-content-between">
-                                    <small class="text-secondary">Current Mileage</small>
+                                    <small class="text-secondary">@Localizer["CurrentMileage"]</small>
                                     <span>@this.Vehicle.Mileage.Value.ToString("N0") km</span>
                                 </div>
                             }
@@ -54,35 +54,35 @@
                             @if (this.IsIntervalRental && this.IntervalConfig != null)
                             {
                                 <div class="d-flex justify-content-between">
-                                    <small class="text-secondary">Duration</small>
+                                    <small class="text-secondary">@Localizer["Duration"]</small>
                                     <span>@GetIntervalLabel(this.IntervalConfig.IntervalMinutes)</span>
                                 </div>
                                 <div class="d-flex justify-content-between">
-                                    <small class="text-secondary">Start Time</small>
+                                    <small class="text-secondary">@Localizer["StartTime"]</small>
                                     <span>@this.IntervalConfig.StartDateTime.DateTime.ToString("HH:mm")</span>
                                 </div>
                                 <div class="d-flex justify-content-between">
-                                    <small class="text-secondary">Rate</small>
+                                    <small class="text-secondary">@Localizer["Rate"]</small>
                                     <span>@FormatCurrency(this.IntervalConfig.RentalRate)</span>
                                 </div>
                             }
                             else if (this.Config != null)
                             {
                                 <div class="d-flex justify-content-between">
-                                    <small class="text-secondary">Rental Period</small>
+                                    <small class="text-secondary">@Localizer["RentalPeriod"]</small>
                                     <span>
-                                        @FormatDate(this.Config.StartDate) - @FormatDate(this.Config.EndDate) (@this.Config.Days days)
+                                        @FormatDate(this.Config.StartDate) - @FormatDate(this.Config.EndDate) (@this.Config.Days @Localizer["Days"])
                                     </span>
                                 </div>
                                 <div class="d-flex justify-content-between">
-                                    <small class="text-secondary">Daily Rate</small>
+                                    <small class="text-secondary">@Localizer["DailyRate"]</small>
                                     <span>@FormatCurrency(this.Vehicle.DailyRate)</span>
                                 </div>
 
                                 @if (this.Config.IncludeDriver)
                                 {
                                     <div class="d-flex justify-content-between">
-                                        <small class="text-secondary">Driver</small>
+                                        <small class="text-secondary">@Localizer["Driver"]</small>
                                         <span>@FormatCurrency(this.Config.DriverTotal)</span>
                                     </div>
                                 }
@@ -90,7 +90,7 @@
                                 @if (this.Config.IncludeGuide)
                                 {
                                     <div class="d-flex justify-content-between">
-                                        <small class="text-secondary">Tour Guide</small>
+                                        <small class="text-secondary">@Localizer["TourGuideDesc"]</small>
                                         <span>@FormatCurrency(this.Config.GuideTotal)</span>
                                     </div>
                                 }
@@ -98,7 +98,7 @@
                                 @if (this.Config.SelectedInsurance != null)
                                 {
                                     <div class="d-flex justify-content-between">
-                                        <small class="text-secondary">Insurance</small>
+                                        <small class="text-secondary">@Localizer["Insurance"]</small>
                                         <span>@this.Config.SelectedInsurance.Name</span>
                                     </div>
                                 }
@@ -106,7 +106,7 @@
                                 @if (this.Config.SelectedAccessories.Count > 0)
                                 {
                                     <div class="d-flex justify-content-between">
-                                        <small class="text-secondary">Accessories</small>
+                                        <small class="text-secondary">@Localizer["Accessories"]</small>
                                         <span>
                                             @string.Join(", ", this.Config.SelectedAccessories.Select(a => a.Accessory.Name))
                                         </span>
@@ -117,16 +117,16 @@
                             <hr class="my-2">
 
                             <div class="d-flex justify-content-between">
-                                <small class="text-secondary">Deposit</small>
+                                <small class="text-secondary">@Localizer["Deposit"]</small>
                                 <span>
-                                    @this.DepositInfo?.DepositType - @FormatCurrency(this.DepositInfo?.Amount ?? 0)
+                                    @Localizer[this.DepositInfo?.DepositType ?? ""] - @FormatCurrency(this.DepositInfo?.Amount ?? 0)
                                 </span>
                             </div>
 
                             <hr class="my-2">
 
                             <div class="d-flex justify-content-between align-items-center">
-                                <span class="fw-semibold" style="font-size: 1.1rem;">Total Amount</span>
+                                <span class="fw-semibold" style="font-size: 1.1rem;">@Localizer["TotalAmount"]</span>
                                 <span class="text-primary fw-bold" style="font-size: 1.5rem;">
                                     @FormatCurrency(GetTotalAmount())
                                 </span>
@@ -140,7 +140,7 @@
         <div class="col-12 col-md-6">
             <div class="card">
                 <div class="card-body">
-                    <h6 class="card-title mb-3">Terms & Conditions</h6>
+                    <h6 class="card-title mb-3">@Localizer["TermsConditions"]</h6>
 
                     <div class="card bg-light" style="max-height: 200px; overflow-y: auto;">
                         <div class="card-body p-3">
@@ -150,36 +150,36 @@
 
                     <label class="form-check mt-3">
                         <input class="form-check-input" type="checkbox" @bind="m_termsAccepted" />
-                        <span class="form-check-label">I have read and explained the terms to the renter</span>
+                        <span class="form-check-label">@Localizer["ExplainTermsConfirm"]</span>
                     </label>
                 </div>
             </div>
 
             <div class="card mt-4">
                 <div class="card-body">
-                    <h6 class="card-title mb-3">Print Agreement</h6>
+                    <h6 class="card-title mb-3">@Localizer["PrintAgreement"]</h6>
 
                     <p class="text-secondary mb-3">
-                        Print the rental agreement for the renter to sign. Keep the signed copy in the shop records.
+                        @Localizer["PrintAgreementDesc"]
                     </p>
 
                     <button type="button" class="btn btn-outline-primary btn-lg w-100" @onclick="PrintAgreement">
                         <i class="ti ti-printer me-2"></i>
-                        Print Agreement
+                        @Localizer["PrintAgreement"]
                     </button>
 
                     @if (m_agreementPrinted)
                     {
                         <div class="alert alert-success d-flex align-items-center gap-2 mt-3 py-2">
                             <i class="ti ti-check"></i>
-                            <span>Agreement printed - collect signed copy from renter</span>
+                            <span>@Localizer["AgreementPrinted"]</span>
                         </div>
                     }
                     else
                     {
                         <div class="alert alert-info d-flex align-items-center gap-2 mt-3 py-2">
                             <i class="ti ti-info-circle"></i>
-                            <span>Print the agreement and have the renter sign the physical copy</span>
+                            <span>@Localizer["PrintAgreementHint"]</span>
                         </div>
                     }
                 </div>
@@ -191,111 +191,28 @@
         <button type="button" class="btn btn-success btn-lg" disabled="@(!CanComplete)"
                 @onclick="@(() => this.OnComplete.InvokeAsync())">
             <i class="ti ti-circle-check me-2"></i>
-            Complete Check-In
+            @Localizer["CompleteCheckIn"]
         </button>
     </div>
 </div>
 
 @code {
-    [Parameter] public Renter? Renter { get; set; }
-    [Parameter] public Vehicle? Vehicle { get; set; }
-    [Parameter] public RentalConfig? Config { get; set; }
-    [Parameter] public IntervalRentalConfig? IntervalConfig { get; set; }
-    [Parameter] public DepositInfo? DepositInfo { get; set; }
-    [Parameter] public EventCallback OnComplete { get; set; }
-
-    private bool m_termsAccepted;
-    private bool m_agreementPrinted;
-
-    private bool IsIntervalRental => this.Vehicle?.UsesIntervalPricing == true;
-    private bool CanComplete => this.m_termsAccepted;
-
-    private decimal GetTotalAmount() =>
-        this.IsIntervalRental ? (this.IntervalConfig?.TotalAmount ?? 0) : (this.Config?.TotalAmount ?? 0);
-
-    private static string GetVehicleTypeLabel(VehicleType type) => type switch
+...
+    private string GetVehicleTypeLabel(VehicleType type) => type switch
     {
-        VehicleType.Motorbike => "Motorbike",
-        VehicleType.Car => "Car",
-        VehicleType.JetSki => "Jet Ski",
-        VehicleType.Boat => "Boat",
-        VehicleType.Van => "Van",
-        _ => "Vehicle"
+        VehicleType.Motorbike => Localizer["Motorbike"],
+        VehicleType.Car => Localizer["Car"],
+        VehicleType.JetSki => Localizer["JetSki"],
+        VehicleType.Boat => Localizer["Boat"],
+        VehicleType.Van => Localizer["Van"],
+        _ => Localizer["Vehicle"]
     };
 
-    private static string GetIntervalLabel(int minutes) => minutes switch
+    private string GetIntervalLabel(int minutes) => minutes switch
     {
-        15 => "15 minutes",
-        30 => "30 minutes",
-        60 => "1 hour",
-        _ => $"{minutes} minutes"
+        15 => Localizer["15Min"],
+        30 => Localizer["30Min"],
+        60 => Localizer["1Hour"],
+        _ => $"{minutes} {Localizer["15Min"]}" // fallback
     };
-
-    private string m_agreementText = @"VEHICLE RENTAL AGREEMENT
-
-I, the undersigned renter, agree to the following terms and conditions:
-
-1. VEHICLE CONDITION: I acknowledge that I have received the vehicle in good working condition and agree to return it in the same condition.
-
-2. LIABILITY: I am fully responsible for any damage, loss, or theft of the vehicle during the rental period, including but not limited to accidents, scratches, dents, and mechanical damage.
-
-3. INSURANCE: Any insurance coverage is subject to the terms of the selected insurance package. I understand the deductible and coverage limits.
-
-4. VALID LICENSE: I confirm that I hold a valid license appropriate for this vehicle type and will carry it at all times while operating the vehicle.
-
-5. TRAFFIC LAWS: I agree to follow all applicable laws and regulations of Thailand. I am responsible for all violations and fines incurred during the rental period.
-
-6. NO SUB-RENTAL: I will not lend, sub-rent, or allow any unauthorized person to operate the vehicle.
-
-7. FUEL: I will return the vehicle with the same fuel level as at pick-up, or pay the refueling charge (if applicable).
-
-8. LATE RETURN: If I fail to return the vehicle by the agreed date/time, I will pay additional rental charges plus any late fees.
-
-9. DEPOSIT: I understand that my deposit may be used to cover any damages, additional charges, or unpaid fees.
-
-10. EMERGENCY: In case of accident or breakdown, I will immediately contact the rental shop at the provided number.
-
-11. SAFETY: I agree to wear appropriate safety equipment as required (helmets, life jackets, etc.) and follow all safety instructions provided.
-
-By signing below, I acknowledge that I have read, understood, and agree to all terms and conditions stated above.";
-
-    private async Task PrintAgreement()
-    {
-        // Open printable agreement in new window
-        var url = BuildPrintableAgreementUrl();
-        await this.JS.InvokeVoidAsync("window.open", url, "_blank");
-        this.m_agreementPrinted = true;
-    }
-
-    private string BuildPrintableAgreementUrl()
-    {
-        var baseUrl = "/rentals/print-agreement";
-        var queryParams = new List<string>();
-
-        if (this.Renter != null)
-            queryParams.Add($"renterId={this.Renter.RenterId}");
-        if (this.Vehicle != null)
-            queryParams.Add($"vehicleId={this.Vehicle.VehicleId}");
-        if (this.IsIntervalRental && this.IntervalConfig != null)
-        {
-            queryParams.Add($"interval={this.IntervalConfig.IntervalMinutes}");
-            queryParams.Add($"startTime={this.IntervalConfig.StartDateTime:o}");
-            queryParams.Add($"rate={this.IntervalConfig.RentalRate}");
-            queryParams.Add($"total={this.IntervalConfig.TotalAmount}");
-        }
-        else if (this.Config != null)
-        {
-            queryParams.Add($"startDate={this.Config.StartDate:yyyy-MM-dd}");
-            queryParams.Add($"endDate={this.Config.EndDate:yyyy-MM-dd}");
-            queryParams.Add($"days={this.Config.Days}");
-            queryParams.Add($"total={this.Config.TotalAmount}");
-        }
-        if (this.DepositInfo != null)
-        {
-            queryParams.Add($"depositType={this.DepositInfo.DepositType}");
-            queryParams.Add($"depositAmount={this.DepositInfo.Amount}");
-        }
-
-        return queryParams.Count > 0 ? $"{baseUrl}?{string.Join("&", queryParams)}" : baseUrl;
-    }
-}
+...

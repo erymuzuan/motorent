@@ -1,14 +1,13 @@
 @page "/rentals/print-agreement"
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize(Policy = "RequireTenantStaff")]
-@inherits MotoRentComponentBase
+@inherits LocalizedComponentBase<PrintAgreement>
 
 @using MotoRent.Domain.Entities
 @inject RenterService RenterService
 @inject VehicleService VehicleService
 @inject ShopService ShopService
 @inject IJSRuntime JS
-
 <style>
     @@media print {
         .no-print { display: none !important; }
@@ -161,11 +160,11 @@
 <div class="no-print print-button">
     <button class="btn btn-primary" @onclick="Print">
         <i class="ti ti-printer me-2"></i>
-        Print Agreement
+        @Localizer["PrintAgreement"]
     </button>
     <a href="/rentals/checkin" class="btn btn-outline-secondary ms-2">
         <i class="ti ti-arrow-left me-2"></i>
-        Back to Check-In
+        @Localizer["BackToCheckIn"]
     </a>
 </div>
 
@@ -179,56 +178,56 @@ else
 {
     <div class="print-container">
         <div class="agreement-header">
-            <h1>Vehicle Rental Agreement</h1>
+            <h1>@Localizer["VehicleRentalAgreement"]</h1>
             <p>@(m_shop?.Name ?? "MotoRent")</p>
-            <p>Date: @DateTime.Now.ToString("dd MMM yyyy")</p>
+            <p>@Localizer["Date"]: @DateTime.Now.ToString("dd MMM yyyy")</p>
         </div>
 
         <div class="info-section">
-            <h3>Renter Information</h3>
+            <h3>@Localizer["RenterInformation"]</h3>
             <div class="info-grid">
                 <div class="info-item">
-                    <span class="info-label">Name:</span>
+                    <span class="info-label">@Localizer["Name"]:</span>
                     <span class="info-value">@(m_renter?.FullName ?? "-")</span>
                 </div>
                 <div class="info-item">
-                    <span class="info-label">Phone:</span>
+                    <span class="info-label">@Localizer["Phone"]:</span>
                     <span class="info-value">@(m_renter?.Phone ?? "-")</span>
                 </div>
                 <div class="info-item">
-                    <span class="info-label">Passport/ID:</span>
+                    <span class="info-label">@Localizer["PassportID"]:</span>
                     <span class="info-value">@(m_renter?.PassportNo ?? m_renter?.NationalIdNo ?? "-")</span>
                 </div>
                 <div class="info-item">
-                    <span class="info-label">Nationality:</span>
+                    <span class="info-label">@Localizer["Nationality"]:</span>
                     <span class="info-value">@(m_renter?.Nationality ?? "-")</span>
                 </div>
             </div>
         </div>
 
         <div class="info-section">
-            <h3>Vehicle Information</h3>
+            <h3>@Localizer["VehicleInformation"]</h3>
             <div class="info-grid">
                 <div class="info-item">
-                    <span class="info-label">Vehicle Type:</span>
+                    <span class="info-label">@Localizer["VehicleType"]:</span>
                     <span class="info-value">@GetVehicleTypeLabel()</span>
                 </div>
                 <div class="info-item">
-                    <span class="info-label">Brand/Model:</span>
+                    <span class="info-label">@Localizer["BrandModel"]:</span>
                     <span class="info-value">@(m_vehicle?.Brand) @(m_vehicle?.Model)</span>
                 </div>
                 <div class="info-item">
-                    <span class="info-label">License Plate:</span>
+                    <span class="info-label">@Localizer["LicensePlate"]:</span>
                     <span class="info-value">@(m_vehicle?.LicensePlate ?? "-")</span>
                 </div>
                 <div class="info-item">
-                    <span class="info-label">Color:</span>
+                    <span class="info-label">@Localizer["Color"]:</span>
                     <span class="info-value">@(m_vehicle?.Color ?? "-")</span>
                 </div>
                 @if (m_vehicle?.Mileage.HasValue == true && m_vehicle.Mileage > 0)
                 {
                     <div class="info-item">
-                        <span class="info-label">Mileage at Start:</span>
+                        <span class="info-label">@Localizer["MileageAtStart"]:</span>
                         <span class="info-value">@m_vehicle.Mileage.Value.ToString("N0") km</span>
                     </div>
                 }
@@ -236,80 +235,80 @@ else
         </div>
 
         <div class="info-section">
-            <h3>Rental Details</h3>
+            <h3>@Localizer["RentalDetails"]</h3>
             <div class="info-grid">
                 @if (m_isIntervalRental)
                 {
                     <div class="info-item">
-                        <span class="info-label">Duration:</span>
+                        <span class="info-label">@Localizer["Duration"]:</span>
                         <span class="info-value">@GetIntervalLabel()</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">Start Time:</span>
+                        <span class="info-label">@Localizer["StartTime"]:</span>
                         <span class="info-value">@m_startTime?.ToString("dd MMM yyyy HH:mm")</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">Rate:</span>
+                        <span class="info-label">@Localizer["Rate"]:</span>
                         <span class="info-value">@FormatCurrency(m_rate)</span>
                     </div>
                 }
                 else
                 {
                     <div class="info-item">
-                        <span class="info-label">Start Date:</span>
+                        <span class="info-label">@Localizer["StartDate"]:</span>
                         <span class="info-value">@m_startDate?.ToString("dd MMM yyyy")</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">End Date:</span>
+                        <span class="info-label">@Localizer["EndDate"]:</span>
                         <span class="info-value">@m_endDate?.ToString("dd MMM yyyy")</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">Duration:</span>
-                        <span class="info-value">@m_days day(s)</span>
+                        <span class="info-label">@Localizer["Duration"]:</span>
+                        <span class="info-value">@Localizer["DaysCount", m_days]</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">Daily Rate:</span>
+                        <span class="info-label">@Localizer["DailyRate"]:</span>
                         <span class="info-value">@FormatCurrency(m_vehicle?.DailyRate ?? 0)</span>
                     </div>
                 }
                 <div class="info-item">
-                    <span class="info-label">Deposit Type:</span>
+                    <span class="info-label">@Localizer["DepositType"]:</span>
                     <span class="info-value">@m_depositType</span>
                 </div>
                 <div class="info-item">
-                    <span class="info-label">Deposit Amount:</span>
+                    <span class="info-label">@Localizer["DepositAmount"]:</span>
                     <span class="info-value">@FormatCurrency(m_depositAmount)</span>
                 </div>
             </div>
             <div class="total-amount">
-                <strong>Total Amount: @FormatCurrency(m_totalAmount)</strong>
+                <strong>@Localizer["TotalAmount"]: @FormatCurrency(m_totalAmount)</strong>
             </div>
         </div>
 
         <div class="terms-section">
-            <h3>Terms & Conditions</h3>
-            <div class="terms-text">@m_agreementText</div>
+            <h3>@Localizer["TermsConditions"]</h3>
+            <div class="terms-text">@Localizer["AgreementText"]</div>
         </div>
 
         <div class="signature-section">
-            <h3>Signatures</h3>
+            <h3>@Localizer["Signatures"]</h3>
             <p style="font-size: 11px; color: #666; margin-bottom: 15px;">
-                By signing below, both parties acknowledge that they have read, understood, and agree to all terms and conditions stated in this agreement.
+                @Localizer["SignatureNotice"]
             </p>
             <div class="signature-grid">
                 <div class="signature-box">
                     <div class="signature-line"></div>
-                    <div class="signature-label">Renter's Signature</div>
+                    <div class="signature-label">@Localizer["RentersSignature"]</div>
                     <div class="date-line">
-                        <span>Date:</span>
+                        <span>@Localizer["Date"]:</span>
                         <div class="date-blank"></div>
                     </div>
                 </div>
                 <div class="signature-box">
                     <div class="signature-line"></div>
-                    <div class="signature-label">Shop Representative's Signature</div>
+                    <div class="signature-label">@Localizer["ShopRepresentativeSignature"]</div>
                     <div class="date-line">
-                        <span>Date:</span>
+                        <span>@Localizer["Date"]:</span>
                         <div class="date-blank"></div>
                     </div>
                 </div>
@@ -321,7 +320,7 @@ else
             {
                 <p>@m_shop.Name | @m_shop.Address | @m_shop.Phone</p>
             }
-            <p>Agreement generated on @DateTime.Now.ToString("dd MMM yyyy HH:mm")</p>
+            <p>@Localizer["AgreementGeneratedOn", DateTime.Now.ToString("dd MMM yyyy HH:mm")]</p>
         </div>
     </div>
 }
@@ -426,12 +425,12 @@ I, the undersigned renter, agree to the following terms and conditions:
         if (m_vehicle == null) return "-";
         return m_vehicle.VehicleType switch
         {
-            VehicleType.Motorbike => "Motorbike",
-            VehicleType.Car => "Car",
-            VehicleType.JetSki => "Jet Ski",
-            VehicleType.Boat => "Boat",
-            VehicleType.Van => "Van",
-            _ => "Vehicle"
+            VehicleType.Motorbike => Localizer["Motorbike"],
+            VehicleType.Car => Localizer["Car"],
+            VehicleType.JetSki => Localizer["JetSki"],
+            VehicleType.Boat => Localizer["Boat"],
+            VehicleType.Van => Localizer["Van"],
+            _ => Localizer["Vehicle"]
         };
     }
 
@@ -440,10 +439,10 @@ I, the undersigned renter, agree to the following terms and conditions:
         if (!this.Interval.HasValue) return "-";
         return this.Interval.Value switch
         {
-            15 => "15 minutes",
-            30 => "30 minutes",
-            60 => "1 hour",
-            _ => $"{this.Interval.Value} minutes"
+            15 => Localizer["15Minutes"],
+            30 => Localizer["30Minutes"],
+            60 => Localizer["1Hour"],
+            _ => $"{this.Interval.Value} {Localizer["15Minutes"]}"
         };
     }
 

@@ -1,4 +1,4 @@
-@inherits MotoRentComponentBase
+@inherits LocalizedComponentBase<CheckIn>
 @using MotoRent.Domain.Entities
 @using MotoRent.Services
 @using MotoRent.Client.Pages.Rentals
@@ -12,40 +12,40 @@
 
 <div class="d-flex flex-column gap-4">
     <div>
-        <h5 class="mb-1">Configure Rental</h5>
-        <p class="text-secondary mb-0">Set the rental period and select optional insurance and accessories</p>
+        <h5 class="mb-1">@Localizer["ConfigureRental"]</h5>
+        <p class="text-secondary mb-0">@Localizer["ConfigureRentalDesc"]</p>
     </div>
 
     <div class="row g-4">
         <div class="col-12 col-md-8">
             <div class="card mb-4">
                 <div class="card-body">
-                    <h6 class="card-title mb-3">Rental Period</h6>
+                    <h6 class="card-title mb-3">@Localizer["RentalPeriod"]</h6>
 
                     <div class="row g-3 align-items-end">
                         <div class="col-12 col-sm-5">
-                            <label class="form-label">Start Date</label>
+                            <label class="form-label">@Localizer["StartDate"]</label>
                             <input type="date" class="form-control"
                                    @bind="m_startDate" min="@DateTime.Today.ToString("yyyy-MM-dd")" />
                         </div>
                         <div class="col-12 col-sm-5">
-                            <label class="form-label">End Date</label>
+                            <label class="form-label">@Localizer["EndDate"]</label>
                             <input type="date" class="form-control"
                                    @bind="m_endDate" min="@((m_startDate ?? DateTime.Today).ToString("yyyy-MM-dd"))" />
                         </div>
                         <div class="col-12 col-sm-2 text-center">
-                            <small class="text-secondary d-block">Duration</small>
+                            <small class="text-secondary d-block">@Localizer["Duration"]</small>
                             <span class="text-primary fw-bold" style="font-size: 1.5rem;">@this.Config.Days</span>
-                            <small class="text-secondary">days</small>
+                            <small class="text-secondary">@Localizer["Days"]</small>
                         </div>
                     </div>
 
                     <div class="btn-group btn-group-sm mt-3" role="group">
-                        <button type="button" class="btn btn-outline-secondary" @onclick="@(() => SetDays(1))">1 Day</button>
-                        <button type="button" class="btn btn-outline-secondary" @onclick="@(() => SetDays(3))">3 Days</button>
-                        <button type="button" class="btn btn-outline-secondary" @onclick="@(() => SetDays(7))">1 Week</button>
-                        <button type="button" class="btn btn-outline-secondary" @onclick="@(() => SetDays(14))">2 Weeks</button>
-                        <button type="button" class="btn btn-outline-secondary" @onclick="@(() => SetDays(30))">1 Month</button>
+                        <button type="button" class="btn btn-outline-secondary" @onclick="@(() => SetDays(1))">@Localizer["1Day"]</button>
+                        <button type="button" class="btn btn-outline-secondary" @onclick="@(() => SetDays(3))">@Localizer["3Days"]</button>
+                        <button type="button" class="btn btn-outline-secondary" @onclick="@(() => SetDays(7))">@Localizer["1Week"]</button>
+                        <button type="button" class="btn btn-outline-secondary" @onclick="@(() => SetDays(14))">@Localizer["2Weeks"]</button>
+                        <button type="button" class="btn btn-outline-secondary" @onclick="@(() => SetDays(30))">@Localizer["1Month"]</button>
                     </div>
                 </div>
             </div>
@@ -56,7 +56,7 @@
                 <div class="card mb-4">
                     <div class="card-body">
                         <h6 class="card-title mb-3">
-                            <i class="ti ti-user me-2"></i>Driver & Guide Options
+                            <i class="ti ti-user me-2"></i>@Localizer["DriverGuideOptions"]
                         </h6>
 
                         <div class="d-flex flex-column gap-3">
@@ -70,12 +70,12 @@
                                         <span class="d-flex align-items-center gap-2">
                                             <i class="ti ti-steering-wheel text-azure" style="font-size: 1.25rem;"></i>
                                             <span class="d-flex flex-column">
-                                                <span class="fw-medium">Include Driver</span>
-                                                <small class="text-secondary">Professional driver for your trip</small>
+                                                <span class="fw-medium">@Localizer["IncludeDriver"]</span>
+                                                <small class="text-secondary">@Localizer["DriverDesc"]</small>
                                             </span>
                                         </span>
                                         <span class="text-primary fw-medium">
-                                            @FormatCurrency(this.SelectedVehicle.DriverDailyFee ?? 0)/day
+                                            @FormatCurrency(this.SelectedVehicle.DriverDailyFee ?? 0)/@Localizer["Days"]
                                         </span>
                                     </span>
                                 </label>
@@ -91,12 +91,12 @@
                                         <span class="d-flex align-items-center gap-2">
                                             <i class="ti ti-map text-teal" style="font-size: 1.25rem;"></i>
                                             <span class="d-flex flex-column">
-                                                <span class="fw-medium">Include Tour Guide</span>
-                                                <small class="text-secondary">Local guide for sightseeing</small>
+                                                <span class="fw-medium">@Localizer["IncludeTourGuide"]</span>
+                                                <small class="text-secondary">@Localizer["TourGuideDesc"]</small>
                                             </span>
                                         </span>
                                         <span class="text-primary fw-medium">
-                                            @FormatCurrency(this.SelectedVehicle.GuideDailyFee ?? 0)/day
+                                            @FormatCurrency(this.SelectedVehicle.GuideDailyFee ?? 0)/@Localizer["Days"]
                                         </span>
                                     </span>
                                 </label>
@@ -108,7 +108,7 @@
 
             <div class="card mb-4">
                 <div class="card-body">
-                    <h6 class="card-title mb-3">Insurance Package</h6>
+                    <h6 class="card-title mb-3">@Localizer["InsurancePackage"]</h6>
 
                     @if (m_loadingInsurance)
                     {
@@ -125,8 +125,8 @@
                                        @onchange="@(() => SelectInsurance(null))" />
                                 <span class="form-selectgroup-label d-flex align-items-start gap-3 w-100">
                                     <span class="d-flex flex-column">
-                                        <span class="fw-medium">No Insurance</span>
-                                        <small class="text-secondary">You are responsible for all damage costs</small>
+                                        <span class="fw-medium">@Localizer["NoInsurance"]</span>
+                                        <small class="text-secondary">@Localizer["NoInsuranceDesc"]</small>
                                     </span>
                                 </span>
                             </label>
@@ -142,12 +142,12 @@
                                             <span class="fw-medium">@insurance.Name</span>
                                             <small class="text-secondary">@insurance.Description</small>
                                             <small class="text-muted">
-                                                Max coverage: @FormatCurrency(insurance.MaxCoverage) |
-                                                Deductible: @FormatCurrency(insurance.Deductible)
+                                                @Localizer["MaxCoverage"]: @FormatCurrency(insurance.MaxCoverage) |
+                                                @Localizer["Deductible"]: @FormatCurrency(insurance.Deductible)
                                             </small>
                                         </span>
                                         <span class="text-primary fw-medium ms-3">
-                                            @FormatCurrency(insurance.DailyRate)/day
+                                            @FormatCurrency(insurance.DailyRate)/@Localizer["Days"]
                                         </span>
                                     </span>
                                 </label>
@@ -159,7 +159,7 @@
 
             <div class="card">
                 <div class="card-body">
-                    <h6 class="card-title mb-3">Accessories</h6>
+                    <h6 class="card-title mb-3">@Localizer["Accessories"]</h6>
 
                     @if (m_loadingAccessories)
                     {
@@ -189,11 +189,11 @@
                                                         @accessory.Name
                                                         @if (accessory.IsIncluded)
                                                         {
-                                                            <span class="badge bg-success ms-2">Free</span>
+                                                            <span class="badge bg-success ms-2">@Localizer["Free"]</span>
                                                         }
                                                     </span>
                                                     <small class="text-secondary">
-                                                        @(accessory.IsIncluded ? "Included with rental" : $"{FormatCurrency(accessory.DailyRate)}/day")
+                                                        @(accessory.IsIncluded ? Localizer["IncludedWithRental"] : $"{FormatCurrency(accessory.DailyRate)}/{Localizer["Days"]}")
                                                     </small>
                                                 </div>
                                             </div>
@@ -219,7 +219,7 @@
             <div class="card">
                 <div class="card-body">
                     <h6 class="card-title mb-3">
-                        <i class="ti ti-map-pin me-2"></i>Pick-up & Drop-off
+                        <i class="ti ti-map-pin me-2"></i>@Localizer["PickupDropoff"]
                     </h6>
 
                     @if (m_loadingLocations)
@@ -233,9 +233,9 @@
                         <div class="row g-3">
                             @* Pickup Location *@
                             <div class="col-12">
-                                <label class="form-label">Pick-up Location</label>
+                                <label class="form-label">@Localizer["PickupLocation"]</label>
                                 <select class="form-select" @bind="m_pickupLocationId" @bind:after="OnLocationChanged">
-                                    <option value="0">At Shop (Free)</option>
+                                    <option value="0">@Localizer["AtShopFree"]</option>
                                     @foreach (var location in m_pickupLocations)
                                     {
                                         <option value="@location.ServiceLocationId">
@@ -251,7 +251,7 @@
 
                             @* Pickup Time *@
                             <div class="col-md-6">
-                                <label class="form-label">Pick-up Time</label>
+                                <label class="form-label">@Localizer["PickupTime"]</label>
                                 <input type="time" class="form-control"
                                        value="@m_pickupTime.ToString(@"hh\:mm")"
                                        @onchange="OnPickupTimeChanged" />
@@ -266,9 +266,9 @@
 
                             @* Dropoff Location *@
                             <div class="col-12 mt-3">
-                                <label class="form-label">Drop-off Location (Expected)</label>
+                                <label class="form-label">@Localizer["DropoffLocationExpected"]</label>
                                 <select class="form-select" @bind="m_dropoffLocationId" @bind:after="OnLocationChanged">
-                                    <option value="0">At Shop (Free)</option>
+                                    <option value="0">@Localizer["AtShopFree"]</option>
                                     @foreach (var location in m_dropoffLocations)
                                     {
                                         <option value="@location.ServiceLocationId">
@@ -284,7 +284,7 @@
 
                             @* Dropoff Time *@
                             <div class="col-md-6">
-                                <label class="form-label">Expected Drop-off Time</label>
+                                <label class="form-label">@Localizer["ExpectedDropoffTime"]</label>
                                 <input type="time" class="form-control"
                                        value="@m_dropoffTime.ToString(@"hh\:mm")"
                                        @onchange="OnDropoffTimeChanged" />
@@ -303,7 +303,7 @@
                             <div class="alert alert-info mt-3 mb-0 py-2">
                                 <small>
                                     <i class="ti ti-info-circle me-1"></i>
-                                    Location/timing fees: <strong>@FormatCurrency(this.Config.LocationFeesTotal)</strong>
+                                    @Localizer["LocationTimingFees"]: <strong>@FormatCurrency(this.Config.LocationFeesTotal)</strong>
                                 </small>
                             </div>
                         }
@@ -315,20 +315,20 @@
         <div class="col-12 col-md-4">
             <div class="card" style="position: sticky; top: 20px;">
                 <div class="card-body">
-                    <h6 class="card-title mb-3">Price Summary</h6>
+                    <h6 class="card-title mb-3">@Localizer["PriceSummary"]</h6>
 
                     @if (this.SelectedVehicle != null)
                     {
                         <div class="d-flex flex-column gap-2">
                             <div class="d-flex justify-content-between">
-                                <span>@GetVehicleTypeLabel(this.SelectedVehicle.VehicleType) (@this.Config.Days days x @FormatCurrency(this.SelectedVehicle.DailyRate))</span>
+                                <span>@GetVehicleTypeLabel(this.SelectedVehicle.VehicleType) (@this.Config.Days @Localizer["Days"] x @FormatCurrency(this.SelectedVehicle.DailyRate))</span>
                                 <span>@FormatCurrency(this.Config.VehicleTotal)</span>
                             </div>
 
                             @if (m_includeDriver && this.SelectedVehicle.HasDriverOption)
                             {
                                 <div class="d-flex justify-content-between">
-                                    <span>Driver (@this.Config.Days days)</span>
+                                    <span>@Localizer["Driver"] (@this.Config.Days @Localizer["Days"])</span>
                                     <span>@FormatCurrency(this.Config.DriverTotal)</span>
                                 </div>
                             }
@@ -336,7 +336,7 @@
                             @if (m_includeGuide && this.SelectedVehicle.HasGuideOption)
                             {
                                 <div class="d-flex justify-content-between">
-                                    <span>Tour Guide (@this.Config.Days days)</span>
+                                    <span>@Localizer["IncludeTourGuide"] (@this.Config.Days @Localizer["Days"])</span>
                                     <span>@FormatCurrency(this.Config.GuideTotal)</span>
                                 </div>
                             }
@@ -347,7 +347,7 @@
                                 if (insurance != null)
                                 {
                                     <div class="d-flex justify-content-between">
-                                        <span>@insurance.Name (@this.Config.Days days)</span>
+                                        <span>@insurance.Name (@this.Config.Days @Localizer["Days"])</span>
                                         <span>@FormatCurrency(this.Config.InsuranceTotal)</span>
                                     </div>
                                 }
@@ -370,7 +370,7 @@
                                     <div class="d-flex justify-content-between text-secondary">
                                         <span>
                                             <i class="ti ti-map-pin me-1"></i>
-                                            Pickup: @this.Config.LocationPricing.PickupLocationName
+                                            @Localizer["PickupLocation"]: @this.Config.LocationPricing.PickupLocationName
                                         </span>
                                         <span>@FormatCurrency(this.Config.LocationPricing.PickupLocationFee)</span>
                                     </div>
@@ -380,7 +380,7 @@
                                     <div class="d-flex justify-content-between text-secondary">
                                         <span>
                                             <i class="ti ti-map-pin me-1"></i>
-                                            Dropoff: @this.Config.LocationPricing.DropoffLocationName
+                                            @Localizer["DropoffLocationExpected"]: @this.Config.LocationPricing.DropoffLocationName
                                         </span>
                                         <span>@FormatCurrency(this.Config.LocationPricing.DropoffLocationFee)</span>
                                     </div>
@@ -390,7 +390,7 @@
                                     <div class="d-flex justify-content-between text-warning">
                                         <span>
                                             <i class="ti ti-clock me-1"></i>
-                                            Pickup: @this.Config.LocationPricing.OutOfHoursPickupBand
+                                            @Localizer["PickupTime"]: @this.Config.LocationPricing.OutOfHoursPickupBand
                                         </span>
                                         <span>@FormatCurrency(this.Config.LocationPricing.OutOfHoursPickupFee)</span>
                                     </div>
@@ -400,7 +400,7 @@
                                     <div class="d-flex justify-content-between text-warning">
                                         <span>
                                             <i class="ti ti-clock me-1"></i>
-                                            Dropoff: @this.Config.LocationPricing.OutOfHoursDropoffBand
+                                            @Localizer["ExpectedDropoffTime"]: @this.Config.LocationPricing.OutOfHoursDropoffBand
                                         </span>
                                         <span>@FormatCurrency(this.Config.LocationPricing.OutOfHoursDropoffFee)</span>
                                     </div>
@@ -410,7 +410,7 @@
                             <hr class="my-2">
 
                             <div class="d-flex justify-content-between">
-                                <span class="fw-semibold" style="font-size: 1.1rem;">Total</span>
+                                <span class="fw-semibold" style="font-size: 1.1rem;">@Localizer["Total"]</span>
                                 <span class="text-primary fw-bold" style="font-size: 1.25rem;">
                                     @FormatCurrency(this.Config.TotalAmount)
                                 </span>
@@ -419,7 +419,7 @@
                             <hr class="my-2">
 
                             <div class="d-flex justify-content-between">
-                                <span class="text-secondary">Required Deposit</span>
+                                <span class="text-secondary">@Localizer["RequiredDeposit"]</span>
                                 <span class="fw-medium">@FormatCurrency(this.SelectedVehicle.DepositAmount)</span>
                             </div>
                         </div>
@@ -483,7 +483,7 @@
         }
         catch (Exception ex)
         {
-            this.ShowError($"Error loading insurances: {ex.Message}");
+            this.ShowError(this.Localizer["ErrorLoading", ex.Message]);
         }
         finally
         {
@@ -511,7 +511,7 @@
         }
         catch (Exception ex)
         {
-            this.ShowError($"Error loading accessories: {ex.Message}");
+            this.ShowError(this.Localizer["ErrorLoading", ex.Message]);
         }
         finally
         {
@@ -537,7 +537,7 @@
         }
         catch (Exception ex)
         {
-            this.ShowError($"Error loading locations: {ex.Message}");
+            this.ShowError(this.Localizer["ErrorLoading", ex.Message]);
         }
         finally
         {
@@ -703,14 +703,14 @@
         await this.UpdateOutOfHoursBandsAsync();
     }
 
-    private static string GetVehicleTypeLabel(VehicleType type) => type switch
+    private string GetVehicleTypeLabel(VehicleType type) => type switch
     {
-        VehicleType.Motorbike => "Motorbike",
-        VehicleType.Car => "Car",
-        VehicleType.JetSki => "Jet Ski",
-        VehicleType.Boat => "Boat",
-        VehicleType.Van => "Van",
-        _ => "Vehicle"
+        VehicleType.Motorbike => Localizer["Motorbike"],
+        VehicleType.Car => Localizer["Car"],
+        VehicleType.JetSki => Localizer["JetSki"],
+        VehicleType.Boat => Localizer["Boat"],
+        VehicleType.Van => Localizer["Van"],
+        _ => Localizer["Vehicle"]
     };
 
     private class AccessorySelectionModel

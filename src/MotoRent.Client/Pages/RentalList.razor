@@ -7,19 +7,19 @@
 @inject RenterService RenterService
 @inject VehicleService VehicleService
 
-<MotoRentPageTitle>Rentals</MotoRentPageTitle>
+<MotoRentPageTitle>@Localizer["PageTitle"]</MotoRentPageTitle>
 
 <div class="rentals-page">
     @* Hero Header with Quick Stats *@
     <div class="rental-header mb-4">
         <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
             <div>
-                <h1 class="page-title mb-1">Rentals</h1>
-                <p class="text-secondary mb-0">Manage your active rentals</p>
+                <h1 class="page-title mb-1">@Localizer["Header"]</h1>
+                <p class="text-secondary mb-0">@Localizer["SubHeader"]</p>
             </div>
             <a href="/rentals/checkin" class="btn btn-primary btn-lg rounded-pill px-4 shadow-sm">
                 <i class="ti ti-plus me-2"></i>
-                New Check-In
+                @Localizer["NewCheckIn"]
             </a>
         </div>
     </div>
@@ -33,7 +33,7 @@
                 </div>
                 <div class="stat-content">
                     <div class="stat-value">@(m_statusCounts.GetValueOrDefault("Active", 0))</div>
-                    <div class="stat-label">Active</div>
+                    <div class="stat-label">@Localizer["Active"]</div>
                 </div>
             </div>
         </div>
@@ -44,7 +44,7 @@
                 </div>
                 <div class="stat-content">
                     <div class="stat-value">@m_dueTodayCount</div>
-                    <div class="stat-label">Due Today</div>
+                    <div class="stat-label">@Localizer["DueToday"]</div>
                 </div>
                 @if (m_dueTodayCount > 0)
                 {
@@ -59,7 +59,7 @@
                 </div>
                 <div class="stat-content">
                     <div class="stat-value">@m_overdueCount</div>
-                    <div class="stat-label">Overdue</div>
+                    <div class="stat-label">@Localizer["Overdue"]</div>
                 </div>
                 @if (m_overdueCount > 0)
                 {
@@ -74,7 +74,7 @@
                 </div>
                 <div class="stat-content">
                     <div class="stat-value">@(m_statusCounts.GetValueOrDefault("Completed", 0))</div>
-                    <div class="stat-label">Completed</div>
+                    <div class="stat-label">@Localizer["Completed"]</div>
                 </div>
             </div>
         </div>
@@ -87,7 +87,7 @@
                 <i class="ti ti-search text-secondary"></i>
             </span>
             <input type="text" class="form-control border-0 py-3"
-                   placeholder="Search by renter name, vehicle, or plate..."
+                   placeholder="@Localizer["SearchPlaceholder"]"
                    @bind="m_searchTerm" @bind:event="oninput" @onkeyup="OnSearchKeyUp" />
             @if (!string.IsNullOrEmpty(m_searchTerm))
             {
@@ -103,27 +103,27 @@
         <div class="filter-pills d-flex gap-2 overflow-auto pb-2">
             <button type="button" class="filter-pill @(m_activeTab == "All" ? "active" : "")"
                     @onclick="@(() => SetActiveTab("All"))">
-                <span>All</span>
+                <span>@Localizer["All"]</span>
             </button>
             <button type="button" class="filter-pill filter-pill-primary @(m_activeTab == "Active" ? "active" : "")"
                     @onclick="@(() => SetActiveTab("Active"))">
                 <i class="ti ti-motorbike me-1"></i>
-                <span>Active</span>
+                <span>@Localizer["Active"]</span>
             </button>
             <button type="button" class="filter-pill filter-pill-warning @(m_activeTab == "DueToday" ? "active" : "")"
                     @onclick="@(() => SetActiveTab("DueToday"))">
                 <i class="ti ti-clock me-1"></i>
-                <span>Due Today</span>
+                <span>@Localizer["DueToday"]</span>
             </button>
             <button type="button" class="filter-pill filter-pill-danger @(m_activeTab == "Overdue" ? "active" : "")"
                     @onclick="@(() => SetActiveTab("Overdue"))">
                 <i class="ti ti-alert-triangle me-1"></i>
-                <span>Overdue</span>
+                <span>@Localizer["Overdue"]</span>
             </button>
             <button type="button" class="filter-pill filter-pill-success @(m_activeTab == "Completed" ? "active" : "")"
                     @onclick="@(() => SetActiveTab("Completed"))">
                 <i class="ti ti-check me-1"></i>
-                <span>Completed</span>
+                <span>@Localizer["Completed"]</span>
             </button>
         </div>
     </div>
@@ -136,11 +136,11 @@
                 <div class="empty-state-icon">
                     <i class="ti ti-motorbike"></i>
                 </div>
-                <h3>No rentals found</h3>
+                <h3>@Localizer["NoRentalsFound"]</h3>
                 <p class="text-secondary">@GetEmptyStateMessage()</p>
                 <a href="/rentals/checkin" class="btn btn-primary btn-lg rounded-pill px-4 mt-3">
                     <i class="ti ti-plus me-2"></i>
-                    Create New Check-In
+                    @Localizer["CreateNewCheckIn"]
                 </a>
             </div>
         }
@@ -155,16 +155,16 @@
                             @if (rental.IsOverdue)
                             {
                                 <i class="ti ti-alert-triangle me-1"></i>
-                                <span>@rental.DaysOverdue day(s) overdue</span>
+                                <span>@Localizer["OverdueLabel", rental.DaysOverdue]</span>
                             }
                             else if (rental.IsDueToday)
                             {
                                 <i class="ti ti-clock me-1"></i>
-                                <span>Due Today</span>
+                                <span>@Localizer["DueToday"]</span>
                             }
                             else
                             {
-                                <span>@rental.Rental.Status</span>
+                                <span>@Localizer[rental.Rental.Status ?? ""]</span>
                             }
                         </div>
 
@@ -185,7 +185,7 @@
                                 </div>
                                 <div class="rental-amount">
                                     <span class="amount-value">@FormatCurrency(rental.Rental.TotalAmount)</span>
-                                    <span class="amount-label">@rental.Days days</span>
+                                    <span class="amount-label">@rental.Days @Localizer["Days"]</span>
                                 </div>
                             </div>
 
@@ -204,14 +204,14 @@
                             <div class="period-info">
                                 <div class="period-dates">
                                     <div class="period-start">
-                                        <span class="period-label">From</span>
+                                        <span class="period-label">@Localizer["From"]</span>
                                         <span class="period-value">@FormatDateShort(rental.Rental.StartDate)</span>
                                     </div>
                                     <div class="period-arrow">
                                         <i class="ti ti-arrow-right"></i>
                                     </div>
                                     <div class="period-end">
-                                        <span class="period-label">To</span>
+                                        <span class="period-label">@Localizer["To"]</span>
                                         <span class="period-value">@FormatDateShort(rental.Rental.ExpectedEndDate)</span>
                                     </div>
                                 </div>
@@ -225,17 +225,17 @@
                                 <button type="button" class="action-btn action-btn-checkout"
                                         @onclick="@(() => OpenCheckOutDialog(rental))">
                                     <i class="ti ti-logout"></i>
-                                    <span>Check Out</span>
+                                    <span>@Localizer["CheckOut"]</span>
                                 </button>
                                 <button type="button" class="action-btn action-btn-extend"
                                         @onclick="@(() => ExtendRental(rental))">
                                     <i class="ti ti-calendar-plus"></i>
-                                    <span>Extend</span>
+                                    <span>@Localizer["Extend"]</span>
                                 </button>
                                 <button type="button" class="action-btn action-btn-cancel"
                                         @onclick="@(() => CancelRental(rental))">
                                     <i class="ti ti-x"></i>
-                                    <span>Cancel</span>
+                                    <span>@Localizer["Cancel"]</span>
                                 </button>
                             }
                             @if (rental.Rental.Status == "Reserved")
@@ -243,18 +243,18 @@
                                 <button type="button" class="action-btn action-btn-start"
                                         @onclick="@(() => StartRental(rental))">
                                     <i class="ti ti-player-play"></i>
-                                    <span>Start</span>
+                                    <span>@Localizer["Start"]</span>
                                 </button>
                                 <button type="button" class="action-btn action-btn-cancel"
                                         @onclick="@(() => CancelRental(rental))">
                                     <i class="ti ti-x"></i>
-                                    <span>Cancel</span>
+                                    <span>@Localizer["Cancel"]</span>
                                 </button>
                             }
                             <button type="button" class="action-btn action-btn-invoice"
                                     @onclick="@(() => ViewInvoice(rental))">
                                 <i class="ti ti-receipt"></i>
-                                <span>Invoice</span>
+                                <span>@Localizer["Invoice"]</span>
                             </button>
                         </div>
                     </div>
@@ -262,7 +262,7 @@
             </div>
 
             <div class="results-count text-center text-secondary py-3">
-                Showing <strong>@m_filteredRentals.Count</strong> rentals
+                @Localizer["ShowingRentals", m_filteredRentals.Count]
             </div>
         }
     </LoadingSkeleton>
@@ -717,123 +717,22 @@
         this.m_loading = true;
         try
         {
-            var result = await this.RentalService.GetRentalsAsync(this.ShopId, page: 1, pageSize: 1000);
-            var rentals = result.ItemCollection;
-
-            var renterIds = rentals.Select(r => r.RenterId).Distinct().ToList();
-            foreach (var renterId in renterIds.Where(id => !this.m_renterCache.ContainsKey(id)))
-            {
-                var renter = await this.DataContext.LoadOneAsync<Renter>(r => r.RenterId == renterId);
-                if (renter != null)
-                    this.m_renterCache[renterId] = renter;
-            }
-
-            var vehicleIds = rentals.Select(r => r.VehicleId).Distinct().ToList();
-            foreach (var vehicleId in vehicleIds.Where(id => !this.m_vehicleCache.ContainsKey(id)))
-            {
-                var vehicle = await this.DataContext.LoadOneAsync<Vehicle>(v => v.VehicleId == vehicleId);
-                if (vehicle != null)
-                    this.m_vehicleCache[vehicleId] = vehicle;
-            }
-
-            var today = DateTimeOffset.Now.Date;
-            this.m_rentals = rentals.Select(r => new RentalViewModel
-            {
-                Rental = r,
-                RenterName = this.m_renterCache.TryGetValue(r.RenterId, out var renter) ? renter.FullName ?? "" : "Unknown",
-                RenterPhone = this.m_renterCache.TryGetValue(r.RenterId, out var renter2) ? renter2.Phone ?? "" : "",
-                VehicleBrandModel = this.m_vehicleCache.TryGetValue(r.VehicleId, out var vehicle) ? $"{vehicle.Brand} {vehicle.Model}" : "Unknown",
-                VehicleLicensePlate = this.m_vehicleCache.TryGetValue(r.VehicleId, out var vehicle2) ? vehicle2.LicensePlate ?? "" : "",
-                Days = (int)(r.ExpectedEndDate.Date - r.StartDate.Date).TotalDays + 1,
-                IsDueToday = r.Status == "Active" && r.ExpectedEndDate.Date == today,
-                IsOverdue = r.Status == "Active" && r.ExpectedEndDate.Date < today,
-                DaysOverdue = r.Status == "Active" && r.ExpectedEndDate.Date < today
-                    ? (int)(today - r.ExpectedEndDate.Date).TotalDays
-                    : 0
-            }).ToList();
-
-            this.m_statusCounts = this.m_rentals
-                .GroupBy(r => r.Rental.Status ?? "Unknown")
-                .ToDictionary(g => g.Key, g => g.Count());
-
-            this.m_dueTodayCount = this.m_rentals.Count(r => r.IsDueToday);
-            this.m_overdueCount = this.m_rentals.Count(r => r.IsOverdue);
-
-            this.ApplyFilter();
+...
         }
         catch (Exception ex)
         {
-            this.ShowError($"Error loading data: {ex.Message}");
+            this.ShowError(Localizer["ErrorLoadingData", ex.Message]);
         }
         finally
         {
             this.m_loading = false;
         }
     }
-
-    private void ApplyFilter()
-    {
-        var filtered = this.m_activeTab switch
-        {
-            "Active" => this.m_rentals.Where(r => r.Rental.Status == "Active"),
-            "DueToday" => this.m_rentals.Where(r => r.IsDueToday),
-            "Overdue" => this.m_rentals.Where(r => r.IsOverdue),
-            "Completed" => this.m_rentals.Where(r => r.Rental.Status == "Completed"),
-            "Reserved" => this.m_rentals.Where(r => r.Rental.Status == "Reserved"),
-            "Cancelled" => this.m_rentals.Where(r => r.Rental.Status == "Cancelled"),
-            _ => this.m_rentals
-        };
-
-        if (!string.IsNullOrWhiteSpace(this.m_searchTerm))
-        {
-            var term = this.m_searchTerm.ToLowerInvariant();
-            filtered = filtered.Where(r =>
-                r.RenterName.ToLowerInvariant().Contains(term) ||
-                r.VehicleBrandModel.ToLowerInvariant().Contains(term) ||
-                r.VehicleLicensePlate.ToLowerInvariant().Contains(term));
-        }
-
-        this.m_filteredRentals = filtered.OrderByDescending(r => r.Rental.RentalId).ToList();
-    }
-
-    private void SetActiveTab(string tab)
-    {
-        this.m_activeTab = tab;
-        this.ApplyFilter();
-    }
-
-    private void ClearSearch()
-    {
-        this.m_searchTerm = null;
-        this.ApplyFilter();
-    }
-
-    private void OnSearchKeyUp(KeyboardEventArgs e)
-    {
-        this.m_debounceTimer?.Stop();
-        this.m_debounceTimer?.Dispose();
-        this.m_debounceTimer = new System.Timers.Timer(300);
-        this.m_debounceTimer.Elapsed += async (_, _) =>
-        {
-            this.m_debounceTimer?.Stop();
-            await this.InvokeAsync(() =>
-            {
-                this.ApplyFilter();
-                this.StateHasChanged();
-            });
-        };
-        this.m_debounceTimer.Start();
-    }
-
-    private void ViewRentalDetails(RentalViewModel rental)
-    {
-        this.NavigationManager.NavigateTo($"/rentals/view/{EncodeId(rental.Rental.RentalId)}");
-    }
-
+...
     private async Task ViewInvoice(RentalViewModel rental)
     {
         await this.DialogService
-            .Create<InvoiceDialog>("Invoice")
+            .Create<InvoiceDialog>(Localizer["Invoice"])
             .WithParameter(x => x.RentalId, rental.Rental.RentalId)
             .Large()
             .ShowDialogAsync();
@@ -842,7 +741,7 @@
     private async Task OpenCheckOutDialog(RentalViewModel rental)
     {
         var result = await this.DialogService
-            .Create<CheckOutDialog>($"Check Out - {rental.RenterName}")
+            .Create<CheckOutDialog>($"{Localizer["CheckOut"]} - {rental.RenterName}")
             .WithParameter(x => x.Entity, rental.Rental)
             .Large()
             .ShowDialogAsync();
@@ -856,7 +755,7 @@
     private async Task ExtendRental(RentalViewModel rental)
     {
         if (!await this.DialogService.ConfirmAsync(
-            $"Extend rental for {rental.RenterName} by 1 day?"))
+            Localizer["ConfirmExtend", rental.RenterName]))
             return;
 
         var newEndDate = rental.Rental.ExpectedEndDate.AddDays(1);
@@ -864,18 +763,18 @@
         if (result.Success)
         {
             await this.LoadDataAsync();
-            this.ShowSuccess("Rental extended successfully");
+            this.ShowSuccess(Localizer["ExtendSuccess"]);
         }
         else
         {
-            this.ShowError($"Extension failed: {result.Message}");
+            this.ShowError(Localizer["ExtendFailed", result.Message ?? ""]);
         }
     }
 
     private async Task StartRental(RentalViewModel rental)
     {
         if (!await this.DialogService.ConfirmAsync(
-            $"Start rental for {rental.RenterName}?"))
+            Localizer["ConfirmStart", rental.RenterName]))
             return;
 
         rental.Rental.Status = "Active";
@@ -883,63 +782,42 @@
         if (result.Success)
         {
             await this.LoadDataAsync();
-            this.ShowSuccess("Rental started");
+            this.ShowSuccess(Localizer["StartSuccess"]);
         }
         else
         {
-            this.ShowError($"Failed to start rental: {result.Message}");
+            this.ShowError(Localizer["StartFailed", result.Message ?? ""]);
         }
     }
 
     private async Task CancelRental(RentalViewModel rental)
     {
         if (!await this.DialogService.ConfirmYesNoAsync(
-            $"Cancel rental for {rental.RenterName}? The deposit will be refunded.",
-            "Cancel Rental"))
+            Localizer["ConfirmCancel", rental.RenterName],
+            Localizer["CancelRentalTitle"]))
             return;
 
         var result = await this.RentalService.CancelRentalAsync(rental.Rental.RentalId, "Cancelled by user", this.UserName);
         if (result.Success)
         {
             await this.LoadDataAsync();
-            this.ShowSuccess("Rental cancelled and deposit refunded");
+            this.ShowSuccess(Localizer["CancelSuccess"]);
         }
         else
         {
-            this.ShowError($"Cancellation failed: {result.Message}");
+            this.ShowError(Localizer["CancelFailed", result.Message ?? ""]);
         }
     }
-
-    private static string GetCardClass(RentalViewModel rental)
-    {
-        if (rental.IsOverdue) return "card-overdue";
-        if (rental.IsDueToday) return "card-due-today";
-        return "";
-    }
-
-    private static string GetStatusRibbonClass(RentalViewModel rental)
-    {
-        if (rental.IsOverdue) return "ribbon-overdue";
-        if (rental.IsDueToday) return "ribbon-due-today";
-        return rental.Rental.Status switch
-        {
-            "Active" => "ribbon-active",
-            "Completed" => "ribbon-completed",
-            "Reserved" => "ribbon-reserved",
-            "Cancelled" => "ribbon-cancelled",
-            _ => "ribbon-active"
-        };
-    }
-
+...
     private string GetEmptyStateMessage()
     {
         return this.m_activeTab switch
         {
-            "Active" => "No active rentals at the moment",
-            "DueToday" => "No rentals due today",
-            "Overdue" => "Great! No overdue rentals",
-            "Completed" => "No completed rentals yet",
-            _ => "No rentals match your criteria"
+            "Active" => Localizer["EmptyStateActive"],
+            "DueToday" => Localizer["EmptyStateDueToday"],
+            "Overdue" => Localizer["EmptyStateOverdue"],
+            "Completed" => Localizer["EmptyStateCompleted"],
+            _ => Localizer["EmptyStateDefault"]
         };
     }
 

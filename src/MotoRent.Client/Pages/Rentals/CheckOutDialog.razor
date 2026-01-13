@@ -36,7 +36,7 @@
                     <span>1</span>
                 }
             </div>
-            <div class="step-label">Return</div>
+            <div class="step-label">@Localizer["Return"]</div>
         </div>
         <div class="step-connector @(m_activeTab > 0 ? "active" : "")"></div>
         <div class="step-item @(m_activeTab >= 1 ? "active" : "") @(m_activeTab > 1 ? "completed" : "")"
@@ -51,14 +51,14 @@
                     <span>2</span>
                 }
             </div>
-            <div class="step-label">Damage</div>
+            <div class="step-label">@Localizer["Damage"]</div>
         </div>
         <div class="step-connector @(m_activeTab > 1 ? "active" : "")"></div>
         <div class="step-item @(m_activeTab >= 2 ? "active" : "")">
             <div class="step-circle">
                 <span>3</span>
             </div>
-            <div class="step-label">Settle</div>
+            <div class="step-label">@Localizer["Settle"]</div>
         </div>
     </div>
 
@@ -71,7 +71,7 @@
                     <div class="summary-item">
                         <i class="ti ti-user summary-icon"></i>
                         <div class="summary-text">
-                            <span class="summary-label">Renter</span>
+                            <span class="summary-label">@Localizer["Renter"]</span>
                             <span class="summary-value">@m_renterName</span>
                         </div>
                     </div>
@@ -85,14 +85,14 @@
                 </div>
                 <div class="summary-dates">
                     <div class="date-box">
-                        <span class="date-label">Started</span>
+                        <span class="date-label">@Localizer["Started"]</span>
                         <span class="date-value">@FormatDate(Entity.StartDate)</span>
                     </div>
                     <div class="date-arrow">
                         <i class="ti ti-arrow-right"></i>
                     </div>
                     <div class="date-box">
-                        <span class="date-label">Expected</span>
+                        <span class="date-label">@Localizer["Expected"]</span>
                         <span class="date-value">
                             @if (m_isIntervalRental)
                             {
@@ -111,21 +111,21 @@
             <div class="form-section">
                 <h5 class="section-title">
                     <i class="ti ti-calendar-check"></i>
-                    Return Information
+                    @Localizer["ReturnInformation"]
                 </h5>
 
                 <div class="form-grid">
                     @if (!m_isIntervalRental)
                     {
                         <div class="form-group">
-                            <label class="form-label">Actual Return Date</label>
+                            <label class="form-label">@Localizer["ActualReturnDate"]</label>
                             <input type="date" class="form-control form-control-lg" @bind="m_actualReturnDate" />
                         </div>
                     }
                     @if (m_showMileage)
                     {
                         <div class="form-group">
-                            <label class="form-label">Mileage at Return (km)</label>
+                            <label class="form-label">@Localizer["MileageAtReturn"]</label>
                             <input type="number" class="form-control form-control-lg" @bind="m_mileageEnd" min="@Entity.MileageStart" />
                         </div>
                     }
@@ -138,13 +138,13 @@
                 <div class="form-section">
                     <h5 class="section-title">
                         <i class="ti ti-share text-purple"></i>
-                        Return Location
+                        @Localizer["ReturnLocation"]
                     </h5>
                     <select class="form-select form-select-lg" @bind="m_returnToShopId">
                         @foreach (var shop in m_poolShops)
                         {
                             <option value="@shop.ShopId">
-                                @shop.Name @(shop.ShopId == this.ShopId ? "(Current Shop)" : "")
+                                @shop.Name @(shop.ShopId == this.ShopId ? $"({Localizer["CurrentShop"]})" : "")
                             </option>
                         }
                     </select>
@@ -152,7 +152,7 @@
                     {
                         <div class="info-banner info-purple mt-2">
                             <i class="ti ti-info-circle"></i>
-                            <span>Vehicle will be transferred to the selected shop</span>
+                            <span>@Localizer["TransferHint"]</span>
                         </div>
                     }
                 </div>
@@ -164,10 +164,10 @@
                 <div class="form-section">
                     <h5 class="section-title">
                         <i class="ti ti-map-pin text-teal"></i>
-                        Drop-off Service Location
+                        @Localizer["DropoffServiceLocation"]
                     </h5>
                     <select class="form-select" @bind="m_dropoffLocationId" @bind:after="OnDropoffLocationChanged">
-                        <option value="0">At Shop (Free)</option>
+                        <option value="0">@Localizer["AtShopFree"]</option>
                         @foreach (var location in m_dropoffLocations)
                         {
                             <option value="@location.ServiceLocationId">
@@ -183,7 +183,7 @@
                     @if (m_dropoffLocationId > 0)
                     {
                         <div class="mt-3">
-                            <label class="form-label">Drop-off Time</label>
+                            <label class="form-label">@Localizer["DropoffTime"]</label>
                             <input type="time" class="form-control"
                                    value="@m_dropoffTime.ToString(@"hh\:mm")"
                                    @onchange="OnDropoffTimeChanged" />
@@ -202,10 +202,10 @@
                         <div class="info-banner info-blue mt-3">
                             <i class="ti ti-info-circle"></i>
                             <span>
-                                Drop-off fees: <strong>@FormatCurrency(m_dropoffLocationFee + m_dropoffOutOfHoursFee)</strong>
+                                @Localizer["DropoffFees"]: <strong>@FormatCurrency(m_dropoffLocationFee + m_dropoffOutOfHoursFee)</strong>
                                 @if (m_dropoffLocationFee > 0 && m_dropoffOutOfHoursFee > 0)
                                 {
-                                    @($" (Location: {FormatCurrency(m_dropoffLocationFee)}, Out-of-hours: {FormatCurrency(m_dropoffOutOfHoursFee)})")
+                                    @($" ({Localizer["LocationFee"]}: {FormatCurrency(m_dropoffLocationFee)}, {Localizer["OutOfHoursFee"]}: {FormatCurrency(m_dropoffOutOfHoursFee)})")
                                 }
                             </span>
                         </div>
@@ -221,8 +221,8 @@
                         <i class="ti ti-alert-triangle"></i>
                     </div>
                     <div class="status-content">
-                        <span class="status-title">Late Return</span>
-                        <span class="status-detail">@m_extraDays day(s) overdue · +@FormatCurrency(m_extraDays * Entity.RentalRate)</span>
+                        <span class="status-title">@Localizer["LateReturn"]</span>
+                        <span class="status-detail">@Localizer["OverdueDaysCharge", m_extraDays, FormatCurrency(m_extraDaysCharge)]</span>
                     </div>
                 </div>
             }
@@ -233,23 +233,23 @@
                         <i class="ti ti-clock"></i>
                     </div>
                     <div class="status-content">
-                        <span class="status-title">Early Return</span>
-                        <span class="status-detail">Returning @Math.Abs(m_extraDays) day(s) early</span>
+                        <span class="status-title">@Localizer["EarlyReturn"]</span>
+                        <span class="status-detail">@Localizer["ReturningEarly", Math.Abs(m_extraDays)]</span>
                     </div>
                 </div>
             }
 
             <div class="form-section">
-                <label class="form-label">Return Notes (Optional)</label>
+                <label class="form-label">@Localizer["ReturnNotes"]</label>
                 <textarea class="form-control" @bind="m_notes" rows="2"
-                          placeholder="Any notes about the return..."></textarea>
+                          placeholder="@Localizer["ReturnNotesPlaceholder"]"></textarea>
             </div>
 
             @* Navigation Buttons *@
             <div class="step-nav">
                 <div></div>
                 <button type="button" class="btn btn-primary btn-lg" @onclick="@(() => m_activeTab = 1)">
-                    Next: Damage Check
+                    @Localizer["NextDamageCheck"]
                     <i class="ti ti-arrow-right ms-2"></i>
                 </button>
             </div>
@@ -259,7 +259,7 @@
         <div class="step-pane @(m_activeTab == 1 ? "active" : "")">
             <h5 class="section-title mb-3">
                 <i class="ti ti-clipboard-check"></i>
-                Vehicle Condition
+                @Localizer["VehicleCondition"]
             </h5>
 
             <div class="damage-options">
@@ -269,8 +269,8 @@
                         <i class="ti ti-circle-check"></i>
                     </div>
                     <div class="damage-text">
-                        <span class="damage-title">No Damage</span>
-                        <span class="damage-desc">Good condition</span>
+                        <span class="damage-title">@Localizer["NoDamage"]</span>
+                        <span class="damage-desc">@Localizer["GoodCondition"]</span>
                     </div>
                     <div class="damage-check">
                         @if (m_damageLevel == "None")
@@ -286,8 +286,8 @@
                         <i class="ti ti-info-circle"></i>
                     </div>
                     <div class="damage-text">
-                        <span class="damage-title">Minor</span>
-                        <span class="damage-desc">Scratches, scuffs</span>
+                        <span class="damage-title">@Localizer["Minor"]</span>
+                        <span class="damage-desc">@Localizer["ScratchesScuffs"]</span>
                     </div>
                     <div class="damage-check">
                         @if (m_damageLevel == "Minor")
@@ -303,8 +303,8 @@
                         <i class="ti ti-alert-triangle"></i>
                     </div>
                     <div class="damage-text">
-                        <span class="damage-title">Moderate</span>
-                        <span class="damage-desc">Dents, repairs needed</span>
+                        <span class="damage-title">@Localizer["Moderate"]</span>
+                        <span class="damage-desc">@Localizer["RepairsNeeded"]</span>
                     </div>
                     <div class="damage-check">
                         @if (m_damageLevel == "Moderate")
@@ -320,8 +320,8 @@
                         <i class="ti ti-alert-octagon"></i>
                     </div>
                     <div class="damage-text">
-                        <span class="damage-title">Major</span>
-                        <span class="damage-desc">Significant damage</span>
+                        <span class="damage-title">@Localizer["Major"]</span>
+                        <span class="damage-desc">@Localizer["SignificantDamage"]</span>
                     </div>
                     <div class="damage-check">
                         @if (m_damageLevel == "Major")
@@ -337,17 +337,17 @@
                 <div class="damage-details-section">
                     <h5 class="section-title">
                         <i class="ti ti-file-description"></i>
-                        Damage Details
+                        @Localizer["DamageDetails"]
                     </h5>
 
                     <div class="form-group">
-                        <label class="form-label">Describe the damage</label>
+                        <label class="form-label">@Localizer["DescribeDamage"]</label>
                         <textarea class="form-control" @bind="m_damageDescription" rows="3"
-                                  placeholder="What damage was found?"></textarea>
+                                  placeholder="@Localizer["DescribeDamagePlaceholder"]"></textarea>
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Estimated Repair Cost</label>
+                        <label class="form-label">@Localizer["EstimatedRepairCost"]</label>
                         <div class="cost-input">
                             <span class="cost-currency">฿</span>
                             <input type="number" class="form-control form-control-lg" @bind="m_damageEstimate"
@@ -357,10 +357,10 @@
 
                     <h5 class="section-title mt-4">
                         <i class="ti ti-camera"></i>
-                        Damage Photos
+                        @Localizer["DamagePhotos"]
                     </h5>
                     <p class="text-secondary small mb-3">
-                        Take photos for documentation
+                        @Localizer["DamagePhotosDesc"]
                     </p>
 
                     <DamagePhotoUpload @ref="m_damagePhotoUpload"
@@ -371,7 +371,7 @@
 
                     <div class="info-banner info-blue mt-3">
                         <i class="ti ti-info-circle"></i>
-                        <span>Amount will be deducted from deposit</span>
+                        <span>@Localizer["DeductedFromDeposit"]</span>
                     </div>
                 </div>
             }
@@ -380,10 +380,10 @@
             <div class="step-nav">
                 <button type="button" class="btn btn-ghost-secondary btn-lg" @onclick="@(() => m_activeTab = 0)">
                     <i class="ti ti-arrow-left me-2"></i>
-                    Back
+                    @Localizer["Back"]
                 </button>
                 <button type="button" class="btn btn-primary btn-lg" @onclick="@(() => m_activeTab = 2)">
-                    Next: Settlement
+                    @Localizer["NextSettlement"]
                     <i class="ti ti-arrow-right ms-2"></i>
                 </button>
             </div>
@@ -393,17 +393,17 @@
         <div class="step-pane @(m_activeTab == 2 ? "active" : "")">
             @* Charges Summary *@
             <div class="settlement-card">
-                <h5 class="settlement-title">Charges Summary</h5>
+                <h5 class="settlement-title">@Localizer["ChargesSummary"]</h5>
 
                 <div class="settlement-row">
-                    <span>Original Rental</span>
-                    <span class="text-secondary">@FormatCurrency(Entity.TotalAmount) (Paid)</span>
+                    <span>@Localizer["OriginalRental"]</span>
+                    <span class="text-secondary">@FormatCurrency(Entity.TotalAmount) (@Localizer["Paid"])</span>
                 </div>
 
                 @if (m_extraDays > 0)
                 {
                     <div class="settlement-row text-warning">
-                        <span>Extra Days (@m_extraDays)</span>
+                        <span>@Localizer["ExtraDays", m_extraDays]</span>
                         <span>+@FormatCurrency(m_extraDaysCharge)</span>
                     </div>
                 }
@@ -411,7 +411,7 @@
                 @if (m_damageLevel != "None" && m_damageEstimate > 0)
                 {
                     <div class="settlement-row text-danger">
-                        <span>Damage (@m_damageLevel)</span>
+                        <span>@Localizer["Damage"] (@Localizer[m_damageLevel])</span>
                         <span>+@FormatCurrency(m_damageEstimate)</span>
                     </div>
                 }
@@ -433,30 +433,30 @@
                 }
 
                 <div class="settlement-total">
-                    <span>Additional Due</span>
+                    <span>@Localizer["AdditionalDue"]</span>
                     <span class="total-value">@FormatCurrency(m_totalAdditional)</span>
                 </div>
             </div>
 
             @* Deposit Settlement *@
             <div class="settlement-card">
-                <h5 class="settlement-title">Deposit Settlement</h5>
+                <h5 class="settlement-title">@Localizer["DepositSettlement"]</h5>
 
                 <div class="settlement-row">
-                    <span>Deposit Held</span>
+                    <span>@Localizer["DepositHeld"]</span>
                     <span>@FormatCurrency(m_depositAmount)</span>
                 </div>
 
                 @if (m_totalAdditional > 0)
                 {
                     <div class="settlement-row text-danger">
-                        <span>Deductions</span>
+                        <span>@Localizer["Deductions"]</span>
                         <span>-@FormatCurrency(Math.Min(m_totalAdditional, m_depositAmount))</span>
                     </div>
                 }
 
                 <div class="refund-amount">
-                    <span class="refund-label">Refund Amount</span>
+                    <span class="refund-label">@Localizer["RefundAmount"]</span>
                     <span class="refund-value @(m_refundAmount > 0 ? "text-success" : "")">
                         @FormatCurrency(m_refundAmount)
                     </span>
@@ -469,8 +469,8 @@
                             <i class="ti ti-alert-triangle"></i>
                         </div>
                         <div class="status-content">
-                            <span class="status-title">Payment Required</span>
-                            <span class="status-detail">Collect @FormatCurrency(m_totalAdditional - m_depositAmount) from renter</span>
+                            <span class="status-title">@Localizer["PaymentRequired"]</span>
+                            <span class="status-detail">@Localizer["CollectFromRenter", FormatCurrency(m_totalAdditional - m_depositAmount)]</span>
                         </div>
                     </div>
                 }
@@ -480,24 +480,24 @@
             <div class="form-section">
                 <h5 class="section-title">
                     <i class="ti ti-wallet"></i>
-                    Refund Method
+                    @Localizer["RefundMethod"]
                 </h5>
 
                 <div class="refund-methods">
                     <div class="refund-method @(m_refundMethod == "Cash" ? "selected" : "")"
                          @onclick="@(() => m_refundMethod = "Cash")">
                         <i class="ti ti-cash"></i>
-                        <span>Cash</span>
+                        <span>@Localizer["Cash"]</span>
                     </div>
                     <div class="refund-method @(m_refundMethod == "Card" ? "selected" : "")"
                          @onclick="@(() => m_refundMethod = "Card")">
                         <i class="ti ti-credit-card"></i>
-                        <span>Card</span>
+                        <span>@Localizer["Card"]</span>
                     </div>
                     <div class="refund-method @(m_refundMethod == "BankTransfer" ? "selected" : "")"
                          @onclick="@(() => m_refundMethod = "BankTransfer")">
                         <i class="ti ti-building-bank"></i>
-                        <span>Bank</span>
+                        <span>@Localizer["Bank"]</span>
                     </div>
                 </div>
 
@@ -514,20 +514,20 @@
                         <i class="ti ti-tool"></i>
                     </div>
                     <div class="status-content">
-                        <span class="status-title">Maintenance Notice</span>
+                        <span class="status-title">@Localizer["MaintenanceNotice"]</span>
                         <span class="status-detail">
                             @if (m_maintenanceOverdueCount > 0)
                             {
-                                <span class="badge bg-danger me-1">@m_maintenanceOverdueCount overdue</span>
+                                <span class="badge bg-danger me-1">@m_maintenanceOverdueCount @Localizer["Overdue"]</span>
                             }
                             @if (m_maintenanceDueSoonCount > 0)
                             {
-                                <span class="badge bg-warning text-dark">@m_maintenanceDueSoonCount due soon</span>
+                                <span class="badge bg-warning text-dark">@m_maintenanceDueSoonCount @Localizer["DueSoon"]</span>
                             }
                         </span>
                         <label class="confirm-check mt-2">
                             <input type="checkbox" class="form-check-input" @bind="m_acknowledgeMaintenanceWarning" />
-                            <span>I acknowledge this</span>
+                            <span>@Localizer["Acknowledge"]</span>
                         </label>
                     </div>
                 </div>
@@ -537,7 +537,7 @@
             <div class="step-nav">
                 <button type="button" class="btn btn-ghost-secondary btn-lg" @onclick="@(() => m_activeTab = 1)">
                     <i class="ti ti-arrow-left me-2"></i>
-                    Back
+                    @Localizer["Back"]
                 </button>
                 <button type="button" class="btn btn-success btn-lg" disabled="@(!CanComplete)" @onclick="CompleteCheckOut">
                     @if (Saving)
@@ -545,7 +545,7 @@
                         <span class="spinner-border spinner-border-sm me-2" role="status"></span>
                     }
                     <i class="ti ti-check me-1"></i>
-                    Complete
+                    @Localizer["Complete"]
                 </button>
             </div>
         </div>
@@ -1168,12 +1168,12 @@
 
     private string GetVehicleTypeLabel() => this.m_vehicle?.VehicleType switch
     {
-        VehicleType.Motorbike => "Motorbike",
-        VehicleType.Car => "Car",
-        VehicleType.JetSki => "Jet Ski",
-        VehicleType.Boat => "Boat",
-        VehicleType.Van => "Van",
-        _ => "Vehicle"
+        VehicleType.Motorbike => Localizer["Motorbike"],
+        VehicleType.Car => Localizer["Car"],
+        VehicleType.JetSki => Localizer["JetSki"],
+        VehicleType.Boat => Localizer["Boat"],
+        VehicleType.Van => Localizer["Van"],
+        _ => Localizer["Vehicle"]
     };
 
     protected override async Task OnInitializedAsync()
@@ -1244,7 +1244,7 @@
         }
         catch (Exception ex)
         {
-            this.ShowError($"Error loading data: {ex.Message}");
+            this.ShowError(Localizer["ErrorLoading", ex.Message]);
         }
         finally
         {
@@ -1255,11 +1255,11 @@
     private string GetRefundConfirmationText()
     {
         if (this.m_refundAmount > 0)
-            return $"I confirm the refund of {FormatCurrency(this.m_refundAmount)} has been processed via {this.m_refundMethod}";
+            return Localizer["ConfirmRefundProcessed", FormatCurrency(this.m_refundAmount), Localizer[this.m_refundMethod]];
         else if (this.m_totalAdditional > this.m_depositAmount)
-            return $"I confirm the additional payment of {FormatCurrency(this.m_totalAdditional - this.m_depositAmount)} has been collected";
+            return Localizer["ConfirmAdditionalCollected", FormatCurrency(this.m_totalAdditional - this.m_depositAmount)];
         else
-            return "No refund needed - deposit covers all charges";
+            return Localizer["NoRefundNeeded"];
     }
 
     private void OnDamagePhotosChanged(List<string> photoPaths)
@@ -1352,22 +1352,22 @@
 
             if (result.Success)
             {
-                var message = $"Check-out completed.";
+                var message = Localizer["CheckOutCompleted"].Value;
                 if (this.m_refundAmount > 0)
-                    message += $" Refund: {FormatCurrency(result.RefundAmount)}";
+                    message += $" {Localizer["RefundLabel", FormatCurrency(result.RefundAmount)]}";
                 if (this.m_returnToShopId != this.ShopId)
-                    message += $" Vehicle transferred to {this.m_poolShops.FirstOrDefault(s => s.ShopId == this.m_returnToShopId)?.Name}";
+                    message += $" {Localizer["VehicleTransferred", this.m_poolShops.FirstOrDefault(s => s.ShopId == this.m_returnToShopId)?.Name ?? ""]}";
                 this.ShowSuccess(message);
                 this.Close();
             }
             else
             {
-                this.ShowError($"Check-out failed: {result.Message}");
+                this.ShowError(Localizer["CheckOutFailed", result.Message ?? ""]);
             }
         }
         catch (Exception ex)
         {
-            this.ShowError($"Error: {ex.Message}");
+            this.ShowError(Localizer["ErrorLoading", ex.Message]);
         }
         finally
         {

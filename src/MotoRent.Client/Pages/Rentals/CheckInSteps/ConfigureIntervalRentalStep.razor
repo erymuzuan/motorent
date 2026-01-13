@@ -1,11 +1,11 @@
-@inherits MotoRentComponentBase
+@inherits LocalizedComponentBase<CheckIn>
 @using MotoRent.Domain.Entities
 @using MotoRent.Client.Pages.Rentals
 
 <div class="d-flex flex-column gap-4">
     <div>
-        <h5 class="mb-1">Configure Interval Rental</h5>
-        <p class="text-secondary mb-0">Select the rental duration for your jet ski experience</p>
+        <h5 class="mb-1">@Localizer["ConfigureIntervalRental"]</h5>
+        <p class="text-secondary mb-0">@Localizer["ConfigureIntervalRentalDesc"]</p>
     </div>
 
     <div class="row g-4">
@@ -13,7 +13,7 @@
             <div class="card mb-4">
                 <div class="card-body">
                     <h6 class="card-title mb-3">
-                        <i class="ti ti-clock me-2"></i>Select Duration
+                        <i class="ti ti-clock me-2"></i>@Localizer["SelectDuration"]
                     </h6>
 
                     <div class="row g-3">
@@ -29,7 +29,7 @@
                                                 <i class="ti ti-clock" style="font-size: 1.5rem;"></i>
                                             </span>
                                         </div>
-                                        <h3 class="mb-0">15 min</h3>
+                                        <h3 class="mb-0">@Localizer["15Min"]</h3>
                                         <div class="text-primary fw-bold" style="font-size: 1.25rem;">
                                             @FormatCurrency(this.SelectedVehicle.Rate15Min ?? 0)
                                         </div>
@@ -54,7 +54,7 @@
                                                 <i class="ti ti-clock" style="font-size: 1.5rem;"></i>
                                             </span>
                                         </div>
-                                        <h3 class="mb-0">30 min</h3>
+                                        <h3 class="mb-0">@Localizer["30Min"]</h3>
                                         <div class="text-primary fw-bold" style="font-size: 1.25rem;">
                                             @FormatCurrency(this.SelectedVehicle.Rate30Min ?? 0)
                                         </div>
@@ -79,7 +79,7 @@
                                                 <i class="ti ti-clock" style="font-size: 1.5rem;"></i>
                                             </span>
                                         </div>
-                                        <h3 class="mb-0">1 hour</h3>
+                                        <h3 class="mb-0">@Localizer["1Hour"]</h3>
                                         <div class="text-primary fw-bold" style="font-size: 1.25rem;">
                                             @FormatCurrency(this.SelectedVehicle.Rate1Hour ?? 0)
                                         </div>
@@ -98,17 +98,17 @@
             <div class="card mb-4">
                 <div class="card-body">
                     <h6 class="card-title mb-3">
-                        <i class="ti ti-clock-play me-2"></i>Start Time
+                        <i class="ti ti-clock-play me-2"></i>@Localizer["StartTime"]
                     </h6>
 
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label">Date</label>
+                            <label class="form-label">@Localizer["Date"]</label>
                             <input type="date" class="form-control"
                                    @bind="m_startDate" min="@DateTime.Today.ToString("yyyy-MM-dd")" />
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Time</label>
+                            <label class="form-label">@Localizer["Time"]</label>
                             <input type="time" class="form-control"
                                    value="@m_startTimeString"
                                    @onchange="@((ChangeEventArgs e) => OnTimeChanged(e.Value?.ToString()))" />
@@ -119,7 +119,7 @@
                         <div class="d-flex align-items-center gap-2">
                             <i class="ti ti-info-circle"></i>
                             <span>
-                                Rental ends at <strong>@GetEndTimeDisplay()</strong>
+                                @Localizer["RentalEndsAt"] <strong>@GetEndTimeDisplay()</strong>
                             </span>
                         </div>
                     </div>
@@ -130,10 +130,9 @@
                 <div class="d-flex gap-3">
                     <i class="ti ti-alert-triangle" style="font-size: 1.5rem;"></i>
                     <div>
-                        <h4 class="alert-title">Safety Notice</h4>
+                        <h4 class="alert-title">@Localizer["SafetyNotice"]</h4>
                         <p class="text-secondary mb-0">
-                            All riders must wear life jackets at all times. Age restrictions apply.
-                            A safety briefing will be provided before the ride.
+                            @Localizer["SafetyNoticeDesc"]
                         </p>
                     </div>
                 </div>
@@ -143,14 +142,14 @@
         <div class="col-12 col-md-4">
             <div class="card" style="position: sticky; top: 20px;">
                 <div class="card-body">
-                    <h6 class="card-title mb-3">Price Summary</h6>
+                    <h6 class="card-title mb-3">@Localizer["PriceSummary"]</h6>
 
                     @if (this.SelectedVehicle != null && m_selectedInterval.HasValue)
                     {
                         <div class="d-flex flex-column gap-2">
                             <div class="d-flex justify-content-between">
                                 <span>
-                                    Jet Ski (@GetIntervalLabel())
+                                    @Localizer["JetSki"] (@GetIntervalLabel())
                                 </span>
                                 <span>@FormatCurrency(GetIntervalRate())</span>
                             </div>
@@ -158,7 +157,7 @@
                             <hr class="my-2">
 
                             <div class="d-flex justify-content-between">
-                                <span class="fw-semibold" style="font-size: 1.1rem;">Total</span>
+                                <span class="fw-semibold" style="font-size: 1.1rem;">@Localizer["Total"]</span>
                                 <span class="text-primary fw-bold" style="font-size: 1.25rem;">
                                     @FormatCurrency(this.Config.TotalAmount)
                                 </span>
@@ -167,14 +166,14 @@
                             <hr class="my-2">
 
                             <div class="d-flex justify-content-between">
-                                <span class="text-secondary">Required Deposit</span>
+                                <span class="text-secondary">@Localizer["RequiredDeposit"]</span>
                                 <span class="fw-medium">@FormatCurrency(this.SelectedVehicle.DepositAmount)</span>
                             </div>
                         </div>
                     }
                     else
                     {
-                        <p class="text-secondary mb-0">Please select a duration to see pricing</p>
+                        <p class="text-secondary mb-0">@Localizer["SelectDurationHint"]</p>
                     }
                 </div>
             </div>
@@ -249,9 +248,9 @@
 
     private string GetIntervalLabel() => this.m_selectedInterval switch
     {
-        15 => "15 minutes",
-        30 => "30 minutes",
-        60 => "1 hour",
+        15 => Localizer["15Min"],
+        30 => Localizer["30Min"],
+        60 => Localizer["1Hour"],
         _ => ""
     };
 
