@@ -41,8 +41,6 @@ public partial class RentalDataContext
         return await repos.LoadAsync(query, page, size, includeTotalRows);
     }
 
-    #region Aggregate Methods
-
     /// <summary>
     /// Gets the count of entities matching the query.
     /// </summary>
@@ -122,8 +120,6 @@ public partial class RentalDataContext
         return await repos.GetDistinctAsync(query, selector);
     }
 
-    #endregion
-
     public PersistenceSession OpenSession(string username = "system")
     {
         return new PersistenceSession(this, username);
@@ -139,7 +135,7 @@ public partial class RentalDataContext
             // Process deletes first
             foreach (var entity in session.DeletedCollection)
             {
-                await DeleteEntityAsync(entity);
+                await this.DeleteEntityAsync(entity);
                 deleted++;
                 processedEntities.Add((entity, CrudOperation.Deleted));
             }
@@ -149,24 +145,24 @@ public partial class RentalDataContext
             {
                 if (entity.GetId() == 0)
                 {
-                    await InsertEntityAsync(entity, username);
+                    await this.InsertEntityAsync(entity, username);
                     inserted++;
                     processedEntities.Add((entity, CrudOperation.Added));
                 }
                 else
                 {
-                    await UpdateEntityAsync(entity, username);
+                    await this.UpdateEntityAsync(entity, username);
                     updated++;
                     processedEntities.Add((entity, CrudOperation.Changed));
                 }
             }
 
             // Publish messages to RabbitMQ if configured
-            if (MessageBroker != null)
+            if (this.MessageBroker != null)
             {
                 foreach (var (entity, crud) in processedEntities)
                 {
-                    await PublishMessageAsync(entity, crud, operation, username);
+                    await this.PublishMessageAsync(entity, crud, operation, username);
                 }
             }
 
@@ -174,13 +170,13 @@ public partial class RentalDataContext
         }
         catch (Exception ex)
         {
-            return SubmitOperation.CreateFailure($"Submit failed: {ex.Message}", ex);
+            return SubmitOperation.CreateFailure($"Submit failed: {this.AccountNo} {ex.Message}", ex);
         }
     }
 
     private async Task PublishMessageAsync(Entity entity, CrudOperation crud, string operation, string username)
     {
-        if (MessageBroker == null) return;
+        if (this.MessageBroker == null) return;
 
         try
         {
@@ -191,11 +187,11 @@ public partial class RentalDataContext
                 Crud = crud,
                 Operation = operation,
                 Username = username,
-                AccountNo = AccountNo,
+                AccountNo = this.AccountNo,
                 Id = Guid.NewGuid().ToString("N")
             };
 
-            await MessageBroker.SendAsync(message);
+            await this.MessageBroker.SendAsync(message);
         }
         catch (Exception)
         {
@@ -206,7 +202,7 @@ public partial class RentalDataContext
 
     private async Task InsertEntityAsync(Entity entity, string username)
     {
-        var method = typeof(RentalDataContext).GetMethod(nameof(InsertTypedAsync),
+        var method = typeof(RentalDataContext).GetMethod(nameof(this.InsertTypedAsync),
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
         var genericMethod = method!.MakeGenericMethod(entity.GetType());
         await (Task)genericMethod.Invoke(this, [entity, username])!;
@@ -220,7 +216,7 @@ public partial class RentalDataContext
 
     private async Task UpdateEntityAsync(Entity entity, string username)
     {
-        var method = typeof(RentalDataContext).GetMethod(nameof(UpdateTypedAsync),
+        var method = typeof(RentalDataContext).GetMethod(nameof(this.UpdateTypedAsync),
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
         var genericMethod = method!.MakeGenericMethod(entity.GetType());
         await (Task)genericMethod.Invoke(this, [entity, username])!;
@@ -234,7 +230,7 @@ public partial class RentalDataContext
 
     private async Task DeleteEntityAsync(Entity entity)
     {
-        var method = typeof(RentalDataContext).GetMethod(nameof(DeleteTypedAsync),
+        var method = typeof(RentalDataContext).GetMethod(nameof(this.DeleteTypedAsync),
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
         var genericMethod = method!.MakeGenericMethod(entity.GetType());
         await (Task)genericMethod.Invoke(this, [entity])!;

@@ -1,5 +1,4 @@
 using System.Text.Json.Serialization;
-using MotoRent.Domain.Search;
 
 namespace MotoRent.Domain.Entities;
 
@@ -7,11 +6,11 @@ namespace MotoRent.Domain.Entities;
 /// Represents a rentable vehicle in the fleet.
 /// Supports multiple vehicle types: Motorbike, Car, JetSki, Boat, Van.
 /// </summary>
-public class Vehicle : Entity, ISearchable
+public partial class Vehicle : Entity
 {
     public int VehicleId { get; set; }
 
-    #region Pool and Location
+    // Pool and Location
 
     /// <summary>
     /// The vehicle's "home" shop - where it was originally registered.
@@ -32,9 +31,7 @@ public class Vehicle : Entity, ISearchable
     /// </summary>
     public int CurrentShopId { get; set; }
 
-    #endregion
-
-    #region Vehicle Type and Duration
+    // Vehicle Type and Duration
 
     /// <summary>
     /// Type of vehicle (determines which properties are applicable).
@@ -46,9 +43,7 @@ public class Vehicle : Entity, ISearchable
     /// </summary>
     public RentalDurationType DurationType { get; set; } = RentalDurationType.Daily;
 
-    #endregion
-
-    #region Common Properties (All Vehicle Types)
+    // Common Properties (All Vehicle Types)
 
     /// <summary>
     /// License plate or registration number.
@@ -90,9 +85,7 @@ public class Vehicle : Entity, ISearchable
     /// </summary>
     public string? Notes { get; set; }
 
-    #endregion
-
-    #region Pricing - Daily
+    // Pricing - Daily
 
     /// <summary>
     /// Daily rental rate (for DurationType == Daily).
@@ -104,9 +97,7 @@ public class Vehicle : Entity, ISearchable
     /// </summary>
     public decimal DepositAmount { get; set; }
 
-    #endregion
-
-    #region Pricing - Interval (JetSki)
+    // Pricing - Interval (JetSki)
 
     /// <summary>
     /// 15-minute interval rate (jet ski only).
@@ -123,9 +114,7 @@ public class Vehicle : Entity, ISearchable
     /// </summary>
     public decimal? Rate1Hour { get; set; }
 
-    #endregion
-
-    #region Motorbike-Specific Properties
+    // Motorbike-Specific Properties
 
     /// <summary>
     /// Engine displacement in CC (motorbikes only: 110, 125, 150, etc.).
@@ -143,9 +132,7 @@ public class Vehicle : Entity, ISearchable
     /// </summary>
     public DateTimeOffset? LastServiceDate { get; set; }
 
-    #endregion
-
-    #region Car-Specific Properties
+    // Car-Specific Properties
 
     /// <summary>
     /// Car segment classification (cars only).
@@ -168,9 +155,7 @@ public class Vehicle : Entity, ISearchable
     /// </summary>
     public decimal? EngineLiters { get; set; }
 
-    #endregion
-
-    #region Boat/Van Driver and Guide
+    // Boat/Van Driver and Guide
 
     /// <summary>
     /// Daily fee for a driver (boats and vans).
@@ -187,9 +172,7 @@ public class Vehicle : Entity, ISearchable
     /// </summary>
     public int? PassengerCapacity { get; set; }
 
-    #endregion
-
-    #region JetSki/Boat-Specific Properties
+    // JetSki/Boat-Specific Properties
 
     /// <summary>
     /// Maximum rider weight in kg (jet skis and boats).
@@ -201,9 +184,7 @@ public class Vehicle : Entity, ISearchable
     /// </summary>
     public int? EngineHours { get; set; }
 
-    #endregion
-
-    #region Third-Party Owner
+    // Third-Party Owner
 
     /// <summary>
     /// If this vehicle is owned by a third party, the owner's ID.
@@ -241,9 +222,7 @@ public class Vehicle : Entity, ISearchable
     [JsonIgnore]
     public bool IsThirdPartyOwned => this is { VehicleOwnerId: > 0 };
 
-    #endregion
-
-    #region Denormalized Fields (for display)
+    // Denormalized Fields (for display)
 
     /// <summary>
     /// Pool name for display purposes.
@@ -257,76 +236,50 @@ public class Vehicle : Entity, ISearchable
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? CurrentShopName { get; set; }
 
-    #endregion
-
     public override int GetId() => this.VehicleId;
     public override void SetId(int value) => this.VehicleId = value;
 
-    #region ISearchable Implementation
-
-    int ISearchable.Id => VehicleId;
-    string ISearchable.Title => $"{LicensePlate} - {DisplayName}";
-    string ISearchable.Status => Status.ToString();
-    string ISearchable.Text => string.Join(" ", LicensePlate, Brand, Model,
-        DisplayName, Color, VehiclePoolName, CurrentShopName, Notes);
-    string ISearchable.Summary => $"{DisplayName} ({LicensePlate}) - {Status}";
-    string ISearchable.Type => "Vehicle";
-    bool ISearchable.IsSearchResult { get; set; }
-
-    Dictionary<string, object>? ISearchable.CustomFields => new()
-    {
-        ["VehicleType"] = VehicleType.ToString(),
-        ["Brand"] = Brand ?? "",
-        ["Model"] = Model ?? "",
-        ["ShopId"] = CurrentShopId,
-        ["VehiclePoolId"] = VehiclePoolId ?? 0
-    };
-
-    #endregion
-
-    #region Helper Properties
+    // Helper Properties
 
     /// <summary>
     /// Gets the display name for the vehicle (Brand + Model).
     /// </summary>
     [JsonIgnore]
-    public string DisplayName => $"{Brand} {Model}".Trim();
+    public string DisplayName => $"{this.Brand} {this.Model}".Trim();
 
     /// <summary>
     /// Checks if this vehicle type supports mileage tracking.
     /// </summary>
     [JsonIgnore]
-    public bool SupportsMileageTracking => VehicleType is VehicleType.Motorbike or VehicleType.Car;
+    public bool SupportsMileageTracking => this.VehicleType is VehicleType.Motorbike or VehicleType.Car;
 
     /// <summary>
     /// Checks if this vehicle type supports driver/guide options.
     /// </summary>
     [JsonIgnore]
-    public bool SupportsDriverGuide => VehicleType is VehicleType.Boat or VehicleType.Van;
+    public bool SupportsDriverGuide => this.VehicleType is VehicleType.Boat or VehicleType.Van;
 
     /// <summary>
     /// Checks if this vehicle has driver option available.
     /// </summary>
     [JsonIgnore]
-    public bool HasDriverOption => VehicleType is VehicleType.Car or VehicleType.Van or VehicleType.Boat;
+    public bool HasDriverOption => this.VehicleType is VehicleType.Car or VehicleType.Van or VehicleType.Boat;
 
     /// <summary>
     /// Checks if this vehicle has guide option available.
     /// </summary>
     [JsonIgnore]
-    public bool HasGuideOption => VehicleType == VehicleType.Boat;
+    public bool HasGuideOption => this.VehicleType == VehicleType.Boat;
 
     /// <summary>
     /// Checks if this vehicle uses interval pricing.
     /// </summary>
     [JsonIgnore]
-    public bool UsesIntervalPricing => VehicleType == VehicleType.JetSki;
+    public bool UsesIntervalPricing => this.VehicleType == VehicleType.JetSki;
 
     /// <summary>
     /// Whether this vehicle is part of a shared pool.
     /// </summary>
     [JsonIgnore]
-    public bool IsPooled => VehiclePoolId.HasValue && VehiclePoolId > 0;
-
-    #endregion
+    public bool IsPooled => this.VehiclePoolId.HasValue && this.VehiclePoolId > 0;
 }

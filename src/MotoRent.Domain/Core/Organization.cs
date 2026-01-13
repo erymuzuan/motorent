@@ -96,8 +96,6 @@ public class Organization : Entity
     /// </summary>
     public Address Address { get; set; } = new();
 
-    #region Tourist Portal Configuration
-
     /// <summary>
     /// Custom domain for tourist-facing pages (e.g., "adam.co.th").
     /// When set, requests to this domain are mapped to this tenant.
@@ -110,12 +108,10 @@ public class Organization : Entity
     /// </summary>
     public TenantBranding Branding { get; set; } = new();
 
-    #endregion
+    public override int GetId() => this.OrganizationId;
+    public override void SetId(int value) => this.OrganizationId = value;
 
-    public override int GetId() => OrganizationId;
-    public override void SetId(int value) => OrganizationId = value;
-
-    public override string ToString() => $"{Name} ({AccountNo})";
+    public override string ToString() => $"{this.Name} ({this.AccountNo})";
 }
 
 /// <summary>

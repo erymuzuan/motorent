@@ -9,7 +9,7 @@ namespace MotoRent.Domain.Entities;
 /// so tenant isolation is provided by the schema itself - no AccountNo property needed.
 /// A tenant (Organization) can have one or more Shops.
 /// </summary>
-public class Shop : Entity, ISearchable
+public partial class Shop : Entity
 {
     public int ShopId { get; set; }
 
@@ -32,8 +32,6 @@ public class Shop : Entity, ISearchable
     /// </summary>
     public LatLng? GpsLocation { get; set; }
 
-    #region Operating Hours
-
     /// <summary>
     /// Default weekly hours template for auto-populating ShopSchedule entries.
     /// Index by DayOfWeek (0 = Sunday, 6 = Saturday).
@@ -46,26 +44,6 @@ public class Shop : Entity, ISearchable
     /// </summary>
     public List<OutOfHoursBand> OutOfHoursBands { get; set; } = [];
 
-    #endregion
-
     public override int GetId() => this.ShopId;
     public override void SetId(int value) => this.ShopId = value;
-
-    #region ISearchable Implementation
-
-    int ISearchable.Id => ShopId;
-    string ISearchable.Title => Name;
-    string ISearchable.Status => IsActive ? "Active" : "Inactive";
-    string ISearchable.Text => string.Join(" ", Name, Location, Address, Phone, Email);
-    string ISearchable.Summary => $"{Name} - {Location}";
-    string ISearchable.Type => "Shop";
-    bool ISearchable.IsSearchResult { get; set; }
-
-    Dictionary<string, object>? ISearchable.CustomFields => new()
-    {
-        ["Location"] = Location ?? "",
-        ["Phone"] = Phone ?? ""
-    };
-
-    #endregion
 }

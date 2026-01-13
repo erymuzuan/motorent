@@ -6,11 +6,9 @@ namespace MotoRent.Domain.Entities;
 /// Represents an accident/incident involving a company vehicle.
 /// Can be linked to a rental (optional) or be a standalone incident.
 /// </summary>
-public class Accident : Entity, ISearchable
+public partial class Accident : Entity
 {
     public int AccidentId { get; set; }
-
-    #region Linked Entities
 
     /// <summary>
     /// The vehicle involved in the accident.
@@ -27,10 +25,6 @@ public class Accident : Entity, ISearchable
     /// Shop responsible for handling this accident.
     /// </summary>
     public int ShopId { get; set; }
-
-    #endregion
-
-    #region Basic Information
 
     /// <summary>
     /// Unique accident reference number for external communication.
@@ -68,10 +62,6 @@ public class Accident : Entity, ISearchable
     /// </summary>
     public string? GpsCoordinates { get; set; }
 
-    #endregion
-
-    #region Classification
-
     /// <summary>
     /// Severity level of the accident.
     /// </summary>
@@ -102,10 +92,6 @@ public class Accident : Entity, ISearchable
     /// </summary>
     public string? InsuranceClaimNumber { get; set; }
 
-    #endregion
-
-    #region Financial Summary (Calculated/Denormalized)
-
     /// <summary>
     /// Total estimated costs across all cost items.
     /// </summary>
@@ -131,10 +117,6 @@ public class Accident : Entity, ISearchable
     /// </summary>
     public decimal NetCost { get; set; }
 
-    #endregion
-
-    #region Resolution
-
     /// <summary>
     /// Date when accident was fully resolved.
     /// </summary>
@@ -149,10 +131,6 @@ public class Accident : Entity, ISearchable
     /// Who resolved/closed this accident.
     /// </summary>
     public string? ResolvedBy { get; set; }
-
-    #endregion
-
-    #region Denormalized Display Fields
 
     /// <summary>
     /// Vehicle display name for UI.
@@ -169,33 +147,6 @@ public class Accident : Entity, ISearchable
     /// </summary>
     public string? RenterName { get; set; }
 
-    #endregion
-
     public override int GetId() => this.AccidentId;
     public override void SetId(int value) => this.AccidentId = value;
-
-    #region ISearchable Implementation
-
-    int ISearchable.Id => AccidentId;
-    string ISearchable.Title => $"{ReferenceNo} - {Title}";
-    string ISearchable.Status => Status.ToString();
-    string ISearchable.Text => string.Join(" ", ReferenceNo, Title, Description,
-        Location, VehicleName, VehicleLicensePlate, RenterName);
-    string ISearchable.Summary => $"{ReferenceNo}: {Title} ({Status})";
-    string ISearchable.Type => "Accident";
-    bool ISearchable.IsSearchResult { get; set; }
-
-    static bool ISearchable.HasDate => true;
-    DateOnly? ISearchable.Date => DateOnly.FromDateTime(AccidentDate.DateTime);
-
-    Dictionary<string, object>? ISearchable.CustomFields => new()
-    {
-        ["Severity"] = Severity.ToString(),
-        ["VehicleId"] = VehicleId,
-        ["RentalId"] = RentalId ?? 0,
-        ["AccidentDate"] = AccidentDate.ToString("yyyy-MM-dd"),
-        ["ShopId"] = ShopId
-    };
-
-    #endregion
 }
