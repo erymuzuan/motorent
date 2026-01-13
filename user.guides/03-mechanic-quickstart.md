@@ -2,6 +2,8 @@
 
 Welcome to MotoRent! This guide will help you get started as a Mechanic.
 
+![Fleet Management](https://motorent.public.s3.amazonaws.com/user-guides/images/05-fleet.png)
+
 ## Your Role
 
 As a Mechanic, you focus on fleet maintenance:

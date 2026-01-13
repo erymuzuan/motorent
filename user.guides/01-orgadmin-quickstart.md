@@ -2,6 +2,8 @@
 
 Welcome to MotoRent! This guide will help you get started as an Organization Admin (OrgAdmin).
 
+![Dashboard](https://motorent.public.s3.amazonaws.com/user-guides/images/02-dashboard.png)
+
 ## Your Role
 
 As an OrgAdmin, you have **full access** to all features in MotoRent. You can manage:
@@ -44,6 +46,8 @@ When you log in, you'll see your Dashboard with:
 
 ### 2. Processing a New Rental (Check-In)
 
+![Check-In Wizard](https://motorent.public.s3.amazonaws.com/user-guides/images/04-checkin.png)
+
 1. Click **Rentals > Check-In** or the "New Check-In" button
 2. Follow the 5-step wizard:
    - **Step 1: Renter** - Search for existing renter or create new
@@ -53,6 +57,8 @@ When you log in, you'll see your Dashboard with:
    - **Step 5: Agreement** - Review and confirm rental agreement
 
 ### 3. Managing Your Fleet
+
+![Fleet Management](https://motorent.public.s3.amazonaws.com/user-guides/images/05-fleet.png)
 
 Navigate to **Fleet > All Vehicles** to:
 - View all vehicles across types (Motorbike, Car, Jet Ski, Boat, Van)
@@ -79,6 +85,8 @@ Navigate to **Fleet > All Vehicles** to:
 
 ### 5. Accident Management
 
+![Accident Management](https://motorent.public.s3.amazonaws.com/user-guides/images/06-accidents.png)
+
 When an accident occurs:
 1. Go to **Accidents**
 2. Click "Report Accident"
@@ -90,6 +98,8 @@ When an accident occurs:
 4. Track resolution progress
 
 ### 6. Shop Settings
+
+![Shop Locations](https://motorent.public.s3.amazonaws.com/user-guides/images/08-shops.png)
 
 Configure your rental shops under **Settings > Shop Settings**:
 - Add new shop locations

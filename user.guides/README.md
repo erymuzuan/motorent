@@ -2,6 +2,8 @@
 
 Quick start guides for all MotoRent user roles.
 
+![Dashboard Overview](https://motorent.public.s3.amazonaws.com/user-guides/images/02-dashboard.png)
+
 ## Available Guides
 
 | Guide | Role | Access Level |

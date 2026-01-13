@@ -2,6 +2,8 @@
 
 Welcome to MotoRent! This guide will help you get started as a Shop Manager.
 
+![Dashboard](https://motorent.public.s3.amazonaws.com/user-guides/images/02-dashboard.png)
+
 ## Your Role
 
 As a Shop Manager, you have **full access** to manage your shop's operations:

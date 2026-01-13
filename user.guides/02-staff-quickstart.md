@@ -2,6 +2,8 @@
 
 Welcome to MotoRent! This guide will help you get started as a Staff member.
 
+![Staff Dashboard](https://motorent.public.s3.amazonaws.com/user-guides/images/09-staff-dashboard.png)
+
 ## Your Role
 
 As a Staff member, you handle day-to-day rental operations:
@@ -40,6 +42,8 @@ Your Dashboard shows:
 - **Register Renter** - Add new customer
 
 ### 2. Processing a New Rental (Check-In)
+
+![Check-In Process](https://motorent.public.s3.amazonaws.com/user-guides/images/04-checkin.png)
 
 This is your most common task. Follow these steps:
 
