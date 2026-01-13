@@ -1,4 +1,4 @@
-@page "/accidents/{AccidentId:int}"
+@page "/accidents/{AccidentId}"
 @using Microsoft.AspNetCore.Authorization
 @using MotoRent.Domain.Entities
 @attribute [Authorize(Policy = "RequireTenantStaff")]
@@ -231,19 +231,19 @@
                                 <DetailsTab Accident="@m_accident" />
                                 break;
                             case "parties":
-                                <PartiesTab AccidentId="@AccidentId" Parties="@m_parties" OnChanged="LoadParties" />
+                                <PartiesTab AccidentId="@m_accidentId" Parties="@m_parties" OnChanged="LoadParties" />
                                 break;
                             case "documents":
-                                <DocumentsTab AccidentId="@AccidentId" Documents="@m_documents" OnChanged="LoadDocuments" />
+                                <DocumentsTab AccidentId="@m_accidentId" Documents="@m_documents" OnChanged="LoadDocuments" />
                                 break;
                             case "costs":
-                                <CostsTab AccidentId="@AccidentId" Costs="@m_costs" OnChanged="LoadCosts" />
+                                <CostsTab AccidentId="@m_accidentId" Costs="@m_costs" OnChanged="LoadCosts" />
                                 break;
                             case "timeline":
-                                <TimelineTab AccidentId="@AccidentId" Notes="@m_notes" OnChanged="LoadNotes" />
+                                <TimelineTab AccidentId="@m_accidentId" Notes="@m_notes" OnChanged="LoadNotes" />
                                 break;
                             case "comments":
-                                <CommentPanel EntityId="@AccidentId"
+                                <CommentPanel EntityId="@m_accidentId"
                                               EntityType="Accident"
                                               EntityWebId="@m_accident?.WebId"
                                               ObjectUri="@($"/accidents/{AccidentId}")" />
@@ -292,8 +292,9 @@
 
 @code {
     [Parameter]
-    public int AccidentId { get; set; }
+    public string AccidentId { get; set; } = "";
 
+    private int m_accidentId;
     private Accident? m_accident;
     private List<AccidentParty> m_parties = [];
     private List<AccidentDocument> m_documents = [];
@@ -305,6 +306,7 @@
 
     protected override async Task OnParametersSetAsync()
     {
+        m_accidentId = DecodeId(AccidentId);
         await LoadDataAsync();
     }
 
@@ -313,7 +315,7 @@
         m_loading = true;
         try
         {
-            m_accident = await AccidentService.GetAccidentByIdAsync(AccidentId);
+            m_accident = await AccidentService.GetAccidentByIdAsync(m_accidentId);
             m_notFound = m_accident == null;
 
             if (m_accident != null)
@@ -337,25 +339,25 @@
 
     private async Task LoadParties()
     {
-        m_parties = await AccidentService.GetPartiesAsync(AccidentId);
+        m_parties = await AccidentService.GetPartiesAsync(m_accidentId);
         StateHasChanged();
     }
 
     private async Task LoadDocuments()
     {
-        m_documents = await AccidentService.GetDocumentsAsync(AccidentId);
+        m_documents = await AccidentService.GetDocumentsAsync(m_accidentId);
         StateHasChanged();
     }
 
     private async Task LoadCosts()
     {
-        m_costs = await AccidentService.GetCostsAsync(AccidentId);
+        m_costs = await AccidentService.GetCostsAsync(m_accidentId);
         StateHasChanged();
     }
 
     private async Task LoadNotes()
     {
-        m_notes = await AccidentService.GetNotesAsync(AccidentId);
+        m_notes = await AccidentService.GetNotesAsync(m_accidentId);
         StateHasChanged();
     }
 
@@ -364,7 +366,7 @@
         if (!await DialogService.ConfirmAsync("Start investigation for this accident?"))
             return;
 
-        var result = await AccidentService.UpdateStatusAsync(AccidentId, AccidentStatus.InProgress, "Investigation started", UserName);
+        var result = await AccidentService.UpdateStatusAsync(m_accidentId, AccidentStatus.InProgress, "Investigation started", UserName);
         if (result.Success)
         {
             await LoadDataAsync();
@@ -381,7 +383,7 @@
         var notes = await DialogService.PromptAsync("Resolution Notes", "Enter resolution notes (optional):");
         if (notes == null) return; // Cancelled
 
-        var result = await AccidentService.UpdateStatusAsync(AccidentId, AccidentStatus.Resolved, notes, UserName);
+        var result = await AccidentService.UpdateStatusAsync(m_accidentId, AccidentStatus.Resolved, notes, UserName);
         if (result.Success)
         {
             await LoadDataAsync();

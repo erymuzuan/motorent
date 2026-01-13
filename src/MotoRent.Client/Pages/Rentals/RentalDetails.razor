@@ -1,4 +1,4 @@
-@page "/rentals/view/{RentalId:int}"
+@page "/rentals/view/{RentalId}"
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize(Policy = "RequireTenantStaff")]
 @inherits LocalizedComponentBase<RentalDetails>
@@ -327,7 +327,7 @@
                                 @Localizer["RenterDetails"]
                             </h3>
                             <div class="card-actions">
-                                <a href="/renters/@m_renter.RenterId" class="btn btn-ghost-primary btn-sm">
+                                <a href="/renters/@EncodeId(m_renter.RenterId)" class="btn btn-ghost-primary btn-sm">
                                     <i class="ti ti-external-link me-1"></i>
                                     @Localizer["ViewProfile"]
                                 </a>
@@ -429,7 +429,7 @@
                                 @Localizer["VehicleDetails"]
                             </h3>
                             <div class="card-actions">
-                                <a href="/inventory/vehicles/@m_vehicle.VehicleId" class="btn btn-ghost-primary btn-sm">
+                                <a href="/vehicles/@EncodeId(m_vehicle.VehicleId)" class="btn btn-ghost-primary btn-sm">
                                     <i class="ti ti-external-link me-1"></i>
                                     @Localizer["ViewVehicle"]
                                 </a>
@@ -817,7 +817,7 @@
                         </h3>
                     </div>
                     <div class="card-body">
-                        <CommentPanel EntityId="@RentalId"
+                        <CommentPanel EntityId="@m_rentalId"
                                       EntityType="Rental"
                                       EntityWebId="@m_rental?.WebId"
                                       ObjectUri="@($"/rentals/view/{RentalId}")" />
@@ -829,8 +829,9 @@
 </LoadingSkeleton>
 
 @code {
-    [Parameter] public int RentalId { get; set; }
+    [Parameter] public string RentalId { get; set; } = "";
 
+    private int m_rentalId;
     private bool m_loading = true;
     private bool m_notFound;
     private string m_headerTitle = "";
@@ -861,6 +862,7 @@
 
     protected override async Task OnParametersSetAsync()
     {
+        m_rentalId = DecodeId(RentalId);
         await LoadDataAsync();
     }
 
@@ -870,7 +872,7 @@
         m_notFound = false;
         try
         {
-            m_rental = await RentalService.GetRentalByIdAsync(RentalId);
+            m_rental = await RentalService.GetRentalByIdAsync(m_rentalId);
             if (m_rental == null)
             {
                 m_notFound = true;
@@ -943,7 +945,7 @@
         catch (Exception ex)
         {
             ShowError($"Error loading rental: {ex.Message}");
-            Logger.LogError(ex, "Failed to load rental {RentalId}", RentalId);
+            Logger.LogError(ex, "Failed to load rental {RentalId}", m_rentalId);
         }
         finally
         {

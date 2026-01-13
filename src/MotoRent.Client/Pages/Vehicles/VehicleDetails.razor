@@ -1,4 +1,4 @@
-@page "/vehicles/{VehicleId:int}"
+@page "/vehicles/{VehicleId}"
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize(Policy = "RequireTenantStaff")]
 @inherits LocalizedComponentBase<VehicleDetails>
@@ -233,7 +233,7 @@
                                                 {
                                                     <tr>
                                                         <td>
-                                                            <a href="/rentals/view/@rental.RentalId" class="text-reset">
+                                                            <a href="/rentals/view/@EncodeId(rental.RentalId)" class="text-reset">
                                                                 #@rental.RentalId
                                                             </a>
                                                         </td>
@@ -306,7 +306,7 @@
                                 break;
 
                             case "comments":
-                                <CommentPanel EntityId="@VehicleId"
+                                <CommentPanel EntityId="@m_vehicleId"
                                               EntityType="Vehicle"
                                               EntityWebId="@m_vehicle?.WebId"
                                               ObjectUri="@($"/vehicles/{VehicleId}")" />
@@ -320,7 +320,9 @@
 </LoadingSkeleton>
 
 @code {
-    [Parameter] public int VehicleId { get; set; }
+    [Parameter] public string VehicleId { get; set; } = "";
+
+    private int m_vehicleId;
 
     private Vehicle? m_vehicle;
     private Shop? m_homeShop;
@@ -334,6 +336,7 @@
 
     protected override async Task OnParametersSetAsync()
     {
+        m_vehicleId = DecodeId(VehicleId);
         await LoadDataAsync();
     }
 
@@ -343,7 +346,7 @@
         m_notFound = false;
         try
         {
-            m_vehicle = await VehicleService.GetVehicleByIdAsync(VehicleId);
+            m_vehicle = await VehicleService.GetVehicleByIdAsync(m_vehicleId);
             if (m_vehicle == null)
             {
                 m_notFound = true;
@@ -366,7 +369,7 @@
         catch (Exception ex)
         {
             ShowError($"Error loading vehicle: {ex.Message}");
-            Logger.LogError(ex, "Failed to load vehicle {VehicleId}", VehicleId);
+            Logger.LogError(ex, "Failed to load vehicle {VehicleId}", m_vehicleId);
         }
         finally
         {
@@ -377,7 +380,7 @@
     private async Task LoadRentalsAsync()
     {
         var query = DataContext.CreateQuery<Rental>()
-            .Where(r => r.VehicleId == VehicleId)
+            .Where(r => r.VehicleId == m_vehicleId)
             .OrderByDescending(r => r.StartDate);
         var result = await DataContext.LoadAsync(query, 1, 20, false);
         m_rentals = result.ItemCollection.ToList();
@@ -386,7 +389,7 @@
     private async Task LoadMaintenanceAsync()
     {
         var query = DataContext.CreateQuery<MaintenanceSchedule>()
-            .Where(m => m.MotorbikeId == VehicleId)
+            .Where(m => m.MotorbikeId == m_vehicleId)
             .OrderByDescending(m => m.LastServiceDate);
         var result = await DataContext.LoadAsync(query, 1, 20, false);
         m_maintenanceRecords = result.ItemCollection.ToList();

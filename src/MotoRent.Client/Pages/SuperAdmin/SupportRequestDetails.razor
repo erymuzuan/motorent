@@ -1,4 +1,4 @@
-@page "/super-admin/support-requests/{Id:int}"
+@page "/super-admin/support-requests/{Id}"
 @rendermode InteractiveServer
 @inherits MotoRentComponentBase
 @using Microsoft.AspNetCore.Authorization
@@ -338,15 +338,17 @@
 </div>
 
 @code {
-    [Parameter] public int Id { get; set; }
+    [Parameter] public string Id { get; set; } = "";
 
+    private int m_id;
     private SupportRequest? m_request;
     private bool m_loading = true;
     private bool m_saving;
     private string? m_newDiscussion;
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnParametersSetAsync()
     {
+        m_id = DecodeId(Id);
         await LoadAsync();
     }
 
@@ -355,7 +357,7 @@
         m_loading = true;
         try
         {
-            m_request = await CoreDataContext.LoadOneAsync<SupportRequest>(x => x.SupportRequestId == Id);
+            m_request = await CoreDataContext.LoadOneAsync<SupportRequest>(x => x.SupportRequestId == m_id);
         }
         catch (Exception ex)
         {

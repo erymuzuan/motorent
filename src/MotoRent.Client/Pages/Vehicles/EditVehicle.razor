@@ -1,4 +1,4 @@
-@page "/vehicles/{VehicleId:int}/edit"
+@page "/vehicles/{VehicleId}/edit"
 
 @using MotoRent.Domain.Entities
 @using MotoRent.Client.Components.Shared
@@ -100,8 +100,9 @@
 
 @code {
     [Parameter]
-    public int VehicleId { get; set; }
+    public string VehicleId { get; set; } = "";
 
+    private int m_vehicleId;
     private Vehicle m_vehicle = new();
     private DateTime? m_lastServiceDate;
     private bool m_loading = true;
@@ -109,6 +110,7 @@
 
     protected override async Task OnParametersSetAsync()
     {
+        m_vehicleId = DecodeId(VehicleId);
         await LoadVehicleAsync();
     }
 
@@ -117,7 +119,7 @@
         this.m_loading = true;
         try
         {
-            var vehicle = await this.VehicleService.GetVehicleByIdAsync(this.VehicleId);
+            var vehicle = await this.VehicleService.GetVehicleByIdAsync(m_vehicleId);
             if (vehicle != null)
             {
                 // Clone to prevent direct modification

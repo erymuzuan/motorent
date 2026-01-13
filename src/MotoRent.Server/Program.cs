@@ -15,11 +15,15 @@ using MotoRent.Services.Storage;
 using MotoRent.Services.Tourist;
 using MotoRent.Domain.Search;
 using MotoRent.Server.Middleware;
+using HashidsNet;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add HttpContextAccessor for request context
 builder.Services.AddHttpContextAccessor();
+
+// Add HashIds for URL encoding (prevents ID enumeration)
+builder.Services.AddSingleton<IHashids>(_ => new Hashids(builder.Configuration["HashId:Salt"] ?? "motorent", 8));
 
 // Add request context for user/timezone services
 // Uses TouristRequestContext for /tourist/* paths (URL-based tenant resolution)

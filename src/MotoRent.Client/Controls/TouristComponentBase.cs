@@ -90,14 +90,14 @@ public class TouristComponentBase : MotoRentComponentBase
     protected string MyRentalsUrl => TenantUrl("my-rentals");
 
     /// <summary>
-    /// Gets the vehicle details page URL for a specific vehicle.
+    /// Gets the vehicle details page URL for a specific vehicle (with encoded ID).
     /// </summary>
-    protected string VehicleUrl(int vehicleId) => TenantUrl($"vehicle/{vehicleId}");
+    protected string VehicleUrl(int vehicleId) => TenantUrl($"vehicle/{EncodeId(vehicleId)}");
 
     /// <summary>
-    /// Gets the reservation page URL for a specific vehicle.
+    /// Gets the reservation page URL for a specific vehicle (with encoded ID).
     /// </summary>
-    protected string ReserveUrl(int vehicleId) => TenantUrl($"reserve/{vehicleId}");
+    protected string ReserveUrl(int vehicleId) => TenantUrl($"reserve/{EncodeId(vehicleId)}");
 
     #endregion
 

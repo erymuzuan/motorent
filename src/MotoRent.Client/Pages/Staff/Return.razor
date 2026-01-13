@@ -290,8 +290,9 @@ else
 
 @code {
     [SupplyParameterFromQuery]
-    public int? RentalId { get; set; }
+    public string? RentalId { get; set; }
 
+    private int m_rentalId;
     private bool m_loading;
     private string m_searchText = "";
     private List<RentalReturnItem> m_searchResults = [];
@@ -324,11 +325,12 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        m_rentalId = DecodeId(RentalId);
         await this.LoadRecentActiveAsync();
 
-        if (this.RentalId.HasValue)
+        if (this.m_rentalId > 0)
         {
-            await this.LoadRentalAsync(this.RentalId.Value);
+            await this.LoadRentalAsync(this.m_rentalId);
         }
     }
 

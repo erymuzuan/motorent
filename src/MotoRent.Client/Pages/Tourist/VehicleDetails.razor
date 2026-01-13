@@ -1,4 +1,4 @@
-@page "/tourist/{AccountNo}/vehicle/{VehicleId:int}"
+@page "/tourist/{AccountNo}/vehicle/{VehicleId}"
 @using Microsoft.AspNetCore.Authorization
 @attribute [AllowAnonymous]
 @inherits TouristComponentBase
@@ -341,8 +341,9 @@
 
 @code {
     [Parameter] public new string AccountNo { get; set; } = "";
-    [Parameter] public int VehicleId { get; set; }
+    [Parameter] public string VehicleId { get; set; } = "";
 
+    private int m_vehicleId;
     private Motorbike? m_vehicle;
     private List<string> m_imageUrls = [];
     private List<Motorbike> m_similarBikes = [];
@@ -354,6 +355,7 @@
 
     protected override async Task OnParametersSetAsync()
     {
+        m_vehicleId = DecodeId(VehicleId);
         await LoadVehicleAsync();
     }
 
@@ -362,12 +364,12 @@
         m_loading = true;
         try
         {
-            m_vehicle = await MotorbikeService.GetMotorbikeByIdAsync(VehicleId);
+            m_vehicle = await MotorbikeService.GetMotorbikeByIdAsync(m_vehicleId);
 
             if (m_vehicle != null)
             {
                 // Load images and convert to URLs
-                var images = await VehicleImageService.GetImagesForVehicleAsync(VehicleId);
+                var images = await VehicleImageService.GetImagesForVehicleAsync(m_vehicleId);
                 m_imageUrls = images
                     .Where(img => !string.IsNullOrEmpty(img.StoreId))
                     .Select(img => BinaryStore.GetImageUrl(img.StoreId))
@@ -379,7 +381,7 @@
                 // Load similar bikes (same engine class)
                 var allBikes = await MotorbikeService.GetAvailableMotorbikesAsync(m_vehicle.ShopId);
                 m_similarBikes = allBikes
-                    .Where(b => b.MotorbikeId != VehicleId)
+                    .Where(b => b.MotorbikeId != m_vehicleId)
                     .Where(b => Math.Abs(b.EngineCC - m_vehicle.EngineCC) <= 25) // Similar engine size
                     .Take(4)
                     .ToList();

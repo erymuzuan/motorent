@@ -1,3 +1,4 @@
+using HashidsNet;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
@@ -20,6 +21,7 @@ public class MotoRentComponentBase : ComponentBase
     [Inject] protected IRequestContext RequestContext { get; set; } = null!;
     [Inject] protected NavigationManager NavigationManager { get; set; } = null!;
     [Inject] protected IStringLocalizer<CommonResources> CommonLocalizer { get; set; } = null!;
+    [Inject] protected IHashids HashId { get; set; } = null!;
 
     #region Request Context Properties
 
@@ -135,6 +137,40 @@ public class MotoRentComponentBase : ComponentBase
     /// </summary>
     protected Task<bool> ConfirmDeleteAsync(string itemName) =>
         this.ConfirmAsync("Confirm Delete", $"Are you sure you want to delete '{itemName}'?", "Delete", "Cancel");
+
+    #endregion
+
+    #region HashId Encoding/Decoding
+
+    /// <summary>
+    /// Decodes a hashed ID string back to an integer.
+    /// Returns 0 if the ID is null, empty, or invalid.
+    /// </summary>
+    protected int DecodeId(string? id, int index = 0)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+            return 0;
+
+        var list = this.HashId.Decode(id);
+        return list.Length > index ? list[index] : 0;
+    }
+
+    /// <summary>
+    /// Decodes a hashed ID string to an array of integers.
+    /// Returns empty array if the ID is null, empty, or invalid.
+    /// </summary>
+    protected int[] DecodeIdList(string? id)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+            return [];
+
+        return this.HashId.Decode(id);
+    }
+
+    /// <summary>
+    /// Encodes one or more integer IDs to a hash string for use in URLs.
+    /// </summary>
+    protected string EncodeId(params int[] ids) => this.HashId.Encode(ids);
 
     #endregion
 }

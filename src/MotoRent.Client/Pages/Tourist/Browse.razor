@@ -1,5 +1,5 @@
 @page "/tourist/{AccountNo}/browse"
-@page "/tourist/{AccountNo}/browse/{SelectedShopId:int}"
+@page "/tourist/{AccountNo}/browse/{SelectedShopId}"
 @using Microsoft.AspNetCore.Authorization
 @attribute [AllowAnonymous]
 @inherits TouristComponentBase
@@ -230,8 +230,9 @@
 
 @code {
     [Parameter] public new string AccountNo { get; set; } = "";
-    [Parameter] public int? SelectedShopId { get; set; }
+    [Parameter] public string? SelectedShopId { get; set; }
 
+    private int? m_selectedShopId;
     private List<Motorbike> m_motorbikes = [];
     private List<Motorbike> m_filteredMotorbikes = [];
     private bool m_loading = true;
@@ -246,6 +247,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        m_selectedShopId = string.IsNullOrEmpty(SelectedShopId) ? null : DecodeId(SelectedShopId);
         await this.LoadFavoritesAsync();
         await this.LoadMotorbikes();
     }
@@ -306,7 +308,7 @@
         try
         {
             // Use SelectedShopId from URL if provided, otherwise use default ShopId
-            var shopId = this.SelectedShopId ?? this.ShopId;
+            var shopId = this.m_selectedShopId ?? this.ShopId;
             var result = await this.MotorbikeService.GetAvailableMotorbikesAsync(shopId);
             this.m_motorbikes = result.ToList();
             this.ApplyFilters();
@@ -352,7 +354,7 @@
     private void ViewDetails(Motorbike bike)
     {
         // Navigate to the vehicle details page
-        NavigationManager.NavigateTo(TenantUrl($"vehicle/{bike.MotorbikeId}"));
+        NavigationManager.NavigateTo(TenantUrl($"vehicle/{EncodeId(bike.MotorbikeId)}"));
     }
 
     private async Task StartReservation(Motorbike bike)
