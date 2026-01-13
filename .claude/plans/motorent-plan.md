@@ -296,7 +296,7 @@ public class RentalAgreement : Entity
 2. ✅ Motorbike inventory CRUD (Motorbikes.razor, MotorbikeDialog.razor, MotorbikeService.cs)
 3. ✅ Insurance packages setup (InsurancePackages.razor, InsuranceDialog.razor, InsuranceService.cs)
 4. ✅ Accessories management (Accessories.razor, AccessoryDialog.razor, AccessoryService.cs)
-5. ⏳ Daily rate configuration
+5. ✅ Daily rate configuration (embedded in VehicleDialog, InsuranceDialog, AccessoryDialog + RentalPricingService.cs)
 
 ### Phase 3: Renter Registration & Document OCR (COMPLETED)
 1. ✅ Renter registration form (Renters.razor, RenterDialog.razor, RenterService.cs)
@@ -316,16 +316,28 @@ public class RentalAgreement : Entity
 3. ✅ Daily/weekly/monthly reports - Reports.razor with revenue summaries
 4. ✅ Deposit tracking - DepositService.cs, Deposits.razor, RefundDepositDialog.razor
 
-### Phase 6: Tourist Self-Service Portal
-1. Browse available motorbikes
-2. Online reservation
-3. View rental history
+### Phase 6: Tourist Self-Service Portal (COMPLETED)
+1. ✅ Browse available motorbikes (Tourist/Browse.razor, VehicleDetails.razor)
+2. ✅ Online reservation (ReservationDialog.razor with multi-step wizard)
+3. ✅ View rental history (Tourist/RentalHistory.razor)
+4. ✅ Landing page with tenant branding (Tourist/Landing.razor)
 
-### Phase 7: PWA Features
-1. Service worker for offline support
-2. Install prompt
-3. Push notifications (rental expiry)
-4. Camera access for document capture
+### Phase 7: PWA Features (COMPLETED)
+1. ✅ Service worker for offline support (wwwroot/service-worker.js)
+2. ✅ Install prompt (manifest.json with shortcuts)
+3. ⏳ Push notifications (rental expiry) - infrastructure ready, notifications pending
+4. ✅ Camera access for document capture (DocumentUpload.razor)
+
+### Phase 8: Additional Features (COMPLETED)
+1. ✅ Organization management (SuperAdmin/Organizations.razor family)
+2. ✅ User management (SuperAdmin/Users.razor)
+3. ✅ Accident/Incident reporting (Accidents.razor with timeline, costs, parties, documents)
+4. ✅ Vehicle pool management (VehiclePoolService.cs - cross-shop sharing)
+5. ✅ Service location management (drop-off locations with fees)
+6. ✅ Shop schedule calendar (operating hours)
+7. ✅ Maintenance tracking (MaintenanceService.cs with alerts)
+8. ✅ Owner payments (OwnerPaymentService.cs, Finance/OwnerPayments.razor)
+9. ✅ Vehicle images gallery (VehicleImageService.cs)
 
 ## Key UI Screens (MudBlazor)
 

@@ -10,7 +10,7 @@ Motorbike rental system for Thailand tourist areas (Phuket, Krabi, etc.). Blazor
 - **ORM**: Custom Repository Pattern (from rx-erp)
 - **JSON**: System.Text.Json with polymorphism support
 - **Messaging**: RabbitMQ (planned)
-- **OCR**: Google Gemini Flash API (planned)
+- **OCR**: Google Gemini Flash API (implemented - DocumentOcrService.cs)
 
 ## Project Structure
 ```
@@ -193,22 +193,64 @@ The NavMenu shows **tenant menus only** - SuperAdmin without impersonation sees 
 - **IRequestContext**: Provides current tenant/user context from claims
 
 ## Current Implementation Status
+
+### Core Infrastructure
 - [x] Solution structure
 - [x] Domain entities with JSON polymorphism
 - [x] MudBlazor theme configuration
 - [x] Database schema (SQL scripts)
 - [x] Repository pattern
-- [x] Motorbike CRUD pages
-- [x] Renter management pages
 - [x] Core multi-tenant module
 - [x] Google/Microsoft OAuth authentication
 - [x] Super admin impersonation
-- [ ] Organization management pages
-- [ ] User management pages
-- [ ] Document OCR (Gemini)
-- [ ] Rental check-in/check-out
-- [ ] Payment processing
-- [ ] Reports
+
+### Shop Management
+- [x] Motorbike/Vehicle CRUD pages
+- [x] Insurance packages management
+- [x] Accessories management
+- [x] Daily rate configuration (embedded in entity dialogs)
+
+### Customer Management
+- [x] Renter management pages
+- [x] Document OCR (Gemini Flash API - DocumentOcrService.cs)
+- [x] Document verification UI
+
+### Rental Operations
+- [x] Rental check-in (5-step wizard)
+- [x] Rental check-out with damage assessment
+- [x] Active rentals dashboard
+
+### Finance
+- [x] Payment processing (Cash, Card, PromptPay, BankTransfer)
+- [x] Invoice generation
+- [x] Deposit tracking and refunds
+- [x] Daily/weekly/monthly reports
+- [x] Owner payments
+
+### Super Admin
+- [x] Organization management pages
+- [x] User management pages
+- [x] Registration invites
+- [x] System logs
+
+### Tourist Portal
+- [x] Landing page with tenant branding
+- [x] Browse available vehicles
+- [x] Online reservation wizard
+- [x] Rental history
+
+### PWA Features
+- [x] Service worker for offline support
+- [x] Install manifest with shortcuts
+- [x] Camera access for document capture
+- [ ] Push notifications (infrastructure ready)
+
+### Additional Features
+- [x] Accident/incident reporting
+- [x] Vehicle pool (cross-shop sharing)
+- [x] Service locations with drop-off fees
+- [x] Maintenance tracking
+- [x] Vehicle images gallery
 
 ## Skills Reference
 See `.claude/skills/` for detailed patterns:
