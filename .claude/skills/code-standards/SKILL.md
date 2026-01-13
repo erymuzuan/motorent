@@ -101,7 +101,14 @@ public class RentalService
     {
         // ...
     }
+
+
+    //  DO NOT user #region and #endregion, instead use partial class for example:
+    // Rental.search.cs for search related members
+    // Rental.validation.cs for validation rules etc
 }
+
+
 ```
 
 ## Expression-Bodied Members
