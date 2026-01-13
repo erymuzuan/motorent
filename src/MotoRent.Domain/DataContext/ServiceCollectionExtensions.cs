@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using MotoRent.Domain.Core;
 using MotoRent.Domain.Entities;
+using MotoRent.Domain.Helps;
 
 namespace MotoRent.Domain.DataContext;
 
@@ -42,6 +43,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IRepository<AccidentDocument>, Repository<AccidentDocument>>();
         services.AddSingleton<IRepository<AccidentCost>, Repository<AccidentCost>>();
         services.AddSingleton<IRepository<AccidentNote>, Repository<AccidentNote>>();
+        // Comment entity
+        services.AddSingleton<IRepository<Comment>, Repository<Comment>>();
 
         // Register repositories for Core entities (uses [Core] schema)
         services.AddSingleton<IRepository<Organization>, CoreRepository<Organization>>();

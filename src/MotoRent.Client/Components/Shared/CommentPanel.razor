@@ -1,0 +1,432 @@
+@using MotoRent.Domain.Helps
+@using MotoRent.Services
+@inherits MotoRentComponentBase
+@inject CommentService CommentService
+
+<div class="comment-panel">
+    @* Add Comment Form *@
+    <div class="mb-3">
+        <div class="d-flex gap-2">
+            <div class="avatar avatar-sm bg-primary-lt">
+                <span class="avatar-text">@GetInitials(UserName)</span>
+            </div>
+            <div class="flex-fill">
+                <textarea class="form-control"
+                          rows="2"
+                          placeholder="@CommonLocalizer["WriteComment"]..."
+                          @bind="m_newCommentText"
+                          @bind:event="oninput"></textarea>
+                <div class="mt-2 d-flex justify-content-end">
+                    <button type="button"
+                            class="btn btn-primary btn-sm"
+                            disabled="@(string.IsNullOrWhiteSpace(m_newCommentText) || m_saving)"
+                            @onclick="AddCommentAsync">
+                        @if (m_saving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1"></span>
+                        }
+                        else
+                        {
+                            <i class="ti ti-send me-1"></i>
+                        }
+                        @CommonLocalizer["AddComment"]
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Comments List *@
+    @if (m_loading)
+    {
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (m_comments.Count == 0)
+    {
+        <div class="text-center text-secondary py-4">
+            <i class="ti ti-messages mb-2" style="font-size: 2rem;"></i>
+            <div>@CommonLocalizer["NoComments"]</div>
+        </div>
+    }
+    else
+    {
+        <div class="comment-list">
+            @foreach (var comment in GetRootComments())
+            {
+                <div class="comment-item mb-3">
+                    @* Root Comment *@
+                    <div class="d-flex gap-2">
+                        <div class="avatar avatar-sm @(comment.User == UserName ? "bg-primary" : "bg-secondary-lt")">
+                            <span class="avatar-text">@GetInitials(comment.UserDisplayName ?? comment.User)</span>
+                        </div>
+                        <div class="flex-fill">
+                            <div class="card">
+                                <div class="card-body py-2 px-3">
+                                    <div class="d-flex justify-content-between align-items-start mb-1">
+                                        <div>
+                                            <strong class="text-dark">@(comment.UserDisplayName ?? comment.User)</strong>
+                                            <small class="text-secondary ms-2">@FormatRelativeTime(comment.Timestamp)</small>
+                                        </div>
+                                        @if (comment.User == UserName)
+                                        {
+                                            <div class="dropdown">
+                                                <button type="button" class="btn btn-icon btn-ghost-secondary btn-sm" data-bs-toggle="dropdown">
+                                                    <i class="ti ti-dots-vertical"></i>
+                                                </button>
+                                                <div class="dropdown-menu dropdown-menu-end">
+                                                    <button type="button" class="dropdown-item" @onclick="@(() => StartEditComment(comment))">
+                                                        <i class="ti ti-pencil me-2"></i>@CommonLocalizer["Edit"]
+                                                    </button>
+                                                    <button type="button" class="dropdown-item text-danger" @onclick="@(() => DeleteCommentAsync(comment))">
+                                                        <i class="ti ti-trash me-2"></i>@CommonLocalizer["Delete"]
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+
+                                    @if (m_editingCommentId == comment.CommentId)
+                                    {
+                                        <div class="mt-2">
+                                            <textarea class="form-control form-control-sm" rows="2" @bind="m_editCommentText"></textarea>
+                                            <div class="mt-2 d-flex gap-2 justify-content-end">
+                                                <button type="button" class="btn btn-ghost-secondary btn-sm" @onclick="CancelEdit">
+                                                    @CommonLocalizer["Cancel"]
+                                                </button>
+                                                <button type="button" class="btn btn-primary btn-sm" @onclick="@(() => SaveEditAsync(comment))" disabled="@m_saving">
+                                                    @CommonLocalizer["Save"]
+                                                </button>
+                                            </div>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <p class="mb-0">@comment.Text</p>
+                                    }
+                                </div>
+                            </div>
+
+                            @if (m_editingCommentId != comment.CommentId)
+                            {
+                                <div class="mt-1">
+                                    @if (m_replyingToId == comment.CommentId)
+                                    {
+                                        <div class="d-flex gap-2 mt-2">
+                                            <textarea class="form-control form-control-sm"
+                                                      rows="1"
+                                                      placeholder="@CommonLocalizer["WriteReply"]..."
+                                                      @bind="m_replyText"></textarea>
+                                            <div class="d-flex gap-1">
+                                                <button type="button" class="btn btn-ghost-secondary btn-sm" @onclick="CancelReply">
+                                                    <i class="ti ti-x"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-primary btn-sm" @onclick="@(() => AddReplyAsync(comment))" disabled="@m_saving">
+                                                    <i class="ti ti-send"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <button type="button" class="btn btn-ghost-secondary btn-sm" @onclick="@(() => StartReply(comment.CommentId))">
+                                            <i class="ti ti-arrow-back-up me-1"></i>@CommonLocalizer["Reply"]
+                                        </button>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    @* Replies *@
+                    @foreach (var reply in GetReplies(comment.CommentId))
+                    {
+                        <div class="ms-4 mt-2">
+                            <div class="d-flex gap-2 reply-comment">
+                                <div class="avatar avatar-sm @(reply.User == UserName ? "bg-primary" : "bg-secondary-lt")">
+                                    <span class="avatar-text">@GetInitials(reply.UserDisplayName ?? reply.User)</span>
+                                </div>
+                                <div class="flex-fill">
+                                    <div class="card">
+                                        <div class="card-body py-2 px-3">
+                                            <div class="d-flex justify-content-between align-items-start mb-1">
+                                                <div>
+                                                    <strong class="text-dark">@(reply.UserDisplayName ?? reply.User)</strong>
+                                                    <small class="text-secondary ms-2">@FormatRelativeTime(reply.Timestamp)</small>
+                                                </div>
+                                                @if (reply.User == UserName)
+                                                {
+                                                    <div class="dropdown">
+                                                        <button type="button" class="btn btn-icon btn-ghost-secondary btn-sm" data-bs-toggle="dropdown">
+                                                            <i class="ti ti-dots-vertical"></i>
+                                                        </button>
+                                                        <div class="dropdown-menu dropdown-menu-end">
+                                                            <button type="button" class="dropdown-item" @onclick="@(() => StartEditComment(reply))">
+                                                                <i class="ti ti-pencil me-2"></i>@CommonLocalizer["Edit"]
+                                                            </button>
+                                                            <button type="button" class="dropdown-item text-danger" @onclick="@(() => DeleteCommentAsync(reply))">
+                                                                <i class="ti ti-trash me-2"></i>@CommonLocalizer["Delete"]
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                }
+                                            </div>
+
+                                            @if (m_editingCommentId == reply.CommentId)
+                                            {
+                                                <div class="mt-2">
+                                                    <textarea class="form-control form-control-sm" rows="2" @bind="m_editCommentText"></textarea>
+                                                    <div class="mt-2 d-flex gap-2 justify-content-end">
+                                                        <button type="button" class="btn btn-ghost-secondary btn-sm" @onclick="CancelEdit">
+                                                            @CommonLocalizer["Cancel"]
+                                                        </button>
+                                                        <button type="button" class="btn btn-primary btn-sm" @onclick="@(() => SaveEditAsync(reply))" disabled="@m_saving">
+                                                            @CommonLocalizer["Save"]
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <p class="mb-0">@reply.Text</p>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public int EntityId { get; set; }
+    [Parameter] public string EntityType { get; set; } = "";
+    [Parameter] public string? EntityWebId { get; set; }
+    [Parameter] public string? ObjectUri { get; set; }
+
+    private List<Comment> m_comments = [];
+    private bool m_loading = true;
+    private bool m_saving;
+    private string m_newCommentText = "";
+
+    private int? m_editingCommentId;
+    private string m_editCommentText = "";
+
+    private int? m_replyingToId;
+    private string m_replyText = "";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (EntityId > 0 && !string.IsNullOrEmpty(EntityType))
+        {
+            await LoadCommentsAsync();
+        }
+    }
+
+    private async Task LoadCommentsAsync()
+    {
+        m_loading = true;
+        try
+        {
+            m_comments = await CommentService.GetCommentsAsync(EntityId, EntityType);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load comments for {EntityType} {EntityId}", EntityType, EntityId);
+            ToastService.ShowError("Failed to load comments");
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private IEnumerable<Comment> GetRootComments() =>
+        m_comments.Where(c => c.ReplyTo == null).OrderByDescending(c => c.Timestamp);
+
+    private IEnumerable<Comment> GetReplies(int parentId) =>
+        m_comments.Where(c => c.ReplyTo == parentId).OrderBy(c => c.Timestamp);
+
+    private async Task AddCommentAsync()
+    {
+        if (string.IsNullOrWhiteSpace(m_newCommentText)) return;
+
+        m_saving = true;
+        try
+        {
+            var comment = new Comment
+            {
+                EntityId = EntityId,
+                Type = EntityType,
+                ObjectWebId = EntityWebId,
+                ObjectUri = ObjectUri,
+                Text = m_newCommentText.Trim(),
+                UserDisplayName = UserName,
+                AccountNo = AccountNo
+            };
+
+            var result = await CommentService.AddCommentAsync(comment, UserName);
+            if (result.Success)
+            {
+                m_newCommentText = "";
+                await LoadCommentsAsync();
+                ToastService.ShowSuccess("Comment added");
+            }
+            else
+            {
+                ToastService.ShowError($"Failed to add comment: {result.Message}");
+            }
+        }
+        finally
+        {
+            m_saving = false;
+        }
+    }
+
+    private void StartReply(int commentId)
+    {
+        m_replyingToId = commentId;
+        m_replyText = "";
+    }
+
+    private void CancelReply()
+    {
+        m_replyingToId = null;
+        m_replyText = "";
+    }
+
+    private async Task AddReplyAsync(Comment parentComment)
+    {
+        if (string.IsNullOrWhiteSpace(m_replyText)) return;
+
+        m_saving = true;
+        try
+        {
+            var reply = new Comment
+            {
+                EntityId = EntityId,
+                Type = EntityType,
+                ObjectWebId = EntityWebId,
+                ObjectUri = ObjectUri,
+                Text = m_replyText.Trim(),
+                UserDisplayName = UserName,
+                AccountNo = AccountNo,
+                ReplyTo = parentComment.CommentId,
+                Root = parentComment.Root ?? parentComment.CommentId
+            };
+
+            var result = await CommentService.AddCommentAsync(reply, UserName);
+            if (result.Success)
+            {
+                CancelReply();
+                await LoadCommentsAsync();
+                ToastService.ShowSuccess("Reply added");
+            }
+            else
+            {
+                ToastService.ShowError($"Failed to add reply: {result.Message}");
+            }
+        }
+        finally
+        {
+            m_saving = false;
+        }
+    }
+
+    private void StartEditComment(Comment comment)
+    {
+        m_editingCommentId = comment.CommentId;
+        m_editCommentText = comment.Text ?? "";
+    }
+
+    private void CancelEdit()
+    {
+        m_editingCommentId = null;
+        m_editCommentText = "";
+    }
+
+    private async Task SaveEditAsync(Comment comment)
+    {
+        if (string.IsNullOrWhiteSpace(m_editCommentText)) return;
+
+        m_saving = true;
+        try
+        {
+            comment.Text = m_editCommentText.Trim();
+            var result = await CommentService.UpdateCommentAsync(comment, UserName);
+            if (result.Success)
+            {
+                CancelEdit();
+                await LoadCommentsAsync();
+                ToastService.ShowSuccess("Comment updated");
+            }
+            else
+            {
+                ToastService.ShowError($"Failed to update comment: {result.Message}");
+            }
+        }
+        finally
+        {
+            m_saving = false;
+        }
+    }
+
+    private async Task DeleteCommentAsync(Comment comment)
+    {
+        if (!await DialogService.ConfirmYesNoAsync(CommonLocalizer["ConfirmDeleteComment"]))
+            return;
+
+        m_saving = true;
+        try
+        {
+            var result = await CommentService.DeleteCommentAsync(comment, UserName);
+            if (result.Success)
+            {
+                await LoadCommentsAsync();
+                ToastService.ShowSuccess("Comment deleted");
+            }
+            else
+            {
+                ToastService.ShowError($"Failed to delete comment: {result.Message}");
+            }
+        }
+        finally
+        {
+            m_saving = false;
+        }
+    }
+
+    private static string GetInitials(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "?";
+
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2)
+            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
+
+        return name.Length >= 2 ? name[..2].ToUpper() : name.ToUpper();
+    }
+
+    private string FormatRelativeTime(DateTimeOffset timestamp)
+    {
+        var diff = DateTimeOffset.Now - timestamp;
+
+        if (diff.TotalMinutes < 1)
+            return "just now";
+        if (diff.TotalMinutes < 60)
+            return $"{(int)diff.TotalMinutes}m ago";
+        if (diff.TotalHours < 24)
+            return $"{(int)diff.TotalHours}h ago";
+        if (diff.TotalDays < 7)
+            return $"{(int)diff.TotalDays}d ago";
+
+        return FormatDateTime(timestamp);
+    }
+}

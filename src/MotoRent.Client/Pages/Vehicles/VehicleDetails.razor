@@ -1,0 +1,433 @@
+@page "/vehicles/{VehicleId:int}"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Policy = "RequireTenantStaff")]
+@inherits LocalizedComponentBase<VehicleDetails>
+@inject VehicleService VehicleService
+@inject RentalService RentalService
+@inject MaintenanceService MaintenanceService
+@inject ShopService ShopService
+
+<MotoRentPageTitle>@Localizer["VehicleDetails"] - @m_vehicle?.LicensePlate</MotoRentPageTitle>
+
+<TablerHeader Title="@m_headerTitle" PreTitle="@Localizer["VehicleDetails"]">
+    <a href="/vehicles" class="btn btn-ghost-secondary me-2">
+        <i class="ti ti-arrow-left me-1"></i>
+        @Localizer["BackToFleet"]
+    </a>
+    @if (m_vehicle != null)
+    {
+        <a href="/vehicles/@VehicleId/edit" class="btn btn-primary">
+            <i class="ti ti-pencil me-1"></i>
+            @Localizer["Edit"]
+        </a>
+    }
+</TablerHeader>
+
+<LoadingSkeleton Loading="@m_loading" Mode="LoadingSkeleton.PlaceholderMode.Card" Rows="6">
+    @if (m_notFound)
+    {
+        <div class="alert alert-danger">
+            <div class="d-flex">
+                <div class="me-3">
+                    <i class="ti ti-alert-circle" style="font-size: 2rem;"></i>
+                </div>
+                <div>
+                    <h4 class="alert-title">@Localizer["VehicleNotFound"]</h4>
+                    <div class="text-secondary">
+                        @Localizer["VehicleNotFoundDesc", VehicleId]
+                    </div>
+                    <div class="mt-3">
+                        <a href="/vehicles" class="btn btn-outline-danger">
+                            <i class="ti ti-arrow-left me-1"></i>
+                            @Localizer["BackToFleet"]
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else if (m_vehicle != null)
+    {
+        <div class="row g-3">
+            @* Left Column - Vehicle Info *@
+            <div class="col-lg-4">
+                @* Status Card *@
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="ti @GetVehicleTypeIcon(m_vehicle.VehicleType) me-2"></i>
+                            @Localizer["Summary"]
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <span class="badge @GetStatusBadgeClass(m_vehicle.Status)" style="font-size: 0.9rem;">
+                                <i class="ti @GetStatusIcon(m_vehicle.Status) me-1"></i>
+                                @m_vehicle.Status
+                            </span>
+                        </div>
+                        <div class="datagrid">
+                            <div class="datagrid-item">
+                                <div class="datagrid-title">@Localizer["LicensePlate"]</div>
+                                <div class="datagrid-content fw-bold">
+                                    <span class="badge bg-primary-lt">@m_vehicle.LicensePlate</span>
+                                </div>
+                            </div>
+                            <div class="datagrid-item">
+                                <div class="datagrid-title">@Localizer["BrandModel"]</div>
+                                <div class="datagrid-content">@m_vehicle.Brand @m_vehicle.Model</div>
+                            </div>
+                            <div class="datagrid-item">
+                                <div class="datagrid-title">@Localizer["Year"]</div>
+                                <div class="datagrid-content">@m_vehicle.Year</div>
+                            </div>
+                            @if (!string.IsNullOrEmpty(m_vehicle.Color))
+                            {
+                                <div class="datagrid-item">
+                                    <div class="datagrid-title">@Localizer["Color"]</div>
+                                    <div class="datagrid-content">@m_vehicle.Color</div>
+                                </div>
+                            }
+                            <div class="datagrid-item">
+                                <div class="datagrid-title">@Localizer["VehicleType"]</div>
+                                <div class="datagrid-content">@m_vehicle.VehicleType</div>
+                            </div>
+                            @if (m_vehicle.EngineCC.HasValue)
+                            {
+                                <div class="datagrid-item">
+                                    <div class="datagrid-title">@Localizer["Engine"]</div>
+                                    <div class="datagrid-content">@m_vehicle.EngineCC CC</div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                @* Location Card *@
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="ti ti-map-pin me-2"></i>
+                            @Localizer["Location"]
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="datagrid">
+                            <div class="datagrid-item">
+                                <div class="datagrid-title">@Localizer["HomeShop"]</div>
+                                <div class="datagrid-content">@(m_homeShop?.Name ?? "-")</div>
+                            </div>
+                            <div class="datagrid-item">
+                                <div class="datagrid-title">@Localizer["CurrentShop"]</div>
+                                <div class="datagrid-content">@(m_currentShop?.Name ?? "-")</div>
+                            </div>
+                            @if (m_vehicle.VehiclePoolId.HasValue)
+                            {
+                                <div class="datagrid-item">
+                                    <div class="datagrid-title">@Localizer["Pool"]</div>
+                                    <div class="datagrid-content">
+                                        <span class="badge bg-info-lt">Pooled</span>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                @* Pricing Card *@
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="ti ti-currency-baht me-2"></i>
+                            @Localizer["Pricing"]
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="datagrid">
+                            <div class="datagrid-item">
+                                <div class="datagrid-title">@Localizer["DailyRate"]</div>
+                                <div class="datagrid-content fw-bold text-primary">@FormatCurrency(m_vehicle.DailyRate)</div>
+                            </div>
+                            <div class="datagrid-item">
+                                <div class="datagrid-title">@Localizer["DepositAmount"]</div>
+                                <div class="datagrid-content">@FormatCurrency(m_vehicle.DepositAmount)</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                @* Maintenance Card *@
+                @if (m_vehicle.LastServiceDate.HasValue)
+                {
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="ti ti-tool me-2"></i>
+                                @Localizer["Maintenance"]
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="datagrid">
+                                <div class="datagrid-item">
+                                    <div class="datagrid-title">@Localizer["LastService"]</div>
+                                    <div class="datagrid-content">@FormatDate(m_vehicle.LastServiceDate)</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            @* Right Column - Tabs *@
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header">
+                        <ul class="nav nav-tabs card-header-tabs">
+                            <li class="nav-item">
+                                <a class="nav-link @(m_activeTab == "rentals" ? "active" : "")"
+                                   href="javascript:void(0)" @onclick="@(() => m_activeTab = "rentals")">
+                                    <i class="ti ti-receipt me-1"></i>@Localizer["RentalHistory"]
+                                    <span class="badge bg-primary ms-1">@m_rentals.Count</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link @(m_activeTab == "maintenance" ? "active" : "")"
+                                   href="javascript:void(0)" @onclick="@(() => m_activeTab = "maintenance")">
+                                    <i class="ti ti-tool me-1"></i>@Localizer["MaintenanceHistory"]
+                                    <span class="badge bg-primary ms-1">@m_maintenanceRecords.Count</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link @(m_activeTab == "comments" ? "active" : "")"
+                                   href="javascript:void(0)" @onclick="@(() => m_activeTab = "comments")">
+                                    <i class="ti ti-messages me-1"></i>@Localizer["Comments"]
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="card-body">
+                        @switch (m_activeTab)
+                        {
+                            case "rentals":
+                                @if (m_rentals.Count == 0)
+                                {
+                                    <div class="text-center text-secondary py-4">
+                                        <i class="ti ti-receipt mb-2" style="font-size: 2rem;"></i>
+                                        <div>@Localizer["NoRentals"]</div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="table-responsive">
+                                        <table class="table table-vcenter">
+                                            <thead>
+                                                <tr>
+                                                    <th>@Localizer["Rental"]</th>
+                                                    <th>@Localizer["Renter"]</th>
+                                                    <th>@Localizer["Dates"]</th>
+                                                    <th>@Localizer["Status"]</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var rental in m_rentals)
+                                                {
+                                                    <tr>
+                                                        <td>
+                                                            <a href="/rentals/view/@rental.RentalId" class="text-reset">
+                                                                #@rental.RentalId
+                                                            </a>
+                                                        </td>
+                                                        <td>@rental.RenterName</td>
+                                                        <td>
+                                                            <small>
+                                                                @FormatDate(rental.StartDate) - @FormatDate(rental.ExpectedEndDate)
+                                                            </small>
+                                                        </td>
+                                                        <td>
+                                                            <span class="badge @GetRentalStatusBadgeClass(rental.Status)">
+                                                                @rental.Status
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                }
+                                break;
+
+                            case "maintenance":
+                                @if (m_maintenanceRecords.Count == 0)
+                                {
+                                    <div class="text-center text-secondary py-4">
+                                        <i class="ti ti-tool mb-2" style="font-size: 2rem;"></i>
+                                        <div>@Localizer["NoMaintenanceRecords"]</div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="table-responsive">
+                                        <table class="table table-vcenter">
+                                            <thead>
+                                                <tr>
+                                                    <th>@Localizer["Type"]</th>
+                                                    <th>@Localizer["LastService"]</th>
+                                                    <th>@Localizer["NextDue"]</th>
+                                                    <th>@Localizer["Notes"]</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var record in m_maintenanceRecords)
+                                                {
+                                                    <tr>
+                                                        <td>
+                                                            <span class="badge bg-secondary-lt">@record.ServiceTypeName</span>
+                                                        </td>
+                                                        <td>@FormatDate(record.LastServiceDate)</td>
+                                                        <td>
+                                                            @if (record.NextDueDate.HasValue)
+                                                            {
+                                                                <span class="@(record.NextDueDate < DateTimeOffset.Now ? "text-danger" : "")">
+                                                                    @FormatDate(record.NextDueDate)
+                                                                </span>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="text-secondary">-</span>
+                                                            }
+                                                        </td>
+                                                        <td class="text-secondary">@(record.LastServiceNotes ?? "-")</td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                }
+                                break;
+
+                            case "comments":
+                                <CommentPanel EntityId="@VehicleId"
+                                              EntityType="Vehicle"
+                                              EntityWebId="@m_vehicle?.WebId"
+                                              ObjectUri="@($"/vehicles/{VehicleId}")" />
+                                break;
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</LoadingSkeleton>
+
+@code {
+    [Parameter] public int VehicleId { get; set; }
+
+    private Vehicle? m_vehicle;
+    private Shop? m_homeShop;
+    private Shop? m_currentShop;
+    private List<Rental> m_rentals = [];
+    private List<MaintenanceSchedule> m_maintenanceRecords = [];
+    private bool m_loading = true;
+    private bool m_notFound;
+    private string m_headerTitle = "";
+    private string m_activeTab = "rentals";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        m_loading = true;
+        m_notFound = false;
+        try
+        {
+            m_vehicle = await VehicleService.GetVehicleByIdAsync(VehicleId);
+            if (m_vehicle == null)
+            {
+                m_notFound = true;
+                return;
+            }
+
+            m_headerTitle = $"{m_vehicle.Brand} {m_vehicle.Model} - {m_vehicle.LicensePlate}";
+
+            // Load related data in parallel
+            var homeShopTask = DataContext.LoadOneAsync<Shop>(s => s.ShopId == m_vehicle.HomeShopId);
+            var currentShopTask = DataContext.LoadOneAsync<Shop>(s => s.ShopId == m_vehicle.CurrentShopId);
+            var rentalsTask = LoadRentalsAsync();
+            var maintenanceTask = LoadMaintenanceAsync();
+
+            await Task.WhenAll(homeShopTask, currentShopTask, rentalsTask, maintenanceTask);
+
+            m_homeShop = await homeShopTask;
+            m_currentShop = await currentShopTask;
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error loading vehicle: {ex.Message}");
+            Logger.LogError(ex, "Failed to load vehicle {VehicleId}", VehicleId);
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private async Task LoadRentalsAsync()
+    {
+        var query = DataContext.CreateQuery<Rental>()
+            .Where(r => r.VehicleId == VehicleId)
+            .OrderByDescending(r => r.StartDate);
+        var result = await DataContext.LoadAsync(query, 1, 20, false);
+        m_rentals = result.ItemCollection.ToList();
+    }
+
+    private async Task LoadMaintenanceAsync()
+    {
+        var query = DataContext.CreateQuery<MaintenanceSchedule>()
+            .Where(m => m.MotorbikeId == VehicleId)
+            .OrderByDescending(m => m.LastServiceDate);
+        var result = await DataContext.LoadAsync(query, 1, 20, false);
+        m_maintenanceRecords = result.ItemCollection.ToList();
+    }
+
+    private static string GetVehicleTypeIcon(VehicleType type) => type switch
+    {
+        VehicleType.Motorbike => "ti-motorbike",
+        VehicleType.Car => "ti-car",
+        VehicleType.JetSki => "ti-sailboat",
+        VehicleType.Boat => "ti-ship",
+        VehicleType.Van => "ti-bus",
+        _ => "ti-car"
+    };
+
+    private static string GetStatusBadgeClass(VehicleStatus status) => status switch
+    {
+        VehicleStatus.Available => "bg-success-lt text-success",
+        VehicleStatus.Rented => "bg-primary-lt text-primary",
+        VehicleStatus.Maintenance => "bg-warning-lt text-warning",
+        VehicleStatus.Reserved => "bg-info-lt text-info",
+        VehicleStatus.Retired => "bg-danger-lt text-danger",
+        _ => "bg-secondary-lt text-secondary"
+    };
+
+    private static string GetStatusIcon(VehicleStatus status) => status switch
+    {
+        VehicleStatus.Available => "ti-circle-check",
+        VehicleStatus.Rented => "ti-steering-wheel",
+        VehicleStatus.Maintenance => "ti-tool",
+        VehicleStatus.Reserved => "ti-clock",
+        VehicleStatus.Retired => "ti-archive",
+        _ => "ti-circle"
+    };
+
+    private static string GetRentalStatusBadgeClass(string? status) => status switch
+    {
+        "Active" => "bg-primary",
+        "Reserved" => "bg-info",
+        "Completed" => "bg-success",
+        "Cancelled" => "bg-danger",
+        _ => "bg-secondary"
+    };
+}
