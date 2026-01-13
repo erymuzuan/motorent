@@ -2,6 +2,7 @@
 @using MotoRent.Domain.Entities
 @using MotoRent.Domain.Lookups
 @inherits MotoRentComponentBase
+@implements IAsyncDisposable
 @inject VehicleRecognitionService RecognitionService
 @inject VehicleLookupService LookupService
 @inject IBinaryStore BinaryStore
@@ -24,10 +25,12 @@
     <div class="card-body">
         @if (m_recognitionResult == null && !m_analyzing)
         {
-            <label for="vehicle-photo-input" class="dropzone @(m_isDragOver ? "dropzone-active" : "")"
+            <label @ref="m_dropZoneRef" for="vehicle-photo-input" class="dropzone @(m_isDragOver ? "dropzone-active" : "")"
                  @ondragenter="@(() => m_isDragOver = true)"
                  @ondragleave="@(() => m_isDragOver = false)"
                  @ondragover:preventDefault
+                 @ondrop="OnDrop"
+                 @ondrop:preventDefault
                  style="border: 2px dashed var(--tblr-border-color); border-radius: 8px; padding: 2rem; cursor: pointer; text-align: center; display: block;">
                 <i class="ti ti-camera-plus" style="font-size: 3rem; color: var(--tblr-primary); opacity: 0.6;"></i>
                 <p class="mt-2 mb-1 fw-medium">Upload Vehicle Photo</p>
@@ -169,6 +172,45 @@
     private bool m_analyzing;
     private bool m_isDragOver;
     private string? m_previewImageUrl;
+    private ElementReference m_dropZoneRef;
+    private IJSObjectReference? m_jsModule;
+    private DotNetObjectReference<VehicleRecognitionPanel>? m_dotNetRef;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                m_jsModule = await JS.InvokeAsync<IJSObjectReference>("import", "./scripts/file-upload.js");
+                m_dotNetRef = DotNetObjectReference.Create(this);
+                await m_jsModule.InvokeVoidAsync("registerBase64DropZone", m_dropZoneRef, m_dotNetRef, "OnFileDropped");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to initialize drop zone JS: {ex.Message}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Called from JavaScript when a file is dropped on the drop zone.
+    /// </summary>
+    [JSInvokable]
+    public async Task OnFileDropped(DroppedFileInfo fileInfo)
+    {
+        if (fileInfo == null || string.IsNullOrEmpty(fileInfo.Base64Data))
+            return;
+
+        await ProcessBase64File(fileInfo.Base64Data, fileInfo.ContentType, fileInfo.Name, fileInfo.Size);
+    }
+
+    private void OnDrop(DragEventArgs e)
+    {
+        m_isDragOver = false;
+        // The actual file handling is done via JavaScript interop (registerBase64DropZone)
+        // This handler just resets the drag state
+    }
 
     private async Task OnFileSelected(InputFileChangeEventArgs e)
     {
@@ -206,13 +248,48 @@
             await stream.CopyToAsync(ms);
             var base64 = Convert.ToBase64String(ms.ToArray());
 
+            await ProcessBase64File(base64, file.ContentType, file.Name, file.Size);
+        }
+        catch (Exception ex)
+        {
+            this.m_recognitionResult = new VehicleRecognitionResult
+            {
+                Error = $"Failed to process image: {ex.Message}"
+            };
+            this.ShowError(m_recognitionResult.Error);
+            this.m_analyzing = false;
+        }
+    }
+
+    private async Task ProcessBase64File(string base64, string contentType, string fileName, long size)
+    {
+        // Validate file type
+        if (!contentType.StartsWith("image/"))
+        {
+            this.ShowError("Please select an image file.");
+            return;
+        }
+
+        // Validate file size (max 10MB)
+        if (size > 10 * 1024 * 1024)
+        {
+            this.ShowError("Image file is too large. Maximum size is 10MB.");
+            return;
+        }
+
+        this.m_analyzing = true;
+        this.m_recognitionResult = null;
+        this.StateHasChanged();
+
+        try
+        {
             // Create preview URL
-            m_previewImageUrl = $"data:{file.ContentType};base64,{base64}";
+            m_previewImageUrl = $"data:{contentType};base64,{base64}";
 
             // Call recognition service
             this.m_recognitionResult = await this.RecognitionService.RecognizeVehicleFromBase64Async(
                 base64,
-                file.ContentType);
+                contentType);
 
             if (this.m_recognitionResult.IsSuccess)
             {
@@ -230,7 +307,19 @@
         finally
         {
             this.m_analyzing = false;
+            this.StateHasChanged();
         }
+    }
+
+    /// <summary>
+    /// DTO for file info from JavaScript drop handler.
+    /// </summary>
+    public class DroppedFileInfo
+    {
+        public string Name { get; set; } = string.Empty;
+        public string ContentType { get; set; } = string.Empty;
+        public long Size { get; set; }
+        public string Base64Data { get; set; } = string.Empty;
     }
 
     private async Task ApplyRecognition()
@@ -246,5 +335,14 @@
     {
         this.m_recognitionResult = null;
         this.m_previewImageUrl = null;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        m_dotNetRef?.Dispose();
+        if (m_jsModule != null)
+        {
+            await m_jsModule.DisposeAsync();
+        }
     }
 }

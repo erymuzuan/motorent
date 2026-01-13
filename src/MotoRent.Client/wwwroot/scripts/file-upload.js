@@ -250,3 +250,49 @@ function useFallbackDrop(element, dotNet, options) {
 export function setDropZoneOptions(element, dotNet, options) {
     // Reserved for future options updates
 }
+
+/**
+ * Registers a drop zone that reads dropped files as base64 and sends to Blazor
+ * Used for components that need to process files directly rather than upload them
+ */
+export function registerBase64DropZone(element, dotNet, callbackMethod) {
+    if (!element) {
+        console.warn('Drop zone element is null');
+        return;
+    }
+
+    const handleFile = async (file) => {
+        if (!file) return;
+
+        try {
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const base64 = e.target.result.split(',')[1]; // Remove data:mime;base64, prefix
+                await dotNet.invokeMethodAsync(callbackMethod, {
+                    name: file.name,
+                    contentType: file.type,
+                    size: file.size,
+                    base64Data: base64
+                });
+            };
+            reader.readAsDataURL(file);
+        } catch (error) {
+            console.error('Error reading dropped file:', error);
+        }
+    };
+
+    element.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const files = e.dataTransfer?.files;
+        if (files && files.length > 0) {
+            await handleFile(files[0]);
+        }
+    });
+
+    element.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+    });
+}

@@ -126,13 +126,39 @@
 </style>
 
 @code {
-...
+    private List<Shop> m_shops = [];
+    private bool m_loading = true;
+    private string? m_searchTerm;
+    private string? m_activeFilter;
+    private int m_activeCount;
+    private int m_inactiveCount;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task OnSearchKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await LoadDataAsync();
+        }
+    }
+
     private async Task LoadDataAsync()
     {
         this.m_loading = true;
         try
         {
-...
+            bool? activeFilter = string.IsNullOrEmpty(m_activeFilter) ? null : m_activeFilter == "true";
+            var result = await ShopService.GetShopsAsync(m_searchTerm, activeFilter, 1, 100);
+            m_shops = result.ItemCollection.ToList();
+
+            // Calculate counts from total results
+            var allResult = await ShopService.GetShopsAsync(null, null, 1, 1000);
+            m_activeCount = allResult.ItemCollection.Count(s => s.IsActive);
+            m_inactiveCount = allResult.ItemCollection.Count(s => !s.IsActive);
         }
         catch (Exception ex)
         {
@@ -143,7 +169,7 @@
             this.m_loading = false;
         }
     }
-...
+
     private async Task OpenAddDialog()
     {
         var shop = new Shop
@@ -217,5 +243,4 @@
             this.ShowError(Localizer["DeleteFailed", deleteResult.Message ?? ""]);
         }
     }
-...
 }

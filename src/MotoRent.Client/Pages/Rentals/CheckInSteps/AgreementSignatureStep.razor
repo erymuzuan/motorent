@@ -197,7 +197,50 @@
 </div>
 
 @code {
-...
+    [Parameter] public Renter? Renter { get; set; }
+    [Parameter] public Vehicle? Vehicle { get; set; }
+    [Parameter] public bool IsIntervalRental { get; set; }
+    [Parameter] public IntervalRentalConfig? IntervalConfig { get; set; }
+    [Parameter] public RentalConfig? Config { get; set; }
+    [Parameter] public DepositInfo? DepositInfo { get; set; }
+    [Parameter] public EventCallback OnComplete { get; set; }
+
+    private string m_agreementText = string.Empty;
+    private bool m_termsAccepted;
+    private bool m_agreementPrinted;
+
+    private bool CanComplete => m_termsAccepted && m_agreementPrinted;
+
+    protected override void OnInitialized()
+    {
+        m_agreementText = GetAgreementText();
+    }
+
+    private string GetAgreementText()
+    {
+        return Localizer["AgreementTextTemplate"].Value;
+    }
+
+    private decimal GetTotalAmount()
+    {
+        if (IsIntervalRental && IntervalConfig != null)
+            return IntervalConfig.RentalRate + (DepositInfo?.Amount ?? 0);
+
+        if (Config != null)
+        {
+            return Config.VehicleTotal + Config.InsuranceTotal + Config.AccessoriesTotal
+                   + Config.DriverTotal + Config.GuideTotal + (DepositInfo?.Amount ?? 0);
+        }
+
+        return DepositInfo?.Amount ?? 0;
+    }
+
+    private async Task PrintAgreement()
+    {
+        await JS.InvokeVoidAsync("window.print");
+        m_agreementPrinted = true;
+    }
+
     private string GetVehicleTypeLabel(VehicleType type) => type switch
     {
         VehicleType.Motorbike => Localizer["Motorbike"],
@@ -213,6 +256,6 @@
         15 => Localizer["15Min"],
         30 => Localizer["30Min"],
         60 => Localizer["1Hour"],
-        _ => $"{minutes} {Localizer["15Min"]}" // fallback
+        _ => $"{minutes} {Localizer["Minutes"]}"
     };
-...
+}

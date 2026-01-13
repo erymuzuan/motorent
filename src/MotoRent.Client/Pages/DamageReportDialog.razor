@@ -195,7 +195,48 @@
 </div>
 
 @code {
-...
+    [Parameter] public string RenterName { get; set; } = string.Empty;
+    [Parameter] public string VehicleName { get; set; } = string.Empty;
+    [Parameter] public List<DamagePhoto> Photos { get; set; } = [];
+    [Parameter] public bool IsUpdateMode { get; set; }
+
+    private string m_newStatus = "Charged";
+    private decimal m_actualCost;
+    private string m_notes = string.Empty;
+    private bool Saving { get; set; }
+    private bool CanUpdate => !string.IsNullOrEmpty(m_newStatus);
+
+    protected override void OnParametersSet()
+    {
+        if (Entity.EstimatedCost > 0)
+            m_actualCost = Entity.EstimatedCost;
+    }
+
+    private string GetStatusBadgeClass(string? status) => status switch
+    {
+        "Pending" => "bg-yellow-lt text-yellow",
+        "Charged" => "bg-success-lt text-success",
+        "Waived" => "bg-secondary-lt text-secondary",
+        "InsuranceClaim" => "bg-info-lt text-info",
+        _ => "bg-secondary-lt"
+    };
+
+    private string GetSeverityBadgeClass(string? severity) => severity switch
+    {
+        "Minor" => "bg-success-lt text-success",
+        "Moderate" => "bg-warning-lt text-warning",
+        "Major" => "bg-danger-lt text-danger",
+        _ => "bg-secondary-lt"
+    };
+
+    private string GetSeverityIcon(string? severity) => severity switch
+    {
+        "Minor" => "ti-alert-circle",
+        "Moderate" => "ti-alert-triangle",
+        "Major" => "ti-alert-octagon",
+        _ => "ti-help"
+    };
+
     private async Task UpdateStatus()
     {
         if (!CanUpdate) return;
@@ -230,4 +271,4 @@
             Saving = false;
         }
     }
-...
+}

@@ -702,10 +702,82 @@
     private bool m_loading = true;
     private string? m_searchTerm;
     private string m_activeTab = "Active";
+    private string? m_statusFilter = "Active";
+    private int m_currentPage = 1;
+    private int m_pageSize = 20;
+    private int m_totalCount;
+    private int m_totalPages;
     private System.Timers.Timer? m_debounceTimer;
 
     private Dictionary<int, Renter> m_renterCache = new();
     private Dictionary<int, Vehicle> m_vehicleCache = new();
+
+    private async Task SetActiveTab(string tab)
+    {
+        m_activeTab = tab;
+        m_statusFilter = tab == "All" ? null : tab;
+        m_currentPage = 1;
+        await LoadDataAsync();
+    }
+
+    private void OnSearchKeyUp(KeyboardEventArgs e)
+    {
+        m_debounceTimer?.Stop();
+        m_debounceTimer?.Dispose();
+        m_debounceTimer = new System.Timers.Timer(300);
+        m_debounceTimer.Elapsed += async (_, _) =>
+        {
+            m_debounceTimer?.Stop();
+            await InvokeAsync(async () =>
+            {
+                m_currentPage = 1;
+                await LoadDataAsync();
+                StateHasChanged();
+            });
+        };
+        m_debounceTimer.Start();
+    }
+
+    private async Task ClearSearch()
+    {
+        m_searchTerm = null;
+        m_currentPage = 1;
+        await LoadDataAsync();
+    }
+
+    private void ViewRentalDetails(RentalViewModel rental)
+    {
+        NavigationManager.NavigateTo($"/rentals/view/{EncodeId(rental.Rental.RentalId)}");
+    }
+
+    private static string GetCardClass(RentalViewModel rental)
+    {
+        return rental.Rental.Status switch
+        {
+            "Active" => "",
+            "Overdue" => "border-danger",
+            "Reserved" => "border-info",
+            "Completed" => "border-success",
+            "Cancelled" => "border-secondary opacity-75",
+            _ => ""
+        };
+    }
+
+    private static string GetStatusRibbonClass(RentalViewModel rental)
+    {
+        if (rental.IsOverdue) return "bg-danger";
+        if (rental.IsDueToday) return "bg-warning";
+
+        return rental.Rental.Status switch
+        {
+            "Active" => "bg-primary",
+            "Reserved" => "bg-info",
+            "Completed" => "bg-success",
+            "Cancelled" => "bg-secondary",
+            _ => "bg-secondary"
+        };
+    }
+
 
     protected override async Task OnInitializedAsync()
     {
@@ -717,7 +789,23 @@
         this.m_loading = true;
         try
         {
-...
+            var result = await this.RentalService.GetRentalsAsync(
+                this.ShopId,
+                m_statusFilter,
+                m_searchTerm,
+                page: m_currentPage,
+                pageSize: m_pageSize);
+
+            m_rentals.Clear();
+            foreach (var rental in result.ItemCollection)
+            {
+                m_rentals.Add(new RentalViewModel(rental));
+            }
+            m_totalCount = result.TotalRows;
+            m_totalPages = result.TotalPages;
+
+            // Load status counts
+            m_statusCounts = await this.RentalService.GetStatusCountsAsync(this.ShopId);
         }
         catch (Exception ex)
         {
@@ -728,7 +816,7 @@
             this.m_loading = false;
         }
     }
-...
+
     private async Task ViewInvoice(RentalViewModel rental)
     {
         await this.DialogService
@@ -808,7 +896,7 @@
             this.ShowError(Localizer["CancelFailed", result.Message ?? ""]);
         }
     }
-...
+
     private string GetEmptyStateMessage()
     {
         return this.m_activeTab switch
@@ -830,6 +918,19 @@
 
     public class RentalViewModel
     {
+        public RentalViewModel() { }
+        public RentalViewModel(Rental rental)
+        {
+            Rental = rental;
+            RenterName = rental.RenterName ?? "Unknown";
+            VehicleBrandModel = rental.VehicleName ?? "Unknown Vehicle";
+            var today = DateTimeOffset.Now.Date;
+            Days = Math.Max(1, (int)(rental.ExpectedEndDate.Date - rental.StartDate.Date).TotalDays + 1);
+            IsDueToday = rental.ExpectedEndDate.Date == today && rental.Status == "Active";
+            IsOverdue = rental.ExpectedEndDate.Date < today && rental.Status == "Active";
+            DaysOverdue = IsOverdue ? (int)(today - rental.ExpectedEndDate.Date).TotalDays : 0;
+        }
+
         public Rental Rental { get; set; } = null!;
         public string RenterName { get; set; } = "";
         public string RenterPhone { get; set; } = "";

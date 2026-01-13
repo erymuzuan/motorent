@@ -1,3 +1,7 @@
+@inherits LocalizedDialogBase<Payment, PaymentDialog>
+@inject PaymentService PaymentService
+@inject RentalService RentalService
+
 <form id="@FormId" @onsubmit="SaveAsync" @onsubmit:preventDefault>
     <div class="modal-body">
         <div class="row g-3">
@@ -95,13 +99,44 @@
 </div>
 
 @code {
-...
+    [Parameter] public bool HideRentalSelector { get; set; }
+
+    private int? m_selectedRentalId;
+    private List<Rental> m_rentals = [];
+    private DateOnly m_paidOnDate = DateOnly.FromDateTime(DateTime.Today);
+    private TimeOnly m_paidOnTime = TimeOnly.FromDateTime(DateTime.Now);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Entity.RentalId > 0)
+        {
+            m_selectedRentalId = Entity.RentalId;
+        }
+
+        if (!HideRentalSelector)
+        {
+            var rentalsResult = await RentalService.GetRentalsAsync(ShopId, "Active", null);
+            m_rentals = rentalsResult.ItemCollection.ToList();
+        }
+
+        if (Entity.PaidOn != default)
+        {
+            m_paidOnDate = DateOnly.FromDateTime(Entity.PaidOn.DateTime);
+            m_paidOnTime = TimeOnly.FromDateTime(Entity.PaidOn.DateTime);
+        }
+    }
+
     private async Task SaveAsync()
     {
         this.Saving = true;
         try
         {
-...
+            if (m_selectedRentalId.HasValue)
+            {
+                Entity.RentalId = m_selectedRentalId.Value;
+            }
+            Entity.PaidOn = new DateTimeOffset(m_paidOnDate.ToDateTime(m_paidOnTime));
+
             var result = this.IsNew
                 ? await this.PaymentService.CreatePaymentAsync(this.Entity, this.UserName)
                 : await this.PaymentService.UpdatePaymentAsync(this.Entity, this.UserName);
