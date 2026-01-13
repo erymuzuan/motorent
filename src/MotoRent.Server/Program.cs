@@ -120,6 +120,7 @@ if (rabbitMqEnabled)
 
 // Add JS Interop services
 builder.Services.AddScoped<FileUploadJsInterop>();
+builder.Services.AddScoped<GoogleMapJsInterop>();
 
 // Add UI services (Modal, Toast, Dialog)
 builder.Services.AddScoped<IModalService, ModalService>();

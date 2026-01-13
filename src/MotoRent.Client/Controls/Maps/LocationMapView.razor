@@ -1,0 +1,189 @@
+@inject GoogleMapJsInterop MapJs
+@implements IAsyncDisposable
+
+@* Google Maps API Script - loads dynamically if not already loaded *@
+@if (!string.IsNullOrEmpty(m_apiKey) && !m_googleMapsLoaded)
+{
+    <script src="https://maps.googleapis.com/maps/api/js?key=@m_apiKey&callback=Function.prototype"
+            async defer></script>
+}
+
+<div class="card @CssClass">
+    <div class="card-body p-0">
+        @if (!m_googleMapsLoaded && !string.IsNullOrEmpty(m_apiKey))
+        {
+            <div class="d-flex justify-content-center align-items-center" style="height: @(Height)px;">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading map...</span>
+                </div>
+            </div>
+        }
+        else if (string.IsNullOrEmpty(m_apiKey))
+        {
+            <div class="d-flex justify-content-center align-items-center text-muted" style="height: @(Height)px;">
+                <div class="text-center">
+                    <i class="ti ti-map-off fs-1 mb-2"></i>
+                    <p class="mb-0">Map not available</p>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div id="@m_mapId" style="height: @(Height)px; width: 100%;"></div>
+        }
+    </div>
+    @if (ShowDirectionsButton && HasValidLocation)
+    {
+        <div class="card-footer">
+            <a href="@GetDirectionsUrl()" target="_blank" rel="noopener" class="btn btn-primary w-100">
+                <i class="ti ti-directions me-1"></i>
+                Get Directions
+            </a>
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// Single location to display on the map.
+    /// </summary>
+    [Parameter]
+    public LatLng? Location { get; set; }
+
+    /// <summary>
+    /// Multiple markers to display on the map.
+    /// If provided, Location is ignored.
+    /// </summary>
+    [Parameter]
+    public IEnumerable<MapMarker>? Markers { get; set; }
+
+    /// <summary>
+    /// Height of the map in pixels.
+    /// </summary>
+    [Parameter]
+    public int Height { get; set; } = 300;
+
+    /// <summary>
+    /// Whether to show the "Get Directions" button below the map.
+    /// </summary>
+    [Parameter]
+    public bool ShowDirectionsButton { get; set; } = true;
+
+    /// <summary>
+    /// Additional CSS class for the card container.
+    /// </summary>
+    [Parameter]
+    public string? CssClass { get; set; }
+
+    /// <summary>
+    /// Optional label for the location marker.
+    /// </summary>
+    [Parameter]
+    public string? LocationLabel { get; set; }
+
+    private readonly string m_mapId = $"map-view-{Guid.NewGuid():N}";
+    private string m_apiKey = "";
+    private bool m_googleMapsLoaded;
+    private bool m_mapInitialized;
+
+    private bool HasValidLocation =>
+        Location?.HasValue == true ||
+        (Markers?.Any(m => m.Lat != 0 || m.Lng != 0) == true);
+
+    protected override void OnInitialized()
+    {
+        m_apiKey = MotoConfig.GoogleMapKey ?? "";
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !string.IsNullOrEmpty(m_apiKey))
+        {
+            await WaitForGoogleMapsAndInitializeAsync();
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Reinitialize map if location changes
+        if (m_mapInitialized && m_googleMapsLoaded)
+        {
+            m_mapInitialized = false;
+            await InitializeMapAsync();
+        }
+    }
+
+    private async Task WaitForGoogleMapsAndInitializeAsync()
+    {
+        // Poll for Google Maps to load (max 10 seconds)
+        for (int i = 0; i < 100; i++)
+        {
+            await Task.Delay(100);
+            try
+            {
+                if (await MapJs.IsGoogleMapsLoadedAsync())
+                {
+                    m_googleMapsLoaded = true;
+                    StateHasChanged();
+                    await Task.Yield();
+                    await InitializeMapAsync();
+                    return;
+                }
+            }
+            catch
+            {
+                // Continue waiting
+            }
+        }
+    }
+
+    private async Task InitializeMapAsync()
+    {
+        if (m_mapInitialized || !HasValidLocation) return;
+        m_mapInitialized = true;
+
+        try
+        {
+            await Task.Delay(50); // Ensure DOM is ready
+
+            if (Markers?.Any() == true)
+            {
+                // Display multiple markers
+                await MapJs.DisplayMarkersAsync(m_mapId, Markers);
+            }
+            else if (Location?.HasValue == true)
+            {
+                // Display single location
+                await MapJs.DisplaySingleMarkerAsync(m_mapId, Location, LocationLabel);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Map view initialization error: {ex.Message}");
+        }
+    }
+
+    private string GetDirectionsUrl()
+    {
+        if (Location?.HasValue == true)
+            return Location.GetGoogleMapsUrl();
+
+        var firstMarker = Markers?.FirstOrDefault(m => m.Lat != 0 || m.Lng != 0);
+        if (firstMarker != null)
+            return $"https://www.google.com/maps/dir/?api=1&destination={firstMarker.Lat},{firstMarker.Lng}";
+
+        return "#";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await MapJs.DisposeMapAsync();
+        }
+        catch
+        {
+            // Ignore disposal errors
+        }
+    }
+}

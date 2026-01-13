@@ -1,3 +1,5 @@
+using MotoRent.Domain.Spatial;
+
 namespace MotoRent.Domain.Entities;
 
 /// <summary>
@@ -84,6 +86,11 @@ public class ServiceLocation : Entity
     /// Internal notes for staff (e.g., "Meet at arrivals gate 3", "Hotel lobby only").
     /// </summary>
     public string? StaffNotes { get; set; }
+
+    /// <summary>
+    /// GPS coordinates for the pickup/dropoff point for map display and directions.
+    /// </summary>
+    public LatLng? GpsLocation { get; set; }
 
     /// <summary>
     /// Whether pickup is available at this location.

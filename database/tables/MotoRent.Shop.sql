@@ -6,6 +6,9 @@ CREATE TABLE [<schema>].[Shop]
     [Name] AS CAST(JSON_VALUE([Json], '$.Name') AS NVARCHAR(200)),
     [Location] AS CAST(JSON_VALUE([Json], '$.Location') AS NVARCHAR(100)),
     [IsActive] AS CAST(JSON_VALUE([Json], '$.IsActive') AS BIT),
+    -- GPS coordinates for map display
+    [Latitude] AS CAST(JSON_VALUE([Json], '$.GpsLocation.Lat') AS FLOAT),
+    [Longitude] AS CAST(JSON_VALUE([Json], '$.GpsLocation.Lng') AS FLOAT),
     -- JSON storage
     [Json] NVARCHAR(MAX) NOT NULL,
     -- Audit columns

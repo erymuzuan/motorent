@@ -1,0 +1,102 @@
+@inject DialogService DialogService
+
+<div class="row g-2 align-items-end">
+    <div class="col">
+        @if (Location?.HasValue == true)
+        {
+            <div class="input-group">
+                <input type="text" class="form-control" readonly
+                       value="@($"{Location.Lat:F6}, {Location.Lng:F6}")"
+                       title="Latitude, Longitude" />
+                <button type="button" class="btn btn-outline-secondary" @onclick="ClearLocation"
+                        title="Clear location">
+                    <i class="ti ti-x"></i>
+                </button>
+            </div>
+        }
+        else
+        {
+            <input type="text" class="form-control text-muted" readonly
+                   placeholder="No GPS location set - click Pick Location" />
+        }
+    </div>
+    <div class="col-auto">
+        <button type="button" class="btn btn-outline-primary" @onclick="PickLocation">
+            <i class="ti ti-map-pin me-1"></i>
+            @(Location?.HasValue == true ? "Change" : "Pick Location")
+        </button>
+    </div>
+    @if (Location?.HasValue == true)
+    {
+        <div class="col-auto">
+            <a href="@Location.GetGoogleMapsViewUrl()" target="_blank" rel="noopener"
+               class="btn btn-outline-secondary" title="View on Google Maps">
+                <i class="ti ti-external-link"></i>
+            </a>
+        </div>
+        <div class="col-auto">
+            <a href="@Location.GetGoogleMapsUrl()" target="_blank" rel="noopener"
+               class="btn btn-outline-success" title="Get Directions">
+                <i class="ti ti-directions"></i>
+            </a>
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// The GPS location to edit. Two-way bindable.
+    /// </summary>
+    [Parameter]
+    public LatLng? Location { get; set; }
+
+    /// <summary>
+    /// Event callback when location changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<LatLng?> LocationChanged { get; set; }
+
+    /// <summary>
+    /// Optional label to show above the editor.
+    /// </summary>
+    [Parameter]
+    public string? Label { get; set; }
+
+    /// <summary>
+    /// Whether the editor is read-only.
+    /// </summary>
+    [Parameter]
+    public bool ReadOnly { get; set; }
+
+    private async Task PickLocation()
+    {
+        if (ReadOnly) return;
+
+        // Clone the current location or create a new one
+        var initial = Location?.HasValue == true
+            ? Location.Clone()
+            : LatLng.PhuketDefault; // Default to Phuket
+
+        var result = await DialogService
+            .Create<PickLocationDialog>("Pick GPS Location")
+            .WithParameter(x => x.Entity, initial)
+            .WithParameter(x => x.ViewOnly, false)
+            .Large()
+            .WithScrollable(true)
+            .ShowDialogAsync();
+
+        if (!result.Cancelled && result.Data is LatLng newLocation && newLocation.HasValue)
+        {
+            Location = newLocation;
+            await LocationChanged.InvokeAsync(Location);
+        }
+    }
+
+    private async Task ClearLocation()
+    {
+        if (ReadOnly) return;
+
+        Location = null;
+        await LocationChanged.InvokeAsync(null);
+    }
+}

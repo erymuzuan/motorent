@@ -37,6 +37,9 @@ public static class MotoConfig
     public static string? GeminiApiKey => GetEnvironmentVariable("GeminiApiKey");
     public static string GeminiModel => GetEnvironmentVariable("GeminiModel") ?? "gemini-2.0-flash";
 
+    // Google Maps Configuration
+    public static string? GoogleMapKey => GetEnvironmentVariable("GoogleMapKey");
+
     // File Storage
     public static string FileStorageBasePath => GetEnvironmentVariable("FileStorageBasePath") ?? "uploads";
     public static int FileStorageMaxSizeMb => GetEnvironmentVariableInt32("FileStorageMaxSizeMb", 10);

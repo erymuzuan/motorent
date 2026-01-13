@@ -1,0 +1,221 @@
+@inherits LocalizedModalBase<LatLng, PickLocationDialog>
+@inject GoogleMapJsInterop MapJs
+@implements IAsyncDisposable
+
+@* Google Maps API Script - loads dynamically *@
+@if (!string.IsNullOrEmpty(m_apiKey) && !m_googleMapsLoaded)
+{
+    <script src="https://maps.googleapis.com/maps/api/js?key=@m_apiKey&libraries=places&callback=Function.prototype"
+            async defer @onload="OnGoogleMapsLoaded"></script>
+}
+
+<div class="modal-body p-0" style="height: 450px;">
+    @if (!m_googleMapsLoaded)
+    {
+        <div class="d-flex justify-content-center align-items-center h-100">
+            <div class="text-center">
+                @if (string.IsNullOrEmpty(m_apiKey))
+                {
+                    <i class="ti ti-map-off fs-1 text-muted mb-3"></i>
+                    <p class="text-danger">Google Maps API key not configured.</p>
+                    <small class="text-muted">Set MOTO_GoogleMapKey environment variable.</small>
+                }
+                else
+                {
+                    <div class="spinner-border text-primary mb-3" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="text-muted">Loading Google Maps...</p>
+                }
+            </div>
+        </div>
+    }
+    else
+    {
+        <div id="@m_mapElementId" style="height: 100%; width: 100%;"></div>
+    }
+</div>
+
+<div class="modal-footer">
+    @if (!ViewOnly && m_googleMapsLoaded)
+    {
+        <button type="button" class="btn btn-outline-secondary" @onclick="UseCurrentLocation" disabled="@m_gettingLocation">
+            @if (m_gettingLocation)
+            {
+                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+            }
+            else
+            {
+                <i class="ti ti-current-location me-1"></i>
+            }
+            Use My Location
+        </button>
+    }
+    <div class="ms-auto">
+        <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
+            @(ViewOnly ? "Close" : "Cancel")
+        </button>
+        @if (!ViewOnly)
+        {
+            <button type="button" class="btn btn-primary" @onclick="ConfirmLocation" disabled="@(!m_googleMapsLoaded)">
+                <i class="ti ti-check me-1"></i>
+                Confirm Location
+            </button>
+        }
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// If true, shows location in read-only mode (no picking).
+    /// </summary>
+    [Parameter] public bool ViewOnly { get; set; }
+
+    /// <summary>
+    /// Optional title for the dialog.
+    /// </summary>
+    [Parameter] public string? Title { get; set; }
+
+    private readonly string m_mapElementId = $"map-picker-{Guid.NewGuid():N}";
+    private string m_apiKey = "";
+    private bool m_googleMapsLoaded;
+    private bool m_mapInitialized;
+    private bool m_gettingLocation;
+
+    protected override void OnInitialized()
+    {
+        m_apiKey = MotoConfig.GoogleMapKey ?? "";
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !string.IsNullOrEmpty(m_apiKey))
+        {
+            // Check if Google Maps is already loaded (e.g., from another dialog)
+            try
+            {
+                m_googleMapsLoaded = await MapJs.IsGoogleMapsLoadedAsync();
+                if (m_googleMapsLoaded)
+                {
+                    StateHasChanged();
+                    await Task.Yield(); // Allow UI to update
+                    await InitializeMapAsync();
+                }
+                else
+                {
+                    // Wait for script to load
+                    await WaitForGoogleMapsAsync();
+                }
+            }
+            catch
+            {
+                // JS interop may fail during prerender
+            }
+        }
+    }
+
+    private async Task WaitForGoogleMapsAsync()
+    {
+        // Poll for Google Maps to load (max 10 seconds)
+        for (int i = 0; i < 100; i++)
+        {
+            await Task.Delay(100);
+            try
+            {
+                if (await MapJs.IsGoogleMapsLoadedAsync())
+                {
+                    m_googleMapsLoaded = true;
+                    StateHasChanged();
+                    await Task.Yield();
+                    await InitializeMapAsync();
+                    return;
+                }
+            }
+            catch
+            {
+                // Continue waiting
+            }
+        }
+    }
+
+    private void OnGoogleMapsLoaded()
+    {
+        // Script onload callback
+        m_googleMapsLoaded = true;
+        StateHasChanged();
+        _ = InitializeMapAsync();
+    }
+
+    private async Task InitializeMapAsync()
+    {
+        if (m_mapInitialized) return;
+        m_mapInitialized = true;
+
+        try
+        {
+            // Small delay to ensure DOM is ready
+            await Task.Delay(50);
+            await MapJs.InitPickerAsync(m_mapElementId, Entity, ViewOnly);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Map initialization error: {ex.Message}");
+        }
+    }
+
+    private async Task UseCurrentLocation()
+    {
+        m_gettingLocation = true;
+        StateHasChanged();
+
+        try
+        {
+            var location = await MapJs.CenterOnCurrentLocationAsync();
+            if (location is not null)
+            {
+                Entity.Lat = location.Lat;
+                Entity.Lng = location.Lng;
+            }
+        }
+        catch
+        {
+            // Location access denied or unavailable
+        }
+        finally
+        {
+            m_gettingLocation = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ConfirmLocation()
+    {
+        try
+        {
+            var location = await MapJs.GetPickerLocationAsync();
+            if (location is not null)
+            {
+                Entity.Lat = location.Lat;
+                Entity.Lng = location.Lng;
+            }
+        }
+        catch
+        {
+            // Use existing Entity values
+        }
+
+        await OkClick(Entity);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await MapJs.DisposeMapAsync();
+        }
+        catch
+        {
+            // Ignore disposal errors
+        }
+    }
+}

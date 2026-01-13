@@ -1,3 +1,5 @@
+using MotoRent.Domain.Spatial;
+
 namespace MotoRent.Domain.Entities;
 
 /// <summary>
@@ -23,6 +25,11 @@ public class Shop : Entity
     public string? LogoPath { get; set; }
     public string? TermsAndConditions { get; set; }
     public bool IsActive { get; set; } = true;
+
+    /// <summary>
+    /// GPS coordinates of the shop location for map display and directions.
+    /// </summary>
+    public LatLng? GpsLocation { get; set; }
 
     #region Operating Hours
 

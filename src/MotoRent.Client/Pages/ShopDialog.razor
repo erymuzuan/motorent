@@ -32,6 +32,13 @@
                     Terms & Conditions
                 </button>
             </li>
+            <li class="nav-item" role="presentation">
+                <button type="button" class="nav-link @(m_activeTab == "location" ? "active" : "")"
+                        @onclick="@(() => m_activeTab = "location")">
+                    <i class="ti ti-map-pin me-1"></i>
+                    GPS Location
+                </button>
+            </li>
         </ul>
 
         <div class="tab-content">
@@ -263,6 +270,42 @@
                                 <i class="ti ti-file-plus me-1"></i>
                                 Insert Default Terms
                             </button>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            @* GPS Location Tab *@
+            <div class="tab-pane fade @(m_activeTab == "location" ? "show active" : "")">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <h6 class="mb-1">Shop GPS Coordinates</h6>
+                        <p class="text-secondary small mb-3">
+                            Set the GPS location for your shop. This helps tourists find your location easily
+                            and enables the "Get Directions" feature in the mobile app.
+                        </p>
+                    </div>
+
+                    <div class="col-12">
+                        <GpsLocationEditor @bind-Location="Entity.GpsLocation" />
+                    </div>
+
+                    @if (Entity.GpsLocation?.HasValue == true)
+                    {
+                        <div class="col-12">
+                            <LocationMapView Location="@Entity.GpsLocation"
+                                             LocationLabel="@Entity.Name"
+                                             Height="280"
+                                             ShowDirectionsButton="false" />
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="col-12">
+                            <div class="alert alert-info d-flex align-items-center">
+                                <i class="ti ti-info-circle me-2"></i>
+                                <span>No GPS location set. Click "Pick Location" to set the shop's coordinates on the map.</span>
+                            </div>
                         </div>
                     }
                 </div>

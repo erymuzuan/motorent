@@ -13,6 +13,9 @@ CREATE TABLE [<schema>].[ServiceLocation]
     [DropoffAvailable] AS CAST(COALESCE(JSON_VALUE([Json], '$.DropoffAvailable'), 'true') AS BIT),
     [IsActive] AS CAST(COALESCE(JSON_VALUE([Json], '$.IsActive'), 'true') AS BIT),
     [DisplayOrder] AS CAST(COALESCE(JSON_VALUE([Json], '$.DisplayOrder'), '0') AS INT),
+    -- GPS coordinates for map display
+    [Latitude] AS CAST(JSON_VALUE([Json], '$.GpsLocation.Lat') AS FLOAT),
+    [Longitude] AS CAST(JSON_VALUE([Json], '$.GpsLocation.Lng') AS FLOAT),
     -- JSON storage
     [Json] NVARCHAR(MAX) NOT NULL,
     -- Audit columns
