@@ -1,16 +1,12 @@
-@inherits LocalizedDialogBase<Payment, PaymentDialog>
-@inject PaymentService PaymentService
-@inject RentalService RentalService
-
 <form id="@FormId" @onsubmit="SaveAsync" @onsubmit:preventDefault>
     <div class="modal-body">
         <div class="row g-3">
             @if (!HideRentalSelector)
             {
                 <div class="col-12">
-                    <label class="form-label required">Rental</label>
+                    <label class="form-label required">@Localizer["Rental"]</label>
                     <select class="form-select" @bind="m_selectedRentalId" required>
-                        <option value="">Select rental...</option>
+                        <option value="">@Localizer["SelectRental"]</option>
                         @foreach (var rental in m_rentals)
                         {
                             <option value="@rental.RentalId">#@rental.RentalId - @rental.RenterName</option>
@@ -20,30 +16,30 @@
             }
 
             <div class="col-md-6">
-                <label class="form-label required">Payment Type</label>
+                <label class="form-label required">@Localizer["PaymentType"]</label>
                 <select class="form-select" @bind="Entity.PaymentType" required>
-                    <option value="Rental">Rental Payment</option>
-                    <option value="Insurance">Insurance</option>
-                    <option value="Accessory">Accessory</option>
-                    <option value="Deposit">Deposit</option>
-                    <option value="Damage">Damage Charge</option>
-                    <option value="Additional">Additional Charge</option>
-                    <option value="Refund">Refund</option>
+                    <option value="Rental">@Localizer["RentalPayment"]</option>
+                    <option value="Insurance">@Localizer["Insurance"]</option>
+                    <option value="Accessory">@Localizer["Accessory"]</option>
+                    <option value="Deposit">@Localizer["Deposit"]</option>
+                    <option value="Damage">@Localizer["DamageCharge"]</option>
+                    <option value="Additional">@Localizer["AdditionalCharge"]</option>
+                    <option value="Refund">@Localizer["Refund"]</option>
                 </select>
             </div>
 
             <div class="col-md-6">
-                <label class="form-label required">Payment Method</label>
+                <label class="form-label required">@Localizer["PaymentMethod"]</label>
                 <select class="form-select" @bind="Entity.PaymentMethod" required>
-                    <option value="Cash">Cash</option>
-                    <option value="Card">Credit/Debit Card</option>
-                    <option value="PromptPay">PromptPay (QR)</option>
-                    <option value="BankTransfer">Bank Transfer</option>
+                    <option value="Cash">@Localizer["Cash"]</option>
+                    <option value="Card">@Localizer["Card"]</option>
+                    <option value="PromptPay">@Localizer["PromptPay"]</option>
+                    <option value="BankTransfer">@Localizer["BankTransfer"]</option>
                 </select>
             </div>
 
             <div class="col-md-6">
-                <label class="form-label required">Amount (THB)</label>
+                <label class="form-label required">@Localizer["Amount"]</label>
                 <div class="input-group">
                     <span class="input-group-text">฿</span>
                     <input type="number" class="form-control" @bind="Entity.Amount"
@@ -52,32 +48,32 @@
             </div>
 
             <div class="col-md-6">
-                <label class="form-label required">Status</label>
+                <label class="form-label required">@Localizer["Status"]</label>
                 <select class="form-select" @bind="Entity.Status" required>
-                    <option value="Completed">Completed</option>
-                    <option value="Pending">Pending</option>
-                    <option value="Refunded">Refunded</option>
+                    <option value="Completed">@Localizer["Completed"]</option>
+                    <option value="Pending">@Localizer["Pending"]</option>
+                    <option value="Refunded">@Localizer["Refund"]</option>
                 </select>
             </div>
 
             <div class="col-md-6">
-                <label class="form-label required">Payment Date</label>
+                <label class="form-label required">@Localizer["PaymentDate"]</label>
                 <input type="date" class="form-control" @bind="m_paidOnDate" required />
             </div>
 
             <div class="col-md-6">
-                <label class="form-label">Payment Time</label>
+                <label class="form-label">@Localizer["PaymentTime"]</label>
                 <input type="time" class="form-control" @bind="m_paidOnTime" />
             </div>
 
             <div class="col-12">
-                <label class="form-label">Transaction Reference</label>
+                <label class="form-label">@Localizer["TransactionReference"]</label>
                 <input type="text" class="form-control" @bind="Entity.TransactionRef"
-                       placeholder="Receipt #, Card approval code, etc." />
+                       placeholder="@Localizer["ReferencePlaceholder"]" />
             </div>
 
             <div class="col-12">
-                <label class="form-label">Notes</label>
+                <label class="form-label">@Localizer["Notes"]</label>
                 <textarea class="form-control" @bind="Entity.Notes" rows="2"></textarea>
             </div>
         </div>
@@ -86,7 +82,7 @@
 
 <div class="modal-footer">
     <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
-        Cancel
+        @Localizer["Cancel"]
     </button>
     <button type="submit" form="@FormId" class="btn btn-primary" disabled="@Saving">
         @if (Saving)
@@ -94,55 +90,18 @@
             <span class="spinner-border spinner-border-sm me-2" role="status"></span>
         }
         <i class="ti ti-device-floppy me-1"></i>
-        @(IsNew ? "Record Payment" : "Save")
+        @(IsNew ? Localizer["RecordPayment"] : Localizer["Save"])
     </button>
 </div>
 
 @code {
-    [Parameter] public bool HideRentalSelector { get; set; }
-
-    private DateTime? m_paidOnDate;
-    private TimeOnly? m_paidOnTime;
-    private int m_selectedRentalId;
-    private List<Rental> m_rentals = [];
-
-    protected override async Task OnInitializedAsync()
-    {
-        this.m_paidOnDate = this.Entity.PaidOn == default ? DateTime.Today : this.Entity.PaidOn.DateTime.Date;
-        this.m_paidOnTime = this.Entity.PaidOn == default ? TimeOnly.FromDateTime(DateTime.Now) : TimeOnly.FromDateTime(this.Entity.PaidOn.DateTime);
-        this.m_selectedRentalId = this.Entity.RentalId;
-
-        // Pre-load active rentals
-        var result = await this.RentalService.GetRentalsAsync(this.ShopId, status: "Active", pageSize: 100);
-        this.m_rentals = result.ItemCollection.ToList();
-
-        // Also include completed rentals (for recording late payments)
-        var completedResult = await this.RentalService.GetRentalsAsync(this.ShopId, status: "Completed", pageSize: 50);
-        this.m_rentals.AddRange(completedResult.ItemCollection);
-    }
-
+...
     private async Task SaveAsync()
     {
         this.Saving = true;
         try
         {
-            // Set rental ID from selection
-            if (this.m_selectedRentalId > 0)
-            {
-                this.Entity.RentalId = this.m_selectedRentalId;
-            }
-
-            // Combine date and time
-            if (this.m_paidOnDate.HasValue)
-            {
-                var dateTime = this.m_paidOnDate.Value.Date;
-                if (this.m_paidOnTime.HasValue)
-                {
-                    dateTime = dateTime.Add(this.m_paidOnTime.Value.ToTimeSpan());
-                }
-                this.Entity.PaidOn = new DateTimeOffset(dateTime);
-            }
-
+...
             var result = this.IsNew
                 ? await this.PaymentService.CreatePaymentAsync(this.Entity, this.UserName)
                 : await this.PaymentService.UpdatePaymentAsync(this.Entity, this.UserName);
@@ -153,12 +112,12 @@
             }
             else
             {
-                this.ShowError($"Save failed: {result.Message}");
+                this.ShowError(Localizer["SaveFailed", result.Message ?? ""]);
             }
         }
         catch (Exception ex)
         {
-            this.ShowError($"Error: {ex.Message}");
+            this.ShowError(Localizer["Error", ex.Message]);
         }
         finally
         {

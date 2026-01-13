@@ -5,12 +5,12 @@
 @inherits LocalizedComponentBase<Renters>
 @inject RenterService RenterService
 
-<MotoRentPageTitle>Renters</MotoRentPageTitle>
+<MotoRentPageTitle>@Localizer["Renters"]</MotoRentPageTitle>
 
-<TablerHeader Title="Renter Management" PreTitle="Customer Records">
+<TablerHeader Title="@Localizer["RenterManagement"]" PreTitle="@Localizer["CustomerRecords"]">
     <button type="button" class="btn btn-primary" @onclick="OpenAddDialog">
         <i class="ti ti-user-plus me-1"></i>
-        Register Renter
+        @Localizer["RegisterRenter"]
     </button>
 </TablerHeader>
 
@@ -22,7 +22,7 @@
                     <span class="input-icon-addon">
                         <i class="ti ti-search"></i>
                     </span>
-                    <input type="text" class="form-control" placeholder="Search by name, phone, passport, email..."
+                    <input type="text" class="form-control" placeholder="@Localizer["SearchPlaceholder"]"
                            @bind="m_searchTerm" @bind:event="oninput" @onkeyup="OnSearchKeyUp" />
                 </div>
             </div>
@@ -36,13 +36,13 @@
             <table class="table table-vcenter card-table table-striped table-hover">
                 <thead>
                     <tr>
-                        <th>Full Name</th>
-                        <th>Nationality</th>
-                        <th>Passport No.</th>
-                        <th>Phone</th>
-                        <th>Email</th>
-                        <th>Hotel</th>
-                        <th class="w-1">Actions</th>
+                        <th>@Localizer["FullName"]</th>
+                        <th>@Localizer["Nationality"]</th>
+                        <th>@Localizer["PassportNo"]</th>
+                        <th>@Localizer["Phone"]</th>
+                        <th>@Localizer["Email"]</th>
+                        <th>@Localizer["Hotel"]</th>
+                        <th class="w-1">@Localizer["Actions"]</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -51,7 +51,7 @@
                         <tr>
                             <td colspan="7" class="text-center text-secondary py-4">
                                 <i class="ti ti-users mb-2" style="font-size: 2rem;"></i>
-                                <div>No renters found</div>
+                                <div>@Localizer["NoRentersFound"]</div>
                             </td>
                         </tr>
                     }
@@ -81,15 +81,15 @@
                                 <td @onclick:stopPropagation="true">
                                     <div class="btn-list flex-nowrap">
                                         <button type="button" class="btn btn-icon btn-ghost-primary"
-                                                title="Edit" @onclick="@(() => OpenEditDialog(renter))">
+                                                title="@Localizer["Edit"]" @onclick="@(() => OpenEditDialog(renter))">
                                             <i class="ti ti-edit"></i>
                                         </button>
                                         <button type="button" class="btn btn-icon btn-ghost-info"
-                                                title="View Documents" @onclick="@(() => ViewDocuments(renter))">
+                                                title="@Localizer["ViewDocuments"]" @onclick="@(() => ViewDocuments(renter))">
                                             <i class="ti ti-folder"></i>
                                         </button>
                                         <button type="button" class="btn btn-icon btn-ghost-danger"
-                                                title="Delete" @onclick="@(() => ConfirmDelete(renter))">
+                                                title="@Localizer["Delete"]" @onclick="@(() => ConfirmDelete(renter))">
                                             <i class="ti ti-trash"></i>
                                         </button>
                                     </div>
@@ -104,7 +104,7 @@
         {
             <div class="card-footer d-flex align-items-center">
                 <p class="m-0 text-secondary">
-                    Showing <strong>@m_renters.Count</strong> renters
+                    @Localizer["ShowingCount", m_renters.Count]
                 </p>
             </div>
         }
@@ -137,7 +137,7 @@
         }
         catch (Exception ex)
         {
-            this.ShowError($"Error loading data: {ex.Message}");
+            this.ShowError(Localizer["ErrorLoadingData", ex.Message]);
         }
         finally
         {
@@ -170,7 +170,7 @@
         };
 
         var result = await this.DialogService
-            .Create<RenterDialog>("Register Renter")
+            .Create<RenterDialog>(Localizer["RegisterRenter"])
             .WithParameter(x => x.Entity, renter)
             .WithParameter(x => x.IsNew, true)
             .Large()
@@ -179,14 +179,14 @@
         if (!result.Cancelled)
         {
             await this.LoadDataAsync();
-            this.ShowSuccess("Renter registered successfully");
+            this.ShowSuccess(Localizer["RenterRegistered"]);
         }
     }
 
     private async Task OpenEditDialog(Renter renter)
     {
         var result = await this.DialogService
-            .Create<RenterDialog>("Edit Renter")
+            .Create<RenterDialog>(Localizer["EditRenter"])
             .WithParameter(x => x.Entity, renter.Clone())
             .WithParameter(x => x.IsNew, false)
             .Large()
@@ -195,13 +195,13 @@
         if (!result.Cancelled)
         {
             await this.LoadDataAsync();
-            this.ShowSuccess("Renter updated successfully");
+            this.ShowSuccess(Localizer["RenterUpdated"]);
         }
     }
 
     private Task ViewDocuments(Renter renter)
     {
-        this.ShowInfo("Document viewer coming soon");
+        this.ShowInfo(Localizer["DocumentViewerComingSoon"]);
         return Task.CompletedTask;
     }
 
@@ -210,22 +210,22 @@
         var activeRentals = await this.RenterService.GetActiveRentalCountAsync(renter.RenterId);
         if (activeRentals > 0)
         {
-            this.ShowWarning($"Cannot delete: {renter.FullName} has {activeRentals} active rental(s)");
+            this.ShowWarning(Localizer["CannotDeleteActiveRentals", renter.FullName ?? Localizer["DefaultRenterName"].Value, activeRentals]);
             return;
         }
 
-        if (!await this.ConfirmDeleteAsync(renter.FullName ?? "this renter"))
+        if (!await this.ConfirmDeleteAsync(renter.FullName ?? Localizer["DefaultRenterName"].Value))
             return;
 
         var deleteResult = await this.RenterService.DeleteRenterAsync(renter, this.UserName);
         if (deleteResult.Success)
         {
             await this.LoadDataAsync();
-            this.ShowSuccess("Renter deleted successfully");
+            this.ShowSuccess(Localizer["RenterDeleted"]);
         }
         else
         {
-            this.ShowError($"Delete failed: {deleteResult.Message}");
+            this.ShowError(Localizer["DeleteFailed", deleteResult.Message ?? ""]);
         }
     }
 

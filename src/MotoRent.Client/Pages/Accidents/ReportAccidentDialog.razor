@@ -102,7 +102,7 @@
                         <select class="form-select" @bind="Entity.Severity" required>
                             @foreach (var severity in Enum.GetValues<AccidentSeverity>())
                             {
-                                <option value="@severity">@GetSeverityDescription(severity)</option>
+                                <option value="@severity">@Localizer[$"Severity{severity}"]</option>
                             }
                         </select>
                     </div>
@@ -257,7 +257,7 @@
     {
         if (Entity.VehicleId == 0)
         {
-            ShowError("Please select a vehicle");
+            ShowError(Localizer["PleaseSelectVehicle"]);
             return;
         }
 
@@ -272,29 +272,18 @@
             }
             else
             {
-                ShowError($"Failed to report accident: {result.Message}");
+                ShowError(Localizer["FailedToReportAccident", result.Message ?? ""]);
             }
         }
         catch (Exception ex)
         {
-            ShowError($"Error: {ex.Message}");
+            ShowError(Localizer["Error", ex.Message]);
         }
         finally
         {
             Saving = false;
         }
     }
-
-    private static string GetSeverityDescription(AccidentSeverity severity) => severity switch
-    {
-        AccidentSeverity.Minor => "Minor - Scratches, scuffs (cosmetic)",
-        AccidentSeverity.Moderate => "Moderate - Dents, mechanical damage",
-        AccidentSeverity.Major => "Major - Significant damage, expensive repair",
-        AccidentSeverity.Injury => "Injury - Personal injury occurred",
-        AccidentSeverity.Hospitalization => "Hospitalization - Hospital treatment required",
-        AccidentSeverity.Fatality => "Fatality - Death occurred",
-        _ => severity.ToString()
-    };
 
     private class RentalInfo
     {

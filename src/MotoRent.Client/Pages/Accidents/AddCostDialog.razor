@@ -6,7 +6,7 @@
     <div class="modal-body">
         <div class="row g-3">
             <div class="col-md-6">
-                <label class="form-label required">Cost Type</label>
+                <label class="form-label required">@Localizer["CostType"]</label>
                 <select class="form-select" @bind="Entity.CostType" required>
                     @foreach (var type in Enum.GetValues<AccidentCostType>())
                     {
@@ -18,18 +18,18 @@
             <div class="col-md-6">
                 <label class="form-check form-switch pt-4">
                     <input type="checkbox" class="form-check-input" @bind="Entity.IsCredit" />
-                    <span class="form-check-label">This is a credit (e.g., insurance payout)</span>
+                    <span class="form-check-label">@Localizer["IsCredit"]</span>
                 </label>
             </div>
 
             <div class="col-12">
-                <label class="form-label required">Description</label>
+                <label class="form-label required">@Localizer["Description"]</label>
                 <input type="text" class="form-control" @bind="Entity.Description" required
-                       placeholder="Describe this cost" />
+                       placeholder="@Localizer["DescriptionPlaceholder"]" />
             </div>
 
             <div class="col-md-6">
-                <label class="form-label required">Estimated Amount</label>
+                <label class="form-label required">@Localizer["EstimatedAmount"]</label>
                 <div class="input-group">
                     <span class="input-group-text">THB</span>
                     <input type="number" class="form-control" @bind="Entity.EstimatedAmount"
@@ -38,28 +38,28 @@
             </div>
 
             <div class="col-md-6">
-                <label class="form-label">Actual Amount</label>
+                <label class="form-label">@Localizer["ActualAmount"]</label>
                 <div class="input-group">
                     <span class="input-group-text">THB</span>
                     <input type="number" class="form-control" @bind="Entity.ActualAmount"
-                           min="0" step="100" placeholder="Leave empty if not paid yet" />
+                           min="0" step="100" placeholder="@Localizer["ActualAmountHint"]" />
                 </div>
             </div>
 
             <div class="col-md-6">
-                <label class="form-label">Vendor / Payee</label>
+                <label class="form-label">@Localizer["VendorName"]</label>
                 <input type="text" class="form-control" @bind="Entity.VendorName"
-                       placeholder="Who will be paid / who paid" />
+                       placeholder="@Localizer["VendorPlaceholder"]" />
             </div>
 
             <div class="col-md-6">
-                <label class="form-label">Reference Number</label>
+                <label class="form-label">@Localizer["ReferenceNumber"]</label>
                 <input type="text" class="form-control" @bind="Entity.ReferenceNo"
-                       placeholder="Invoice, receipt number" />
+                       placeholder="@Localizer["ReferencePlaceholder"]" />
             </div>
 
             <div class="col-md-6">
-                <label class="form-label">Paid Date</label>
+                <label class="form-label">@Localizer["PaidDate"]</label>
                 <input type="date" class="form-control"
                        value="@m_paidDateStr" @onchange="OnPaidDateChanged" />
             </div>
@@ -67,21 +67,21 @@
             <div class="col-md-6">
                 <label class="form-check form-switch pt-4">
                     <input type="checkbox" class="form-check-input" @bind="Entity.IsApproved" />
-                    <span class="form-check-label">Approved</span>
+                    <span class="form-check-label">@Localizer["Approved"]</span>
                 </label>
             </div>
 
             <div class="col-12">
-                <label class="form-label">Notes</label>
+                <label class="form-label">@Localizer["Notes"]</label>
                 <textarea class="form-control" @bind="Entity.Notes" rows="2"
-                          placeholder="Additional notes"></textarea>
+                          placeholder="@Localizer["NotesPlaceholder"]"></textarea>
             </div>
         </div>
     </div>
 </form>
 
 <div class="modal-footer">
-    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">Cancel</button>
+    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">@Localizer["Cancel"]</button>
     <button type="submit" form="@FormId" class="btn btn-primary" disabled="@Saving">
         @if (Saving)
         {
@@ -135,12 +135,12 @@
             }
             else
             {
-                ShowError($"Save failed: {result.Message}");
+                ShowError(Localizer["SaveFailed", result.Message ?? ""]);
             }
         }
         catch (Exception ex)
         {
-            ShowError($"Error: {ex.Message}");
+            ShowError(Localizer["Error", ex.Message]);
         }
         finally
         {

@@ -5,41 +5,41 @@
 <div class="modal-body">
     <div class="row g-3 mb-3">
         <div class="col-6">
-            <div class="subheader text-secondary">Renter</div>
+            <div class="subheader text-secondary">@Localizer["Renter"]</div>
             <div class="fw-bold">@RenterName</div>
         </div>
         <div class="col-6">
-            <div class="subheader text-secondary">Vehicle</div>
+            <div class="subheader text-secondary">@Localizer["Vehicle"]</div>
             <div class="fw-bold">@VehicleName</div>
         </div>
         <div class="col-6">
-            <div class="subheader text-secondary">Reported On</div>
+            <div class="subheader text-secondary">@Localizer["ReportedOn"]</div>
             <div>@FormatDate(Entity.ReportedOn)</div>
         </div>
         <div class="col-6">
-            <div class="subheader text-secondary">Current Status</div>
-            <span class="badge @GetStatusBadgeClass(Entity.Status)">@Entity.Status</span>
+            <div class="subheader text-secondary">@Localizer["CurrentStatus"]</div>
+            <span class="badge @GetStatusBadgeClass(Entity.Status)">@Localizer[Entity.Status ?? ""]</span>
         </div>
     </div>
 
     <hr class="my-3" />
 
-    <h4 class="mb-3">Damage Details</h4>
+    <h4 class="mb-3">@Localizer["DamageDetails"]</h4>
 
     <div class="row g-3 mb-3">
         <div class="col-12">
-            <div class="subheader text-secondary">Severity</div>
+            <div class="subheader text-secondary">@Localizer["Severity"]</div>
             <span class="badge @GetSeverityBadgeClass(Entity.Severity) fs-6">
                 <i class="ti @GetSeverityIcon(Entity.Severity) me-1"></i>
-                @Entity.Severity
+                @Localizer[Entity.Severity ?? ""]
             </span>
         </div>
         <div class="col-12">
-            <div class="subheader text-secondary">Description</div>
+            <div class="subheader text-secondary">@Localizer["Description"]</div>
             <div class="border rounded p-2 bg-light">
                 @if (string.IsNullOrEmpty(Entity.Description))
                 {
-                    <span class="text-secondary">No description provided</span>
+                    <span class="text-secondary">@Localizer["NoDescription"]</span>
                 }
                 else
                 {
@@ -48,18 +48,18 @@
             </div>
         </div>
         <div class="col-6">
-            <div class="subheader text-secondary">Estimated Cost</div>
+            <div class="subheader text-secondary">@Localizer["EstimatedCost"]</div>
             <div class="h4 text-warning mb-0">@FormatCurrency(Entity.EstimatedCost)</div>
         </div>
         <div class="col-6">
-            <div class="subheader text-secondary">Actual Cost</div>
+            <div class="subheader text-secondary">@Localizer["ActualCost"]</div>
             @if (Entity.ActualCost.HasValue)
             {
                 <div class="h4 text-success mb-0">@FormatCurrency(Entity.ActualCost.Value)</div>
             }
             else
             {
-                <div class="text-secondary">Not recorded</div>
+                <div class="text-secondary">@Localizer["NotRecorded"]</div>
             }
         </div>
     </div>
@@ -70,7 +70,7 @@
 
         <h4 class="mb-3">
             <i class="ti ti-photo me-2"></i>
-            Damage Photos (@Photos.Count)
+            @Localizer["DamagePhotos", Photos.Count]
         </h4>
 
         <div class="row g-2">
@@ -97,11 +97,11 @@
 
         <h4 class="mb-3">
             <i class="ti ti-edit me-2"></i>
-            Update Status
+            @Localizer["UpdateStatus"]
         </h4>
 
         <div class="mb-3">
-            <label class="form-label">New Status</label>
+            <label class="form-label">@Localizer["NewStatus"]</label>
             <div class="form-selectgroup form-selectgroup-boxes d-flex flex-column gap-2">
                 <label class="form-selectgroup-item flex-fill">
                     <input type="radio" name="new-status" value="Charged" class="form-selectgroup-input"
@@ -113,8 +113,8 @@
                         <div class="d-flex align-items-center">
                             <i class="ti ti-currency-dollar text-success fs-2 me-3"></i>
                             <div>
-                                <div class="fw-bold">Charged</div>
-                                <small class="text-secondary">Renter has paid for the damage</small>
+                                <div class="fw-bold">@Localizer["Charged"]</div>
+                                <small class="text-secondary">@Localizer["ChargedDesc"]</small>
                             </div>
                         </div>
                     </div>
@@ -130,8 +130,8 @@
                         <div class="d-flex align-items-center">
                             <i class="ti ti-discount-off text-secondary fs-2 me-3"></i>
                             <div>
-                                <div class="fw-bold">Waived</div>
-                                <small class="text-secondary">Damage charge has been waived</small>
+                                <div class="fw-bold">@Localizer["Waived"]</div>
+                                <small class="text-secondary">@Localizer["WaivedDesc"]</small>
                             </div>
                         </div>
                     </div>
@@ -147,8 +147,8 @@
                         <div class="d-flex align-items-center">
                             <i class="ti ti-shield-check text-info fs-2 me-3"></i>
                             <div>
-                                <div class="fw-bold">Insurance Claim</div>
-                                <small class="text-secondary">Submitted to insurance</small>
+                                <div class="fw-bold">@Localizer["InsuranceClaim"]</div>
+                                <small class="text-secondary">@Localizer["InsuranceClaimDesc"]</small>
                             </div>
                         </div>
                     </div>
@@ -159,27 +159,27 @@
         @if (m_newStatus == "Charged")
         {
             <div class="mb-3">
-                <label class="form-label">Actual Repair Cost (THB)</label>
+                <label class="form-label">@Localizer["ActualRepairCost"]</label>
                 <div class="input-group">
                     <span class="input-group-text">฿</span>
                     <input type="number" class="form-control" @bind="m_actualCost"
                            min="0" max="100000" step="100" />
                 </div>
-                <small class="text-secondary">Estimated was @FormatCurrency(Entity.EstimatedCost)</small>
+                <small class="text-secondary">@Localizer["EstimatedWasHint", FormatCurrency(Entity.EstimatedCost)]</small>
             </div>
         }
 
         <div class="mb-3">
-            <label class="form-label">Notes (optional)</label>
+            <label class="form-label">@Localizer["NotesOptional"]</label>
             <textarea class="form-control" @bind="m_notes" rows="2"
-                      placeholder="Any additional notes..."></textarea>
+                      placeholder="@Localizer["NotesPlaceholder"]"></textarea>
         </div>
     }
 </div>
 
 <div class="modal-footer">
     <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
-        @(IsUpdateMode ? "Cancel" : "Close")
+        @(IsUpdateMode ? Localizer["Cancel"] : Localizer["Close"])
     </button>
     @if (IsUpdateMode && Entity.Status == "Pending")
     {
@@ -189,35 +189,13 @@
                 <span class="spinner-border spinner-border-sm me-2" role="status"></span>
             }
             <i class="ti ti-check me-1"></i>
-            Update Status
+            @Localizer["UpdateStatus"]
         </button>
     }
 </div>
 
 @code {
-    [Parameter]
-    public string RenterName { get; set; } = "";
-
-    [Parameter]
-    public string VehicleName { get; set; } = "";
-
-    [Parameter]
-    public List<DamagePhoto> Photos { get; set; } = [];
-
-    [Parameter]
-    public bool IsUpdateMode { get; set; }
-
-    private string m_newStatus = "Charged";
-    private decimal m_actualCost;
-    private string? m_notes;
-
-    private bool CanUpdate => !string.IsNullOrEmpty(m_newStatus);
-
-    protected override void OnInitialized()
-    {
-        m_actualCost = Entity.EstimatedCost;
-    }
-
+...
     private async Task UpdateStatus()
     {
         if (!CanUpdate) return;
@@ -235,46 +213,21 @@
 
             if (result.Success)
             {
-                ShowSuccess($"Damage report marked as {m_newStatus}");
+                ShowSuccess(Localizer["DamageReportUpdated", Localizer[m_newStatus].Value]);
                 Close();
             }
             else
             {
-                ShowError($"Failed to update: {result.Message}");
+                ShowError(Localizer["UpdateFailed", result.Message ?? ""]);
             }
         }
         catch (Exception ex)
         {
-            ShowError($"Error: {ex.Message}");
+            this.ShowError(Localizer["Error", ex.Message]);
         }
         finally
         {
             Saving = false;
         }
     }
-
-    private static string GetSeverityBadgeClass(string? severity) => severity switch
-    {
-        "Minor" => "bg-info",
-        "Moderate" => "bg-warning",
-        "Major" => "bg-danger",
-        _ => "bg-secondary"
-    };
-
-    private static string GetSeverityIcon(string? severity) => severity switch
-    {
-        "Minor" => "ti-info-circle",
-        "Moderate" => "ti-alert-triangle",
-        "Major" => "ti-alert-octagon",
-        _ => "ti-help"
-    };
-
-    private static string GetStatusBadgeClass(string? status) => status switch
-    {
-        "Pending" => "bg-warning",
-        "Charged" => "bg-success",
-        "Waived" => "bg-secondary",
-        "InsuranceClaim" => "bg-info",
-        _ => "bg-secondary"
-    };
-}
+...

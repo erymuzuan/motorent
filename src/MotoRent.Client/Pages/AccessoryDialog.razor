@@ -5,13 +5,13 @@
     <div class="modal-body">
         <div class="row g-3">
             <div class="col-12">
-                <label class="form-label required">Accessory Name</label>
+                <label class="form-label required">@Localizer["AccessoryName"]</label>
                 <input type="text" class="form-control" @bind="Entity.Name" required
-                       placeholder="e.g., Helmet, Phone Holder, Rain Poncho" />
+                       placeholder="@Localizer["NamePlaceholder"]" />
             </div>
 
             <div class="col-md-6">
-                <label class="form-label required">Daily Rate (THB)</label>
+                <label class="form-label required">@Localizer["DailyRate"]</label>
                 <div class="input-group">
                     <span class="input-group-text">฿</span>
                     <input type="number" class="form-control" @bind="Entity.DailyRate" required
@@ -19,16 +19,16 @@
                 </div>
                 @if (Entity.IsIncluded)
                 {
-                    <small class="form-hint text-success">Free with rental</small>
+                    <small class="form-hint text-success">@Localizer["FreeWithRental"]</small>
                 }
                 else
                 {
-                    <small class="form-hint">Charge per day</small>
+                    <small class="form-hint">@Localizer["ChargePerDay"]</small>
                 }
             </div>
 
             <div class="col-md-6">
-                <label class="form-label required">Quantity Available</label>
+                <label class="form-label required">@Localizer["QuantityAvailable"]</label>
                 <input type="number" class="form-control" @bind="Entity.QuantityAvailable" required
                        min="0" />
             </div>
@@ -37,13 +37,13 @@
                 <label class="form-check">
                     <input type="checkbox" class="form-check-input" checked="@Entity.IsIncluded"
                            @onchange="OnIncludedChanged" />
-                    <span class="form-check-label">Free with rental</span>
+                    <span class="form-check-label">@Localizer["FreeWithRental"]</span>
                 </label>
                 @if (Entity.IsIncluded)
                 {
                     <small class="text-success d-block mt-1">
                         <i class="ti ti-check me-1"></i>
-                        This accessory is included free with every rental
+                        @Localizer["IncludedFreeHint"]
                     </small>
                 }
             </div>
@@ -53,7 +53,7 @@
 
 <div class="modal-footer">
     <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
-        Cancel
+        @Localizer["Cancel"]
     </button>
     <button type="submit" form="@FormId" class="btn btn-primary" disabled="@Saving">
         @if (Saving)
@@ -66,20 +66,7 @@
 </div>
 
 @code {
-    protected override void OnInitialized()
-    {
-        this.FormValid = true;
-    }
-
-    private void OnIncludedChanged(ChangeEventArgs e)
-    {
-        this.Entity.IsIncluded = (bool)(e.Value ?? false);
-        if (this.Entity.IsIncluded)
-        {
-            this.Entity.DailyRate = 0;
-        }
-    }
-
+...
     private async Task SaveAsync()
     {
         this.Saving = true;
@@ -96,12 +83,12 @@
             }
             else
             {
-                this.ShowError($"Save failed: {result.Message}");
+                this.ShowError(Localizer["SaveFailed", result.Message ?? ""]);
             }
         }
         catch (Exception ex)
         {
-            this.ShowError($"Error: {ex.Message}");
+            this.ShowError(Localizer["Error", ex.Message]);
         }
         finally
         {

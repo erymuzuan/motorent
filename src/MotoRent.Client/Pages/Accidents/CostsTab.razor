@@ -1,12 +1,12 @@
 @using MotoRent.Domain.Entities
-@inherits MotoRentComponentBase
+@inherits LocalizedComponentBase<CostsTab>
 @inject AccidentService AccidentService
 
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h4 class="mb-0">Costs</h4>
+    <h4 class="mb-0">@Localizer["Costs"]</h4>
     <button type="button" class="btn btn-primary btn-sm" @onclick="AddCost">
         <i class="ti ti-plus me-1"></i>
-        Add Cost
+        @Localizer["AddCost"]
     </button>
 </div>
 
@@ -14,7 +14,7 @@
 {
     <div class="text-center text-secondary py-4">
         <i class="ti ti-currency-dollar mb-2" style="font-size: 2rem;"></i>
-        <div>No costs recorded yet</div>
+        <div>@Localizer["NoCostsRecorded"]</div>
     </div>
 }
 else
@@ -23,11 +23,11 @@ else
         <table class="table table-vcenter">
             <thead>
                 <tr>
-                    <th>Type</th>
-                    <th>Description</th>
-                    <th class="text-end">Estimated</th>
-                    <th class="text-end">Actual</th>
-                    <th>Status</th>
+                    <th>@Localizer["Type"]</th>
+                    <th>@Localizer["Description"]</th>
+                    <th class="text-end">@Localizer["Estimated"]</th>
+                    <th class="text-end">@Localizer["Actual"]</th>
+                    <th>@Localizer["Status"]</th>
                     <th class="w-1"></th>
                 </tr>
             </thead>
@@ -61,11 +61,11 @@ else
                         <td>
                             @if (cost.IsApproved)
                             {
-                                <span class="badge bg-success-lt">Approved</span>
+                                <span class="badge bg-success-lt">@Localizer["Approved"]</span>
                             }
                             else
                             {
-                                <span class="badge bg-warning-lt">Pending</span>
+                                <span class="badge bg-warning-lt">@Localizer["Pending"]</span>
                             }
                         </td>
                         <td>
@@ -83,7 +83,7 @@ else
             </tbody>
             <tfoot>
                 <tr class="fw-bold">
-                    <td colspan="2">Total</td>
+                    <td colspan="2">@Localizer["Total"]</td>
                     <td class="text-end">@FormatCurrency(Costs.Where(c => !c.IsCredit).Sum(c => c.EstimatedAmount))</td>
                     <td class="text-end">@FormatCurrency(Costs.Where(c => !c.IsCredit && c.ActualAmount.HasValue).Sum(c => c.ActualAmount!.Value))</td>
                     <td colspan="2"></td>
@@ -94,20 +94,12 @@ else
 }
 
 @code {
-    [Parameter]
-    public int AccidentId { get; set; }
-
-    [Parameter]
-    public List<AccidentCost> Costs { get; set; } = [];
-
-    [Parameter]
-    public EventCallback OnChanged { get; set; }
-
+...
     private async Task AddCost()
     {
         var cost = new AccidentCost { AccidentId = AccidentId };
         var result = await DialogService
-            .Create<AddCostDialog>("Add Cost")
+            .Create<AddCostDialog>(Localizer["AddCost"])
             .WithParameter(x => x.Entity, cost)
             .WithParameter(x => x.IsNew, true)
             .Large()
@@ -122,7 +114,7 @@ else
     private async Task EditCost(AccidentCost cost)
     {
         var result = await DialogService
-            .Create<AddCostDialog>("Edit Cost")
+            .Create<AddCostDialog>(Localizer["EditCost"])
             .WithParameter(x => x.Entity, cost.Clone())
             .WithParameter(x => x.IsNew, false)
             .Large()
@@ -136,7 +128,7 @@ else
 
     private async Task DeleteCost(AccidentCost cost)
     {
-        if (!await ConfirmDeleteAsync("this cost entry"))
+        if (!await ConfirmDeleteAsync(Localizer["DefaultCostEntryName"]))
             return;
 
         var deleteResult = await AccidentService.DeleteCostAsync(cost, UserName);

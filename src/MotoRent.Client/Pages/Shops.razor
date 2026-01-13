@@ -4,12 +4,12 @@
 @inherits LocalizedComponentBase<Shops>
 @inject ShopService ShopService
 
-<MotoRentPageTitle>Shops</MotoRentPageTitle>
+<MotoRentPageTitle>@Localizer["Shops"]</MotoRentPageTitle>
 
-<TablerHeader Title="Shop Locations" PreTitle="Settings">
+<TablerHeader Title="@Localizer["ShopLocations"]" PreTitle="@Localizer["Settings"]">
     <button type="button" class="btn btn-primary" @onclick="OpenAddDialog">
         <i class="ti ti-plus me-1"></i>
-        Add Shop
+        @Localizer["AddShop"]
     </button>
 </TablerHeader>
 
@@ -21,20 +21,20 @@
                     <span class="input-icon-addon">
                         <i class="ti ti-search"></i>
                     </span>
-                    <input type="text" class="form-control" placeholder="Search by name, location, address..."
+                    <input type="text" class="form-control" placeholder="@Localizer["SearchPlaceholder"]"
                            @bind="m_searchTerm" @bind:event="oninput" @onkeyup="OnSearchKeyUp" />
                 </div>
             </div>
             <div class="col-md-2">
                 <select class="form-select" @bind="m_activeFilter" @bind:after="LoadDataAsync">
-                    <option value="">All Status</option>
-                    <option value="true">Active</option>
-                    <option value="false">Inactive</option>
+                    <option value="">@Localizer["AllStatus"]</option>
+                    <option value="true">@Localizer["Active"]</option>
+                    <option value="false">@Localizer["Inactive"]</option>
                 </select>
             </div>
             <div class="col-md-6 text-end">
-                <span class="badge bg-success me-1">Active: @m_activeCount</span>
-                <span class="badge bg-secondary">Inactive: @m_inactiveCount</span>
+                <span class="badge bg-success me-1">@Localizer["ActiveCount", m_activeCount]</span>
+                <span class="badge bg-secondary">@Localizer["InactiveCount", m_inactiveCount]</span>
             </div>
         </div>
     </div>
@@ -53,7 +53,7 @@
                                 <div class="text-secondary">@shop.Location</div>
                             </div>
                             <span class="badge @(shop.IsActive ? "bg-success" : "bg-secondary")">
-                                @(shop.IsActive ? "Active" : "Inactive")
+                                @(shop.IsActive ? Localizer["Active"] : Localizer["Inactive"])
                             </span>
                         </div>
                     </div>
@@ -79,14 +79,15 @@
                             <div class="btn-list">
                                 <button type="button" class="btn btn-sm btn-outline-primary"
                                         @onclick="@(() => OpenEditDialog(shop))">
-                                    Edit
+                                    @Localizer["Edit"]
                                 </button>
                                 <button type="button" class="btn btn-sm @(shop.IsActive ? "btn-outline-warning" : "btn-outline-success")"
                                         @onclick="@(() => ToggleActiveStatus(shop))">
-                                    @(shop.IsActive ? "Deactivate" : "Activate")
+                                    @(shop.IsActive ? Localizer["Deactivate"] : Localizer["Activate"])
                                 </button>
                             </div>
                             <button type="button" class="btn btn-icon btn-ghost-danger"
+                                    title="@Localizer["Delete"]"
                                     @onclick="@(() => ConfirmDelete(shop))">
                                 <i class="ti ti-trash"></i>
                             </button>
@@ -103,15 +104,15 @@
     <div class="card">
         <div class="card-body text-center py-5">
             <i class="ti ti-building-store mb-3" style="font-size: 3rem; color: var(--tblr-secondary);"></i>
-            <h3 class="text-secondary">No shops found</h3>
+            <h3 class="text-secondary">@Localizer["NoShopsFound"]</h3>
             <p class="text-secondary">
                 @if (string.IsNullOrEmpty(m_searchTerm) && string.IsNullOrEmpty(m_activeFilter))
                 {
-                    <span>Click "Add Shop" to create your first shop location.</span>
+                    <span>@Localizer["AddShopHint"]</span>
                 }
                 else
                 {
-                    <span>Try adjusting your search filters.</span>
+                    <span>@Localizer["AdjustFiltersHint"]</span>
                 }
             </p>
         </div>
@@ -125,70 +126,24 @@
 </style>
 
 @code {
-    private List<Shop> m_shops = [];
-    private bool m_loading = true;
-    private string? m_searchTerm;
-    private string? m_activeFilter;
-    private int m_activeCount;
-    private int m_inactiveCount;
-    private System.Timers.Timer? m_debounceTimer;
-
-    protected override async Task OnInitializedAsync()
-    {
-        await this.LoadDataAsync();
-    }
-
+...
     private async Task LoadDataAsync()
     {
         this.m_loading = true;
         try
         {
-            bool? activeFilter = this.m_activeFilter switch
-            {
-                "true" => true,
-                "false" => false,
-                _ => null
-            };
-
-            var result = await this.ShopService.GetShopsAsync(
-                this.m_searchTerm,
-                activeFilter,
-                page: 1,
-                pageSize: 100);
-
-            this.m_shops = result.ItemCollection;
-
-            var allShops = await this.ShopService.GetShopsAsync(null, null, 1, 1000);
-            this.m_activeCount = allShops.ItemCollection.Count(s => s.IsActive);
-            this.m_inactiveCount = allShops.ItemCollection.Count(s => !s.IsActive);
+...
         }
         catch (Exception ex)
         {
-            this.ShowError($"Error loading data: {ex.Message}");
+            this.ShowError(Localizer["ErrorLoadingData", ex.Message]);
         }
         finally
         {
             this.m_loading = false;
         }
     }
-
-    private void OnSearchKeyUp(KeyboardEventArgs e)
-    {
-        this.m_debounceTimer?.Stop();
-        this.m_debounceTimer?.Dispose();
-        this.m_debounceTimer = new System.Timers.Timer(300);
-        this.m_debounceTimer.Elapsed += async (_, _) =>
-        {
-            this.m_debounceTimer?.Stop();
-            await this.InvokeAsync(async () =>
-            {
-                await this.LoadDataAsync();
-                this.StateHasChanged();
-            });
-        };
-        this.m_debounceTimer.Start();
-    }
-
+...
     private async Task OpenAddDialog()
     {
         var shop = new Shop
@@ -197,7 +152,7 @@
         };
 
         var result = await this.DialogService
-            .Create<ShopDialog>("Add Shop")
+            .Create<ShopDialog>(Localizer["AddShop"])
             .WithParameter(x => x.Entity, shop)
             .WithParameter(x => x.IsNew, true)
             .Large()
@@ -206,14 +161,14 @@
         if (!result.Cancelled)
         {
             await this.LoadDataAsync();
-            this.ShowSuccess("Shop added successfully");
+            this.ShowSuccess(Localizer["ShopAdded"]);
         }
     }
 
     private async Task OpenEditDialog(Shop shop)
     {
         var result = await this.DialogService
-            .Create<ShopDialog>("Edit Shop")
+            .Create<ShopDialog>(Localizer["EditShop"])
             .WithParameter(x => x.Entity, shop.Clone())
             .WithParameter(x => x.IsNew, false)
             .Large()
@@ -222,49 +177,45 @@
         if (!result.Cancelled)
         {
             await this.LoadDataAsync();
-            this.ShowSuccess("Shop updated successfully");
+            this.ShowSuccess(Localizer["ShopUpdated"]);
         }
     }
 
     private async Task ToggleActiveStatus(Shop shop)
     {
-        var action = shop.IsActive ? "deactivate" : "activate";
+        var action = shop.IsActive ? Localizer["Deactivate"].Value : Localizer["Activate"].Value;
         if (!await this.DialogService.ConfirmYesNoAsync(
-            $"Are you sure you want to {action} '{shop.Name}'?",
-            $"Confirm {action}"))
+            Localizer["ConfirmAction", action, shop.Name ?? ""],
+            Localizer["ConfirmTitle", action]))
             return;
 
         var result = await this.ShopService.SetActiveStatusAsync(shop.ShopId, !shop.IsActive, this.UserName);
         if (result.Success)
         {
             await this.LoadDataAsync();
-            this.ShowSuccess($"Shop {action}d successfully");
+            this.ShowSuccess(Localizer["ActionSuccess", action]);
         }
         else
         {
-            this.ShowError($"Failed to {action} shop: {result.Message}");
+            this.ShowError(Localizer["ActionFailed", action, result.Message ?? ""]);
         }
     }
 
     private async Task ConfirmDelete(Shop shop)
     {
-        if (!await this.ConfirmDeleteAsync(shop.Name ?? "this shop"))
+        if (!await this.ConfirmDeleteAsync(shop.Name ?? Localizer["DefaultShopName"].Value))
             return;
 
         var deleteResult = await this.ShopService.DeleteShopAsync(shop, this.UserName);
         if (deleteResult.Success)
         {
             await this.LoadDataAsync();
-            this.ShowSuccess("Shop deleted successfully");
+            this.ShowSuccess(Localizer["ShopDeleted"]);
         }
         else
         {
-            this.ShowError($"Delete failed: {deleteResult.Message}");
+            this.ShowError(Localizer["DeleteFailed", deleteResult.Message ?? ""]);
         }
     }
-
-    public void Dispose()
-    {
-        this.m_debounceTimer?.Dispose();
-    }
+...
 }

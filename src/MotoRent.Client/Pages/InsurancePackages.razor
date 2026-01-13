@@ -5,12 +5,12 @@
 @using InsuranceEntity = MotoRent.Domain.Entities.Insurance
 @inject InsuranceService InsuranceService
 
-<MotoRentPageTitle>Insurance Packages</MotoRentPageTitle>
+<MotoRentPageTitle>@Localizer["InsurancePackages"]</MotoRentPageTitle>
 
-<TablerHeader Title="Insurance Packages" PreTitle="Settings">
+<TablerHeader Title="@Localizer["InsurancePackages"]" PreTitle="@Localizer["Settings"]">
     <button type="button" class="btn btn-primary" @onclick="OpenAddDialog">
         <i class="ti ti-plus me-1"></i>
-        Add Package
+        @Localizer["AddPackage"]
     </button>
 </TablerHeader>
 
@@ -18,16 +18,16 @@
     <div class="card-body">
         <div class="row g-3 align-items-center">
             <div class="col-md-6">
-                <span class="text-secondary">Status Overview:</span>
+                <span class="text-secondary">@Localizer["StatusOverview"]</span>
             </div>
             <div class="col-md-6 text-end">
                 @if (m_activeCounts.TryGetValue(true, out var activeCount))
                 {
-                    <span class="badge bg-success me-1">Active: @activeCount</span>
+                    <span class="badge bg-success me-1">@Localizer["ActiveCount", activeCount]</span>
                 }
                 @if (m_activeCounts.TryGetValue(false, out var inactiveCount))
                 {
-                    <span class="badge bg-secondary">Inactive: @inactiveCount</span>
+                    <span class="badge bg-secondary">@Localizer["InactiveCount", inactiveCount]</span>
                 }
             </div>
         </div>
@@ -40,13 +40,13 @@
             <table class="table table-vcenter card-table table-striped table-hover">
                 <thead>
                     <tr>
-                        <th>Package Name</th>
-                        <th>Description</th>
-                        <th>Daily Rate</th>
-                        <th>Max Coverage</th>
-                        <th>Deductible</th>
-                        <th>Status</th>
-                        <th class="w-1">Actions</th>
+                        <th>@Localizer["PackageName"]</th>
+                        <th>@Localizer["Description"]</th>
+                        <th>@Localizer["DailyRate"]</th>
+                        <th>@Localizer["MaxCoverage"]</th>
+                        <th>@Localizer["Deductible"]</th>
+                        <th>@Localizer["Status"]</th>
+                        <th class="w-1">@Localizer["Actions"]</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -55,7 +55,7 @@
                         <tr>
                             <td colspan="7" class="text-center text-secondary py-4">
                                 <i class="ti ti-shield-check mb-2" style="font-size: 2rem;"></i>
-                                <div>No insurance packages found</div>
+                                <div>@Localizer["NoInsurancesFound"]</div>
                             </td>
                         </tr>
                     }
@@ -86,11 +86,11 @@
                                 <td @onclick:stopPropagation="true">
                                     <div class="btn-list flex-nowrap">
                                         <button type="button" class="btn btn-icon btn-ghost-primary"
-                                                title="Edit" @onclick="@(() => OpenEditDialog(insurance))">
+                                                title="@Localizer["Edit"]" @onclick="@(() => OpenEditDialog(insurance))">
                                             <i class="ti ti-edit"></i>
                                         </button>
                                         <button type="button" class="btn btn-icon btn-ghost-danger"
-                                                title="Delete" @onclick="@(() => ConfirmDelete(insurance))">
+                                                title="@Localizer["Delete"]" @onclick="@(() => ConfirmDelete(insurance))">
                                             <i class="ti ti-trash"></i>
                                         </button>
                                     </div>
@@ -105,7 +105,7 @@
         {
             <div class="card-footer d-flex align-items-center">
                 <p class="m-0 text-secondary">
-                    Showing <strong>@m_insurances.Count</strong> insurance packages
+                    @Localizer["ShowingCount", m_insurances.Count]
                 </p>
             </div>
         }
@@ -133,7 +133,7 @@
         }
         catch (Exception ex)
         {
-            this.ShowError($"Error loading data: {ex.Message}");
+            this.ShowError(Localizer["ErrorLoadingData", ex.Message]);
         }
         finally
         {
@@ -150,7 +150,7 @@
         };
 
         var result = await this.DialogService
-            .Create<InsuranceDialog>("Add Insurance Package")
+            .Create<InsuranceDialog>(Localizer["AddPackage"])
             .WithParameter(x => x.Entity, insurance)
             .WithParameter(x => x.IsNew, true)
             .Large()
@@ -159,14 +159,14 @@
         if (!result.Cancelled)
         {
             await this.LoadDataAsync();
-            this.ShowSuccess("Insurance package added successfully");
+            this.ShowSuccess(Localizer["InsuranceAdded"]);
         }
     }
 
     private async Task OpenEditDialog(InsuranceEntity insurance)
     {
         var result = await this.DialogService
-            .Create<InsuranceDialog>("Edit Insurance Package")
+            .Create<InsuranceDialog>(Localizer["EditInsurance"])
             .WithParameter(x => x.Entity, insurance.Clone())
             .WithParameter(x => x.IsNew, false)
             .Large()
@@ -175,24 +175,24 @@
         if (!result.Cancelled)
         {
             await this.LoadDataAsync();
-            this.ShowSuccess("Insurance package updated successfully");
+            this.ShowSuccess(Localizer["InsuranceUpdated"]);
         }
     }
 
     private async Task ConfirmDelete(InsuranceEntity insurance)
     {
-        if (!await this.ConfirmDeleteAsync(insurance.Name ?? "this insurance package"))
+        if (!await this.ConfirmDeleteAsync(insurance.Name ?? Localizer["DefaultInsuranceName"].Value))
             return;
 
         var deleteResult = await this.InsuranceService.DeleteInsuranceAsync(insurance, this.UserName);
         if (deleteResult.Success)
         {
             await this.LoadDataAsync();
-            this.ShowSuccess("Insurance package deleted successfully");
+            this.ShowSuccess(Localizer["InsuranceDeleted"]);
         }
         else
         {
-            this.ShowError($"Delete failed: {deleteResult.Message}");
+            this.ShowError(Localizer["DeleteFailed", deleteResult.Message ?? ""]);
         }
     }
 
@@ -202,12 +202,12 @@
         if (result.Success)
         {
             await this.LoadDataAsync();
-            var status = insurance.IsActive ? "deactivated" : "activated";
-            this.ShowSuccess($"Insurance package {status}");
+            var status = insurance.IsActive ? Localizer["Deactivated"].Value : Localizer["Activated"].Value;
+            this.ShowSuccess(Localizer["InsuranceStatusUpdated", status]);
         }
         else
         {
-            this.ShowError($"Failed to update status: {result.Message}");
+            this.ShowError(Localizer["UpdateStatusFailed", result.Message ?? ""]);
         }
     }
 }

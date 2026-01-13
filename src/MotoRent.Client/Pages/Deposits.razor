@@ -4,26 +4,26 @@
 @inherits LocalizedComponentBase<Deposits>
 @inject DepositService DepositService
 
-<MotoRentPageTitle>Deposits</MotoRentPageTitle>
+<MotoRentPageTitle>@Localizer["Deposits"]</MotoRentPageTitle>
 
-<TablerHeader Title="Deposit Tracking" PreTitle="Finance">
-    <span class="text-secondary">Manage security deposits for rentals</span>
+<TablerHeader Title="@Localizer["DepositTracking"]" PreTitle="@Localizer["Finance"]">
+    <span class="text-secondary">@Localizer["ManageDepositsHint"]</span>
 </TablerHeader>
 
 <div class="row row-deck row-cards mb-3">
     <div class="col-sm-6 col-lg-3">
         <div class="card">
             <div class="card-body">
-                <div class="subheader">Total Held</div>
+                <div class="subheader">@Localizer["TotalHeld"]</div>
                 <div class="h2 text-primary">@FormatCurrency(m_totalHeld)</div>
-                <div class="text-secondary small">@m_statusCounts.GetValueOrDefault("Held", 0) deposits</div>
+                <div class="text-secondary small">@Localizer["DepositsCount", m_statusCounts.GetValueOrDefault("Held", 0)]</div>
             </div>
         </div>
     </div>
     <div class="col-sm-6 col-lg-3">
         <div class="card">
             <div class="card-body">
-                <div class="subheader">Held</div>
+                <div class="subheader">@Localizer["Held"]</div>
                 <div class="d-flex align-items-center gap-2">
                     <i class="ti ti-lock text-warning fs-2"></i>
                     <span class="h3">@m_statusCounts.GetValueOrDefault("Held", 0)</span>
@@ -34,7 +34,7 @@
     <div class="col-sm-6 col-lg-3">
         <div class="card">
             <div class="card-body">
-                <div class="subheader">Refunded</div>
+                <div class="subheader">@Localizer["Refunded"]</div>
                 <div class="d-flex align-items-center gap-2">
                     <i class="ti ti-circle-check text-success fs-2"></i>
                     <span class="h3">@m_statusCounts.GetValueOrDefault("Refunded", 0)</span>
@@ -45,7 +45,7 @@
     <div class="col-sm-6 col-lg-3">
         <div class="card">
             <div class="card-body">
-                <div class="subheader">Forfeited</div>
+                <div class="subheader">@Localizer["Forfeited"]</div>
                 <div class="d-flex align-items-center gap-2">
                     <i class="ti ti-ban text-danger fs-2"></i>
                     <span class="h3">@m_statusCounts.GetValueOrDefault("Forfeited", 0)</span>
@@ -60,22 +60,22 @@
         <ul class="nav nav-tabs card-header-tabs">
             <li class="nav-item">
                 <button class="nav-link @(m_activeTab == 0 ? "active" : "")" @onclick="@(() => SetActiveTab(0))">
-                    <i class="ti ti-list me-1"></i> All
+                    <i class="ti ti-list me-1"></i> @Localizer["All"]
                 </button>
             </li>
             <li class="nav-item">
                 <button class="nav-link @(m_activeTab == 1 ? "active" : "")" @onclick="@(() => SetActiveTab(1))">
-                    <i class="ti ti-lock me-1"></i> Held
+                    <i class="ti ti-lock me-1"></i> @Localizer["Held"]
                 </button>
             </li>
             <li class="nav-item">
                 <button class="nav-link @(m_activeTab == 2 ? "active" : "")" @onclick="@(() => SetActiveTab(2))">
-                    <i class="ti ti-circle-check me-1"></i> Refunded
+                    <i class="ti ti-circle-check me-1"></i> @Localizer["Refunded"]
                 </button>
             </li>
             <li class="nav-item">
                 <button class="nav-link @(m_activeTab == 3 ? "active" : "")" @onclick="@(() => SetActiveTab(3))">
-                    <i class="ti ti-ban me-1"></i> Forfeited
+                    <i class="ti ti-ban me-1"></i> @Localizer["Forfeited"]
                 </button>
             </li>
         </ul>
@@ -88,15 +88,15 @@
             <table class="table table-vcenter card-table table-striped">
                 <thead>
                     <tr>
-                        <th>ID</th>
-                        <th>Renter</th>
-                        <th>Motorbike</th>
-                        <th>Type</th>
-                        <th>Amount</th>
-                        <th>Status</th>
-                        <th>Collected</th>
-                        <th>Refunded</th>
-                        <th class="w-1">Actions</th>
+                        <th>@Localizer["ID"]</th>
+                        <th>@Localizer["Renter"]</th>
+                        <th>@Localizer["Motorbike"]</th>
+                        <th>@Localizer["Type"]</th>
+                        <th>@Localizer["Amount"]</th>
+                        <th>@Localizer["Status"]</th>
+                        <th>@Localizer["Collected"]</th>
+                        <th>@Localizer["Refunded"]</th>
+                        <th class="w-1">@Localizer["Actions"]</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -105,7 +105,7 @@
                         <tr>
                             <td colspan="9" class="text-center text-secondary py-4">
                                 <i class="ti ti-wallet mb-2" style="font-size: 2rem;"></i>
-                                <div>No deposits found</div>
+                                <div>@Localizer["NoDepositsFound"]</div>
                             </td>
                         </tr>
                     }
@@ -125,7 +125,7 @@
                                 <td class="fw-bold">@FormatCurrency(item.Deposit.Amount)</td>
                                 <td>
                                     <span class="badge @GetStatusBadgeClass(item.Deposit.Status)">
-                                        @item.Deposit.Status
+                                        @Localizer[item.Deposit.Status ?? ""]
                                     </span>
                                 </td>
                                 <td>@FormatDate(item.Deposit.CollectedOn)</td>
@@ -143,16 +143,16 @@
                                     <div class="btn-list flex-nowrap">
                                         @if (item.Deposit.Status == "Held")
                                         {
-                                            <button type="button" class="btn btn-icon btn-ghost-success" title="Refund"
+                                            <button type="button" class="btn btn-icon btn-ghost-success" title="@Localizer["Refund"]"
                                                     @onclick="@(() => OpenRefundDialog(item))">
                                                 <i class="ti ti-cash-off"></i>
                                             </button>
-                                            <button type="button" class="btn btn-icon btn-ghost-danger" title="Forfeit"
+                                            <button type="button" class="btn btn-icon btn-ghost-danger" title="@Localizer["Forfeit"]"
                                                     @onclick="@(() => OpenForfeitDialog(item))">
                                                 <i class="ti ti-x"></i>
                                             </button>
                                         }
-                                        <a href="/rentals/view/@EncodeId(item.Deposit.RentalId)" class="btn btn-icon btn-ghost-primary" title="View Rental">
+                                        <a href="/rentals/view/@EncodeId(item.Deposit.RentalId)" class="btn btn-icon btn-ghost-primary" title="@Localizer["ViewRental"]">
                                             <i class="ti ti-eye"></i>
                                         </a>
                                     </div>
@@ -205,7 +205,7 @@
         }
         catch (Exception ex)
         {
-            this.ShowError($"Error loading deposits: {ex.Message}");
+            this.ShowError(Localizer["ErrorLoadingDeposits", ex.Message]);
         }
         finally
         {
@@ -251,33 +251,33 @@
     private async Task OpenRefundDialog(DepositWithRentalInfo item)
     {
         var result = await this.DialogService
-            .Create<RefundDepositDialog>("Refund Deposit")
+            .Create<RefundDepositDialog>(Localizer["RefundDeposit"])
             .WithParameter(x => x.Entity, item.Deposit)
             .ShowDialogAsync();
 
         if (!result.Cancelled)
         {
             await this.LoadData();
-            this.ShowSuccess("Deposit refunded successfully");
+            this.ShowSuccess(Localizer["DepositRefunded"]);
         }
     }
 
     private async Task OpenForfeitDialog(DepositWithRentalInfo item)
     {
         if (!await this.DialogService.ConfirmYesNoAsync(
-            $"Are you sure you want to forfeit the deposit of {FormatCurrency(item.Deposit.Amount)} from {item.RenterName}? This action cannot be undone.",
-            "Forfeit Deposit"))
+            Localizer["ConfirmForfeitMessage", FormatCurrency(item.Deposit.Amount), item.RenterName],
+            Localizer["ConfirmForfeit"]))
             return;
 
         var result = await this.DepositService.ForfeitDepositAsync(item.Deposit.DepositId, "Manual forfeit", this.UserName);
         if (result.Success)
         {
             await this.LoadData();
-            this.ShowSuccess("Deposit forfeited");
+            this.ShowSuccess(Localizer["DepositForfeited"]);
         }
         else
         {
-            this.ShowError($"Failed to forfeit deposit: {result.Message}");
+            this.ShowError(Localizer["ForfeitFailed", result.Message ?? ""]);
         }
     }
 }

@@ -6,11 +6,11 @@
         <div class="alert alert-info mb-3">
             <div class="d-flex align-items-center">
                 <i class="ti ti-info-circle me-2"></i>
-                <span>Refunding deposit of <strong>@FormatCurrency(Entity.Amount)</strong> to <strong>@RenterName</strong></span>
+                <span>@Localizer["RefundDepositHint", FormatCurrency(Entity.Amount), RenterName]</span>
             </div>
         </div>
 
-        <h4 class="mb-3">Refund Method</h4>
+        <h4 class="mb-3">@Localizer["RefundMethod"]</h4>
 
         <div class="mb-3">
             <div class="form-selectgroup form-selectgroup-boxes d-flex flex-column gap-2">
@@ -23,7 +23,7 @@
                         </div>
                         <div class="d-flex align-items-center">
                             <i class="ti ti-cash text-success fs-2 me-2"></i>
-                            <span>Cash</span>
+                            <span>@Localizer["Cash"]</span>
                         </div>
                     </div>
                 </label>
@@ -39,7 +39,7 @@
                             </div>
                             <div class="d-flex align-items-center">
                                 <i class="ti ti-credit-card text-primary fs-2 me-2"></i>
-                                <span>Return to Card @(!string.IsNullOrEmpty(Entity.CardLast4) ? $"(****{Entity.CardLast4})" : "")</span>
+                                <span>@Localizer["ReturnToCard", Entity.CardLast4 ?? ""]</span>
                             </div>
                         </div>
                     </label>
@@ -54,7 +54,7 @@
                         </div>
                         <div class="d-flex align-items-center">
                             <i class="ti ti-building-bank text-info fs-2 me-2"></i>
-                            <span>Bank Transfer</span>
+                            <span>@Localizer["BankTransfer"]</span>
                         </div>
                     </div>
                 </label>
@@ -68,7 +68,7 @@
                         </div>
                         <div class="d-flex align-items-center">
                             <i class="ti ti-qrcode text-secondary fs-2 me-2"></i>
-                            <span>QR Code (PromptPay)</span>
+                            <span>@Localizer["QRCode"]</span>
                         </div>
                     </div>
                 </label>
@@ -79,7 +79,7 @@
             <label class="form-check">
                 <input type="checkbox" class="form-check-input" @bind="m_confirmed" />
                 <span class="form-check-label">
-                    I confirm the refund of @FormatCurrency(Entity.Amount) has been processed via @m_refundMethod
+                    @Localizer["ConfirmRefundProcessed", FormatCurrency(Entity.Amount), Localizer[m_refundMethod]]
                 </span>
             </label>
         </div>
@@ -88,7 +88,7 @@
 
 <div class="modal-footer">
     <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
-        Cancel
+        @Localizer["Cancel"]
     </button>
     <button type="submit" form="@FormId" class="btn btn-success" disabled="@(!m_confirmed || Saving)">
         @if (Saving)
@@ -96,25 +96,12 @@
             <span class="spinner-border spinner-border-sm me-2" role="status"></span>
         }
         <i class="ti ti-cash-off me-1"></i>
-        Process Refund
+        @Localizer["ProcessRefund"]
     </button>
 </div>
 
 @code {
-    [Parameter] public string RenterName { get; set; } = "";
-
-    private string m_refundMethod = "Cash";
-    private bool m_confirmed;
-
-    protected override void OnInitialized()
-    {
-        // Default to card refund if original deposit was card pre-auth
-        if (this.Entity.DepositType == "CardPreAuth")
-        {
-            this.m_refundMethod = "Card";
-        }
-    }
-
+...
     private async Task ProcessRefund()
     {
         this.Saving = true;
@@ -128,12 +115,12 @@
             }
             else
             {
-                this.ShowError($"Failed to process refund: {result.Message}");
+                this.ShowError(Localizer["RefundFailed", result.Message ?? ""]);
             }
         }
         catch (Exception ex)
         {
-            this.ShowError($"Error: {ex.Message}");
+            this.ShowError(Localizer["Error", ex.Message]);
         }
         finally
         {

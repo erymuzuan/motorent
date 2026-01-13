@@ -1,12 +1,12 @@
 @using MotoRent.Domain.Entities
-@inherits MotoRentComponentBase
+@inherits LocalizedComponentBase<TimelineTab>
 @inject AccidentService AccidentService
 
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h4 class="mb-0">Timeline / Activity</h4>
+    <h4 class="mb-0">@Localizer["TimelineActivity"]</h4>
     <button type="button" class="btn btn-primary btn-sm" @onclick="AddNote">
         <i class="ti ti-plus me-1"></i>
-        Add Note
+        @Localizer["AddNote"]
     </button>
 </div>
 
@@ -14,7 +14,7 @@
 {
     <div class="text-center text-secondary py-4">
         <i class="ti ti-timeline mb-2" style="font-size: 2rem;"></i>
-        <div>No activity recorded yet</div>
+        <div>@Localizer["NoActivityRecorded"]</div>
     </div>
 }
 else
@@ -31,7 +31,7 @@ else
                         <div class="flex-fill">
                             @if (note.NoteType == "StatusChange")
                             {
-                                <div class="text-secondary small mb-1">Status Change</div>
+                                <div class="text-secondary small mb-1">@Localizer["StatusChange"]</div>
                                 <span class="badge bg-secondary-lt me-1">@note.PreviousStatus</span>
                                 <i class="ti ti-arrow-right"></i>
                                 <span class="badge bg-primary-lt ms-1">@note.NewStatus</span>
@@ -46,7 +46,7 @@ else
                             <small class="text-secondary">
                                 @FormatDateTime(note.CreatedTimestamp)
                             </small>
-                            <div class="small text-secondary">by @note.CreatedBy</div>
+                            <div class="small text-secondary">@Localizer["ByUser", note.CreatedBy ?? ""]</div>
                             @if (note.NoteType != "StatusChange")
                             {
                                 <button type="button" class="btn btn-icon btn-ghost-danger btn-sm mt-1" @onclick="@(() => DeleteNote(note))">
@@ -73,7 +73,7 @@ else
 
     private async Task AddNote()
     {
-        var content = await DialogService.PromptAsync("Add Note", "Enter your note:");
+        var content = await DialogService.PromptAsync(Localizer["AddNote"], Localizer["EnterNote"]);
         if (string.IsNullOrWhiteSpace(content)) return;
 
         var note = new AccidentNote
@@ -93,7 +93,7 @@ else
 
     private async Task DeleteNote(AccidentNote note)
     {
-        if (!await ConfirmDeleteAsync("this note"))
+        if (!await ConfirmDeleteAsync(Localizer["DefaultNoteName"]))
             return;
 
         var deleteResult = await AccidentService.DeleteNoteAsync(note, UserName);

@@ -1,12 +1,12 @@
 @using MotoRent.Domain.Entities
-@inherits MotoRentComponentBase
+@inherits LocalizedComponentBase<PartiesTab>
 @inject AccidentService AccidentService
 
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h4 class="mb-0">Parties Involved</h4>
+    <h4 class="mb-0">@Localizer["PartiesInvolved"]</h4>
     <button type="button" class="btn btn-primary btn-sm" @onclick="AddParty">
         <i class="ti ti-plus me-1"></i>
-        Add Party
+        @Localizer["AddParty"]
     </button>
 </div>
 
@@ -14,7 +14,7 @@
 {
     <div class="text-center text-secondary py-4">
         <i class="ti ti-users mb-2" style="font-size: 2rem;"></i>
-        <div>No parties added yet</div>
+        <div>@Localizer["NoPartiesAdded"]</div>
     </div>
 }
 else
@@ -23,10 +23,10 @@ else
         <table class="table table-vcenter">
             <thead>
                 <tr>
-                    <th>Type</th>
-                    <th>Name</th>
-                    <th>Contact</th>
-                    <th>Status</th>
+                    <th>@Localizer["Type"]</th>
+                    <th>@Localizer["Name"]</th>
+                    <th>@Localizer["Contact"]</th>
+                    <th>@Localizer["Status"]</th>
                     <th class="w-1"></th>
                 </tr>
             </thead>
@@ -57,11 +57,11 @@ else
                         <td>
                             @if (party.IsInjured)
                             {
-                                <span class="badge bg-danger-lt">Injured</span>
+                                <span class="badge bg-danger-lt">@Localizer["Injured"]</span>
                             }
                             @if (party.IsAtFault == true)
                             {
-                                <span class="badge bg-warning-lt">At Fault @(party.FaultPercentage.HasValue ? $"({party.FaultPercentage}%)" : "")</span>
+                                <span class="badge bg-warning-lt">@Localizer["AtFault"] @(party.FaultPercentage.HasValue ? $"({party.FaultPercentage}%)" : "")</span>
                             }
                         </td>
                         <td>
@@ -95,7 +95,7 @@ else
     {
         var party = new AccidentParty { AccidentId = AccidentId };
         var result = await DialogService
-            .Create<AddPartyDialog>("Add Party")
+            .Create<AddPartyDialog>(Localizer["AddParty"])
             .WithParameter(x => x.Entity, party)
             .WithParameter(x => x.IsNew, true)
             .Large()
@@ -110,7 +110,7 @@ else
     private async Task EditParty(AccidentParty party)
     {
         var result = await DialogService
-            .Create<AddPartyDialog>("Edit Party")
+            .Create<AddPartyDialog>(Localizer["EditParty"])
             .WithParameter(x => x.Entity, party.Clone())
             .WithParameter(x => x.IsNew, false)
             .Large()

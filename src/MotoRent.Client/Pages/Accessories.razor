@@ -1,17 +1,10 @@
-@page "/accessories"
-@using Microsoft.AspNetCore.Authorization
-@attribute [Authorize(Policy = "RequireTenantStaff")]
-@inherits LocalizedComponentBase<Accessories>
-@inject AccessoryService AccessoryService
+<MotoRentPageTitle>@Localizer["Accessories"]</MotoRentPageTitle>
 
-<MotoRentPageTitle>Accessories</MotoRentPageTitle>
-
-<TablerHeader Title="Rental Accessories" PreTitle="Inventory Management">
+<TablerHeader Title="@Localizer["RentalAccessories"]" PreTitle="@Localizer["InventoryManagement"]"></TablerHeader>
     <button type="button" class="btn btn-primary" @onclick="OpenAddDialog">
         <i class="ti ti-plus me-1"></i>
-        Add Accessory
+        @Localizer["AddAccessory"]
     </button>
-</TablerHeader>
 
 <div class="card mb-3">
     <div class="card-body">
@@ -21,13 +14,13 @@
                     <span class="input-icon-addon">
                         <i class="ti ti-search"></i>
                     </span>
-                    <input type="text" class="form-control" placeholder="Search by name..."
+                    <input type="text" class="form-control" placeholder="@Localizer["SearchPlaceholder"]"
                            @bind="m_searchTerm" @bind:event="oninput" @onkeyup="OnSearchKeyUp" />
                 </div>
             </div>
             <div class="col-md-8 text-end">
-                <span class="badge bg-primary me-1">Total: @m_totalCount</span>
-                <span class="badge bg-success">Free with rental: @m_includedFreeCount</span>
+                <span class="badge bg-primary me-1">@Localizer["TotalCount", m_totalCount]</span>
+                <span class="badge bg-success">@Localizer["IncludedFreeCount", m_includedFreeCount]</span>
             </div>
         </div>
     </div>
@@ -39,11 +32,11 @@
             <table class="table table-vcenter card-table table-striped table-hover">
                 <thead>
                     <tr>
-                        <th>Name</th>
-                        <th>Daily Rate</th>
-                        <th>Quantity</th>
-                        <th>Included</th>
-                        <th class="w-1">Actions</th>
+                        <th>@Localizer["Name"]</th>
+                        <th>@Localizer["DailyRate"]</th>
+                        <th>@Localizer["Quantity"]</th>
+                        <th>@Localizer["Included"]</th>
+                        <th class="w-1">@Localizer["Actions"]</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -52,7 +45,7 @@
                         <tr>
                             <td colspan="5" class="text-center text-secondary py-4">
                                 <i class="ti ti-headphones mb-2" style="font-size: 2rem;"></i>
-                                <div>No accessories found</div>
+                                <div>@Localizer["NoAccessoriesFound"]</div>
                             </td>
                         </tr>
                     }
@@ -67,7 +60,7 @@
                                 <td>
                                     @if (accessory.IsIncluded)
                                     {
-                                        <span class="badge bg-success">Free</span>
+                                        <span class="badge bg-success">@Localizer["Free"]</span>
                                     }
                                     else
                                     {
@@ -79,11 +72,11 @@
                                         <span>@accessory.QuantityAvailable</span>
                                         @if (accessory.QuantityAvailable == 0)
                                         {
-                                            <span class="badge bg-danger">Out of stock</span>
+                                            <span class="badge bg-danger">@Localizer["OutOfStock"]</span>
                                         }
                                         else if (accessory.QuantityAvailable <= 3)
                                         {
-                                            <span class="badge bg-warning">Low</span>
+                                            <span class="badge bg-warning">@Localizer["Low"]</span>
                                         }
                                     </div>
                                 </td>
@@ -96,11 +89,11 @@
                                 <td @onclick:stopPropagation="true">
                                     <div class="btn-list flex-nowrap">
                                         <button type="button" class="btn btn-icon btn-ghost-primary"
-                                                title="Edit" @onclick="@(() => OpenEditDialog(accessory))">
+                                                title="@Localizer["Edit"]" @onclick="@(() => OpenEditDialog(accessory))">
                                             <i class="ti ti-edit"></i>
                                         </button>
                                         <button type="button" class="btn btn-icon btn-ghost-danger"
-                                                title="Delete" @onclick="@(() => ConfirmDelete(accessory))">
+                                                title="@Localizer["Delete"]" @onclick="@(() => ConfirmDelete(accessory))">
                                             <i class="ti ti-trash"></i>
                                         </button>
                                     </div>
@@ -115,7 +108,7 @@
         {
             <div class="card-footer d-flex align-items-center">
                 <p class="m-0 text-secondary">
-                    Showing <strong>@m_accessories.Count</strong> accessories
+                    @Localizer["ShowingCount", m_accessories.Count]
                 </p>
             </div>
         }
@@ -154,7 +147,7 @@
         }
         catch (Exception ex)
         {
-            this.ShowError($"Error loading data: {ex.Message}");
+            this.ShowError(Localizer["ErrorLoadingData", ex.Message]);
         }
         finally
         {
@@ -188,7 +181,7 @@
         };
 
         var result = await this.DialogService
-            .Create<AccessoryDialog>("Add Accessory")
+            .Create<AccessoryDialog>(Localizer["AddAccessory"])
             .WithParameter(x => x.Entity, accessory)
             .WithParameter(x => x.IsNew, true)
             .ShowDialogAsync();
@@ -196,14 +189,14 @@
         if (!result.Cancelled)
         {
             await this.LoadDataAsync();
-            this.ShowSuccess("Accessory added successfully");
+            this.ShowSuccess(Localizer["AccessoryAdded"]);
         }
     }
 
     private async Task OpenEditDialog(Accessory accessory)
     {
         var result = await this.DialogService
-            .Create<AccessoryDialog>("Edit Accessory")
+            .Create<AccessoryDialog>(Localizer["EditAccessory"])
             .WithParameter(x => x.Entity, accessory.Clone())
             .WithParameter(x => x.IsNew, false)
             .ShowDialogAsync();
@@ -211,24 +204,24 @@
         if (!result.Cancelled)
         {
             await this.LoadDataAsync();
-            this.ShowSuccess("Accessory updated successfully");
+            this.ShowSuccess(Localizer["AccessoryUpdated"]);
         }
     }
 
     private async Task ConfirmDelete(Accessory accessory)
     {
-        if (!await this.ConfirmDeleteAsync(accessory.Name ?? "this accessory"))
+        if (!await this.ConfirmDeleteAsync(accessory.Name ?? Localizer["DefaultAccessoryName"]))
             return;
 
         var deleteResult = await this.AccessoryService.DeleteAccessoryAsync(accessory, this.UserName);
         if (deleteResult.Success)
         {
             await this.LoadDataAsync();
-            this.ShowSuccess("Accessory deleted successfully");
+            this.ShowSuccess(Localizer["AccessoryDeleted"]);
         }
         else
         {
-            this.ShowError($"Delete failed: {deleteResult.Message}");
+            this.ShowError(Localizer["DeleteFailed", deleteResult.Message ?? ""]);
         }
     }
 
