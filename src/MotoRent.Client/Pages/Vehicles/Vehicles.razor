@@ -9,29 +9,29 @@
 @inject VehiclePoolService VehiclePoolService
 @inject MaintenanceService MaintenanceService
 
-<MotoRentPageTitle>Fleet Management</MotoRentPageTitle>
+<MotoRentPageTitle>@Localizer["FleetManagement"]</MotoRentPageTitle>
 
-<TablerHeader Title="Fleet Management" PreTitle="Vehicle Inventory">
+<TablerHeader Title="@Localizer["FleetManagement"]" PreTitle="@Localizer["VehicleInventory"]">
     <div class="dropdown">
         <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
             <i class="ti ti-plus me-1"></i>
-            Add Vehicle
+            @Localizer["AddVehicle"]
         </button>
         <div class="dropdown-menu dropdown-menu-end">
             <a class="dropdown-item" href="/vehicles/motorbike/new">
-                <i class="ti ti-motorbike me-2"></i>Motorbike
+                <i class="ti ti-motorbike me-2"></i>@Localizer["Motorbike"]
             </a>
             <a class="dropdown-item" href="/vehicles/car/new">
-                <i class="ti ti-car me-2"></i>Car
+                <i class="ti ti-car me-2"></i>@Localizer["Car"]
             </a>
             <a class="dropdown-item" href="/vehicles/jetski/new">
-                <i class="ti ti-sailboat me-2"></i>Jet Ski
+                <i class="ti ti-sailboat me-2"></i>@Localizer["JetSki"]
             </a>
             <a class="dropdown-item" href="/vehicles/boat/new">
-                <i class="ti ti-ship me-2"></i>Boat
+                <i class="ti ti-ship me-2"></i>@Localizer["Boat"]
             </a>
             <a class="dropdown-item" href="/vehicles/van/new">
-                <i class="ti ti-bus me-2"></i>Van
+                <i class="ti ti-bus me-2"></i>@Localizer["Van"]
             </a>
         </div>
     </div>
@@ -45,7 +45,7 @@
                 <a class="nav-link @(m_vehicleTypeFilter == null ? "active" : "")"
                    href="javascript:void(0)" @onclick="@(() => FilterByType(null))">
                     <i class="ti ti-list me-1"></i>
-                    All
+                    @Localizer["All"]
                     <span class="badge bg-secondary ms-1">@m_typeCounts.Values.Sum()</span>
                 </a>
             </li>
@@ -77,10 +77,10 @@
                     </div>
                     <div class="col">
                         <div class="font-weight-medium">
-                            @GetTotalCount() Vehicles
+                            @Localizer["VehiclesCount", GetTotalCount()]
                         </div>
                         <div class="text-secondary">
-                            @(m_vehicleTypeFilter.HasValue ? GetVehicleTypeLabel(m_vehicleTypeFilter.Value) : "Total Fleet")
+                            @(m_vehicleTypeFilter.HasValue ? GetVehicleTypeLabel(m_vehicleTypeFilter.Value) : Localizer["TotalFleet"])
                         </div>
                     </div>
                 </div>
@@ -99,10 +99,10 @@
                     </div>
                     <div class="col">
                         <div class="font-weight-medium">
-                            @GetStatusCount(VehicleStatus.Available) Available
+                            @GetStatusCount(VehicleStatus.Available) @Localizer["Available"]
                         </div>
                         <div class="text-secondary">
-                            Ready to rent
+                            @Localizer["ReadyToRent"]
                         </div>
                     </div>
                 </div>
@@ -121,10 +121,10 @@
                     </div>
                     <div class="col">
                         <div class="font-weight-medium">
-                            @GetStatusCount(VehicleStatus.Rented) Rented
+                            @GetStatusCount(VehicleStatus.Rented) @Localizer["Rented"]
                         </div>
                         <div class="text-secondary">
-                            Currently out
+                            @Localizer["CurrentlyOut"]
                         </div>
                     </div>
                 </div>
@@ -143,10 +143,10 @@
                     </div>
                     <div class="col">
                         <div class="font-weight-medium">
-                            @GetStatusCount(VehicleStatus.Maintenance) Maintenance
+                            @GetStatusCount(VehicleStatus.Maintenance) @Localizer["Maintenance"]
                         </div>
                         <div class="text-secondary">
-                            Being serviced
+                            @Localizer["BeingServiced"]
                         </div>
                     </div>
                 </div>
@@ -164,22 +164,22 @@
                     <span class="input-icon-addon">
                         <i class="ti ti-search"></i>
                     </span>
-                    <input type="text" class="form-control" placeholder="Search by license plate, brand, model..."
+                    <input type="text" class="form-control" placeholder="@Localizer["SearchPlaceholder"]"
                            @bind="m_searchTerm" @bind:event="oninput" @onkeyup="OnSearchKeyUp" />
                 </div>
             </div>
             <div class="col-md-2">
                 <select class="form-select" @bind="m_statusFilter" @bind:after="LoadDataAsync">
-                    <option value="">All Status</option>
+                    <option value="">@Localizer["AllStatus"]</option>
                     @foreach (VehicleStatus status in Enum.GetValues<VehicleStatus>())
                     {
-                        <option value="@status">@status</option>
+                        <option value="@status">@Localizer[status.ToString()]</option>
                     }
                 </select>
             </div>
             <div class="col-md-2">
                 <select class="form-select" @bind="m_brandFilter" @bind:after="LoadDataAsync">
-                    <option value="">All Brands</option>
+                    <option value="">@Localizer["AllBrands"]</option>
                     @foreach (var brand in m_availableBrands)
                     {
                         <option value="@brand">@brand</option>
@@ -190,24 +190,24 @@
                 <div class="form-check form-switch">
                     <input class="form-check-input" type="checkbox" id="includePooled"
                            @bind="m_includePooled" @bind:after="LoadDataAsync">
-                    <label class="form-check-label" for="includePooled">Include Pooled</label>
+                    <label class="form-check-label" for="includePooled">@Localizer["IncludePooled"]</label>
                 </div>
             </div>
             <div class="col-md-2 text-end">
                 <div class="btn-group" role="group">
                     <button type="button" class="btn @(m_viewMode == "table" ? "btn-primary" : "btn-outline-primary")"
-                            @onclick="@(() => m_viewMode = "table")" title="Table View">
+                            @onclick="@(() => m_viewMode = "table")" title="@Localizer["TableView"]">
                         <i class="ti ti-list"></i>
                     </button>
                     <button type="button" class="btn @(m_viewMode == "card" ? "btn-primary" : "btn-outline-primary")"
-                            @onclick="@(() => m_viewMode = "card")" title="Card View">
+                            @onclick="@(() => m_viewMode = "card")" title="@Localizer["CardView"]">
                         <i class="ti ti-layout-grid"></i>
                     </button>
                 </div>
                 @if (HasActiveFilters())
                 {
                     <button type="button" class="btn btn-ghost-secondary ms-2" @onclick="ClearFilters">
-                        <i class="ti ti-x me-1"></i>Clear
+                        <i class="ti ti-x me-1"></i>@Localizer["Clear"]
                     </button>
                 }
             </div>
@@ -225,12 +225,12 @@
                     <thead>
                         <tr>
                             <th class="w-1"></th>
-                            <th>Vehicle</th>
-                            <th>Type</th>
-                            <th>Pricing</th>
-                            <th class="text-center">Status</th>
-                            <th class="text-center">Location</th>
-                            <th class="w-1">Actions</th>
+                            <th>@Localizer["Vehicle"]</th>
+                            <th>@Localizer["Type"]</th>
+                            <th>@Localizer["Pricing"]</th>
+                            <th class="text-center">@Localizer["Status"]</th>
+                            <th class="text-center">@Localizer["Location"]</th>
+                            <th class="w-1">@Localizer["Actions"]</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -242,38 +242,38 @@
                                         <div class="empty-icon">
                                             <i class="ti ti-car" style="font-size: 3rem;"></i>
                                         </div>
-                                        <p class="empty-title">No vehicles found</p>
+                                        <p class="empty-title">@Localizer["NoVehiclesFound"]</p>
                                         <p class="empty-subtitle text-secondary">
                                             @if (HasActiveFilters())
                                             {
-                                                <span>Try adjusting your search or filter criteria</span>
+                                                <span>@Localizer["NoVehiclesFoundDescFilter"]</span>
                                             }
                                             else
                                             {
-                                                <span>Get started by adding your first vehicle to the fleet</span>
+                                                <span>@Localizer["NoVehiclesFoundDescEmpty"]</span>
                                             }
                                         </p>
                                         <div class="empty-action">
                                             <div class="dropdown">
                                                 <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown">
                                                     <i class="ti ti-plus me-1"></i>
-                                                    Add Vehicle
+                                                    @Localizer["AddVehicle"]
                                                 </button>
                                                 <div class="dropdown-menu">
                                                     <a class="dropdown-item" href="/vehicles/motorbike/new">
-                                                        <i class="ti ti-motorbike me-2"></i>Motorbike
+                                                        <i class="ti ti-motorbike me-2"></i>@Localizer["Motorbike"]
                                                     </a>
                                                     <a class="dropdown-item" href="/vehicles/car/new">
-                                                        <i class="ti ti-car me-2"></i>Car
+                                                        <i class="ti ti-car me-2"></i>@Localizer["Car"]
                                                     </a>
                                                     <a class="dropdown-item" href="/vehicles/jetski/new">
-                                                        <i class="ti ti-sailboat me-2"></i>Jet Ski
+                                                        <i class="ti ti-sailboat me-2"></i>@Localizer["JetSki"]
                                                     </a>
                                                     <a class="dropdown-item" href="/vehicles/boat/new">
-                                                        <i class="ti ti-ship me-2"></i>Boat
+                                                        <i class="ti ti-ship me-2"></i>@Localizer["Boat"]
                                                     </a>
                                                     <a class="dropdown-item" href="/vehicles/van/new">
-                                                        <i class="ti ti-bus me-2"></i>Van
+                                                        <i class="ti ti-bus me-2"></i>@Localizer["Van"]
                                                     </a>
                                                 </div>
                                             </div>
@@ -322,37 +322,37 @@
                                                         @FormatCurrency(vehicle.Rate1Hour.Value)<text>/hr</text>
                                                     }
                                                 </span>
-                                                <span class="text-secondary small">Interval pricing</span>
+                                                <span class="text-secondary small">@Localizer["IntervalPricing"]</span>
                                             }
                                             else
                                             {
                                                 <span class="fw-bold text-success">@FormatCurrency(vehicle.DailyRate)/day</span>
-                                                <span class="text-secondary small">Deposit: @FormatCurrency(vehicle.DepositAmount)</span>
+                                                <span class="text-secondary small">@Localizer["DepositAmount"]: @FormatCurrency(vehicle.DepositAmount)</span>
                                             }
                                         </div>
                                     </td>
                                     <td class="text-center">
                                         <span class="badge @GetStatusBadgeClass(vehicle.Status)">
                                             <i class="ti @GetStatusIcon(vehicle.Status) me-1"></i>
-                                            @vehicle.Status
+                                            @Localizer[vehicle.Status.ToString()]
                                         </span>
                                     </td>
                                     <td class="text-center">
                                         @if (vehicle.IsPooled)
                                         {
                                             <span class="badge bg-purple-lt text-purple" title="Pooled vehicle">
-                                                <i class="ti ti-share me-1"></i>Pooled
+                                                <i class="ti ti-share me-1"></i>@Localizer["Pooled"]
                                             </span>
                                             @if (vehicle.CurrentShopId != vehicle.HomeShopId)
                                             {
                                                 <div class="text-warning small mt-1">
-                                                    <i class="ti ti-map-pin"></i> Away
+                                                    <i class="ti ti-map-pin"></i> @Localizer["Away"]
                                                 </div>
                                             }
                                         }
                                         else
                                         {
-                                            <span class="text-secondary small">Local</span>
+                                            <span class="text-secondary small">@Localizer["Local"]</span>
                                         }
                                     </td>
                                     <td @onclick:stopPropagation="true">
@@ -362,23 +362,23 @@
                                             </button>
                                             <div class="dropdown-menu dropdown-menu-end">
                                                 <a class="dropdown-item" href="/vehicles/@EncodeId(vehicle.VehicleId)/edit">
-                                                    <i class="ti ti-edit me-2"></i>Edit Details
+                                                    <i class="ti ti-edit me-2"></i>@Localizer["EditDetails"]
                                                 </a>
                                                 @if (!vehicle.IsPooled)
                                                 {
                                                     <a class="dropdown-item" href="javascript:void(0)" @onclick="@(() => AssignToPool(vehicle))">
-                                                        <i class="ti ti-share me-2"></i>Add to Pool
+                                                        <i class="ti ti-share me-2"></i>@Localizer["AddToPool"]
                                                     </a>
                                                 }
                                                 else
                                                 {
                                                     <a class="dropdown-item" href="javascript:void(0)" @onclick="@(() => RemoveFromPool(vehicle))">
-                                                        <i class="ti ti-unlink me-2"></i>Remove from Pool
+                                                        <i class="ti ti-unlink me-2"></i>@Localizer["RemoveFromPool"]
                                                     </a>
                                                 }
                                                 <div class="dropdown-divider"></div>
                                                 <a class="dropdown-item text-danger" href="javascript:void(0)" @onclick="@(() => ConfirmDelete(vehicle))">
-                                                    <i class="ti ti-trash me-2"></i>Delete
+                                                    <i class="ti ti-trash me-2"></i>@Localizer["Delete"]
                                                 </a>
                                             </div>
                                         </div>
@@ -393,7 +393,7 @@
             {
                 <div class="card-footer d-flex align-items-center justify-content-between">
                     <p class="m-0 text-secondary">
-                        Showing <strong>@m_vehicles.Count</strong> vehicles
+                        @Localizer["ShowingVehicles", m_vehicles.Count]
                     </p>
                 </div>
             }
@@ -410,38 +410,38 @@
                         <div class="empty-icon">
                             <i class="ti ti-car" style="font-size: 3rem;"></i>
                         </div>
-                        <p class="empty-title">No vehicles found</p>
+                        <p class="empty-title">@Localizer["NoVehiclesFound"]</p>
                         <p class="empty-subtitle text-secondary">
                             @if (HasActiveFilters())
                             {
-                                <span>Try adjusting your search or filter criteria</span>
+                                <span>@Localizer["NoVehiclesFoundDescFilter"]</span>
                             }
                             else
                             {
-                                <span>Get started by adding your first vehicle to the fleet</span>
+                                <span>@Localizer["NoVehiclesFoundDescEmpty"]</span>
                             }
                         </p>
                         <div class="empty-action">
                             <div class="dropdown">
                                 <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown">
                                     <i class="ti ti-plus me-1"></i>
-                                    Add Vehicle
+                                    @Localizer["AddVehicle"]
                                 </button>
                                 <div class="dropdown-menu">
                                     <a class="dropdown-item" href="/vehicles/motorbike/new">
-                                        <i class="ti ti-motorbike me-2"></i>Motorbike
+                                        <i class="ti ti-motorbike me-2"></i>@Localizer["Motorbike"]
                                     </a>
                                     <a class="dropdown-item" href="/vehicles/car/new">
-                                        <i class="ti ti-car me-2"></i>Car
+                                        <i class="ti ti-car me-2"></i>@Localizer["Car"]
                                     </a>
                                     <a class="dropdown-item" href="/vehicles/jetski/new">
-                                        <i class="ti ti-sailboat me-2"></i>Jet Ski
+                                        <i class="ti ti-sailboat me-2"></i>@Localizer["JetSki"]
                                     </a>
                                     <a class="dropdown-item" href="/vehicles/boat/new">
-                                        <i class="ti ti-ship me-2"></i>Boat
+                                        <i class="ti ti-ship me-2"></i>@Localizer["Boat"]
                                     </a>
                                     <a class="dropdown-item" href="/vehicles/van/new">
-                                        <i class="ti ti-bus me-2"></i>Van
+                                        <i class="ti ti-bus me-2"></i>@Localizer["Van"]
                                     </a>
                                 </div>
                             </div>
@@ -473,37 +473,20 @@
                                 </div>
                                 <div class="position-absolute top-0 end-0 m-2">
                                     <span class="badge @GetStatusBadgeClass(vehicle.Status)">
-                                        @vehicle.Status
+                                        @Localizer[vehicle.Status.ToString()]
                                     </span>
                                 </div>
                                 @if (vehicle.IsPooled)
                                 {
                                     <div class="position-absolute bottom-0 start-0 m-2">
                                         <span class="badge bg-purple-lt text-purple">
-                                            <i class="ti ti-share"></i> Pooled
+                                            <i class="ti ti-share"></i> @Localizer["Pooled"]
                                         </span>
                                     </div>
                                 }
                             </div>
                             <div class="card-body">
-                                <div class="d-flex align-items-center justify-content-between mb-2">
-                                    <span class="badge bg-primary-lt fw-bold">@vehicle.LicensePlate</span>
-                                </div>
-                                <h3 class="card-title mb-1">@vehicle.Brand @vehicle.Model</h3>
-                                <div class="text-secondary mb-3">
-                                    @if (vehicle.EngineCC.HasValue)
-                                    {
-                                        <span class="me-2"><i class="ti ti-engine me-1"></i>@vehicle.EngineCC cc</span>
-                                    }
-                                    @if (!string.IsNullOrEmpty(vehicle.Color))
-                                    {
-                                        <span class="me-2"><i class="ti ti-palette me-1"></i>@vehicle.Color</span>
-                                    }
-                                    @if (vehicle.Year > 0)
-                                    {
-                                        <span><i class="ti ti-calendar me-1"></i>@vehicle.Year</span>
-                                    }
-                                </div>
+...
                                 <div class="d-flex align-items-center justify-content-between">
                                     <div>
                                         @if (vehicle.UsesIntervalPricing)
@@ -518,10 +501,10 @@
                                         }
                                     </div>
                                     <div class="btn-group" @onclick:stopPropagation="true">
-                                        <a href="/vehicles/@EncodeId(vehicle.VehicleId)/edit" class="btn btn-sm btn-outline-primary">
+                                        <a href="/vehicles/@EncodeId(vehicle.VehicleId)/edit" class="btn btn-sm btn-outline-primary" title="@Localizer["EditDetails"]
                                             <i class="ti ti-edit"></i>
                                         </a>
-                                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                        <button type="button" class="btn btn-sm btn-outline-danger" title="@Localizer["Delete"]
                                                 @onclick="@(() => ConfirmDelete(vehicle))">
                                             <i class="ti ti-trash"></i>
                                         </button>
@@ -591,7 +574,7 @@
         }
         catch (Exception ex)
         {
-            this.ShowError($"Error loading data: {ex.Message}");
+            this.ShowError(Localizer["ErrorLoadingData", ex.Message]);
         }
         finally
         {
@@ -655,14 +638,14 @@
     private async Task AssignToPool(Vehicle vehicle)
     {
         // TODO: Show pool selection dialog
-        this.ShowInfo($"Assign {vehicle.LicensePlate} to pool - coming soon");
+        this.ShowInfo(Localizer["AssignToPoolComingSoon", vehicle.LicensePlate]);
     }
 
     private async Task RemoveFromPool(Vehicle vehicle)
     {
         if (vehicle.CurrentShopId != vehicle.HomeShopId)
         {
-            this.ShowWarning("Vehicle must be at home shop before removing from pool");
+            this.ShowWarning(Localizer["MustBeAtHomeShop"]);
             return;
         }
 
@@ -670,11 +653,11 @@
         if (result.Success)
         {
             await this.LoadDataAsync();
-            this.ShowSuccess("Vehicle removed from pool");
+            this.ShowSuccess(Localizer["RemovedFromPool"]);
         }
         else
         {
-            this.ShowError(result.Message ?? "Failed to remove from pool");
+            this.ShowError(Localizer["FailedToRemoveFromPool", result.Message ?? ""]);
         }
     }
 
@@ -688,11 +671,11 @@
         if (deleteResult.Success)
         {
             await this.LoadDataAsync();
-            this.ShowSuccess("Vehicle deleted successfully");
+            this.ShowSuccess(Localizer["VehicleDeletedSuccess"]);
         }
         else
         {
-            this.ShowError($"Delete failed: {deleteResult.Message}");
+            this.ShowError(Localizer["DeleteFailed", deleteResult.Message ?? ""]);
         }
     }
 
@@ -706,14 +689,14 @@
         _ => "ti-car"
     };
 
-    private static string GetVehicleTypeLabel(VehicleType type) => type switch
+    private string GetVehicleTypeLabel(VehicleType type) => type switch
     {
-        VehicleType.Motorbike => "Motorbike",
-        VehicleType.Car => "Car",
-        VehicleType.JetSki => "Jet Ski",
-        VehicleType.Boat => "Boat",
-        VehicleType.Van => "Van",
-        _ => "Vehicle"
+        VehicleType.Motorbike => Localizer["Motorbike"],
+        VehicleType.Car => Localizer["Car"],
+        VehicleType.JetSki => Localizer["JetSki"],
+        VehicleType.Boat => Localizer["Boat"],
+        VehicleType.Van => Localizer["Van"],
+        _ => Localizer["Vehicle"]
     };
 
     private static string GetVehicleTypeBadgeClass(VehicleType type) => type switch
