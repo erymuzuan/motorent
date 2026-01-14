@@ -2,6 +2,7 @@
 @using MotoRent.Domain.Entities
 @using MotoRent.Client.Pages.Rentals
 @inject IJSRuntime JS
+@inject NavigationManager NavigationManager
 
 <div class="d-flex flex-column gap-4">
     <div>
@@ -246,8 +247,43 @@
 
     private async Task PrintAgreement()
     {
-        await JS.InvokeVoidAsync("window.print");
+        var url = BuildPrintAgreementUrl();
+        await JS.InvokeVoidAsync("window.open", url, "_blank");
         m_agreementPrinted = true;
+    }
+
+    private string BuildPrintAgreementUrl()
+    {
+        var queryParams = new List<string>();
+
+        if (Renter != null)
+            queryParams.Add($"RenterId={Renter.RenterId}");
+
+        if (Vehicle != null)
+            queryParams.Add($"VehicleId={Vehicle.VehicleId}");
+
+        if (IsIntervalRental && IntervalConfig != null)
+        {
+            queryParams.Add($"Interval={IntervalConfig.IntervalMinutes}");
+            queryParams.Add($"StartTime={Uri.EscapeDataString(IntervalConfig.StartDateTime.ToString("o"))}");
+            queryParams.Add($"Rate={IntervalConfig.RentalRate}");
+            queryParams.Add($"Total={GetTotalAmount()}");
+        }
+        else if (Config != null)
+        {
+            queryParams.Add($"StartDate={Uri.EscapeDataString(Config.StartDate.ToString("yyyy-MM-dd"))}");
+            queryParams.Add($"EndDate={Uri.EscapeDataString(Config.EndDate.ToString("yyyy-MM-dd"))}");
+            queryParams.Add($"Days={Config.Days}");
+            queryParams.Add($"Total={GetTotalAmount()}");
+        }
+
+        if (DepositInfo != null)
+        {
+            queryParams.Add($"DepositType={Uri.EscapeDataString(DepositInfo.DepositType)}");
+            queryParams.Add($"DepositAmount={DepositInfo.Amount}");
+        }
+
+        return $"/rentals/print-agreement?{string.Join("&", queryParams)}";
     }
 
     private string GetVehicleTypeLabel(VehicleType type) => type switch
