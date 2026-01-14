@@ -1,6 +1,6 @@
 @using MotoRent.Domain.Core
 @using MotoRent.Domain.Entities
-@inherits MotoRentComponentBase
+@inherits LocalizedComponentBase<VehicleModelDialog>
 @inject VehicleLookupService LookupService
 
 <form id="vehicle-model-form" @onsubmit="SaveModel" @onsubmit:preventDefault>
@@ -8,9 +8,9 @@
         <div class="row g-3">
             <!-- Basic Info -->
             <div class="col-md-6">
-                <label class="form-label required">Make / Brand</label>
+                <label class="form-label required">@Localizer["MakeBrand"]</label>
                 <input type="text" class="form-control" @bind="m_model.Make" required
-                       list="makes-list" placeholder="e.g., Honda, Toyota, Yamaha" />
+                       list="makes-list" placeholder="@Localizer["MakePlaceholder"]" />
                 <datalist id="makes-list">
                     @foreach (var make in m_existingMakes)
                     {
@@ -19,13 +19,13 @@
                 </datalist>
             </div>
             <div class="col-md-6">
-                <label class="form-label required">Model Name</label>
+                <label class="form-label required">@Localizer["ModelName"]</label>
                 <input type="text" class="form-control" @bind="m_model.Model" required
-                       placeholder="e.g., Click 125, PCX 160, Camry" />
+                       placeholder="@Localizer["ModelPlaceholder"]" />
             </div>
 
             <div class="col-md-6">
-                <label class="form-label required">Vehicle Type</label>
+                <label class="form-label required">@Localizer["VehicleType"]</label>
                 <select class="form-select" @bind="m_model.VehicleType" required>
                     @foreach (var type in Enum.GetValues<VehicleType>())
                     {
@@ -34,16 +34,16 @@
                 </select>
             </div>
             <div class="col-md-6">
-                <label class="form-label">Country of Origin</label>
+                <label class="form-label">@Localizer["CountryOfOrigin"]</label>
                 <select class="form-select" @bind="m_model.CountryOfOrigin">
-                    <option value="">Not specified</option>
-                    <option value="Japan">Japan</option>
-                    <option value="Thailand">Thailand</option>
-                    <option value="Germany">Germany</option>
-                    <option value="South Korea">South Korea</option>
-                    <option value="Italy">Italy</option>
-                    <option value="USA">USA</option>
-                    <option value="China">China</option>
+                    <option value="">@Localizer["NotSpecified"]</option>
+                    <option value="Japan">@Localizer["CountryJapan"]</option>
+                    <option value="Thailand">@Localizer["CountryThailand"]</option>
+                    <option value="Germany">@Localizer["CountryGermany"]</option>
+                    <option value="South Korea">@Localizer["CountrySouthKorea"]</option>
+                    <option value="Italy">@Localizer["CountryItaly"]</option>
+                    <option value="USA">@Localizer["CountryUSA"]</option>
+                    <option value="China">@Localizer["CountryChina"]</option>
                 </select>
             </div>
 
@@ -51,23 +51,23 @@
             @if (m_model.VehicleType == VehicleType.Motorbike)
             {
                 <div class="col-12">
-                    <h4 class="subheader mt-2 mb-2">Motorbike Specifications</h4>
+                    <h4 class="subheader mt-2 mb-2">@Localizer["MotorbikeSpecs"]</h4>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Engine CC</label>
+                    <label class="form-label">@Localizer["EngineCC"]</label>
                     <input type="number" class="form-control" @bind="m_model.EngineCC"
-                           min="50" max="2000" placeholder="e.g., 125, 150, 160" />
+                           min="50" max="2000" placeholder="@Localizer["EngineCCPlaceholder"]" />
                 </div>
             }
             else if (m_model.VehicleType == VehicleType.Car)
             {
                 <div class="col-12">
-                    <h4 class="subheader mt-2 mb-2">Car Specifications</h4>
+                    <h4 class="subheader mt-2 mb-2">@Localizer["CarSpecs"]</h4>
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label">Segment</label>
+                    <label class="form-label">@Localizer["Segment"]</label>
                     <select class="form-select" @bind="m_model.Segment">
-                        <option value="">Not specified</option>
+                        <option value="">@Localizer["NotSpecified"]</option>
                         @foreach (var segment in Enum.GetValues<CarSegment>())
                         {
                             <option value="@segment">@segment</option>
@@ -75,85 +75,85 @@
                     </select>
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label">Engine (Liters)</label>
+                    <label class="form-label">@Localizer["EngineLiters"]</label>
                     <input type="number" class="form-control" @bind="m_model.EngineLiters"
-                           min="0.5" max="8" step="0.1" placeholder="e.g., 1.5, 2.0" />
+                           min="0.5" max="8" step="0.1" placeholder="@Localizer["EngineLitersPlaceholder"]" />
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label">Seat Count</label>
+                    <label class="form-label">@Localizer["SeatCount"]</label>
                     <input type="number" class="form-control" @bind="m_model.SeatCount"
-                           min="2" max="12" placeholder="e.g., 5, 7" />
+                           min="2" max="12" placeholder="@Localizer["SeatCountPlaceholder"]" />
                 </div>
             }
             else if (m_model.VehicleType == VehicleType.Van)
             {
                 <div class="col-12">
-                    <h4 class="subheader mt-2 mb-2">Van Specifications</h4>
+                    <h4 class="subheader mt-2 mb-2">@Localizer["VanSpecs"]</h4>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Seat Count</label>
+                    <label class="form-label">@Localizer["SeatCount"]</label>
                     <input type="number" class="form-control" @bind="m_model.SeatCount"
-                           min="4" max="50" placeholder="e.g., 12, 15" />
+                           min="4" max="50" placeholder="@Localizer["VanSeatCountPlaceholder"]" />
                 </div>
             }
 
             <!-- Year Range -->
             <div class="col-12">
-                <h4 class="subheader mt-2 mb-2">Production Years</h4>
+                <h4 class="subheader mt-2 mb-2">@Localizer["ProductionYears"]</h4>
             </div>
             <div class="col-md-6">
-                <label class="form-label">Year From</label>
+                <label class="form-label">@Localizer["YearFrom"]</label>
                 <input type="number" class="form-control" @bind="m_model.YearFrom"
-                       min="1990" max="@DateTime.Now.Year" placeholder="e.g., 2020" />
+                       min="1990" max="@DateTime.Now.Year" placeholder="@Localizer["YearFromPlaceholder"]" />
             </div>
             <div class="col-md-6">
-                <label class="form-label">Year To</label>
+                <label class="form-label">@Localizer["YearTo"]</label>
                 <input type="number" class="form-control" @bind="m_model.YearTo"
-                       min="1990" max="@(DateTime.Now.Year + 1)" placeholder="Leave empty if still in production" />
+                       min="1990" max="@(DateTime.Now.Year + 1)" placeholder="@Localizer["YearToPlaceholder"]" />
             </div>
 
             <!-- Suggested Pricing -->
             <div class="col-12">
-                <h4 class="subheader mt-2 mb-2">Suggested Pricing (THB)</h4>
+                <h4 class="subheader mt-2 mb-2">@Localizer["SuggestedPricing"]</h4>
             </div>
             <div class="col-md-6">
-                <label class="form-label">Suggested Daily Rate</label>
+                <label class="form-label">@Localizer["SuggestedDailyRate"]</label>
                 <div class="input-group">
-                    <span class="input-group-text">฿</span>
+                    <span class="input-group-text">@Localizer["CurrencySymbol"]</span>
                     <input type="number" class="form-control" @bind="m_model.SuggestedDailyRate"
-                           min="0" step="50" placeholder="e.g., 300, 500" />
+                           min="0" step="50" placeholder="@Localizer["DailyRatePlaceholder"]" />
                 </div>
             </div>
             <div class="col-md-6">
-                <label class="form-label">Suggested Deposit</label>
+                <label class="form-label">@Localizer["SuggestedDeposit"]</label>
                 <div class="input-group">
-                    <span class="input-group-text">฿</span>
+                    <span class="input-group-text">@Localizer["CurrencySymbol"]</span>
                     <input type="number" class="form-control" @bind="m_model.SuggestedDeposit"
-                           min="0" step="500" placeholder="e.g., 2000, 5000" />
+                           min="0" step="500" placeholder="@Localizer["DepositPlaceholder"]" />
                 </div>
             </div>
 
             <!-- Aliases & Settings -->
             <div class="col-12">
-                <h4 class="subheader mt-2 mb-2">Recognition Settings</h4>
+                <h4 class="subheader mt-2 mb-2">@Localizer["RecognitionSettings"]</h4>
             </div>
             <div class="col-12">
-                <label class="form-label">Aliases (for Gemini matching)</label>
+                <label class="form-label">@Localizer["Aliases"]</label>
                 <input type="text" class="form-control" @bind="m_aliasesText"
-                       placeholder="Comma-separated alternative names, e.g., PCX, PCX160, PCX 160cc" />
-                <small class="form-hint">Alternative names or spellings for this model to improve recognition accuracy</small>
+                       placeholder="@Localizer["AliasesPlaceholder"]" />
+                <small class="form-hint">@Localizer["AliasesHint"]</small>
             </div>
             <div class="col-md-6">
-                <label class="form-label">Display Order</label>
+                <label class="form-label">@Localizer["DisplayOrder"]</label>
                 <input type="number" class="form-control" @bind="m_model.DisplayOrder"
                        min="1" max="999" />
-                <small class="form-hint">Lower numbers appear first in lists (default: 100)</small>
+                <small class="form-hint">@Localizer["DisplayOrderHint"]</small>
             </div>
             <div class="col-md-6">
-                <label class="form-label mt-4">Status</label>
+                <label class="form-label mt-4">@Localizer["Status"]</label>
                 <label class="form-check form-switch">
                     <input type="checkbox" class="form-check-input" @bind="m_model.IsActive" />
-                    <span class="form-check-label">@(m_model.IsActive ? "Active" : "Inactive")</span>
+                    <span class="form-check-label">@(m_model.IsActive ? Localizer["Active"] : Localizer["Inactive"])</span>
                 </label>
             </div>
         </div>
@@ -162,18 +162,18 @@
 
 <div class="modal-footer">
     <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel" disabled="@m_isSaving">
-        Cancel
+        @Localizer["Cancel"]
     </button>
     <button type="submit" form="vehicle-model-form" class="btn btn-primary" disabled="@m_isSaving">
         @if (m_isSaving)
         {
             <span class="spinner-border spinner-border-sm me-2" role="status"></span>
-            <span>Saving...</span>
+            <span>@Localizer["Saving"]</span>
         }
         else
         {
             <i class="ti ti-device-floppy me-1"></i>
-            <span>@(IsNew ? "Create Model" : "Save Changes")</span>
+            <span>@(IsNew ? Localizer["CreateModel"] : Localizer["SaveChanges"])</span>
         }
     </button>
 </div>
@@ -226,13 +226,13 @@
     {
         if (string.IsNullOrWhiteSpace(this.m_model.Make))
         {
-            this.ShowError("Make/Brand is required");
+            this.ShowError(Localizer["MakeRequired"]);
             return;
         }
 
         if (string.IsNullOrWhiteSpace(this.m_model.Model))
         {
-            this.ShowError("Model name is required");
+            this.ShowError(Localizer["ModelRequired"]);
             return;
         }
 
@@ -262,12 +262,12 @@
             }
             else
             {
-                this.ShowError(result.Message ?? "Failed to save vehicle model.");
+                this.ShowError(result.Message ?? Localizer["FailedToSave"]);
             }
         }
         catch (Exception ex)
         {
-            this.ShowError($"Error saving vehicle model: {ex.Message}");
+            this.ShowError(Localizer["ErrorSaving", ex.Message]);
         }
         finally
         {
