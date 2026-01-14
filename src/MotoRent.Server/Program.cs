@@ -74,6 +74,10 @@ builder.Services.AddScoped<AccidentService>();
 // Comment service
 builder.Services.AddScoped<CommentService>();
 
+// Error logging services
+builder.Services.AddScoped<MotoRent.Domain.Core.ILogger, SqlLogger>();
+builder.Services.AddScoped<LogEntryService>();
+
 // Add HttpClient for external API calls (Gemini)
 builder.Services.AddHttpClient("Gemini", client => { client.Timeout = TimeSpan.FromSeconds(60); });
 
@@ -244,6 +248,10 @@ var app = builder.Build();
 app.Services.ConfigureObjectBuilder();
 
 // Configure the HTTP request pipeline.
+
+// Exception logging middleware - must be before UseExceptionHandler to capture all exceptions
+app.UseExceptionLogging();
+
 if (app.Environment.IsDevelopment())
 {
     // Development-specific middleware

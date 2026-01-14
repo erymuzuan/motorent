@@ -1,0 +1,359 @@
+@using MotoRent.Domain.Core
+@using MotoRent.Services.Core
+@using MotoRent.Client.Controls
+@using MotoRent.Client.Services
+@inherits MotoRentComponentBase
+@inject LogEntryService LogEntryService
+@inject IModalService ModalService
+@inject IJSRuntime JS
+
+<div class="modal-body">
+    @if (m_loading)
+    {
+        <div class="d-flex justify-content-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (m_log is null)
+    {
+        <div class="alert alert-warning">
+            <i class="ti ti-alert-triangle me-2"></i>
+            Log entry not found.
+        </div>
+    }
+    else
+    {
+        @* Header with severity and status *@
+        <div class="d-flex align-items-center justify-content-between mb-4">
+            <div class="d-flex align-items-center">
+                <span class="badge @GetSeverityBadgeClass(m_log.LogSeverity) me-2" style="font-size: 1rem;">
+                    @m_log.LogSeverity
+                </span>
+                <span class="badge @GetStatusBadgeClass(m_log.Status)" style="font-size: 1rem;">
+                    @m_log.Status
+                </span>
+            </div>
+            <div class="text-secondary">
+                <i class="ti ti-clock me-1"></i>
+                @m_log.DateTime.ToString("g")
+            </div>
+        </div>
+
+        @* Main error message *@
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span class="fw-bold text-danger">
+                    <i class="ti ti-bug me-2"></i>@m_log.Type
+                </span>
+                <button type="button" class="btn btn-sm btn-ghost-secondary" @onclick="CopyToClipboard" title="Copy to clipboard">
+                    <i class="ti ti-copy"></i>
+                </button>
+            </div>
+            <div class="card-body">
+                <p class="mb-0 fw-medium">@m_log.Message</p>
+            </div>
+        </div>
+
+        @* Context information *@
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="ti ti-info-circle me-2"></i>Request Context
+                    </div>
+                    <div class="card-body">
+                        <dl class="row mb-0">
+                            <dt class="col-4">URL</dt>
+                            <dd class="col-8 text-truncate" title="@m_log.Url">@(m_log.Url ?? "N/A")</dd>
+
+                            <dt class="col-4">IP Address</dt>
+                            <dd class="col-8">@(m_log.IpAddress ?? "N/A")</dd>
+
+                            <dt class="col-4">Log Type</dt>
+                            <dd class="col-8">@m_log.Log</dd>
+
+                            <dt class="col-4">Computer</dt>
+                            <dd class="col-8">@(m_log.Computer ?? "N/A")</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="ti ti-user me-2"></i>User Context
+                    </div>
+                    <div class="card-body">
+                        <dl class="row mb-0">
+                            <dt class="col-4">Account</dt>
+                            <dd class="col-8">@(m_log.AccountNo ?? "N/A")</dd>
+
+                            <dt class="col-4">User</dt>
+                            <dd class="col-8">@(m_log.UserName ?? "N/A")</dd>
+
+                            <dt class="col-4">Occurrences</dt>
+                            <dd class="col-8">
+                                <span class="badge bg-secondary">@m_occurrenceCount</span>
+                            </dd>
+
+                            <dt class="col-4">Incident Hash</dt>
+                            <dd class="col-8 text-truncate" title="@m_log.IncidentHash">@(m_log.IncidentHash ?? "N/A")</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* Source location *@
+        @if (!string.IsNullOrEmpty(m_log.CallerFilePath) || !string.IsNullOrEmpty(m_log.CallerMemberName))
+        {
+            <div class="card mb-3">
+                <div class="card-header">
+                    <i class="ti ti-file-code me-2"></i>Source Location
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        @if (!string.IsNullOrEmpty(m_log.CallerFilePath))
+                        {
+                            <dt class="col-2">File</dt>
+                            <dd class="col-10 text-truncate" title="@m_log.CallerFilePath">@m_log.CallerFilePath</dd>
+                        }
+                        @if (!string.IsNullOrEmpty(m_log.CallerMemberName))
+                        {
+                            <dt class="col-2">Method</dt>
+                            <dd class="col-10">@m_log.CallerMemberName</dd>
+                        }
+                        @if (m_log.CallerLineNumber.HasValue && m_log.CallerLineNumber > 0)
+                        {
+                            <dt class="col-2">Line</dt>
+                            <dd class="col-10">@m_log.CallerLineNumber</dd>
+                        }
+                    </dl>
+                </div>
+            </div>
+        }
+
+        @* Stack trace *@
+        @if (!string.IsNullOrEmpty(m_log.Error))
+        {
+            <div class="card mb-3">
+                <div class="card-header">
+                    <i class="ti ti-stack me-2"></i>Stack Trace
+                </div>
+                <div class="card-body p-0">
+                    <pre class="m-0 p-3 bg-dark text-light overflow-auto" style="max-height: 400px; font-size: 0.75rem;">@m_log.Error</pre>
+                </div>
+            </div>
+        }
+
+        @* Timestamps *@
+        <div class="card">
+            <div class="card-header">
+                <i class="ti ti-calendar me-2"></i>Timestamps
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-3">Occurred</dt>
+                    <dd class="col-9">@m_log.DateTime.ToString("F")</dd>
+
+                    <dt class="col-3">Created</dt>
+                    <dd class="col-9">@m_log.CreatedTimestamp.ToString("F")</dd>
+
+                    <dt class="col-3">Created By</dt>
+                    <dd class="col-9">@m_log.CreatedBy</dd>
+
+                    @if (m_log.ChangedTimestamp != m_log.CreatedTimestamp)
+                    {
+                        <dt class="col-3">Modified</dt>
+                        <dd class="col-9">@m_log.ChangedTimestamp.ToString("F")</dd>
+
+                        <dt class="col-3">Modified By</dt>
+                        <dd class="col-9">@m_log.ChangedBy</dd>
+                    }
+                </dl>
+            </div>
+        </div>
+    }
+</div>
+
+<div class="modal-footer">
+    @if (m_log is not null)
+    {
+        @if (m_log.Status != LogStatus.Resolved)
+        {
+            <button type="button" class="btn btn-success" @onclick="Resolve">
+                <i class="ti ti-check me-2"></i>Mark Resolved
+            </button>
+        }
+        <button type="button" class="btn btn-warning" @onclick="ResolveAllSimilar">
+            <i class="ti ti-checks me-2"></i>Resolve All Similar (@m_occurrenceCount)
+        </button>
+        <button type="button" class="btn btn-danger" @onclick="Delete">
+            <i class="ti ti-trash me-2"></i>Delete
+        </button>
+    }
+    <button type="button" class="btn btn-secondary" @onclick="Close">
+        Close
+    </button>
+</div>
+
+@code {
+    [Parameter]
+    public int LogEntryId { get; set; }
+
+    private LogEntry? m_log;
+    private int m_occurrenceCount;
+    private bool m_loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        m_loading = true;
+        try
+        {
+            m_log = await LogEntryService.GetByIdAsync(LogEntryId);
+
+            if (m_log is not null && !string.IsNullOrEmpty(m_log.IncidentHash))
+            {
+                m_occurrenceCount = await LogEntryService.GetOccurrenceCountAsync(m_log.IncidentHash);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error loading log entry: {ex.Message}");
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private async Task Resolve()
+    {
+        if (m_log is null) return;
+
+        try
+        {
+            await LogEntryService.ResolveAsync(m_log.LogEntryId, UserName);
+            ShowSuccess("Log entry marked as resolved");
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error resolving log: {ex.Message}");
+        }
+    }
+
+    private async Task ResolveAllSimilar()
+    {
+        if (m_log is null || string.IsNullOrEmpty(m_log.IncidentHash)) return;
+
+        var confirmed = await DialogService.ConfirmYesNoAsync(
+            $"Are you sure you want to resolve all {m_occurrenceCount} similar log entries?",
+            "Resolve All Similar");
+
+        if (!confirmed) return;
+
+        try
+        {
+            await LogEntryService.ResolveAllSimilarAsync(m_log.IncidentHash, UserName);
+            ShowSuccess($"All {m_occurrenceCount} similar log entries marked as resolved");
+            Close();
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error resolving logs: {ex.Message}");
+        }
+    }
+
+    private async Task Delete()
+    {
+        if (m_log is null) return;
+
+        var confirmed = await DialogService.ConfirmYesNoAsync(
+            "Are you sure you want to delete this log entry?",
+            "Delete Log Entry");
+
+        if (!confirmed) return;
+
+        try
+        {
+            await LogEntryService.DeleteAsync(m_log.LogEntryId);
+            ShowSuccess("Log entry deleted");
+            Close();
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error deleting log: {ex.Message}");
+        }
+    }
+
+    private void Close()
+    {
+        ModalService.Close(ModalResult.Ok(true));
+    }
+
+    private async Task CopyToClipboard()
+    {
+        if (m_log is null) return;
+
+        try
+        {
+            var text = GetLogDetails();
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", text);
+            ShowSuccess("Log details copied to clipboard");
+        }
+        catch
+        {
+            ShowError("Failed to copy to clipboard");
+        }
+    }
+
+    private string GetLogDetails()
+    {
+        if (m_log is null) return string.Empty;
+
+        return $"""
+                Timestamp    : {m_log.DateTime:O}
+                Severity     : {m_log.LogSeverity}
+                Status       : {m_log.Status}
+                Type         : {m_log.Type}
+                Message      : {m_log.Message}
+                URL          : {m_log.Url ?? "N/A"}
+                IP Address   : {m_log.IpAddress ?? "N/A"}
+                Account      : {m_log.AccountNo ?? "N/A"}
+                User         : {m_log.UserName ?? "N/A"}
+                Computer     : {m_log.Computer ?? "N/A"}
+                Incident Hash: {m_log.IncidentHash ?? "N/A"}
+                Occurrences  : {m_occurrenceCount}
+
+                Stack Trace:
+                {m_log.Error ?? "N/A"}
+                """;
+    }
+
+    private string GetSeverityBadgeClass(LogSeverity severity) => severity switch
+    {
+        LogSeverity.Critical => "bg-danger",
+        LogSeverity.Error => "bg-orange",
+        LogSeverity.Warning => "bg-warning",
+        LogSeverity.Info => "bg-info",
+        LogSeverity.Debug => "bg-secondary",
+        _ => "bg-secondary"
+    };
+
+    private string GetStatusBadgeClass(LogStatus status) => status switch
+    {
+        LogStatus.New => "bg-info",
+        LogStatus.Active => "bg-warning",
+        LogStatus.Resolved => "bg-success",
+        LogStatus.Cancelled => "bg-secondary",
+        _ => "bg-secondary"
+    };
+}

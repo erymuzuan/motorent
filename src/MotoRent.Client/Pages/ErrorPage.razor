@@ -1,0 +1,152 @@
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Authorization
+@using MotoRent.Domain.Core
+@using MotoRent.Client.Controls
+@inherits MotoRentComponentBase
+@inject MotoRent.Domain.Core.ILogger AppLogger
+
+<div class="container-tight py-4">
+    <div class="empty">
+        <div class="empty-img">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-bug" width="120" height="120" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <path d="M9 9v-1a3 3 0 0 1 6 0v1"/>
+                <path d="M8 9h8a6 6 0 0 1 1 3v3a5 5 0 0 1 -10 0v-3a6 6 0 0 1 1 -3"/>
+                <path d="M3 13l4 0"/>
+                <path d="M17 13l4 0"/>
+                <path d="M12 20l0 -6"/>
+                <path d="M4 19l3.35 -2"/>
+                <path d="M20 19l-3.35 -2"/>
+                <path d="M4 7l3.75 2.4"/>
+                <path d="M20 7l-3.75 2.4"/>
+            </svg>
+        </div>
+        <p class="empty-title">Woops! Something went wrong</p>
+        <p class="empty-subtitle text-secondary">
+            An unexpected error occurred. Try reloading the page to see if the error goes away.
+        </p>
+
+        @* Show error details to SuperAdmin only *@
+        <AuthorizeView Roles="@UserAccount.SUPER_ADMIN">
+            <Authorized>
+                @if (Exception is not null)
+                {
+                    <div class="card mt-4 text-start" style="max-width: 800px;">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <span class="fw-bold text-danger">
+                                <i class="ti ti-bug me-2"></i>@Exception.GetType().Name
+                            </span>
+                            <button type="button" class="btn btn-sm btn-ghost-secondary" @onclick="CopyToClipboard" title="Copy to clipboard">
+                                <i class="ti ti-copy"></i>
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label small text-secondary">Error Details</label>
+                                <pre class="user-select-all p-3 bg-light rounded" style="font-size: 0.75rem; max-height: 400px; overflow: auto;">@GetErrorDetails()</pre>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </Authorized>
+        </AuthorizeView>
+
+        <div class="empty-action mt-4">
+            <button type="button" disabled="@(ErrorBoundary is null)" @onclick="Recover" class="btn btn-primary">
+                <i class="ti ti-refresh me-2"></i>
+                Try to recover
+            </button>
+            <a href="@NavigationManager.Uri" class="btn btn-secondary ms-2" @onclick:preventDefault @onclick="ReloadPage">
+                <i class="ti ti-reload me-2"></i>
+                Reload page
+            </a>
+        </div>
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// The exception that was caught by the ErrorBoundary.
+    /// </summary>
+    [Parameter]
+    public Exception? Exception { get; set; }
+
+    /// <summary>
+    /// Reference to the ErrorBoundary for recovery.
+    /// </summary>
+    [Parameter]
+    public ErrorBoundary? ErrorBoundary { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Exception is null) return;
+
+        // Skip logging for localhost in development
+        if (NavigationManager.Uri.StartsWith("https://localhost") ||
+            NavigationManager.Uri.StartsWith("http://localhost"))
+        {
+            Logger.LogWarning("Exception occurred (not logged to DB in localhost): {Message}", Exception.Message);
+            return;
+        }
+
+        try
+        {
+            var log = LogEntry.FromException(Exception, AccountNo, UserName);
+            log.Url = NavigationManager.Uri;
+            log.Log = EventLog.Web;
+            log.Computer = Environment.MachineName;
+
+            await AppLogger.LogAsync(log);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to log exception to database");
+        }
+    }
+
+    private string GetErrorDetails()
+    {
+        if (Exception is null) return string.Empty;
+
+        return $"""
+                Timestamp : {DateTimeOffset.Now:O}
+                Url       : {NavigationManager.Uri}
+                Account   : {AccountNo ?? "N/A"}
+                User      : {UserName ?? "N/A"}
+                Type      : {Exception.GetType().FullName}
+                Message   : {Exception.Message}
+
+                Stack Trace:
+                {Exception.StackTrace}
+
+                {(Exception.InnerException is not null ? $"Inner Exception:\n{Exception.InnerException}" : "")}
+                """;
+    }
+
+    private void Recover()
+    {
+        ErrorBoundary?.Recover();
+    }
+
+    private void ReloadPage()
+    {
+        NavigationManager.NavigateTo(NavigationManager.Uri, forceLoad: true);
+    }
+
+    private async Task CopyToClipboard()
+    {
+        try
+        {
+            var text = GetErrorDetails();
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", text);
+            ShowSuccess("Error details copied to clipboard");
+        }
+        catch
+        {
+            ShowError("Failed to copy to clipboard");
+        }
+    }
+
+    [Inject]
+    private IJSRuntime JS { get; set; } = default!;
+}
