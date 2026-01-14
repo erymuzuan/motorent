@@ -11,8 +11,14 @@ $env:MOTO_GoogleClientId = "YOUR_GOOGLE_CLIENT_ID"
 $env:MOTO_GoogleClientSecret = "YOUR_GOOGLE_CLIENT_SECRET"
 
 # Microsoft OAuth (get from Azure Portal)
-$env:MOTO_MicrosoftClientId = "YOUR_MICROSOFT_CLIENT_ID"
-$env:MOTO_MicrosoftClientSecret = "YOUR_MICROSOFT_CLIENT_SECRET"
+$env:MOTO_MicrosoftClientId = ""
+$env:MOTO_MicrosoftClientSecret = ""
+
+# LINE OA OAuth
+$env:MOTO_LineChannelId = ""
+$env:MOTO_LineChannelSecret = ""
+
+
 
 # JWT Configuration
 $env:MOTO_JwtSecret = "your-secure-jwt-secret-key-change-in-production"

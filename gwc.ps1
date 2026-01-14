@@ -148,3 +148,10 @@ if ($LASTEXITCODE -eq 0) {
 } else {
     Write-Error "Failed to create worktree."
 }
+
+Write-Host "To remove the worktree, run the following commands:" -ForegroundColor Cyan
+Write-Host "`git merge $WorktreeName #in your main worktree"
+Write-Host "`git worktree remove..\motorent.$WorktreeName"
+
+Write-Host "To remove the worktree, run the following commands: with administrator privileges" -ForegroundColor Cyan
+Write-Host "rd /s /q `"\\?\E:\project\work\motorent.$WorktreeName`""
