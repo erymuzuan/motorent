@@ -24,8 +24,8 @@ $env:MOTO_JwtExpirationMonths = "6"
 $env:MOTO_SuperAdmin = "admin@example.com"
 
 # Gemini OCR (get from Google AI Studio)
-$env:MOTO_GeminiApiKey = "YOUR_GEMINI_API_KEY"
-$env:MOTO_GeminiModel = "gemini-3.0-flash"
+$env:MOTO_GeminiApiKey = ""
+$env:MOTO_GeminiModel = "gemini-3-flash-preview"
 
 # File Storage
 $env:MOTO_FileStorageBasePath = "uploads"
