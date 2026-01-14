@@ -5,47 +5,43 @@
 
 <div class="d-flex flex-column gap-4">
     <div>
-        <h5 class="mb-1">@Localizer["SelectVehicle"]</h5>
-        <p class="text-secondary mb-0">@Localizer["SelectVehicleDesc"]</p>
+        <h5 class="mb-1 mr-text-primary" style="font-weight: 600;">
+            <i class="ti ti-car me-2" style="color: var(--mr-accent-primary);"></i>
+            @Localizer["SelectVehicle"]
+        </h5>
+        <p class="mr-text-muted mb-0">@Localizer["SelectVehicleDesc"]</p>
     </div>
 
     @* Vehicle Type Filter Tabs *@
-    <div class="card">
-        <div class="card-body py-2">
-            <ul class="nav nav-pills nav-fill">
-                <li class="nav-item">
-                    <a class="nav-link @(m_vehicleTypeFilter == null ? "active" : "")"
-                       href="javascript:void(0)" @onclick="@(() => FilterByType(null))">
-                        <i class="ti ti-list me-1"></i>@Localizer["All"]
-                        <span class="badge bg-secondary ms-1">@m_allVehicles.Count</span>
-                    </a>
-                </li>
-                @foreach (var type in m_availableTypes)
-                {
-                    var count = m_allVehicles.Count(v => v.Vehicle.VehicleType == type);
-                    <li class="nav-item">
-                        <a class="nav-link @(m_vehicleTypeFilter == type ? "active" : "")"
-                           href="javascript:void(0)" @onclick="@(() => FilterByType(type))">
-                            <i class="ti @GetVehicleTypeIcon(type) me-1"></i>
-                            @GetVehicleTypeLabel(type)
-                            <span class="badge @(m_vehicleTypeFilter == type ? "bg-white text-primary" : "bg-secondary") ms-1">@count</span>
-                        </a>
-                    </li>
-                }
-            </ul>
-        </div>
+    <div class="mr-filter-tabs" style="flex-wrap: wrap; justify-content: center;">
+        <button type="button"
+                class="mr-filter-tab @(m_vehicleTypeFilter == null ? "active" : "")"
+                @onclick="@(() => FilterByType(null))">
+            <i class="ti ti-list"></i>
+            @Localizer["All"]
+            <span class="mr-badge">@m_allVehicles.Count</span>
+        </button>
+        @foreach (var type in m_availableTypes)
+        {
+            var count = m_allVehicles.Count(v => v.Vehicle.VehicleType == type);
+            <button type="button"
+                    class="mr-filter-tab @(m_vehicleTypeFilter == type ? "active" : "")"
+                    @onclick="@(() => FilterByType(type))">
+                <i class="ti @GetVehicleTypeIcon(type)"></i>
+                @GetVehicleTypeLabel(type)
+                <span class="mr-badge">@count</span>
+            </button>
+        }
     </div>
 
-    <div class="d-flex flex-wrap gap-2 align-items-center">
-        <div class="input-icon" style="max-width: 300px;">
-            <span class="input-icon-addon">
-                <i class="ti ti-search"></i>
-            </span>
-            <input type="text" class="form-control" placeholder="@Localizer["SearchRenterPlaceholder"]"
+    <div class="d-flex flex-wrap gap-3 align-items-center">
+        <div class="mr-search-box" style="min-width: 250px;">
+            <i class="ti ti-search"></i>
+            <input type="text" placeholder="@Localizer["SearchRenterPlaceholder"]"
                    @bind="m_searchTerm" @bind:event="oninput" @onkeyup="OnSearchChanged" />
         </div>
 
-        <select class="form-select" style="width: 150px;" @bind="m_brandFilter" @bind:after="ApplyFilters">
+        <select class="form-select" style="width: 150px; border-radius: 8px; border-color: var(--mr-border-light);" @bind="m_brandFilter" @bind:after="ApplyFilters">
             <option value="">@Localizer["AllBrands"]</option>
             @foreach (var brand in m_brands)
             {
@@ -55,19 +51,23 @@
 
         <div class="form-check form-switch ms-2">
             <input class="form-check-input" type="checkbox" id="includePooled"
-                   @bind="m_includePooled" @bind:after="LoadVehicles">
-            <label class="form-check-label" for="includePooled">@Localizer["IncludePooled"]</label>
+                   @bind="m_includePooled" @bind:after="LoadVehicles"
+                   style="background-color: var(--mr-accent-primary);">
+            <label class="form-check-label mr-text-secondary" for="includePooled">@Localizer["IncludePooled"]</label>
         </div>
 
         <div class="ms-auto">
-            <span class="badge bg-success">@m_filteredVehicles.Count @Localizer["Available"]</span>
+            <span class="mr-status-badge success">
+                <i class="ti ti-check"></i>
+                @m_filteredVehicles.Count @Localizer["Available"]
+            </span>
         </div>
     </div>
 
     @if (m_loading)
     {
-        <div class="progress progress-sm">
-            <div class="progress-bar progress-bar-indeterminate"></div>
+        <div class="progress progress-sm" style="background: var(--mr-border-light);">
+            <div class="progress-bar progress-bar-indeterminate" style="background: var(--mr-accent-gradient);"></div>
         </div>
     }
 
@@ -77,21 +77,21 @@
             var vehicle = availability.Vehicle;
             var isSelected = this.SelectedVehicle?.VehicleId == vehicle.VehicleId;
             <div class="col-12 col-sm-6 col-md-4">
-                <div class="card h-100 @(isSelected ? "border-primary" : "")"
-                     style="cursor: pointer; @(isSelected ? "border-width: 2px;" : "")"
+                <div class="mr-card h-100"
+                     style="cursor: pointer; @(isSelected ? "border: 2px solid var(--mr-accent-primary); background: var(--mr-accent-bg);" : "")"
                      @onclick="@(() => SelectVehicleItem(vehicle))">
-                    <div class="card-header">
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="avatar @GetVehicleTypeAvatarClass(vehicle.VehicleType) text-white">
+                    <div class="p-3" style="border-bottom: 1px solid var(--mr-border-light);">
+                        <div class="d-flex align-items-center gap-3">
+                            <span class="avatar" style="background: var(--mr-accent-gradient); color: white;">
                                 <i class="ti @GetVehicleTypeIcon(vehicle.VehicleType)"></i>
                             </span>
                             <div class="flex-grow-1">
-                                <div class="fw-medium">@vehicle.Brand @vehicle.Model</div>
+                                <div class="mr-text-primary" style="font-weight: 600;">@vehicle.Brand @vehicle.Model</div>
                                 <div class="d-flex align-items-center gap-1">
-                                    <span class="text-primary small">@vehicle.LicensePlate</span>
+                                    <span class="mr-mono" style="color: var(--mr-accent-primary); font-size: 0.85rem;">@vehicle.LicensePlate</span>
                                     @if (availability.IsPooled)
                                     {
-                                        <span class="badge bg-purple-lt text-purple" style="font-size: 0.65rem;">
+                                        <span class="mr-status-badge info" style="font-size: 0.65rem; padding: 2px 6px;">
                                             <i class="ti ti-share"></i> Pooled
                                         </span>
                                     }
@@ -99,11 +99,11 @@
                             </div>
                             @if (isSelected)
                             {
-                                <i class="ti ti-circle-check text-success" style="font-size: 1.25rem;"></i>
+                                <i class="ti ti-circle-check" style="font-size: 1.5rem; color: var(--mr-accent-primary);"></i>
                             }
                         </div>
                     </div>
-                    <div class="card-body">
+                    <div class="p-3">
                         <div class="d-flex flex-column gap-1">
                             @* Vehicle-type specific info *@
                             @if (vehicle.VehicleType == VehicleType.Motorbike && vehicle.EngineCC.HasValue)
@@ -210,9 +210,9 @@
                             @* Pool location indicator *@
                             @if (availability.IsPooled && !availability.IsAtCurrentShop)
                             {
-                                <div class="alert alert-warning py-1 px-2 mb-0 mt-2" style="font-size: 0.75rem;">
-                                    <i class="ti ti-map-pin me-1"></i>
-                                    @Localizer["AtAnotherShop"]
+                                <div class="mr-info-panel py-2 px-3 mt-2" style="background: var(--mr-warning-bg); border-color: var(--mr-warning-border); font-size: 0.75rem;">
+                                    <i class="ti ti-map-pin me-1" style="color: var(--mr-warning-text);"></i>
+                                    <span style="color: var(--mr-warning-text);">@Localizer["AtAnotherShop"]</span>
                                 </div>
                             }
                         </div>
@@ -224,32 +224,42 @@
 
     @if (m_filteredVehicles.Count == 0 && !m_loading)
     {
-        <div class="alert alert-info">
-            <i class="ti ti-info-circle me-2"></i>
-            @Localizer["NoVehiclesFound"]
-            @if (!m_includePooled)
-            {
-                <span>@Localizer["IncludePooledHint"]</span>
-            }
+        <div class="mr-info-panel">
+            <div class="mr-info-panel-icon">
+                <i class="ti ti-info-circle"></i>
+            </div>
+            <div>
+                <div class="mr-info-panel-title">@Localizer["NoVehiclesFound"]</div>
+                @if (!m_includePooled)
+                {
+                    <div class="mr-info-panel-desc">@Localizer["IncludePooledHint"]</div>
+                }
+            </div>
         </div>
     }
 
     @if (this.SelectedVehicle != null)
     {
-        <div class="alert alert-success d-flex align-items-center gap-2 mt-4">
-            <i class="ti @GetVehicleTypeIcon(this.SelectedVehicle.VehicleType)"></i>
-            <span>
-                @Localizer["Selected"]: <strong>@this.SelectedVehicle.Brand @this.SelectedVehicle.Model</strong>
-                (@this.SelectedVehicle.LicensePlate) -
-                @if (this.SelectedVehicle.UsesIntervalPricing)
-                {
-                    @FormatCurrency(this.SelectedVehicle.Rate1Hour ?? 0)<text>/hr</text>
-                }
-                else
-                {
-                    @FormatCurrency(this.SelectedVehicle.DailyRate)<text>/day</text>
-                }
-            </span>
+        <div class="mr-info-panel mt-4" style="background: var(--mr-success-bg); border-color: var(--mr-success-border);">
+            <div class="mr-info-panel-icon success">
+                <i class="ti @GetVehicleTypeIcon(this.SelectedVehicle.VehicleType)"></i>
+            </div>
+            <div>
+                <div class="mr-info-panel-title" style="color: var(--mr-success-text);">
+                    @Localizer["Selected"]: <strong>@this.SelectedVehicle.Brand @this.SelectedVehicle.Model</strong>
+                </div>
+                <div class="mr-info-panel-desc">
+                    @this.SelectedVehicle.LicensePlate -
+                    @if (this.SelectedVehicle.UsesIntervalPricing)
+                    {
+                        @FormatCurrency(this.SelectedVehicle.Rate1Hour ?? 0)<text>/hr</text>
+                    }
+                    else
+                    {
+                        @FormatCurrency(this.SelectedVehicle.DailyRate)<text>/day</text>
+                    }
+                </div>
+            </div>
         </div>
     }
 </div>

@@ -13,172 +13,232 @@
 
 <MotoRentPageTitle>@Localizer["RentalDetails"] #@RentalId</MotoRentPageTitle>
 
-<TablerHeader Title="@m_headerTitle" PreTitle="@Localizer["RentalDetails"]">
-    <a href="/rentals" class="btn btn-ghost-secondary me-2">
-        <i class="ti ti-arrow-left me-1"></i>
-        @Localizer["BackToRentals"]
-    </a>
-    @if (m_rental != null)
-    {
-        @* Action buttons based on status *@
-        @if (m_rental.Status == "Reserved")
-        {
-            <button type="button" class="btn btn-primary me-2" @onclick="StartRental">
-                <i class="ti ti-player-play me-1"></i>
-                @Localizer["StartRental"]
-            </button>
-        }
-        @if (m_rental.Status == "Active")
-        {
-            <button type="button" class="btn btn-success me-2" @onclick="OpenCheckOutDialog">
-                <i class="ti ti-logout me-1"></i>
-                @Localizer["CheckOut"]
-            </button>
-            @if (m_rental.DurationType == RentalDurationType.Daily)
-            {
-                <button type="button" class="btn btn-warning me-2" @onclick="ExtendRental">
-                    <i class="ti ti-calendar-plus me-1"></i>
-                    @Localizer["Extend"]
-                </button>
-            }
-        }
-        @if (m_rental.Status is "Active" or "Reserved")
-        {
-            <button type="button" class="btn btn-outline-danger me-2" @onclick="CancelRental">
-                <i class="ti ti-x me-1"></i>
-                @Localizer["Cancel"]
-            </button>
-        }
-        <button type="button" class="btn btn-outline-primary me-2" @onclick="ViewInvoice">
-            <i class="ti ti-receipt me-1"></i>
-            @Localizer["ViewInvoice"]
-        </button>
-        @if (m_rental.Status is "Active" or "Completed")
-        {
-            <button type="button" class="btn btn-outline-secondary" @onclick="AddPayment">
-                <i class="ti ti-cash me-1"></i>
-                @Localizer["AddPayment"]
-            </button>
-        }
-    }
-</TablerHeader>
+<div class="mr-page-header mr-animate-in">
+    <div class="container-xl">
+        <nav class="mr-breadcrumb">
+            <span class="mr-breadcrumb-item"><a href="/"><i class="ti ti-home"></i></a></span>
+            <span class="mr-breadcrumb-separator"><i class="ti ti-chevron-right"></i></span>
+            <span class="mr-breadcrumb-item"><a href="/rentals">@Localizer["Rentals"]</a></span>
+            <span class="mr-breadcrumb-separator"><i class="ti ti-chevron-right"></i></span>
+            <span class="mr-breadcrumb-item active">#@RentalId</span>
+        </nav>
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <h1 class="mr-page-title">
+                    <i class="ti ti-file-description"></i>
+                    @m_headerTitle
+                </h1>
+                <p class="mr-page-subtitle">@Localizer["RentalDetails"]</p>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <a href="/rentals" class="mr-btn-header-action">
+                    <i class="ti ti-arrow-left"></i>
+                    @Localizer["BackToRentals"]
+                </a>
+                @if (m_rental != null)
+                {
+                    @* Action buttons based on status *@
+                    @if (m_rental.Status == "Reserved")
+                    {
+                        <button type="button" class="mr-btn-primary-action" @onclick="StartRental">
+                            <i class="ti ti-player-play"></i>
+                            @Localizer["StartRental"]
+                        </button>
+                    }
+                    @if (m_rental.Status == "Active")
+                    {
+                        <button type="button" class="mr-btn-action success" @onclick="OpenCheckOutDialog">
+                            <i class="ti ti-logout"></i>
+                            @Localizer["CheckOut"]
+                        </button>
+                        @if (m_rental.DurationType == RentalDurationType.Daily)
+                        {
+                            <button type="button" class="btn btn-warning" @onclick="ExtendRental">
+                                <i class="ti ti-calendar-plus me-1"></i>
+                                @Localizer["Extend"]
+                            </button>
+                        }
+                    }
+                    @if (m_rental.Status is "Active" or "Reserved")
+                    {
+                        <button type="button" class="mr-btn-action danger" @onclick="CancelRental">
+                            <i class="ti ti-x"></i>
+                            @Localizer["Cancel"]
+                        </button>
+                    }
+                    <button type="button" class="mr-btn-action view" @onclick="ViewInvoice">
+                        <i class="ti ti-receipt"></i>
+                        @Localizer["ViewInvoice"]
+                    </button>
+                    @if (m_rental.Status is "Active" or "Completed")
+                    {
+                        <button type="button" class="mr-btn-action view" @onclick="AddPayment">
+                            <i class="ti ti-cash"></i>
+                            @Localizer["AddPayment"]
+                        </button>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+</div>
 
+<div class="container-xl mt-3">
 <LoadingSkeleton Loading="@m_loading" Mode="LoadingSkeleton.PlaceholderMode.Card" Rows="6">
     @if (m_notFound)
     {
-        <div class="alert alert-danger">
-            <div class="d-flex">
-                <div class="me-3">
-                    <i class="ti ti-alert-circle" style="font-size: 2rem;"></i>
-                </div>
-                <div>
-                    <h4 class="alert-title">@Localizer["RentalNotFound"]</h4>
-                    <div class="text-secondary">
-                        @Localizer["RentalNotFoundDesc", RentalId]
-                    </div>
-                    <div class="mt-3">
-                        <a href="/rentals" class="btn btn-outline-danger">
-                            <i class="ti ti-arrow-left me-1"></i>
-                            @Localizer["BackToRentals"]
-                        </a>
-                    </div>
-                </div>
+        <div class="mr-empty-state mr-animate-in">
+            <div class="mr-empty-state-icon">
+                <i class="ti ti-alert-circle"></i>
             </div>
+            <h3>@Localizer["RentalNotFound"]</h3>
+            <p>@Localizer["RentalNotFoundDesc", RentalId]</p>
+            <a href="/rentals" class="mr-btn-action danger">
+                <i class="ti ti-arrow-left"></i>
+                @Localizer["BackToRentals"]
+            </a>
         </div>
     }
     else if (m_rental != null)
     {
+        @* Summary cards at top *@
+        <div class="mr-summary-cards mr-animate-in">
+            <div class="mr-summary-card">
+                <div class="mr-summary-icon @GetStatusIconClass(m_rental.Status)">
+                    <i class="ti ti-file-description"></i>
+                </div>
+                <div class="mr-summary-content">
+                    <h4>@Localizer["Status"]</h4>
+                    <div class="mr-value">@Localizer[m_rental.Status ?? ""]</div>
+                </div>
+            </div>
+            <div class="mr-summary-card">
+                <div class="mr-summary-icon info">
+                    <i class="ti ti-calendar"></i>
+                </div>
+                <div class="mr-summary-content">
+                    <h4>@Localizer["Duration"]</h4>
+                    <div class="mr-value">@m_rental.DurationDisplay</div>
+                </div>
+            </div>
+            <div class="mr-summary-card">
+                <div class="mr-summary-icon total">
+                    <i class="ti ti-currency-baht"></i>
+                </div>
+                <div class="mr-summary-content">
+                    <h4>@Localizer["TotalAmount"]</h4>
+                    <div class="mr-value">@FormatCurrency(m_grandTotal)</div>
+                </div>
+            </div>
+            <div class="mr-summary-card">
+                <div class="mr-summary-icon @(m_totalPaid >= m_grandTotal ? "success" : "pending")">
+                    <i class="ti ti-cash"></i>
+                </div>
+                <div class="mr-summary-content">
+                    <h4>@Localizer["Paid"]</h4>
+                    <div class="mr-value">@FormatCurrency(m_totalPaid)</div>
+                </div>
+            </div>
+        </div>
+
         @* Alerts for special conditions *@
         @if (m_isOverdue)
         {
-            <div class="alert alert-danger mb-3">
-                <div class="d-flex align-items-center">
-                    <i class="ti ti-alert-triangle me-2"></i>
-                    <strong>@Localizer["OverdueAlert", m_daysOverdue]</strong>
+            <div class="mr-info-panel mr-animate-in mr-animate-delay-1" style="background: var(--mr-danger-bg); border-color: var(--mr-danger-border); margin-bottom: 1rem;">
+                <div class="mr-info-panel-icon" style="background: var(--mr-danger-gradient); color: white;">
+                    <i class="ti ti-alert-triangle"></i>
+                </div>
+                <div>
+                    <div class="mr-info-panel-title" style="color: var(--mr-danger-text);">@Localizer["OverdueAlert", m_daysOverdue]</div>
                 </div>
             </div>
         }
         else if (m_isDueToday)
         {
-            <div class="alert alert-warning mb-3">
-                <div class="d-flex align-items-center">
-                    <i class="ti ti-clock me-2"></i>
-                    <strong>@Localizer["DueToday"]</strong>
+            <div class="mr-info-panel mr-animate-in mr-animate-delay-1" style="background: var(--mr-warning-bg); border-color: var(--mr-warning-border); margin-bottom: 1rem;">
+                <div class="mr-info-panel-icon" style="background: var(--mr-warning-gradient); color: white;">
+                    <i class="ti ti-clock"></i>
+                </div>
+                <div>
+                    <div class="mr-info-panel-title" style="color: var(--mr-warning-text);">@Localizer["DueToday"]</div>
                 </div>
             </div>
         }
 
         @if (m_rental.IsCrossShopReturn && m_returnShop != null)
         {
-            <div class="alert alert-info mb-3">
-                <div class="d-flex align-items-center">
-                    <i class="ti ti-map-pin me-2"></i>
-                    <strong>@Localizer["CrossShopReturn", m_returnShop.Name]</strong>
+            <div class="mr-info-panel mr-animate-in mr-animate-delay-1" style="margin-bottom: 1rem;">
+                <div class="mr-info-panel-icon">
+                    <i class="ti ti-map-pin"></i>
+                </div>
+                <div>
+                    <div class="mr-info-panel-title">@Localizer["CrossShopReturn", m_returnShop.Name]</div>
                 </div>
             </div>
         }
 
-        <div class="row g-3">
+        <div class="row g-3 mr-animate-in mr-animate-delay-2">
             @* Left Column *@
             <div class="col-lg-4">
                 @* Summary Card *@
-                <div class="card mb-3">
-                    <div class="card-header">
-                        <h3 class="card-title">
-                            <i class="ti ti-file-description me-2"></i>
-                            @Localizer["Summary"]
-                        </h3>
+                <div class="mr-form-panel mb-3">
+                    <div class="mr-form-panel-header">
+                        <div class="mr-form-panel-header-icon">
+                            <i class="ti ti-file-description"></i>
+                        </div>
+                        <h3 class="mr-form-panel-title">@Localizer["Summary"]</h3>
                     </div>
-                    <div class="card-body">
+                    <div class="mr-form-panel-body">
                         <div class="mb-3">
-                            <span class="badge @GetStatusBadgeClass(m_rental.Status)" style="font-size: 0.9rem;">
+                            <span class="mr-status-badge @GetStatusBadgeClassNew(m_rental.Status)">
+                                <i class="ti @GetStatusIcon(m_rental.Status)"></i>
                                 @Localizer[m_rental.Status ?? ""]
                             </span>
                         </div>
-                        <div class="datagrid">
-                            <div class="datagrid-item">
-                                <div class="datagrid-title">@Localizer["Duration"]</div>
-                                <div class="datagrid-content">@m_rental.DurationDisplay</div>
+                        <div class="mr-field-grid">
+                            <div class="mr-field">
+                                <div class="mr-field-label">@Localizer["Duration"]</div>
+                                <div class="mr-field-value">@m_rental.DurationDisplay</div>
                             </div>
-                            <div class="datagrid-item">
-                                <div class="datagrid-title">@Localizer["StartDate"]</div>
-                                <div class="datagrid-content">@FormatDateTime(m_rental.StartDate)</div>
+                            <div class="mr-field">
+                                <div class="mr-field-label">@Localizer["StartDate"]</div>
+                                <div class="mr-field-value">@FormatDateTime(m_rental.StartDate)</div>
                             </div>
-                            <div class="datagrid-item">
-                                <div class="datagrid-title">@Localizer["ExpectedEnd"]</div>
-                                <div class="datagrid-content">@FormatDateTime(m_rental.ExpectedEndDate)</div>
+                            <div class="mr-field">
+                                <div class="mr-field-label">@Localizer["ExpectedEnd"]</div>
+                                <div class="mr-field-value">@FormatDateTime(m_rental.ExpectedEndDate)</div>
                             </div>
                             @if (m_rental.ActualEndDate.HasValue)
                             {
-                                <div class="datagrid-item">
-                                    <div class="datagrid-title">@Localizer["ActualEnd"]</div>
-                                    <div class="datagrid-content">@FormatDateTime(m_rental.ActualEndDate)</div>
+                                <div class="mr-field">
+                                    <div class="mr-field-label">@Localizer["ActualEnd"]</div>
+                                    <div class="mr-field-value">@FormatDateTime(m_rental.ActualEndDate)</div>
                                 </div>
                             }
-                            <div class="datagrid-item">
-                                <div class="datagrid-title">@Localizer["Rate"]</div>
-                                <div class="datagrid-content">
+                            <div class="mr-field">
+                                <div class="mr-field-label">@Localizer["Rate"]</div>
+                                <div class="mr-field-value mr-mono mr-highlight">
                                     @FormatCurrency(m_rental.RentalRate)
                                     @if (m_rental.DurationType == RentalDurationType.Daily)
                                     {
-                                        <span class="text-secondary">/@Localizer["Days"]</span>
+                                        <span class="mr-text-muted">/@Localizer["Days"]</span>
                                     }
                                     else
                                     {
-                                        <span class="text-secondary">/@(m_rental.IntervalMinutes)min</span>
+                                        <span class="mr-text-muted">/@(m_rental.IntervalMinutes)min</span>
                                     }
                                 </div>
                             </div>
-                            <div class="datagrid-item">
-                                <div class="datagrid-title">@Localizer["TotalAmount"]</div>
-                                <div class="datagrid-content fw-bold text-primary">@FormatCurrency(m_rental.TotalAmount)</div>
+                            <div class="mr-field">
+                                <div class="mr-field-label">@Localizer["TotalAmount"]</div>
+                                <div class="mr-field-value mr-mono mr-highlight">@FormatCurrency(m_rental.TotalAmount)</div>
                             </div>
                         </div>
                         @if (!string.IsNullOrEmpty(m_rental.Notes))
                         {
-                            <div class="mt-3">
-                                <div class="subheader">@Localizer["Notes"]</div>
-                                <div class="text-secondary">@m_rental.Notes</div>
+                            <div class="mt-3 pt-3" style="border-top: 1px solid var(--mr-border-light);">
+                                <div class="mr-field-label">@Localizer["Notes"]</div>
+                                <div class="mr-text-secondary">@m_rental.Notes</div>
                             </div>
                         }
                     </div>
@@ -187,54 +247,54 @@
                 @* Deposit Card *@
                 @if (m_deposit != null)
                 {
-                    <div class="card mb-3">
-                        <div class="card-header">
-                            <h3 class="card-title">
-                                <i class="ti ti-wallet me-2"></i>
-                                @Localizer["Deposit"]
-                            </h3>
+                    <div class="mr-form-panel mb-3">
+                        <div class="mr-form-panel-header">
+                            <div class="mr-form-panel-header-icon">
+                                <i class="ti ti-wallet"></i>
+                            </div>
+                            <h3 class="mr-form-panel-title">@Localizer["Deposit"]</h3>
                         </div>
-                        <div class="card-body">
-                            <div class="datagrid">
-                                <div class="datagrid-item">
-                                    <div class="datagrid-title">@Localizer["DepositType"]</div>
-                                    <div class="datagrid-content">@m_deposit.DepositType</div>
+                        <div class="mr-form-panel-body">
+                            <div class="mr-field-grid">
+                                <div class="mr-field">
+                                    <div class="mr-field-label">@Localizer["DepositType"]</div>
+                                    <div class="mr-field-value">@m_deposit.DepositType</div>
                                 </div>
-                                <div class="datagrid-item">
-                                    <div class="datagrid-title">@Localizer["Amount"]</div>
-                                    <div class="datagrid-content fw-bold">@FormatCurrency(m_deposit.Amount)</div>
+                                <div class="mr-field">
+                                    <div class="mr-field-label">@Localizer["Amount"]</div>
+                                    <div class="mr-field-value mr-mono mr-highlight">@FormatCurrency(m_deposit.Amount)</div>
                                 </div>
-                                <div class="datagrid-item">
-                                    <div class="datagrid-title">@Localizer["Status"]</div>
-                                    <div class="datagrid-content">
-                                        <span class="badge @GetDepositStatusBadgeClass(m_deposit.Status)">
+                                <div class="mr-field">
+                                    <div class="mr-field-label">@Localizer["Status"]</div>
+                                    <div class="mr-field-value">
+                                        <span class="mr-status-badge @GetDepositStatusBadgeClassNew(m_deposit.Status)">
                                             @Localizer[m_deposit.Status ?? ""]
                                         </span>
                                     </div>
                                 </div>
-                                <div class="datagrid-item">
-                                    <div class="datagrid-title">@Localizer["CollectedOn"]</div>
-                                    <div class="datagrid-content">@FormatDateTime(m_deposit.CollectedOn)</div>
+                                <div class="mr-field">
+                                    <div class="mr-field-label">@Localizer["CollectedOn"]</div>
+                                    <div class="mr-field-value">@FormatDateTime(m_deposit.CollectedOn)</div>
                                 </div>
                                 @if (!string.IsNullOrEmpty(m_deposit.CardLast4))
                                 {
-                                    <div class="datagrid-item">
-                                        <div class="datagrid-title">@Localizer["Card"]</div>
-                                        <div class="datagrid-content">**** @m_deposit.CardLast4</div>
+                                    <div class="mr-field">
+                                        <div class="mr-field-label">@Localizer["Card"]</div>
+                                        <div class="mr-field-value mr-mono">**** @m_deposit.CardLast4</div>
                                     </div>
                                 }
                                 @if (!string.IsNullOrEmpty(m_deposit.TransactionRef))
                                 {
-                                    <div class="datagrid-item">
-                                        <div class="datagrid-title">@Localizer["Reference"]</div>
-                                        <div class="datagrid-content">@m_deposit.TransactionRef</div>
+                                    <div class="mr-field">
+                                        <div class="mr-field-label">@Localizer["Reference"]</div>
+                                        <div class="mr-field-value mr-mono">@m_deposit.TransactionRef</div>
                                     </div>
                                 }
                                 @if (m_deposit.RefundedOn.HasValue)
                                 {
-                                    <div class="datagrid-item">
-                                        <div class="datagrid-title">@Localizer["RefundedOn"]</div>
-                                        <div class="datagrid-content">@FormatDateTime(m_deposit.RefundedOn)</div>
+                                    <div class="mr-field">
+                                        <div class="mr-field-label">@Localizer["RefundedOn"]</div>
+                                        <div class="mr-field-value">@FormatDateTime(m_deposit.RefundedOn)</div>
                                     </div>
                                 }
                             </div>
@@ -827,6 +887,7 @@
         </div>
     }
 </LoadingSkeleton>
+</div>
 
 @code {
     [Parameter] public string RentalId { get; set; } = "";
@@ -1100,12 +1161,48 @@
         _ => "bg-secondary"
     };
 
+    // New mr-* styled badge helpers
+    private static string GetStatusBadgeClassNew(string? status) => status switch
+    {
+        "Active" => "info",
+        "Reserved" => "pending",
+        "Completed" => "success",
+        "Cancelled" => "danger",
+        _ => ""
+    };
+
+    private static string GetStatusIcon(string? status) => status switch
+    {
+        "Active" => "ti-player-play",
+        "Reserved" => "ti-clock",
+        "Completed" => "ti-check",
+        "Cancelled" => "ti-x",
+        _ => "ti-info-circle"
+    };
+
+    private static string GetStatusIconClass(string? status) => status switch
+    {
+        "Active" => "info",
+        "Reserved" => "pending",
+        "Completed" => "success",
+        "Cancelled" => "danger",
+        _ => "total"
+    };
+
     private static string GetDepositStatusBadgeClass(string status) => status switch
     {
         "Held" => "bg-warning",
         "Refunded" => "bg-success",
         "Forfeited" => "bg-danger",
         _ => "bg-secondary"
+    };
+
+    private static string GetDepositStatusBadgeClassNew(string status) => status switch
+    {
+        "Held" => "pending",
+        "Refunded" => "success",
+        "Forfeited" => "danger",
+        _ => ""
     };
 
     private static string GetPaymentTypeBadgeClass(string type) => type switch
