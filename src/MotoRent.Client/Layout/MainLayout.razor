@@ -1,8 +1,10 @@
 @inherits LayoutComponentBase
 @using System.Globalization
+@using System.Security.Claims
 @using MotoRent.Domain.Core
 @using MotoRent.Domain.DataContext
 @using MotoRent.Domain.Storage
+@using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.Extensions.Localization
 @inject IJSRuntime JS
 @inject IRequestContext RequestContext
@@ -11,6 +13,7 @@
 @inject NavigationManager Navigation
 @inject IStringLocalizer<MainLayout> Localizer
 @inject IStringLocalizer<CommonResources> CommonLocalizer
+@inject AuthenticationStateProvider AuthStateProvider
 
 <ModalContainer />
 <ToastContainer />
@@ -26,7 +29,7 @@
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <h1 class="navbar-brand navbar-brand-autodark d-none-navbar-horizontal pe-0 pe-md-3 mb-0">
-                    <a href="/" class="d-flex align-items-center text-decoration-none">
+                    <a href="@m_homeUrl" class="d-flex align-items-center text-decoration-none">
                         <img src="images/icons/ios/40.png" alt="SafeNGo" height="32" class="me-2" />
                         <span class="fw-bold text-white">SafeNGo</span>
                     </a>
@@ -203,10 +206,37 @@
     private bool m_isInstallable;
     private string? m_userPhotoUrl;
     private string? m_userInitials;
+    private string m_homeUrl = "/";
 
     protected override async Task OnInitializedAsync()
     {
         await LoadUserProfileAsync();
+        await DetermineHomeUrlAsync();
+    }
+
+    private async Task DetermineHomeUrlAsync()
+    {
+        try
+        {
+            var authState = await this.AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+
+            if (user.Identity?.IsAuthenticated == true)
+            {
+                var isSuperAdmin = user.IsInRole(UserAccount.SUPER_ADMIN);
+                var hasTenantRole = UserAccount.AllRoles.Any(role => user.IsInRole(role));
+
+                // SuperAdmin without tenant access (not impersonating) should go to super admin page
+                if (isSuperAdmin && !hasTenantRole)
+                {
+                    m_homeUrl = "/super-admin/start-page";
+                }
+            }
+        }
+        catch
+        {
+            // Silently fail - default to "/"
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
