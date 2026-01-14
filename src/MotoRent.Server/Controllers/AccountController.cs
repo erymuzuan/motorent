@@ -48,6 +48,7 @@ public class AccountController : Controller
         var schemes = authSchemes.GetAllSchemesAsync().Result;
         ViewData["GoogleEnabled"] = schemes.Any(s => s.Name == "Google");
         ViewData["MicrosoftEnabled"] = schemes.Any(s => s.Name == "Microsoft");
+        ViewData["LineEnabled"] = schemes.Any(s => s.Name == "Line");
 
         return View();
     }
@@ -97,7 +98,23 @@ public class AccountController : Controller
     }
 
     /// <summary>
+    /// Initiates LINE OAuth login.
+    /// </summary>
+    [AllowAnonymous]
+    [HttpGet("line")]
+    public IActionResult LoginWithLine([FromQuery] string? returnUrl = null)
+    {
+        var properties = new AuthenticationProperties
+        {
+            RedirectUri = Url.Action(nameof(OAuthCallback), new { returnUrl }),
+            Items = { { "LoginProvider", "Line" } }
+        };
+        return Challenge(properties, "Line");
+    }
+
+    /// <summary>
     /// OAuth callback handler - processes the response from OAuth providers.
+    /// Supports LINE users who may not have email (uses LINE ID as username).
     /// </summary>
     [AllowAnonymous]
     [HttpGet("oauth-callback")]
@@ -112,32 +129,68 @@ public class AccountController : Controller
 
         // Get the external claims
         var externalUser = result.Principal;
-        var email = externalUser.FindFirst(ClaimTypes.Email)?.Value
-            ?? externalUser.FindFirst(ClaimTypes.Name)?.Value;
+        var provider = result.Properties?.Items["LoginProvider"] ?? CoreUser.GOOGLE;
+        var nameIdentifier = externalUser.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var email = externalUser.FindFirst(ClaimTypes.Email)?.Value;
+        var displayName = externalUser.FindFirst(ClaimTypes.Name)?.Value
+            ?? externalUser.FindFirst("name")?.Value;
 
-        if (string.IsNullOrWhiteSpace(email))
+        // For LINE users, email may be null - use nameIdentifier for lookup
+        CoreUser? user = null;
+
+        // Strategy 1: Try lookup by NameIdentifier + Provider first (for LINE users without email)
+        if (!string.IsNullOrWhiteSpace(nameIdentifier))
         {
-            return RedirectToAction(nameof(Login));
+            user = await m_directoryService.GetUserByProviderIdAsync(provider, nameIdentifier);
         }
 
-        var userName = email.ToLowerInvariant();
+        // Strategy 2: If not found and email exists, try email lookup
+        if (user == null && !string.IsNullOrWhiteSpace(email))
+        {
+            user = await m_directoryService.GetUserAsync(email.ToLowerInvariant());
+        }
 
-        // Look up or create the user
-        var user = await m_directoryService.GetUserAsync(userName);
+        // Create new user if not found
         if (user == null)
         {
-            // Create a new user from OAuth
+            // Determine username based on available information
+            string userName;
+            if (!string.IsNullOrWhiteSpace(email))
+            {
+                userName = email.ToLowerInvariant();
+            }
+            else if (provider == CoreUser.LINE && !string.IsNullOrWhiteSpace(nameIdentifier))
+            {
+                // LINE users without email use their LINE ID as username
+                userName = $"line_{nameIdentifier}";
+            }
+            else
+            {
+                // No email and no LINE ID - cannot create user
+                return RedirectToAction(nameof(Login));
+            }
+
             user = new CoreUser
             {
                 UserName = userName,
-                Email = email,
-                FullName = externalUser.FindFirst(ClaimTypes.Name)?.Value ?? email,
-                CredentialProvider = result.Properties?.Items["LoginProvider"] ?? CoreUser.GOOGLE,
-                NameIdentifier = externalUser.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                Email = email ?? "",
+                FullName = displayName ?? userName,
+                CredentialProvider = provider,
+                NameIdentifier = nameIdentifier
             };
 
             // Save the new user
             await m_directoryService.SaveUserProfileAsync(user);
+        }
+        else
+        {
+            // Update NameIdentifier if not set (for existing users linking a new provider)
+            if (string.IsNullOrWhiteSpace(user.NameIdentifier) && !string.IsNullOrWhiteSpace(nameIdentifier))
+            {
+                user.NameIdentifier = nameIdentifier;
+                user.CredentialProvider = provider;
+                await m_directoryService.SaveUserProfileAsync(user);
+            }
         }
 
         // Check if user is locked
@@ -150,15 +203,18 @@ public class AccountController : Controller
         var accountNo = user.AccountNo;
 
         // Build claims for the user
-        var claims = await m_directoryService.GetClaimsAsync(userName, accountNo);
+        var claims = await m_directoryService.GetClaimsAsync(user.UserName, accountNo);
         var claimsList = claims.ToList();
 
         if (claimsList.Count == 0)
         {
             // User exists but has no account access
             // For now, allow them in with minimal claims
-            claimsList.Add(new Claim(ClaimTypes.Name, userName));
-            claimsList.Add(new Claim(ClaimTypes.Email, email));
+            claimsList.Add(new Claim(ClaimTypes.Name, user.UserName));
+            if (!string.IsNullOrWhiteSpace(user.Email))
+            {
+                claimsList.Add(new Claim(ClaimTypes.Email, user.Email));
+            }
             claimsList.Add(new Claim(ClaimTypes.Role, UserAccount.REGISTERED_USER));
         }
 

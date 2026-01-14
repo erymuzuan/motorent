@@ -4,10 +4,11 @@
 @attribute [AllowAnonymous]
 @inherits TouristComponentBase
 @using MotoRent.Domain.Entities
+@using MotoRent.Domain.Models
 @using MotoRent.Services
 @using MotoRent.Client.Components.Tourist
 @using MotoRent.Client.Controls
-@inject MotorbikeService MotorbikeService
+@inject VehicleService VehicleService
 @inject ShopService ShopService
 @inject IJSRuntime JS
 
@@ -113,7 +114,7 @@
             }
             else
             {
-                <span>@m_filteredMotorbikes.Count available motorbikes</span>
+                <span>@m_filteredGroups.Count vehicle models (@m_filteredGroups.Sum(g => g.AvailableUnits) available)</span>
             }
         </h4>
         <div class="d-flex align-items-center gap-2">
@@ -135,7 +136,7 @@
         </div>
     </div>
 
-    @* Motorbike Cards Grid *@
+    @* Vehicle Groups Grid *@
     @if (m_loading)
     {
         <div class="row g-4">
@@ -158,12 +159,12 @@
             }
         </div>
     }
-    else if (m_filteredMotorbikes.Count == 0)
+    else if (m_filteredGroups.Count == 0)
     {
         <div class="card bg-light">
             <div class="card-body py-5 text-center">
                 <i class="ti ti-search-off fs-1 text-secondary mb-3"></i>
-                <h4 class="text-secondary">No motorbikes found</h4>
+                <h4 class="text-secondary">No vehicles found</h4>
                 <p class="text-secondary">Try adjusting your filters or dates</p>
             </div>
         </div>
@@ -171,15 +172,85 @@
     else
     {
         <div class="row g-4">
-            @foreach (var bike in m_filteredMotorbikes)
+            @foreach (var group in m_filteredGroups)
             {
                 <div class="@(m_gridView ? "col-12 col-sm-6 col-md-4" : "col-12")">
-                    <BikeCard Motorbike="@bike"
-                              IsFavorite="@m_favorites.Contains(bike.MotorbikeId)"
-                              Compact="@(!m_gridView)"
-                              OnDetailsClick="@(() => ViewDetails(bike))"
-                              OnReserveClick="@(() => StartReservation(bike))"
-                              OnFavoriteChanged="@(isFav => ToggleFavorite(bike.MotorbikeId, isFav))" />
+                    <div class="card h-100 cursor-pointer tourist-bike-card" @onclick="@(() => ViewGroupDetails(group))">
+                        <div class="card-img-top img-responsive img-responsive-16by9 position-relative"
+                             style="background-image: url('@GetGroupImage(group)'); background-color: #f8fafc;">
+                            @if (string.IsNullOrEmpty(group.ImagePath))
+                            {
+                                <div class="d-flex align-items-center justify-content-center h-100">
+                                    <i class="ti @GetVehicleTypeIcon(group.VehicleType) text-secondary" style="font-size: 4rem; opacity: 0.3;"></i>
+                                </div>
+                            }
+                            @* Availability Badge *@
+                            <div class="position-absolute top-0 end-0 m-2">
+                                @if (group.AvailableUnits == 0)
+                                {
+                                    <span class="badge bg-secondary">Sold Out</span>
+                                }
+                                else if (group.AvailableUnits == 1)
+                                {
+                                    <span class="badge bg-warning">Last one!</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success">@group.AvailableUnits available</span>
+                                }
+                            </div>
+                            @* Vehicle Type Badge *@
+                            <div class="position-absolute top-0 start-0 m-2">
+                                <span class="badge @GetVehicleTypeBadgeClass(group.VehicleType)">
+                                    <i class="ti @GetVehicleTypeIcon(group.VehicleType) me-1"></i>
+                                    @group.VehicleType
+                                </span>
+                            </div>
+                            @* Favorite Button *@
+                            <button type="button" class="btn btn-icon position-absolute bottom-0 end-0 m-2 @(m_favorites.Contains(group.GroupKey) ? "btn-danger" : "btn-ghost-light")"
+                                    @onclick="@(() => ToggleFavorite(group.GroupKey))" @onclick:stopPropagation="true">
+                                <i class="ti @(m_favorites.Contains(group.GroupKey) ? "ti-heart-filled" : "ti-heart")"></i>
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <h3 class="card-title mb-1">@group.DisplayName</h3>
+                            <div class="text-secondary mb-2">
+                                @if (!string.IsNullOrEmpty(group.EngineDisplay))
+                                {
+                                    <span class="me-2">@group.EngineDisplay</span>
+                                }
+                                @if (group.Segment.HasValue)
+                                {
+                                    <span>@group.Segment</span>
+                                }
+                            </div>
+                            @if (group.AvailableColors.Count > 0)
+                            {
+                                <div class="mb-2">
+                                    <small class="text-secondary">Colors: @string.Join(", ", group.AvailableColors)</small>
+                                </div>
+                            }
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div>
+                                    @if (group.HasPriceRange)
+                                    {
+                                        <span class="h3 text-primary mb-0">@FormatCurrency(group.MinDailyRate)-@FormatCurrency(group.MaxDailyRate)</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="h3 text-primary mb-0">@FormatCurrency(group.MinDailyRate)</span>
+                                    }
+                                    <span class="text-secondary">/day</span>
+                                </div>
+                                @if (group.AvailableUnits > 0)
+                                {
+                                    <button type="button" class="btn btn-primary" @onclick="@(() => StartReservation(group))" @onclick:stopPropagation="true">
+                                        Reserve
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    </div>
                 </div>
             }
         </div>
@@ -233,11 +304,11 @@
     [Parameter] public string? SelectedShopId { get; set; }
 
     private int? m_selectedShopId;
-    private List<Motorbike> m_motorbikes = [];
-    private List<Motorbike> m_filteredMotorbikes = [];
+    private List<VehicleGroup> m_vehicleGroups = [];
+    private List<VehicleGroup> m_filteredGroups = [];
     private bool m_loading = true;
     private bool m_gridView = true;
-    private HashSet<int> m_favorites = [];
+    private HashSet<string> m_favorites = [];  // Now stores group keys instead of IDs
 
     // Filters
     private DateTime? m_startDate = DateTime.Today;
@@ -249,7 +320,7 @@
     {
         m_selectedShopId = string.IsNullOrEmpty(SelectedShopId) ? null : DecodeId(SelectedShopId);
         await this.LoadFavoritesAsync();
-        await this.LoadMotorbikes();
+        await this.LoadVehicleGroups();
     }
 
     private async Task LoadFavoritesAsync()
@@ -261,9 +332,9 @@
             var favJson = await this.JS.InvokeAsync<string?>("localStorage.getItem", storageKey);
             if (!string.IsNullOrEmpty(favJson))
             {
-                var ids = System.Text.Json.JsonSerializer.Deserialize<int[]>(favJson);
-                if (ids != null)
-                    this.m_favorites = [.. ids];
+                var keys = System.Text.Json.JsonSerializer.Deserialize<string[]>(favJson);
+                if (keys != null)
+                    this.m_favorites = [.. keys];
             }
         }
         catch { /* Ignore localStorage errors */ }
@@ -280,12 +351,12 @@
         catch { /* Ignore localStorage errors */ }
     }
 
-    private async Task ToggleFavorite(int motorbikeId, bool isFavorite)
+    private async Task ToggleFavorite(string groupKey)
     {
-        if (isFavorite)
-            this.m_favorites.Add(motorbikeId);
+        if (this.m_favorites.Contains(groupKey))
+            this.m_favorites.Remove(groupKey);
         else
-            this.m_favorites.Remove(motorbikeId);
+            this.m_favorites.Add(groupKey);
 
         await this.SaveFavoritesAsync();
         this.StateHasChanged();
@@ -296,26 +367,25 @@
         // Filter to show only favorites
         if (this.m_favorites.Count > 0)
         {
-            this.m_filteredMotorbikes = this.m_motorbikes
-                .Where(m => this.m_favorites.Contains(m.MotorbikeId))
+            this.m_filteredGroups = this.m_vehicleGroups
+                .Where(g => this.m_favorites.Contains(g.GroupKey))
                 .ToList();
         }
     }
 
-    private async Task LoadMotorbikes()
+    private async Task LoadVehicleGroups()
     {
         this.m_loading = true;
         try
         {
             // Use SelectedShopId from URL if provided, otherwise use default ShopId
             var shopId = this.m_selectedShopId ?? this.ShopId;
-            var result = await this.MotorbikeService.GetAvailableMotorbikesAsync(shopId);
-            this.m_motorbikes = result.ToList();
+            this.m_vehicleGroups = await this.VehicleService.GetAvailableVehicleGroupsForTouristAsync(shopId);
             this.ApplyFilters();
         }
         catch (Exception ex)
         {
-            this.ShowError($"Error loading motorbikes: {ex.Message}");
+            this.ShowError($"Error loading vehicles: {ex.Message}");
         }
         finally
         {
@@ -325,16 +395,16 @@
 
     private void ApplyFilters()
     {
-        var filtered = this.m_motorbikes.Where(m => m.Status == "Available").AsEnumerable();
+        var filtered = this.m_vehicleGroups.Where(g => g.AvailableUnits > 0).AsEnumerable();
 
         // Engine filter
         if (!string.IsNullOrEmpty(this.m_engineFilter))
         {
             filtered = this.m_engineFilter switch
             {
-                "110" => filtered.Where(m => m.EngineCC <= 110),
-                "125" => filtered.Where(m => m.EngineCC > 110 && m.EngineCC <= 125),
-                "150" => filtered.Where(m => m.EngineCC > 125),
+                "110" => filtered.Where(g => g.EngineCC.HasValue && g.EngineCC <= 110),
+                "125" => filtered.Where(g => g.EngineCC.HasValue && g.EngineCC > 110 && g.EngineCC <= 125),
+                "150" => filtered.Where(g => g.EngineCC.HasValue && g.EngineCC > 125),
                 _ => filtered
             };
         }
@@ -342,26 +412,27 @@
         // Sorting
         filtered = this.m_sortBy switch
         {
-            "price-asc" => filtered.OrderBy(m => m.DailyRate),
-            "price-desc" => filtered.OrderByDescending(m => m.DailyRate),
-            "popular" => filtered.OrderByDescending(m => m.EngineCC), // Placeholder
+            "price-asc" => filtered.OrderBy(g => g.MinDailyRate),
+            "price-desc" => filtered.OrderByDescending(g => g.MinDailyRate),
+            "popular" => filtered.OrderByDescending(g => g.TotalUnits), // Popular = more units
             _ => filtered
         };
 
-        this.m_filteredMotorbikes = filtered.ToList();
+        this.m_filteredGroups = filtered.ToList();
     }
 
-    private void ViewDetails(Motorbike bike)
+    private void ViewGroupDetails(VehicleGroup group)
     {
-        // Navigate to the vehicle details page
-        NavigationManager.NavigateTo(TenantUrl($"vehicle/{EncodeId(bike.MotorbikeId)}"));
+        // Navigate to the vehicle group details page using URL-encoded group key
+        var encodedKey = Uri.EscapeDataString(group.GroupKey);
+        NavigationManager.NavigateTo(TenantUrl($"vehicle-model/{encodedKey}"));
     }
 
-    private async Task StartReservation(Motorbike bike)
+    private async Task StartReservation(VehicleGroup group)
     {
         var result = await this.DialogService
             .Create<ReservationDialog>("Make a Reservation")
-            .WithParameter(x => x.Motorbike, bike)
+            .WithParameter(x => x.VehicleGroup, group)
             .WithParameter(x => x.DateRange, new ReservationDialog.DateRangeSelection(this.m_startDate, this.m_endDate))
             .Medium()
             .ShowAndGetDataAsync<int?>();
@@ -369,7 +440,43 @@
         if (result.HasValue)
         {
             this.ShowSuccess("Reservation submitted successfully! We'll contact you shortly.");
-            await this.LoadMotorbikes(); // Refresh availability
+            await this.LoadVehicleGroups(); // Refresh availability
         }
+    }
+
+    private static string GetVehicleTypeIcon(VehicleType type) => type switch
+    {
+        VehicleType.Motorbike => "ti-motorbike",
+        VehicleType.Car => "ti-car",
+        VehicleType.JetSki => "ti-sailboat",
+        VehicleType.Boat => "ti-ship",
+        VehicleType.Van => "ti-bus",
+        _ => "ti-car"
+    };
+
+    private static string GetVehicleTypeBadgeClass(VehicleType type) => type switch
+    {
+        VehicleType.Motorbike => "bg-indigo-lt text-indigo",
+        VehicleType.Car => "bg-blue-lt text-blue",
+        VehicleType.JetSki => "bg-cyan-lt text-cyan",
+        VehicleType.Boat => "bg-azure-lt text-azure",
+        VehicleType.Van => "bg-purple-lt text-purple",
+        _ => "bg-secondary-lt text-secondary"
+    };
+
+    private static string GetGroupImage(VehicleGroup group)
+    {
+        if (!string.IsNullOrEmpty(group.ImagePath))
+            return group.ImagePath;
+
+        return group.VehicleType switch
+        {
+            VehicleType.Motorbike => "/images/vehicles/motorbike-placeholder.png",
+            VehicleType.Car => "/images/vehicles/car-placeholder.png",
+            VehicleType.JetSki => "/images/vehicles/jetski-placeholder.png",
+            VehicleType.Boat => "/images/vehicles/boat-placeholder.png",
+            VehicleType.Van => "/images/vehicles/van-placeholder.png",
+            _ => "/images/vehicles/default-placeholder.png"
+        };
     }
 }

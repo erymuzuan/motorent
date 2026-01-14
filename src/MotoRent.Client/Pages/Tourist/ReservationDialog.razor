@@ -1,5 +1,6 @@
 @inherits MotoRentComponentBase
 @using MotoRent.Domain.Entities
+@using MotoRent.Domain.Models
 @using MotoRent.Services
 @inject RentalService RentalService
 @inject InsuranceService InsuranceService
@@ -97,6 +98,29 @@
                     }
                 </div>
             }
+
+            @* Color Preference (only if group has available colors) *@
+            @if (VehicleGroup != null && VehicleGroup.AvailableColors.Count > 0)
+            {
+                <hr />
+                <h4>Color Preference</h4>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Preferred Color (optional)</label>
+                        <select class="form-select" @bind="m_preferredColor">
+                            <option value="">No preference</option>
+                            @foreach (var color in VehicleGroup.AvailableColors)
+                            {
+                                <option value="@color">@color</option>
+                            }
+                        </select>
+                        <small class="form-hint">
+                            <i class="ti ti-info-circle me-1"></i>
+                            Color preference is not guaranteed
+                        </small>
+                    </div>
+                </div>
+            }
         </div>
     }
 
@@ -156,8 +180,12 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <small class="text-secondary">Motorbike</small>
-                                <div class="fw-bold">@Motorbike.Brand @Motorbike.Model</div>
+                                <small class="text-secondary">Vehicle</small>
+                                <div class="fw-bold">@DisplayName</div>
+                                @if (!string.IsNullOrEmpty(m_preferredColor))
+                                {
+                                    <small class="text-secondary">Preferred color: @m_preferredColor (not guaranteed)</small>
+                                }
                             </div>
                             <div class="mb-3">
                                 <small class="text-secondary">Rental Period</small>
@@ -191,8 +219,8 @@
                     <h4 class="card-title mb-3">Pricing Breakdown</h4>
                     <div class="d-flex flex-column gap-2">
                         <div class="d-flex justify-content-between">
-                            <span>Motorbike (@m_days days x @FormatCurrency(Motorbike.DailyRate))</span>
-                            <span>@FormatCurrency(m_motorbikeTotal)</span>
+                            <span>Vehicle (@m_days days x @FormatCurrency(DailyRate))</span>
+                            <span>@FormatCurrency(m_vehicleTotal)</span>
                         </div>
                         @if (m_selectedInsurance != null)
                         {
@@ -208,7 +236,7 @@
                         </div>
                         <div class="d-flex justify-content-between text-secondary">
                             <span>Security Deposit (refundable)</span>
-                            <span>@FormatCurrency(Motorbike.DepositAmount)</span>
+                            <span>@FormatCurrency(DepositAmount)</span>
                         </div>
                     </div>
                 </div>
@@ -261,7 +289,8 @@
 
 @code {
     [CascadingParameter] private ModalInstance? ModalInstance { get; set; }
-    [Parameter] public Motorbike Motorbike { get; set; } = new();
+    [Parameter] public Motorbike? Motorbike { get; set; }
+    [Parameter] public VehicleGroup? VehicleGroup { get; set; }
     [Parameter] public DateRangeSelection? DateRange { get; set; }
 
     private int m_activeStep;
@@ -274,6 +303,7 @@
     private List<Insurance> m_insuranceOptions = [];
     private int? m_selectedInsuranceId;
     private Insurance? m_selectedInsurance => this.m_insuranceOptions.FirstOrDefault(i => i.InsuranceId == this.m_selectedInsuranceId);
+    private string? m_preferredColor;
 
     // Step 2: Contact Info
     private ContactInfo m_contactInfo = new();
@@ -281,13 +311,20 @@
     // Step 3: Confirmation
     private bool m_agreedToTerms;
 
+    // Display helpers that work with both Motorbike and VehicleGroup
+    private string DisplayName => this.VehicleGroup?.DisplayName
+        ?? (this.Motorbike != null ? $"{this.Motorbike.Brand} {this.Motorbike.Model} {this.Motorbike.Year}" : "");
+    private decimal DailyRate => this.VehicleGroup?.MinDailyRate ?? this.Motorbike?.DailyRate ?? 0;
+    private decimal DepositAmount => this.VehicleGroup?.MinDepositAmount ?? this.Motorbike?.DepositAmount ?? 0;
+    private bool IsGroupReservation => this.VehicleGroup != null;
+
     // Calculations
     private int m_days => this.m_startDate.HasValue && this.m_endDate.HasValue
         ? Math.Max(1, (this.m_endDate.Value - this.m_startDate.Value).Days + 1)
         : 0;
-    private decimal m_motorbikeTotal => this.Motorbike.DailyRate * this.m_days;
+    private decimal m_vehicleTotal => this.DailyRate * this.m_days;
     private decimal m_insuranceTotal => (this.m_selectedInsurance?.DailyRate ?? 0) * this.m_days;
-    private decimal m_totalAmount => this.m_motorbikeTotal + this.m_insuranceTotal;
+    private decimal m_totalAmount => this.m_vehicleTotal + this.m_insuranceTotal;
 
     private bool CanProceed => this.m_activeStep switch
     {
@@ -355,11 +392,14 @@
             var request = new ReservationRequest
             {
                 ShopId = this.ShopId,
-                MotorbikeId = this.Motorbike.MotorbikeId,
+                // For group reservations, VehicleId may be 0; for individual, use the Motorbike's ID
+                VehicleId = this.IsGroupReservation ? 0 : (this.Motorbike?.MotorbikeId ?? 0),
+                VehicleGroupKey = this.VehicleGroup?.GroupKey,
+                PreferredColor = this.m_preferredColor,
                 StartDate = new DateTimeOffset(DateTime.SpecifyKind(this.m_startDate!.Value.Date, DateTimeKind.Unspecified), TimeSpan.Zero),
                 EndDate = new DateTimeOffset(DateTime.SpecifyKind(this.m_endDate!.Value.Date, DateTimeKind.Unspecified), TimeSpan.Zero),
                 InsuranceId = this.m_selectedInsuranceId,
-                DailyRate = this.Motorbike.DailyRate,
+                DailyRate = this.DailyRate,
                 TotalAmount = this.m_totalAmount,
                 // Contact info
                 RenterName = this.m_contactInfo.FullName,

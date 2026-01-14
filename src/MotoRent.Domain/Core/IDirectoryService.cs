@@ -46,6 +46,12 @@ public interface IDirectoryService
     Task<User?> GetUserAsync(string userName);
 
     /// <summary>
+    /// Gets a user by OAuth provider and name identifier.
+    /// Used for providers that may not provide email (e.g., LINE).
+    /// </summary>
+    Task<User?> GetUserByProviderIdAsync(string provider, string nameIdentifier);
+
+    /// <summary>
     /// Gets all users for an organization.
     /// </summary>
     Task<IEnumerable<User>> GetUsersAsync(string accountNo);

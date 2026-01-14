@@ -1,6 +1,7 @@
 using MotoRent.Domain.DataContext;
 using MotoRent.Domain.Entities;
 using MotoRent.Domain.Extensions;
+using MotoRent.Domain.Models;
 
 namespace MotoRent.Services;
 
@@ -259,6 +260,104 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
         return allVehicles.ItemCollection
             .GroupBy(v => v.VehicleType)
             .ToDictionary(g => g.Key, g => g.Count());
+    }
+
+    /// <summary>
+    /// Gets vehicles grouped by make/model/year/type/engine.
+    /// </summary>
+    public async Task<List<VehicleGroup>> GetVehicleGroupsAsync(
+        int shopId,
+        VehicleType? vehicleType = null,
+        VehicleStatus? status = null,
+        string? searchTerm = null,
+        bool includePooled = true)
+    {
+        // Reuse existing method to get all vehicles
+        var result = await GetVehiclesAsync(shopId, vehicleType, status, searchTerm, includePooled, page: 1, pageSize: 1000);
+
+        // Filter by status if specified (since GetVehiclesAsync may not filter correctly in all cases)
+        var vehicles = result.ItemCollection;
+        if (status.HasValue)
+        {
+            vehicles = vehicles.Where(v => v.Status == status.Value).ToList();
+        }
+
+        // Group by Brand, Model, Year, VehicleType, and Engine (CC or Liters)
+        var groups = vehicles
+            .GroupBy(v => new
+            {
+                v.Brand,
+                v.Model,
+                v.Year,
+                v.VehicleType,
+                Engine = v.EngineCC?.ToString() ?? v.EngineLiters?.ToString("0.0") ?? "0"
+            })
+            .Select(g => VehicleGroup.FromVehicles(g))
+            .OrderBy(g => g.VehicleType)
+            .ThenBy(g => g.Brand)
+            .ThenBy(g => g.Model)
+            .ThenByDescending(g => g.Year)
+            .ToList();
+
+        return groups;
+    }
+
+    /// <summary>
+    /// Gets a single vehicle group by its group key.
+    /// </summary>
+    public async Task<VehicleGroup?> GetVehicleGroupAsync(int shopId, string groupKey, bool includePooled = true)
+    {
+        var groups = await GetVehicleGroupsAsync(shopId, includePooled: includePooled);
+        return groups.FirstOrDefault(g => g.GroupKey == groupKey);
+    }
+
+    /// <summary>
+    /// Gets an available vehicle from a group, optionally preferring a specific color.
+    /// </summary>
+    public async Task<Vehicle?> GetAvailableVehicleFromGroupAsync(
+        int shopId,
+        string groupKey,
+        string? preferredColor = null)
+    {
+        var group = await GetVehicleGroupAsync(shopId, groupKey);
+        if (group == null)
+            return null;
+
+        var availableVehicles = group.Vehicles
+            .Where(v => v.Status == VehicleStatus.Available)
+            .ToList();
+
+        if (availableVehicles.Count == 0)
+            return null;
+
+        // Try to match preferred color if specified
+        if (!string.IsNullOrEmpty(preferredColor))
+        {
+            var colorMatch = availableVehicles
+                .FirstOrDefault(v => string.Equals(v.Color, preferredColor, StringComparison.OrdinalIgnoreCase));
+            if (colorMatch != null)
+                return colorMatch;
+        }
+
+        // Return first available
+        return availableVehicles[0];
+    }
+
+    /// <summary>
+    /// Gets available vehicle groups for tourist browsing.
+    /// Only includes groups with at least one available vehicle.
+    /// </summary>
+    public async Task<List<VehicleGroup>> GetAvailableVehicleGroupsForTouristAsync(
+        int shopId,
+        VehicleType? vehicleType = null,
+        bool includePooled = true)
+    {
+        var groups = await GetVehicleGroupsAsync(shopId, vehicleType, includePooled: includePooled);
+
+        // Filter to only groups with available units
+        return groups
+            .Where(g => g.AvailableUnits > 0)
+            .ToList();
     }
 
     #endregion

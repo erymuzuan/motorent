@@ -5,6 +5,7 @@
 @using MotoRent.Client.Controls
 @using MotoRent.Client.Pages.Rentals.CheckInSteps
 @using MotoRent.Domain.Entities
+@using MotoRent.Domain.Models
 @inject RentalService RentalService
 @inject RenterService RenterService
 @inject VehicleService VehicleService
@@ -95,6 +96,9 @@
                                     @bind-DepositInfo="m_depositInfo" />
                 break;
             case 4:
+                <PreInspectionStep @bind-InspectionInfo="m_preInspection" />
+                break;
+            case 5:
                 <AgreementSignatureStep Renter="@m_selectedRenter"
                                         Vehicle="@m_selectedVehicle"
                                         Config="@m_rentalConfig"
@@ -113,7 +117,7 @@
                 @CommonLocalizer["Previous"]
             </button>
 
-            @if (m_activeStep < 4)
+            @if (m_activeStep < 5)
             {
                 <button type="button" class="mr-btn-primary-action"
                         disabled="@(!CanProceedToNextStep())"
@@ -139,7 +143,7 @@
 }
 
 @code {
-    private readonly string[] m_stepKeys = ["Renter", "Vehicle", "Configure", "Deposit", "Agreement"];
+    private readonly string[] m_stepKeys = ["Renter", "Vehicle", "Configure", "Deposit", "Inspection", "Agreement"];
     private int m_activeStep;
     private bool m_processing;
 
@@ -158,6 +162,9 @@
     // Step 4: Deposit information
     private DepositInfo m_depositInfo = new();
 
+    // Step 5: Pre-rental inspection
+    private InspectionInfo? m_preInspection;
+
     private bool IsIntervalRental => this.m_selectedVehicle?.UsesIntervalPricing == true;
 
     private decimal GetRentalTotalAmount() =>
@@ -171,14 +178,15 @@
             1 => this.m_selectedVehicle != null,
             2 => this.IsIntervalRental ? this.m_intervalConfig.IsValid : this.m_rentalConfig.IsValid,
             3 => this.m_depositInfo.IsCollected,
-            4 => true, // Completion validation is handled by AgreementSignatureStep
+            4 => this.m_preInspection != null, // Pre-rental inspection required
+            5 => true, // Completion validation is handled by AgreementSignatureStep
             _ => false
         };
     }
 
     private void NextStep()
     {
-        if (this.m_activeStep < 4 && this.CanProceedToNextStep())
+        if (this.m_activeStep < 5 && this.CanProceedToNextStep())
             this.m_activeStep++;
     }
 
@@ -238,7 +246,9 @@
                 DepositType = this.m_depositInfo.DepositType,
                 DepositAmount = this.m_depositInfo.Amount,
                 CardLast4 = this.m_depositInfo.CardLast4,
-                TransactionRef = this.m_depositInfo.TransactionRef
+                TransactionRef = this.m_depositInfo.TransactionRef,
+                // Pre-rental inspection
+                PreRentalInspection = this.m_preInspection
             };
 
             if (this.IsIntervalRental)

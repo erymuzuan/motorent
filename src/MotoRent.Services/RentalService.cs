@@ -1,5 +1,6 @@
 using MotoRent.Domain.DataContext;
 using MotoRent.Domain.Entities;
+using MotoRent.Domain.Models;
 
 namespace MotoRent.Services;
 
@@ -197,7 +198,9 @@ public class RentalService(RentalDataContext context, VehiclePoolService? poolSe
                 DropoffLocationFee = request.DropoffLocationFee,
                 OutOfHoursDropoffFee = request.OutOfHoursDropoffFee,
                 IsOutOfHoursDropoff = request.IsOutOfHoursDropoff,
-                OutOfHoursDropoffBand = request.OutOfHoursDropoffBand
+                OutOfHoursDropoffBand = request.OutOfHoursDropoffBand,
+                // Pre-rental inspection
+                PreRentalInspection = request.PreRentalInspection
             };
             session.Attach(rental);
 
@@ -317,7 +320,8 @@ public class RentalService(RentalDataContext context, VehiclePoolService? poolSe
             InsuranceId = request.InsuranceId,
             Status = "Active",
             Notes = request.Notes,
-            VehicleName = $"{motorbike.Brand} {motorbike.Model}"
+            VehicleName = $"{motorbike.Brand} {motorbike.Model}",
+            PreRentalInspection = request.PreRentalInspection
         };
         session.Attach(rental);
 
@@ -395,6 +399,10 @@ public class RentalService(RentalDataContext context, VehiclePoolService? poolSe
                 rental.IsOutOfHoursDropoff = request.IsOutOfHoursDropoff;
                 rental.OutOfHoursDropoffBand = request.OutOfHoursDropoffBand;
             }
+
+            // Post-rental inspection
+            if (request.PostRentalInspection != null)
+                rental.PostRentalInspection = request.PostRentalInspection;
 
             session.Attach(rental);
 
@@ -654,15 +662,22 @@ public class RentalService(RentalDataContext context, VehiclePoolService? poolSe
             using var session = this.Context.OpenSession("tourist");
 
             // 1. Check if vehicle is available for the requested dates
-            var hasConflict = await this.Context.ExistAsync(
-                this.Context.CreateQuery<Rental>()
-                    .Where(r => r.VehicleId == request.VehicleId)
-                    .Where(r => r.Status == "Active" || r.Status == "Reserved")
-                    .Where(r => r.StartDate < request.EndDate && r.ExpectedEndDate > request.StartDate));
+            // For group reservations (VehicleId == 0, VehicleGroupKey set), skip individual vehicle check
+            // since the actual vehicle will be assigned at check-in
+            bool isGroupReservation = request.VehicleId == 0 && !string.IsNullOrEmpty(request.VehicleGroupKey);
 
-            if (hasConflict)
+            if (!isGroupReservation && request.VehicleId > 0)
             {
-                return ReservationResult.CreateFailure("This vehicle is not available for the selected dates.");
+                var hasConflict = await this.Context.ExistAsync(
+                    this.Context.CreateQuery<Rental>()
+                        .Where(r => r.VehicleId == request.VehicleId)
+                        .Where(r => r.Status == "Active" || r.Status == "Reserved")
+                        .Where(r => r.StartDate < request.EndDate && r.ExpectedEndDate > request.StartDate));
+
+                if (hasConflict)
+                {
+                    return ReservationResult.CreateFailure("This vehicle is not available for the selected dates.");
+                }
             }
 
             // 2. Create or find renter from contact info
@@ -699,6 +714,8 @@ public class RentalService(RentalDataContext context, VehiclePoolService? poolSe
                 RentedFromShopId = request.ShopId,
                 RenterId = renterId,
                 VehicleId = request.VehicleId,
+                VehicleGroupKey = request.VehicleGroupKey,
+                PreferredColor = request.PreferredColor,
                 DurationType = request.DurationType,
                 IntervalMinutes = request.IntervalMinutes,
                 StartDate = request.StartDate,
@@ -764,6 +781,98 @@ public class RentalService(RentalDataContext context, VehiclePoolService? poolSe
             page: 1, size: 100, includeTotalRows: false);
 
         return rentals.ItemCollection.ToList();
+    }
+
+    /// <summary>
+    /// Assigns a specific vehicle to a group-based reservation.
+    /// Used during check-in to convert a model reservation to a specific vehicle rental.
+    /// </summary>
+    /// <param name="rentalId">The rental/reservation ID</param>
+    /// <param name="vehicleId">The specific vehicle to assign (optional - auto-selects if not provided)</param>
+    /// <param name="username">The staff member performing the assignment</param>
+    /// <returns>The assigned vehicle, or null if no suitable vehicle found</returns>
+    public async Task<Vehicle?> AssignVehicleToRentalAsync(int rentalId, int? vehicleId, string username)
+    {
+        var rental = await this.Context.LoadOneAsync<Rental>(r => r.RentalId == rentalId);
+        if (rental == null)
+            return null;
+
+        // If not a group reservation, just return the already-assigned vehicle
+        if (!rental.IsGroupReservation)
+        {
+            return await this.Context.LoadOneAsync<Vehicle>(v => v.VehicleId == rental.VehicleId);
+        }
+
+        Vehicle? vehicle = null;
+
+        if (vehicleId.HasValue && vehicleId.Value > 0)
+        {
+            // Staff selected a specific vehicle
+            vehicle = await this.Context.LoadOneAsync<Vehicle>(v =>
+                v.VehicleId == vehicleId.Value &&
+                v.Status == VehicleStatus.Available);
+        }
+        else if (!string.IsNullOrEmpty(rental.VehicleGroupKey))
+        {
+            // Auto-select based on group key and color preference
+            var vehicles = await this.Context.LoadAsync(
+                this.Context.CreateQuery<Vehicle>()
+                    .Where(v => v.Status == VehicleStatus.Available));
+
+            var availableInGroup = vehicles.ItemCollection
+                .Where(v => VehicleGroup.CreateGroupKey(v) == rental.VehicleGroupKey)
+                .ToList();
+
+            if (availableInGroup.Count > 0)
+            {
+                // Try to match preferred color first
+                if (!string.IsNullOrEmpty(rental.PreferredColor))
+                {
+                    vehicle = availableInGroup.FirstOrDefault(v =>
+                        string.Equals(v.Color, rental.PreferredColor, StringComparison.OrdinalIgnoreCase));
+                }
+
+                // Fall back to any available
+                vehicle ??= availableInGroup.First();
+            }
+        }
+
+        if (vehicle == null)
+            return null;
+
+        // Assign the vehicle to the rental
+        using var session = this.Context.OpenSession(username);
+
+        rental.VehicleId = vehicle.VehicleId;
+        rental.VehicleName = $"{vehicle.Brand} {vehicle.Model} {vehicle.LicensePlate}";
+        session.Attach(rental);
+
+        // Update vehicle status
+        vehicle.Status = VehicleStatus.Rented;
+        session.Attach(vehicle);
+
+        await session.SubmitChanges("AssignVehicle");
+
+        return vehicle;
+    }
+
+    /// <summary>
+    /// Gets available vehicles that match a group reservation's criteria.
+    /// Used by staff to see which vehicles can be assigned to a reservation.
+    /// </summary>
+    public async Task<List<Vehicle>> GetAvailableVehiclesForReservationAsync(int rentalId)
+    {
+        var rental = await this.Context.LoadOneAsync<Rental>(r => r.RentalId == rentalId);
+        if (rental == null || string.IsNullOrEmpty(rental.VehicleGroupKey))
+            return [];
+
+        var vehicles = await this.Context.LoadAsync(
+            this.Context.CreateQuery<Vehicle>()
+                .Where(v => v.Status == VehicleStatus.Available));
+
+        return vehicles.ItemCollection
+            .Where(v => VehicleGroup.CreateGroupKey(v) == rental.VehicleGroupKey)
+            .ToList();
     }
 
     #endregion
@@ -858,6 +967,9 @@ public class CheckInRequest
     public bool IsOutOfHoursDropoff { get; set; }
     public string? OutOfHoursDropoffBand { get; set; }
 
+    // Pre-rental inspection
+    public InspectionInfo? PreRentalInspection { get; set; }
+
     // Backward compatibility
     [Obsolete("Use VehicleId instead")]
     public int MotorbikeId { get => VehicleId; set => VehicleId = value; }
@@ -894,6 +1006,9 @@ public class CheckOutRequest
     public decimal OutOfHoursDropoffFee { get; set; }
     public bool IsOutOfHoursDropoff { get; set; }
     public string? OutOfHoursDropoffBand { get; set; }
+
+    // Post-rental inspection
+    public InspectionInfo? PostRentalInspection { get; set; }
 
     public List<DamageReportInfo>? DamageReports { get; set; }
 }
@@ -956,6 +1071,18 @@ public class ReservationRequest
 {
     public int ShopId { get; set; }
     public int VehicleId { get; set; }
+
+    /// <summary>
+    /// For group-based reservations: the vehicle group key (Brand|Model|Year|Type|Engine).
+    /// When set, VehicleId may be 0 until a specific vehicle is assigned at check-in.
+    /// </summary>
+    public string? VehicleGroupKey { get; set; }
+
+    /// <summary>
+    /// Optional color preference for group reservations (not guaranteed).
+    /// </summary>
+    public string? PreferredColor { get; set; }
+
     public DateTimeOffset StartDate { get; set; }
     public DateTimeOffset EndDate { get; set; }
     public int? InsuranceId { get; set; }

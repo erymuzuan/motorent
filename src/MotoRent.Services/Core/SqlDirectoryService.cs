@@ -22,6 +22,16 @@ public class SqlDirectoryService(CoreDataContext context) : IDirectoryService
         return await this.Context.LoadOneAsync<User>(u => u.UserName == userName);
     }
 
+    public async Task<User?> GetUserByProviderIdAsync(string provider, string nameIdentifier)
+    {
+        // Query users by credential provider, then filter by NameIdentifier in memory
+        // NameIdentifier is stored in JSON and not indexed
+        var query = this.Context.Users.Where(u => u.CredentialProvider == provider);
+        var result = await this.Context.LoadAsync(query, page: 1, size: 100, includeTotalRows: false);
+
+        return result.ItemCollection.FirstOrDefault(u => u.NameIdentifier == nameIdentifier);
+    }
+
     public async Task<IEnumerable<User>> GetUsersAsync(string accountNo)
     {
         // Load all users and filter by account in memory (since AccountCollection is in JSON)

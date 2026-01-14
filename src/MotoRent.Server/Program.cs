@@ -189,6 +189,23 @@ if (!string.IsNullOrEmpty(microsoftClientId))
     });
 }
 
+// Add LINE authentication only if configured (uses MOTO_LineChannelId, MOTO_LineChannelSecret)
+var lineChannelId = MotoConfig.LineChannelId;
+if (!string.IsNullOrEmpty(lineChannelId))
+{
+    authBuilder.AddLine(options =>
+    {
+        options.ClientId = lineChannelId;
+        options.ClientSecret = MotoConfig.LineChannelSecret ?? "";
+        options.SignInScheme = "ExternalAuth";
+        options.CallbackPath = "/signin-line";
+        options.Scope.Add("profile");
+        options.Scope.Add("openid");
+        // No email scope - LINE users will use LINE ID as username
+        options.SaveTokens = true;
+    });
+}
+
 // Configure Authorization Policies
 builder.Services.AddAuthorization(options =>
 {

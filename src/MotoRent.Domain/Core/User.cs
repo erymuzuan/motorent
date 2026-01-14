@@ -12,6 +12,7 @@ public class User : Entity
     public const string CUSTOM = "Custom";
     public const string GOOGLE = "Google";
     public const string MICROSOFT = "Microsoft";
+    public const string LINE = "Line";
 
     public int UserId { get; set; }
 

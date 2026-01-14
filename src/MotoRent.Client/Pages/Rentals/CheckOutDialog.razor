@@ -1,4 +1,5 @@
 @using MotoRent.Domain.Entities
+@using MotoRent.Domain.Models
 @using MotoRent.Client.Components.Shared
 @using MotoRent.Client.Controls
 @inherits LocalizedDialogBase<Rental, CheckOutDialog>
@@ -244,6 +245,30 @@
                 <textarea class="form-control" @bind="m_notes" rows="2"
                           placeholder="@Localizer["ReturnNotesPlaceholder"]"></textarea>
             </div>
+
+            @* Post-rental Inspection *@
+            <div class="form-section">
+                <h5 class="section-title">
+                    <i class="ti ti-clipboard-check text-teal"></i>
+                    @Localizer["PostRentalInspection"]
+                </h5>
+                <p class="text-secondary small mb-3">@Localizer["PostRentalInspectionDesc"]</p>
+                <InspectionSelector @bind-Value="m_postInspection" />
+            </div>
+
+            @if (m_postInspection != null)
+            {
+                <div class="info-banner info-blue">
+                    <i class="ti ti-circle-check"></i>
+                    <span>
+                        @Localizer["InspectionRecorded", m_postInspection.InspectorName]
+                        @if (!m_postInspection.IsSystemUser && !string.IsNullOrEmpty(m_postInspection.CompanyAffiliation))
+                        {
+                            <span class="text-secondary">(@m_postInspection.CompanyAffiliation)</span>
+                        }
+                    </span>
+                </div>
+            }
 
             @* Navigation Buttons *@
             <div class="step-nav">
@@ -1125,6 +1150,9 @@
     private int m_mileageEnd;
     private string? m_notes;
 
+    // Post-rental inspection
+    private InspectionInfo? m_postInspection;
+
     // Damage assessment
     private string m_damageLevel = "None";
     private string? m_damageDescription;
@@ -1164,7 +1192,8 @@
     private bool CanComplete => (this.m_actualReturnDate.HasValue || this.m_isIntervalRental) &&
                                 (!this.m_showMileage || this.m_mileageEnd >= this.Entity.MileageStart) &&
                                 (this.m_refundAmount == 0 || this.m_refundProcessed) &&
-                                (!this.m_hasMaintenanceWarning || this.m_acknowledgeMaintenanceWarning);
+                                (!this.m_hasMaintenanceWarning || this.m_acknowledgeMaintenanceWarning) &&
+                                this.m_postInspection != null;
 
     private string GetVehicleTypeLabel() => this.m_vehicle?.VehicleType switch
     {
@@ -1332,7 +1361,9 @@
                 DropoffLocationFee = this.m_dropoffLocationFee,
                 OutOfHoursDropoffFee = this.m_dropoffOutOfHoursFee,
                 IsOutOfHoursDropoff = this.m_dropoffOutOfHoursBand != null,
-                OutOfHoursDropoffBand = this.m_dropoffOutOfHoursBand?.BandName
+                OutOfHoursDropoffBand = this.m_dropoffOutOfHoursBand?.BandName,
+                // Post-rental inspection
+                PostRentalInspection = this.m_postInspection
             };
 
             if (this.m_damageLevel != "None" && !string.IsNullOrEmpty(this.m_damageDescription))

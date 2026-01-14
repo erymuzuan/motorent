@@ -1,0 +1,53 @@
+@inherits LocalizedComponentBase<CheckIn>
+@using MotoRent.Client.Components.Shared
+@using MotoRent.Domain.Models
+
+<div class="d-flex flex-column gap-4">
+    <div>
+        <h5 class="mb-1 mr-text-primary" style="font-weight: 600;">
+            <i class="ti ti-clipboard-check me-2" style="color: var(--mr-accent-primary);"></i>
+            @Localizer["PreRentalInspection"]
+        </h5>
+        <p class="mr-text-muted mb-0">@Localizer["PreRentalInspectionDesc"]</p>
+    </div>
+
+    <div class="mr-form-panel">
+        <div class="mr-form-panel-header">
+            <div class="mr-form-panel-header-icon">
+                <i class="ti ti-user-search"></i>
+            </div>
+            <h3 class="mr-form-panel-title">@Localizer["InspectorDetails"]</h3>
+        </div>
+        <div class="mr-form-panel-body">
+            <InspectionSelector Value="@this.InspectionInfo" ValueChanged="OnInspectionChanged" />
+        </div>
+    </div>
+
+    @if (this.InspectionInfo != null)
+    {
+        <div class="alert alert-success d-flex align-items-center gap-2">
+            <i class="ti ti-circle-check"></i>
+            <span>
+                @if (!this.InspectionInfo.IsSystemUser && !string.IsNullOrEmpty(this.InspectionInfo.CompanyAffiliation))
+                {
+                    @Localizer["InspectionRecordedWithAffiliation", this.InspectionInfo.InspectorName, this.InspectionInfo.CompanyAffiliation]
+                }
+                else
+                {
+                    @Localizer["InspectionRecorded", this.InspectionInfo.InspectorName]
+                }
+            </span>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public InspectionInfo? InspectionInfo { get; set; }
+    [Parameter] public EventCallback<InspectionInfo?> InspectionInfoChanged { get; set; }
+
+    private async Task OnInspectionChanged(InspectionInfo? value)
+    {
+        this.InspectionInfo = value;
+        await this.InspectionInfoChanged.InvokeAsync(value);
+    }
+}

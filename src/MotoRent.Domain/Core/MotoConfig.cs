@@ -23,6 +23,10 @@ public static class MotoConfig
     public static string? MicrosoftClientId => GetEnvironmentVariable("MicrosoftClientId");
     public static string? MicrosoftClientSecret => GetEnvironmentVariable("MicrosoftClientSecret");
 
+    // Authentication - LINE OAuth
+    public static string? LineChannelId => GetEnvironmentVariable("LineChannelId");
+    public static string? LineChannelSecret => GetEnvironmentVariable("LineChannelSecret");
+
     // JWT Configuration
     public static string JwtSecret => GetEnvironmentVariable("JwtSecret") ?? "motorent-default-jwt-secret-key-change-in-production";
     public static string JwtIssuer => GetEnvironmentVariable("JwtIssuer") ?? "motorent";

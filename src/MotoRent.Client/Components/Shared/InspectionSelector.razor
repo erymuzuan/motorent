@@ -1,0 +1,187 @@
+@inherits LocalizedComponentBase<InspectionSelector>
+@using MotoRent.Domain.Core
+@using MotoRent.Domain.Models
+@inject ISubscriptionService SubscriptionService
+
+<div class="inspection-selector">
+    <div class="mb-3">
+        <label class="form-label">@Localizer["InspectorType"]</label>
+        <div class="btn-group w-100" role="group">
+            <button type="button"
+                    class="btn @(m_isSystemUser ? "btn-primary" : "btn-outline-secondary")"
+                    @onclick="@(() => SetInspectorType(true))">
+                <i class="ti ti-user-check me-1"></i>
+                @Localizer["ShopStaff"]
+            </button>
+            <button type="button"
+                    class="btn @(!m_isSystemUser ? "btn-primary" : "btn-outline-secondary")"
+                    @onclick="@(() => SetInspectorType(false))">
+                <i class="ti ti-building me-1"></i>
+                @Localizer["ExternalInspector"]
+            </button>
+        </div>
+    </div>
+
+    @if (m_isSystemUser)
+    {
+        <div class="mb-3">
+            <label class="form-label required">@Localizer["SelectStaffMember"]</label>
+            @if (m_loadingUsers)
+            {
+                <div class="d-flex align-items-center gap-2 text-secondary">
+                    <div class="spinner-border spinner-border-sm"></div>
+                    <span>@Localizer["LoadingStaff"]</span>
+                </div>
+            }
+            else
+            {
+                <select class="form-select" @bind="m_selectedUserId" @bind:after="OnUserSelected">
+                    <option value="0">@Localizer["SelectPlaceholder"]</option>
+                    @foreach (var user in m_shopUsers)
+                    {
+                        <option value="@user.UserId">@user.FullName (@user.Email)</option>
+                    }
+                </select>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="mb-3">
+            <label class="form-label required">@Localizer["InspectorName"]</label>
+            <input type="text" class="form-control" @bind="m_externalName"
+                   @bind:after="UpdateInspection"
+                   placeholder="@Localizer["InspectorNamePlaceholder"]" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">@Localizer["CompanyAffiliation"]</label>
+            <input type="text" class="form-control" @bind="m_companyAffiliation"
+                   @bind:after="UpdateInspection"
+                   placeholder="@Localizer["CompanyPlaceholder"]" />
+        </div>
+    }
+
+    <div class="mb-0">
+        <label class="form-label">@Localizer["InspectionNotes"]</label>
+        <textarea class="form-control" @bind="m_notes" @bind:after="UpdateInspection"
+                  rows="2" placeholder="@Localizer["NotesPlaceholder"]"></textarea>
+    </div>
+</div>
+
+@code {
+    [Parameter] public InspectionInfo? Value { get; set; }
+    [Parameter] public EventCallback<InspectionInfo?> ValueChanged { get; set; }
+    [Parameter] public string? AccountNo { get; set; }
+
+    private bool m_isSystemUser = true;
+    private int m_selectedUserId;
+    private string m_externalName = "";
+    private string? m_companyAffiliation;
+    private string? m_notes;
+    private List<User> m_shopUsers = [];
+    private bool m_loadingUsers = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Load users for this organization
+        await LoadShopUsersAsync();
+
+        // Initialize from existing value if editing
+        if (this.Value != null)
+        {
+            this.m_isSystemUser = this.Value.IsSystemUser;
+            this.m_selectedUserId = this.Value.InspectorUserId ?? 0;
+            this.m_externalName = this.Value.InspectorName;
+            this.m_companyAffiliation = this.Value.CompanyAffiliation;
+            this.m_notes = this.Value.Notes;
+        }
+    }
+
+    private async Task LoadShopUsersAsync()
+    {
+        this.m_loadingUsers = true;
+        try
+        {
+            var accountNo = this.AccountNo ?? this.RequestContext.GetAccountNo();
+            if (string.IsNullOrEmpty(accountNo))
+            {
+                this.m_shopUsers = [];
+                return;
+            }
+
+            var allUsers = await this.SubscriptionService.GetUsersAsync(accountNo);
+
+            // Filter to users with rental or maintenance roles (staff who can inspect)
+            this.m_shopUsers = allUsers
+                .Where(u => u.AccountCollection.Any(a =>
+                    a.AccountNo == accountNo &&
+                    a.Roles.Any(r => UserAccount.RentalRoles.Contains(r) ||
+                                    UserAccount.MaintenanceRoles.Contains(r))))
+                .OrderBy(u => u.FullName ?? u.UserName)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            this.Logger.LogError(ex, "Error loading shop users for inspection selector");
+            this.m_shopUsers = [];
+        }
+        finally
+        {
+            this.m_loadingUsers = false;
+        }
+    }
+
+    private void SetInspectorType(bool isSystemUser)
+    {
+        this.m_isSystemUser = isSystemUser;
+        // Reset values when switching
+        this.m_selectedUserId = 0;
+        this.m_externalName = "";
+        this.m_companyAffiliation = null;
+        UpdateInspection();
+    }
+
+    private void OnUserSelected()
+    {
+        var user = this.m_shopUsers.FirstOrDefault(u => u.UserId == this.m_selectedUserId);
+        if (user != null)
+        {
+            this.m_externalName = user.FullName ?? user.UserName;
+        }
+        UpdateInspection();
+    }
+
+    private void UpdateInspection()
+    {
+        if (this.m_isSystemUser && this.m_selectedUserId == 0)
+        {
+            // No user selected
+            this.ValueChanged.InvokeAsync(null);
+            return;
+        }
+
+        if (!this.m_isSystemUser && string.IsNullOrWhiteSpace(this.m_externalName))
+        {
+            // No external name entered
+            this.ValueChanged.InvokeAsync(null);
+            return;
+        }
+
+        var inspectorName = this.m_isSystemUser
+            ? this.m_shopUsers.FirstOrDefault(u => u.UserId == this.m_selectedUserId)?.FullName ?? ""
+            : this.m_externalName;
+
+        var inspection = new InspectionInfo
+        {
+            IsSystemUser = this.m_isSystemUser,
+            InspectorUserId = this.m_isSystemUser ? this.m_selectedUserId : null,
+            InspectorName = inspectorName,
+            CompanyAffiliation = this.m_isSystemUser ? null : this.m_companyAffiliation,
+            InspectedAt = DateTimeOffset.Now,
+            Notes = this.m_notes
+        };
+
+        this.ValueChanged.InvokeAsync(inspection);
+    }
+}

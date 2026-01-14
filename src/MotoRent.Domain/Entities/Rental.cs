@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using MotoRent.Domain.Models;
 
 namespace MotoRent.Domain.Entities;
 
@@ -89,6 +90,30 @@ public partial class Rental : Entity
         get => VehicleId;
         set => VehicleId = value;
     }
+
+    /// <summary>
+    /// For model-based reservations: the group key (Brand|Model|Year|Type|Engine).
+    /// When set, VehicleId may be 0 until a specific vehicle is assigned at check-in.
+    /// </summary>
+    public string? VehicleGroupKey { get; set; }
+
+    /// <summary>
+    /// Optional color preference from the tourist (not guaranteed).
+    /// Staff will try to assign a matching color if available.
+    /// </summary>
+    public string? PreferredColor { get; set; }
+
+    /// <summary>
+    /// Whether this is a model-based reservation (VehicleGroupKey set, VehicleId may be unassigned).
+    /// </summary>
+    [JsonIgnore]
+    public bool IsGroupReservation => !string.IsNullOrEmpty(VehicleGroupKey);
+
+    /// <summary>
+    /// Whether a specific vehicle has been assigned to this rental.
+    /// </summary>
+    [JsonIgnore]
+    public bool HasVehicleAssigned => VehicleId > 0;
 
     // Duration and Timing
 
@@ -298,6 +323,20 @@ public partial class Rental : Entity
     /// Name of the out-of-hours band for drop-off (e.g., "Night").
     /// </summary>
     public string? OutOfHoursDropoffBand { get; set; }
+
+    // Inspection Tracking
+
+    /// <summary>
+    /// Pre-rental inspection performed before handing vehicle to renter.
+    /// Captures who inspected the vehicle and any initial condition notes.
+    /// </summary>
+    public InspectionInfo? PreRentalInspection { get; set; }
+
+    /// <summary>
+    /// Post-rental inspection performed when renter returns vehicle.
+    /// Captures who inspected and any damage/condition notes.
+    /// </summary>
+    public InspectionInfo? PostRentalInspection { get; set; }
 
     public override int GetId() => this.RentalId;
     public override void SetId(int value) => this.RentalId = value;

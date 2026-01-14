@@ -20,21 +20,22 @@ public class ServiceLocationService(RentalDataContext context)
         bool? pickupOnly = null,
         bool? dropoffOnly = null)
     {
+        var targetShopId = shopId;
         var query = this.Context.CreateQuery<ServiceLocation>()
-            .Where(l => l.ShopId == shopId && l.IsActive);
+            .Where(loc => loc.ShopId == targetShopId && loc.IsActive);
 
         var result = await this.Context.LoadAsync(query, page: 1, size: 100, includeTotalRows: false);
 
         var locations = result.ItemCollection
-            .OrderBy(l => l.DisplayOrder)
-            .ThenBy(l => l.Name)
+            .OrderBy(loc => loc.DisplayOrder)
+            .ThenBy(loc => loc.Name)
             .ToList();
 
         if (pickupOnly == true)
-            locations = locations.Where(l => l.PickupAvailable).ToList();
+            locations = locations.Where(loc => loc.PickupAvailable).ToList();
 
         if (dropoffOnly == true)
-            locations = locations.Where(l => l.DropoffAvailable).ToList();
+            locations = locations.Where(loc => loc.DropoffAvailable).ToList();
 
         return locations;
     }
@@ -50,16 +51,25 @@ public class ServiceLocationService(RentalDataContext context)
         int page = 1,
         int pageSize = 20)
     {
+        // Build base query - capture parameters locally to avoid closure issues
+        var targetShopId = shopId;
         var query = this.Context.CreateQuery<ServiceLocation>()
-            .Where(l => l.ShopId == shopId);
+            .Where(loc => loc.ShopId == targetShopId);
 
+        // Apply filters using separate query objects to avoid parameter conflicts
         if (locationType.HasValue)
-            query = query.Where(l => l.LocationType == locationType.Value);
+        {
+            var targetType = locationType.Value;
+            query = query.Where(loc => loc.LocationType == targetType);
+        }
 
         if (isActive.HasValue)
-            query = query.Where(l => l.IsActive == isActive.Value);
+        {
+            var targetActive = isActive.Value;
+            query = query.Where(loc => loc.IsActive == targetActive);
+        }
 
-        query = query.OrderBy(l => l.DisplayOrder).ThenBy(l => l.Name);
+        query = query.OrderBy(loc => loc.DisplayOrder).ThenBy(loc => loc.Name);
 
         var result = await this.Context.LoadAsync(query, page, pageSize, includeTotalRows: true);
 
@@ -68,9 +78,9 @@ public class ServiceLocationService(RentalDataContext context)
         {
             var term = searchTerm.ToLowerInvariant();
             result.ItemCollection = result.ItemCollection
-                .Where(l =>
-                    (l.Name?.ToLowerInvariant().Contains(term) ?? false) ||
-                    (l.Address?.ToLowerInvariant().Contains(term) ?? false))
+                .Where(loc =>
+                    (loc.Name?.ToLowerInvariant().Contains(term) ?? false) ||
+                    (loc.Address?.ToLowerInvariant().Contains(term) ?? false))
                 .ToList();
         }
 
@@ -89,7 +99,7 @@ public class ServiceLocationService(RentalDataContext context)
             : (await this.GetLocationsAsync(shopId, isActive: null, page: 1, pageSize: 100)).ItemCollection;
 
         return locations
-            .GroupBy(l => l.LocationType)
+            .GroupBy(loc => loc.LocationType)
             .ToDictionary(g => g.Key, g => g.ToList());
     }
 
@@ -98,7 +108,8 @@ public class ServiceLocationService(RentalDataContext context)
     /// </summary>
     public async Task<ServiceLocation?> GetLocationByIdAsync(int locationId)
     {
-        return await this.Context.LoadOneAsync<ServiceLocation>(l => l.ServiceLocationId == locationId);
+        var targetId = locationId;
+        return await this.Context.LoadOneAsync<ServiceLocation>(loc => loc.ServiceLocationId == targetId);
     }
 
     /// <summary>
@@ -204,8 +215,9 @@ public class ServiceLocationService(RentalDataContext context)
     /// </summary>
     public async Task<int> GetLocationCountAsync(int shopId)
     {
+        var targetShopId = shopId;
         var query = this.Context.CreateQuery<ServiceLocation>()
-            .Where(l => l.ShopId == shopId);
+            .Where(loc => loc.ShopId == targetShopId);
         return await this.Context.GetCountAsync(query);
     }
 
@@ -214,8 +226,10 @@ public class ServiceLocationService(RentalDataContext context)
     /// </summary>
     public async Task<bool> LocationNameExistsAsync(int shopId, string name, int? excludeLocationId = null)
     {
+        var targetShopId = shopId;
+        var targetName = name;
         var existing = await this.Context.LoadOneAsync<ServiceLocation>(
-            l => l.ShopId == shopId && l.Name == name);
+            loc => loc.ShopId == targetShopId && loc.Name == targetName);
 
         if (existing == null)
             return false;
