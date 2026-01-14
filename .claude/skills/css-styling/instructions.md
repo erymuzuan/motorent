@@ -274,6 +274,132 @@ Compact page header with breadcrumb navigation, subtle background, and action bu
 }
 ```
 
+## Form Panels & Inputs
+
+### Form Panel Structure
+```html
+<div class="mr-form-panel">
+    <div class="mr-form-panel-header">
+        <div class="mr-form-panel-header-icon"><i class="ti ti-send"></i></div>
+        <h3 class="mr-form-panel-title">New Request</h3>
+    </div>
+    <div class="mr-form-panel-body">
+        <!-- Form fields here -->
+    </div>
+    <div class="mr-form-panel-footer">
+        <button class="mr-btn-cancel">Cancel</button>
+        <button class="mr-btn-submit"><i class="ti ti-send"></i> Submit Request</button>
+    </div>
+</div>
+```
+
+### Form Label with Required Indicator
+```html
+<label class="mr-form-label">Amount Requested <span class="required">*</span></label>
+```
+
+### Input Group with Currency Prefix
+```html
+<div class="mr-input-group">
+    <span class="mr-input-group-text">RM</span>
+    <input type="text" class="mr-form-control mr-mono" placeholder="0.00">
+</div>
+```
+
+### Info Highlight Box (Blue Gradient)
+```html
+<div class="mr-info-highlight">
+    <div class="mr-info-highlight-icon"><i class="ti ti-wallet"></i></div>
+    <div class="mr-info-highlight-content">
+        <div class="mr-info-highlight-label">YOUR ELIGIBLE AMOUNT</div>
+        <div class="mr-info-highlight-value">RM 500.00</div>
+    </div>
+</div>
+<!-- Use .teal class for teal gradient variant -->
+```
+
+### Form Hint with Icon
+```html
+<div class="mr-form-hint">
+    <i class="ti ti-info-circle"></i>
+    Enter an amount between RM 50.00 and RM 500.00
+</div>
+```
+
+### Quick Select Buttons (Amount Pills)
+```html
+<div class="mr-quick-select">
+    <button class="mr-quick-select-btn">RM 50.00</button>
+    <button class="mr-quick-select-btn active">RM 100.00</button>
+    <button class="mr-quick-select-btn">RM 200.00</button>
+    <button class="mr-quick-select-btn">MAX</button>
+</div>
+```
+
+### Range Display (Min/Max)
+```html
+<div class="mr-range-display">
+    <div class="mr-range-item">
+        <div class="mr-range-label">Minimum</div>
+        <div class="mr-range-value">RM 50.00</div>
+    </div>
+    <div class="mr-range-item">
+        <div class="mr-range-label">Maximum</div>
+        <div class="mr-range-value">RM 500.00</div>
+    </div>
+</div>
+```
+
+### Textarea
+```html
+<textarea class="mr-form-control" placeholder="Briefly describe..."></textarea>
+```
+
+### File Upload Area
+```html
+<div class="mr-file-upload">
+    <div class="mr-file-upload-inner">
+        <div class="mr-file-upload-icon"><i class="ti ti-cloud-upload"></i></div>
+        <div class="mr-file-upload-text">
+            <span class="mr-file-upload-link">Click to upload</span> or drag and drop
+        </div>
+        <div class="mr-file-upload-hint">PDF, JPG, PNG or DOC (max. 5MB)</div>
+    </div>
+</div>
+```
+
+### Detail Rows (Label/Value pairs in sidebar)
+```html
+<div class="mr-form-panel-body">
+    <div class="mr-detail-row">
+        <span class="mr-detail-label">Policy Type</span>
+        <span class="mr-detail-badge">Advance Payroll</span>
+    </div>
+    <div class="mr-detail-row">
+        <span class="mr-detail-label">Request Date</span>
+        <span class="mr-detail-value">2026 January 14</span>
+    </div>
+    <div class="mr-detail-row">
+        <span class="mr-detail-label">Maximum Limit</span>
+        <span class="mr-detail-value mr-mono mr-blue">RM 500.00</span>
+    </div>
+</div>
+```
+
+### Info Panel (Light Background)
+```html
+<div class="mr-info-panel">
+    <div class="mr-info-panel-icon"><i class="ti ti-info-circle"></i></div>
+    <div>
+        <div class="mr-info-panel-title">How it works</div>
+        <p class="mr-info-panel-text">
+            Request access to your earned wages before payday.
+            The approved amount will be deducted from your next salary payment.
+        </p>
+    </div>
+</div>
+```
+
 ## Animation Classes
 ```css
 .mr-animate-in {

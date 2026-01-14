@@ -136,6 +136,78 @@ Compact page header with breadcrumb navigation and subtle background.
 }
 ```
 
+## Form Panels & Inputs
+
+### Form Panel Structure
+```html
+<div class="mr-form-panel">
+    <div class="mr-form-panel-header">
+        <div class="mr-form-panel-header-icon"><i class="ti ti-send"></i></div>
+        <h3 class="mr-form-panel-title">New Request</h3>
+    </div>
+    <div class="mr-form-panel-body">
+        <!-- Form content -->
+    </div>
+    <div class="mr-form-panel-footer">
+        <button class="mr-btn-cancel">Cancel</button>
+        <button class="mr-btn-submit"><i class="ti ti-send"></i> Submit</button>
+    </div>
+</div>
+```
+
+### Input with Prefix (Currency)
+```html
+<div class="mr-input-group">
+    <span class="mr-input-group-text">RM</span>
+    <input type="text" class="mr-form-control mr-mono" placeholder="0.00">
+</div>
+```
+
+### Info Highlight Box (Blue Gradient)
+```html
+<div class="mr-info-highlight">
+    <div class="mr-info-highlight-icon"><i class="ti ti-wallet"></i></div>
+    <div class="mr-info-highlight-content">
+        <div class="mr-info-highlight-label">YOUR ELIGIBLE AMOUNT</div>
+        <div class="mr-info-highlight-value">RM 500.00</div>
+    </div>
+</div>
+```
+
+### Quick Select Buttons
+```html
+<div class="mr-quick-select">
+    <button class="mr-quick-select-btn">RM 50.00</button>
+    <button class="mr-quick-select-btn active">RM 100.00</button>
+    <button class="mr-quick-select-btn">MAX</button>
+</div>
+```
+
+### File Upload Area
+```html
+<div class="mr-file-upload">
+    <div class="mr-file-upload-inner">
+        <div class="mr-file-upload-icon"><i class="ti ti-cloud-upload"></i></div>
+        <div class="mr-file-upload-text">
+            <span class="mr-file-upload-link">Click to upload</span> or drag and drop
+        </div>
+        <div class="mr-file-upload-hint">PDF, JPG, PNG or DOC (max. 5MB)</div>
+    </div>
+</div>
+```
+
+### Detail Rows (Label/Value pairs)
+```html
+<div class="mr-detail-row">
+    <span class="mr-detail-label">Policy Type</span>
+    <span class="mr-detail-badge">Advance Payroll</span>
+</div>
+<div class="mr-detail-row">
+    <span class="mr-detail-label">Maximum Limit</span>
+    <span class="mr-detail-value mr-mono mr-blue">RM 500.00</span>
+</div>
+```
+
 ## Border Radius Standards
 - Cards: `16px`
 - Buttons: `10px`
