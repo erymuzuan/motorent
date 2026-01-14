@@ -1,8 +1,8 @@
-# MotoRent Quick Start Guide - Mechanic
+# Safe & Go Quick Start Guide - Mechanic
 
-Welcome to MotoRent! This guide will help you get started as a Mechanic.
+Welcome to Safe & Go! This guide will help you get started as a Mechanic.
 
-![Fleet Management](https://motorent.public.s3.amazonaws.com/user-guides/images/05-fleet.png)
+![Fleet Management](images/05-fleet.png)
 
 ## Your Role
 
@@ -159,4 +159,4 @@ Contact your Shop Manager for:
 
 ---
 
-*MotoRent - Vehicle Rental Management System*
+*Safe & Go - Vehicle Rental Management System*

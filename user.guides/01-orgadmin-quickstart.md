@@ -1,12 +1,12 @@
-# MotoRent Quick Start Guide - Organization Admin
+# Safe & Go Quick Start Guide - Organization Admin
 
-Welcome to MotoRent! This guide will help you get started as an Organization Admin (OrgAdmin).
+Welcome to Safe & Go! This guide will help you get started as an Organization Admin (OrgAdmin).
 
-![Dashboard](https://motorent.public.s3.amazonaws.com/user-guides/images/02-dashboard.png)
+![Dashboard](images/02-dashboard.png)
 
 ## Your Role
 
-As an OrgAdmin, you have **full access** to all features in MotoRent. You can manage:
+As an OrgAdmin, you have **full access** to all features in Safe & Go. You can manage:
 - Rentals and check-ins/check-outs
 - Fleet (vehicles and accessories)
 - Finance (payments, deposits, reports)
@@ -46,7 +46,7 @@ When you log in, you'll see your Dashboard with:
 
 ### 2. Processing a New Rental (Check-In)
 
-![Check-In Wizard](https://motorent.public.s3.amazonaws.com/user-guides/images/04-checkin.png)
+![Check-In Wizard](images/04-checkin.png)
 
 1. Click **Rentals > Check-In** or the "New Check-In" button
 2. Follow the 5-step wizard:
@@ -58,7 +58,7 @@ When you log in, you'll see your Dashboard with:
 
 ### 3. Managing Your Fleet
 
-![Fleet Management](https://motorent.public.s3.amazonaws.com/user-guides/images/05-fleet.png)
+![Fleet Management](images/05-fleet.png)
 
 Navigate to **Fleet > All Vehicles** to:
 - View all vehicles across types (Motorbike, Car, Jet Ski, Boat, Van)
@@ -85,7 +85,7 @@ Navigate to **Fleet > All Vehicles** to:
 
 ### 5. Accident Management
 
-![Accident Management](https://motorent.public.s3.amazonaws.com/user-guides/images/06-accidents.png)
+![Accident Management](images/06-accidents.png)
 
 When an accident occurs:
 1. Go to **Accidents**
@@ -99,7 +99,7 @@ When an accident occurs:
 
 ### 6. Shop Settings
 
-![Shop Locations](https://motorent.public.s3.amazonaws.com/user-guides/images/08-shops.png)
+![Shop Locations](images/08-shops.png)
 
 Configure your rental shops under **Settings > Shop Settings**:
 - Add new shop locations
@@ -132,4 +132,4 @@ Configure your rental shops under **Settings > Shop Settings**:
 
 ---
 
-*MotoRent - Vehicle Rental Management System*
+*Safe & Go - Vehicle Rental Management System*

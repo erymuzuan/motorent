@@ -1,8 +1,8 @@
-# MotoRent Quick Start Guide - Staff
+# Safe & Go Quick Start Guide - Staff
 
-Welcome to MotoRent! This guide will help you get started as a Staff member.
+Welcome to Safe & Go! This guide will help you get started as a Staff member.
 
-![Staff Dashboard](https://motorent.public.s3.amazonaws.com/user-guides/images/09-staff-dashboard.png)
+![Staff Dashboard](images/09-staff-dashboard.png)
 
 ## Your Role
 
@@ -43,7 +43,7 @@ Your Dashboard shows:
 
 ### 2. Processing a New Rental (Check-In)
 
-![Check-In Process](https://motorent.public.s3.amazonaws.com/user-guides/images/04-checkin.png)
+![Check-In Process](images/04-checkin.png)
 
 This is your most common task. Follow these steps:
 
@@ -188,4 +188,4 @@ To add a new renter:
 
 ---
 
-*MotoRent - Vehicle Rental Management System*
+*Safe & Go - Vehicle Rental Management System*

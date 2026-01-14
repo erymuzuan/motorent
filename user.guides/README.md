@@ -1,8 +1,8 @@
-# MotoRent User Guides
+# Safe & Go User Guides
 
-Quick start guides for all MotoRent user roles.
+Quick start guides for all Safe & Go user roles.
 
-![Dashboard Overview](https://motorent.public.s3.amazonaws.com/user-guides/images/02-dashboard.png)
+![Dashboard Overview](images/02-dashboard.png)
 
 ## Available Guides
 
@@ -12,12 +12,20 @@ Quick start guides for all MotoRent user roles.
 | [Staff Quick Start](02-staff-quickstart.md) | Staff | Rentals, Accidents, Customers |
 | [Mechanic Quick Start](03-mechanic-quickstart.md) | Mechanic | Fleet (view), Dashboard |
 | [ShopManager Quick Start](04-shopmanager-quickstart.md) | Shop Manager | Full access - shop operations |
+| [Tourist Portal Guide](05-tourist-guide.md) | Tourist/Renter | Browse, reserve, rental history |
+| [Super Admin Guide](06-superadmin-guide.md) | Platform Admin | Organizations, Users, System |
 
 ## Role Hierarchy
 
 ```
+Super Admin (Platform Administrator)
+├── Manage all organizations
+├── User administration
+├── System configuration
+└── Support impersonation
+
 OrgAdmin (Organization Admin)
-├── Full system access
+├── Full tenant access
 ├── All shops in organization
 └── User management
 
@@ -34,6 +42,11 @@ Staff
 Mechanic
 ├── Fleet viewing
 └── Maintenance tracking
+
+Tourist/Renter
+├── Browse vehicles
+├── Make reservations
+└── View rental history
 ```
 
 ## Feature Access by Role
@@ -71,4 +84,5 @@ Mechanic
 
 ---
 
+*Safe & Go - Vehicle Rental Management System*
 *Last Updated: January 2026*

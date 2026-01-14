@@ -1,8 +1,8 @@
-# MotoRent Quick Start Guide - Shop Manager
+# Safe & Go Quick Start Guide - Shop Manager
 
-Welcome to MotoRent! This guide will help you get started as a Shop Manager.
+Welcome to Safe & Go! This guide will help you get started as a Shop Manager.
 
-![Dashboard](https://motorent.public.s3.amazonaws.com/user-guides/images/02-dashboard.png)
+![Dashboard](images/02-dashboard.png)
 
 ## Your Role
 
@@ -226,4 +226,4 @@ Access reports through **Finance > Reports**:
 
 ---
 
-*MotoRent - Vehicle Rental Management System*
+*Safe & Go - Vehicle Rental Management System*
