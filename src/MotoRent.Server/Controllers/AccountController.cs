@@ -178,6 +178,18 @@ public class AccountController : Controller
                 IssuedUtc = DateTimeOffset.UtcNow
             });
 
+        // Redirect SuperAdmin users to their start page if no specific return URL
+        if (string.IsNullOrWhiteSpace(returnUrl) || returnUrl == "/")
+        {
+            var isSuperAdmin = claimsList.Any(c =>
+                c.Type == ClaimTypes.Role && c.Value == UserAccount.SUPER_ADMIN);
+
+            if (isSuperAdmin)
+            {
+                return LocalRedirect("/super-admin/start-page");
+            }
+        }
+
         return LocalRedirect(returnUrl ?? "/");
     }
 

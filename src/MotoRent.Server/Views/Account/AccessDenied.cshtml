@@ -1,13 +1,15 @@
+@using MotoRent.Domain.Core
 @{
     Layout = null;
+    var appName = MotoConfig.ApplicationName;
 }
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Access Denied - MotoRent</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <title>Access Denied - @appName</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -15,84 +17,177 @@
             box-sizing: border-box;
         }
         body {
-            font-family: 'Roboto', sans-serif;
-            background: linear-gradient(135deg, #00897B 0%, #004D40 100%);
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #0d9488 0%, #065f5b 50%, #0f766e 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
+            position: relative;
+            overflow: hidden;
         }
-        .container {
-            background: white;
-            padding: 40px;
-            border-radius: 16px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+
+        /* Animated wave background */
+        .wave-container {
+            position: absolute;
+            bottom: 0;
+            left: 0;
             width: 100%;
-            max-width: 500px;
-            text-align: center;
+            height: 100%;
+            overflow: hidden;
+            z-index: 0;
         }
+
+        .wave {
+            position: absolute;
+            bottom: -10%;
+            left: 50%;
+            width: 200%;
+            height: 200%;
+            transform-origin: center bottom;
+            background: linear-gradient(180deg, transparent 50%, rgba(255,255,255,0.05) 100%);
+            border-radius: 45%;
+        }
+
+        .wave:nth-child(1) {
+            animation: wave 15s linear infinite;
+            opacity: 0.3;
+        }
+
+        .wave:nth-child(2) {
+            animation: wave 20s linear infinite reverse;
+            opacity: 0.2;
+            animation-delay: -5s;
+        }
+
+        @@keyframes wave {
+            from { transform: translateX(-50%) rotate(0deg); }
+            to { transform: translateX(-50%) rotate(360deg); }
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            padding: 48px 40px;
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            width: 100%;
+            max-width: 480px;
+            text-align: center;
+            position: relative;
+            z-index: 1;
+            animation: slideUp 0.5s ease-out;
+        }
+
+        @@keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
         .icon {
-            width: 80px;
-            height: 80px;
-            background: #ffebee;
+            width: 88px;
+            height: 88px;
+            background: linear-gradient(135deg, #fecaca 0%, #fca5a5 100%);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             margin: 0 auto 24px;
+            box-shadow: 0 10px 30px -10px rgba(220, 38, 38, 0.3);
         }
+
         .icon svg {
-            width: 40px;
-            height: 40px;
-            fill: #c62828;
+            width: 44px;
+            height: 44px;
+            fill: #dc2626;
         }
+
         h1 {
-            color: #c62828;
+            color: #dc2626;
             font-size: 1.5rem;
+            font-weight: 700;
             margin-bottom: 16px;
+            letter-spacing: -0.025em;
         }
+
         p {
-            color: #666;
-            margin-bottom: 24px;
-            line-height: 1.6;
+            color: #64748b;
+            margin-bottom: 32px;
+            line-height: 1.7;
+            font-size: 0.95rem;
         }
+
         .actions {
             display: flex;
-            gap: 16px;
+            gap: 14px;
             justify-content: center;
         }
+
         .btn {
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-size: 1rem;
+            padding: 14px 28px;
+            border-radius: 12px;
+            font-size: 0.95rem;
             font-weight: 500;
             cursor: pointer;
             text-decoration: none;
             transition: all 0.2s ease;
         }
+
         .btn-primary {
-            background: #00897B;
+            background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
             color: white;
             border: none;
+            box-shadow: 0 4px 14px rgba(13, 148, 136, 0.3);
         }
+
         .btn-primary:hover {
-            background: #00695C;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(13, 148, 136, 0.4);
         }
+
         .btn-secondary {
             background: white;
-            color: #666;
-            border: 1px solid #ddd;
+            color: #64748b;
+            border: 2px solid #e5e7eb;
         }
+
         .btn-secondary:hover {
-            background: #f5f5f5;
+            background: #f8fafc;
+            border-color: #d1d5db;
+            transform: translateY(-2px);
+        }
+
+        @@media (max-width: 480px) {
+            body {
+                padding: 20px;
+            }
+
+            .container {
+                padding: 32px 24px;
+            }
+
+            .actions {
+                flex-direction: column;
+            }
         }
     </style>
 </head>
 <body>
+    <div class="wave-container">
+        <div class="wave"></div>
+        <div class="wave"></div>
+    </div>
+
     <div class="container">
         <div class="icon">
             <svg viewBox="0 0 24 24">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
             </svg>
         </div>
         <h1>Access Denied</h1>
