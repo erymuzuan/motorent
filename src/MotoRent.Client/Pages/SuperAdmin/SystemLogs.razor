@@ -1,0 +1,545 @@
+@page "/super-admin/system-logs"
+@rendermode InteractiveServer
+@inherits MotoRentComponentBase
+@using Microsoft.AspNetCore.Authorization
+@using MotoRent.Domain.Core
+@using MotoRent.Services.Core
+@attribute [Authorize(Roles = UserAccount.SUPER_ADMIN)]
+@inject LogEntryService LogEntryService
+
+<PageTitle>System Logs - MotoRent</PageTitle>
+
+<div class="container-xl mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="mb-1">System Logs</h4>
+            <p class="text-secondary mb-0">Monitor and manage application error logs</p>
+        </div>
+        <div class="btn-group" role="group">
+            <button type="button" class="btn @(m_viewMode == ViewMode.Grouped ? "btn-primary" : "btn-outline-primary")"
+                    @onclick="() => SetViewMode(ViewMode.Grouped)">
+                <i class="ti ti-stack-2 me-1"></i>Grouped
+            </button>
+            <button type="button" class="btn @(m_viewMode == ViewMode.Detailed ? "btn-primary" : "btn-outline-primary")"
+                    @onclick="() => SetViewMode(ViewMode.Detailed)">
+                <i class="ti ti-list me-1"></i>Detailed
+            </button>
+        </div>
+    </div>
+
+    @* Stats Cards *@
+    <div class="row row-deck row-cards mb-3">
+        <div class="col-sm-6 col-lg-3">
+            <div class="card card-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <span class="bg-secondary text-white avatar">
+                                <i class="ti ti-file-text"></i>
+                            </span>
+                        </div>
+                        <div class="col">
+                            <div class="font-weight-medium">@m_stats.TotalCount</div>
+                            <div class="text-secondary">Total Logs</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card card-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <span class="bg-info text-white avatar">
+                                <i class="ti ti-bell"></i>
+                            </span>
+                        </div>
+                        <div class="col">
+                            <div class="font-weight-medium">@m_stats.NewCount</div>
+                            <div class="text-secondary">New</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card card-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <span class="bg-warning text-white avatar">
+                                <i class="ti ti-alert-triangle"></i>
+                            </span>
+                        </div>
+                        <div class="col">
+                            <div class="font-weight-medium">@m_stats.ErrorCount</div>
+                            <div class="text-secondary">Errors</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card card-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <span class="bg-danger text-white avatar">
+                                <i class="ti ti-urgent"></i>
+                            </span>
+                        </div>
+                        <div class="col">
+                            <div class="font-weight-medium">@m_stats.CriticalCount</div>
+                            <div class="text-secondary">Critical</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Filters *@
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-2">
+                    <label class="form-label">Severity</label>
+                    <select class="form-select" @bind="m_severityFilter" @bind:after="LoadAsync">
+                        <option value="">All</option>
+                        @foreach (var severity in Enum.GetValues<LogSeverity>())
+                        {
+                            <option value="@severity">@severity</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Status</label>
+                    <select class="form-select" @bind="m_statusFilter" @bind:after="LoadAsync">
+                        <option value="">All</option>
+                        @foreach (var status in Enum.GetValues<LogStatus>())
+                        {
+                            <option value="@status">@status</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Log Type</label>
+                    <select class="form-select" @bind="m_logFilter" @bind:after="LoadAsync">
+                        <option value="">All</option>
+                        @foreach (var log in Enum.GetValues<EventLog>())
+                        {
+                            <option value="@log">@log</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Account</label>
+                    <input type="text" class="form-control" placeholder="Filter by account..."
+                           @bind="m_accountFilter" @bind:after="LoadAsync" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Search</label>
+                    <input type="text" class="form-control" placeholder="Search message or type..."
+                           @bind="m_searchFilter" @bind:after="LoadAsync" />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (m_loading)
+    {
+        <div class="progress progress-sm mb-4">
+            <div class="progress-bar progress-bar-indeterminate"></div>
+        </div>
+    }
+
+    @* Log Table *@
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-vcenter card-table table-striped">
+                <thead>
+                    <tr>
+                        <th>DateTime</th>
+                        <th>Severity</th>
+                        @if (m_viewMode == ViewMode.Grouped)
+                        {
+                            <th>Count</th>
+                        }
+                        <th>Status</th>
+                        <th>Type</th>
+                        <th>Message</th>
+                        @if (m_viewMode == ViewMode.Detailed)
+                        {
+                            <th>Account</th>
+                            <th>User</th>
+                        }
+                        <th class="w-1"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (m_viewMode == ViewMode.Grouped)
+                    {
+                        @foreach (var summary in m_groupedLogs)
+                        {
+                            <tr>
+                                <td>
+                                    <span title="@summary.LastOccurrence.ToString("g")">@GetTimeAgo(summary.LastOccurrence)</span>
+                                </td>
+                                <td>
+                                    <span class="badge @GetSeverityBadgeClass(summary.Severity)">@summary.Severity</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary">@summary.OccurrenceCount</span>
+                                </td>
+                                <td>
+                                    <span class="badge @GetStatusBadgeClass(summary.Status)">@summary.Status</span>
+                                </td>
+                                <td>@summary.Type</td>
+                                <td>
+                                    <div class="text-truncate" style="max-width: 300px;" title="@summary.Message">
+                                        @summary.Message
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="btn-list flex-nowrap">
+                                        <button type="button" class="btn btn-sm btn-ghost-secondary"
+                                                @onclick="() => ViewDetails(summary.LatestLogEntryId)">
+                                            <i class="ti ti-eye"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-ghost-success"
+                                                @onclick="() => ResolveAllSimilar(summary.IncidentHash)"
+                                                title="Resolve all similar">
+                                            <i class="ti ti-check"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-ghost-danger"
+                                                @onclick="() => DeleteAllSimilar(summary.IncidentHash)"
+                                                title="Delete all similar">
+                                            <i class="ti ti-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        @foreach (var log in m_logs)
+                        {
+                            <tr>
+                                <td>
+                                    <span title="@log.DateTime.ToString("g")">@GetTimeAgo(log.DateTime)</span>
+                                </td>
+                                <td>
+                                    <span class="badge @GetSeverityBadgeClass(log.LogSeverity)">@log.LogSeverity</span>
+                                </td>
+                                <td>
+                                    <span class="badge @GetStatusBadgeClass(log.Status)">@log.Status</span>
+                                </td>
+                                <td>@log.Type</td>
+                                <td>
+                                    <div class="text-truncate" style="max-width: 250px;" title="@log.Message">
+                                        @log.Message
+                                    </div>
+                                </td>
+                                <td>@log.AccountNo</td>
+                                <td>@log.UserName</td>
+                                <td>
+                                    <div class="btn-list flex-nowrap">
+                                        <button type="button" class="btn btn-sm btn-ghost-secondary"
+                                                @onclick="() => ViewDetails(log.LogEntryId)">
+                                            <i class="ti ti-eye"></i>
+                                        </button>
+                                        @if (log.Status != LogStatus.Resolved)
+                                        {
+                                            <button type="button" class="btn btn-sm btn-ghost-success"
+                                                    @onclick="() => Resolve(log.LogEntryId)">
+                                                <i class="ti ti-check"></i>
+                                            </button>
+                                        }
+                                        <button type="button" class="btn btn-sm btn-ghost-danger"
+                                                @onclick="() => Delete(log.LogEntryId)">
+                                            <i class="ti ti-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if ((m_viewMode == ViewMode.Grouped ? m_groupedLogs.Count : m_logs.Count) == 0 && !m_loading)
+        {
+            <div class="card-body">
+                <div class="empty">
+                    <div class="empty-icon">
+                        <i class="ti ti-mood-happy" style="font-size: 3rem;"></i>
+                    </div>
+                    <p class="empty-title">No logs found</p>
+                    <p class="empty-subtitle text-secondary">
+                        No error logs match your current filters.
+                    </p>
+                </div>
+            </div>
+        }
+
+        @* Pagination (detailed view only) *@
+        @if (m_viewMode == ViewMode.Detailed && m_totalRows > m_pageSize)
+        {
+            <div class="card-footer d-flex align-items-center">
+                <p class="m-0 text-secondary">
+                    Showing @(((m_page - 1) * m_pageSize) + 1) to @Math.Min(m_page * m_pageSize, m_totalRows) of @m_totalRows entries
+                </p>
+                <ul class="pagination m-0 ms-auto">
+                    <li class="page-item @(m_page == 1 ? "disabled" : "")">
+                        <a class="page-link" href="javascript:" @onclick="() => GoToPage(m_page - 1)">
+                            <i class="ti ti-chevron-left"></i>
+                        </a>
+                    </li>
+                    @for (var i = 1; i <= Math.Min(m_totalPages, 5); i++)
+                    {
+                        var pageNum = i;
+                        <li class="page-item @(m_page == pageNum ? "active" : "")">
+                            <a class="page-link" href="javascript:" @onclick="() => GoToPage(pageNum)">@pageNum</a>
+                        </li>
+                    }
+                    <li class="page-item @(m_page == m_totalPages ? "disabled" : "")">
+                        <a class="page-link" href="javascript:" @onclick="() => GoToPage(m_page + 1)">
+                            <i class="ti ti-chevron-right"></i>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private enum ViewMode { Grouped, Detailed }
+
+    private List<LogEntry> m_logs = [];
+    private List<LogEntrySummary> m_groupedLogs = [];
+    private LogStats m_stats = new(0, 0, 0, 0);
+    private bool m_loading = true;
+    private ViewMode m_viewMode = ViewMode.Grouped;
+
+    // Filters
+    private string? m_severityFilter;
+    private string? m_statusFilter;
+    private string? m_logFilter;
+    private string? m_accountFilter;
+    private string? m_searchFilter;
+
+    // Pagination
+    private int m_page = 1;
+    private int m_pageSize = 20;
+    private int m_totalRows;
+    private int m_totalPages => (int)Math.Ceiling((double)m_totalRows / m_pageSize);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadStatsAsync();
+        await LoadAsync();
+    }
+
+    private async Task SetViewMode(ViewMode mode)
+    {
+        m_viewMode = mode;
+        m_page = 1;
+        await LoadAsync();
+    }
+
+    private async Task LoadStatsAsync()
+    {
+        try
+        {
+            m_stats = await LogEntryService.GetStatsAsync();
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error loading stats: {ex.Message}");
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        m_loading = true;
+        try
+        {
+            var filter = BuildFilter();
+
+            if (m_viewMode == ViewMode.Grouped)
+            {
+                m_groupedLogs = await LogEntryService.GetGroupedLogsAsync(filter, m_page, m_pageSize);
+            }
+            else
+            {
+                var lo = await LogEntryService.GetLogsAsync(filter, m_page, m_pageSize);
+                m_logs = lo.ItemCollection.ToList();
+                m_totalRows = lo.TotalRows;
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error loading logs: {ex.Message}");
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private LogEntryFilter BuildFilter()
+    {
+        LogSeverity? severity = null;
+        if (!string.IsNullOrEmpty(m_severityFilter) && Enum.TryParse<LogSeverity>(m_severityFilter, out var s))
+            severity = s;
+
+        LogStatus? status = null;
+        if (!string.IsNullOrEmpty(m_statusFilter) && Enum.TryParse<LogStatus>(m_statusFilter, out var st))
+            status = st;
+
+        EventLog? log = null;
+        if (!string.IsNullOrEmpty(m_logFilter) && Enum.TryParse<EventLog>(m_logFilter, out var l))
+            log = l;
+
+        return new LogEntryFilter(
+            severity,
+            status,
+            log,
+            m_accountFilter,
+            null,
+            m_searchFilter,
+            null,
+            null
+        );
+    }
+
+    private async Task GoToPage(int page)
+    {
+        if (page < 1 || page > m_totalPages) return;
+        m_page = page;
+        await LoadAsync();
+    }
+
+    private async Task ViewDetails(int logEntryId)
+    {
+        await DialogService
+            .Create<LogEntryDetailsDialog>("Log Entry Details")
+            .WithParameter(x => x.LogEntryId, logEntryId)
+            .WithSize(ModalSize.ExtraLarge)
+            .ShowDialogAsync();
+
+        await LoadAsync();
+        await LoadStatsAsync();
+    }
+
+    private async Task Resolve(int logEntryId)
+    {
+        try
+        {
+            await LogEntryService.ResolveAsync(logEntryId, UserName);
+            ShowSuccess("Log entry marked as resolved");
+            await LoadAsync();
+            await LoadStatsAsync();
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error resolving log: {ex.Message}");
+        }
+    }
+
+    private async Task ResolveAllSimilar(string incidentHash)
+    {
+        var confirmed = await DialogService.ConfirmYesNoAsync(
+            "Are you sure you want to resolve all similar log entries?",
+            "Resolve All Similar");
+
+        if (!confirmed) return;
+
+        try
+        {
+            await LogEntryService.ResolveAllSimilarAsync(incidentHash, UserName);
+            ShowSuccess("All similar log entries marked as resolved");
+            await LoadAsync();
+            await LoadStatsAsync();
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error resolving logs: {ex.Message}");
+        }
+    }
+
+    private async Task Delete(int logEntryId)
+    {
+        var confirmed = await DialogService.ConfirmYesNoAsync(
+            "Are you sure you want to delete this log entry?",
+            "Delete Log Entry");
+
+        if (!confirmed) return;
+
+        try
+        {
+            await LogEntryService.DeleteAsync(logEntryId);
+            ShowSuccess("Log entry deleted");
+            await LoadAsync();
+            await LoadStatsAsync();
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error deleting log: {ex.Message}");
+        }
+    }
+
+    private async Task DeleteAllSimilar(string incidentHash)
+    {
+        var confirmed = await DialogService.ConfirmYesNoAsync(
+            "Are you sure you want to delete all similar log entries? This action cannot be undone.",
+            "Delete All Similar");
+
+        if (!confirmed) return;
+
+        try
+        {
+            await LogEntryService.DeleteAllSimilarAsync(incidentHash);
+            ShowSuccess("All similar log entries deleted");
+            await LoadAsync();
+            await LoadStatsAsync();
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error deleting logs: {ex.Message}");
+        }
+    }
+
+    private string GetSeverityBadgeClass(LogSeverity severity) => severity switch
+    {
+        LogSeverity.Critical => "bg-danger",
+        LogSeverity.Error => "bg-orange",
+        LogSeverity.Warning => "bg-warning",
+        LogSeverity.Info => "bg-info",
+        LogSeverity.Debug => "bg-secondary",
+        _ => "bg-secondary"
+    };
+
+    private string GetStatusBadgeClass(LogStatus status) => status switch
+    {
+        LogStatus.New => "bg-info",
+        LogStatus.Active => "bg-warning",
+        LogStatus.Resolved => "bg-success",
+        LogStatus.Cancelled => "bg-secondary",
+        _ => "bg-secondary"
+    };
+
+    private string GetTimeAgo(DateTimeOffset timestamp)
+    {
+        var diff = DateTimeOffset.Now - timestamp;
+        if (diff.TotalMinutes < 1) return "just now";
+        if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes}m ago";
+        if (diff.TotalHours < 24) return $"{(int)diff.TotalHours}h ago";
+        if (diff.TotalDays < 7) return $"{(int)diff.TotalDays}d ago";
+        return timestamp.ToString("MMM d");
+    }
+}

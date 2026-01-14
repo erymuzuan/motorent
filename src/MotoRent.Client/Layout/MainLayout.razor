@@ -5,7 +5,9 @@
 @using MotoRent.Domain.DataContext
 @using MotoRent.Domain.Storage
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Web
 @using Microsoft.Extensions.Localization
+@using MotoRent.Client.Pages
 @inject IJSRuntime JS
 @inject IRequestContext RequestContext
 @inject CoreDataContext CoreContext
@@ -138,7 +140,14 @@
     @* Page Content *@
     <main class="flex-grow-1 py-4">
         <div class="container-xl">
-            @Body
+            <ErrorBoundary @ref="m_errorBoundary">
+                <ChildContent>
+                    @Body
+                </ChildContent>
+                <ErrorContent Context="ex">
+                    <ErrorPage Exception="ex" ErrorBoundary="m_errorBoundary" />
+                </ErrorContent>
+            </ErrorBoundary>
         </div>
     </main>
 
@@ -200,6 +209,7 @@
 }
 
 @code {
+    private ErrorBoundary? m_errorBoundary;
     private bool m_navbarOpen;
     private bool m_isDarkMode;
     private bool m_showInstallBanner = true;
