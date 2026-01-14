@@ -45,6 +45,57 @@ public class SqlDirectoryService(CoreDataContext context) : IDirectoryService
         await session.SubmitChanges("SaveUserProfile");
     }
 
+    /// <summary>
+    /// Processes pending invites for a user when they log in.
+    /// If any valid pending invites exist for the user's email, adds them to the organization with the specified roles.
+    /// </summary>
+    public async Task ProcessPendingInvitesAsync(User user)
+    {
+        if (string.IsNullOrWhiteSpace(user.Email))
+            return;
+
+        var query = this.Context.UserInvites
+            .Where(i => i.Email == user.Email && i.Status == UserInvite.STATUS_PENDING);
+
+        var result = await this.Context.LoadAsync(query, page: 1, size: 100, includeTotalRows: false);
+        var pendingInvites = result.ItemCollection.Where(i => i.IsValid).ToList();
+
+        if (pendingInvites.Count == 0)
+            return;
+
+        using var session = this.Context.OpenSession("system");
+
+        foreach (var invite in pendingInvites)
+        {
+            // Check if user is already in this organization
+            var existingAccount = user.AccountCollection.FirstOrDefault(a => a.AccountNo == invite.AccountNo);
+
+            if (existingAccount == null)
+            {
+                // Add user to the organization with the invited roles
+                var newAccount = new UserAccount { AccountNo = invite.AccountNo };
+                newAccount.Roles.AddRange(invite.Roles);
+                user.AccountCollection.Add(newAccount);
+            }
+            else
+            {
+                // User already in org - merge roles (add any new roles from invite)
+                foreach (var role in invite.Roles.Where(r => !existingAccount.Roles.Contains(r)))
+                {
+                    existingAccount.Roles.Add(role);
+                }
+            }
+
+            // Mark invite as accepted
+            invite.Status = UserInvite.STATUS_ACCEPTED;
+            session.Attach(invite);
+        }
+
+        // Save user with updated accounts
+        session.Attach(user);
+        await session.SubmitChanges("ProcessPendingInvites");
+    }
+
     public async Task<UserAuthenticationStatus> AuthenticateAsync(string userName, string password)
     {
         var user = await this.GetUserAsync(userName);
@@ -166,6 +217,9 @@ public class SqlDirectoryService(CoreDataContext context) : IDirectoryService
 
         var user = await this.GetUserAsync(userName);
         if (user == null) return [];
+
+        // Process any pending invites for this user's email
+        await this.ProcessPendingInvitesAsync(user);
 
         var organization = await this.GetOrganizationAsync(account);
         if (organization == null) return [];
