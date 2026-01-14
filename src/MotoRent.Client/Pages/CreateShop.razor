@@ -1,0 +1,100 @@
+@page "/shops/create"
+@inherits LocalizedComponentBase<CreateShop>
+@inject ShopService ShopService
+
+<MotoRentPageTitle>@Localizer["AddShop"]</MotoRentPageTitle>
+
+@* Page Header with Gradient *@
+<div class="mr-page-header">
+    <div class="container-xl">
+        @* Breadcrumb *@
+        <nav class="mr-breadcrumb">
+            <span class="mr-breadcrumb-item"><a href="/"><i class="ti ti-home"></i></a></span>
+            <span class="mr-breadcrumb-separator"><i class="ti ti-chevron-right"></i></span>
+            <span class="mr-breadcrumb-item"><a href="/shops">@Localizer["Shops"]</a></span>
+            <span class="mr-breadcrumb-separator"><i class="ti ti-chevron-right"></i></span>
+            <span class="mr-breadcrumb-item active">@Localizer["AddNewShop"]</span>
+        </nav>
+
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="mr-page-title">
+                    <i class="ti ti-building-store"></i>
+                    @Localizer["AddNewShop"]
+                </h1>
+                <p class="mr-page-subtitle">@Localizer["AddShopDescription"]</p>
+            </div>
+            <a href="/shops" class="mr-btn-header-action">
+                <i class="ti ti-arrow-left"></i>
+                @Localizer["BackToShops"]
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="container-xl">
+    <form id="create-shop-form" @onsubmit="SaveAsync" @onsubmit:preventDefault>
+        <ShopForm Entity="@m_shop" IsNew="true" />
+
+        @* Action Buttons *@
+        <div class="mr-card mt-4">
+            <div class="mr-card-footer d-flex justify-content-between align-items-center">
+                <a href="/shops" class="btn btn-ghost-secondary">
+                    <i class="ti ti-x me-1"></i>@Localizer["Cancel"]
+                </a>
+                <button type="submit" class="mr-btn-primary-action" disabled="@m_saving">
+                    @if (m_saving)
+                    {
+                        <span class="spinner-border spinner-border-sm" role="status"></span>
+                        <span>@Localizer["Saving"]...</span>
+                    }
+                    else
+                    {
+                        <i class="ti ti-device-floppy"></i>
+                        <span>@Localizer["CreateShop"]</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+@code {
+    private Shop m_shop = new();
+    private bool m_saving;
+
+    protected override void OnInitialized()
+    {
+        this.m_shop = new Shop
+        {
+            IsActive = true
+        };
+    }
+
+    private async Task SaveAsync()
+    {
+        this.m_saving = true;
+        try
+        {
+            var result = await this.ShopService.CreateShopAsync(this.m_shop, this.UserName);
+
+            if (result.Success)
+            {
+                this.ShowSuccess(Localizer["ShopCreatedSuccess"]);
+                this.NavigationManager.NavigateTo($"/shops/{EncodeId(this.m_shop.ShopId)}");
+            }
+            else
+            {
+                this.ShowError(result.Message ?? Localizer["SaveFailed"]);
+            }
+        }
+        catch (Exception ex)
+        {
+            this.ShowError($"{Localizer["Error"]}: {ex.Message}");
+        }
+        finally
+        {
+            this.m_saving = false;
+        }
+    }
+}
