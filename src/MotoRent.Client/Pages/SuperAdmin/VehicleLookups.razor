@@ -1,39 +1,61 @@
 @page "/super-admin/vehicle-lookups"
 @rendermode InteractiveServer
-@inherits MotoRentComponentBase
+@inherits LocalizedComponentBase<VehicleLookups>
 @using Microsoft.AspNetCore.Authorization
-@using MotoRent.Domain.Core
-@using MotoRent.Domain.Entities
 @attribute [Authorize(Roles = UserAccount.SUPER_ADMIN)]
 @inject VehicleLookupService LookupService
 
-<PageTitle>Vehicle Lookups - SafeNGo</PageTitle>
+<PageTitle>@Localizer["PageTitle"]</PageTitle>
 
-<div class="container-xl mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h4 class="mb-1">Vehicle Lookups</h4>
-            <p class="text-secondary mb-0">Manage global vehicle makes and models (shared across all tenants)</p>
+<!-- Page Header -->
+<div class="mr-page-header">
+    <div class="container-xl">
+        <nav class="mr-breadcrumb">
+            <span class="mr-breadcrumb-item"><a href="/">Home</a></span>
+            <i class="ti ti-chevron-right mr-breadcrumb-separator"></i>
+            <span class="mr-breadcrumb-item"><a href="/super-admin/start-page">Super Admin</a></span>
+            <i class="ti ti-chevron-right mr-breadcrumb-separator"></i>
+            <span class="mr-breadcrumb-item active">@Localizer["Title"]</span>
+        </nav>
+        <div class="d-flex justify-content-between align-items-center pb-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="mr-header-icon">
+                    <i class="ti ti-car"></i>
+                </div>
+                <div>
+                    <h1 class="mr-page-title">@Localizer["Title"]</h1>
+                    <p class="mr-page-subtitle mb-0">@Localizer["Subtitle"]</p>
+                </div>
+            </div>
+            <button type="button" class="mr-btn-primary-action" @onclick="AddNewModel">
+                <i class="ti ti-plus"></i>
+                @Localizer["AddVehicleModel"]
+            </button>
         </div>
-        <button type="button" class="btn btn-primary" @onclick="AddNewModel">
-            <i class="ti ti-plus me-2"></i>
-            Add Vehicle Model
-        </button>
     </div>
+</div>
 
+<div class="container-xl py-4">
     <!-- Filters -->
-    <div class="card mb-4">
-        <div class="card-body">
+    <div class="mr-filter-card mr-animate-in">
+        <div class="mr-filter-card-header">
+            <i class="ti ti-filter"></i>
+            <span>@Localizer["Filters"]</span>
+        </div>
+        <div class="mr-filter-card-body">
             <div class="row g-3">
                 <div class="col-md-4">
-                    <label class="form-label">Search</label>
-                    <input type="text" class="form-control" placeholder="Search make or model..."
-                           @bind="m_searchTerm" @bind:event="oninput" @onkeyup="OnSearchKeyUp" />
+                    <label class="mr-form-label">@Localizer["Search"]</label>
+                    <div class="mr-search-box" style="max-width: none;">
+                        <i class="ti ti-search"></i>
+                        <input type="text" placeholder="@Localizer["SearchPlaceholder"]"
+                               @bind="m_searchTerm" @bind:event="oninput" @onkeyup="OnSearchKeyUp" />
+                    </div>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">Vehicle Type</label>
-                    <select class="form-select" @bind="m_selectedType" @bind:after="LoadModelsAsync">
-                        <option value="">All Types</option>
+                    <label class="mr-form-label">@Localizer["VehicleType"]</label>
+                    <select class="mr-form-control" @bind="m_selectedType" @bind:after="LoadModelsAsync">
+                        <option value="">@Localizer["AllTypes"]</option>
                         @foreach (var type in Enum.GetValues<VehicleType>())
                         {
                             <option value="@type">@type</option>
@@ -41,9 +63,9 @@
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">Make</label>
-                    <select class="form-select" @bind="m_selectedMake" @bind:after="LoadModelsAsync">
-                        <option value="">All Makes</option>
+                    <label class="mr-form-label">@Localizer["Make"]</label>
+                    <select class="mr-form-control" @bind="m_selectedMake" @bind:after="LoadModelsAsync">
+                        <option value="">@Localizer["AllMakes"]</option>
                         @foreach (var make in m_makes)
                         {
                             <option value="@make">@make</option>
@@ -51,108 +73,131 @@
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label">Status</label>
-                    <select class="form-select" @bind="m_includeInactive" @bind:after="LoadModelsAsync">
-                        <option value="false">Active Only</option>
-                        <option value="true">All</option>
+                    <label class="mr-form-label">@Localizer["Status"]</label>
+                    <select class="mr-form-control" @bind="m_includeInactive" @bind:after="LoadModelsAsync">
+                        <option value="false">@Localizer["ActiveOnly"]</option>
+                        <option value="true">@Localizer["All"]</option>
                     </select>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Loading Indicator -->
     @if (m_loading)
     {
-        <div class="progress progress-sm mb-4">
-            <div class="progress-bar progress-bar-indeterminate"></div>
+        <div class="mr-loading-bar">
+            <div class="mr-loading-bar-progress"></div>
         </div>
     }
 
-    <div class="card">
-        <div class="table-responsive" style="@(m_openDropdown > 0 ? "overflow: visible;" : "")">
-            <table class="table table-vcenter card-table table-striped">
+    <!-- Data Table -->
+    <div class="mr-data-card mr-animate-in mr-animate-delay-1">
+        <div class="mr-data-card-header">
+            <div class="mr-data-card-title">
+                <i class="ti ti-list"></i>
+                <span>@Localizer["VehicleModels"]</span>
+            </div>
+            <div class="mr-data-card-count">
+                @if (m_totalRows > 0)
+                {
+                    <span class="mr-status-badge info">@m_totalRows @Localizer["Models"]</span>
+                }
+            </div>
+        </div>
+
+        <div class="mr-table-responsive" style="@(m_openDropdown > 0 ? "overflow: visible;" : "")">
+            <table class="mr-table">
                 <thead>
                     <tr>
-                        <th>Make</th>
-                        <th>Model</th>
-                        <th>Type</th>
-                        <th>Engine</th>
-                        <th>Years</th>
-                        <th>Status</th>
-                        <th class="w-1"></th>
+                        <th>@Localizer["TableMake"]</th>
+                        <th>@Localizer["TableModel"]</th>
+                        <th>@Localizer["TableType"]</th>
+                        <th>@Localizer["TableEngine"]</th>
+                        <th>@Localizer["TableYears"]</th>
+                        <th>@Localizer["TableStatus"]</th>
+                        <th class="mr-table-actions"></th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach (var model in m_models)
                     {
                         <tr>
-                            <td><strong>@model.Make</strong></td>
+                            <td>
+                                <div class="mr-table-primary">@model.Make</div>
+                            </td>
                             <td>@model.Model</td>
                             <td>
-                                <span class="badge @GetVehicleTypeBadgeClass(model.VehicleType)">
+                                <span class="mr-vehicle-type-badge @GetVehicleTypeBadgeClass(model.VehicleType)">
+                                    <i class="@GetVehicleTypeIcon(model.VehicleType)"></i>
                                     @model.VehicleType
                                 </span>
                             </td>
                             <td>
                                 @if (model.VehicleType == VehicleType.Motorbike && model.EngineCC.HasValue)
                                 {
-                                    <span>@model.EngineCC cc</span>
+                                    <span class="mr-mono">@model.EngineCC cc</span>
                                 }
                                 else if (model.VehicleType == VehicleType.Car && model.EngineLiters.HasValue)
                                 {
-                                    <span>@model.EngineLiters.Value.ToString("0.0") L</span>
+                                    <span class="mr-mono">@model.EngineLiters.Value.ToString("0.0") L</span>
                                 }
                                 else
                                 {
-                                    <span class="text-secondary">-</span>
+                                    <span class="mr-text-muted">-</span>
                                 }
                             </td>
                             <td>
                                 @if (model.YearFrom.HasValue)
                                 {
-                                    <span>@model.YearFrom - @(model.YearTo?.ToString() ?? "present")</span>
+                                    <span>@model.YearFrom - @(model.YearTo?.ToString() ?? Localizer["Present"])</span>
                                 }
                                 else
                                 {
-                                    <span class="text-secondary">-</span>
+                                    <span class="mr-text-muted">-</span>
                                 }
                             </td>
                             <td>
                                 @if (model.IsActive)
                                 {
-                                    <span class="badge bg-success">Active</span>
+                                    <span class="mr-status-badge success">
+                                        <i class="ti ti-circle-check"></i>
+                                        @Localizer["Active"]
+                                    </span>
                                 }
                                 else
                                 {
-                                    <span class="badge bg-danger">Inactive</span>
+                                    <span class="mr-status-badge danger">
+                                        <i class="ti ti-circle-x"></i>
+                                        @Localizer["Inactive"]
+                                    </span>
                                 }
                             </td>
                             <td>
-                                <div class="dropdown" style="position: relative;">
-                                    <button type="button" class="btn btn-ghost-secondary btn-icon"
+                                <div class="mr-dropdown" style="position: relative;">
+                                    <button type="button" class="mr-btn-icon"
                                             @onclick="@(() => ToggleDropdown(model.VehicleModelId))">
                                         <i class="ti ti-dots-vertical"></i>
                                     </button>
                                     @if (m_openDropdown == model.VehicleModelId)
                                     {
-                                        <div class="dropdown-menu dropdown-menu-end show"
-                                             style="display: block; position: absolute; right: 0; top: 100%; z-index: 1000;">
-                                            <a class="dropdown-item" href="#" @onclick="@(() => EditModel(model))" @onclick:preventDefault>
-                                                <i class="ti ti-edit me-2"></i>
-                                                Edit
+                                        <div class="mr-dropdown-menu show">
+                                            <a class="mr-dropdown-item" href="#" @onclick="@(() => EditModel(model))" @onclick:preventDefault>
+                                                <i class="ti ti-edit"></i>
+                                                @Localizer["Edit"]
                                             </a>
                                             @if (model.IsActive)
                                             {
-                                                <a class="dropdown-item text-warning" href="#" @onclick="@(() => DeactivateModel(model))" @onclick:preventDefault>
-                                                    <i class="ti ti-ban me-2"></i>
-                                                    Deactivate
+                                                <a class="mr-dropdown-item warning" href="#" @onclick="@(() => DeactivateModel(model))" @onclick:preventDefault>
+                                                    <i class="ti ti-ban"></i>
+                                                    @Localizer["Deactivate"]
                                                 </a>
                                             }
                                             else
                                             {
-                                                <a class="dropdown-item text-success" href="#" @onclick="@(() => ActivateModel(model))" @onclick:preventDefault>
-                                                    <i class="ti ti-circle-check me-2"></i>
-                                                    Activate
+                                                <a class="mr-dropdown-item success" href="#" @onclick="@(() => ActivateModel(model))" @onclick:preventDefault>
+                                                    <i class="ti ti-circle-check"></i>
+                                                    @Localizer["Activate"]
                                                 </a>
                                             }
                                         </div>
@@ -167,26 +212,23 @@
 
         @if (m_models.Count == 0 && !m_loading)
         {
-            <div class="card-body">
-                <div class="empty">
-                    <p class="empty-title">No vehicle models found</p>
-                    <p class="empty-subtitle text-secondary">
-                        Get started by adding popular Thai market vehicle models.
-                    </p>
-                    <div class="empty-action">
-                        <button type="button" class="btn btn-primary" @onclick="AddNewModel">
-                            <i class="ti ti-plus me-2"></i>
-                            Add Vehicle Model
-                        </button>
-                    </div>
+            <div class="mr-empty-state">
+                <div class="mr-empty-state-icon">
+                    <i class="ti ti-car-off"></i>
                 </div>
+                <h3>@Localizer["NoModelsFound"]</h3>
+                <p>@Localizer["GetStartedSubtitle"]</p>
+                <button type="button" class="mr-btn-primary-action" @onclick="AddNewModel">
+                    <i class="ti ti-plus"></i>
+                    @Localizer["AddVehicleModel"]
+                </button>
             </div>
         }
 
         @if (m_totalRows > m_models.Count)
         {
-            <div class="card-footer d-flex align-items-center">
-                <p class="m-0 text-secondary">Showing <strong>@m_models.Count</strong> of <strong>@m_totalRows</strong> entries</p>
+            <div class="mr-data-card-footer">
+                <span class="mr-text-muted">@Localizer["ShowingEntries", m_models.Count, m_totalRows]</span>
             </div>
         }
     </div>
@@ -242,7 +284,7 @@
         }
         catch (Exception ex)
         {
-            this.ShowError($"Error loading vehicle models: {ex.Message}");
+            this.ShowError(Localizer["ErrorLoading", ex.Message]);
         }
         finally
         {
@@ -288,7 +330,7 @@
         };
 
         var result = await this.DialogService
-            .Create<VehicleModelDialog>("Add Vehicle Model")
+            .Create<VehicleModelDialog>(Localizer["AddDialogTitle"])
             .WithParameter(x => x.Model, newModel)
             .WithParameter(x => x.IsNew, true)
             .WithSize(ModalSize.Large)
@@ -296,7 +338,7 @@
 
         if (result != null)
         {
-            this.ShowSuccess($"Vehicle model '{result.DisplayName}' created successfully.");
+            this.ShowSuccess(Localizer["CreatedSuccess", result.DisplayName]);
             await LoadMakesAsync();
             await LoadModelsAsync();
         }
@@ -307,7 +349,7 @@
         CloseDropdown();
 
         var result = await this.DialogService
-            .Create<VehicleModelDialog>($"Edit {model.DisplayName}")
+            .Create<VehicleModelDialog>(Localizer["EditDialogTitle", model.DisplayName])
             .WithParameter(x => x.Model, model)
             .WithParameter(x => x.IsNew, false)
             .WithSize(ModalSize.Large)
@@ -315,7 +357,7 @@
 
         if (result != null)
         {
-            this.ShowSuccess($"Vehicle model '{result.DisplayName}' updated successfully.");
+            this.ShowSuccess(Localizer["UpdatedSuccess", result.DisplayName]);
             await LoadMakesAsync();
             await LoadModelsAsync();
         }
@@ -326,20 +368,20 @@
         CloseDropdown();
 
         var confirmed = await this.DialogService.ConfirmYesNoAsync(
-            $"Are you sure you want to deactivate '{model.DisplayName}'? It will no longer appear in vehicle registration lookups.",
-            "Deactivate Vehicle Model");
+            Localizer["DeactivateConfirm", model.DisplayName],
+            Localizer["DeactivateTitle"]);
 
         if (confirmed)
         {
             var result = await this.LookupService.DeactivateModelAsync(model.VehicleModelId, this.UserName);
             if (result.Success)
             {
-                this.ShowWarning($"'{model.DisplayName}' has been deactivated.");
+                this.ShowWarning(Localizer["DeactivatedSuccess", model.DisplayName]);
                 await LoadModelsAsync();
             }
             else
             {
-                this.ShowError(result.Message ?? "Failed to deactivate model.");
+                this.ShowError(result.Message ?? Localizer["DeactivateFailed"]);
             }
         }
     }
@@ -351,23 +393,33 @@
         var result = await this.LookupService.ActivateModelAsync(model.VehicleModelId, this.UserName);
         if (result.Success)
         {
-            this.ShowSuccess($"'{model.DisplayName}' has been activated.");
+            this.ShowSuccess(Localizer["ActivatedSuccess", model.DisplayName]);
             await LoadModelsAsync();
         }
         else
         {
-            this.ShowError(result.Message ?? "Failed to activate model.");
+            this.ShowError(result.Message ?? Localizer["ActivateFailed"]);
         }
     }
 
     private static string GetVehicleTypeBadgeClass(VehicleType type) => type switch
     {
-        VehicleType.Motorbike => "bg-blue",
-        VehicleType.Car => "bg-green",
-        VehicleType.Van => "bg-purple",
-        VehicleType.Boat => "bg-cyan",
-        VehicleType.JetSki => "bg-orange",
-        _ => "bg-secondary"
+        VehicleType.Motorbike => "motorbike",
+        VehicleType.Car => "car",
+        VehicleType.Van => "van",
+        VehicleType.Boat => "boat",
+        VehicleType.JetSki => "jetski",
+        _ => "default"
+    };
+
+    private static string GetVehicleTypeIcon(VehicleType type) => type switch
+    {
+        VehicleType.Motorbike => "ti ti-motorbike",
+        VehicleType.Car => "ti ti-car",
+        VehicleType.Van => "ti ti-truck",
+        VehicleType.Boat => "ti ti-sailboat",
+        VehicleType.JetSki => "ti ti-speedboat",
+        _ => "ti ti-car"
     };
 
     public void Dispose()

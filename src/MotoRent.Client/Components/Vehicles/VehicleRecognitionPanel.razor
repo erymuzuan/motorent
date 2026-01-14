@@ -1,12 +1,8 @@
-@using MotoRent.Domain.Core
-@using MotoRent.Domain.Entities
 @using MotoRent.Domain.Lookups
 @inherits MotoRentComponentBase
 @implements IAsyncDisposable
 @inject VehicleRecognitionService RecognitionService
-@inject VehicleLookupService LookupService
-@inject IBinaryStore BinaryStore
-@inject IJSRuntime JS
+@inject IJSRuntime JsRuntime
 
 <div class="card mb-3">
     <div class="card-header">
@@ -70,7 +66,7 @@
                     }
 
                     @* Recognition Results *@
-                    <div class="@(string.IsNullOrEmpty(m_previewImageUrl) ? "col-12" : "col-md-8")">
+                    <div class="col-12">
                         <h4 class="mb-3">
                             @if (m_recognitionResult.HasLookupMatch)
                             {
@@ -182,7 +178,7 @@
         {
             try
             {
-                m_jsModule = await JS.InvokeAsync<IJSObjectReference>("import", "./scripts/file-upload.js");
+                m_jsModule = await JsRuntime.InvokeAsync<IJSObjectReference>("import", "./scripts/file-upload.js");
                 m_dotNetRef = DotNetObjectReference.Create(this);
                 await m_jsModule.InvokeVoidAsync("registerBase64DropZone", m_dropZoneRef, m_dotNetRef, "OnFileDropped");
             }
@@ -197,7 +193,7 @@
     /// Called from JavaScript when a file is dropped on the drop zone.
     /// </summary>
     [JSInvokable]
-    public async Task OnFileDropped(DroppedFileInfo fileInfo)
+    public async Task OnFileDropped(DroppedFileInfo? fileInfo)
     {
         if (fileInfo == null || string.IsNullOrEmpty(fileInfo.Base64Data))
             return;
@@ -217,7 +213,7 @@
         await ProcessFile(e.File);
     }
 
-    private async Task ProcessFile(IBrowserFile file)
+    private async Task ProcessFile(IBrowserFile? file)
     {
         if (file == null)
             return;
@@ -236,29 +232,33 @@
             return;
         }
 
-        this.m_analyzing = true;
-        this.m_recognitionResult = null;
-        this.StateHasChanged();
+        // IMPORTANT: Read file data BEFORE setting m_analyzing = true and calling StateHasChanged()
+        // because the InputFile is inside a conditional block that gets removed when m_analyzing = true,
+        // which invalidates the file reference (_blazorFilesById becomes null)
+        string base64;
+        string contentType = file.ContentType;
+        string fileName = file.Name;
+        long size = file.Size;
 
         try
         {
-            // Read file to base64
             using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
             using var ms = new MemoryStream();
             await stream.CopyToAsync(ms);
-            var base64 = Convert.ToBase64String(ms.ToArray());
-
-            await ProcessBase64File(base64, file.ContentType, file.Name, file.Size);
+            base64 = Convert.ToBase64String(ms.ToArray());
         }
         catch (Exception ex)
         {
             this.m_recognitionResult = new VehicleRecognitionResult
             {
-                Error = $"Failed to process image: {ex.Message}"
+                Error = $"Failed to read image: {ex.Message}"
             };
             this.ShowError(m_recognitionResult.Error);
-            this.m_analyzing = false;
+            return;
         }
+
+        // Now it's safe to update state and hide the InputFile
+        await ProcessBase64File(base64, contentType, fileName, size);
     }
 
     private async Task ProcessBase64File(string base64, string contentType, string fileName, long size)

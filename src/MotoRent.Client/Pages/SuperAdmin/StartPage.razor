@@ -1,115 +1,80 @@
 @page "/super-admin/start-page"
 @rendermode InteractiveServer
+@inherits LocalizedComponentBase<StartPage>
 @using Microsoft.AspNetCore.Authorization
 @using MotoRent.Domain.Core
 @attribute [Authorize(Roles = UserAccount.SUPER_ADMIN)]
 
-<PageTitle>Super Admin - MotoRent</PageTitle>
+<PageTitle>@Localizer["PageTitle"]</PageTitle>
 
-<div class="container-xl">
-    <!-- Header Section -->
-    <div class="page-header d-print-none mb-4">
-        <div class="row align-items-center">
-            <div class="col-auto">
-                <span class="avatar avatar-lg bg-primary-lt rounded">
-                    <i class="ti ti-shield-check fs-1 text-primary"></i>
-                </span>
-            </div>
-            <div class="col">
-                <div class="page-pretitle text-secondary">Administration</div>
-                <h2 class="page-title">Super Admin Dashboard</h2>
-                <div class="text-secondary mt-1">
-                    Manage organizations, users, and system configuration
+<!-- Page Header -->
+<div class="mr-page-header">
+    <div class="container-xl">
+        <nav class="mr-breadcrumb">
+            <span class="mr-breadcrumb-item"><a href="/">@CommonLocalizer["Home"]</a></span>
+            <i class="ti ti-chevron-right mr-breadcrumb-separator"></i>
+            <span class="mr-breadcrumb-item active">@Localizer["BreadcrumbSuperAdmin"]</span>
+        </nav>
+        <div class="d-flex justify-content-between align-items-center pb-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="mr-header-icon">
+                    <i class="ti ti-shield-check"></i>
+                </div>
+                <div>
+                    <h1 class="mr-page-title">@Localizer["HeaderTitle"]</h1>
+                    <p class="mr-page-subtitle mb-0">@Localizer["HeaderSubtitle"]</p>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
+<div class="container-xl py-4">
     <!-- Quick Stats Row -->
-    <div class="row row-deck row-cards mb-4">
-        <div class="col-sm-6 col-lg-3">
-            <div class="card card-sm">
-                <div class="card-body">
-                    <div class="row align-items-center">
-                        <div class="col-auto">
-                            <span class="bg-primary text-white avatar">
-                                <i class="ti ti-building"></i>
-                            </span>
-                        </div>
-                        <div class="col">
-                            <div class="font-weight-medium">@m_organizationCount</div>
-                            <div class="text-secondary">Organizations</div>
-                        </div>
-                    </div>
-                </div>
+    <div class="mr-summary-cards mr-animate-in">
+        <div class="mr-summary-card">
+            <div class="mr-summary-icon total">
+                <i class="ti ti-building"></i>
+            </div>
+            <div class="mr-summary-content">
+                <h4>@Localizer["StatOrganizations"]</h4>
+                <div class="mr-value">@m_organizationCount</div>
             </div>
         </div>
-        <div class="col-sm-6 col-lg-3">
-            <div class="card card-sm">
-                <div class="card-body">
-                    <div class="row align-items-center">
-                        <div class="col-auto">
-                            <span class="bg-info text-white avatar">
-                                <i class="ti ti-users"></i>
-                            </span>
-                        </div>
-                        <div class="col">
-                            <div class="font-weight-medium">@m_userCount</div>
-                            <div class="text-secondary">Users</div>
-                        </div>
-                    </div>
-                </div>
+        <div class="mr-summary-card">
+            <div class="mr-summary-icon info">
+                <i class="ti ti-users"></i>
+            </div>
+            <div class="mr-summary-content">
+                <h4>@Localizer["StatUsers"]</h4>
+                <div class="mr-value">@m_userCount</div>
             </div>
         </div>
-        <div class="col-sm-6 col-lg-3">
-            <div class="card card-sm">
-                <div class="card-body">
-                    <div class="row align-items-center">
-                        <div class="col-auto">
-                            <span class="bg-success text-white avatar">
-                                <i class="ti ti-gift"></i>
-                            </span>
-                        </div>
-                        <div class="col">
-                            <div class="font-weight-medium">@m_activeInviteCount</div>
-                            <div class="text-secondary">Active Invites</div>
-                        </div>
-                    </div>
-                </div>
+        <div class="mr-summary-card">
+            <div class="mr-summary-icon success">
+                <i class="ti ti-gift"></i>
+            </div>
+            <div class="mr-summary-content">
+                <h4>@Localizer["StatActiveInvites"]</h4>
+                <div class="mr-value">@m_activeInviteCount</div>
             </div>
         </div>
-        <div class="col-sm-6 col-lg-3">
-            <div class="card card-sm">
-                <div class="card-body">
-                    <div class="row align-items-center">
-                        <div class="col-auto">
-                            <span class="bg-warning text-white avatar">
-                                <i class="ti ti-alert-triangle"></i>
-                            </span>
-                        </div>
-                        <div class="col">
-                            <div class="font-weight-medium">@m_recentErrorCount</div>
-                            <div class="text-secondary">Recent Errors</div>
-                        </div>
-                    </div>
-                </div>
+        <div class="mr-summary-card">
+            <div class="mr-summary-icon pending">
+                <i class="ti ti-alert-triangle"></i>
+            </div>
+            <div class="mr-summary-content">
+                <h4>@Localizer["StatRecentErrors"]</h4>
+                <div class="mr-value">@m_recentErrorCount</div>
             </div>
         </div>
-        <div class="col-sm-6 col-lg-3">
-            <div class="card card-sm">
-                <div class="card-body">
-                    <div class="row align-items-center">
-                        <div class="col-auto">
-                            <span class="bg-cyan text-white avatar">
-                                <i class="ti ti-headset"></i>
-                            </span>
-                        </div>
-                        <div class="col">
-                            <div class="font-weight-medium">@m_openSupportCount</div>
-                            <div class="text-secondary">Open Tickets</div>
-                        </div>
-                    </div>
-                </div>
+        <div class="mr-summary-card">
+            <div class="mr-summary-icon info">
+                <i class="ti ti-headset"></i>
+            </div>
+            <div class="mr-summary-content">
+                <h4>@Localizer["StatOpenTickets"]</h4>
+                <div class="mr-value">@m_openSupportCount</div>
             </div>
         </div>
     </div>
@@ -117,181 +82,181 @@
     <!-- Main Management Cards -->
     <div class="row row-deck row-cards">
         <!-- Organizations Card -->
-        <div class="col-12 col-md-6 col-lg-4">
-            <a href="/super-admin/organizations" class="card card-link card-link-pop h-100">
-                <div class="ribbon ribbon-top bg-primary">
+        <div class="col-12 col-md-6 col-lg-4 mr-animate-in mr-animate-delay-1">
+            <a href="/super-admin/organizations" class="mr-management-card">
+                <div class="mr-management-card-icon bg-primary">
                     <i class="ti ti-building"></i>
                 </div>
-                <div class="card-body">
-                    <h3 class="card-title">Organizations</h3>
-                    <p class="text-secondary">
-                        View, create, and manage tenant organizations. Configure their settings and monitor their activity.
+                <div class="mr-management-card-body">
+                    <h3 class="mr-management-card-title">@Localizer["CardOrganizationsTitle"]</h3>
+                    <p class="mr-management-card-text">
+                        @Localizer["CardOrganizationsText"]
                     </p>
                 </div>
-                <div class="card-footer bg-transparent">
-                    <div class="d-flex align-items-center text-primary">
-                        <span>Manage Organizations</span>
-                        <i class="ti ti-arrow-right ms-auto"></i>
-                    </div>
+                <div class="mr-management-card-footer">
+                    <span>@Localizer["CardOrganizationsFooter"]</span>
+                    <i class="ti ti-arrow-right"></i>
                 </div>
             </a>
         </div>
 
         <!-- Users Card -->
-        <div class="col-12 col-md-6 col-lg-4">
-            <a href="/super-admin/users" class="card card-link card-link-pop h-100">
-                <div class="ribbon ribbon-top bg-info">
+        <div class="col-12 col-md-6 col-lg-4 mr-animate-in mr-animate-delay-1">
+            <a href="/super-admin/users" class="mr-management-card">
+                <div class="mr-management-card-icon bg-info">
                     <i class="ti ti-users"></i>
                 </div>
-                <div class="card-body">
-                    <h3 class="card-title">Users</h3>
-                    <p class="text-secondary">
-                        Manage system users and their account associations. Assign roles and configure permissions.
+                <div class="mr-management-card-body">
+                    <h3 class="mr-management-card-title">@Localizer["CardUsersTitle"]</h3>
+                    <p class="mr-management-card-text">
+                        @Localizer["CardUsersText"]
                     </p>
                 </div>
-                <div class="card-footer bg-transparent">
-                    <div class="d-flex align-items-center text-primary">
-                        <span>Manage Users</span>
-                        <i class="ti ti-arrow-right ms-auto"></i>
-                    </div>
+                <div class="mr-management-card-footer">
+                    <span>@Localizer["CardUsersFooter"]</span>
+                    <i class="ti ti-arrow-right"></i>
                 </div>
             </a>
         </div>
 
         <!-- Impersonate Card -->
-        <div class="col-12 col-md-6 col-lg-4">
-            <a href="/super-admin/impersonate" class="card card-link card-link-pop h-100">
-                <div class="ribbon ribbon-top bg-purple">
+        <div class="col-12 col-md-6 col-lg-4 mr-animate-in mr-animate-delay-1">
+            <a href="/super-admin/impersonate" class="mr-management-card">
+                <div class="mr-management-card-icon bg-purple">
                     <i class="ti ti-user-search"></i>
                 </div>
-                <div class="card-body">
-                    <h3 class="card-title">Impersonate</h3>
-                    <p class="text-secondary">
-                        Sign in as any user to troubleshoot issues or test functionality from their perspective.
+                <div class="mr-management-card-body">
+                    <h3 class="mr-management-card-title">@Localizer["CardImpersonateTitle"]</h3>
+                    <p class="mr-management-card-text">
+                        @Localizer["CardImpersonateText"]
                     </p>
                 </div>
-                <div class="card-footer bg-transparent">
-                    <div class="d-flex align-items-center text-primary">
-                        <span>Impersonate User</span>
-                        <i class="ti ti-arrow-right ms-auto"></i>
-                    </div>
+                <div class="mr-management-card-footer">
+                    <span>@Localizer["CardImpersonateFooter"]</span>
+                    <i class="ti ti-arrow-right"></i>
                 </div>
             </a>
         </div>
 
         <!-- Registration Invites Card -->
-        <div class="col-12 col-md-6 col-lg-4">
-            <a href="/super-admin/invites" class="card card-link card-link-pop h-100">
-                <div class="ribbon ribbon-top bg-success">
+        <div class="col-12 col-md-6 col-lg-4 mr-animate-in mr-animate-delay-2">
+            <a href="/super-admin/invites" class="mr-management-card">
+                <div class="mr-management-card-icon bg-success">
                     <i class="ti ti-gift"></i>
                 </div>
-                <div class="card-body">
-                    <h3 class="card-title">Registration Invites</h3>
-                    <p class="text-secondary">
-                        Create and manage invite codes for new organizations. Track usage and expiration dates.
+                <div class="mr-management-card-body">
+                    <h3 class="mr-management-card-title">@Localizer["CardInvitesTitle"]</h3>
+                    <p class="mr-management-card-text">
+                        @Localizer["CardInvitesText"]
                     </p>
                 </div>
-                <div class="card-footer bg-transparent">
-                    <div class="d-flex align-items-center text-primary">
-                        <span>Manage Invites</span>
-                        <i class="ti ti-arrow-right ms-auto"></i>
-                    </div>
+                <div class="mr-management-card-footer">
+                    <span>@Localizer["CardInvitesFooter"]</span>
+                    <i class="ti ti-arrow-right"></i>
                 </div>
             </a>
         </div>
 
         <!-- System Logs Card -->
-        <div class="col-12 col-md-6 col-lg-4">
-            <a href="/super-admin/logs" class="card card-link card-link-pop h-100">
-                <div class="ribbon ribbon-top bg-warning">
+        <div class="col-12 col-md-6 col-lg-4 mr-animate-in mr-animate-delay-2">
+            <a href="/super-admin/logs" class="mr-management-card">
+                <div class="mr-management-card-icon bg-warning">
                     <i class="ti ti-file-text"></i>
                 </div>
-                <div class="card-body">
-                    <h3 class="card-title">System Logs</h3>
-                    <p class="text-secondary">
-                        View application logs, error reports, and audit trails for debugging and monitoring.
+                <div class="mr-management-card-body">
+                    <h3 class="mr-management-card-title">@Localizer["CardLogsTitle"]</h3>
+                    <p class="mr-management-card-text">
+                        @Localizer["CardLogsText"]
                     </p>
                 </div>
-                <div class="card-footer bg-transparent">
-                    <div class="d-flex align-items-center text-primary">
-                        <span>View Logs</span>
-                        <i class="ti ti-arrow-right ms-auto"></i>
-                    </div>
+                <div class="mr-management-card-footer">
+                    <span>@Localizer["CardLogsFooter"]</span>
+                    <i class="ti ti-arrow-right"></i>
                 </div>
             </a>
         </div>
 
         <!-- System Settings Card -->
-        <div class="col-12 col-md-6 col-lg-4">
-            <a href="/super-admin/settings" class="card card-link card-link-pop h-100">
-                <div class="ribbon ribbon-top bg-secondary">
+        <div class="col-12 col-md-6 col-lg-4 mr-animate-in mr-animate-delay-2">
+            <a href="/super-admin/settings" class="mr-management-card">
+                <div class="mr-management-card-icon bg-secondary">
                     <i class="ti ti-settings"></i>
                 </div>
-                <div class="card-body">
-                    <h3 class="card-title">System Settings</h3>
-                    <p class="text-secondary">
-                        Configure global system settings, feature flags, and application-wide preferences.
+                <div class="mr-management-card-body">
+                    <h3 class="mr-management-card-title">@Localizer["CardSettingsTitle"]</h3>
+                    <p class="mr-management-card-text">
+                        @Localizer["CardSettingsText"]
                     </p>
                 </div>
-                <div class="card-footer bg-transparent">
-                    <div class="d-flex align-items-center text-primary">
-                        <span>System Settings</span>
-                        <i class="ti ti-arrow-right ms-auto"></i>
-                    </div>
+                <div class="mr-management-card-footer">
+                    <span>@Localizer["CardSettingsFooter"]</span>
+                    <i class="ti ti-arrow-right"></i>
                 </div>
             </a>
         </div>
 
         <!-- Support Requests Card -->
-        <div class="col-12 col-md-6 col-lg-4">
-            <a href="/super-admin/support-requests" class="card card-link card-link-pop h-100">
-                <div class="ribbon ribbon-top bg-cyan">
+        <div class="col-12 col-md-6 col-lg-4 mr-animate-in mr-animate-delay-3">
+            <a href="/super-admin/support-requests" class="mr-management-card">
+                <div class="mr-management-card-icon bg-cyan">
                     <i class="ti ti-headset"></i>
                 </div>
-                <div class="card-body">
-                    <h3 class="card-title">Support Requests</h3>
-                    <p class="text-secondary">
-                        View and manage customer support tickets from all tenants. Track response times and resolutions.
+                <div class="mr-management-card-body">
+                    <h3 class="mr-management-card-title">@Localizer["CardSupportTitle"]</h3>
+                    <p class="mr-management-card-text">
+                        @Localizer["CardSupportText"]
                     </p>
                 </div>
-                <div class="card-footer bg-transparent">
-                    <div class="d-flex align-items-center text-primary">
-                        <span>Manage Support</span>
-                        <i class="ti ti-arrow-right ms-auto"></i>
-                    </div>
+                <div class="mr-management-card-footer">
+                    <span>@Localizer["CardSupportFooter"]</span>
+                    <i class="ti ti-arrow-right"></i>
+                </div>
+            </a>
+        </div>
+
+        <!-- Vehicle Lookups Card -->
+        <div class="col-12 col-md-6 col-lg-4 mr-animate-in mr-animate-delay-3">
+            <a href="/super-admin/vehicle-lookups" class="mr-management-card">
+                <div class="mr-management-card-icon bg-teal">
+                    <i class="ti ti-car"></i>
+                </div>
+                <div class="mr-management-card-body">
+                    <h3 class="mr-management-card-title">@Localizer["CardVehiclesTitle"]</h3>
+                    <p class="mr-management-card-text">
+                        @Localizer["CardVehiclesText"]
+                    </p>
+                </div>
+                <div class="mr-management-card-footer">
+                    <span>@Localizer["CardVehiclesFooter"]</span>
+                    <i class="ti ti-arrow-right"></i>
                 </div>
             </a>
         </div>
     </div>
 
     <!-- Quick Actions Section -->
-    <div class="card mt-4">
-        <div class="card-header">
-            <h3 class="card-title">Quick Actions</h3>
+    <div class="mr-quick-actions mr-animate-in mr-animate-delay-4">
+        <div class="mr-quick-actions-header">
+            <i class="ti ti-bolt"></i>
+            <h3>@Localizer["QuickActions"]</h3>
         </div>
-        <div class="card-body">
-            <div class="row g-3">
-                <div class="col-auto">
-                    <a href="/super-admin/organizations/new" class="btn btn-primary">
-                        <i class="ti ti-plus me-2"></i>New Organization
-                    </a>
-                </div>
-                <div class="col-auto">
-                    <a href="/super-admin/invites/new" class="btn btn-success">
-                        <i class="ti ti-mail-plus me-2"></i>Create Invite
-                    </a>
-                </div>
-                <div class="col-auto">
-                    <a href="/super-admin/logs?severity=error" class="btn btn-warning">
-                        <i class="ti ti-alert-circle me-2"></i>View Errors
-                    </a>
-                </div>
-                <div class="col-auto">
-                    <a href="/super-admin/impersonate" class="btn btn-outline-purple">
-                        <i class="ti ti-user-search me-2"></i>Quick Impersonate
-                    </a>
-                </div>
-            </div>
+        <div class="mr-quick-actions-body">
+            <a href="/super-admin/organizations/new" class="mr-btn-primary-action">
+                <i class="ti ti-plus"></i>
+                @Localizer["ActionNewOrg"]
+            </a>
+            <a href="/super-admin/invites/new" class="mr-btn-action success">
+                <i class="ti ti-mail-plus"></i>
+                @Localizer["ActionCreateInvite"]
+            </a>
+            <a href="/super-admin/logs?severity=error" class="mr-btn-action warning">
+                <i class="ti ti-alert-circle"></i>
+                @Localizer["ActionViewErrors"]
+            </a>
+            <a href="/super-admin/impersonate" class="mr-btn-action view">
+                <i class="ti ti-user-search"></i>
+                @Localizer["ActionQuickImpersonate"]
+            </a>
         </div>
     </div>
 </div>

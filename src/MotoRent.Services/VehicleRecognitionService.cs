@@ -50,6 +50,8 @@ public class VehicleRecognitionService(
         }
     }
 
+    
+    private const string BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
     /// <summary>
     /// Analyzes a vehicle image from base64 data.
     /// </summary>
@@ -71,7 +73,7 @@ public class VehicleRecognitionService(
         var request = CreateGeminiRequest(base64Image, mimeType, prompt);
 
         var client = this.HttpClientFactory.CreateClient("Gemini");
-        var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}";
+        var url = $"{BASE_URL}/{model}:generateContent?key={apiKey}";
 
         try
         {

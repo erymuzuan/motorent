@@ -35,7 +35,7 @@ public static class MotoConfig
 
     // Gemini OCR Configuration
     public static string? GeminiApiKey => GetEnvironmentVariable("GeminiApiKey");
-    public static string GeminiModel => GetEnvironmentVariable("GeminiModel") ?? "gemini-2.0-flash";
+    public static string GeminiModel => GetEnvironmentVariable("GeminiModel") ?? "gemini-3-flash-preview";
 
     // Google Maps Configuration
     public static string? GoogleMapKey => GetEnvironmentVariable("GoogleMapKey");
