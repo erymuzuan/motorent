@@ -1,6 +1,7 @@
 using MotoRent.Domain.DataContext;
 using MotoRent.Domain.Entities;
 using MotoRent.Domain.Extensions;
+using MotoRent.Domain.Models;
 
 namespace MotoRent.Services;
 
@@ -194,7 +195,21 @@ public class InvoiceService(RentalDataContext context)
             }).ToList(),
 
             // Status
-            RentalStatus = rental.Status ?? "Unknown"
+            RentalStatus = rental.Status ?? "Unknown",
+
+            // Dynamic Pricing
+            DynamicPricingApplied = rental.DynamicPricingApplied,
+            BaseVehicleTotal = rental.BaseRentalRate * rentalDays,
+            AverageMultiplier = rental.AverageMultiplier,
+            AppliedPricingRules = rental.AppliedPricingRules,
+            DayBreakdown = rental.DayPricingBreakdown.Select(d => new InvoiceDayPricing
+            {
+                Date = d.Date,
+                BaseRate = d.BaseRate,
+                AdjustedRate = d.AdjustedRate,
+                Multiplier = d.Multiplier,
+                RuleName = d.RuleName
+            }).ToList()
         };
 
         // Add vehicle line item
@@ -383,6 +398,13 @@ public class InvoiceData
     // Status
     public string RentalStatus { get; set; } = "";
 
+    // Dynamic Pricing
+    public bool DynamicPricingApplied { get; set; }
+    public decimal BaseVehicleTotal { get; set; }
+    public decimal AverageMultiplier { get; set; } = 1.0m;
+    public string? AppliedPricingRules { get; set; }
+    public List<InvoiceDayPricing> DayBreakdown { get; set; } = [];
+
     // Calculated
     public decimal TotalPaid => this.Payments.Where(p => p.PaymentType != "Refund").Sum(p => p.Amount);
     public decimal TotalRefunded => this.Payments.Where(p => p.PaymentType == "Refund").Sum(p => p.Amount);
@@ -425,4 +447,17 @@ public class InvoicePayment
     public decimal Amount { get; set; }
     public DateTimeOffset? PaidOn { get; set; }
     public string? TransactionRef { get; set; }
+}
+
+/// <summary>
+/// Per-day pricing information for invoice display.
+/// </summary>
+public class InvoiceDayPricing
+{
+    public DateOnly Date { get; set; }
+    public decimal BaseRate { get; set; }
+    public decimal AdjustedRate { get; set; }
+    public decimal Multiplier { get; set; } = 1.0m;
+    public string? RuleName { get; set; }
+    public bool HasAdjustment => Multiplier != 1.0m;
 }

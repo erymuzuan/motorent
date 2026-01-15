@@ -9,6 +9,7 @@
 @inject ShopScheduleService ScheduleService
 @inject ShopService ShopService
 @inject OperatingHoursService HoursService
+@inject DynamicPricingService DynamicPricingService
 
 <div class="d-flex flex-column gap-4">
     <div>
@@ -328,10 +329,27 @@
                     @if (this.SelectedVehicle != null)
                     {
                         <div class="d-flex flex-column gap-2">
-                            <div class="d-flex justify-content-between">
-                                <span>@GetVehicleTypeLabel(this.SelectedVehicle.VehicleType) (@this.Config.Days @Localizer["Days"] x @FormatCurrency(this.SelectedVehicle.DailyRate))</span>
-                                <span>@FormatCurrency(this.Config.VehicleTotal)</span>
-                            </div>
+                            @if (this.Config.DynamicPricingApplied)
+                            {
+                                <div class="d-flex justify-content-between">
+                                    <span>@GetVehicleTypeLabel(this.SelectedVehicle.VehicleType) (@this.Config.Days @Localizer["Days"] x @FormatCurrency(this.SelectedVehicle.DailyRate))</span>
+                                    <span class="text-decoration-line-through text-muted">@FormatCurrency(this.Config.BaseVehicleTotal)</span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="d-flex align-items-center gap-1">
+                                        <i class="ti ti-chart-arrows-vertical text-warning"></i>
+                                        <small class="text-warning">@this.Config.AppliedRuleSummary (@this.Config.PercentageChange)</small>
+                                    </span>
+                                    <span class="fw-medium text-warning">@FormatCurrency(this.Config.VehicleTotal)</span>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="d-flex justify-content-between">
+                                    <span>@GetVehicleTypeLabel(this.SelectedVehicle.VehicleType) (@this.Config.Days @Localizer["Days"] x @FormatCurrency(this.SelectedVehicle.DailyRate))</span>
+                                    <span>@FormatCurrency(this.Config.VehicleTotal)</span>
+                                </div>
+                            }
 
                             @if (m_includeDriver && this.SelectedVehicle.HasDriverOption)
                             {
@@ -665,7 +683,8 @@
 
         if (this.SelectedVehicle != null)
         {
-            this.Config.VehicleTotal = this.SelectedVehicle.DailyRate * this.Config.Days;
+            // Calculate dynamic pricing per day
+            await this.CalculateDynamicPricingAsync();
 
             // Driver/Guide options
             this.Config.IncludeDriver = this.m_includeDriver && this.SelectedVehicle.HasDriverOption;
@@ -709,6 +728,72 @@
 
         // Update out-of-hours bands for display
         await this.UpdateOutOfHoursBandsAsync();
+    }
+
+    private async Task CalculateDynamicPricingAsync()
+    {
+        if (this.SelectedVehicle == null || !this.m_startDate.HasValue || !this.m_endDate.HasValue)
+        {
+            this.Config.VehicleTotal = this.SelectedVehicle?.DailyRate * this.Config.Days ?? 0;
+            this.Config.BaseVehicleTotal = this.Config.VehicleTotal;
+            return;
+        }
+
+        var baseRate = this.SelectedVehicle.DailyRate;
+        var days = this.Config.Days;
+        decimal totalAdjusted = 0;
+        var ruleSummary = new Dictionary<string, int>();
+        var dayBreakdown = new List<DayPricingInfo>();
+
+        for (int i = 0; i < days; i++)
+        {
+            var rentalDate = DateOnly.FromDateTime(this.m_startDate.Value.AddDays(i));
+            var calc = await this.DynamicPricingService.CalculateAdjustedRateAsync(
+                this.ShopId, baseRate, rentalDate,
+                this.SelectedVehicle.VehicleType.ToString(),
+                this.SelectedVehicle.VehicleId);
+
+            totalAdjusted += calc.AdjustedRate;
+
+            dayBreakdown.Add(new DayPricingInfo
+            {
+                Date = rentalDate,
+                BaseRate = calc.BaseRate,
+                AdjustedRate = calc.AdjustedRate,
+                Multiplier = calc.Multiplier,
+                RuleName = calc.AppliedRuleName
+            });
+
+            if (calc.HasAdjustment && !string.IsNullOrEmpty(calc.AppliedRuleName))
+            {
+                if (!ruleSummary.ContainsKey(calc.AppliedRuleName))
+                    ruleSummary[calc.AppliedRuleName] = 0;
+                ruleSummary[calc.AppliedRuleName]++;
+            }
+        }
+
+        this.Config.BaseVehicleTotal = baseRate * days;
+        this.Config.VehicleTotal = totalAdjusted;
+        this.Config.DayBreakdown = dayBreakdown;
+        this.Config.DynamicPricingApplied = totalAdjusted != this.Config.BaseVehicleTotal;
+
+        if (this.Config.DynamicPricingApplied)
+        {
+            this.Config.AverageMultiplier = this.Config.BaseVehicleTotal > 0
+                ? totalAdjusted / this.Config.BaseVehicleTotal
+                : 1.0m;
+
+            if (ruleSummary.Count > 0)
+            {
+                this.Config.AppliedRuleSummary = string.Join(", ",
+                    ruleSummary.Select(r => days == 1 ? r.Key : $"{r.Key} ({r.Value}d)"));
+            }
+        }
+        else
+        {
+            this.Config.AverageMultiplier = 1.0m;
+            this.Config.AppliedRuleSummary = null;
+        }
     }
 
     private string GetVehicleTypeLabel(VehicleType type) => type switch

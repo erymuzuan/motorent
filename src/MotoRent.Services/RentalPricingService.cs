@@ -5,9 +5,13 @@ namespace MotoRent.Services;
 /// <summary>
 /// Service for calculating rental pricing based on vehicle type and duration.
 /// </summary>
-public class RentalPricingService(OperatingHoursService? hoursService = null)
+public class RentalPricingService(
+    OperatingHoursService? hoursService = null,
+    DynamicPricingService? dynamicPricingService = null)
 {
     private OperatingHoursService? HoursService { get; } = hoursService;
+    private DynamicPricingService? DynamicPricingService { get; } = dynamicPricingService;
+
     /// <summary>
     /// Calculates rental pricing based on vehicle and rental configuration.
     /// </summary>
@@ -40,6 +44,152 @@ public class RentalPricingService(OperatingHoursService? hoursService = null)
         }
 
         return pricing;
+    }
+
+    /// <summary>
+    /// Calculates rental pricing with dynamic pricing adjustments applied.
+    /// </summary>
+    public async Task<RentalPricing> CalculatePricingAsync(
+        int shopId,
+        Vehicle vehicle,
+        RentalDurationType durationType,
+        DateTimeOffset startDate,
+        DateTimeOffset endDate,
+        int? intervalMinutes = null,
+        bool includeDriver = false,
+        bool includeGuide = false,
+        Insurance? insurance = null,
+        List<AccessoryWithQuantity>? accessories = null)
+    {
+        var pricing = new RentalPricing
+        {
+            DurationType = durationType,
+            StartDate = startDate,
+            EndDate = endDate,
+            VehicleType = vehicle.VehicleType
+        };
+
+        if (durationType == RentalDurationType.Daily)
+        {
+            await CalculateDailyPricingAsync(pricing, shopId, vehicle, startDate, endDate, includeDriver, includeGuide, insurance, accessories);
+        }
+        else // FixedInterval
+        {
+            CalculateIntervalPricing(pricing, vehicle, intervalMinutes ?? 60);
+        }
+
+        return pricing;
+    }
+
+    /// <summary>
+    /// Calculates pricing for daily rentals with dynamic pricing adjustments.
+    /// </summary>
+    private async Task CalculateDailyPricingAsync(
+        RentalPricing pricing,
+        int shopId,
+        Vehicle vehicle,
+        DateTimeOffset startDate,
+        DateTimeOffset endDate,
+        bool includeDriver,
+        bool includeGuide,
+        Insurance? insurance,
+        List<AccessoryWithQuantity>? accessories)
+    {
+        int days = Math.Max(1, (int)(endDate.Date - startDate.Date).TotalDays + 1);
+        pricing.RentalDays = days;
+        pricing.RentalRate = vehicle.DailyRate;
+        pricing.BaseVehicleTotal = vehicle.DailyRate * days;
+
+        // Calculate dynamic pricing per day
+        if (this.DynamicPricingService != null)
+        {
+            decimal totalAdjusted = 0;
+            var ruleSummary = new Dictionary<string, int>(); // Rule name -> count of days
+            var dayBreakdown = new List<DayPricing>();
+
+            for (int i = 0; i < days; i++)
+            {
+                var rentalDate = DateOnly.FromDateTime(startDate.Date.AddDays(i));
+                var calc = await this.DynamicPricingService.CalculateAdjustedRateAsync(
+                    shopId, vehicle.DailyRate, rentalDate, vehicle.VehicleType.ToString(), vehicle.VehicleId);
+
+                totalAdjusted += calc.AdjustedRate;
+
+                dayBreakdown.Add(new DayPricing
+                {
+                    Date = rentalDate,
+                    BaseRate = calc.BaseRate,
+                    AdjustedRate = calc.AdjustedRate,
+                    Multiplier = calc.Multiplier,
+                    RuleName = calc.AppliedRuleName
+                });
+
+                if (calc.HasAdjustment && !string.IsNullOrEmpty(calc.AppliedRuleName))
+                {
+                    if (!ruleSummary.ContainsKey(calc.AppliedRuleName))
+                        ruleSummary[calc.AppliedRuleName] = 0;
+                    ruleSummary[calc.AppliedRuleName]++;
+                }
+            }
+
+            pricing.VehicleTotal = totalAdjusted;
+            pricing.DayBreakdown = dayBreakdown;
+            pricing.DynamicPricingApplied = totalAdjusted != pricing.BaseVehicleTotal;
+
+            if (pricing.DynamicPricingApplied)
+            {
+                pricing.AverageMultiplier = pricing.BaseVehicleTotal > 0
+                    ? totalAdjusted / pricing.BaseVehicleTotal
+                    : 1.0m;
+
+                // Build rule summary (e.g., "High Season (3 days), Weekend (1 day)")
+                if (ruleSummary.Count > 0)
+                {
+                    pricing.AppliedRuleSummary = string.Join(", ",
+                        ruleSummary.Select(r => days == 1 ? r.Key : $"{r.Key} ({r.Value}d)"));
+                }
+            }
+        }
+        else
+        {
+            // No dynamic pricing service - use base calculation
+            pricing.VehicleTotal = pricing.BaseVehicleTotal;
+        }
+
+        // Driver fee (daily)
+        if (includeDriver && vehicle.DriverDailyFee.HasValue && vehicle.DriverDailyFee > 0)
+        {
+            pricing.DriverFee = vehicle.DriverDailyFee.Value * days;
+            pricing.IncludeDriver = true;
+        }
+
+        // Guide fee (daily)
+        if (includeGuide && vehicle.GuideDailyFee.HasValue && vehicle.GuideDailyFee > 0)
+        {
+            pricing.GuideFee = vehicle.GuideDailyFee.Value * days;
+            pricing.IncludeGuide = true;
+        }
+
+        // Insurance (daily)
+        if (insurance != null)
+        {
+            pricing.InsuranceTotal = insurance.DailyRate * days;
+            pricing.InsuranceName = insurance.Name;
+        }
+
+        // Accessories (daily)
+        if (accessories != null && accessories.Count > 0)
+        {
+            pricing.AccessoriesTotal = accessories
+                .Where(a => !a.Accessory.IsIncluded)
+                .Sum(a => a.Accessory.DailyRate * a.Quantity * days);
+        }
+
+        // Calculate totals
+        pricing.SubTotal = pricing.VehicleTotal + pricing.InsuranceTotal +
+                           pricing.AccessoriesTotal + pricing.DriverFee + pricing.GuideFee;
+        pricing.DepositAmount = vehicle.DepositAmount;
+        pricing.Total = pricing.SubTotal;
     }
 
     /// <summary>
@@ -414,9 +564,52 @@ public class RentalPricing
     public decimal DepositAmount { get; set; }
     public decimal Total { get; set; }
 
+    // Dynamic Pricing fields
+    /// <summary>Whether dynamic pricing was applied.</summary>
+    public bool DynamicPricingApplied { get; set; }
+
+    /// <summary>Base vehicle total before dynamic pricing adjustment.</summary>
+    public decimal BaseVehicleTotal { get; set; }
+
+    /// <summary>Total adjustment amount from dynamic pricing.</summary>
+    public decimal DynamicPricingAdjustment => VehicleTotal - BaseVehicleTotal;
+
+    /// <summary>Average multiplier applied across all rental days.</summary>
+    public decimal AverageMultiplier { get; set; } = 1.0m;
+
+    /// <summary>Summary of applied pricing rules (e.g., "High Season +30%").</summary>
+    public string? AppliedRuleSummary { get; set; }
+
+    /// <summary>Per-day pricing breakdown with dynamic adjustments.</summary>
+    public List<DayPricing> DayBreakdown { get; set; } = [];
+
     public string DurationDisplay => DurationType == RentalDurationType.Daily
         ? $"{RentalDays} day{(RentalDays > 1 ? "s" : "")}"
         : $"{IntervalMinutes} minutes";
+
+    /// <summary>Formatted percentage change from dynamic pricing.</summary>
+    public string PercentageChange
+    {
+        get
+        {
+            if (!DynamicPricingApplied) return "";
+            var pct = (AverageMultiplier - 1.0m) * 100;
+            return pct >= 0 ? $"+{pct:N0}%" : $"{pct:N0}%";
+        }
+    }
+}
+
+/// <summary>
+/// Per-day pricing breakdown showing dynamic pricing adjustments.
+/// </summary>
+public class DayPricing
+{
+    public DateOnly Date { get; set; }
+    public decimal BaseRate { get; set; }
+    public decimal AdjustedRate { get; set; }
+    public decimal Multiplier { get; set; } = 1.0m;
+    public string? RuleName { get; set; }
+    public bool HasAdjustment => Multiplier != 1.0m;
 }
 
 /// <summary>

@@ -425,6 +425,60 @@
                     <span class="text-secondary">@FormatCurrency(Entity.TotalAmount) (@Localizer["Paid"])</span>
                 </div>
 
+                @* Dynamic Pricing Badge (shows when applied) *@
+                @if (Entity.DynamicPricingApplied)
+                {
+                    <div class="dynamic-pricing-summary">
+                        <button type="button" class="dynamic-pricing-toggle @(m_showPricingBreakdown ? "expanded" : "")"
+                                @onclick="@(() => m_showPricingBreakdown = !m_showPricingBreakdown)">
+                            <i class="ti ti-chart-arrows-vertical text-warning me-2"></i>
+                            <span class="flex-grow-1 text-start">@Localizer["DynamicPricingApplied"]</span>
+                            <span class="badge bg-warning text-dark me-2">×@Entity.AverageMultiplier.ToString("N2")</span>
+                            <i class="ti @(m_showPricingBreakdown ? "ti-chevron-up" : "ti-chevron-down")"></i>
+                        </button>
+
+                        @if (m_showPricingBreakdown && Entity.DayPricingBreakdown.Count > 0)
+                        {
+                            <div class="pricing-breakdown">
+                                <div class="breakdown-header">
+                                    <span>@Localizer["Date"]</span>
+                                    <span class="text-end">@Localizer["BaseRate"]</span>
+                                    <span class="text-center">@Localizer["Multiplier"]</span>
+                                    <span class="text-end">@Localizer["AdjustedRate"]</span>
+                                </div>
+                                @foreach (var day in Entity.DayPricingBreakdown)
+                                {
+                                    <div class="breakdown-row @(day.HasAdjustment ? "adjusted" : "")">
+                                        <span>@day.Date.ToString("dd MMM")</span>
+                                        <span class="text-end">@FormatCurrency(day.BaseRate)</span>
+                                        <span class="text-center">
+                                            @if (day.HasAdjustment)
+                                            {
+                                                <span class="text-warning fw-medium">×@day.Multiplier.ToString("N2")</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">×1.00</span>
+                                            }
+                                        </span>
+                                        <span class="text-end fw-medium">@FormatCurrency(day.AdjustedRate)</span>
+                                    </div>
+                                }
+                                <div class="breakdown-footer">
+                                    <span class="text-muted">@Entity.AppliedPricingRules</span>
+                                    <span class="text-decoration-line-through text-muted">
+                                        @FormatCurrency(Entity.BaseRentalRate * Entity.DayPricingBreakdown.Count)
+                                    </span>
+                                    <span></span>
+                                    <span class="fw-bold text-warning">
+                                        @FormatCurrency(Entity.DayPricingBreakdown.Sum(d => d.AdjustedRate))
+                                    </span>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+
                 @if (m_extraDays > 0)
                 {
                     <div class="settlement-row text-warning">
@@ -971,6 +1025,69 @@
         padding-left: 2.5rem;
     }
 
+    /* Dynamic Pricing Summary */
+    .dynamic-pricing-summary {
+        margin: 0.5rem 0;
+        border-radius: 8px;
+        overflow: hidden;
+        background: rgba(var(--tblr-warning-rgb), 0.1);
+    }
+
+    .dynamic-pricing-toggle {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        padding: 0.75rem;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        font-size: 0.85rem;
+        color: var(--tblr-body-color);
+    }
+
+    .dynamic-pricing-toggle:hover {
+        background: rgba(var(--tblr-warning-rgb), 0.15);
+    }
+
+    .pricing-breakdown {
+        padding: 0.75rem;
+        border-top: 1px solid rgba(var(--tblr-warning-rgb), 0.3);
+        background: var(--tblr-bg-surface);
+    }
+
+    .breakdown-header,
+    .breakdown-row,
+    .breakdown-footer {
+        display: grid;
+        grid-template-columns: 80px 1fr 70px 1fr;
+        gap: 0.5rem;
+        padding: 0.35rem 0;
+        font-size: 0.75rem;
+    }
+
+    .breakdown-header {
+        font-weight: 600;
+        color: var(--tblr-secondary-color);
+        border-bottom: 1px solid var(--tblr-border-color);
+        padding-bottom: 0.5rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .breakdown-row.adjusted {
+        background: rgba(var(--tblr-warning-rgb), 0.1);
+        border-radius: 4px;
+        margin: 0 -0.25rem;
+        padding-left: 0.25rem;
+        padding-right: 0.25rem;
+    }
+
+    .breakdown-footer {
+        border-top: 1px solid var(--tblr-border-color);
+        margin-top: 0.5rem;
+        padding-top: 0.5rem;
+        font-size: 0.8rem;
+    }
+
     /* Settlement Cards */
     .settlement-card {
         background: var(--tblr-bg-surface);
@@ -1131,6 +1248,7 @@
 @code {
     private bool m_loading = true;
     private int m_activeTab;
+    private bool m_showPricingBreakdown;
 
     // Rental details
     private string m_renterName = "";

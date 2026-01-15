@@ -4,6 +4,7 @@
 @using MotoRent.Domain.Core
 @using MotoRent.Domain.Settings
 @using MotoRent.Domain.Storage
+@using MotoRent.Services
 @attribute [Authorize(Roles = "OrgAdmin")]
 @inherits LocalizedComponentBase<OrganizationSettings>
 @inject OrganizationService OrganizationService
@@ -54,6 +55,10 @@
                            class="list-group-item list-group-item-action @(CurrentPanel == "vehicletypes" ? "active" : "")">
                             <i class="ti ti-motorbike me-2"></i>@Localizer["VehicleTypes"]
                         </a>
+                        <a href="/settings/organization/pricing"
+                           class="list-group-item list-group-item-action @(CurrentPanel == "pricing" ? "active" : "")">
+                            <i class="ti ti-chart-line me-2"></i>@Localizer["DynamicPricing"]
+                        </a>
                     </div>
                 </div>
             </div>
@@ -79,6 +84,9 @@
                         break;
                     case "vehicletypes":
                         @VehicleTypesPanel()
+                        break;
+                    case "pricing":
+                        @PricingPanel()
                         break;
                 }
             </div>
@@ -123,6 +131,10 @@
     private bool m_enableJetSki;
     private bool m_enableBoat;
     private bool m_enableVan;
+
+    // Dynamic pricing settings
+    private bool m_dynamicPricingEnabled;
+    private bool m_showMultiplierOnInvoice = true;
 
     protected override async Task OnInitializedAsync()
     {
@@ -185,6 +197,10 @@
         m_enableJetSki = await SettingConfig.GetBoolAsync(SettingKeys.Fleet_EnableJetSki, defaultValue: false);
         m_enableBoat = await SettingConfig.GetBoolAsync(SettingKeys.Fleet_EnableBoat, defaultValue: false);
         m_enableVan = await SettingConfig.GetBoolAsync(SettingKeys.Fleet_EnableVan, defaultValue: false);
+
+        // Dynamic pricing settings
+        m_dynamicPricingEnabled = await SettingConfig.GetBoolAsync(DynamicPricingService.SettingKeyEnabled, defaultValue: false);
+        m_showMultiplierOnInvoice = await SettingConfig.GetBoolAsync(DynamicPricingService.SettingKeyShowOnInvoice, defaultValue: true);
     }
 
     private async Task SaveAsync()
@@ -249,6 +265,10 @@
         await SettingConfig.SetValueAsync(SettingKeys.Fleet_EnableJetSki, m_enableJetSki);
         await SettingConfig.SetValueAsync(SettingKeys.Fleet_EnableBoat, m_enableBoat);
         await SettingConfig.SetValueAsync(SettingKeys.Fleet_EnableVan, m_enableVan);
+
+        // Dynamic pricing settings
+        await SettingConfig.SetValueAsync(DynamicPricingService.SettingKeyEnabled, m_dynamicPricingEnabled);
+        await SettingConfig.SetValueAsync(DynamicPricingService.SettingKeyShowOnInvoice, m_showMultiplierOnInvoice);
     }
 
     #region Panel Render Fragments
@@ -641,6 +661,69 @@
                         </div>
                         <small class="text-secondary">@Localizer["VanDescription"]</small>
                     </div>
+                </div>
+            </div>
+        </div>
+    };
+
+    private RenderFragment PricingPanel() => __builder =>
+    {
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="ti ti-chart-line me-2"></i>@Localizer["DynamicPricingSettings"]
+                </h3>
+            </div>
+            <div class="card-body">
+                <p class="text-secondary mb-4">@Localizer["DynamicPricingDescription"]</p>
+
+                <div class="row g-4">
+                    <div class="col-12">
+                        <div class="form-check form-switch">
+                            <input type="checkbox" class="form-check-input" @bind="m_dynamicPricingEnabled" id="dynamicPricing" />
+                            <label class="form-check-label" for="dynamicPricing">
+                                @Localizer["EnableDynamicPricing"]
+                            </label>
+                        </div>
+                        <small class="text-secondary">@Localizer["EnableDynamicPricingDescription"]</small>
+                    </div>
+
+                    @if (m_dynamicPricingEnabled)
+                    {
+                        <div class="col-12">
+                            <div class="alert alert-info">
+                                <div class="d-flex">
+                                    <div class="me-3">
+                                        <i class="ti ti-info-circle ti-lg"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="alert-title">@Localizer["DynamicPricingActive"]</h4>
+                                        <div class="text-secondary">@Localizer["DynamicPricingActiveDescription"]</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="form-check form-switch">
+                                <input type="checkbox" class="form-check-input" @bind="m_showMultiplierOnInvoice" id="showOnInvoice" />
+                                <label class="form-check-label" for="showOnInvoice">
+                                    @Localizer["ShowMultiplierOnInvoice"]
+                                </label>
+                            </div>
+                            <small class="text-secondary">@Localizer["ShowMultiplierOnInvoiceDescription"]</small>
+                        </div>
+
+                        <div class="col-12">
+                            <hr />
+                            <h4 class="mb-3">@Localizer["ManagePricingRules"]</h4>
+                            <p class="text-secondary">@Localizer["ManagePricingRulesDescription"]</p>
+                            <a href="/settings/pricing-rules" class="btn btn-outline-primary">
+                                <i class="ti ti-settings me-1"></i>
+                                @Localizer["ConfigurePricingRules"]
+                            </a>
+                        </div>
+                    }
                 </div>
             </div>
         </div>

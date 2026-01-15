@@ -42,6 +42,36 @@ public class RentalConfig
     public decimal TotalAmount => VehicleTotal + InsuranceTotal + AccessoriesTotal + DriverTotal + GuideTotal + LocationFeesTotal;
     public int Days => Math.Max(1, (int)(EndDate.Date - StartDate.Date).TotalDays + 1);
 
+    // Dynamic Pricing
+    /// <summary>Whether dynamic pricing was applied.</summary>
+    public bool DynamicPricingApplied { get; set; }
+
+    /// <summary>Base vehicle total before dynamic pricing adjustment.</summary>
+    public decimal BaseVehicleTotal { get; set; }
+
+    /// <summary>Total adjustment amount from dynamic pricing.</summary>
+    public decimal DynamicPricingAdjustment => VehicleTotal - BaseVehicleTotal;
+
+    /// <summary>Average multiplier applied across all rental days.</summary>
+    public decimal AverageMultiplier { get; set; } = 1.0m;
+
+    /// <summary>Summary of applied pricing rules (e.g., "High Season +30%").</summary>
+    public string? AppliedRuleSummary { get; set; }
+
+    /// <summary>Per-day pricing breakdown with dynamic adjustments.</summary>
+    public List<DayPricingInfo> DayBreakdown { get; set; } = [];
+
+    /// <summary>Formatted percentage change from dynamic pricing.</summary>
+    public string PercentageChange
+    {
+        get
+        {
+            if (!DynamicPricingApplied) return "";
+            var pct = (AverageMultiplier - 1.0m) * 100;
+            return pct >= 0 ? $"+{pct:N0}%" : $"{pct:N0}%";
+        }
+    }
+
     // Backward compatibility
     [Obsolete("Use VehicleTotal instead")]
     public decimal MotorbikeTotal
@@ -88,4 +118,17 @@ public class DepositInfo
     // Rental payment info
     public string PaymentMethod { get; set; } = "Cash";
     public string? PaymentTransactionRef { get; set; }
+}
+
+/// <summary>
+/// Per-day pricing information for display in UI.
+/// </summary>
+public class DayPricingInfo
+{
+    public DateOnly Date { get; set; }
+    public decimal BaseRate { get; set; }
+    public decimal AdjustedRate { get; set; }
+    public decimal Multiplier { get; set; } = 1.0m;
+    public string? RuleName { get; set; }
+    public bool HasAdjustment => Multiplier != 1.0m;
 }
