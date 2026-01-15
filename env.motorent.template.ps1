@@ -35,4 +35,5 @@ $env:MOTO_DatabaseSource = "database"
 
 # Application Settings
 $env:MOTO_ApplicationName = "MotoRent"
-$env:MOTO_BaseUrl = "https://localhost:7103"
+$env:MOTO_BaseUrl = "https://localhost:7105"
+
