@@ -1,0 +1,115 @@
+@page "/finance/assets/new"
+@page "/finance/assets/{AssetId:int}"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Policy = "RequireTenantManager")]
+@inherits LocalizedComponentBase<AssetEdit>
+@inject AssetService AssetService
+
+<MotoRentPageTitle>@(IsNew ? Localizer["NewAsset"] : Localizer["EditAsset"])</MotoRentPageTitle>
+
+<!-- Page Header -->
+<div class="mr-page-header">
+    <div class="container-xl">
+        <nav class="mr-breadcrumb">
+            <span class="mr-breadcrumb-item"><a href="/">Home</a></span>
+            <i class="ti ti-chevron-right mr-breadcrumb-separator"></i>
+            <span class="mr-breadcrumb-item"><a href="/finance">Finance</a></span>
+            <i class="ti ti-chevron-right mr-breadcrumb-separator"></i>
+            <span class="mr-breadcrumb-item"><a href="/finance/asset-dashboard">Asset Dashboard</a></span>
+            <i class="ti ti-chevron-right mr-breadcrumb-separator"></i>
+            <span class="mr-breadcrumb-item active">@(IsNew ? Localizer["NewAsset"] : Localizer["EditAsset"])</span>
+        </nav>
+        <div class="d-flex justify-content-between align-items-center pb-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="mr-header-icon mr-header-icon-finance">
+                    <i class="ti ti-@(IsNew ? "plus" : "edit")"></i>
+                </div>
+                <div>
+                    <h1 class="mr-page-title">@(IsNew ? Localizer["CreateNewAsset"] : Localizer["EditAsset"])</h1>
+                    <p class="mr-page-subtitle mb-0">@(IsNew ? Localizer["CreateNewAssetDescription"] : Localizer["EditAssetDescription"])</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container-xl py-4">
+    @if (m_loading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="ti ti-chart-pie me-2"></i>
+                    @(IsNew ? Localizer["AssetDetails"] : $"{m_asset?.VehicleName} - {m_asset?.LicensePlate}")
+                </h3>
+            </div>
+            <AssetDialog @ref="m_dialog" Entity="m_asset" IsNew="@IsNew" OnSaved="OnSavedAsync" />
+            <div class="card-footer d-flex justify-content-between">
+                <a href="/finance/asset-dashboard" class="btn btn-outline-secondary">
+                    <i class="ti ti-arrow-left me-1"></i>
+                    @Localizer["Cancel"]
+                </a>
+                <button type="submit" form="@m_dialog?.FormId" class="btn btn-primary" disabled="@m_saving">
+                    @if (m_saving)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                    }
+                    <i class="ti ti-device-floppy me-1"></i>
+                    @Localizer["Save"]
+                </button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public int AssetId { get; set; }
+
+    private Asset? m_asset;
+    private AssetDialog? m_dialog;
+    private bool m_loading = true;
+    private bool m_saving;
+
+    private bool IsNew => AssetId == 0;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        try
+        {
+            m_loading = true;
+
+            if (IsNew)
+            {
+                m_asset = new Asset();
+            }
+            else
+            {
+                m_asset = await AssetService.GetAssetByIdAsync(AssetId);
+                if (m_asset == null)
+                {
+                    NavigationManager.NavigateTo("/finance/asset-dashboard");
+                    return;
+                }
+            }
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private async Task OnSavedAsync()
+    {
+        NavigationManager.NavigateTo("/finance/asset-dashboard");
+        await Task.CompletedTask;
+    }
+}
