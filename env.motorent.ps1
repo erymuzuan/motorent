@@ -42,10 +42,11 @@ $env:MOTO_DatabaseSource = "$PWD\database"
 
 # Application Settings
 $env:MOTO_ApplicationName = "MotoRent"
-$env:MOTO_BaseUrl = "https://localhost:7103"
+$env:MOTO_BaseUrl = "https://localhost:7105"
 
 
 if((Test-Path($config)) -eq $true){
     & ".\$config"
 }
+
 

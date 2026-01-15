@@ -4,24 +4,24 @@ This plan outlines the steps for implementing the automated maintenance alert sy
 
 ## Phase 1: Core Logic & Alert Generation
 
-### Task 1: Define Alert Domain Model
-- [ ] Task: Define the `MaintenanceAlert` entity and repository.
-    - [ ] Write unit tests for `MaintenanceAlert` entity creation and validation.
-    - [ ] Implement `MaintenanceAlert` domain model.
-    - [ ] Implement repository methods to save and retrieve alerts.
+### Task 1: Define Alert Domain Model (COMPLETED)
+- [x] Task: Define the `MaintenanceAlert` entity and repository.
+    - [x] Write unit tests for `MaintenanceAlert` entity creation and validation.
+    - [x] Implement `MaintenanceAlert` domain model.
+    - [x] Implement repository methods to save and retrieve alerts.
 
-### Task 2: Implement Alert Trigger Service
-- [ ] Task: Create a service to identify vehicles due for maintenance.
-    - [ ] Write unit tests for identifying vehicles based on `MaintenanceSchedule`.
-    - [ ] Implement logic to query vehicles and schedules to determine alert status.
-    - [ ] Implement a service to generate `MaintenanceAlert` records for due items.
+### Task 2: Implement Alert Trigger Service (COMPLETED)
+- [x] Task: Create a service to identify vehicles due for maintenance.
+    - [x] Write unit tests for identifying vehicles based on `MaintenanceSchedule`.
+    - [x] Implement logic to query vehicles and schedules to determine alert status.
+    - [x] Implement a service to generate `MaintenanceAlert` records for due items.
 
-### Task 3: Background Job Integration
-- [ ] Task: Integrate alert generation with `MotoRent.Worker` or `MotoRent.Scheduler`.
-    - [ ] Write integration tests for the background job triggering the alert service.
-    - [ ] Configure a recurring job to run the alert generation logic.
+### Task 3: Background Job Integration (COMPLETED)
+- [x] Task: Integrate alert generation with `MotoRent.Worker` or `MotoRent.Scheduler`.
+    - [x] Write integration tests for the background job triggering the alert service.
+    - [x] Configure a recurring job to run the alert generation logic.
 
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Core Logic & Alert Generation' (Protocol in workflow.md)
+- [/] Task: Conductor - User Manual Verification 'Phase 1: Core Logic & Alert Generation' (Protocol in workflow.md)
 
 ## Phase 2: UI Integration & User Notifications
 

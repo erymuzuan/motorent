@@ -60,7 +60,10 @@ namespace MotoRent.Scheduler
                     });
 
                     // Register task runners
+                    services.AddScoped<MaintenanceService>();
+                    services.AddScoped<MaintenanceAlertService>();
                     services.AddTransient<ITaskRunner, RentalExpiryRunner>();
+                    services.AddTransient<ITaskRunner, MaintenanceAlertRunner>();
                 })
                 .Build();
 
