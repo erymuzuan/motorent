@@ -9,10 +9,16 @@
 <MotoRentPageTitle>@Localizer["PricingRules"]</MotoRentPageTitle>
 
 <TablerHeader Title="@Localizer["PricingRules"]" PreTitle="@Localizer["Settings"]">
-    <button type="button" class="btn btn-primary" @onclick="OpenAddDialog" disabled="@(m_selectedShopId == 0)">
-        <i class="ti ti-plus me-1"></i>
-        @Localizer["AddRule"]
-    </button>
+    <div class="btn-list">
+        <a href="/settings/pricing-calendar" class="btn btn-outline-primary">
+            <i class="ti ti-calendar me-1"></i>
+            @Localizer["ViewCalendar"]
+        </a>
+        <button type="button" class="btn btn-primary" @onclick="OpenAddDialog" disabled="@(m_selectedShopId == 0)">
+            <i class="ti ti-plus me-1"></i>
+            @Localizer["AddRule"]
+        </button>
+    </div>
 </TablerHeader>
 
 <div class="card mb-3">
@@ -179,12 +185,12 @@ else
     @if (m_selectedShopId > 0 && m_rules.Count == 0 && !m_loading)
     {
         <div class="mt-3">
-            <button type="button" class="btn btn-outline-primary" @onclick="CreateThailandPreset">
+            <button type="button" class="btn btn-outline-primary" @onclick="OpenApplyPresetDialog">
                 <i class="ti ti-template me-1"></i>
-                @Localizer["CreateThailandPreset"]
+                @Localizer["ApplyRegionalPreset"]
             </button>
             <small class="text-secondary ms-2">
-                @Localizer["CreateThailandPresetDescription"]
+                @Localizer["ApplyRegionalPresetDescription"]
             </small>
         </div>
     }
@@ -356,71 +362,21 @@ else
         }
     }
 
-    private async Task CreateThailandPreset()
+    private async Task OpenApplyPresetDialog()
     {
-        // Create High Season (Nov-Apr)
-        var highSeason = new PricingRule
-        {
-            ShopId = this.m_selectedShopId,
-            Name = "High Season",
-            RuleType = PricingRuleType.Season,
-            StartDate = new DateOnly(DateTime.Today.Year, 11, 1),
-            EndDate = new DateOnly(DateTime.Today.Year + 1, 4, 30),
-            IsRecurring = true,
-            RecurringMonth = 11,
-            Multiplier = 1.30m,
-            Priority = 10,
-            IsActive = true
-        };
+        var result = await this.DialogService
+            .Create<ApplyPresetDialog>(Localizer["ApplyRegionalPreset"])
+            .WithParameter(x => x.ShopId, this.m_selectedShopId)
+            .Large()
+            .ShowDialogAsync();
 
-        // Create Songkran Festival
-        var songkran = new PricingRule
+        if (!result.Cancelled && result.Data is ApplyPresetDialog.ApplyPresetResult presetResult)
         {
-            ShopId = this.m_selectedShopId,
-            Name = "Songkran Festival",
-            RuleType = PricingRuleType.Event,
-            StartDate = new DateOnly(DateTime.Today.Year, 4, 13),
-            EndDate = new DateOnly(DateTime.Today.Year, 4, 15),
-            IsRecurring = true,
-            RecurringMonth = 4,
-            Multiplier = 1.50m,
-            Priority = 100,
-            IsActive = true
-        };
-
-        // Create Weekend Premium
-        var weekend = new PricingRule
-        {
-            ShopId = this.m_selectedShopId,
-            Name = "Weekend Premium",
-            RuleType = PricingRuleType.DayOfWeek,
-            StartDate = DateOnly.FromDateTime(DateTime.Today),
-            EndDate = new DateOnly(2099, 12, 31),
-            ApplicableDayOfWeek = DayOfWeek.Saturday,
-            Multiplier = 1.10m,
-            Priority = 5,
-            IsActive = true
-        };
-
-        try
-        {
-            using var session = this.DataContext.OpenSession(this.UserName);
-            session.Attach(highSeason, songkran, weekend);
-            var result = await session.SubmitChanges("Create Thailand preset");
-
-            if (result.Success)
-            {
-                await this.LoadDataAsync();
-                this.ShowSuccess(Localizer["PresetCreatedSuccessfully"]);
-            }
-            else
-            {
-                this.ShowError($"Failed to create preset: {result.Message}");
-            }
-        }
-        catch (Exception ex)
-        {
-            this.ShowError($"Failed to create preset: {ex.Message}");
+            await this.LoadDataAsync();
+            this.ShowSuccess(string.Format(
+                Localizer["PresetAppliedSuccessfully"],
+                presetResult.PresetName,
+                presetResult.RulesCreated));
         }
     }
 
