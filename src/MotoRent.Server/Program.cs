@@ -66,6 +66,8 @@ builder.Services.AddScoped<PaymentService>();
 builder.Services.AddScoped<DepositService>();
 builder.Services.AddScoped<InvoiceService>();
 builder.Services.AddScoped<MaintenanceService>();
+builder.Services.AddScoped<DynamicPricingService>();
+builder.Services.AddScoped<RegionalPresetService>();
 builder.Services.AddScoped<DamageReportService>();
 // Third-party owner services
 builder.Services.AddScoped<VehicleOwnerService>();

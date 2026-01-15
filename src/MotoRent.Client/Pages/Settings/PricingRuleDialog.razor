@@ -1,0 +1,261 @@
+@using MotoRent.Domain.Entities
+@inherits LocalizedDialogBase<PricingRule, PricingRuleDialog>
+
+<form id="@FormId" @onsubmit="SaveAsync" @onsubmit:preventDefault>
+    <div class="modal-body">
+        <div class="row g-3">
+            <div class="col-md-8">
+                <label class="form-label required">@Localizer["RuleName"]</label>
+                <input type="text" class="form-control" @bind="Entity.Name" required
+                       placeholder="@Localizer["RuleNamePlaceholder"]" />
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label required">@Localizer["RuleType"]</label>
+                <select class="form-select" @bind="Entity.RuleType" @bind:after="OnRuleTypeChanged" required>
+                    @foreach (var type in Enum.GetValues<PricingRuleType>())
+                    {
+                        <option value="@type">@Localizer[type.ToString()]</option>
+                    }
+                </select>
+            </div>
+
+            <div class="col-12">
+                <hr class="my-2" />
+                <h6 class="mb-3">@Localizer["DateConfiguration"]</h6>
+            </div>
+
+            @if (Entity.RuleType == PricingRuleType.DayOfWeek)
+            {
+                <div class="col-md-6">
+                    <label class="form-label required">@Localizer["DayOfWeek"]</label>
+                    <select class="form-select" @bind="Entity.ApplicableDayOfWeek" required>
+                        @foreach (DayOfWeek day in Enum.GetValues<DayOfWeek>())
+                        {
+                            <option value="@day">@Localizer[day.ToString()]</option>
+                        }
+                    </select>
+                </div>
+            }
+            else
+            {
+                <div class="col-md-6">
+                    <label class="form-label required">@Localizer["StartDate"]</label>
+                    <input type="date" class="form-control" @bind="m_startDate" required />
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label required">@Localizer["EndDate"]</label>
+                    <input type="date" class="form-control" @bind="m_endDate" required />
+                </div>
+
+                <div class="col-12">
+                    <label class="form-check form-switch">
+                        <input type="checkbox" class="form-check-input" @bind="Entity.IsRecurring" />
+                        <span class="form-check-label">@Localizer["RecurringYearly"]</span>
+                    </label>
+                    <small class="form-hint">@Localizer["RecurringYearlyDescription"]</small>
+                </div>
+            }
+
+            <div class="col-12">
+                <hr class="my-2" />
+                <h6 class="mb-3">@Localizer["PricingAdjustment"]</h6>
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label required">@Localizer["Multiplier"]</label>
+                <div class="input-group">
+                    <input type="number" class="form-control" @bind="Entity.Multiplier"
+                           min="0.1" max="10" step="0.05" required />
+                    <span class="input-group-text">x</span>
+                </div>
+                <small class="form-hint">@Localizer["MultiplierHint"]</small>
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">@Localizer["MinRate"]</label>
+                <div class="input-group">
+                    <span class="input-group-text">฿</span>
+                    <input type="number" class="form-control" @bind="Entity.MinRate"
+                           min="0" step="50" />
+                </div>
+                <small class="form-hint">@Localizer["MinRateHint"]</small>
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">@Localizer["MaxRate"]</label>
+                <div class="input-group">
+                    <span class="input-group-text">฿</span>
+                    <input type="number" class="form-control" @bind="Entity.MaxRate"
+                           min="0" step="50" />
+                </div>
+                <small class="form-hint">@Localizer["MaxRateHint"]</small>
+            </div>
+
+            <div class="col-12">
+                <div class="alert @GetPreviewAlertClass()">
+                    <div class="d-flex">
+                        <div class="me-3">
+                            <i class="ti @GetPreviewIcon() ti-lg"></i>
+                        </div>
+                        <div>
+                            <h4 class="alert-title">@Localizer["PricePreview"]</h4>
+                            <div class="text-secondary">
+                                @Localizer["BaseRateExample"]: ฿500/day
+                                <i class="ti ti-arrow-right mx-2"></i>
+                                <strong>฿@((500 * Entity.Multiplier).ToString("N0"))/day</strong>
+                                (@FormatMultiplier(Entity.Multiplier))
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12">
+                <hr class="my-2" />
+                <h6 class="mb-3">@Localizer["AdvancedOptions"]</h6>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">@Localizer["Priority"]</label>
+                <input type="number" class="form-control" @bind="Entity.Priority"
+                       min="1" max="1000" />
+                <small class="form-hint">@Localizer["PriorityHint"]</small>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">@Localizer["VehicleType"]</label>
+                <select class="form-select" @bind="Entity.VehicleType">
+                    <option value="">@Localizer["AllVehicles"]</option>
+                    <option value="Motorbike">@Localizer["Motorbike"]</option>
+                    <option value="Car">@Localizer["Car"]</option>
+                    <option value="JetSki">@Localizer["JetSki"]</option>
+                    <option value="Boat">@Localizer["Boat"]</option>
+                    <option value="Van">@Localizer["Van"]</option>
+                </select>
+                <small class="form-hint">@Localizer["VehicleTypeHint"]</small>
+            </div>
+
+            <div class="col-12">
+                <label class="form-check form-switch">
+                    <input type="checkbox" class="form-check-input" @bind="Entity.IsActive" />
+                    <span class="form-check-label">@Localizer["Active"]</span>
+                </label>
+                <small class="form-hint">@Localizer["ActiveHint"]</small>
+            </div>
+        </div>
+    </div>
+</form>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
+        @Localizer["Cancel"]
+    </button>
+    <button type="submit" form="@FormId" class="btn btn-primary" disabled="@Saving">
+        @if (Saving)
+        {
+            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+        }
+        <i class="ti ti-device-floppy me-1"></i>
+        @SaveButtonText
+    </button>
+</div>
+
+@code {
+    private DateTime m_startDate;
+    private DateTime m_endDate;
+
+    protected override void OnInitialized()
+    {
+        this.FormValid = true;
+        this.m_startDate = Entity.StartDate.ToDateTime(TimeOnly.MinValue);
+        this.m_endDate = Entity.EndDate.ToDateTime(TimeOnly.MinValue);
+    }
+
+    private void OnRuleTypeChanged()
+    {
+        if (Entity.RuleType == PricingRuleType.DayOfWeek)
+        {
+            Entity.ApplicableDayOfWeek ??= DayOfWeek.Saturday;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(this.Entity.Name))
+        {
+            this.ShowError(Localizer["RuleNameRequired"]);
+            return;
+        }
+
+        if (Entity.Multiplier <= 0 || Entity.Multiplier > 10)
+        {
+            this.ShowError(Localizer["MultiplierInvalid"]);
+            return;
+        }
+
+        // Sync dates from DateTime back to DateOnly
+        Entity.StartDate = DateOnly.FromDateTime(m_startDate);
+        Entity.EndDate = DateOnly.FromDateTime(m_endDate);
+
+        if (Entity.RuleType != PricingRuleType.DayOfWeek && Entity.EndDate < Entity.StartDate)
+        {
+            this.ShowError(Localizer["EndDateBeforeStartDate"]);
+            return;
+        }
+
+        if (Entity.IsRecurring && Entity.RuleType != PricingRuleType.DayOfWeek)
+        {
+            Entity.RecurringMonth = Entity.StartDate.Month;
+            Entity.RecurringDay = Entity.StartDate.Day;
+        }
+
+        this.Saving = true;
+
+        try
+        {
+            using var session = this.DataContext.OpenSession(this.UserName);
+            session.Attach(this.Entity);
+            var result = await session.SubmitChanges(
+                this.IsNew ? "Create pricing rule" : "Update pricing rule");
+
+            if (result.Success)
+            {
+                this.Close();
+            }
+            else
+            {
+                this.ShowError($"Save failed: {result.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            this.ShowError($"Error: {ex.Message}");
+        }
+        finally
+        {
+            this.Saving = false;
+        }
+    }
+
+    private string GetPreviewAlertClass()
+    {
+        if (Entity.Multiplier < 1.0m) return "alert-success";
+        if (Entity.Multiplier > 1.0m) return "alert-warning";
+        return "alert-info";
+    }
+
+    private string GetPreviewIcon()
+    {
+        if (Entity.Multiplier < 1.0m) return "ti-discount-2";
+        if (Entity.Multiplier > 1.0m) return "ti-trending-up";
+        return "ti-minus";
+    }
+
+    private static string FormatMultiplier(decimal multiplier)
+    {
+        var pct = (multiplier - 1.0m) * 100;
+        return pct >= 0 ? $"+{pct:N0}%" : $"{pct:N0}%";
+    }
+}

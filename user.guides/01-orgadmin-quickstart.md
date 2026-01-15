@@ -107,6 +107,41 @@ Configure your rental shops under **Settings > Shop Settings**:
 - Set operating hours
 - Activate/deactivate locations
 
+### 7. Dynamic Pricing
+
+Adjust rental rates automatically based on seasons, events, and days of the week.
+
+Navigate to **Settings > Pricing Rules** to manage dynamic pricing:
+
+#### Creating Pricing Rules
+1. Click "+ Add Rule"
+2. Configure the rule:
+   - **Rule Name** - Descriptive name (e.g., "High Season", "Songkran Festival")
+   - **Rule Type** - Season, Event, Day of Week, or Custom
+   - **Dates** - Start and end dates (or select day for weekly rules)
+   - **Multiplier** - Price adjustment (e.g., 1.3 = +30%, 0.9 = -10%)
+   - **Min/Max Rate** - Optional rate limits
+   - **Priority** - Higher priority rules apply first when overlapping
+   - **Vehicle Type** - Apply to specific types or all vehicles
+
+#### Thailand Preset
+Click "Create Thailand Preset" to instantly create common rules:
+- **High Season** (Nov 15 - Apr 15): +30%
+- **Songkran Festival** (Apr 13-15): +50%
+- **Weekend Premium** (Saturday): +10%
+
+#### Rule Types
+| Type | Description |
+|------|-------------|
+| **Season** | Recurring date ranges (e.g., High Season) |
+| **Event** | One-time events or festivals |
+| **Day of Week** | Weekly patterns (e.g., Weekend pricing) |
+| **Custom** | Specific date ranges |
+
+#### Price Preview
+The dialog shows a live preview of how the multiplier affects pricing:
+- Base rate: 500/day with 1.3x multiplier = 650/day (+30%)
+
 ## Tips for Success
 
 1. **Daily Tasks:**

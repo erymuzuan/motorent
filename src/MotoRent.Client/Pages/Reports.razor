@@ -7,6 +7,7 @@
 @using MotoRent.Services
 @inject PaymentService PaymentService
 @inject RentalService RentalService
+@inject DynamicPricingService DynamicPricingService
 
 <PageTitle>Reports - MotoRent</PageTitle>
 
@@ -88,6 +89,64 @@
         </div>
     </div>
 </div>
+
+@* Dynamic Pricing Impact Card *@
+@if (m_pricingStats != null && m_pricingStats.RentalsWithDynamicPricing > 0)
+{
+    <div class="card mb-4 border-warning">
+        <div class="card-header bg-warning-lt d-flex align-items-center">
+            <i class="ti ti-chart-arrows-vertical me-2 text-warning"></i>
+            <h6 class="card-title mb-0">Dynamic Pricing Impact</h6>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-6 col-md-3">
+                    <div class="d-flex flex-column">
+                        <small class="text-secondary">Rentals with Dynamic Pricing</small>
+                        <span class="h5 mb-0">@m_pricingStats.RentalsWithDynamicPricing / @m_pricingStats.TotalRentals</span>
+                        <small class="text-muted">(@m_pricingStats.DynamicPricingUsageRate.ToString("F1")% of rentals)</small>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="d-flex flex-column">
+                        <small class="text-secondary">Average Multiplier</small>
+                        <span class="h5 text-warning mb-0">×@m_pricingStats.AverageMultiplier.ToString("N2")</span>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="d-flex flex-column">
+                        <small class="text-secondary">Extra Revenue Earned</small>
+                        <span class="h5 text-success mb-0">+@FormatCurrency(m_pricingStats.DynamicPricingPremium)</span>
+                        <small class="text-muted">(+@m_pricingStats.RevenueIncrease.ToString("F1")%)</small>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="d-flex flex-column">
+                        <small class="text-secondary">Base vs Actual</small>
+                        <div>
+                            <span class="text-muted text-decoration-line-through small">@FormatCurrency(m_pricingStats.BaseRevenue)</span>
+                            <span class="ms-1">→ @FormatCurrency(m_pricingStats.ActualRevenue)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @if (m_pricingStats.RuleBreakdown.Count > 0)
+            {
+                <hr class="my-3" />
+                <div class="d-flex flex-wrap gap-2">
+                    <small class="text-secondary me-2">Applied Rules:</small>
+                    @foreach (var rule in m_pricingStats.RuleBreakdown)
+                    {
+                        <span class="badge bg-warning-lt text-warning">
+                            @rule.Key <span class="badge bg-warning text-dark ms-1">@rule.Value days</span>
+                        </span>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+}
 
 <div class="row g-4">
     @* Revenue by Payment Method *@
@@ -240,6 +299,9 @@
     private Dictionary<string, int> m_rentalsByStatus = new();
     private Dictionary<string, decimal> m_dailyRevenue = new();
 
+    // Dynamic pricing stats
+    private DynamicPricingStats? m_pricingStats;
+
     protected override async Task OnInitializedAsync()
     {
         await LoadReportAsync();
@@ -265,6 +327,9 @@
             this.m_totalRentals = this.m_rentalsByStatus.Values.Sum();
             this.m_activeRentals = this.m_rentalsByStatus.GetValueOrDefault("Active", 0);
             this.m_completedRentals = this.m_rentalsByStatus.GetValueOrDefault("Completed", 0);
+
+            // Load dynamic pricing stats
+            this.m_pricingStats = await this.RentalService.GetDynamicPricingStatsAsync(this.ShopId, fromDate, toDate);
         }
         catch (Exception ex)
         {
