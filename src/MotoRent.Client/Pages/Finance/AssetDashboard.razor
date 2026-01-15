@@ -1,0 +1,501 @@
+@page "/finance/asset-dashboard"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Policy = "RequireTenantManager")]
+@inherits LocalizedComponentBase<AssetDashboard>
+@inject AssetService AssetService
+@inject AssetExpenseService ExpenseService
+@inject AssetLoanService LoanService
+
+<MotoRentPageTitle>Asset Dashboard</MotoRentPageTitle>
+
+<!-- Page Header with Gradient Icon -->
+<div class="mr-page-header">
+    <div class="container-xl">
+        <nav class="mr-breadcrumb">
+            <span class="mr-breadcrumb-item"><a href="/">Home</a></span>
+            <i class="ti ti-chevron-right mr-breadcrumb-separator"></i>
+            <span class="mr-breadcrumb-item"><a href="/finance">Finance</a></span>
+            <i class="ti ti-chevron-right mr-breadcrumb-separator"></i>
+            <span class="mr-breadcrumb-item active">Asset Dashboard</span>
+        </nav>
+        <div class="d-flex justify-content-between align-items-center pb-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="mr-header-icon mr-header-icon-finance">
+                    <i class="ti ti-chart-pie"></i>
+                </div>
+                <div>
+                    <h1 class="mr-page-title">Asset Financial Overview</h1>
+                    <p class="mr-page-subtitle mb-0">Track depreciation, ROI, and fleet performance</p>
+                </div>
+            </div>
+            <div class="btn-list">
+                <a href="/finance/assets/new" class="btn btn-primary">
+                    <i class="ti ti-plus me-1"></i>
+                    Add Asset
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container-xl py-4">
+    @if (m_loading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- KPI Summary Cards -->
+        <div class="mr-finance-kpi-grid mr-animate-in">
+            <!-- Total Invested -->
+            <div class="mr-kpi-card mr-kpi-invested">
+                <div class="mr-kpi-icon">
+                    <i class="ti ti-building-bank"></i>
+                </div>
+                <div class="mr-kpi-content">
+                    <span class="mr-kpi-label">Total Invested</span>
+                    <span class="mr-kpi-value">@m_summary.TotalAcquisitionCost.ToString("N0")</span>
+                    <span class="mr-kpi-subtext">
+                        <i class="ti ti-motorbike"></i> @m_summary.ActiveAssets vehicles
+                    </span>
+                </div>
+                <div class="mr-kpi-trend neutral">
+                    <span class="mr-kpi-trend-icon"><i class="ti ti-wallet"></i></span>
+                </div>
+            </div>
+
+            <!-- Current Book Value -->
+            <div class="mr-kpi-card mr-kpi-bookvalue">
+                <div class="mr-kpi-icon">
+                    <i class="ti ti-receipt"></i>
+                </div>
+                <div class="mr-kpi-content">
+                    <span class="mr-kpi-label">Current Book Value</span>
+                    <span class="mr-kpi-value">@m_summary.TotalCurrentBookValue.ToString("N0")</span>
+                    <span class="mr-kpi-subtext">
+                        @((m_summary.TotalCurrentBookValue / Math.Max(1, m_summary.TotalAcquisitionCost) * 100).ToString("N0"))% of original
+                    </span>
+                </div>
+                <div class="mr-kpi-gauge">
+                    <svg viewBox="0 0 36 36" class="mr-gauge-svg">
+                        <path class="mr-gauge-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                        <path class="mr-gauge-fill" stroke-dasharray="@m_bookValuePercent, 100"
+                              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Accumulated Depreciation -->
+            <div class="mr-kpi-card mr-kpi-depreciation">
+                <div class="mr-kpi-icon">
+                    <i class="ti ti-trending-down"></i>
+                </div>
+                <div class="mr-kpi-content">
+                    <span class="mr-kpi-label">Accumulated Depreciation</span>
+                    <span class="mr-kpi-value mr-kpi-warning">@m_summary.TotalAccumulatedDepreciation.ToString("N0")</span>
+                    <span class="mr-kpi-subtext">
+                        @((m_summary.TotalAccumulatedDepreciation / Math.Max(1, m_summary.TotalAcquisitionCost) * 100).ToString("N0"))% depreciated
+                    </span>
+                </div>
+                <div class="mr-kpi-progress">
+                    <div class="mr-kpi-progress-bar" style="width: @m_depreciationPercent%"></div>
+                </div>
+            </div>
+
+            <!-- Net Profit/Loss -->
+            <div class="mr-kpi-card @(m_summary.NetProfitLoss >= 0 ? "mr-kpi-profit" : "mr-kpi-loss")">
+                <div class="mr-kpi-icon">
+                    <i class="ti ti-@(m_summary.NetProfitLoss >= 0 ? "trending-up" : "trending-down")"></i>
+                </div>
+                <div class="mr-kpi-content">
+                    <span class="mr-kpi-label">Net Profit/Loss</span>
+                    <span class="mr-kpi-value @(m_summary.NetProfitLoss >= 0 ? "mr-kpi-success" : "mr-kpi-danger")">
+                        @(m_summary.NetProfitLoss >= 0 ? "+" : "")@m_summary.NetProfitLoss.ToString("N0")
+                    </span>
+                    <span class="mr-kpi-subtext">
+                        Revenue: @m_summary.TotalRevenue.ToString("N0")
+                    </span>
+                </div>
+                <div class="mr-kpi-trend @(m_summary.NetProfitLoss >= 0 ? "up" : "down")">
+                    <i class="ti ti-arrow-@(m_summary.NetProfitLoss >= 0 ? "up" : "down")-right"></i>
+                </div>
+            </div>
+
+            <!-- Fleet ROI -->
+            <div class="mr-kpi-card mr-kpi-roi">
+                <div class="mr-kpi-icon">
+                    <i class="ti ti-percentage"></i>
+                </div>
+                <div class="mr-kpi-content">
+                    <span class="mr-kpi-label">Fleet ROI</span>
+                    <span class="mr-kpi-value mr-kpi-highlight">@m_fleetROI.ToString("N1")%</span>
+                    <span class="mr-kpi-subtext">
+                        <i class="ti ti-chart-line"></i> Return on Investment
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="row row-deck row-cards mt-4">
+            <!-- Expense Breakdown Donut -->
+            <div class="col-lg-6 mr-animate-in mr-animate-delay-1">
+                <div class="mr-chart-card">
+                    <div class="mr-chart-header">
+                        <div class="mr-chart-title">
+                            <i class="ti ti-chart-donut"></i>
+                            <h3>Expense Breakdown</h3>
+                        </div>
+                    </div>
+                    <div class="mr-chart-body">
+                        <div class="mr-donut-legend">
+                            @foreach (var expense in m_expensesByCategory.Take(6))
+                            {
+                                <div class="mr-donut-legend-item">
+                                    <span class="mr-donut-color" style="background: @GetCategoryColor(expense.Key)"></span>
+                                    <span class="mr-donut-label">@expense.Key.ToString()</span>
+                                    <span class="mr-donut-value">@expense.Value.ToString("N0")</span>
+                                    <span class="mr-donut-percent">@((expense.Value / Math.Max(1, m_totalExpenses) * 100).ToString("N0"))%</span>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                    <div class="mr-chart-footer">
+                        <span class="mr-expense-total">Total: @m_totalExpenses.ToString("N0") THB</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Attention Needed / Alerts -->
+            <div class="col-lg-6 mr-animate-in mr-animate-delay-1">
+                <div class="mr-performance-card mr-attention-needed">
+                    <div class="mr-performance-header">
+                        <div class="mr-performance-icon warning">
+                            <i class="ti ti-alert-triangle"></i>
+                        </div>
+                        <h3>Attention Needed</h3>
+                        @if (m_totalAlerts > 0)
+                        {
+                            <span class="mr-alert-badge">@m_totalAlerts</span>
+                        }
+                    </div>
+                    <div class="mr-performance-body">
+                        <div class="mr-alert-list">
+                            @if (m_assetsNeedingDepreciation > 0)
+                            {
+                                <a href="/finance/depreciation" class="mr-alert-item depreciation">
+                                    <div class="mr-alert-icon">
+                                        <i class="ti ti-calculator"></i>
+                                    </div>
+                                    <div class="mr-alert-content">
+                                        <span class="mr-alert-title">Depreciation Due</span>
+                                        <span class="mr-alert-desc">
+                                            @m_assetsNeedingDepreciation assets need monthly depreciation
+                                        </span>
+                                    </div>
+                                    <div class="mr-alert-action">
+                                        <i class="ti ti-chevron-right"></i>
+                                    </div>
+                                </a>
+                            }
+
+                            @if (m_overduePayments > 0)
+                            {
+                                <a href="/finance/loans?filter=overdue" class="mr-alert-item payment">
+                                    <div class="mr-alert-icon">
+                                        <i class="ti ti-credit-card-off"></i>
+                                    </div>
+                                    <div class="mr-alert-content">
+                                        <span class="mr-alert-title">Overdue Payments</span>
+                                        <span class="mr-alert-desc">
+                                            @m_overduePayments loan payments overdue
+                                        </span>
+                                    </div>
+                                    <div class="mr-alert-action">
+                                        <i class="ti ti-chevron-right"></i>
+                                    </div>
+                                </a>
+                            }
+
+                            @if (m_upcomingPayments > 0)
+                            {
+                                <a href="/finance/loans?filter=upcoming" class="mr-alert-item upcoming">
+                                    <div class="mr-alert-icon">
+                                        <i class="ti ti-calendar-due"></i>
+                                    </div>
+                                    <div class="mr-alert-content">
+                                        <span class="mr-alert-title">Upcoming Payments</span>
+                                        <span class="mr-alert-desc">
+                                            @m_upcomingPayments payments due this week
+                                        </span>
+                                    </div>
+                                    <div class="mr-alert-action">
+                                        <i class="ti ti-chevron-right"></i>
+                                    </div>
+                                </a>
+                            }
+
+                            @if (m_underperformingAssets > 0)
+                            {
+                                <a href="/finance/reports/profitability?filter=negative" class="mr-alert-item underperform">
+                                    <div class="mr-alert-icon">
+                                        <i class="ti ti-trending-down"></i>
+                                    </div>
+                                    <div class="mr-alert-content">
+                                        <span class="mr-alert-title">Underperforming</span>
+                                        <span class="mr-alert-desc">
+                                            @m_underperformingAssets assets with negative ROI
+                                        </span>
+                                    </div>
+                                    <div class="mr-alert-action">
+                                        <i class="ti ti-chevron-right"></i>
+                                    </div>
+                                </a>
+                            }
+
+                            @if (m_totalAlerts == 0)
+                            {
+                                <div class="mr-all-clear">
+                                    <i class="ti ti-circle-check"></i>
+                                    <span>All Clear</span>
+                                    <p>No immediate actions required</p>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Performance Tables -->
+        <div class="row row-deck row-cards mt-4">
+            <!-- Top Performers -->
+            <div class="col-lg-6 mr-animate-in mr-animate-delay-2">
+                <div class="mr-performance-card mr-top-performers">
+                    <div class="mr-performance-header">
+                        <div class="mr-performance-icon success">
+                            <i class="ti ti-trophy"></i>
+                        </div>
+                        <h3>Top Performers</h3>
+                        <span class="mr-performance-badge">Highest ROI</span>
+                    </div>
+                    <div class="mr-performance-body">
+                        @if (m_topPerformers.Any())
+                        {
+                            <div class="mr-performer-list">
+                                @{ var rank = 1; }
+                                @foreach (var asset in m_topPerformers)
+                                {
+                                    <a href="/finance/assets/@asset.AssetId" class="mr-performer-item">
+                                        <div class="mr-performer-rank @GetRankClass(rank)">@rank</div>
+                                        <div class="mr-performer-info">
+                                            <span class="mr-performer-name">@asset.VehicleName</span>
+                                            <span class="mr-performer-plate">@asset.LicensePlate</span>
+                                        </div>
+                                        <div class="mr-performer-stats">
+                                            <span class="mr-performer-roi success">
+                                                <i class="ti ti-trending-up"></i>
+                                                @asset.ROIPercent.ToString("N1")%
+                                            </span>
+                                            <span class="mr-performer-revenue">
+                                                @asset.TotalRevenue.ToString("N0") THB
+                                            </span>
+                                        </div>
+                                    </a>
+                                    rank++;
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="mr-empty-state">
+                                <i class="ti ti-chart-bar-off"></i>
+                                <span>No performance data yet</span>
+                            </div>
+                        }
+                    </div>
+                    <div class="mr-performance-footer">
+                        <a href="/finance/reports/profitability" class="btn btn-ghost-primary btn-sm">
+                            View All Performance <i class="ti ti-arrow-right ms-1"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Worst Performers -->
+            <div class="col-lg-6 mr-animate-in mr-animate-delay-2">
+                <div class="mr-performance-card">
+                    <div class="mr-performance-header">
+                        <div class="mr-performance-icon" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;">
+                            <i class="ti ti-trending-down-2"></i>
+                        </div>
+                        <h3>Underperforming Assets</h3>
+                    </div>
+                    <div class="mr-performance-body">
+                        @if (m_worstPerformers.Any())
+                        {
+                            <div class="mr-performer-list">
+                                @foreach (var asset in m_worstPerformers)
+                                {
+                                    <a href="/finance/assets/@asset.AssetId" class="mr-performer-item">
+                                        <div class="mr-performer-info">
+                                            <span class="mr-performer-name">@asset.VehicleName</span>
+                                            <span class="mr-performer-plate">@asset.LicensePlate</span>
+                                        </div>
+                                        <div class="mr-performer-stats">
+                                            <span class="mr-performer-roi" style="color: #ef4444;">
+                                                <i class="ti ti-trending-down"></i>
+                                                @asset.ROIPercent.ToString("N1")%
+                                            </span>
+                                            <span class="mr-performer-revenue">
+                                                Loss: @Math.Abs(asset.NetProfitLoss).ToString("N0") THB
+                                            </span>
+                                        </div>
+                                    </a>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="mr-all-clear">
+                                <i class="ti ti-circle-check"></i>
+                                <span>All assets profitable</span>
+                                <p>No underperforming assets</p>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions Bar -->
+        <div class="mr-quick-actions mr-animate-in mr-animate-delay-3">
+            <div class="mr-quick-actions-header">
+                <i class="ti ti-bolt"></i>
+                <h3>Quick Actions</h3>
+            </div>
+            <div class="mr-quick-actions-body">
+                <a href="/finance/depreciation/run" class="btn btn-primary">
+                    <i class="ti ti-calculator me-1"></i>
+                    Run Monthly Depreciation
+                </a>
+                <a href="/finance/expenses/new" class="btn btn-success">
+                    <i class="ti ti-receipt-2 me-1"></i>
+                    Record Expense
+                </a>
+                <a href="/finance/assets" class="btn btn-outline-secondary">
+                    <i class="ti ti-list me-1"></i>
+                    View All Assets
+                </a>
+                <a href="/finance/loans" class="btn btn-outline-info">
+                    <i class="ti ti-credit-card me-1"></i>
+                    Manage Loans
+                </a>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool m_loading = true;
+    private AssetSummary m_summary = new();
+    private List<Asset> m_topPerformers = [];
+    private List<Asset> m_worstPerformers = [];
+    private Dictionary<AssetExpenseCategory, decimal> m_expensesByCategory = new();
+
+    private decimal m_totalExpenses;
+    private decimal m_fleetROI;
+    private decimal m_bookValuePercent;
+    private decimal m_depreciationPercent;
+
+    private int m_assetsNeedingDepreciation;
+    private int m_overduePayments;
+    private int m_upcomingPayments;
+    private int m_underperformingAssets;
+    private int m_totalAlerts => m_assetsNeedingDepreciation + m_overduePayments + m_upcomingPayments + m_underperformingAssets;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDashboardDataAsync();
+    }
+
+    private async Task LoadDashboardDataAsync()
+    {
+        try
+        {
+            m_loading = true;
+
+            // Load summary
+            m_summary = await AssetService.GetSummaryAsync();
+
+            // Calculate percentages
+            m_bookValuePercent = m_summary.TotalAcquisitionCost > 0
+                ? (m_summary.TotalCurrentBookValue / m_summary.TotalAcquisitionCost * 100)
+                : 0;
+            m_depreciationPercent = m_summary.TotalAcquisitionCost > 0
+                ? (m_summary.TotalAccumulatedDepreciation / m_summary.TotalAcquisitionCost * 100)
+                : 0;
+            m_fleetROI = m_summary.TotalAcquisitionCost > 0
+                ? (m_summary.NetProfitLoss / m_summary.TotalAcquisitionCost * 100)
+                : 0;
+
+            // Load performers
+            var allAssets = await AssetService.GetAssetsAsync(AssetStatus.Active, 1, 1000);
+            m_topPerformers = allAssets.ItemCollection
+                .OrderByDescending(a => a.ROIPercent)
+                .Take(5)
+                .ToList();
+            m_worstPerformers = allAssets.ItemCollection
+                .Where(a => a.ROIPercent < 0)
+                .OrderBy(a => a.ROIPercent)
+                .Take(5)
+                .ToList();
+
+            // Load expense breakdown
+            m_expensesByCategory = await ExpenseService.GetExpensesByCategoryAsync();
+            m_totalExpenses = m_expensesByCategory.Values.Sum();
+
+            // Load alerts
+            await LoadAlertsAsync();
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private async Task LoadAlertsAsync()
+    {
+        m_assetsNeedingDepreciation = await AssetService.GetAssetsNeedingDepreciationCountAsync();
+        m_overduePayments = await LoanService.GetOverduePaymentsCountAsync();
+        m_upcomingPayments = await LoanService.GetUpcomingPaymentsCountAsync(7);
+        m_underperformingAssets = await AssetService.GetUnderperformingAssetsCountAsync();
+    }
+
+    private string GetCategoryColor(AssetExpenseCategory category) => category switch
+    {
+        AssetExpenseCategory.Maintenance => "#22c55e",
+        AssetExpenseCategory.Financing => "#3b82f6",
+        AssetExpenseCategory.Insurance => "#8b5cf6",
+        AssetExpenseCategory.Accident => "#ef4444",
+        AssetExpenseCategory.Registration => "#f59e0b",
+        AssetExpenseCategory.Consumables => "#06b6d4",
+        AssetExpenseCategory.Fuel => "#84cc16",
+        AssetExpenseCategory.Cleaning => "#14b8a6",
+        AssetExpenseCategory.Inspection => "#f97316",
+        AssetExpenseCategory.Tax => "#6366f1",
+        _ => "#6b7280"
+    };
+
+    private string GetRankClass(int rank) => rank switch
+    {
+        1 => "gold",
+        2 => "silver",
+        3 => "bronze",
+        _ => ""
+    };
+}

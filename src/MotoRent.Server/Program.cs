@@ -74,6 +74,11 @@ builder.Services.AddScoped<OwnerPaymentService>();
 builder.Services.AddScoped<AccidentService>();
 // Comment service
 builder.Services.AddScoped<CommentService>();
+// Asset depreciation services
+builder.Services.AddSingleton<DepreciationCalculator>();
+builder.Services.AddScoped<AssetService>();
+builder.Services.AddScoped<AssetExpenseService>();
+builder.Services.AddScoped<AssetLoanService>();
 
 // Error logging services
 builder.Services.AddScoped<MotoRent.Domain.Core.ILogger, SqlLogger>();
