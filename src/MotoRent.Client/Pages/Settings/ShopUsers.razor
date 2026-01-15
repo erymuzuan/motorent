@@ -67,74 +67,6 @@
     </div>
 }
 
-<!-- Pending Invites Section -->
-@if (m_pendingInvites.Count > 0)
-{
-    <div class="card mb-4">
-        <div class="card-header">
-            <h3 class="card-title">
-                <i class="ti ti-mail me-2"></i>
-                @Localizer["PendingInvites"]
-                <span class="badge bg-yellow-lt ms-2">@Localizer["PendingInviteCount", m_pendingInvites.Count]</span>
-            </h3>
-        </div>
-        <div class="table-responsive">
-            <table class="table table-vcenter card-table">
-                <thead>
-                    <tr>
-                        <th>@Localizer["Email"]</th>
-                        <th>@Localizer["Roles"]</th>
-                        <th>@Localizer["InvitedBy"]</th>
-                        <th>@Localizer["ExpiresAt"]</th>
-                        <th class="w-1"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var invite in m_pendingInvites)
-                    {
-                        <tr>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <span class="avatar avatar-sm me-2 bg-yellow-lt">
-                                        <i class="ti ti-mail"></i>
-                                    </span>
-                                    @invite.Email
-                                </div>
-                            </td>
-                            <td>
-                                <div class="d-flex flex-wrap gap-1">
-                                    @foreach (var role in invite.Roles)
-                                    {
-                                        <span class="badge @GetRoleBadgeClass(role)">@GetRoleDisplayName(role)</span>
-                                    }
-                                </div>
-                            </td>
-                            <td>@invite.InvitedBy</td>
-                            <td>
-                                @if (invite.ExpiresAt < DateTime.UtcNow)
-                                {
-                                    <span class="text-danger">@Localizer["Expired"]</span>
-                                }
-                                else
-                                {
-                                    <span>@FormatDate(invite.ExpiresAt)</span>
-                                }
-                            </td>
-                            <td>
-                                <button type="button" class="btn btn-sm btn-ghost-danger"
-                                        title="@Localizer["CancelInvite"]"
-                                        @onclick="@(() => CancelInvite(invite))">
-                                    <i class="ti ti-x"></i>
-                                </button>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-    </div>
-}
-
 <!-- Users Table -->
 <div class="card">
     <div class="card-header">
@@ -251,7 +183,6 @@
 @code {
     private List<User> m_users = [];
     private List<User> m_filteredUsers = [];
-    private List<UserInvite> m_pendingInvites = [];
     private bool m_loading = true;
     private string? m_searchTerm;
     private string? m_roleFilter;
@@ -288,14 +219,7 @@
             var users = await this.SubscriptionService.GetUsersAsync(this.AccountNo);
             this.m_users = users.ToList();
 
-            // Load pending invites for this organization
-            var invitesQuery = this.CoreContext.UserInvites
-                .Where(i => i.AccountNo == this.AccountNo && i.Status == UserInvite.STATUS_PENDING)
-                .OrderByDescending(i => i.CreatedTimestamp);
-            var invitesResult = await this.CoreContext.LoadAsync(invitesQuery, page: 1, size: 100);
-            this.m_pendingInvites = invitesResult.ItemCollection.ToList();
-
-            ApplyFilters();
+            this.ApplyFilters();
         }
         catch (Exception ex)
         {
@@ -368,13 +292,12 @@
             .Create<ShopUserDialog>(Localizer["AddTeamMember"])
             .WithParameter(x => x.AccountNo, this.AccountNo!)
             .WithParameter(x => x.IsNew, true)
-            .WithParameter(x => x.ExistingUsers, this.m_users)
             .Large()
             .ShowDialogAsync();
 
         if (!result.Cancelled)
         {
-            await LoadDataAsync();
+            await this.LoadDataAsync();
         }
     }
 
@@ -428,30 +351,8 @@
         {
             await this.SubscriptionService.RemoveUserFromOrganizationAsync(user, this.AccountNo!);
             this.ShowSuccess(Localizer["UserRemoved", user.FullName ?? user.UserName]);
-            await LoadDataAsync();
+            await this.LoadDataAsync();
         }
-    }
-
-    private async Task CancelInvite(UserInvite invite)
-    {
-        var confirmed = await this.DialogService.ConfirmYesNoAsync(
-            Localizer["ConfirmCancelInvite", invite.Email],
-            Localizer["CancelInvite"]);
-
-        if (confirmed)
-        {
-            invite.Status = UserInvite.STATUS_CANCELLED;
-            using var session = this.CoreContext.OpenSession(this.UserName);
-            session.Attach(invite);
-            await session.SubmitChanges("CancelInvite");
-            this.ShowInfo(Localizer["InviteCancelled"]);
-            await LoadDataAsync();
-        }
-    }
-
-    private string FormatDate(DateTime date)
-    {
-        return date.ToString("MMM dd, yyyy");
     }
 
     private string GetRoleDisplayName(string role) => role switch

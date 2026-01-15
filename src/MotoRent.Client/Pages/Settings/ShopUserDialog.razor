@@ -3,78 +3,57 @@
 @inherits LocalizedDialogBase<User, ShopUserDialog>
 @inject CoreDataContext CoreContext
 @inject ISubscriptionService SubscriptionService
+@inject IDirectoryService DirectoryService
 
 <div class="modal-body">
-    @if (IsNew)
+    @if (this.IsNew)
     {
-        <!-- Tabs for Add mode -->
-        <ul class="nav nav-tabs mb-3">
-            <li class="nav-item">
-                <a class="nav-link @(m_activeTab == "existing" ? "active" : "")"
-                   href="#" @onclick="@(() => m_activeTab = "existing")" @onclick:preventDefault>
-                    <i class="ti ti-user-search me-1"></i>
-                    @Localizer["TabAddExisting"]
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link @(m_activeTab == "invite" ? "active" : "")"
-                   href="#" @onclick="@(() => m_activeTab = "invite")" @onclick:preventDefault>
-                    <i class="ti ti-mail me-1"></i>
-                    @Localizer["TabInviteEmail"]
-                </a>
-            </li>
-        </ul>
+        <!-- Create New User -->
+        <div class="mb-3">
+            <label class="form-label required">@Localizer["Provider"]</label>
+            <select class="form-select" @bind="this.m_provider">
+                <option value="@User.GOOGLE">Google</option>
+                <option value="@User.MICROSOFT">Microsoft</option>
+                <option value="@User.CUSTOM">Custom</option>
+            </select>
+            <small class="form-hint">
+                <i class="ti ti-info-circle me-1"></i>
+                @Localizer["ProviderHint"]
+            </small>
+        </div>
 
-        @if (m_activeTab == "existing")
-        {
-            <!-- Add Existing User Tab -->
-            <div class="mb-3">
-                <label class="form-label required">@Localizer["SelectUser"]</label>
-                <select class="form-select" @bind="m_selectedUserName">
-                    <option value="">@Localizer["SelectUserPlaceholder"]</option>
-                    @foreach (var user in m_availableUsers)
-                    {
-                        <option value="@user.UserName">@user.FullName (@user.Email)</option>
-                    }
-                </select>
-                @if (m_availableUsers.Count == 0)
-                {
-                    <small class="form-hint text-secondary">
-                        <i class="ti ti-info-circle me-1"></i>
-                        @Localizer["NoAvailableUsers"]
-                    </small>
-                }
-            </div>
-        }
-        else
-        {
-            <!-- Invite by Email Tab -->
-            <div class="mb-3">
-                <label class="form-label required">@Localizer["Email"]</label>
-                <input type="email" class="form-control @(m_emailError != null ? "is-invalid" : "")"
-                       placeholder="@Localizer["EmailPlaceholder"]"
-                       @bind="m_inviteEmail" @bind:event="oninput" />
-                @if (m_emailError != null)
-                {
-                    <div class="invalid-feedback">@m_emailError</div>
-                }
-                <small class="form-hint">
-                    <i class="ti ti-info-circle me-1"></i>
-                    @Localizer["InviteNote"]
-                </small>
-            </div>
-        }
+        <div class="mb-3">
+            <label class="form-label required">@Localizer["Username"]</label>
+            <input type="email" class="form-control @(this.m_emailError != null ? "is-invalid" : "")"
+                   placeholder="@Localizer["UsernamePlaceholder"]"
+                   @bind="this.m_newUserEmail" @bind:event="oninput" />
+            @if (this.m_emailError != null)
+            {
+                <div class="invalid-feedback">@this.m_emailError</div>
+            }
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label required">@Localizer["FullName"]</label>
+            <input type="text" class="form-control @(this.m_nameError != null ? "is-invalid" : "")"
+                   placeholder="@Localizer["FullNamePlaceholder"]"
+                   @bind="this.m_newUserFullName" @bind:event="oninput" />
+            @if (this.m_nameError != null)
+            {
+                <div class="invalid-feedback">@this.m_nameError</div>
+            }
+        </div>
     }
     else
     {
         <!-- Edit mode - show user info -->
         <div class="d-flex align-items-center mb-3 p-3 bg-light rounded">
             <span class="avatar avatar-md me-3 bg-primary-lt">
-                @(Entity.FullName?.FirstOrDefault().ToString().ToUpperInvariant() ?? "U")
+                @(this.Entity.FullName?.FirstOrDefault().ToString().ToUpperInvariant() ?? "U")
             </span>
             <div>
-                <div class="fw-bold">@Entity.FullName</div>
-                <div class="text-secondary">@Entity.Email</div>
+                <div class="fw-bold">@this.Entity.FullName</div>
+                <div class="text-secondary">@this.Entity.Email</div>
             </div>
         </div>
     }
@@ -87,256 +66,206 @@
             {
                 <label class="form-check">
                     <input type="checkbox" class="form-check-input"
-                           checked="@m_selectedRoles.Contains(role)"
-                           @onchange="@(e => ToggleRole(role, (bool)(e.Value ?? false)))" />
+                           checked="@this.m_selectedRoles.Contains(role)"
+                           @onchange="@(e => this.ToggleRole(role, (bool)(e.Value ?? false)))" />
                     <span class="form-check-label">
-                        <span class="badge @GetRoleBadgeClass(role) me-2">@GetRoleDisplayName(role)</span>
-                        <span class="text-secondary">@GetRoleDescription(role)</span>
+                        <span class="badge @GetRoleBadgeClass(role) me-2">@this.GetRoleDisplayName(role)</span>
+                        <span class="text-secondary">@this.GetRoleDescription(role)</span>
                     </span>
                 </label>
             }
         </div>
-        @if (m_roleError != null)
+        @if (this.m_roleError != null)
         {
             <div class="text-danger small mt-2">
                 <i class="ti ti-alert-circle me-1"></i>
-                @m_roleError
+                @this.m_roleError
             </div>
         }
     </div>
 </div>
 
 <div class="modal-footer">
-    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="this.Cancel">
         @CommonLocalizer["Cancel"]
     </button>
-    <button type="button" class="btn btn-primary" @onclick="SaveAsync" disabled="@Saving">
-        @if (Saving)
+    <button type="button" class="btn btn-primary" @onclick="this.SaveAsync" disabled="@this.Saving">
+        @if (this.Saving)
         {
             <span class="spinner-border spinner-border-sm me-2" role="status"></span>
         }
         <i class="ti ti-check me-1"></i>
-        @SaveButtonText
+        @this.SaveButtonText
     </button>
 </div>
 
 @code {
     [Parameter] public new string AccountNo { get; set; } = "";
-    [Parameter] public List<User> ExistingUsers { get; set; } = [];
 
-    private string m_activeTab = "existing";
-    private string? m_selectedUserName;
-    private string? m_inviteEmail;
+    private string? m_newUserEmail;
+    private string? m_newUserFullName;
+    private string m_provider = User.GOOGLE;
     private string? m_emailError;
+    private string? m_nameError;
     private string? m_roleError;
     private HashSet<string> m_selectedRoles = [];
-    private List<User> m_availableUsers = [];
 
-    protected override async Task OnInitializedAsync()
+    protected override Task OnInitializedAsync()
     {
-        if (IsNew)
-        {
-            // Load available users (not in this organization)
-            await LoadAvailableUsersAsync();
-        }
-        else
+        if (!this.IsNew)
         {
             // Edit mode - load existing roles
-            var account = Entity.AccountCollection.FirstOrDefault(a => a.AccountNo == AccountNo);
+            var account = this.Entity.AccountCollection.FirstOrDefault(a => a.AccountNo == this.AccountNo);
             if (account != null)
             {
-                m_selectedRoles = account.Roles.ToHashSet();
+                this.m_selectedRoles = account.Roles.ToHashSet();
             }
         }
-    }
-
-    private async Task LoadAvailableUsersAsync()
-    {
-        try
-        {
-            var existingUserNames = ExistingUsers.Select(u => u.UserName).ToHashSet(StringComparer.OrdinalIgnoreCase);
-            var allUsersQuery = CoreContext.Users.OrderBy(u => u.FullName);
-            var allUsersResult = await CoreContext.LoadAsync(allUsersQuery, page: 1, size: 500);
-
-            m_availableUsers = allUsersResult.ItemCollection
-                .Where(u => !existingUserNames.Contains(u.UserName))
-                .ToList();
-        }
-        catch (Exception ex)
-        {
-            ShowError($"Error loading users: {ex.Message}");
-        }
+        return Task.CompletedTask;
     }
 
     private void ToggleRole(string role, bool selected)
     {
         if (selected)
         {
-            m_selectedRoles.Add(role);
+            this.m_selectedRoles.Add(role);
         }
         else
         {
             // Prevent current user from removing their own OrgAdmin role
-            if (role == UserAccount.ORG_ADMIN && !IsNew && Entity.UserName == this.UserName)
+            if (role == UserAccount.ORG_ADMIN && !this.IsNew && this.Entity.UserName == this.UserName)
             {
-                ShowWarning(Localizer["CannotRemoveOwnOrgAdmin"]);
+                this.ShowWarning(Localizer["CannotRemoveOwnOrgAdmin"]);
                 return;
             }
-            m_selectedRoles.Remove(role);
+            this.m_selectedRoles.Remove(role);
         }
-        m_roleError = null;
+        this.m_roleError = null;
     }
 
     private async Task SaveAsync()
     {
         // Validate role selection
-        if (m_selectedRoles.Count == 0)
+        if (this.m_selectedRoles.Count == 0)
         {
-            m_roleError = Localizer["AtLeastOneRole"];
+            this.m_roleError = Localizer["AtLeastOneRole"];
             return;
         }
 
-        if (IsNew)
+        if (this.IsNew)
         {
-            await SaveNewAsync();
+            await this.SaveNewAsync();
         }
         else
         {
-            await SaveEditAsync();
+            await this.SaveEditAsync();
         }
     }
 
     private async Task SaveNewAsync()
     {
-        if (m_activeTab == "existing")
+        this.m_emailError = null;
+        this.m_nameError = null;
+
+        if (string.IsNullOrWhiteSpace(this.m_newUserEmail))
         {
-            // Add existing user
-            if (string.IsNullOrWhiteSpace(m_selectedUserName))
-            {
-                ShowError(Localizer["SelectUserRequired"]);
-                return;
-            }
-
-            var user = m_availableUsers.FirstOrDefault(u => u.UserName == m_selectedUserName);
-            if (user == null)
-            {
-                ShowError(Localizer["UserNotFound"]);
-                return;
-            }
-
-            Saving = true;
-            try
-            {
-                await SubscriptionService.AddUserToOrganizationAsync(user, AccountNo, m_selectedRoles.ToArray());
-                ShowSuccess(Localizer["UserAdded", user.FullName ?? user.UserName]);
-                Close();
-            }
-            catch (Exception ex)
-            {
-                ShowError($"Error adding user: {ex.Message}");
-            }
-            finally
-            {
-                Saving = false;
-            }
+            this.m_emailError = Localizer["UsernameRequired"];
+            return;
         }
-        else
+
+        if (!IsValidEmail(this.m_newUserEmail))
         {
-            // Invite by email
-            if (string.IsNullOrWhiteSpace(m_inviteEmail))
+            this.m_emailError = Localizer["InvalidEmail"];
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(this.m_newUserFullName))
+        {
+            this.m_nameError = Localizer["FullNameRequired"];
+            return;
+        }
+
+        // Check if user already exists
+        var normalizedEmail = this.m_newUserEmail.ToLowerInvariant().Trim();
+        var existingUser = await this.CoreContext.LoadOneAsync<User>(u => u.UserName == normalizedEmail);
+
+        if (existingUser != null)
+        {
+            // User exists - check if already in org
+            if (existingUser.AccountCollection.Any(a => a.AccountNo == this.AccountNo))
             {
-                m_emailError = Localizer["EmailRequired"];
+                this.m_emailError = Localizer["UserAlreadyInOrg"];
                 return;
             }
 
-            if (!IsValidEmail(m_inviteEmail))
-            {
-                m_emailError = Localizer["InvalidEmail"];
-                return;
-            }
+            // User exists but not in this org - OrgAdmin cannot add users from other orgs
+            this.m_emailError = Localizer["UserExistsContactAdmin"];
+            return;
+        }
 
-            // Check if already invited
-            var existingInvite = await CoreContext.LoadOneAsync<UserInvite>(
-                i => i.Email == m_inviteEmail &&
-                     i.AccountNo == AccountNo &&
-                     i.Status == UserInvite.STATUS_PENDING);
-
-            if (existingInvite != null)
+        // Create brand new user
+        this.Saving = true;
+        try
+        {
+            var newUser = new User
             {
-                m_emailError = Localizer["EmailAlreadyInvited"];
-                return;
-            }
+                UserName = normalizedEmail,
+                Email = normalizedEmail,
+                FullName = this.m_newUserFullName.Trim(),
+                CredentialProvider = this.m_provider
+            };
 
-            // Check if user already exists and is in org
-            var existingUser = await CoreContext.LoadOneAsync<User>(u => u.Email == m_inviteEmail);
-            if (existingUser != null && existingUser.AccountCollection.Any(a => a.AccountNo == AccountNo))
+            var userAccount = new UserAccount
             {
-                m_emailError = Localizer["UserAlreadyInOrg"];
-                return;
-            }
+                AccountNo = this.AccountNo,
+                IsFavourite = true
+            };
+            userAccount.Roles.AddRange(this.m_selectedRoles);
+            newUser.AccountCollection.Add(userAccount);
 
-            Saving = true;
-            try
-            {
-                var invite = new UserInvite
-                {
-                    Email = m_inviteEmail.ToLowerInvariant().Trim(),
-                    AccountNo = AccountNo,
-                    InvitedBy = this.UserName,
-                    ExpiresAt = DateTime.UtcNow.AddDays(30),
-                    Status = UserInvite.STATUS_PENDING
-                };
-                invite.Roles.AddRange(m_selectedRoles);
-
-                using var session = CoreContext.OpenSession(this.UserName);
-                session.Attach(invite);
-                await session.SubmitChanges("CreateInvite");
-
-                ShowSuccess(Localizer["InviteSent", m_inviteEmail]);
-                Close();
-            }
-            catch (Exception ex)
-            {
-                ShowError($"Error creating invite: {ex.Message}");
-            }
-            finally
-            {
-                Saving = false;
-            }
+            await this.DirectoryService.SaveUserProfileAsync(newUser);
+            this.ShowSuccess(Localizer["UserCreated", newUser.FullName]);
+            this.Close();
+        }
+        catch (Exception ex)
+        {
+            this.ShowError($"Error creating user: {ex.Message}");
+        }
+        finally
+        {
+            this.Saving = false;
         }
     }
 
     private async Task SaveEditAsync()
     {
-        Saving = true;
+        this.Saving = true;
         try
         {
             // Update user's roles in this organization
-            var account = Entity.AccountCollection.FirstOrDefault(a => a.AccountNo == AccountNo);
+            var account = this.Entity.AccountCollection.FirstOrDefault(a => a.AccountNo == this.AccountNo);
             if (account != null)
             {
                 account.Roles.Clear();
-                account.Roles.AddRange(m_selectedRoles);
-                await this.DirectoryService.SaveUserProfileAsync(Entity);
-                ShowSuccess(Localizer["RolesUpdated", Entity.FullName ?? Entity.UserName]);
-                Close();
+                account.Roles.AddRange(this.m_selectedRoles);
+                await this.DirectoryService.SaveUserProfileAsync(this.Entity);
+                this.ShowSuccess(Localizer["RolesUpdated", this.Entity.FullName ?? this.Entity.UserName]);
+                this.Close();
             }
             else
             {
-                ShowError("User account not found");
+                this.ShowError("User account not found");
             }
         }
         catch (Exception ex)
         {
-            ShowError($"Error updating roles: {ex.Message}");
+            this.ShowError($"Error updating roles: {ex.Message}");
         }
         finally
         {
-            Saving = false;
+            this.Saving = false;
         }
     }
-
-    [Inject] private IDirectoryService DirectoryService { get; set; } = null!;
 
     private static bool IsValidEmail(string email)
     {

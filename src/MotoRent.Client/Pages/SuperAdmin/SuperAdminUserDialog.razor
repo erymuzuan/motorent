@@ -6,22 +6,6 @@
 @inject IDirectoryService DirectoryService
 
 <div class="modal-body">
-    <!-- Organization Selection -->
-    <div class="mb-3">
-        <label class="form-label required">@Localizer["SelectOrganization"]</label>
-        <select class="form-select @(this.m_orgError != null ? "is-invalid" : "")" @bind="this.m_selectedAccountNo">
-            <option value="">@Localizer["SelectOrgPlaceholder"]</option>
-            @foreach (var org in this.m_organizations)
-            {
-                <option value="@org.AccountNo">@org.Name (@org.AccountNo)</option>
-            }
-        </select>
-        @if (this.m_orgError != null)
-        {
-            <div class="invalid-feedback">@this.m_orgError</div>
-        }
-    </div>
-
     <!-- Tabs for Add mode -->
     <ul class="nav nav-tabs mb-3">
         <li class="nav-item">
@@ -45,7 +29,7 @@
         <!-- Add Existing User Tab -->
         <div class="mb-3">
             <label class="form-label required">@Localizer["SelectUser"]</label>
-            <select class="form-select" @bind="this.m_selectedUserName">
+            <select class="form-select" @bind="this.m_selectedUserName" @bind:after="this.OnUserSelected">
                 <option value="">@Localizer["SelectUserPlaceholder"]</option>
                 @foreach (var user in this.m_availableUsers)
                 {
@@ -101,28 +85,61 @@
         </div>
     }
 
-    <!-- Role Selection -->
+    <!-- Organization Selection with Individual Roles -->
     <div class="mb-3">
-        <label class="form-label">@Localizer["SelectRoles"]</label>
-        <div class="space-y-2">
-            @foreach (var role in UserAccount.AllRoles)
-            {
-                <label class="form-check">
-                    <input type="checkbox" class="form-check-input"
-                           checked="@this.m_selectedRoles.Contains(role)"
-                           @onchange="@(e => this.ToggleRole(role, (bool)(e.Value ?? false)))" />
-                    <span class="form-check-label">
-                        <span class="badge @GetRoleBadgeClass(role) me-2">@this.GetRoleDisplayName(role)</span>
-                        <span class="text-secondary">@this.GetRoleDescription(role)</span>
-                    </span>
-                </label>
-            }
+        <label class="form-label required">@Localizer["SelectOrganizations"]</label>
+        <div class="card">
+            <div class="list-group list-group-flush" style="max-height: 300px; overflow-y: auto;">
+                @foreach (var org in this.m_organizations)
+                {
+                    var isSelected = this.m_selectedOrgs.ContainsKey(org.AccountNo);
+                    var isExistingOrg = this.m_existingUserOrgs.Contains(org.AccountNo);
+                    <div class="list-group-item @(isExistingOrg ? "bg-light" : "")">
+                        <div class="d-flex align-items-start">
+                            <label class="form-check mb-0 me-3">
+                                <input type="checkbox" class="form-check-input"
+                                       checked="@isSelected"
+                                       disabled="@isExistingOrg"
+                                       @onchange="@(e => this.ToggleOrg(org.AccountNo, (bool)(e.Value ?? false)))" />
+                            </label>
+                            <div class="flex-fill">
+                                <div class="d-flex align-items-center mb-1">
+                                    <strong class="me-2">@org.Name</strong>
+                                    <span class="badge bg-secondary-lt">@org.AccountNo</span>
+                                    @if (isExistingOrg)
+                                    {
+                                        <span class="badge bg-info-lt ms-2">@Localizer["AlreadyMember"]</span>
+                                    }
+                                </div>
+                                @if (isSelected || isExistingOrg)
+                                {
+                                    <div class="d-flex flex-wrap gap-2 mt-2">
+                                        @foreach (var role in UserAccount.AllRoles)
+                                        {
+                                            var isRoleSelected = this.IsRoleSelected(org.AccountNo, role);
+                                            <label class="form-check form-check-inline mb-0">
+                                                <input type="checkbox" class="form-check-input"
+                                                       checked="@isRoleSelected"
+                                                       disabled="@isExistingOrg"
+                                                       @onchange="@(e => this.ToggleOrgRole(org.AccountNo, role, (bool)(e.Value ?? false)))" />
+                                                <span class="form-check-label">
+                                                    <span class="badge @GetRoleBadgeClass(role)">@this.GetRoleDisplayName(role)</span>
+                                                </span>
+                                            </label>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
         </div>
-        @if (this.m_roleError != null)
+        @if (this.m_orgError != null)
         {
             <div class="text-danger small mt-2">
                 <i class="ti ti-alert-circle me-1"></i>
-                @this.m_roleError
+                @this.m_orgError
             </div>
         }
     </div>
@@ -144,7 +161,6 @@
 
 @code {
     private string m_activeTab = "existing";
-    private string? m_selectedAccountNo;
     private string? m_selectedUserName;
     private string m_newProvider = User.GOOGLE;
     private string? m_newUserName;
@@ -152,9 +168,11 @@
 
     private string? m_emailError;
     private string? m_nameError;
-    private string? m_roleError;
     private string? m_orgError;
-    private HashSet<string> m_selectedRoles = [];
+
+    // Dictionary: AccountNo -> HashSet of selected roles
+    private Dictionary<string, HashSet<string>> m_selectedOrgs = new();
+    private HashSet<string> m_existingUserOrgs = new();
     private List<User> m_availableUsers = [];
     private List<Organization> m_organizations = [];
 
@@ -191,38 +209,98 @@
         }
     }
 
-    private void ToggleRole(string role, bool selected)
+    private void OnUserSelected()
+    {
+        // When an existing user is selected, show their current orgs
+        this.m_existingUserOrgs.Clear();
+        this.m_selectedOrgs.Clear();
+
+        if (string.IsNullOrWhiteSpace(this.m_selectedUserName))
+            return;
+
+        var user = this.m_availableUsers.FirstOrDefault(u => u.UserName == this.m_selectedUserName);
+        if (user != null)
+        {
+            foreach (var account in user.AccountCollection)
+            {
+                this.m_existingUserOrgs.Add(account.AccountNo);
+            }
+        }
+    }
+
+    private void ToggleOrg(string accountNo, bool selected)
     {
         if (selected)
         {
-            this.m_selectedRoles.Add(role);
+            // Add org with default OrgAdmin role
+            this.m_selectedOrgs[accountNo] = new HashSet<string> { UserAccount.ORG_ADMIN };
         }
         else
         {
-            this.m_selectedRoles.Remove(role);
+            this.m_selectedOrgs.Remove(accountNo);
         }
-        this.m_roleError = null;
+        this.m_orgError = null;
+    }
+
+    private void ToggleOrgRole(string accountNo, string role, bool selected)
+    {
+        if (!this.m_selectedOrgs.TryGetValue(accountNo, out var roles))
+        {
+            roles = new HashSet<string>();
+            this.m_selectedOrgs[accountNo] = roles;
+        }
+
+        if (selected)
+        {
+            roles.Add(role);
+        }
+        else
+        {
+            roles.Remove(role);
+            // If no roles left, unselect the org
+            if (roles.Count == 0)
+            {
+                this.m_selectedOrgs.Remove(accountNo);
+            }
+        }
+    }
+
+    private bool IsRoleSelected(string accountNo, string role)
+    {
+        // For existing user orgs, show current roles
+        if (this.m_existingUserOrgs.Contains(accountNo))
+        {
+            var user = this.m_availableUsers.FirstOrDefault(u => u.UserName == this.m_selectedUserName);
+            var account = user?.AccountCollection.FirstOrDefault(a => a.AccountNo == accountNo);
+            return account?.Roles.Contains(role) ?? false;
+        }
+
+        // For newly selected orgs
+        return this.m_selectedOrgs.TryGetValue(accountNo, out var roles) && roles.Contains(role);
     }
 
     private async Task SaveAsync()
     {
         this.m_orgError = null;
-        this.m_roleError = null;
         this.m_emailError = null;
         this.m_nameError = null;
 
-        // Validate organization selection
-        if (string.IsNullOrWhiteSpace(this.m_selectedAccountNo))
+        // Validate at least one org selected
+        if (this.m_selectedOrgs.Count == 0)
         {
-            this.m_orgError = this.Localizer["OrganizationRequired"];
+            this.m_orgError = this.Localizer["AtLeastOneOrg"];
             return;
         }
 
-        // Validate role selection
-        if (this.m_selectedRoles.Count == 0)
+        // Validate each selected org has at least one role
+        foreach (var (accountNo, roles) in this.m_selectedOrgs)
         {
-            this.m_roleError = this.Localizer["AtLeastOneRole"];
-            return;
+            if (roles.Count == 0)
+            {
+                var org = this.m_organizations.FirstOrDefault(o => o.AccountNo == accountNo);
+                this.m_orgError = this.Localizer["AtLeastOneRoleForOrg", org?.Name ?? accountNo];
+                return;
+            }
         }
 
         if (this.m_activeTab == "existing")
@@ -250,18 +328,17 @@
             return;
         }
 
-        // Check if user already in org
-        if (user.AccountCollection.Any(a => a.AccountNo == this.m_selectedAccountNo))
-        {
-            this.ShowError(this.Localizer["UserAlreadyInOrg"]);
-            return;
-        }
-
         this.Saving = true;
         try
         {
-            await this.SubscriptionService.AddUserToOrganizationAsync(user, this.m_selectedAccountNo!, this.m_selectedRoles.ToArray());
-            this.ShowSuccess(this.Localizer["UserAdded", user.FullName ?? user.UserName]);
+            // Add user to each selected org with their roles
+            foreach (var (accountNo, roles) in this.m_selectedOrgs)
+            {
+                await this.SubscriptionService.AddUserToOrganizationAsync(user, accountNo, roles.ToArray());
+            }
+
+            var orgCount = this.m_selectedOrgs.Count;
+            this.ShowSuccess(this.Localizer["UserAddedToOrgs", user.FullName ?? user.UserName, orgCount]);
             this.Close();
         }
         catch (Exception ex)
@@ -289,7 +366,8 @@
         }
 
         // Check if username already exists
-        var existingUser = await this.CoreContext.LoadOneAsync<User>(u => u.UserName == this.m_newUserName);
+        var normalizedUserName = this.m_newUserName.Trim().ToLowerInvariant();
+        var existingUser = await this.CoreContext.LoadOneAsync<User>(u => u.UserName == normalizedUserName);
         if (existingUser != null)
         {
             this.m_emailError = this.Localizer["UsernameExists"];
@@ -301,25 +379,31 @@
         {
             var newUser = new User
             {
-                UserName = this.m_newUserName.Trim(),
-                Email = this.m_newUserName.Trim(), // Usually username is email in MotoRent
+                UserName = normalizedUserName,
+                Email = normalizedUserName,
                 FullName = this.m_newFullName.Trim(),
                 CredentialProvider = this.m_newProvider,
                 IsLockedOut = false
             };
 
-            // Add the organization account with selected roles
-            var userAccount = new UserAccount
+            // Add all selected organizations with their roles
+            var isFirst = true;
+            foreach (var (accountNo, roles) in this.m_selectedOrgs)
             {
-                AccountNo = this.m_selectedAccountNo!,
-                IsFavourite = true
-            };
-            userAccount.Roles.AddRange(this.m_selectedRoles);
-            newUser.AccountCollection.Add(userAccount);
+                var userAccount = new UserAccount
+                {
+                    AccountNo = accountNo,
+                    IsFavourite = isFirst
+                };
+                userAccount.Roles.AddRange(roles);
+                newUser.AccountCollection.Add(userAccount);
+                isFirst = false;
+            }
 
             await this.DirectoryService.SaveUserProfileAsync(newUser);
 
-            this.ShowSuccess(this.Localizer["UserCreated", newUser.FullName]);
+            var orgCount = this.m_selectedOrgs.Count;
+            this.ShowSuccess(this.Localizer["UserCreatedWithOrgs", newUser.FullName, orgCount]);
             this.Close();
         }
         catch (Exception ex)
@@ -339,15 +423,6 @@
         UserAccount.STAFF => this.Localizer["RoleStaff"],
         UserAccount.MECHANIC => this.Localizer["RoleMechanic"],
         _ => role
-    };
-
-    private string GetRoleDescription(string role) => role switch
-    {
-        UserAccount.ORG_ADMIN => this.Localizer["RoleOrgAdminDesc"],
-        UserAccount.SHOP_MANAGER => this.Localizer["RoleShopManagerDesc"],
-        UserAccount.STAFF => this.Localizer["RoleStaffDesc"],
-        UserAccount.MECHANIC => this.Localizer["RoleMechanicDesc"],
-        _ => ""
     };
 
     private static string GetRoleBadgeClass(string role) => role switch

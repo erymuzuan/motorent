@@ -7,7 +7,7 @@ namespace MotoRent.Domain.DataContext;
 
 /// <summary>
 /// Data context for Core schema entities (shared across all tenants).
-/// Manages Organization, User, Setting, AccessToken, RegistrationInvite, UserInvite, and LogEntry entities.
+/// Manages Organization, User, Setting, AccessToken, RegistrationInvite, and LogEntry entities.
 /// </summary>
 public class CoreDataContext
 {
@@ -16,7 +16,6 @@ public class CoreDataContext
     public Query<Setting> Settings { get; }
     public Query<AccessToken> AccessTokens { get; }
     public Query<RegistrationInvite> RegistrationInvites { get; }
-    public Query<UserInvite> UserInvites { get; }
     public Query<LogEntry> LogEntries { get; }
     public Query<SupportRequest> SupportRequests { get; }
     public Query<VehicleModel> VehicleModels { get; }
@@ -33,7 +32,6 @@ public class CoreDataContext
         Settings = new Query<Setting>(provider);
         AccessTokens = new Query<AccessToken>(provider);
         RegistrationInvites = new Query<RegistrationInvite>(provider);
-        UserInvites = new Query<UserInvite>(provider);
         LogEntries = new Query<LogEntry>(provider);
         SupportRequests = new Query<SupportRequest>(provider);
         VehicleModels = new Query<VehicleModel>(provider);
