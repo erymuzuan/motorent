@@ -4,6 +4,7 @@
 @using Microsoft.AspNetCore.Authorization
 @using MotoRent.Domain.Core
 @using MotoRent.Domain.DataContext
+@using MotoRent.Domain.Extensions
 @using MotoRent.Domain.Helps
 @attribute [Authorize(Roles = UserAccount.SUPER_ADMIN)]
 @inject CoreDataContext CoreDataContext
@@ -279,9 +280,10 @@
         m_activeInviteCount = await CoreDataContext.GetCountAsync(
             CoreDataContext.RegistrationInvites.Where(x => x.IsActive));
             
+        var errorSeverities = new[] { LogSeverity.Error, LogSeverity.Critical };
         m_recentErrorCount = await CoreDataContext.GetCountAsync(
             CoreDataContext.LogEntries
-                .Where(x => x.LogSeverity >= LogSeverity.Error)
+                .Where(x => errorSeverities.IsInList(x.LogSeverity))
                 .Where(x => x.Status == LogStatus.New));
             
         m_openSupportCount = await CoreDataContext.GetCountAsync(

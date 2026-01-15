@@ -610,9 +610,52 @@ public class CoreRepository<T> : IRepository<T> where T : Entity
             {
                 return $"[{member.Member.Name}] LIKE @p{paramIndex}";
             }
+
+            // Handle IsInList extension method for SQL IN clause
+            // Usage: ids.IsInList(e.PropertyName) -> [PropertyName] IN (...)
+            if (methodCall.Method.Name == "IsInList" && methodCall.Arguments.Count == 2)
+            {
+                var listArg = methodCall.Arguments[0];
+                var itemArg = methodCall.Arguments[1];
+                var columnName = GetMemberName(itemArg);
+                if (columnName != null)
+                {
+                    var values = GetIsInListValues(listArg);
+                    if (values != null && values.Length > 0)
+                    {
+                        var paramNames = Enumerable.Range(0, values.Length)
+                            .Select(i => $"@p{paramIndex}_{i}")
+                            .ToArray();
+                        return $"[{columnName}] IN ({string.Join(", ", paramNames)})";
+                    }
+                    return "1=0"; // Empty list - return condition that matches nothing
+                }
+            }
         }
 
         return string.Empty;
+    }
+
+    private object[]? GetIsInListValues(Expression? expression)
+    {
+        if (expression == null) return null;
+
+        var value = GetValue(expression);
+        if (value == null) return null;
+
+        // Handle various enumerable types
+        if (value is System.Collections.IEnumerable enumerable and not string)
+        {
+            var list = new List<object>();
+            foreach (var item in enumerable)
+            {
+                if (item != null)
+                    list.Add(item);
+            }
+            return list.ToArray();
+        }
+
+        return null;
     }
 
     private string? GetMemberName(Expression expression)
@@ -639,13 +682,44 @@ public class CoreRepository<T> : IRepository<T> where T : Entity
     {
         for (int i = 0; i < predicates.Count; i++)
         {
-            var value = GetPredicateValue(predicates[i]);
-            if (value != null)
+            if (predicates[i].Body is MethodCallExpression methodCall)
             {
-                if (predicates[i].Body is MethodCallExpression methodCall && methodCall.Method.Name == "Contains")
-                    cmd.Parameters.AddWithValue($"@p{i}", $"%{value}%");
-                else
-                    cmd.Parameters.AddWithValue($"@p{i}", value);
+                // Handle IsInList - add multiple parameters for IN clause
+                if (methodCall.Method.Name == "IsInList" && methodCall.Arguments.Count == 2)
+                {
+                    var listArg = methodCall.Arguments[0];
+                    var values = GetIsInListValues(listArg);
+                    if (values != null)
+                    {
+                        for (int j = 0; j < values.Length; j++)
+                        {
+                            var paramValue = values[j].GetType().IsEnum ? values[j].ToString() : values[j];
+                            cmd.Parameters.AddWithValue($"@p{i}_{j}", paramValue);
+                        }
+                    }
+                    continue;
+                }
+
+                // Handle string.Contains - add LIKE parameter with wildcards
+                if (methodCall.Method.Name == "Contains")
+                {
+                    var value = GetPredicateValue(predicates[i]);
+                    if (value != null)
+                    {
+                        var paramValue = value.GetType().IsEnum ? value.ToString() : value;
+                        cmd.Parameters.AddWithValue($"@p{i}", $"%{paramValue}%");
+                    }
+                    continue;
+                }
+            }
+
+            // Handle binary expressions and other cases
+            var binaryValue = GetPredicateValue(predicates[i]);
+            if (binaryValue != null)
+            {
+                // Convert enum values to string for NVARCHAR comparison in SQL
+                var paramValue = binaryValue.GetType().IsEnum ? binaryValue.ToString() : binaryValue;
+                cmd.Parameters.AddWithValue($"@p{i}", paramValue);
             }
         }
     }
