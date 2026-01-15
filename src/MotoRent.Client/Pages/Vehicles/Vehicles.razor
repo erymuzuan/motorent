@@ -3,6 +3,7 @@
 @using Microsoft.AspNetCore.Authorization
 @using MotoRent.Domain.Entities
 @using MotoRent.Domain.Models
+@using MotoRent.Domain.Settings
 @attribute [Authorize(Policy = "RequireTenantStaff")]
 @using MotoRent.Client.Components.Shared
 @inherits LocalizedComponentBase<Vehicles>
@@ -19,21 +20,12 @@
             @Localizer["AddVehicle"]
         </button>
         <div class="dropdown-menu dropdown-menu-end">
-            <a class="dropdown-item" href="/vehicles/motorbike/new">
-                <i class="ti ti-motorbike me-2"></i>@Localizer["Motorbike"]
-            </a>
-            <a class="dropdown-item" href="/vehicles/car/new">
-                <i class="ti ti-car me-2"></i>@Localizer["Car"]
-            </a>
-            <a class="dropdown-item" href="/vehicles/jetski/new">
-                <i class="ti ti-sailboat me-2"></i>@Localizer["JetSki"]
-            </a>
-            <a class="dropdown-item" href="/vehicles/boat/new">
-                <i class="ti ti-ship me-2"></i>@Localizer["Boat"]
-            </a>
-            <a class="dropdown-item" href="/vehicles/van/new">
-                <i class="ti ti-bus me-2"></i>@Localizer["Van"]
-            </a>
+            @foreach (var type in m_enabledVehicleTypes)
+            {
+                <a class="dropdown-item" href="/vehicles/@type.ToString().ToLower()/new">
+                    <i class="ti @GetVehicleTypeIcon(type) me-2"></i>@GetVehicleTypeLabel(type)
+                </a>
+            }
         </div>
     </div>
 </TablerHeader>
@@ -50,7 +42,7 @@
                     <span class="badge bg-secondary ms-1">@m_typeCounts.Values.Sum()</span>
                 </a>
             </li>
-            @foreach (var (type, count) in m_typeCounts.OrderBy(x => x.Key))
+            @foreach (var (type, count) in m_typeCounts.Where(x => m_enabledVehicleTypes.Contains(x.Key)).OrderBy(x => x.Key))
             {
                 <li class="nav-item">
                     <a class="nav-link @(m_vehicleTypeFilter == type ? "active" : "")"
@@ -405,21 +397,12 @@
                                                     @Localizer["AddVehicle"]
                                                 </button>
                                                 <div class="dropdown-menu">
-                                                    <a class="dropdown-item" href="/vehicles/motorbike/new">
-                                                        <i class="ti ti-motorbike me-2"></i>@Localizer["Motorbike"]
-                                                    </a>
-                                                    <a class="dropdown-item" href="/vehicles/car/new">
-                                                        <i class="ti ti-car me-2"></i>@Localizer["Car"]
-                                                    </a>
-                                                    <a class="dropdown-item" href="/vehicles/jetski/new">
-                                                        <i class="ti ti-sailboat me-2"></i>@Localizer["JetSki"]
-                                                    </a>
-                                                    <a class="dropdown-item" href="/vehicles/boat/new">
-                                                        <i class="ti ti-ship me-2"></i>@Localizer["Boat"]
-                                                    </a>
-                                                    <a class="dropdown-item" href="/vehicles/van/new">
-                                                        <i class="ti ti-bus me-2"></i>@Localizer["Van"]
-                                                    </a>
+                                                    @foreach (var type in m_enabledVehicleTypes)
+                                                    {
+                                                        <a class="dropdown-item" href="/vehicles/@type.ToString().ToLower()/new">
+                                                            <i class="ti @GetVehicleTypeIcon(type) me-2"></i>@GetVehicleTypeLabel(type)
+                                                        </a>
+                                                    }
                                                 </div>
                                             </div>
                                         </div>
@@ -573,21 +556,12 @@
                                     @Localizer["AddVehicle"]
                                 </button>
                                 <div class="dropdown-menu">
-                                    <a class="dropdown-item" href="/vehicles/motorbike/new">
-                                        <i class="ti ti-motorbike me-2"></i>@Localizer["Motorbike"]
-                                    </a>
-                                    <a class="dropdown-item" href="/vehicles/car/new">
-                                        <i class="ti ti-car me-2"></i>@Localizer["Car"]
-                                    </a>
-                                    <a class="dropdown-item" href="/vehicles/jetski/new">
-                                        <i class="ti ti-sailboat me-2"></i>@Localizer["JetSki"]
-                                    </a>
-                                    <a class="dropdown-item" href="/vehicles/boat/new">
-                                        <i class="ti ti-ship me-2"></i>@Localizer["Boat"]
-                                    </a>
-                                    <a class="dropdown-item" href="/vehicles/van/new">
-                                        <i class="ti ti-bus me-2"></i>@Localizer["Van"]
-                                    </a>
+                                    @foreach (var type in m_enabledVehicleTypes)
+                                    {
+                                        <a class="dropdown-item" href="/vehicles/@type.ToString().ToLower()/new">
+                                            <i class="ti @GetVehicleTypeIcon(type) me-2"></i>@GetVehicleTypeLabel(type)
+                                        </a>
+                                    }
                                 </div>
                             </div>
                         </div>
@@ -671,6 +645,7 @@
     private Dictionary<VehicleStatus, int> m_statusCounts = new();
     private Dictionary<VehicleType, int> m_typeCounts = new();
     private List<string> m_availableBrands = [];
+    private List<VehicleType> m_enabledVehicleTypes = [];
     private bool m_loading = true;
     private string? m_searchTerm;
     private VehicleStatus? m_statusFilter;
@@ -682,7 +657,28 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadEnabledVehicleTypesAsync();
         await this.LoadDataAsync();
+    }
+
+    private async Task LoadEnabledVehicleTypesAsync()
+    {
+        m_enabledVehicleTypes.Clear();
+
+        if (await SettingConfig.GetBoolAsync(SettingKeys.Fleet_EnableMotorbike, defaultValue: true))
+            m_enabledVehicleTypes.Add(VehicleType.Motorbike);
+        if (await SettingConfig.GetBoolAsync(SettingKeys.Fleet_EnableCar, defaultValue: false))
+            m_enabledVehicleTypes.Add(VehicleType.Car);
+        if (await SettingConfig.GetBoolAsync(SettingKeys.Fleet_EnableJetSki, defaultValue: false))
+            m_enabledVehicleTypes.Add(VehicleType.JetSki);
+        if (await SettingConfig.GetBoolAsync(SettingKeys.Fleet_EnableBoat, defaultValue: false))
+            m_enabledVehicleTypes.Add(VehicleType.Boat);
+        if (await SettingConfig.GetBoolAsync(SettingKeys.Fleet_EnableVan, defaultValue: false))
+            m_enabledVehicleTypes.Add(VehicleType.Van);
+
+        // Fallback: if nothing is enabled, enable Motorbike by default
+        if (m_enabledVehicleTypes.Count == 0)
+            m_enabledVehicleTypes.Add(VehicleType.Motorbike);
     }
 
     private async Task LoadDataAsync()

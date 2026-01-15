@@ -50,6 +50,10 @@
                            class="list-group-item list-group-item-action @(CurrentPanel == "payments" ? "active" : "")">
                             <i class="ti ti-credit-card me-2"></i>@Localizer["Payments"]
                         </a>
+                        <a href="/settings/organization/vehicletypes"
+                           class="list-group-item list-group-item-action @(CurrentPanel == "vehicletypes" ? "active" : "")">
+                            <i class="ti ti-motorbike me-2"></i>@Localizer["VehicleTypes"]
+                        </a>
                     </div>
                 </div>
             </div>
@@ -72,6 +76,9 @@
                         break;
                     case "payments":
                         @PaymentsPanel()
+                        break;
+                    case "vehicletypes":
+                        @VehicleTypesPanel()
                         break;
                 }
             </div>
@@ -109,6 +116,13 @@
     private string? m_bankAccountNo;
     private string? m_bankAccountName;
     private decimal m_defaultDepositAmount = 3000;
+
+    // Vehicle type settings
+    private bool m_enableMotorbike = true;
+    private bool m_enableCar;
+    private bool m_enableJetSki;
+    private bool m_enableBoat;
+    private bool m_enableVan;
 
     protected override async Task OnInitializedAsync()
     {
@@ -164,6 +178,13 @@
         m_bankAccountNo = await SettingConfig.GetStringAsync(SettingKeys.Payment_BankAccountNo);
         m_bankAccountName = await SettingConfig.GetStringAsync(SettingKeys.Payment_BankAccountName);
         m_defaultDepositAmount = await SettingConfig.GetDecimalAsync(SettingKeys.Deposit_DefaultAmount, defaultValue: 3000);
+
+        // Vehicle type settings
+        m_enableMotorbike = await SettingConfig.GetBoolAsync(SettingKeys.Fleet_EnableMotorbike, defaultValue: true);
+        m_enableCar = await SettingConfig.GetBoolAsync(SettingKeys.Fleet_EnableCar, defaultValue: false);
+        m_enableJetSki = await SettingConfig.GetBoolAsync(SettingKeys.Fleet_EnableJetSki, defaultValue: false);
+        m_enableBoat = await SettingConfig.GetBoolAsync(SettingKeys.Fleet_EnableBoat, defaultValue: false);
+        m_enableVan = await SettingConfig.GetBoolAsync(SettingKeys.Fleet_EnableVan, defaultValue: false);
     }
 
     private async Task SaveAsync()
@@ -221,6 +242,13 @@
         await SettingConfig.SetValueAsync(SettingKeys.Payment_BankAccountNo, m_bankAccountNo ?? "");
         await SettingConfig.SetValueAsync(SettingKeys.Payment_BankAccountName, m_bankAccountName ?? "");
         await SettingConfig.SetValueAsync(SettingKeys.Deposit_DefaultAmount, m_defaultDepositAmount);
+
+        // Vehicle type settings
+        await SettingConfig.SetValueAsync(SettingKeys.Fleet_EnableMotorbike, m_enableMotorbike);
+        await SettingConfig.SetValueAsync(SettingKeys.Fleet_EnableCar, m_enableCar);
+        await SettingConfig.SetValueAsync(SettingKeys.Fleet_EnableJetSki, m_enableJetSki);
+        await SettingConfig.SetValueAsync(SettingKeys.Fleet_EnableBoat, m_enableBoat);
+        await SettingConfig.SetValueAsync(SettingKeys.Fleet_EnableVan, m_enableVan);
     }
 
     #region Panel Render Fragments
@@ -551,6 +579,67 @@
                                 <input type="text" class="form-control" @bind="m_bankAccountName" placeholder="Account holder name" />
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    };
+
+    private RenderFragment VehicleTypesPanel() => __builder =>
+    {
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="ti ti-motorbike me-2"></i>@Localizer["VehicleTypeSettings"]
+                </h3>
+            </div>
+            <div class="card-body">
+                <p class="text-secondary mb-4">@Localizer["VehicleTypeSettingsDescription"]</p>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="form-check form-switch">
+                            <input type="checkbox" class="form-check-input" @bind="m_enableMotorbike" id="enableMotorbike" />
+                            <label class="form-check-label" for="enableMotorbike">
+                                <i class="ti ti-motorbike me-2"></i>@Localizer["Motorbike"]
+                            </label>
+                        </div>
+                        <small class="text-secondary">@Localizer["MotorbikeDescription"]</small>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check form-switch">
+                            <input type="checkbox" class="form-check-input" @bind="m_enableCar" id="enableCar" />
+                            <label class="form-check-label" for="enableCar">
+                                <i class="ti ti-car me-2"></i>@Localizer["Car"]
+                            </label>
+                        </div>
+                        <small class="text-secondary">@Localizer["CarDescription"]</small>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check form-switch">
+                            <input type="checkbox" class="form-check-input" @bind="m_enableJetSki" id="enableJetSki" />
+                            <label class="form-check-label" for="enableJetSki">
+                                <i class="ti ti-sailboat me-2"></i>@Localizer["JetSki"]
+                            </label>
+                        </div>
+                        <small class="text-secondary">@Localizer["JetSkiDescription"]</small>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check form-switch">
+                            <input type="checkbox" class="form-check-input" @bind="m_enableBoat" id="enableBoat" />
+                            <label class="form-check-label" for="enableBoat">
+                                <i class="ti ti-speedboat me-2"></i>@Localizer["Boat"]
+                            </label>
+                        </div>
+                        <small class="text-secondary">@Localizer["BoatDescription"]</small>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check form-switch">
+                            <input type="checkbox" class="form-check-input" @bind="m_enableVan" id="enableVan" />
+                            <label class="form-check-label" for="enableVan">
+                                <i class="ti ti-bus me-2"></i>@Localizer["Van"]
+                            </label>
+                        </div>
+                        <small class="text-secondary">@Localizer["VanDescription"]</small>
                     </div>
                 </div>
             </div>
