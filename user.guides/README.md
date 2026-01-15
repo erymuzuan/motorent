@@ -68,6 +68,7 @@ Tourist/Renter
 | Settings | Yes | Yes | - | - |
 | Insurance | Yes | Yes | - | - |
 | Shops | Yes | Yes | - | - |
+| Pricing Rules | Yes | Yes | - | - |
 
 ## Getting Started
 

@@ -132,6 +132,35 @@ Update your shop details:
 - Operating hours
 - Email settings
 
+#### Pricing Rules
+Manage dynamic pricing for your shop under **Settings > Pricing Rules**:
+
+**What are Pricing Rules?**
+Pricing rules automatically adjust rental rates based on:
+- **Seasons** - High season surcharges (e.g., +30% Nov-Apr)
+- **Events** - Festival pricing (e.g., +50% Songkran)
+- **Days of Week** - Weekend premiums (e.g., +10% Saturday)
+
+**Quick Start with Thailand Preset**
+Click "Create Thailand Preset" to add common rules:
+- High Season (Nov 15 - Apr 15): +30%
+- Songkran Festival (Apr 13-15): +50%
+- Weekend Premium (Saturday): +10%
+
+**Creating Custom Rules**
+1. Click "+ Add Rule"
+2. Set rule type (Season, Event, Day of Week, Custom)
+3. Configure date range or day
+4. Set multiplier (e.g., 1.2 = +20%)
+5. Optionally set min/max rates
+6. Choose vehicle types to apply to
+
+**Managing Rules**
+- Toggle Active/Inactive status
+- Edit rules as needed
+- Delete rules that are no longer relevant
+- Higher priority rules take precedence when overlapping
+
 ## Daily Management Tasks
 
 ### Morning Routine

@@ -1,0 +1,471 @@
+@page "/settings/pricing-rules"
+@using Microsoft.AspNetCore.Authorization
+@using MotoRent.Domain.Entities
+@attribute [Authorize(Policy = "RequireTenantManager")]
+@inherits LocalizedComponentBase<PricingRules>
+@inject DynamicPricingService PricingService
+@inject ShopService ShopService
+
+<MotoRentPageTitle>@Localizer["PricingRules"]</MotoRentPageTitle>
+
+<TablerHeader Title="@Localizer["PricingRules"]" PreTitle="@Localizer["Settings"]">
+    <button type="button" class="btn btn-primary" @onclick="OpenAddDialog" disabled="@(m_selectedShopId == 0)">
+        <i class="ti ti-plus me-1"></i>
+        @Localizer["AddRule"]
+    </button>
+</TablerHeader>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-3 align-items-center">
+            <div class="col-md-4">
+                <label class="form-label">@Localizer["Shop"]</label>
+                <select class="form-select" @bind="m_selectedShopId" @bind:after="LoadDataAsync">
+                    <option value="0">@Localizer["SelectShop"]</option>
+                    @foreach (var shop in m_shops)
+                    {
+                        <option value="@shop.ShopId">@shop.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">@Localizer["RuleType"]</label>
+                <select class="form-select" @bind="m_typeFilter" @bind:after="LoadDataAsync">
+                    <option value="">@Localizer["AllTypes"]</option>
+                    @foreach (var type in Enum.GetValues<PricingRuleType>())
+                    {
+                        <option value="@type">@Localizer[type.ToString()]</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">@Localizer["Status"]</label>
+                <select class="form-select" @bind="m_activeFilter" @bind:after="LoadDataAsync">
+                    <option value="">@Localizer["AllStatus"]</option>
+                    <option value="true">@Localizer["Active"]</option>
+                    <option value="false">@Localizer["Inactive"]</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">&nbsp;</label>
+                <div class="input-icon">
+                    <span class="input-icon-addon">
+                        <i class="ti ti-search"></i>
+                    </span>
+                    <input type="text" class="form-control" placeholder="@Localizer["Search"]"
+                           @bind="m_searchTerm" @bind:event="oninput" @onkeyup="OnSearchKeyUp" />
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (m_selectedShopId == 0)
+{
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <i class="ti ti-building-store mb-3" style="font-size: 3rem; color: var(--tblr-secondary);"></i>
+            <h3 class="text-secondary">@Localizer["SelectShopPrompt"]</h3>
+            <p class="text-secondary">@Localizer["SelectShopDescription"]</p>
+        </div>
+    </div>
+}
+else
+{
+    <LoadingSkeleton Loading="@m_loading" Mode="LoadingSkeleton.PlaceholderMode.Table">
+        <div class="card">
+            <div class="table-responsive">
+                <table class="table table-vcenter card-table">
+                    <thead>
+                        <tr>
+                            <th>@Localizer["Name"]</th>
+                            <th>@Localizer["Type"]</th>
+                            <th>@Localizer["DateRange"]</th>
+                            <th class="text-center">@Localizer["Multiplier"]</th>
+                            <th class="text-center">@Localizer["Priority"]</th>
+                            <th>@Localizer["Status"]</th>
+                            <th style="width: 120px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (m_rules.Count == 0)
+                        {
+                            <tr>
+                                <td colspan="7" class="text-center text-secondary py-4">
+                                    <i class="ti ti-chart-line mb-2" style="font-size: 2rem;"></i>
+                                    <div>@Localizer["NoRulesFound"]</div>
+                                </td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var rule in m_rules)
+                            {
+                                <tr class="@(rule.IsActive ? "" : "text-secondary")">
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <span class="avatar avatar-sm me-2 @GetRuleTypeColor(rule.RuleType)">
+                                                <i class="@GetRuleTypeIcon(rule.RuleType)"></i>
+                                            </span>
+                                            <div>
+                                                <div class="fw-medium">@rule.Name</div>
+                                                @if (rule.IsRecurring)
+                                                {
+                                                    <small class="text-secondary">
+                                                        <i class="ti ti-repeat me-1"></i>@Localizer["Recurring"]
+                                                    </small>
+                                                }
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge @GetRuleTypeBadgeClass(rule.RuleType)">
+                                            @Localizer[rule.RuleType.ToString()]
+                                        </span>
+                                    </td>
+                                    <td>
+                                        @if (rule.RuleType == PricingRuleType.DayOfWeek)
+                                        {
+                                            <span>@Localizer[rule.ApplicableDayOfWeek?.ToString() ?? ""]</span>
+                                        }
+                                        else
+                                        {
+                                            <span>@rule.StartDate.ToString("MMM d") - @rule.EndDate.ToString("MMM d")</span>
+                                        }
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge @GetMultiplierBadgeClass(rule.Multiplier)">
+                                            @FormatMultiplier(rule.Multiplier)
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="text-secondary">@rule.Priority</span>
+                                    </td>
+                                    <td>
+                                        @if (rule.IsActive)
+                                        {
+                                            <span class="badge bg-success">@Localizer["Active"]</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">@Localizer["Inactive"]</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <div class="btn-list flex-nowrap">
+                                            <button type="button" class="btn btn-sm btn-ghost-primary"
+                                                    @onclick="@(() => OpenEditDialog(rule))">
+                                                <i class="ti ti-edit"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm @(rule.IsActive ? "btn-ghost-warning" : "btn-ghost-success")"
+                                                    @onclick="@(() => ToggleActiveStatus(rule))">
+                                                <i class="ti @(rule.IsActive ? "ti-eye-off" : "ti-eye")"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-ghost-danger"
+                                                    @onclick="@(() => ConfirmDelete(rule))">
+                                                <i class="ti ti-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </LoadingSkeleton>
+
+    @if (m_selectedShopId > 0 && m_rules.Count == 0 && !m_loading)
+    {
+        <div class="mt-3">
+            <button type="button" class="btn btn-outline-primary" @onclick="CreateThailandPreset">
+                <i class="ti ti-template me-1"></i>
+                @Localizer["CreateThailandPreset"]
+            </button>
+            <small class="text-secondary ms-2">
+                @Localizer["CreateThailandPresetDescription"]
+            </small>
+        </div>
+    }
+}
+
+@code {
+    private List<Shop> m_shops = [];
+    private List<PricingRule> m_rules = [];
+    private bool m_loading;
+    private int m_selectedShopId;
+    private string? m_searchTerm;
+    private string? m_typeFilter;
+    private string? m_activeFilter;
+    private System.Timers.Timer? m_debounceTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Load shops
+        var shopsResult = await this.ShopService.GetShopsAsync(null, true, 1, 100);
+        this.m_shops = shopsResult.ItemCollection;
+
+        // Auto-select first shop if available
+        if (this.m_shops.Count > 0)
+        {
+            this.m_selectedShopId = this.m_shops[0].ShopId;
+            await this.LoadDataAsync();
+        }
+    }
+
+    private async Task LoadDataAsync()
+    {
+        if (this.m_selectedShopId == 0)
+        {
+            this.m_rules.Clear();
+            return;
+        }
+
+        this.m_loading = true;
+        try
+        {
+            var activeOnly = this.m_activeFilter switch
+            {
+                "true" => true,
+                "false" => false,
+                _ => (bool?)null
+            };
+
+            var allRules = await this.PricingService.GetRulesAsync(this.m_selectedShopId, activeOnly == true);
+
+            // Apply filters
+            this.m_rules = allRules
+                .Where(r => string.IsNullOrEmpty(this.m_typeFilter) ||
+                           r.RuleType.ToString() == this.m_typeFilter)
+                .Where(r => activeOnly == null ||
+                           r.IsActive == activeOnly)
+                .Where(r => string.IsNullOrEmpty(this.m_searchTerm) ||
+                           r.Name.Contains(this.m_searchTerm, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            this.ShowError($"Error loading data: {ex.Message}");
+        }
+        finally
+        {
+            this.m_loading = false;
+        }
+    }
+
+    private void OnSearchKeyUp(KeyboardEventArgs e)
+    {
+        this.m_debounceTimer?.Stop();
+        this.m_debounceTimer?.Dispose();
+        this.m_debounceTimer = new System.Timers.Timer(300);
+        this.m_debounceTimer.Elapsed += async (_, _) =>
+        {
+            this.m_debounceTimer?.Stop();
+            await this.InvokeAsync(async () =>
+            {
+                await this.LoadDataAsync();
+                this.StateHasChanged();
+            });
+        };
+        this.m_debounceTimer.Start();
+    }
+
+    private async Task OpenAddDialog()
+    {
+        var rule = new PricingRule
+        {
+            ShopId = this.m_selectedShopId,
+            IsActive = true,
+            Multiplier = 1.0m,
+            Priority = 10,
+            StartDate = DateOnly.FromDateTime(DateTime.Today),
+            EndDate = DateOnly.FromDateTime(DateTime.Today.AddDays(7))
+        };
+
+        var result = await this.DialogService
+            .Create<PricingRuleDialog>(Localizer["AddPricingRule"])
+            .WithParameter(x => x.Entity, rule)
+            .WithParameter(x => x.IsNew, true)
+            .Large()
+            .ShowDialogAsync();
+
+        if (!result.Cancelled)
+        {
+            await this.LoadDataAsync();
+            this.ShowSuccess(Localizer["RuleAddedSuccessfully"]);
+        }
+    }
+
+    private async Task OpenEditDialog(PricingRule rule)
+    {
+        var result = await this.DialogService
+            .Create<PricingRuleDialog>(Localizer["EditPricingRule"])
+            .WithParameter(x => x.Entity, rule.Clone())
+            .WithParameter(x => x.IsNew, false)
+            .Large()
+            .ShowDialogAsync();
+
+        if (!result.Cancelled)
+        {
+            await this.LoadDataAsync();
+            this.ShowSuccess(Localizer["RuleUpdatedSuccessfully"]);
+        }
+    }
+
+    private async Task ToggleActiveStatus(PricingRule rule)
+    {
+        var action = rule.IsActive ? Localizer["Deactivate"].Value : Localizer["Activate"].Value;
+        if (!await this.DialogService.ConfirmYesNoAsync(
+            string.Format(Localizer["ConfirmToggleStatus"], action, rule.Name),
+            Localizer["Confirm"]))
+            return;
+
+        rule.IsActive = !rule.IsActive;
+        using var session = this.DataContext.OpenSession(this.UserName);
+        session.Attach(rule);
+        var saveResult = await session.SubmitChanges("Toggle status");
+
+        if (saveResult.Success)
+        {
+            await this.LoadDataAsync();
+            this.ShowSuccess(string.Format(Localizer["RuleStatusChanged"], action.ToLower()));
+        }
+        else
+        {
+            this.ShowError($"Failed: {saveResult.Message}");
+        }
+    }
+
+    private async Task ConfirmDelete(PricingRule rule)
+    {
+        if (!await this.ConfirmDeleteAsync(rule.Name ?? Localizer["ThisRule"]))
+            return;
+
+        using var session = this.DataContext.OpenSession(this.UserName);
+        session.Delete(rule);
+        var deleteResult = await session.SubmitChanges("Delete pricing rule");
+        if (deleteResult.Success)
+        {
+            await this.LoadDataAsync();
+            this.ShowSuccess(Localizer["RuleDeletedSuccessfully"]);
+        }
+        else
+        {
+            this.ShowError($"Delete failed: {deleteResult.Message}");
+        }
+    }
+
+    private async Task CreateThailandPreset()
+    {
+        // Create High Season (Nov-Apr)
+        var highSeason = new PricingRule
+        {
+            ShopId = this.m_selectedShopId,
+            Name = "High Season",
+            RuleType = PricingRuleType.Season,
+            StartDate = new DateOnly(DateTime.Today.Year, 11, 1),
+            EndDate = new DateOnly(DateTime.Today.Year + 1, 4, 30),
+            IsRecurring = true,
+            RecurringMonth = 11,
+            Multiplier = 1.30m,
+            Priority = 10,
+            IsActive = true
+        };
+
+        // Create Songkran Festival
+        var songkran = new PricingRule
+        {
+            ShopId = this.m_selectedShopId,
+            Name = "Songkran Festival",
+            RuleType = PricingRuleType.Event,
+            StartDate = new DateOnly(DateTime.Today.Year, 4, 13),
+            EndDate = new DateOnly(DateTime.Today.Year, 4, 15),
+            IsRecurring = true,
+            RecurringMonth = 4,
+            Multiplier = 1.50m,
+            Priority = 100,
+            IsActive = true
+        };
+
+        // Create Weekend Premium
+        var weekend = new PricingRule
+        {
+            ShopId = this.m_selectedShopId,
+            Name = "Weekend Premium",
+            RuleType = PricingRuleType.DayOfWeek,
+            StartDate = DateOnly.FromDateTime(DateTime.Today),
+            EndDate = new DateOnly(2099, 12, 31),
+            ApplicableDayOfWeek = DayOfWeek.Saturday,
+            Multiplier = 1.10m,
+            Priority = 5,
+            IsActive = true
+        };
+
+        try
+        {
+            using var session = this.DataContext.OpenSession(this.UserName);
+            session.Attach(highSeason, songkran, weekend);
+            var result = await session.SubmitChanges("Create Thailand preset");
+
+            if (result.Success)
+            {
+                await this.LoadDataAsync();
+                this.ShowSuccess(Localizer["PresetCreatedSuccessfully"]);
+            }
+            else
+            {
+                this.ShowError($"Failed to create preset: {result.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            this.ShowError($"Failed to create preset: {ex.Message}");
+        }
+    }
+
+    private static string GetRuleTypeIcon(PricingRuleType type) => type switch
+    {
+        PricingRuleType.Season => "ti ti-sun",
+        PricingRuleType.Event => "ti ti-calendar-event",
+        PricingRuleType.DayOfWeek => "ti ti-calendar-week",
+        PricingRuleType.Custom => "ti ti-settings",
+        _ => "ti ti-chart-line"
+    };
+
+    private static string GetRuleTypeColor(PricingRuleType type) => type switch
+    {
+        PricingRuleType.Season => "bg-orange-lt",
+        PricingRuleType.Event => "bg-purple-lt",
+        PricingRuleType.DayOfWeek => "bg-azure-lt",
+        PricingRuleType.Custom => "bg-teal-lt",
+        _ => "bg-secondary-lt"
+    };
+
+    private static string GetRuleTypeBadgeClass(PricingRuleType type) => type switch
+    {
+        PricingRuleType.Season => "bg-orange-lt text-orange",
+        PricingRuleType.Event => "bg-purple-lt text-purple",
+        PricingRuleType.DayOfWeek => "bg-azure-lt text-azure",
+        PricingRuleType.Custom => "bg-teal-lt text-teal",
+        _ => "bg-secondary-lt text-secondary"
+    };
+
+    private static string GetMultiplierBadgeClass(decimal multiplier)
+    {
+        if (multiplier < 1.0m) return "bg-green-lt text-green";
+        if (multiplier > 1.0m) return "bg-red-lt text-red";
+        return "bg-secondary-lt text-secondary";
+    }
+
+    private static string FormatMultiplier(decimal multiplier)
+    {
+        var pct = (multiplier - 1.0m) * 100;
+        return pct >= 0 ? $"+{pct:N0}%" : $"{pct:N0}%";
+    }
+
+    public void Dispose()
+    {
+        this.m_debounceTimer?.Dispose();
+    }
+}
