@@ -22,7 +22,8 @@ public class ServiceLocationService(RentalDataContext context)
     {
         var targetShopId = shopId;
         var query = this.Context.CreateQuery<ServiceLocation>()
-            .Where(loc => loc.ShopId == targetShopId && loc.IsActive);
+            .Where(loc => loc.ShopId == targetShopId)
+            .Where(loc => loc.IsActive);
 
         var result = await this.Context.LoadAsync(query, page: 1, size: 100, includeTotalRows: false);
 
