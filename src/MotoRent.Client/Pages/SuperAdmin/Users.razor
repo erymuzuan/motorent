@@ -11,38 +11,56 @@
 
 <PageTitle>Users - MotoRent</PageTitle>
 
-<div class="container-xl mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h4 class="mb-1">Users</h4>
-            <p class="text-secondary mb-0">Manage user accounts across all organizations</p>
+<!-- Page Header -->
+<div class="mr-page-header">
+    <div class="container-xl">
+        <nav class="mr-breadcrumb">
+            <span class="mr-breadcrumb-item"><a href="#"><i class="ti ti-home"></i></a></span>
+            <i class="ti ti-chevron-right mr-breadcrumb-separator"></i>
+            <span class="mr-breadcrumb-item"><a href="/super-admin/start-page">Super Admin</a></span>
+            <i class="ti ti-chevron-right mr-breadcrumb-separator"></i>
+            <span class="mr-breadcrumb-item active">Users</span>
+        </nav>
+        <div class="d-flex justify-content-between align-items-center pb-3">
+            <div>
+                <h1 class="mr-page-title"><i class="ti ti-users"></i> Users</h1>
+                <p class="mr-page-subtitle mb-0">Manage user accounts across all organizations</p>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-primary" @onclick="this.OpenAddUserDialog">
+                    <i class="ti ti-user-plus me-2"></i>
+                    Add User
+                </button>
+                <a href="/super-admin/start-page" class="mr-btn-header-action btn">
+                    <i class="ti ti-arrow-left me-2"></i>
+                    Back to Dashboard
+                </a>
+            </div>
         </div>
-        <a href="/super-admin/start-page" class="btn btn-ghost-primary">
-            <i class="ti ti-arrow-left me-2"></i>
-            Back to Dashboard
-        </a>
     </div>
+</div>
 
+<div class="container-xl py-4">
     <!-- Search and Filter -->
-    <div class="card mb-4">
+    <div class="card mb-4 mr-card">
         <div class="card-body">
             <div class="row g-3 align-items-end">
                 <div class="col-12 col-md-5">
-                    <label class="form-label">Search</label>
+                    <label class="form-label mr-field-label">Search</label>
                     <div class="input-icon">
                         <span class="input-icon-addon">
                             <i class="ti ti-search"></i>
                         </span>
                         <input type="text" class="form-control" placeholder="Search by username, email, or name..."
-                               @bind="m_searchTerm" @bind:event="oninput" @onkeyup="OnSearchKeyup" />
+                               @bind="this.m_searchTerm" @bind:event="oninput" @onkeyup="this.OnSearchKeyup" />
                     </div>
                 </div>
 
                 <div class="col-12 col-md-3">
-                    <label class="form-label">Organization</label>
-                    <select class="form-select" @bind="m_organizationFilter" @bind:after="ApplyFilters">
+                    <label class="form-label mr-field-label">Organization</label>
+                    <select class="form-select" @bind="this.m_organizationFilter" @bind:after="this.ApplyFilters">
                         <option value="">All Organizations</option>
-                        @foreach (var org in m_organizations)
+                        @foreach (var org in this.m_organizations)
                         {
                             <option value="@org.AccountNo">@org.Name (@org.AccountNo)</option>
                         }
@@ -50,8 +68,8 @@
                 </div>
 
                 <div class="col-12 col-md-2">
-                    <label class="form-label">Provider</label>
-                    <select class="form-select" @bind="m_providerFilter" @bind:after="ApplyFilters">
+                    <label class="form-label mr-field-label">Provider</label>
+                    <select class="form-select" @bind="this.m_providerFilter" @bind:after="this.ApplyFilters">
                         <option value="">All Providers</option>
                         <option value="@User.GOOGLE">Google</option>
                         <option value="@User.MICROSOFT">Microsoft</option>
@@ -60,8 +78,8 @@
                 </div>
 
                 <div class="col-12 col-md-2">
-                    <label class="form-label">Status</label>
-                    <select class="form-select" @bind="m_statusFilter" @bind:after="ApplyFilters">
+                    <label class="form-label mr-field-label">Status</label>
+                    <select class="form-select" @bind="this.m_statusFilter" @bind:after="this.ApplyFilters">
                         <option value="">All Status</option>
                         <option value="active">Active</option>
                         <option value="locked">Locked</option>
@@ -71,7 +89,7 @@
         </div>
     </div>
 
-    @if (m_loading)
+    @if (this.m_loading)
     {
         <div class="progress progress-sm mb-4">
             <div class="progress-bar progress-bar-indeterminate"></div>
@@ -79,25 +97,25 @@
     }
 
     <!-- Users Table -->
-    <div class="card">
+    <div class="card mr-card">
         <div class="card-header">
-            <h3 class="card-title">@m_filteredUsers.Count users</h3>
+            <h3 class="card-title">@this.m_filteredUsers.Count users</h3>
         </div>
-        <div class="table-responsive" style="@(m_openDropdown != null ? "overflow: visible;" : "")">
+        <div class="table-responsive" style="@(this.m_openDropdown != null ? "overflow: visible;" : "")">
             <table class="table table-vcenter card-table table-striped">
                 <thead>
                     <tr>
-                        <th>Username</th>
-                        <th>Full Name</th>
-                        <th>Email</th>
-                        <th>Provider</th>
-                        <th>Status</th>
-                        <th>Organizations</th>
+                        <th class="mr-field-label">Username</th>
+                        <th class="mr-field-label">Full Name</th>
+                        <th class="mr-field-label">Email</th>
+                        <th class="mr-field-label">Provider</th>
+                        <th class="mr-field-label">Status</th>
+                        <th class="mr-field-label">Organizations</th>
                         <th class="w-1"></th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var user in m_filteredUsers)
+                    @foreach (var user in this.m_filteredUsers)
                     {
                         <tr>
                             <td>
@@ -105,11 +123,11 @@
                                     <span class="avatar avatar-sm me-2 bg-primary-lt">
                                         @(user.FullName?.FirstOrDefault().ToString().ToUpperInvariant() ?? "U")
                                     </span>
-                                    @user.UserName
+                                    <span class="mr-field-value">@user.UserName</span>
                                 </div>
                             </td>
-                            <td>@user.FullName</td>
-                            <td>@user.Email</td>
+                            <td><span class="mr-field-value">@user.FullName</span></td>
+                            <td><span class="mr-field-value">@user.Email</span></td>
                             <td>
                                 <span class="badge @GetProviderBadgeClass(user.CredentialProvider)">
                                     @user.CredentialProvider
@@ -129,7 +147,7 @@
                                 <div class="d-flex flex-wrap gap-1">
                                     @foreach (var account in user.AccountCollection.Take(3))
                                     {
-                                        var org = m_organizations.FirstOrDefault(o => o.AccountNo == account.AccountNo);
+                                        var org = this.m_organizations.FirstOrDefault(o => o.AccountNo == account.AccountNo);
                                         <span class="badge bg-info-lt" title="@($"{org?.Name ?? account.AccountNo}\nRoles: {string.Join(", ", account.Roles)}")">
                                             @account.AccountNo
                                         </span>
@@ -141,27 +159,27 @@
                                 </div>
                             </td>
                             <td>
-                                <div class="dropdown @(m_openDropdown == user.UserName ? "show" : "")">
+                                <div class="dropdown @(this.m_openDropdown == user.UserName ? "show" : "")">
                                     <button type="button" class="btn btn-ghost-secondary btn-icon"
-                                            @onclick="@(() => ToggleDropdown(user.UserName))" @onclick:stopPropagation="true">
+                                            @onclick="@(() => this.ToggleDropdown(user.UserName))" @onclick:stopPropagation="true">
                                         <i class="ti ti-dots-vertical"></i>
                                     </button>
-                                    <div class="dropdown-menu dropdown-menu-end @(m_openDropdown == user.UserName ? "show" : "")"
-                                         style="@(m_openDropdown == user.UserName ? "position: absolute; inset: 0px 0px auto auto; margin: 0px; transform: translate(0px, 34px);" : "")">
-                                        <a class="dropdown-item" href="#" @onclick="@(() => { CloseDropdown(); ViewUserDetails(user); })" @onclick:preventDefault>
+                                    <div class="dropdown-menu dropdown-menu-end @(this.m_openDropdown == user.UserName ? "show" : "")"
+                                         style="@(this.m_openDropdown == user.UserName ? "position: absolute; inset: 0px 0px auto auto; margin: 0px; transform: translate(0px, 34px);" : "")">
+                                        <a class="dropdown-item" href="#" @onclick="@(() => { this.CloseDropdown(); this.ViewUserDetails(user); })" @onclick:preventDefault>
                                             <i class="ti ti-eye me-2"></i>
                                             View Details
                                         </a>
                                         @if (user.IsLockedOut)
                                         {
-                                            <a class="dropdown-item text-success" href="#" @onclick="@(() => { CloseDropdown(); UnlockUser(user); })" @onclick:preventDefault>
+                                            <a class="dropdown-item text-success" href="#" @onclick="@(() => { this.CloseDropdown(); this.UnlockUser(user); })" @onclick:preventDefault>
                                                 <i class="ti ti-lock-open me-2"></i>
                                                 Unlock User
                                             </a>
                                         }
                                         else
                                         {
-                                            <a class="dropdown-item text-warning" href="#" @onclick="@(() => { CloseDropdown(); LockUser(user); })" @onclick:preventDefault>
+                                            <a class="dropdown-item text-warning" href="#" @onclick="@(() => { this.CloseDropdown(); this.LockUser(user); })" @onclick:preventDefault>
                                                 <i class="ti ti-lock me-2"></i>
                                                 Lock User
                                             </a>
@@ -174,7 +192,7 @@
                 </tbody>
             </table>
         </div>
-        @if (m_filteredUsers.Count == 0 && !m_loading)
+        @if (this.m_filteredUsers.Count == 0 && !this.m_loading)
         {
             <div class="card-body">
                 <div class="empty">
@@ -202,7 +220,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadDataAsync();
+        await this.LoadDataAsync();
     }
 
     private void ToggleDropdown(string? userName)
@@ -217,6 +235,7 @@
 
     private async Task LoadDataAsync()
     {
+        if (this.m_loading && this.m_users.Count > 0) return;
         this.m_loading = true;
         try
         {
@@ -229,7 +248,7 @@
             var orgs = await this.SubscriptionService.GetAllOrganizationsAsync();
             this.m_organizations = orgs.ToList();
 
-            ApplyFilters();
+            this.ApplyFilters();
         }
         catch (Exception ex)
         {
@@ -250,10 +269,10 @@
         this.m_debounceTimer.Elapsed += (sender, args) =>
         {
             this.m_debounceTimer?.Stop();
-            InvokeAsync(() =>
+            this.InvokeAsync(() =>
             {
-                ApplyFilters();
-                StateHasChanged();
+                this.ApplyFilters();
+                this.StateHasChanged();
             });
         };
         this.m_debounceTimer.Start();
@@ -262,10 +281,10 @@
     private void ApplyFilters()
     {
         this.m_filteredUsers = this.m_users
-            .Where(MatchesSearch)
-            .Where(MatchesOrganization)
-            .Where(MatchesProvider)
-            .Where(MatchesStatus)
+            .Where(this.MatchesSearch)
+            .Where(this.MatchesOrganization)
+            .Where(this.MatchesProvider)
+            .Where(this.MatchesStatus)
             .ToList();
     }
 
@@ -301,6 +320,15 @@
         };
     }
 
+    private async Task OpenAddUserDialog()
+    {
+        var result = await this.DialogService.Create<SuperAdminUserDialog>("Add/Invite User").ShowDialogAsync();
+        if (result is { Cancelled: false })
+        {
+            await this.LoadDataAsync();
+        }
+    }
+
     private async Task ViewUserDetails(User user)
     {
         var accounts = string.Join("\n", user.AccountCollection.Select(a =>
@@ -315,7 +343,7 @@
 
             Accounts:
             {accounts}
-            """;
+            """ ;
 
         await this.DialogService.ShowMessageAsync(message, "User Details");
     }
@@ -331,7 +359,7 @@
             user.IsLockedOut = true;
             await this.DirectoryService.SaveUserProfileAsync(user);
             this.ShowWarning($"{user.FullName ?? user.UserName} has been locked.");
-            StateHasChanged();
+            this.StateHasChanged();
         }
     }
 
@@ -340,7 +368,7 @@
         user.IsLockedOut = false;
         await this.DirectoryService.SaveUserProfileAsync(user);
         this.ShowSuccess($"{user.FullName ?? user.UserName} has been unlocked.");
-        StateHasChanged();
+        this.StateHasChanged();
     }
 
     private static string GetProviderBadgeClass(string provider) => provider switch
