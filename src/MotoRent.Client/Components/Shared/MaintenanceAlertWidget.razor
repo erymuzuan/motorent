@@ -1,0 +1,105 @@
+@using MotoRent.Domain.Entities
+@using MotoRent.Client.Services
+@inherits LocalizedComponentBase<MaintenanceAlertWidget>
+@inject AlertService AlertService
+
+<div class="mr-card">
+    <div class="mr-card-header">
+        <div class="mr-card-title">
+            <i class="ti ti-bell-ringing me-2 text-warning"></i>@this.Localizer["MaintenanceAlerts"]
+            @if (this.m_alerts.Count > 0)
+            {
+                <span class="badge bg-warning ms-2">@this.m_totalRows</span>
+            }
+        </div>
+        <a href="/maintenance/alerts" class="btn btn-sm btn-outline-primary">
+            @this.Localizer["ViewAll"] <i class="ti ti-arrow-right ms-1"></i>
+        </a>
+    </div>
+    <div class="mr-card-body p-0">
+        <LoadingSkeleton Loading="@this.m_loading" Mode="LoadingSkeleton.PlaceholderMode.List" Rows="3">
+            <div class="list-group list-group-flush">
+                @if (this.m_alerts.Count == 0)
+                {
+                    <div class="list-group-item text-center text-secondary py-4">
+                        <i class="ti ti-bell-off fs-1 d-block mb-2 opacity-50"></i>
+                        @this.Localizer["NoPendingAlerts"]
+                    </div>
+                }
+                else
+                {
+                    @foreach (var alert in this.m_alerts)
+                    {
+                        <div class="list-group-item d-flex align-items-center">
+                            <div class="me-3">
+                                <MaintenanceStatusBadge Status="@alert.Status" Compact="true" />
+                            </div>
+                            <div class="flex-fill">
+                                <div class="fw-bold">@alert.LicensePlate - @alert.ServiceTypeName</div>
+                                <div class="text-secondary small">@alert.VehicleName</div>
+                            </div>
+                            <div class="text-end">
+                                <div class="small text-secondary">@this.FormatDate(alert.TriggerDate)</div>
+                                <button class="btn btn-icon btn-sm btn-ghost-success" title="@this.Localizer["Resolve"]"
+                                        @onclick="@(() => this.ResolveAlert(alert))">
+                                    <i class="ti ti-check"></i>
+                                </button>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        </LoadingSkeleton>
+    </div>
+</div>
+
+@code {
+    private List<MaintenanceAlert> m_alerts = [];
+    private int m_totalRows;
+    private bool m_loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await this.LoadAlertsAsync();
+    }
+
+    private async Task LoadAlertsAsync()
+    {
+        this.m_loading = true;
+        try
+        {
+            var result = await this.AlertService.GetActiveAlertsAsync(page: 1, size: 5);
+            this.m_alerts = result.ItemCollection;
+            this.m_totalRows = result.TotalRows;
+        }
+        catch (Exception ex)
+        {
+            this.Logger.LogError(ex, "Error loading maintenance alerts for widget");
+        }
+        finally
+        {
+            this.m_loading = false;
+        }
+    }
+
+    private async Task ResolveAlert(MaintenanceAlert alert)
+    {
+        var notes = await this.DialogService.PromptAsync(
+            "Resolution Notes",
+            "Resolve Alert",
+            "Resolve",
+            placeholder: "Enter resolution notes...");
+
+        if (notes != null)
+        {
+            var success = await this.AlertService.ResolveAlertAsync(alert.MaintenanceAlertId, notes);
+            if (success)
+            {
+                this.m_alerts.Remove(alert);
+                this.m_totalRows--;
+                this.ShowSuccess("Alert resolved successfully.");
+                this.StateHasChanged();
+            }
+        }
+    }
+}

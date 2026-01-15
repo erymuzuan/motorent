@@ -1,0 +1,206 @@
+@page "/maintenance/alerts"
+@using Microsoft.AspNetCore.Authorization
+@using MotoRent.Domain.Entities
+@using MotoRent.Client.Services
+@attribute [Authorize(Policy = "RequireTenantStaff")]
+@inherits LocalizedComponentBase<MaintenanceAlerts>
+@inject AlertService AlertService
+
+<MotoRentPageTitle>@this.Localizer["MaintenanceAlerts"]</MotoRentPageTitle>
+
+<TablerHeader Title="@this.Localizer["MaintenanceAlerts"]" PreTitle="@this.Localizer["AutomatedAlerts"]">
+    <AuthorizeView Roles="@UserAccount.ORG_ADMIN">
+        <button type="button" class="btn btn-outline-primary" @onclick="this.TriggerManualCheck">
+            <i class="ti ti-refresh me-1"></i>
+            @this.Localizer["TriggerManualCheck"]
+        </button>
+    </AuthorizeView>
+</TablerHeader>
+
+<div class="row row-cards">
+    <div class="col-12">
+        <div class="card">
+            <LoadingSkeleton Loading="@this.m_loading" Mode="LoadingSkeleton.PlaceholderMode.Table" Rows="10">
+                <div class="table-responsive">
+                    <table class="table table-vcenter card-table table-hover">
+                        <thead>
+                            <tr>
+                                <th>@this.Localizer["Vehicle"]</th>
+                                <th>@this.Localizer["Service"]</th>
+                                <th class="text-center">@this.Localizer["Status"]</th>
+                                <th class="text-center">@this.Localizer["Triggered"]</th>
+                                <th class="w-1">@this.Localizer["Actions"]</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (this.m_alerts.Count == 0)
+                            {
+                                <tr>
+                                    <td colspan="5" class="text-center py-5">
+                                        <div class="empty">
+                                            <div class="empty-icon">
+                                                <i class="ti ti-bell-off" style="font-size: 3rem;"></i>
+                                            </div>
+                                            <p class="empty-title">@this.Localizer["NoAlertsFound"]</p>
+                                            <p class="empty-subtitle text-secondary">
+                                                @this.Localizer["AllClear"]
+                                            </p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                            else
+                            {
+                                @foreach (var alert in this.m_alerts)
+                                {
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex flex-column">
+                                                <span class="fw-bold">@alert.LicensePlate</span>
+                                                <span class="text-secondary small">@alert.VehicleName</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex flex-column">
+                                                <span class="fw-bold">@alert.ServiceTypeName</span>
+                                                <span class="text-secondary small">
+                                                    @if (alert.TriggerMileage.HasValue)
+                                                    {
+                                                        <text>@alert.TriggerMileage.Value.ToString("N0") km</text>
+                                                    }
+                                                    else if (alert.TriggerEngineHours.HasValue)
+                                                    {
+                                                        <text>@alert.TriggerEngineHours.Value.ToString("N0") hrs</text>
+                                                    }
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td class="text-center">
+                                            <MaintenanceStatusBadge Status="@alert.Status" />
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="d-flex flex-column">
+                                                <span>@this.FormatDate(alert.TriggerDate)</span>
+                                                <span class="text-secondary small">@this.FormatTime(alert.TriggerDate)</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group">
+                                                <button class="btn btn-icon btn-ghost-secondary" title="@this.Localizer["MarkAsRead"]"
+                                                        @onclick="@(() => this.MarkAsRead(alert))">
+                                                    <i class="ti ti-eye-check"></i>
+                                                </button>
+                                                <button class="btn btn-icon btn-ghost-success" title="@this.Localizer["Resolve"]"
+                                                        @onclick="@(() => this.ShowResolveDialog(alert))">
+                                                    <i class="ti ti-check"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                @if (this.m_totalRows > this.m_alerts.Count)
+                {
+                    <div class="card-footer d-flex align-items-center">
+                        <p class="m-0 text-secondary">Showing <span>@this.m_alerts.Count</span> of <span>@this.m_totalRows</span> entries</p>
+                    </div>
+                }
+            </LoadingSkeleton>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<MaintenanceAlert> m_alerts = [];
+    private int m_totalRows;
+    private bool m_loading = true;
+    private int m_currentPage = 1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await this.LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        this.m_loading = true;
+        try
+        {
+            var result = await this.AlertService.GetActiveAlertsAsync(this.m_currentPage);
+            this.m_alerts = result.ItemCollection;
+            this.m_totalRows = result.TotalRows;
+        }
+        catch (Exception ex)
+        {
+            this.ShowError(this.Localizer["ErrorLoadingData", ex.Message]);
+        }
+        finally
+        {
+            this.m_loading = false;
+        }
+    }
+
+    private async Task MarkAsRead(MaintenanceAlert alert)
+    {
+        var success = await this.AlertService.MarkAsReadAsync(alert.MaintenanceAlertId);
+        if (success)
+        {
+            this.m_alerts.Remove(alert);
+            this.ShowSuccess(this.Localizer["AlertMarkedRead"]);
+            this.StateHasChanged();
+        }
+        else
+        {
+            this.ShowError("Failed to mark alert as read");
+        }
+    }
+
+    private async Task ShowResolveDialog(MaintenanceAlert alert)
+    {
+        var notes = await this.DialogService.PromptAsync(
+            this.Localizer["ResolutionNotes"],
+            this.Localizer["ResolveAlert"],
+            this.Localizer["Resolve"],
+            placeholder: this.Localizer["ResolutionNotesPlaceholder"]);
+
+        if (notes != null)
+        {
+            var success = await this.AlertService.ResolveAlertAsync(alert.MaintenanceAlertId, notes);
+            if (success)
+            {
+                this.m_alerts.Remove(alert);
+                this.ShowSuccess(this.Localizer["AlertResolved"]);
+                this.StateHasChanged();
+            }
+            else
+            {
+                this.ShowError("Failed to resolve alert");
+            }
+        }
+    }
+
+    private async Task TriggerManualCheck()
+    {
+        this.m_loading = true;
+        try
+        {
+            var count = await this.AlertService.TriggerAlertsAsync();
+            if (count >= 0)
+            {
+                this.ShowSuccess(this.Localizer["ManualCheckTriggered", count]);
+                await this.LoadDataAsync();
+            }
+            else
+            {
+                this.ShowError("Failed to trigger manual check");
+            }
+        }
+        finally
+        {
+            this.m_loading = false;
+        }
+    }
+}
