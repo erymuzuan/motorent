@@ -23,18 +23,18 @@ This plan outlines the steps for implementing the automated maintenance alert sy
 
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Core Logic & Alert Generation' (Protocol in workflow.md) 4e0fcf5
 
-## Phase 2: UI Integration & User Notifications
+## Phase 2: UI Integration & User Notifications [checkpoint: ef7a91c]
 
-### Task 1: API Endpoint for Alerts
-- [ ] Task: Create API endpoints to fetch alerts for the current shop.
-    - [ ] Write unit tests for the alert API controller.
-    - [ ] Implement GET endpoint for active alerts.
-    - [ ] Implement POST endpoint to mark alerts as read/resolved.
+### Task 1: API Endpoint for Alerts (COMPLETED) ef7a91c
+- [x] Task: Create API endpoints to fetch alerts for the current shop. ef7a91c
+    - [x] Write unit tests for the alert API controller.
+    - [x] Implement GET endpoint for active alerts.
+    - [x] Implement POST endpoint to mark alerts as read/resolved.
 
-### Task 2: UI Component for Dashboard Alerts
-- [ ] Task: Create a Blazor component to display maintenance alerts.
-    - [ ] Write unit tests for the alert display component.
-    - [ ] Implement a dashboard widget or notification area for alerts.
-    - [ ] Connect the UI component to the alert API.
+### Task 2: UI Component for Dashboard Alerts (COMPLETED) ef7a91c
+- [x] Task: Create a Blazor component to display maintenance alerts. ef7a91c
+    - [x] Write unit tests for the alert display component.
+    - [x] Implement a dashboard widget or notification area for alerts.
+    - [x] Connect the UI component to the alert API.
 
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: UI Integration & User Notifications' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2: UI Integration & User Notifications' (Protocol in workflow.md) ef7a91c
