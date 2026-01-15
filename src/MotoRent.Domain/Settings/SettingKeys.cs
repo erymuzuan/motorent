@@ -178,5 +178,35 @@ public static class SettingKeys
     /// </summary>
     public const string Fleet_EnablePoolSharing = "Fleet.EnablePoolSharing";
 
+    /// <summary>
+    /// Enabled vehicle types (string array: Motorbike,Car,JetSki,Boat,Van).
+    /// </summary>
+    public const string Fleet_EnabledVehicleTypes = "Fleet.EnabledVehicleTypes";
+
+    /// <summary>
+    /// Enable motorbike rentals (bool).
+    /// </summary>
+    public const string Fleet_EnableMotorbike = "Fleet.EnableMotorbike";
+
+    /// <summary>
+    /// Enable car rentals (bool).
+    /// </summary>
+    public const string Fleet_EnableCar = "Fleet.EnableCar";
+
+    /// <summary>
+    /// Enable jet ski rentals (bool).
+    /// </summary>
+    public const string Fleet_EnableJetSki = "Fleet.EnableJetSki";
+
+    /// <summary>
+    /// Enable boat rentals (bool).
+    /// </summary>
+    public const string Fleet_EnableBoat = "Fleet.EnableBoat";
+
+    /// <summary>
+    /// Enable van rentals (bool).
+    /// </summary>
+    public const string Fleet_EnableVan = "Fleet.EnableVan";
+
     #endregion
 }

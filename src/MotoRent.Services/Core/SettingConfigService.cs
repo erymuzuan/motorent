@@ -173,19 +173,23 @@ public class SettingConfigService(
         var accountNo = this.RequestContext.GetAccountNo();
         if (string.IsNullOrWhiteSpace(accountNo)) return null;
 
+        // Use simple query with single Where clauses that CoreRepository can parse
+        // Then filter in memory for the exact match
+        var query = this.Context.Settings
+            .Where(s => s.AccountNo == accountNo)
+            .Where(s => s.Key == key);
+
+        var result = await this.Context.LoadAsync(query, page: 1, size: 10, includeTotalRows: false);
+
+        // Filter in memory for user-specific or org-wide setting
         if (string.IsNullOrWhiteSpace(userName))
         {
-            return await this.Context.LoadOneAsync<Setting>(s =>
-                s.AccountNo == accountNo &&
-                s.Key == key &&
-                (s.UserName == null || s.UserName == ""));
+            return result.ItemCollection.FirstOrDefault(s =>
+                string.IsNullOrWhiteSpace(s.UserName));
         }
         else
         {
-            return await this.Context.LoadOneAsync<Setting>(s =>
-                s.AccountNo == accountNo &&
-                s.Key == key &&
-                s.UserName == userName);
+            return result.ItemCollection.FirstOrDefault(s => s.UserName == userName);
         }
     }
 
