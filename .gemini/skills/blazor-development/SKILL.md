@@ -1,3 +1,8 @@
+---
+name: blazor-development
+description: Manage blazor development, razor and razor.cs and any blazor component editing skills.
+---
+
 # Blazor Development Skills
 
 Manage blazor development, razor and razor.cs and any blazor component editing skills.

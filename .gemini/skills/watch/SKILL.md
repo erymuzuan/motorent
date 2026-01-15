@@ -1,3 +1,8 @@
+---
+name: watch
+description: Run dotnet watch, fix compile errors, and verify features in browser. Use when asked to "watch", "run and test", or "build and verify".
+---
+
 # Watch & Verify Skill
 
 This skill runs `dotnet watch` to continuously build and run the MotoRent server, monitors for compile errors, fixes them, and uses the browser to verify features work correctly.

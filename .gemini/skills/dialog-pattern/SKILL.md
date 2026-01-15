@@ -1,3 +1,8 @@
+---
+name: dialog-pattern
+description: Tabler modal dialog patterns using localized base classes and fluent API extensions.
+---
+
 # Dialog Pattern Skills
 
 ## Dialog Pattern

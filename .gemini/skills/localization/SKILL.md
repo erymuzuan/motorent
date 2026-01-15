@@ -1,3 +1,8 @@
+---
+name: localization
+description: Multi-language support (English/Thai) implementation using localized base classes and resource files.
+---
+
 # Localization (Multi-Language Support)
 
 Multi-language support patterns for MotoRent (English/Thai) using localized base classes.

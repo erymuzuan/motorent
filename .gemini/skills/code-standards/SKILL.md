@@ -1,3 +1,8 @@
+---
+name: code-standards
+description: C# coding conventions, naming patterns, and file organization standards for the MotoRent project.
+---
+
 # Code Standards
 
 C# coding conventions, naming patterns, and file organization standards for the MotoRent project.

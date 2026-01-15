@@ -1,3 +1,8 @@
+---
+name: messaging-events
+description: RabbitMQ pub/sub patterns for asynchronous processing of entity changes and system events.
+---
+
 # Messaging & Events (RabbitMQ)
 
 RabbitMQ pub/sub patterns for asynchronous processing of entity changes and system events.
