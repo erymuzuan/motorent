@@ -180,3 +180,7 @@ See `risk-management.md` in project root for complete Fleet Management Module sp
 - Digital Vehicle Inspection (Section 5)
 - QR Code Check-In/Out (Section 6)
 - Fuel Management (Section 7)
+
+## Things to remember
+ - Apply code standard and database repository skill after code generation
+ - Apply css styling for .razor files after editing/generating
