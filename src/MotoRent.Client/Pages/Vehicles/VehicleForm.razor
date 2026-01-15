@@ -1,4 +1,5 @@
 @using MotoRent.Client.Components.Vehicles
+@using MotoRent.Client.Components.Shared
 @using MotoRent.Domain.Lookups
 @inherits LocalizedComponentBase<VehicleForm>
 @inject VehicleLookupService LookupService
@@ -363,6 +364,15 @@
                         <i class="ti ti-gauge"></i>
                     </div>
                     <h3 class="mr-form-panel-title">@Localizer["MaintenanceTracking"]</h3>
+                    @if (!IsNew && Entity.VehicleId > 0)
+                    {
+                        <div class="ms-auto">
+                            <a href="/maintenance/alerts" class="btn btn-ghost-primary btn-sm">
+                                <i class="ti ti-settings-cog me-1"></i>
+                                @Localizer["MaintenancePage"]
+                            </a>
+                        </div>
+                    }
                 </div>
                 <div class="mr-form-panel-body">
                     <div class="row g-3">
@@ -380,6 +390,16 @@
                             <input type="date" class="mr-form-control" @bind="LastServiceDate" />
                         </div>
                     </div>
+
+                    @* Maintenance Summary Widget - Only for existing vehicles *@
+                    @if (!IsNew && Entity.VehicleId > 0)
+                    {
+                        <div class="mt-3 pt-3 border-top">
+                            <h4 class="mb-2 fw-medium">@Localizer["ServiceStatus"]</h4>
+                            <VehicleMaintenanceWidget VehicleId="@Entity.VehicleId"
+                                                      CurrentMileage="@Entity.Mileage" />
+                        </div>
+                    }
                 </div>
             </div>
         }

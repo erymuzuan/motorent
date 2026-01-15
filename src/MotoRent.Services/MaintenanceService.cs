@@ -283,6 +283,35 @@ public class MaintenanceService(RentalDataContext context)
         };
     }
 
+    /// <summary>
+    /// Gets maintenance summary for a Vehicle entity (unified vehicle system).
+    /// </summary>
+    public async Task<VehicleMaintenanceSummary> GetVehicleMaintenanceSummaryAsync(
+        int vehicleId, int? currentMileage, DateTimeOffset today)
+    {
+        var schedules = await this.GetSchedulesWithStatusForMotorbikeAsync(
+            vehicleId, currentMileage ?? 0, today);
+
+        var overdueCount = schedules.Count(s => s.Status == MaintenanceStatus.Overdue);
+        var dueSoonCount = schedules.Count(s => s.Status == MaintenanceStatus.DueSoon);
+
+        return new VehicleMaintenanceSummary
+        {
+            VehicleId = vehicleId,
+            OverallStatus = overdueCount > 0
+                ? MaintenanceStatus.Overdue
+                : dueSoonCount > 0
+                    ? MaintenanceStatus.DueSoon
+                    : MaintenanceStatus.Ok,
+            Schedules = schedules,
+            OverdueCount = overdueCount,
+            DueSoonCount = dueSoonCount,
+            OkCount = schedules.Count(s => s.Status == MaintenanceStatus.Ok),
+            TotalSchedules = schedules.Count,
+            HasSchedules = schedules.Count > 0
+        };
+    }
+
     public async Task<MaintenanceSummary> GetMaintenanceSummaryAsync(DateTimeOffset today)
     {
         var bikesResult = await this.Context.LoadAsync(
@@ -360,6 +389,18 @@ public class MaintenanceSummary
     public int DueSoonBikes { get; set; }
     public int OkBikes { get; set; }
     public int TotalBikes { get; set; }
+}
+
+public class VehicleMaintenanceSummary
+{
+    public int VehicleId { get; set; }
+    public MaintenanceStatus OverallStatus { get; set; }
+    public List<MaintenanceScheduleWithStatus> Schedules { get; set; } = [];
+    public int OverdueCount { get; set; }
+    public int DueSoonCount { get; set; }
+    public int OkCount { get; set; }
+    public int TotalSchedules { get; set; }
+    public bool HasSchedules { get; set; }
 }
 
 #endregion
