@@ -1,6 +1,7 @@
 @page "/super-admin/users"
 @rendermode InteractiveServer
 @inherits MotoRentComponentBase
+@implements IDisposable
 @using Microsoft.AspNetCore.Authorization
 @using MotoRent.Domain.Core
 @using MotoRent.Domain.DataContext
@@ -166,20 +167,20 @@
                                     </button>
                                     <div class="dropdown-menu dropdown-menu-end @(this.m_openDropdown == user.UserName ? "show" : "")"
                                          style="@(this.m_openDropdown == user.UserName ? "position: absolute; inset: 0px 0px auto auto; margin: 0px; transform: translate(0px, 34px);" : "")">
-                                        <a class="dropdown-item" href="#" @onclick="@(() => { this.CloseDropdown(); this.ViewUserDetails(user); })" @onclick:preventDefault>
+                                        <a class="dropdown-item" href="#" @onclick="@(async () => { this.CloseDropdown(); await this.ViewUserDetails(user); })" @onclick:preventDefault>
                                             <i class="ti ti-eye me-2"></i>
                                             View Details
                                         </a>
                                         @if (user.IsLockedOut)
                                         {
-                                            <a class="dropdown-item text-success" href="#" @onclick="@(() => { this.CloseDropdown(); this.UnlockUser(user); })" @onclick:preventDefault>
+                                            <a class="dropdown-item text-success" href="#" @onclick="@(async () => { this.CloseDropdown(); await this.UnlockUser(user); })" @onclick:preventDefault>
                                                 <i class="ti ti-lock-open me-2"></i>
                                                 Unlock User
                                             </a>
                                         }
                                         else
                                         {
-                                            <a class="dropdown-item text-warning" href="#" @onclick="@(() => { this.CloseDropdown(); this.LockUser(user); })" @onclick:preventDefault>
+                                            <a class="dropdown-item text-warning" href="#" @onclick="@(async () => { this.CloseDropdown(); await this.LockUser(user); })" @onclick:preventDefault>
                                                 <i class="ti ti-lock me-2"></i>
                                                 Lock User
                                             </a>
@@ -221,6 +222,12 @@
     protected override async Task OnInitializedAsync()
     {
         await this.LoadDataAsync();
+    }
+
+    public void Dispose()
+    {
+        this.m_debounceTimer?.Stop();
+        this.m_debounceTimer?.Dispose();
     }
 
     private void ToggleDropdown(string? userName)
@@ -269,7 +276,7 @@
         this.m_debounceTimer.Elapsed += (sender, args) =>
         {
             this.m_debounceTimer?.Stop();
-            this.InvokeAsync(() =>
+            _ = this.InvokeAsync(() =>
             {
                 this.ApplyFilters();
                 this.StateHasChanged();
@@ -343,7 +350,7 @@
 
             Accounts:
             {accounts}
-            """ ;
+            """;
 
         await this.DialogService.ShowMessageAsync(message, "User Details");
     }
