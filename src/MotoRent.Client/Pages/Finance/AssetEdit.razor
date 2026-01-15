@@ -1,6 +1,7 @@
 @page "/finance/assets/new"
 @page "/finance/assets/{AssetId:int}"
 @using Microsoft.AspNetCore.Authorization
+@using MotoRent.Domain.Entities
 @attribute [Authorize(Policy = "RequireTenantManager")]
 @inherits LocalizedComponentBase<AssetEdit>
 @inject AssetService AssetService
@@ -45,11 +46,31 @@
     else
     {
         <div class="card">
-            <div class="card-header">
+            <div class="card-header d-flex justify-content-between align-items-center">
                 <h3 class="card-title">
                     <i class="ti ti-chart-pie me-2"></i>
                     @(IsNew ? Localizer["AssetDetails"] : $"{m_asset?.VehicleName} - {m_asset?.LicensePlate}")
                 </h3>
+                @if (!IsNew && m_asset?.Status == AssetStatus.Active)
+                {
+                    <div class="dropdown">
+                        <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <i class="ti ti-dots-vertical me-1"></i>
+                            @Localizer["Actions"]
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end">
+                            <button class="dropdown-item" @onclick="ShowDisposalDialogAsync">
+                                <i class="ti ti-cash text-success me-2"></i>
+                                @Localizer["DisposeAsset"]
+                            </button>
+                            <div class="dropdown-divider"></div>
+                            <button class="dropdown-item text-danger" @onclick="ShowWriteOffDialogAsync">
+                                <i class="ti ti-trash me-2"></i>
+                                @Localizer["WriteOffAsset"]
+                            </button>
+                        </div>
+                    </div>
+                }
             </div>
             <AssetDialog @ref="m_dialog" Entity="m_asset" IsNew="@IsNew" OnSaved="OnSavedAsync" />
             <div class="card-footer d-flex justify-content-between">
@@ -111,5 +132,33 @@
     {
         NavigationManager.NavigateTo("/finance/asset-dashboard");
         await Task.CompletedTask;
+    }
+
+    private async Task ShowDisposalDialogAsync()
+    {
+        if (m_asset == null) return;
+
+        var result = await DialogService.Create<AssetDisposalDialog>(Localizer["DisposeAsset"])
+            .WithParameter(x => x.Asset, m_asset)
+            .ShowDialogAsync();
+
+        if (result is { Cancelled: false })
+        {
+            NavigationManager.NavigateTo("/finance/asset-dashboard");
+        }
+    }
+
+    private async Task ShowWriteOffDialogAsync()
+    {
+        if (m_asset == null) return;
+
+        var result = await DialogService.Create<AssetWriteOffDialog>(Localizer["WriteOffAsset"])
+            .WithParameter(x => x.Asset, m_asset)
+            .ShowDialogAsync();
+
+        if (result is { Cancelled: false })
+        {
+            NavigationManager.NavigateTo("/finance/asset-dashboard");
+        }
     }
 }
