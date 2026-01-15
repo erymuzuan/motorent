@@ -89,7 +89,7 @@ public static class ExceptionExtensions
         }
 
         var files = Directory.GetFiles(folder, "*.sql")
-            .Where(x => x.EndsWith($"{table}.sql")).ToArray();
+            .Where(x => x.EndsWith($".{table}.sql")).ToArray();
         if (files is not [var file])
         {
             throw new FileNotFoundException($"[CreateTable] SQL file not found for table '{schema}.{table}'. Expected file: *{table}.sql in {folder}");
@@ -106,14 +106,13 @@ public static class ExceptionExtensions
         sql = sql.Replace("[MotoRent].", $"[{schema}].");
         sql = sql.Replace("<schema>", schema);
 
-        var cs = await MotoConfig.GetSqlConnectionString(schema);
-        if (string.IsNullOrWhiteSpace(cs))
+        if (string.IsNullOrWhiteSpace(MotoConfig.SqlConnectionString))
         {
             Console.WriteLine($"[CreateTable] No connection string found for schema '{schema}'");
             return false;
         }
 
-        await using var conn = new SqlConnection(cs);
+        await using var conn = new SqlConnection(MotoConfig.SqlConnectionString);
         await using var cmd = new SqlCommand(sql, conn);
         await conn.OpenAsync();
         await cmd.ExecuteNonQueryAsync();
@@ -165,8 +164,7 @@ public static class ExceptionExtensions
                    ADD {ct};
                    """;
 
-        var cs = await MotoConfig.GetSqlConnectionString(schema);
-        if (string.IsNullOrWhiteSpace(cs))
+        if (string.IsNullOrWhiteSpace(MotoConfig.SqlConnectionString))
         {
             Console.WriteLine($"[CreateColumn] No connection string found for schema '{schema}'");
             return false;
@@ -174,7 +172,7 @@ public static class ExceptionExtensions
 
         try
         {
-            await using var conn = new SqlConnection(cs);
+            await using var conn = new SqlConnection(MotoConfig.SqlConnectionString);
             await using var cmd = new SqlCommand(sql, conn);
             await conn.OpenAsync();
             await cmd.ExecuteNonQueryAsync();
@@ -204,8 +202,7 @@ public static class ExceptionExtensions
                    DROP COLUMN [ChangedDate];
                    """;
 
-        var cs = await MotoConfig.GetSqlConnectionString(schema);
-        if (string.IsNullOrWhiteSpace(cs))
+        if (string.IsNullOrWhiteSpace(MotoConfig.SqlConnectionString))
         {
             Console.WriteLine($"[CreateChangedTimestampColumn] No connection string found for schema '{schema}'");
             return false;
@@ -215,7 +212,7 @@ public static class ExceptionExtensions
         {
             try
             {
-                await using var conn = new SqlConnection(cs);
+                await using var conn = new SqlConnection(MotoConfig.SqlConnectionString);
                 await using var cmd = new SqlCommand(ts.Trim(), conn);
                 await conn.OpenAsync();
                 await cmd.ExecuteNonQueryAsync();
@@ -246,8 +243,7 @@ public static class ExceptionExtensions
                    DROP COLUMN [CreatedDate];
                    """;
 
-        var cs = await MotoConfig.GetSqlConnectionString(schema);
-        if (string.IsNullOrWhiteSpace(cs))
+        if (string.IsNullOrWhiteSpace(MotoConfig.SqlConnectionString))
         {
             Console.WriteLine($"[CreateCreatedTimestampColumn] No connection string found for schema '{schema}'");
             return false;
@@ -257,7 +253,7 @@ public static class ExceptionExtensions
         {
             try
             {
-                await using var conn = new SqlConnection(cs);
+                await using var conn = new SqlConnection(MotoConfig.SqlConnectionString);
                 await using var cmd = new SqlCommand(ts.Trim(), conn);
                 await conn.OpenAsync();
                 await cmd.ExecuteNonQueryAsync();
