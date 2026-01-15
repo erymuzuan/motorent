@@ -107,7 +107,7 @@
         m_loading = true;
         try
         {
-            var result = await MaintenanceService.GetServiceTypesAsync(ShopId, activeOnly: false);
+            var result = await MaintenanceService.GetServiceTypesAsync(0, activeOnly: false);
             m_serviceTypes = result.ItemCollection.ToList();
         }
         finally
@@ -120,7 +120,7 @@
     {
         var serviceType = new ServiceType
         {
-            ShopId = ShopId,
+            ShopId = this.RequestContext.GetShopId(),
             IsActive = true,
             DaysInterval = 30,
             KmInterval = 3000,
@@ -180,7 +180,7 @@
         m_loading = true;
         try
         {
-            var result = await MaintenanceService.CreateDefaultServiceTypesAsync(ShopId, UserName);
+            var result = await MaintenanceService.CreateDefaultServiceTypesAsync(this.RequestContext.GetShopId(), UserName);
             if (result.Success)
             {
                 await LoadDataAsync();

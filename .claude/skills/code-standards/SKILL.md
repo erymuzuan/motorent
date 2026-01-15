@@ -15,8 +15,9 @@ description: C# coding conventions, naming patterns, and file organization stand
   - camelCase for local variables and parameters
   - Prefix interfaces with `I`
   - Prefix for private instance members is `m_`
-  - Prefix for static fields is `s_`
-  - Prefix for constants is `c_` or PascalCase
+  - Prefix for static fields is `m_`
+  - Prefix for constants UPPERCASE_WITH_UNDERSCORES
+
 
 ## Service Injection Pattern
 ```csharp
@@ -69,34 +70,35 @@ using MotoRent.Domain.Entities;
 namespace MotoRent.Services;
 
 // 3. Type declaration
-public class RentalService
+public class RentalService(RentalDataContext context)
 {
     // 4. Constants
-    private const int c_maxRentalDays = 30;
+    private const int MAX_RENTAL_DAYS = 30;
 
     // 5. Static fields
     private static readonly JsonSerializerOptions s_options = new();
 
+    // private properties for injection
+    private RentalDataContext {get;} = context;
+
     // 6. Instance fields (m_ prefix)
-    private readonly RentalDataContext m_context;
     private List<Rental> m_cachedRentals = [];
-
-    // 7. Constructor
-    public RentalService(RentalDataContext context)
-    {
-        m_context = context;
-    }
-
+   
     // 8. Properties
     public int ShopId { get; set; }
 
     // 9. Public methods
     public async Task<Rental?> GetRentalAsync(int id)
     {
-        return await this.m_context.LoadOneAsync<Rental>(r => r.RentalId == id);
+        return await this.DataContext.LoadOneAsync<Rental>(r => r.RentalId == id);
     }
+    
+    
+    // 9. One line methods
+    public Task<Rental?> GetRentalAsync(int id) => this.DataContext.LoadOneAsync<Rental>(r => r.RentalId == id);
+    
 
-    // 10. Private methods
+    // 11. Private methods
     private void ValidateRental(Rental rental)
     {
         // ...
@@ -146,6 +148,9 @@ if (rental is null)
 if (rental is { Status: "Active" })
     ProcessActive(rental);
 
+if (shop == null || !shop.IsActive) // Wrong
+if( shop is {IsActive:true}) // correct
+
 // Null coalescing
 var name = rental?.RenterName ?? "Unknown";
 
@@ -157,14 +162,15 @@ var item = list.FirstOrDefault()!;
 
 ```csharp
 // Use collection expressions
-private List<Rental> m_rentals = [];
-private Dictionary<int, Rental> m_cache = [];
+private List<Rental> Rentals {get;} = [];
+private Dictionary<int, Rental> Cache {get;} = [];
 
 // LINQ patterns
-var activeRentals = this.m_rentals
+var query = this.DataContext.CreateQuery<Rental>()
     .Where(r => r.Status == "Active")
-    .OrderByDescending(r => r.StartDate)
-    .ToList();
+    .OrderByDescending(r => r.StartDate);
+var lo = await this.DataContext.LoadAsync(query);
+var rentals = lo.ItemCollection;
 
 // Prefer foreach for side effects
 foreach (var rental in rentals)
@@ -182,6 +188,7 @@ public async Task<Rental?> LoadRentalAsync(int id)
 // Always await or return
 public async Task ProcessAsync()
 {
+    // other statements
     await this.DoWorkAsync();
 }
 
@@ -226,55 +233,6 @@ public class Rental : Entity
     // Entity base implementation
     public override int GetId() => this.RentalId;
     public override void SetId(int value) => this.RentalId = value;
-}
-```
-
-## Blazor Components
-
-```razor
-@* Component file naming: PascalCase.razor *@
-@* Code-behind: PascalCase.razor.cs *@
-
-@page "/rentals"
-@inject RentalDataContext DataContext
-@inject ToastService ToastService
-
-<MotoRentPageTitle>Rentals</MotoRentPageTitle>
-
-@* Component markup *@
-
-@code {
-    // Fields with m_ prefix
-    private List<Rental> m_rentals = [];
-    private bool m_loading;
-
-    // Lifecycle methods
-    protected override async Task OnInitializedAsync()
-    {
-        await this.LoadDataAsync();
-    }
-
-    // Event handlers
-    private async Task OnSaveClicked()
-    {
-        // ...
-    }
-
-    // Private methods
-    private async Task LoadDataAsync()
-    {
-        if (this.m_loading) return; // Prevent double loading
-        this.m_loading = true;
-        try
-        {
-            var result = await this.DataContext.LoadAsync(this.DataContext.Rentals);
-            this.m_rentals = result.ItemCollection.ToList();
-        }
-        finally
-        {
-            this.m_loading = false;
-        }
-    }
 }
 ```
 
@@ -350,3 +308,6 @@ This applies to:
 ## Source
 - Based on: `E:\project\work\rx-erp` patterns
 - Microsoft C# Coding Conventions
+
+## Blazor & Razor files
+Use blazor development skill and css styling skill

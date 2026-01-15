@@ -28,11 +28,6 @@ public class MotoRentComponentBase : ComponentBase
     #region Request Context Properties
 
     /// <summary>
-    /// Gets the current shop ID from the request context.
-    /// </summary>
-    protected int ShopId => this.RequestContext.GetShopId();
-
-    /// <summary>
     /// Gets the current username from the request context, or "system" if not authenticated.
     /// </summary>
     protected string UserName => this.RequestContext.GetUserName() ?? "system";

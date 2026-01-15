@@ -3,6 +3,7 @@
 @using System.Security.Claims
 @using MotoRent.Domain.Core
 @using MotoRent.Domain.DataContext
+@using MotoRent.Domain.Entities
 @using MotoRent.Domain.Storage
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Web
@@ -12,6 +13,7 @@
 @inject IJSRuntime JS
 @inject IRequestContext RequestContext
 @inject CoreDataContext CoreContext
+@inject RentalDataContext RentalContext
 @inject IBinaryStore BinaryStore
 @inject NavigationManager Navigation
 @inject IStringLocalizer<MainLayout> Localizer
@@ -61,6 +63,46 @@
                         </div>
                     </div>
                 </div>
+                @* Shop Selector *@
+                <AuthorizeView>
+                    <Authorized>
+                        @if (m_shops.Count > 0)
+                        {
+                            <div class="nav-item d-none d-md-flex me-3">
+                                <div class="dropdown">
+                                    <a href="#" class="nav-link px-0 d-flex align-items-center" data-bs-toggle="dropdown"
+                                       aria-label="@Localizer["SelectShop"]" @onclick:preventDefault>
+                                        <i class="ti ti-building-store me-1"></i>
+                                        <span class="d-none d-lg-inline">@m_currentShopName</span>
+                                        <i class="ti ti-chevron-down ms-1 small"></i>
+                                    </a>
+                                    <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
+                                        <span class="dropdown-header">@Localizer["WorkingShop"]</span>
+                                        <a href="/account/switch-shop/0?returnUrl=@Uri.EscapeDataString(CurrentPathAndQuery)"
+                                           class="dropdown-item @(m_shopId == 0 ? "active" : "")">
+                                            <i class="ti ti-world me-2"></i>@Localizer["AllShops"]
+                                        </a>
+                                        @if (m_shops.Count > 0)
+                                        {
+                                            <div class="dropdown-divider"></div>
+                                        }
+                                        @foreach (var shop in m_shops)
+                                        {
+                                            <a href="/account/switch-shop/@shop.ShopId?returnUrl=@Uri.EscapeDataString(CurrentPathAndQuery)"
+                                               class="dropdown-item @(m_shopId == shop.ShopId ? "active" : "")">
+                                                <i class="ti ti-building-store me-2"></i>@shop.Name
+                                                @if (!string.IsNullOrEmpty(shop.Location))
+                                                {
+                                                    <span class="text-secondary ms-1 small">(@shop.Location)</span>
+                                                }
+                                            </a>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </Authorized>
+                </AuthorizeView>
                 @* User Profile Dropdown *@
                 <div class="nav-item dropdown">
                     <a href="#" class="nav-link d-flex lh-1 text-reset p-0" data-bs-toggle="dropdown"
@@ -211,11 +253,20 @@
     private string m_homeUrl = "/";
     private string m_orgName = "MotoRent";
 
+    // Shop context fields
+    private List<Shop> m_shops = [];
+    private int m_shopId;
+    private string m_currentShopName = "";
+
+    private string CurrentPathAndQuery =>
+        new Uri(this.Navigation.Uri).GetComponents(UriComponents.PathAndQuery, UriFormat.Unescaped);
+
     protected override async Task OnInitializedAsync()
     {
-        await LoadUserProfileAsync();
-        await LoadOrganizationNameAsync();
-        await DetermineHomeUrlAsync();
+        await this.LoadUserProfileAsync();
+        await this.LoadOrganizationNameAsync();
+        await this.LoadShopsAsync();
+        await this.DetermineHomeUrlAsync();
     }
 
     private async Task LoadOrganizationNameAsync()
@@ -228,12 +279,36 @@
             var org = await this.CoreContext.LoadOneAsync<Organization>(o => o.AccountNo == accountNo);
             if (org != null && !string.IsNullOrWhiteSpace(org.Name))
             {
-                m_orgName = org.Name;
+                this.m_orgName = org.Name;
             }
         }
         catch
         {
             // Silently fail - use default name
+        }
+    }
+
+    private async Task LoadShopsAsync()
+    {
+        try
+        {
+            this.m_shopId = this.RequestContext.GetShopId();
+
+            var query = this.RentalContext.CreateQuery<Shop>()
+                .Where(s => s.IsActive)
+                .OrderBy(s => s.Name);
+            var result = await this.RentalContext.LoadAsync(query);
+            this.m_shops = result.ItemCollection.ToList();
+
+            this.m_currentShopName = this.m_shopId == 0
+                ? this.Localizer["AllShops"]
+                : this.m_shops.FirstOrDefault(s => s.ShopId == this.m_shopId)?.Name
+                  ?? this.Localizer["SelectShop"];
+        }
+        catch
+        {
+            this.m_shops = [];
+            this.m_currentShopName = this.Localizer["AllShops"];
         }
     }
 

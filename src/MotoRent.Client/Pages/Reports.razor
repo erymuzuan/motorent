@@ -315,21 +315,21 @@
             var (fromDate, toDate) = GetDateRange();
 
             // Load payment summary
-            var paymentSummary = await this.PaymentService.GetPaymentSummaryAsync(this.ShopId, fromDate, toDate);
+            var paymentSummary = await this.PaymentService.GetPaymentSummaryAsync(0, fromDate, toDate);
             this.m_totalRevenue = paymentSummary.TotalAmount;
             this.m_revenueByMethod = paymentSummary.ByPaymentMethod;
 
             // Load daily revenue
-            this.m_dailyRevenue = await this.PaymentService.GetDailyRevenueAsync(this.ShopId, fromDate, toDate);
+            this.m_dailyRevenue = await this.PaymentService.GetDailyRevenueAsync(0, fromDate, toDate);
 
             // Load rental stats
-            this.m_rentalsByStatus = await this.RentalService.GetStatusCountsAsync(this.ShopId);
+            this.m_rentalsByStatus = await this.RentalService.GetStatusCountsAsync(0);
             this.m_totalRentals = this.m_rentalsByStatus.Values.Sum();
             this.m_activeRentals = this.m_rentalsByStatus.GetValueOrDefault("Active", 0);
             this.m_completedRentals = this.m_rentalsByStatus.GetValueOrDefault("Completed", 0);
 
             // Load dynamic pricing stats
-            this.m_pricingStats = await this.RentalService.GetDynamicPricingStatsAsync(this.ShopId, fromDate, toDate);
+            this.m_pricingStats = await this.RentalService.GetDynamicPricingStatsAsync(0, fromDate, toDate);
         }
         catch (Exception ex)
         {

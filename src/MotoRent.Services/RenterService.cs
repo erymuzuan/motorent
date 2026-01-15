@@ -8,13 +8,11 @@ public class RenterService(RentalDataContext context)
     private RentalDataContext Context { get; } = context;
 
     public async Task<LoadOperation<Renter>> GetRentersAsync(
-        int shopId,
         string? searchTerm = null,
         int page = 1,
         int pageSize = 20)
     {
         var query = this.Context.CreateQuery<Renter>()
-            .Where(r => r.ShopId == shopId)
             .OrderByDescending(r => r.RenterId);
 
         var result = await this.Context.LoadAsync(query, page, pageSize, includeTotalRows: true);

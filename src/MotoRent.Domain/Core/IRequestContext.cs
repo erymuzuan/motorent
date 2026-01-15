@@ -36,6 +36,7 @@ public interface IRequestContext
 
     /// <summary>
     /// Gets the current shop ID for the authenticated user.
+    /// Returns 0 if no shop is selected (user sees all shops).
     /// </summary>
     int GetShopId();
 

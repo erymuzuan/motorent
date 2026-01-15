@@ -41,10 +41,10 @@ public class MotoRentRequestContext : IRequestContext
 
     public int GetShopId()
     {
-        var claim = Context?.User.Claims.FirstOrDefault(x => x.Type == "ShopId");
+        var claim = this.Context?.User.Claims.FirstOrDefault(x => x.Type == "ShopId");
         if (claim != null && int.TryParse(claim.Value, out var shopId))
             return shopId;
-        return 1; // Default shop for MVP
+        return 0; // No shop selected - user sees all shops
     }
 
     #endregion

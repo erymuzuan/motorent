@@ -147,6 +147,17 @@
     private int m_activeStep;
     private bool m_processing;
 
+    protected override void OnInitialized()
+    {
+        // Require shop selection for check-in
+        if (this.RequestContext.GetShopId() == 0)
+        {
+            this.ToastService.ShowWarning(this.Localizer["ShopRequired"]);
+            this.NavigationManager.NavigateTo("/rentals");
+            return;
+        }
+    }
+
     // Step 1: Renter selection
     private Renter? m_selectedRenter;
 
@@ -205,7 +216,7 @@
 
     private async Task OpenCreateRenterDialog()
     {
-        var renter = new Renter { ShopId = this.ShopId };
+        var renter = new Renter();
 
         var result = await this.DialogService
             .Create<RenterDialog>(this.CommonLocalizer["AddRenter"])
@@ -234,7 +245,7 @@
         {
             var request = new CheckInRequest
             {
-                ShopId = this.ShopId,
+                ShopId = this.RequestContext.GetShopId(),
                 RenterId = this.m_selectedRenter.RenterId,
                 VehicleId = this.m_selectedVehicle.VehicleId,
                 SignatureImagePath = null, // Physical signature collected on printed agreement

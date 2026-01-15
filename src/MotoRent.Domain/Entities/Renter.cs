@@ -5,7 +5,6 @@ namespace MotoRent.Domain.Entities;
 public partial class Renter : Entity
 {
     public int RenterId { get; set; }
-    public int ShopId { get; set; }
     public string FullName { get; set; } = string.Empty;
     public string? Nationality { get; set; }
     public string? PassportNo { get; set; }

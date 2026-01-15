@@ -145,11 +145,11 @@
                         @foreach (var shop in m_poolShops)
                         {
                             <option value="@shop.ShopId">
-                                @shop.Name @(shop.ShopId == this.ShopId ? $"({Localizer["CurrentShop"]})" : "")
+                                @shop.Name @(shop.ShopId == this.RequestContext.GetShopId() ? $"({Localizer["CurrentShop"]})" : "")
                             </option>
                         }
                     </select>
-                    @if (m_returnToShopId != this.ShopId)
+                    @if (m_returnToShopId != this.RequestContext.GetShopId())
                     {
                         <div class="info-banner info-purple mt-2">
                             <i class="ti ti-info-circle"></i>
@@ -1331,7 +1331,7 @@
             // Set defaults
             this.m_actualReturnDate = DateTime.Today;
             this.m_mileageEnd = this.Entity.MileageStart;
-            this.m_returnToShopId = this.ShopId;
+            this.m_returnToShopId = this.RequestContext.GetShopId();
 
             // Load renter name
             var renter = await this.DataContext.LoadOneAsync<Renter>(r => r.RenterId == this.Entity.RenterId);
@@ -1375,7 +1375,7 @@
 
             // Load dropoff service locations
             this.m_dropoffLocations = await this.LocationService.GetActiveLocationsAsync(
-                this.ShopId, pickupOnly: null, dropoffOnly: true);
+                this.RequestContext.GetShopId(), pickupOnly: null, dropoffOnly: true);
 
             // Check if rental already has a dropoff location configured
             if (this.Entity.DropoffLocationId.HasValue)
@@ -1449,7 +1449,7 @@
             DateTime.SpecifyKind(dropoffDate, DateTimeKind.Utc), TimeSpan.Zero)
             .Add(this.m_dropoffTime);
 
-        this.m_dropoffOutOfHoursBand = await this.HoursService.GetOutOfHoursFeeAsync(this.ShopId, dropoffDateTime);
+        this.m_dropoffOutOfHoursBand = await this.HoursService.GetOutOfHoursFeeAsync(this.RequestContext.GetShopId(), dropoffDateTime);
         this.m_dropoffOutOfHoursFee = this.m_dropoffOutOfHoursBand?.Fee ?? 0;
     }
 
@@ -1504,7 +1504,7 @@
                 var message = Localizer["CheckOutCompleted"].Value;
                 if (this.m_refundAmount > 0)
                     message += $" {Localizer["RefundLabel", FormatCurrency(result.RefundAmount)]}";
-                if (this.m_returnToShopId != this.ShopId)
+                if (this.m_returnToShopId != this.RequestContext.GetShopId())
                     message += $" {Localizer["VehicleTransferred", this.m_poolShops.FirstOrDefault(s => s.ShopId == this.m_returnToShopId)?.Name ?? ""]}";
                 this.ShowSuccess(message);
                 this.Close();

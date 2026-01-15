@@ -21,7 +21,6 @@ public partial class Renter : ISearchable
         ["Phone"] = this.Phone ?? "",
         ["Email"] = this.Email ?? "",
         ["Nationality"] = this.Nationality ?? "",
-        ["HotelName"] = this.HotelName ?? "",
-        ["ShopId"] = this.ShopId
+        ["HotelName"] = this.HotelName ?? ""
     };
 }

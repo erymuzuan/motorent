@@ -203,22 +203,22 @@
         try
         {
             // Get vehicle stats
-            var vehicleStats = await VehicleService.GetStatusCountsAsync(ShopId);
+            var vehicleStats = await VehicleService.GetStatusCountsAsync(0);
             m_availableVehicles = vehicleStats.GetValueOrDefault(VehicleStatus.Available, 0);
             m_totalVehicles = vehicleStats.Values.Sum();
 
             // Get rental stats
-            var rentalStats = await RentalService.GetStatusCountsAsync(ShopId);
+            var rentalStats = await RentalService.GetStatusCountsAsync(0);
             m_activeRentals = rentalStats.GetValueOrDefault("Active", 0);
 
             // Get due today count
-            var todaysDueRentals = await RentalService.GetTodaysDueReturnsAsync(ShopId, DateTimeOffset.Now);
+            var todaysDueRentals = await RentalService.GetTodaysDueReturnsAsync(0, DateTimeOffset.Now);
             m_dueToday = todaysDueRentals.Count;
 
             // Get today's revenue
             var todayStart = DateTimeOffset.Now.Date;
             var todayEnd = todayStart.AddDays(1);
-            var paymentSummary = await PaymentService.GetPaymentSummaryAsync(ShopId, todayStart, todayEnd);
+            var paymentSummary = await PaymentService.GetPaymentSummaryAsync(0, todayStart, todayEnd);
             m_todayRevenue = paymentSummary.TotalAmount;
 
             // Load recent rentals
@@ -240,7 +240,7 @@
         m_recentRentals.Clear();
 
         // Get recent rentals
-        var rentalsResult = await RentalService.GetRentalsAsync(ShopId, pageSize: 5);
+        var rentalsResult = await RentalService.GetRentalsAsync(0, pageSize: 5);
 
         foreach (var rental in rentalsResult.ItemCollection)
         {

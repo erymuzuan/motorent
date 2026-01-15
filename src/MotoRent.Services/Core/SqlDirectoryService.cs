@@ -164,6 +164,9 @@ public class SqlDirectoryService(CoreDataContext context) : IDirectoryService
                             }
                         }
                     }
+
+                    // Shop context - default to 0 (all shops)
+                    claims.Add(new Claim("ShopId", "0"));
                 }
             }
 
@@ -214,6 +217,9 @@ public class SqlDirectoryService(CoreDataContext context) : IDirectoryService
         {
             claims.Add(new Claim($"subscription:{sub}", "true"));
         }
+
+        // Shop context - default to 0 (all shops)
+        claims.Add(new Claim("ShopId", "0"));
 
         return claims;
     }

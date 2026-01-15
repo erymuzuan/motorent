@@ -505,7 +505,7 @@
         this.m_loadingInsurance = true;
         try
         {
-            this.m_insurances = await this.InsuranceService.GetActiveInsurancesAsync(this.ShopId);
+            this.m_insurances = await this.InsuranceService.GetActiveInsurancesAsync(this.RequestContext.GetShopId());
         }
         catch (Exception ex)
         {
@@ -522,7 +522,7 @@
         this.m_loadingAccessories = true;
         try
         {
-            var result = await this.AccessoryService.GetAccessoriesAsync(this.ShopId);
+            var result = await this.AccessoryService.GetAccessoriesAsync(this.RequestContext.GetShopId());
             this.m_accessories = result.ItemCollection.Where(a => a.QuantityAvailable > 0).ToList();
 
             // Auto-select included accessories
@@ -551,15 +551,15 @@
         try
         {
             // Load shop for out-of-hours bands
-            this.m_shop = await this.ShopService.GetShopByIdAsync(this.ShopId);
+            this.m_shop = await this.ShopService.GetShopByIdAsync(this.RequestContext.GetShopId());
 
             // Load pickup locations
             this.m_pickupLocations = await this.LocationService.GetActiveLocationsAsync(
-                this.ShopId, pickupOnly: true, dropoffOnly: null);
+                this.RequestContext.GetShopId(), pickupOnly: true, dropoffOnly: null);
 
             // Load dropoff locations
             this.m_dropoffLocations = await this.LocationService.GetActiveLocationsAsync(
-                this.ShopId, pickupOnly: null, dropoffOnly: true);
+                this.RequestContext.GetShopId(), pickupOnly: null, dropoffOnly: true);
         }
         catch (Exception ex)
         {
@@ -658,13 +658,13 @@
         var pickupDateTime = new DateTimeOffset(
             DateTime.SpecifyKind(this.m_startDate.Value, DateTimeKind.Utc), TimeSpan.Zero)
             .Add(this.m_pickupTime);
-        this.m_pickupOutOfHoursBand = await this.HoursService.GetOutOfHoursFeeAsync(this.ShopId, pickupDateTime);
+        this.m_pickupOutOfHoursBand = await this.HoursService.GetOutOfHoursFeeAsync(this.RequestContext.GetShopId(), pickupDateTime);
 
         // Calculate dropoff out-of-hours band
         var dropoffDateTime = new DateTimeOffset(
             DateTime.SpecifyKind(this.m_endDate.Value, DateTimeKind.Utc), TimeSpan.Zero)
             .Add(this.m_dropoffTime);
-        this.m_dropoffOutOfHoursBand = await this.HoursService.GetOutOfHoursFeeAsync(this.ShopId, dropoffDateTime);
+        this.m_dropoffOutOfHoursBand = await this.HoursService.GetOutOfHoursFeeAsync(this.RequestContext.GetShopId(), dropoffDateTime);
     }
 
     private void UpdateConfig() => _ = this.UpdateConfigAsync();
@@ -720,7 +720,7 @@
         var dropoffDateTime = this.Config.EndDate.Add(this.m_dropoffTime);
 
         this.Config.LocationPricing = await this.PricingService.CalculateLocationPricingAsync(
-            this.ShopId,
+            this.RequestContext.GetShopId(),
             pickupDateTime,
             dropoffDateTime,
             this.Config.PickupLocation,
@@ -749,7 +749,7 @@
         {
             var rentalDate = DateOnly.FromDateTime(this.m_startDate.Value.AddDays(i));
             var calc = await this.DynamicPricingService.CalculateAdjustedRateAsync(
-                this.ShopId, baseRate, rentalDate,
+                this.RequestContext.GetShopId(), baseRate, rentalDate,
                 this.SelectedVehicle.VehicleType.ToString(),
                 this.SelectedVehicle.VehicleId);
 

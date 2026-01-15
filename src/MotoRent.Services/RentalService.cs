@@ -744,7 +744,6 @@ public class RentalService(RentalDataContext context, VehiclePoolService? poolSe
             {
                 var newRenter = new Renter
                 {
-                    ShopId = request.ShopId,
                     FullName = request.RenterName,
                     Phone = request.RenterPhone,
                     Email = request.RenterEmail,
@@ -814,9 +813,9 @@ public class RentalService(RentalDataContext context, VehiclePoolService? poolSe
         if (string.IsNullOrWhiteSpace(email) && string.IsNullOrWhiteSpace(phone))
             return [];
 
+        // Find renter by email or phone (renters are universal, not shop-specific)
         var renter = await this.Context.LoadOneAsync<Renter>(r =>
-            r.ShopId == shopId &&
-            ((email != null && r.Email == email) || (phone != null && r.Phone == phone)));
+            (email != null && r.Email == email) || (phone != null && r.Phone == phone));
 
         if (renter == null)
             return [];

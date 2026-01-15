@@ -27,6 +27,65 @@ description: Manage blazor development, razor and razor.cs and any blazor compon
 - **Early return guard** - Add `if (this.Loading) return;` at start of load method to avoid double loading
 - **try-finally** - Always wrap loading logic in try-finally to ensure `Loading = false`
 
+
+## Blazor Components
+For components that display list of items
+
+```razor
+@* Component file naming: PascalCase.razor *@
+@* Code-behind: PascalCase.razor.cs *@
+@inherits LocalizedComponentBase<RentalList>
+
+@page "/rentals"
+@inject RentalDataContext DataContext
+@inject ToastService ToastService
+
+<MotoRentPageTitle>@Localizer["Rentals"]</MotoRentPageTitle>
+
+@* Component markup *@
+
+@code {
+    // Fields with m_ prefix
+    private List<Rental> Rentals {get;} = [];
+    private bool Loading {get;set;}
+    private int TotalRows {get;set;} // for pagination
+    private int Size{get;set;} = 40; //
+
+    // Lifecycle methods
+    protected override async Task OnInitializedAsync()
+    {
+        await this.LoadDataAsync();
+    }
+
+    // Event handlers
+    private async Task OnSaveClicked()
+    {
+        // ...
+    }
+
+    // Private methods
+    private async Task LoadDataAsync()
+    {
+        if (this.Loading) return; // Prevent double loading
+        this.Loading = true;
+        try
+        {
+            var query = this.DataContext.CreateQuery<Rental>()
+                    .Where(x => x.RentalId > 0)
+                    .OrderByDescending(x => x.StartDate);
+            var result = await this.DataContext.LoadAsync(query, size: Math.Min(this.Size, 40), includeTotalRows: true);
+            this.Rentals.Clear();
+            this.Rentals.AddRange(result.ItemCollection);
+            this.TotalRows = result.TotalRows ?? 0;
+        }
+        finally
+        {
+            this.Loading = false;
+        }
+    }
+}
+```
+
 ### LoadingSkeleton Modes
 ```csharp
 <LoadingSkeleton Loading="@Loading" Mode="Skeleton.PlaceholderMode.Table">

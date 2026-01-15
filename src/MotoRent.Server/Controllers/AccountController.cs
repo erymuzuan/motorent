@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MotoRent.Domain.Core;
 using MotoRent.Domain.DataContext;
+using MotoRent.Domain.Entities;
 using CoreUser = MotoRent.Domain.Core.User;
 
 namespace MotoRent.Server.Controllers;
@@ -16,41 +17,36 @@ namespace MotoRent.Server.Controllers;
 /// </summary>
 [Route("account")]
 [Authorize]
-public class AccountController : Controller
+public class AccountController(
+    IDirectoryService directoryService,
+    IRequestContext requestContext,
+    CoreDataContext coreDataContext,
+    RentalDataContext rentalDataContext) : Controller
 {
-    private readonly IDirectoryService m_directoryService;
-    private readonly IRequestContext m_requestContext;
-    private readonly CoreDataContext m_coreDataContext;
+    private IDirectoryService DirectoryService { get; } = directoryService;
+    private IRequestContext RequestContext { get; } = requestContext;
+    private CoreDataContext CoreDataContext { get; } = coreDataContext;
+    private RentalDataContext RentalDataContext { get; } = rentalDataContext;
 
-    public AccountController(
-        IDirectoryService directoryService,
-        IRequestContext requestContext,
-        CoreDataContext coreDataContext)
-    {
-        m_directoryService = directoryService;
-        m_requestContext = requestContext;
-        m_coreDataContext = coreDataContext;
-    }
-
-    #region Login Pages
+    // Login Pages
 
     /// <summary>
     /// Login page.
     /// </summary>
     [AllowAnonymous]
     [HttpGet("login")]
-    public IActionResult Login([FromQuery] string? returnUrl = null)
+    public async Task<IActionResult> Login([FromQuery] string? returnUrl = null)
     {
-        ViewData["ReturnUrl"] = returnUrl;
+        this.ViewData["ReturnUrl"] = returnUrl;
 
         // Pass OAuth configuration status to the view
-        var authSchemes = HttpContext.RequestServices.GetRequiredService<IAuthenticationSchemeProvider>();
-        var schemes = authSchemes.GetAllSchemesAsync().Result;
-        ViewData["GoogleEnabled"] = schemes.Any(s => s.Name == "Google");
-        ViewData["MicrosoftEnabled"] = schemes.Any(s => s.Name == "Microsoft");
-        ViewData["LineEnabled"] = schemes.Any(s => s.Name == "Line");
+        var authSchemes = this.HttpContext.RequestServices.GetRequiredService<IAuthenticationSchemeProvider>();
+        var schemes = (await authSchemes.GetAllSchemesAsync()).ToArray();
+        this.ViewData["GoogleEnabled"] = schemes.Any(s => s.Name == "Google");
+        this.ViewData["MicrosoftEnabled"] = schemes.Any(s => s.Name == "Microsoft");
+        this.ViewData["LineEnabled"] = schemes.Any(s => s.Name == "Line");
 
-        return View();
+        return this.View();
     }
 
     /// <summary>
@@ -58,14 +54,9 @@ public class AccountController : Controller
     /// </summary>
     [AllowAnonymous]
     [HttpGet("access-denied")]
-    public IActionResult AccessDenied()
-    {
-        return View();
-    }
+    public IActionResult AccessDenied() => this.View();
 
-    #endregion
-
-    #region OAuth Login
+    // OAuth Login
 
     /// <summary>
     /// Initiates Google OAuth login.
@@ -76,10 +67,10 @@ public class AccountController : Controller
     {
         var properties = new AuthenticationProperties
         {
-            RedirectUri = Url.Action(nameof(OAuthCallback), new { returnUrl }),
+            RedirectUri = this.Url.Action(nameof(this.OAuthCallback), new { returnUrl }),
             Items = { { "LoginProvider", "Google" } }
         };
-        return Challenge(properties, "Google");
+        return this.Challenge(properties, "Google");
     }
 
     /// <summary>
@@ -91,10 +82,10 @@ public class AccountController : Controller
     {
         var properties = new AuthenticationProperties
         {
-            RedirectUri = Url.Action(nameof(OAuthCallback), new { returnUrl }),
+            RedirectUri = this.Url.Action(nameof(this.OAuthCallback), new { returnUrl }),
             Items = { { "LoginProvider", "Microsoft" } }
         };
-        return Challenge(properties, "Microsoft");
+        return this.Challenge(properties, "Microsoft");
     }
 
     /// <summary>
@@ -106,10 +97,10 @@ public class AccountController : Controller
     {
         var properties = new AuthenticationProperties
         {
-            RedirectUri = Url.Action(nameof(OAuthCallback), new { returnUrl }),
+            RedirectUri = this.Url.Action(nameof(this.OAuthCallback), new { returnUrl }),
             Items = { { "LoginProvider", "Line" } }
         };
-        return Challenge(properties, "Line");
+        return this.Challenge(properties, "Line");
     }
 
     /// <summary>
@@ -121,10 +112,10 @@ public class AccountController : Controller
     public async Task<IActionResult> OAuthCallback([FromQuery] string? returnUrl = null)
     {
         // Authenticate using the external cookie
-        var result = await HttpContext.AuthenticateAsync("ExternalAuth");
+        var result = await this.HttpContext.AuthenticateAsync("ExternalAuth");
         if (!result.Succeeded || result.Principal == null)
         {
-            return RedirectToAction(nameof(Login));
+            return this.RedirectToAction(nameof(this.Login));
         }
 
         // Get the external claims
@@ -141,13 +132,13 @@ public class AccountController : Controller
         // Strategy 1: Try lookup by NameIdentifier + Provider first (for LINE users without email)
         if (!string.IsNullOrWhiteSpace(nameIdentifier))
         {
-            user = await m_directoryService.GetUserByProviderIdAsync(provider, nameIdentifier);
+            user = await this.DirectoryService.GetUserByProviderIdAsync(provider, nameIdentifier);
         }
 
         // Strategy 2: If not found and email exists, try email lookup
         if (user == null && !string.IsNullOrWhiteSpace(email))
         {
-            user = await m_directoryService.GetUserAsync(email.ToLowerInvariant());
+            user = await this.DirectoryService.GetUserAsync(email.ToLowerInvariant());
         }
 
         // Create new user if not found
@@ -167,7 +158,7 @@ public class AccountController : Controller
             else
             {
                 // No email and no LINE ID - cannot create user
-                return RedirectToAction(nameof(Login));
+                return this.RedirectToAction(nameof(this.Login));
             }
 
             user = new CoreUser
@@ -180,7 +171,7 @@ public class AccountController : Controller
             };
 
             // Save the new user
-            await m_directoryService.SaveUserProfileAsync(user);
+            await this.DirectoryService.SaveUserProfileAsync(user);
         }
         else
         {
@@ -189,21 +180,21 @@ public class AccountController : Controller
             {
                 user.NameIdentifier = nameIdentifier;
                 user.CredentialProvider = provider;
-                await m_directoryService.SaveUserProfileAsync(user);
+                await this.DirectoryService.SaveUserProfileAsync(user);
             }
         }
 
         // Check if user is locked
         if (user.IsLockedOut)
         {
-            return RedirectToAction(nameof(AccessDenied));
+            return this.RedirectToAction(nameof(this.AccessDenied));
         }
 
         // Get the user's default account (or null for super admins)
         var accountNo = user.AccountNo;
 
         // Build claims for the user
-        var claims = await m_directoryService.GetClaimsAsync(user.UserName, accountNo);
+        var claims = await this.DirectoryService.GetClaimsAsync(user.UserName, accountNo);
         var claimsList = claims.ToList();
 
         if (claimsList.Count == 0)
@@ -223,8 +214,8 @@ public class AccountController : Controller
         var principal = new ClaimsPrincipal(identity);
 
         // Sign out of external auth and sign in with the main cookie
-        await HttpContext.SignOutAsync("ExternalAuth");
-        await HttpContext.SignInAsync(
+        await this.HttpContext.SignOutAsync("ExternalAuth");
+        await this.HttpContext.SignInAsync(
             CookieAuthenticationDefaults.AuthenticationScheme,
             principal,
             new AuthenticationProperties
@@ -242,16 +233,14 @@ public class AccountController : Controller
 
             if (isSuperAdmin)
             {
-                return LocalRedirect("/super-admin/start-page");
+                return this.LocalRedirect("/super-admin/start-page");
             }
         }
 
-        return LocalRedirect(returnUrl ?? "/");
+        return this.LocalRedirect(returnUrl ?? "/");
     }
 
-    #endregion
-
-    #region Account Switching
+    // Account Switching
 
     /// <summary>
     /// Signs in to a specific account (for users with multiple accounts).
@@ -260,33 +249,33 @@ public class AccountController : Controller
     [HttpGet("sign-in/{accountNo}")]
     public async Task<IActionResult> SignInToAccount(string accountNo, [FromQuery] string? returnUrl = null)
     {
-        var userName = m_requestContext.GetUserName();
+        var userName = await this.RequestContext.GetUserNameAsync();
         if (string.IsNullOrWhiteSpace(userName))
         {
-            return RedirectToAction(nameof(Login));
+            return this.RedirectToAction(nameof(this.Login));
         }
 
         // Verify user has access to this account
-        var user = await m_directoryService.GetUserAsync(userName);
-        if (user == null || !user.AccountCollection.Any(a => a.AccountNo == accountNo))
+        var user = await this.DirectoryService.GetUserAsync(userName);
+        if (user is null || user.AccountCollection.All(a => a.AccountNo != accountNo))
         {
-            return RedirectToAction(nameof(AccessDenied));
+            return this.RedirectToAction(nameof(this.AccessDenied));
         }
 
         // Build claims for the new account
-        var claims = await m_directoryService.GetClaimsAsync(userName, accountNo);
+        var claims = await this.DirectoryService.GetClaimsAsync(userName, accountNo);
         var claimsList = claims.ToList();
 
         if (claimsList.Count == 0)
         {
-            return RedirectToAction(nameof(AccessDenied));
+            return this.RedirectToAction(nameof(this.AccessDenied));
         }
 
         // Sign in with the new account
         var identity = new ClaimsIdentity(claimsList, CookieAuthenticationDefaults.AuthenticationScheme);
         var principal = new ClaimsPrincipal(identity);
 
-        await HttpContext.SignInAsync(
+        await this.HttpContext.SignInAsync(
             CookieAuthenticationDefaults.AuthenticationScheme,
             principal,
             new AuthenticationProperties
@@ -296,12 +285,60 @@ public class AccountController : Controller
                 IssuedUtc = DateTimeOffset.UtcNow
             });
 
-        return LocalRedirect(returnUrl ?? "/");
+        return this.LocalRedirect(returnUrl ?? "/");
     }
 
-    #endregion
+    /// <summary>
+    /// Switches to a specific shop context.
+    /// ShopId = 0 means "all shops" (no filter).
+    /// </summary>
+    [Authorize]
+    [HttpGet("switch-shop/{shopId:int}")]
+    public async Task<IActionResult> SwitchShop(int shopId, [FromQuery] string? returnUrl = null)
+    {
+        var userName = await this.RequestContext.GetUserNameAsync();
+        var accountNo = await this.RequestContext.GetAccountNoAsync();
 
-    #region Logout
+        if (string.IsNullOrWhiteSpace(userName) || string.IsNullOrWhiteSpace(accountNo))
+        {
+            return this.RedirectToAction(nameof(this.Login));
+        }
+
+        // Validate shop belongs to current org (if shopId > 0)
+        if (shopId > 0)
+        {
+            var shop = await this.RentalDataContext.LoadOneAsync<Shop>(s => s.ShopId == shopId);
+            if (shop is not {IsActive:true})
+            {
+                return this.RedirectToAction(nameof(this.AccessDenied));
+            }
+        }
+
+        // Rebuild claims with new ShopId
+        var claims = (await this.DirectoryService.GetClaimsAsync(userName, accountNo)).ToList();
+
+        // Replace ShopId claim
+        claims.RemoveAll(c => c.Type == "ShopId");
+        claims.Add(new Claim("ShopId", shopId.ToString()));
+
+        // Re-sign cookie with updated claims
+        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        var principal = new ClaimsPrincipal(identity);
+
+        await this.HttpContext.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            principal,
+            new AuthenticationProperties
+            {
+                IsPersistent = true,
+                ExpiresUtc = DateTimeOffset.UtcNow.AddDays(14),
+                IssuedUtc = DateTimeOffset.UtcNow
+            });
+
+        return this.LocalRedirect(returnUrl ?? "/");
+    }
+
+    // Logout
 
     /// <summary>
     /// Logs out the current user.
@@ -310,14 +347,12 @@ public class AccountController : Controller
     [HttpGet("logoff")]
     public async Task<IActionResult> Logoff()
     {
-        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-        await HttpContext.SignOutAsync("ExternalAuth");
-        return RedirectToAction(nameof(Login));
+        await this.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        await this.HttpContext.SignOutAsync("ExternalAuth");
+        return this.RedirectToAction(nameof(this.Login));
     }
 
-    #endregion
-
-    #region Impersonation
+    // Impersonation
 
     /// <summary>
     /// Impersonates a user (super admin only).
@@ -332,35 +367,35 @@ public class AccountController : Controller
         [FromQuery(Name = "url")] string? url = null)
     {
         // Get the original super admin username for audit trail
-        var superAdmin = m_requestContext.GetUserName();
+        var superAdmin = this.RequestContext.GetUserName();
         if (string.IsNullOrWhiteSpace(superAdmin))
         {
-            return BadRequest("Not authenticated");
+            return this.BadRequest("Not authenticated");
         }
 
         // Validate hash: MD5(userName:accountNo)
         var expectedHash = ComputeMd5Hash($"{userName}:{accountNo}");
         if (!string.Equals(hash, expectedHash, StringComparison.OrdinalIgnoreCase))
         {
-            return BadRequest("Invalid hash");
+            return this.BadRequest("Invalid hash");
         }
 
         // Load the target user
-        var user = await m_coreDataContext.LoadOneAsync<User>(u => u.UserName == userName);
+        var user = await this.CoreDataContext.LoadOneAsync<User>(u => u.UserName == userName);
         if (user == null)
         {
-            return NotFound($"User '{userName}' not found");
+            return this.NotFound($"User '{userName}' not found");
         }
 
         // Load the target organization
-        var org = await m_coreDataContext.LoadOneAsync<Organization>(o => o.AccountNo == accountNo);
+        var org = await this.CoreDataContext.LoadOneAsync<Organization>(o => o.AccountNo == accountNo);
         if (org == null)
         {
-            return NotFound($"Organization '{accountNo}' not found");
+            return this.NotFound($"Organization '{accountNo}' not found");
         }
 
         // Build claims for the impersonated user
-        var claims = (await m_directoryService.GetClaimsAsync(userName, accountNo)).ToList();
+        var claims = (await this.DirectoryService.GetClaimsAsync(userName, accountNo)).ToList();
 
         // Add super admin claims for audit and to allow returning
         claims.Add(new Claim(ClaimTypes.Role, UserAccount.SUPER_ADMIN));
@@ -372,7 +407,7 @@ public class AccountController : Controller
         var principal = new ClaimsPrincipal(identity);
 
         // Sign in as the impersonated user
-        await HttpContext.SignInAsync(
+        await this.HttpContext.SignInAsync(
             CookieAuthenticationDefaults.AuthenticationScheme,
             principal,
             new AuthenticationProperties
@@ -382,7 +417,7 @@ public class AccountController : Controller
                 IssuedUtc = DateTimeOffset.UtcNow
             });
 
-        return LocalRedirect(url ?? "/");
+        return this.LocalRedirect(url ?? "/");
     }
 
     /// <summary>
@@ -393,28 +428,28 @@ public class AccountController : Controller
     public async Task<IActionResult> RemoveImpersonateAccount()
     {
         // Get the original super admin username from claims
-        var superAdminUserName = await m_requestContext.GetClaimAsync<string>("SuperAdmin");
+        var superAdminUserName = await this.RequestContext.GetClaimAsync<string>("SuperAdmin");
         if (string.IsNullOrWhiteSpace(superAdminUserName))
         {
-            return BadRequest("Not in impersonation mode");
+            return this.BadRequest("Not in impersonation mode");
         }
 
         // Load the super admin user
-        var user = await m_coreDataContext.LoadOneAsync<User>(u => u.UserName == superAdminUserName);
+        var user = await this.CoreDataContext.LoadOneAsync<User>(u => u.UserName == superAdminUserName);
         if (user == null)
         {
-            return BadRequest("Failed to restore super admin session");
+            return this.BadRequest("Failed to restore super admin session");
         }
 
         // Build claims for the super admin (no account)
-        var claims = (await m_directoryService.GetClaimsAsync(superAdminUserName, null)).ToList();
+        var claims = (await this.DirectoryService.GetClaimsAsync(superAdminUserName, null)).ToList();
 
         // Create the super admin identity
         var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
         var principal = new ClaimsPrincipal(identity);
 
         // Sign in as the super admin
-        await HttpContext.SignInAsync(
+        await this.HttpContext.SignInAsync(
             CookieAuthenticationDefaults.AuthenticationScheme,
             principal,
             new AuthenticationProperties
@@ -424,7 +459,7 @@ public class AccountController : Controller
                 IssuedUtc = DateTimeOffset.UtcNow
             });
 
-        return Redirect("/super-admin/start-page");
+        return this.Redirect("/super-admin/start-page");
     }
 
     /// <summary>
@@ -445,12 +480,10 @@ public class AccountController : Controller
             impersonateUrl += $"&url={Uri.EscapeDataString(returnUrl)}";
         }
 
-        return Ok(new { url = impersonateUrl });
+        return this.Ok(new { url = impersonateUrl });
     }
 
-    #endregion
-
-    #region Helpers
+    // Helpers
 
     private static string ComputeMd5Hash(string input)
     {
@@ -458,6 +491,4 @@ public class AccountController : Controller
         var hashBytes = MD5.HashData(inputBytes);
         return Convert.ToHexString(hashBytes).ToLowerInvariant();
     }
-
-    #endregion
 }

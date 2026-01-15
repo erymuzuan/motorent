@@ -120,9 +120,9 @@ public class ShopService(RentalDataContext context)
             page: 1, size: 1000, includeTotalRows: true);
         stats["ActiveRentals"] = rentals.TotalRows;
 
-        // Count renters
+        // Count renters (universal - not shop-specific)
         var renters = await this.Context.LoadAsync(
-            this.Context.CreateQuery<Renter>().Where(r => r.ShopId == shopId),
+            this.Context.CreateQuery<Renter>(),
             page: 1, size: 1000, includeTotalRows: true);
         stats["TotalRenters"] = renters.TotalRows;
 

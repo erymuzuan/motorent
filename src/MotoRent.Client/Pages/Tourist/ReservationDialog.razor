@@ -349,7 +349,7 @@
         this.m_loadingInsurance = true;
         try
         {
-            var result = await this.InsuranceService.GetActiveInsurancesAsync(this.ShopId);
+            var result = await this.InsuranceService.GetActiveInsurancesAsync(0);
             this.m_insuranceOptions = result;
         }
         catch (Exception ex)
@@ -391,7 +391,7 @@
         {
             var request = new ReservationRequest
             {
-                ShopId = this.ShopId,
+                ShopId = this.RequestContext.GetShopId(),
                 // For group reservations, VehicleId may be 0; for individual, use the Motorbike's ID
                 VehicleId = this.IsGroupReservation ? 0 : (this.Motorbike?.MotorbikeId ?? 0),
                 VehicleGroupKey = this.VehicleGroup?.GroupKey,
