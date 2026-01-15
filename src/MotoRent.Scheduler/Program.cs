@@ -3,10 +3,13 @@ using CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using MotoRent.Domain.Core;
+using MotoRent.Domain.DataContext;
 using MotoRent.Domain.Messaging;
 using MotoRent.Messaging;
 using MotoRent.Scheduler;
 using MotoRent.Scheduler.Runners;
+using MotoRent.Services;
 using Spectre.Console;
 
 await SchedulerProgram.RunAsync(args);
@@ -58,6 +61,9 @@ namespace MotoRent.Scheduler
                         var logger = sp.GetRequiredService<ILogger<RabbitMqMessageBroker>>();
                         return new RabbitMqMessageBroker(logger);
                     });
+
+                    // Add MotoRent data context (required for services)
+                    services.AddMotoRentDataContext(MotoConfig.SqlConnectionString);
 
                     // Register task runners
                     services.AddScoped<MaintenanceService>();

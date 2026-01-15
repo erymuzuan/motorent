@@ -1,25 +1,31 @@
-using System.Net.Http.Json;
+using MotoRent.Domain.Core;
 using MotoRent.Domain.DataContext;
 using MotoRent.Domain.Entities;
-using MotoRent.Server.Controllers;
+using MotoRent.Services;
 
 namespace MotoRent.Client.Services;
 
 /// <summary>
 /// Client-side service for managing maintenance alerts.
+/// Wraps MaintenanceAlertService for use in Blazor Server components.
 /// </summary>
-public class AlertService(HttpClient http)
+public class AlertService(MaintenanceAlertService alertService, IRequestContext requestContext)
 {
-    private HttpClient Http { get; } = http;
+    private MaintenanceAlertService AlertServiceBackend { get; } = alertService;
+    private IRequestContext RequestContext { get; } = requestContext;
 
     /// <summary>
     /// Gets active maintenance alerts for the current shop.
     /// </summary>
     public async Task<LoadOperation<MaintenanceAlert>> GetActiveAlertsAsync(int page = 1, int size = 40)
     {
-        var url = $"api/maintenance-alerts?page={page}&size={size}";
-        return await this.Http.GetFromJsonAsync<LoadOperation<MaintenanceAlert>>(url) 
-               ?? new LoadOperation<MaintenanceAlert>([], 0);
+        var shopId = this.RequestContext.GetShopId();
+        if (shopId <= 0)
+        {
+            return new LoadOperation<MaintenanceAlert> { ItemCollection = [], TotalRows = 0 };
+        }
+
+        return await this.AlertServiceBackend.GetActiveAlertsAsync(shopId, page, size);
     }
 
     /// <summary>
@@ -27,8 +33,9 @@ public class AlertService(HttpClient http)
     /// </summary>
     public async Task<bool> MarkAsReadAsync(int alertId)
     {
-        var response = await this.Http.PostAsync($"api/maintenance-alerts/{alertId}/read", null);
-        return response.IsSuccessStatusCode;
+        var username = this.RequestContext.GetUserName() ?? "system";
+        var result = await this.AlertServiceBackend.MarkAsReadAsync(alertId, username);
+        return result.Success;
     }
 
     /// <summary>
@@ -36,9 +43,9 @@ public class AlertService(HttpClient http)
     /// </summary>
     public async Task<bool> ResolveAlertAsync(int alertId, string notes)
     {
-        var request = new ResolveAlertRequest { Notes = notes };
-        var response = await this.Http.PostAsJsonAsync($"api/maintenance-alerts/{alertId}/resolve", request);
-        return response.IsSuccessStatusCode;
+        var username = this.RequestContext.GetUserName() ?? "system";
+        var result = await this.AlertServiceBackend.ResolveAlertAsync(alertId, notes, username);
+        return result.Success;
     }
 
     /// <summary>
@@ -46,17 +53,7 @@ public class AlertService(HttpClient http)
     /// </summary>
     public async Task<int> TriggerAlertsAsync()
     {
-        var response = await this.Http.PostAsync("api/maintenance-alerts/trigger", null);
-        if (response.IsSuccessStatusCode)
-        {
-            var result = await response.Content.ReadFromJsonAsync<TriggerResult>();
-            return result?.AlertsCreated ?? 0;
-        }
-        return -1;
-    }
-
-    private class TriggerResult
-    {
-        public int AlertsCreated { get; set; }
+        var username = this.RequestContext.GetUserName() ?? "system";
+        return await this.AlertServiceBackend.TriggerAlertsAsync(username);
     }
 }

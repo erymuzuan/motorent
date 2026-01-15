@@ -20,16 +20,23 @@ public class MaintenanceAlertService(RentalDataContext context, MaintenanceServi
     {
         // 1. Get all vehicles
         // Note: In a large system, we might want to batch this by shop or last check date.
-        var vehiclesResult = await this.Context.LoadAsync(
-            this.Context.CreateQuery<Vehicle>().Where(v => v.Status != VehicleStatus.Retired),
+        // Load all vehicles first, then filter in memory since Status is stored as string in DB
+        // but deserialized as enum in the entity.
+        var allVehiclesResult = await this.Context.LoadAsync(
+            this.Context.CreateQuery<Vehicle>(),
             page: 1, size: 5000, includeTotalRows: false);
+
+        // Filter out retired vehicles in memory after deserialization
+        var vehicles = allVehiclesResult.ItemCollection
+            .Where(v => v.Status != VehicleStatus.Retired)
+            .ToList();
 
         int alertsCreated = 0;
         var today = DateTimeOffset.UtcNow;
 
         using var session = this.Context.OpenSession(username);
 
-        foreach (var vehicle in vehiclesResult.ItemCollection)
+        foreach (var vehicle in vehicles)
         {
             // 2. Get schedules for this vehicle
             // Note: MaintenanceSchedule currently uses MotorbikeId, which is VehicleId.
@@ -101,7 +108,7 @@ public class MaintenanceAlertService(RentalDataContext context, MaintenanceServi
         var vehicleIds = vehiclesResult.ItemCollection.Select(v => v.VehicleId).ToList();
         
         if (vehicleIds.Count == 0)
-            return new LoadOperation<MaintenanceAlert>([], 0);
+            return new LoadOperation<MaintenanceAlert> { ItemCollection = [], TotalRows = 0 };
 
         var query = this.Context.CreateQuery<MaintenanceAlert>()
             .Where(ma => vehicleIds.Contains(ma.VehicleId) && !ma.IsRead && ma.ResolvedDate == null)
