@@ -5,6 +5,7 @@ using MotoRent.Client.Pages;
 using MotoRent.Client.Services;
 using MotoRent.Domain.Core;
 using MotoRent.Domain.DataContext;
+using MotoRent.Domain.Settings;
 using MotoRent.Domain.Storage;
 using MotoRent.Server.Components;
 using MotoRent.Server.Services;
@@ -110,6 +111,7 @@ if (!string.IsNullOrEmpty(openSearchHost))
 builder.Services.AddScoped<IDirectoryService, SqlDirectoryService>();
 builder.Services.AddScoped<ISubscriptionService, SqlSubscriptionService>();
 builder.Services.AddScoped<OrganizationService>();
+builder.Services.AddScoped<ISettingConfig, SettingConfigService>();
 // Vehicle lookup services (global, shared across all tenants)
 builder.Services.AddScoped<VehicleLookupService>();
 builder.Services.AddScoped<VehicleRecognitionService>();

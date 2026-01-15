@@ -1,0 +1,82 @@
+@*
+    LogoHeader - Dynamic organization logo and name display in header.
+    Loads organization branding from CoreDataContext based on current tenant.
+*@
+@using MotoRent.Domain.Core
+@using MotoRent.Domain.DataContext
+@using MotoRent.Domain.Storage
+@inject IRequestContext RequestContext
+@inject CoreDataContext CoreContext
+@inject IBinaryStore BinaryStore
+
+<button class="navbar-toggler" type="button" @onclick="OnToggle"
+        aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+</button>
+<h1 class="navbar-brand navbar-brand-autodark d-none-navbar-horizontal pe-0 pe-md-3 mb-0">
+    <a href="@HomeUrl" class="d-flex align-items-center text-decoration-none">
+        @if (!string.IsNullOrWhiteSpace(m_logoUrl))
+        {
+            <img src="@m_logoUrl" alt="@m_orgName" class="me-2" style="height: 32px; max-height: 32px; width: auto; max-width: 120px; object-fit: contain; border-radius: 6px;" />
+        }
+        else
+        {
+            <img src="images/icons/ios/40.png" alt="@m_orgName" height="32" class="me-2" />
+        }
+        <span class="fw-bold text-white">@m_orgName</span>
+    </a>
+</h1>
+
+@code {
+    /// <summary>
+    /// Event callback for toggling the navbar (mobile view).
+    /// </summary>
+    [Parameter]
+    public EventCallback OnToggle { get; set; }
+
+    /// <summary>
+    /// Home URL for the logo link. Defaults to "/".
+    /// </summary>
+    [Parameter]
+    public string HomeUrl { get; set; } = "/";
+
+    /// <summary>
+    /// Default organization name to show when not logged in or org not found.
+    /// </summary>
+    [Parameter]
+    public string DefaultName { get; set; } = "MotoRent";
+
+    private string? m_logoUrl;
+    private string m_orgName = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        m_orgName = DefaultName;
+
+        try
+        {
+            var accountNo = RequestContext.GetAccountNo();
+            if (string.IsNullOrEmpty(accountNo)) return;
+
+            var org = await CoreContext.LoadOneAsync<Organization>(o => o.AccountNo == accountNo);
+            if (org == null) return;
+
+            // Set organization name
+            m_orgName = !string.IsNullOrWhiteSpace(org.Name) ? org.Name : DefaultName;
+
+            // Set logo URL - prefer small logo, fall back to main logo
+            var logoStoreId = !string.IsNullOrWhiteSpace(org.SmallLogoStoreId)
+                ? org.SmallLogoStoreId
+                : org.LogoStoreId;
+
+            if (!string.IsNullOrWhiteSpace(logoStoreId))
+            {
+                m_logoUrl = BinaryStore.GetImageUrl(logoStoreId);
+            }
+        }
+        catch
+        {
+            // Silently fail - show default branding
+        }
+    }
+}
