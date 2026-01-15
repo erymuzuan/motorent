@@ -372,8 +372,105 @@
             </div>
         </div>
 
+        <!-- Asset List with Filtering -->
+        <div class="card mt-4 mr-animate-in mr-animate-delay-3">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="ti ti-list me-2"></i>
+                    All Assets
+                </h3>
+                <div class="card-actions">
+                    <div class="btn-group me-2">
+                        <button class="btn btn-sm @(m_statusFilter == null ? "btn-primary" : "btn-outline-secondary")"
+                                @onclick="() => FilterByStatus(null)">
+                            All (@m_summary.TotalAssets)
+                        </button>
+                        <button class="btn btn-sm @(m_statusFilter == AssetStatus.Active ? "btn-primary" : "btn-outline-secondary")"
+                                @onclick="() => FilterByStatus(AssetStatus.Active)">
+                            <i class="ti ti-circle-check me-1"></i>Active (@m_summary.ActiveAssets)
+                        </button>
+                        <button class="btn btn-sm @(m_statusFilter == AssetStatus.Disposed ? "btn-primary" : "btn-outline-secondary")"
+                                @onclick="() => FilterByStatus(AssetStatus.Disposed)">
+                            <i class="ti ti-cash me-1"></i>Disposed (@m_summary.DisposedAssets)
+                        </button>
+                        <button class="btn btn-sm @(m_statusFilter == AssetStatus.WriteOff ? "btn-primary" : "btn-outline-secondary")"
+                                @onclick="() => FilterByStatus(AssetStatus.WriteOff)">
+                            <i class="ti ti-trash me-1"></i>Written Off (@m_summary.WrittenOffAssets)
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-vcenter card-table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Vehicle</th>
+                            <th>Status</th>
+                            <th class="text-end">Acquisition Cost</th>
+                            <th class="text-end">Book Value</th>
+                            <th class="text-end">Depreciation</th>
+                            <th class="text-end">ROI</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var asset in m_filteredAssets)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar bg-primary-lt me-2">
+                                            <i class="ti ti-motorbike"></i>
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold">@asset.VehicleName</div>
+                                            <small class="text-muted">@asset.LicensePlate</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge @GetStatusBadgeClass(asset.Status)">@asset.Status</span>
+                                </td>
+                                <td class="text-end">@asset.AcquisitionCost.ToString("N0")</td>
+                                <td class="text-end">
+                                    <span class="@(asset.Status == AssetStatus.WriteOff ? "text-danger" : "")">
+                                        @asset.CurrentBookValue.ToString("N0")
+                                    </span>
+                                </td>
+                                <td class="text-end text-warning">@asset.AccumulatedDepreciation.ToString("N0")</td>
+                                <td class="text-end">
+                                    <span class="@(asset.ROIPercent >= 0 ? "text-success" : "text-danger")">
+                                        @(asset.ROIPercent >= 0 ? "+" : "")@asset.ROIPercent.ToString("N1")%
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="btn-group">
+                                        <a href="/finance/assets/@asset.AssetId/details" class="btn btn-sm btn-outline-primary" title="View Details">
+                                            <i class="ti ti-chart-line"></i>
+                                        </a>
+                                        <a href="/finance/assets/@asset.AssetId" class="btn btn-sm btn-outline-secondary" title="Edit">
+                                            <i class="ti ti-edit"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                        @if (!m_filteredAssets.Any())
+                        {
+                            <tr>
+                                <td colspan="7" class="text-center text-muted py-4">
+                                    <i class="ti ti-database-off" style="font-size: 2rem;"></i>
+                                    <p class="mb-0 mt-2">No assets found</p>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <!-- Quick Actions Bar -->
-        <div class="mr-quick-actions mr-animate-in mr-animate-delay-3">
+        <div class="mr-quick-actions mr-animate-in mr-animate-delay-3 mt-4">
             <div class="mr-quick-actions-header">
                 <i class="ti ti-bolt"></i>
                 <h3>Quick Actions</h3>
@@ -387,9 +484,9 @@
                     <i class="ti ti-receipt-2 me-1"></i>
                     Record Expense
                 </a>
-                <a href="/finance/assets" class="btn btn-outline-secondary">
-                    <i class="ti ti-list me-1"></i>
-                    View All Assets
+                <a href="/finance/depreciation-report" class="btn btn-outline-secondary">
+                    <i class="ti ti-report me-1"></i>
+                    Depreciation Report
                 </a>
                 <a href="/finance/loans" class="btn btn-outline-info">
                     <i class="ti ti-credit-card me-1"></i>
@@ -405,6 +502,9 @@
     private AssetSummary m_summary = new();
     private List<Asset> m_topPerformers = [];
     private List<Asset> m_worstPerformers = [];
+    private List<Asset> m_allAssets = [];
+    private List<Asset> m_filteredAssets = [];
+    private AssetStatus? m_statusFilter = null;
     private Dictionary<AssetExpenseCategory, decimal> m_expensesByCategory = new();
 
     private decimal m_totalExpenses;
@@ -443,13 +543,18 @@
                 ? (m_summary.NetProfitLoss / m_summary.TotalAcquisitionCost * 100)
                 : 0;
 
-            // Load performers
-            var allAssets = await AssetService.GetAssetsAsync(AssetStatus.Active, 1, 1000);
-            m_topPerformers = allAssets.ItemCollection
+            // Load all assets
+            var allAssetsResult = await AssetService.GetAssetsAsync(null, 1, 1000);
+            m_allAssets = allAssetsResult.ItemCollection.ToList();
+            ApplyFilter();
+
+            // Load performers (from active assets only)
+            var activeAssets = m_allAssets.Where(a => a.Status == AssetStatus.Active).ToList();
+            m_topPerformers = activeAssets
                 .OrderByDescending(a => a.ROIPercent)
                 .Take(5)
                 .ToList();
-            m_worstPerformers = allAssets.ItemCollection
+            m_worstPerformers = activeAssets
                 .Where(a => a.ROIPercent < 0)
                 .OrderBy(a => a.ROIPercent)
                 .Take(5)
@@ -497,5 +602,26 @@
         2 => "silver",
         3 => "bronze",
         _ => ""
+    };
+
+    private void FilterByStatus(AssetStatus? status)
+    {
+        m_statusFilter = status;
+        ApplyFilter();
+    }
+
+    private void ApplyFilter()
+    {
+        m_filteredAssets = m_statusFilter.HasValue
+            ? m_allAssets.Where(a => a.Status == m_statusFilter.Value).ToList()
+            : m_allAssets;
+    }
+
+    private string GetStatusBadgeClass(AssetStatus status) => status switch
+    {
+        AssetStatus.Active => "bg-success-lt",
+        AssetStatus.Disposed => "bg-warning-lt",
+        AssetStatus.WriteOff => "bg-danger-lt",
+        _ => "bg-secondary-lt"
     };
 }

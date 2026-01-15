@@ -26,6 +26,8 @@ Access asset features from **Finance** menu:
 |-----------|-------------|
 | **Finance > Asset Dashboard** | Financial command center with KPIs, charts, and alerts |
 | **Finance > Assets** | View all tracked assets with summary |
+| **Finance > Asset Details** | View depreciation history and value charts for individual assets |
+| **Finance > Depreciation Report** | Monthly and yearly depreciation summaries |
 | **Finance > Depreciation** | Record and manage depreciation entries |
 | **Finance > Expenses** | Track operational costs by category |
 | **Finance > Loans** | Manage vehicle financing |
@@ -61,14 +63,32 @@ The Asset Dashboard (`/finance/asset-dashboard`) provides a comprehensive view o
   - Upcoming payments (next 7 days)
   - Underperforming vehicles (negative ROI)
 
+### Asset List with Status Filtering
+
+The dashboard includes a comprehensive asset list with filtering options:
+
+| Filter | Shows |
+|--------|-------|
+| **All** | All tracked assets |
+| **Active** | Vehicles currently in operation |
+| **Disposed** | Vehicles that have been sold |
+| **Written Off** | Vehicles with total loss (theft, accident) |
+
+Each asset row displays:
+- Vehicle name and license plate
+- Status badge (color-coded)
+- Acquisition cost and current book value
+- Accumulated depreciation
+- ROI percentage
+- Quick action buttons (View Details, Edit)
+
 ### Quick Actions
 
 Direct access to common tasks:
 - Run Monthly Depreciation
 - Record Expense
-- View All Assets
+- Depreciation Report
 - Manage Loans
-- Profitability Report
 
 ### Recent Activity
 
@@ -77,6 +97,115 @@ Timeline of recent financial events:
 - Expenses recorded
 - Loan payments made
 - Revenue from rentals
+
+---
+
+## Asset Details Page
+
+Access detailed financial information for any asset by clicking the chart icon button in the asset list, or navigate directly to `/finance/assets/{id}/details`.
+
+### Summary Cards
+
+| Card | What It Shows |
+|------|---------------|
+| **Acquisition Cost** | Original purchase price with date |
+| **Current Book Value** | Value after depreciation (% of original) |
+| **Accumulated Depreciation** | Total depreciation with remaining life |
+| **ROI** | Return percentage with net profit/loss |
+
+### Asset Value Chart
+
+Interactive chart showing book value over time:
+
+| View | Description |
+|------|-------------|
+| **History** | Past depreciation entries plotted on a line chart |
+| **Projection** | Future value forecast based on current depreciation method |
+
+Features:
+- Visual representation of value decline
+- Grid lines for easy value reading
+- Y-axis labels showing value range (acquisition cost to residual value)
+- Toggle between historical data and future projections
+
+### Depreciation Settings Panel
+
+Quick reference for the asset's depreciation configuration:
+- Depreciation method (Straight Line, Declining Balance, etc.)
+- Useful life in months and years
+- Residual value
+- Monthly depreciation amount (for Straight Line)
+- Day Out of Door percentage (if applicable)
+- First rental date
+- Last depreciation date
+- Current status
+
+### Depreciation History Table
+
+Complete record of all depreciation entries:
+
+| Column | Description |
+|--------|-------------|
+| **Period** | Month/year with start and end dates |
+| **Method** | Calculation method used |
+| **Book Value Start** | Value at beginning of period |
+| **Depreciation** | Amount depreciated (shown in red) |
+| **Book Value End** | Value at end of period (bold) |
+| **Type** | System-calculated or Manual override |
+
+---
+
+## Depreciation Report
+
+Access monthly and yearly depreciation summaries at `/finance/depreciation-report`.
+
+### Filters
+
+| Filter | Options |
+|--------|---------|
+| **Year** | Select year (last 5 years available) |
+| **Report Type** | Monthly Summary or By Asset view |
+
+### Summary Cards
+
+| Card | What It Shows |
+|------|---------------|
+| **Total Depreciation** | Total for selected year |
+| **Average Monthly** | Average monthly depreciation |
+| **Assets Depreciated** | Count of assets with entries |
+| **Total Entries** | Number of depreciation records |
+
+### Monthly Summary View
+
+**Bar Chart**: Visual breakdown of depreciation by month
+- Bars show relative amounts per month
+- Values displayed above each bar (in thousands)
+- Current month highlighted
+
+**Monthly Breakdown Table**:
+| Column | Description |
+|--------|-------------|
+| **Month** | Month and year (current month highlighted) |
+| **Depreciation Amount** | Total depreciation for month |
+| **Entries** | Number of depreciation entries |
+| **% of Year** | Progress bar showing proportion of yearly total |
+
+### By Asset View
+
+Detailed breakdown showing each asset's yearly depreciation:
+
+| Column | Description |
+|--------|-------------|
+| **Vehicle** | Name and license plate |
+| **Starting Book Value** | Value at start of year |
+| **Total Depreciation** | Sum of all depreciation for year |
+| **Ending Book Value** | Current/end-of-year value |
+| **Entries** | Number of depreciation entries |
+| **Actions** | Link to Asset Details page |
+
+### Export
+
+Click **Export CSV** to download report data for external analysis.
 
 ---
 
