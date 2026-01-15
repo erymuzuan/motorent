@@ -120,6 +120,202 @@ public partial class RentalDataContext
         return await repos.GetDistinctAsync(query, selector);
     }
 
+    /// <summary>
+    /// Gets distinct values for a column from entities matching the predicate.
+    /// </summary>
+    public async Task<List<TResult>> GetDistinctAsync<T, TResult>(Expression<Func<T, bool>> predicate, Expression<Func<T, TResult>> selector)
+        where T : Entity, new()
+    {
+        var query = CreateQuery<T>().Where(predicate);
+        var repos = ObjectBuilder.GetObject<IRepository<T>>();
+        return await repos.GetDistinctAsync(query, selector);
+    }
+
+    /// <summary>
+    /// Gets sum of nullable values from entities matching the query.
+    /// </summary>
+    public async Task<TResult?> GetSumAsync<T, TResult>(IQueryable<T> query, Expression<Func<T, TResult?>> selector)
+        where T : Entity
+        where TResult : struct
+    {
+        var repos = ObjectBuilder.GetObject<IRepository<T>>();
+        return await repos.GetSumAsync(query, selector);
+    }
+
+    /// <summary>
+    /// Gets sum of values from entities matching the predicate.
+    /// </summary>
+    public async Task<TResult> GetSumAsync<T, TResult>(Expression<Func<T, bool>> predicate, Expression<Func<T, TResult>> selector)
+        where T : Entity, new()
+        where TResult : struct
+    {
+        var query = CreateQuery<T>().Where(predicate);
+        var repos = ObjectBuilder.GetObject<IRepository<T>>();
+        return await repos.GetSumAsync(query, selector);
+    }
+
+    /// <summary>
+    /// Gets count grouped by a key column.
+    /// </summary>
+    public async Task<List<(TKey Key, int Count)>> GetGroupByCountAsync<T, TKey>(IQueryable<T> query,
+        Expression<Func<T, TKey>> keySelector) where T : Entity
+    {
+        var repos = ObjectBuilder.GetObject<IRepository<T>>();
+        return await repos.GetGroupCountAsync(query, keySelector);
+    }
+
+    /// <summary>
+    /// Gets count grouped by a key column from entities matching the predicate.
+    /// </summary>
+    public async Task<List<(TKey Key, int Count)>> GetGroupByCountAsync<T, TKey>(Expression<Func<T, bool>> predicate,
+        Expression<Func<T, TKey>> keySelector) where T : Entity, new()
+    {
+        var query = CreateQuery<T>().Where(predicate);
+        var repos = ObjectBuilder.GetObject<IRepository<T>>();
+        return await repos.GetGroupCountAsync(query, keySelector);
+    }
+
+    /// <summary>
+    /// Gets sum grouped by a key column.
+    /// </summary>
+    public async Task<List<(TKey Key, TValue Sum)>> GetGroupBySumAsync<T, TKey, TValue>(IQueryable<T> query,
+        Expression<Func<T, TKey>> keySelector, Expression<Func<T, TValue>> valueSelector) where T : Entity
+    {
+        var repos = ObjectBuilder.GetObject<IRepository<T>>();
+        return await repos.GetGroupSumAsync(query, keySelector, valueSelector);
+    }
+
+    /// <summary>
+    /// Gets sum grouped by a key column from entities matching the predicate.
+    /// </summary>
+    public async Task<List<(TKey Key, TValue Sum)>> GetGroupBySumAsync<T, TKey, TValue>(Expression<Func<T, bool>> predicate,
+        Expression<Func<T, TKey>> keySelector, Expression<Func<T, TValue>> valueSelector) where T : Entity, new()
+    {
+        var query = CreateQuery<T>().Where(predicate);
+        var repos = ObjectBuilder.GetObject<IRepository<T>>();
+        return await repos.GetGroupSumAsync(query, keySelector, valueSelector);
+    }
+
+    /// <summary>
+    /// Gets sum grouped by two key columns.
+    /// </summary>
+    public async Task<List<(TKey Key, TKey2 Key2, TValue Sum)>> GetGroupBySumAsync<T, TKey, TKey2, TValue>(IQueryable<T> query,
+        Expression<Func<T, TKey>> keySelector, Expression<Func<T, TKey2>> key2Selector,
+        Expression<Func<T, TValue>> valueSelector) where T : Entity
+    {
+        var repos = ObjectBuilder.GetObject<IRepository<T>>();
+        return await repos.GetGroupSumAsync(query, keySelector, key2Selector, valueSelector);
+    }
+
+    /// <summary>
+    /// Gets sum grouped by two key columns from entities matching the predicate.
+    /// </summary>
+    public async Task<List<(TKey Key, TKey2 Key2, TValue Sum)>> GetGroupBySumAsync<T, TKey, TKey2, TValue>(Expression<Func<T, bool>> predicate,
+        Expression<Func<T, TKey>> keySelector, Expression<Func<T, TKey2>> key2Selector,
+        Expression<Func<T, TValue>> valueSelector) where T : Entity, new()
+    {
+        var query = CreateQuery<T>().Where(predicate);
+        var repos = ObjectBuilder.GetObject<IRepository<T>>();
+        return await repos.GetGroupSumAsync(query, keySelector, key2Selector, valueSelector);
+    }
+
+    /// <summary>
+    /// Gets a list of two columns from entities matching the query.
+    /// </summary>
+    public async Task<List<(TResult, TResult2)>> GetListAsync<T, TResult, TResult2>(IQueryable<T> query,
+        Expression<Func<T, TResult>> selector, Expression<Func<T, TResult2>> selector2) where T : Entity
+    {
+        var repos = ObjectBuilder.GetObject<IRepository<T>>();
+        return await repos.GetList2Async(query, selector, selector2);
+    }
+
+    /// <summary>
+    /// Gets a list of two columns from entities matching the predicate.
+    /// </summary>
+    public async Task<List<(TResult, TResult2)>> GetListAsync<T, TResult, TResult2>(Expression<Func<T, bool>> predicate,
+        Expression<Func<T, TResult>> selector, Expression<Func<T, TResult2>> selector2) where T : Entity, new()
+    {
+        var query = CreateQuery<T>().Where(predicate);
+        var repos = ObjectBuilder.GetObject<IRepository<T>>();
+        return await repos.GetList2Async(query, selector, selector2);
+    }
+
+    /// <summary>
+    /// Gets a list of three columns from entities matching the query.
+    /// </summary>
+    public async Task<List<(TResult, TResult2, TResult3)>> GetListAsync<T, TResult, TResult2, TResult3>(IQueryable<T> query,
+        Expression<Func<T, TResult>> selector, Expression<Func<T, TResult2>> selector2,
+        Expression<Func<T, TResult3>> selector3) where T : Entity
+    {
+        var repos = ObjectBuilder.GetObject<IRepository<T>>();
+        return await repos.GetList3Async(query, selector, selector2, selector3);
+    }
+
+    /// <summary>
+    /// Gets a list of three columns from entities matching the predicate.
+    /// </summary>
+    public async Task<List<(TResult, TResult2, TResult3)>> GetListAsync<T, TResult, TResult2, TResult3>(Expression<Func<T, bool>> predicate,
+        Expression<Func<T, TResult>> selector, Expression<Func<T, TResult2>> selector2,
+        Expression<Func<T, TResult3>> selector3) where T : Entity, new()
+    {
+        var query = CreateQuery<T>().Where(predicate);
+        var repos = ObjectBuilder.GetObject<IRepository<T>>();
+        return await repos.GetList3Async(query, selector, selector2, selector3);
+    }
+
+    /// <summary>
+    /// Gets the maximum value from entities matching the predicate.
+    /// </summary>
+    public async Task<TResult> GetMaxAsync<T, TResult>(Expression<Func<T, bool>> predicate, Expression<Func<T, TResult>> selector)
+        where T : Entity, new()
+    {
+        var query = CreateQuery<T>().Where(predicate);
+        var repos = ObjectBuilder.GetObject<IRepository<T>>();
+        return await repos.GetMaxAsync(query, selector);
+    }
+
+    /// <summary>
+    /// Gets the minimum value from entities matching the predicate.
+    /// </summary>
+    public async Task<TResult> GetMinAsync<T, TResult>(Expression<Func<T, bool>> predicate, Expression<Func<T, TResult>> selector)
+        where T : Entity, new()
+    {
+        var query = CreateQuery<T>().Where(predicate);
+        var repos = ObjectBuilder.GetObject<IRepository<T>>();
+        return await repos.GetMinAsync(query, selector);
+    }
+
+    /// <summary>
+    /// Gets a single scalar value from entities matching the predicate.
+    /// </summary>
+    public async Task<TResult?> GetScalarAsync<T, TResult>(Expression<Func<T, bool>> predicate, Expression<Func<T, TResult>> selector)
+        where T : Entity, new()
+    {
+        var query = CreateQuery<T>().Where(predicate);
+        var repos = ObjectBuilder.GetObject<IRepository<T>>();
+        return await repos.GetScalarAsync(query, selector);
+    }
+
+    /// <summary>
+    /// Gets count from entities matching the predicate.
+    /// </summary>
+    public async Task<int> GetCountAsync<T>(Expression<Func<T, bool>> predicate) where T : Entity, new()
+    {
+        var query = CreateQuery<T>().Where(predicate);
+        var repos = ObjectBuilder.GetObject<IRepository<T>>();
+        return await repos.GetCountAsync(query);
+    }
+
+    /// <summary>
+    /// Checks if any entity matches the predicate.
+    /// </summary>
+    public async Task<bool> GetAnyAsync<T>(Expression<Func<T, bool>> predicate) where T : Entity, new()
+    {
+        var query = CreateQuery<T>().Where(predicate);
+        var repos = ObjectBuilder.GetObject<IRepository<T>>();
+        return await repos.ExistAsync(query);
+    }
+
     public PersistenceSession OpenSession(string username = "system")
     {
         return new PersistenceSession(this, username);

@@ -317,6 +317,238 @@ public class CoreRepository<T> : IRepository<T> where T : Entity
         return results;
     }
 
+    public async Task<TResult?> GetSumAsync<TResult>(IQueryable<T> query, Expression<Func<T, TResult?>> selector) where TResult : struct
+    {
+        var typedQuery = query as Query<T>;
+        if (typedQuery == null) return default;
+
+        var columnName = GetColumnNameFromSelector(selector);
+
+        await using var connection = m_provider.CreateConnection();
+        await connection.OpenAsync();
+
+        var whereClause = BuildWhereClause(typedQuery.Predicates);
+        var sql = $"SELECT SUM([{columnName}]) FROM {m_tableName} {whereClause}";
+
+        await using var cmd = new SqlCommand(sql, connection);
+        AddWhereParameters(cmd, typedQuery.Predicates);
+
+        var result = await cmd.ExecuteScalarAsync();
+        return result == null || result == DBNull.Value ? null : (TResult?)Convert.ChangeType(result, typeof(TResult));
+    }
+
+    public async Task<List<(TKey Key, int Count)>> GetGroupCountAsync<TKey>(IQueryable<T> query, Expression<Func<T, TKey>> keySelector)
+    {
+        var typedQuery = query as Query<T>;
+        if (typedQuery == null) return [];
+
+        var keyColumn = GetColumnNameFromSelector(keySelector);
+
+        await using var connection = m_provider.CreateConnection();
+        await connection.OpenAsync();
+
+        var whereClause = BuildWhereClause(typedQuery.Predicates);
+        var sql = $"SELECT [{keyColumn}], COUNT(*) FROM {m_tableName} {whereClause} GROUP BY [{keyColumn}]";
+
+        await using var cmd = new SqlCommand(sql, connection);
+        AddWhereParameters(cmd, typedQuery.Predicates);
+
+        var results = new List<(TKey, int)>();
+        await using var reader = await cmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            var keyRaw = reader.GetValue(0);
+            var countRaw = reader.GetValue(1);
+
+            var key = ConvertToType<TKey>(keyRaw);
+            if (key != null && countRaw is int count)
+            {
+                results.Add((key, count));
+            }
+        }
+        return results;
+    }
+
+    public async Task<List<(TKey Key, TValue Sum)>> GetGroupSumAsync<TKey, TValue>(IQueryable<T> query,
+        Expression<Func<T, TKey>> keySelector, Expression<Func<T, TValue>> valueSelector)
+    {
+        var typedQuery = query as Query<T>;
+        if (typedQuery == null) return [];
+
+        var keyColumn = GetColumnNameFromSelector(keySelector);
+        var valueColumn = GetColumnNameFromSelector(valueSelector);
+
+        await using var connection = m_provider.CreateConnection();
+        await connection.OpenAsync();
+
+        var whereClause = BuildWhereClause(typedQuery.Predicates);
+        var sql = $"SELECT [{keyColumn}], SUM([{valueColumn}]) FROM {m_tableName} {whereClause} GROUP BY [{keyColumn}]";
+
+        await using var cmd = new SqlCommand(sql, connection);
+        AddWhereParameters(cmd, typedQuery.Predicates);
+
+        var results = new List<(TKey, TValue)>();
+        await using var reader = await cmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            var keyRaw = reader.GetValue(0);
+            var sumRaw = reader.GetValue(1);
+
+            var key = ConvertToType<TKey>(keyRaw);
+            var sum = ConvertToType<TValue>(sumRaw);
+            if (key != null && sum != null)
+            {
+                results.Add((key, sum));
+            }
+        }
+        return results;
+    }
+
+    public async Task<List<(TKey Key, TKey2 Key2, TValue Sum)>> GetGroupSumAsync<TKey, TKey2, TValue>(IQueryable<T> query,
+        Expression<Func<T, TKey>> keySelector, Expression<Func<T, TKey2>> key2Selector,
+        Expression<Func<T, TValue>> valueSelector)
+    {
+        var typedQuery = query as Query<T>;
+        if (typedQuery == null) return [];
+
+        var keyColumn = GetColumnNameFromSelector(keySelector);
+        var key2Column = GetColumnNameFromSelector(key2Selector);
+        var valueColumn = GetColumnNameFromSelector(valueSelector);
+
+        await using var connection = m_provider.CreateConnection();
+        await connection.OpenAsync();
+
+        var whereClause = BuildWhereClause(typedQuery.Predicates);
+        var sql = $"SELECT [{keyColumn}], [{key2Column}], SUM([{valueColumn}]) FROM {m_tableName} {whereClause} GROUP BY [{keyColumn}], [{key2Column}]";
+
+        await using var cmd = new SqlCommand(sql, connection);
+        AddWhereParameters(cmd, typedQuery.Predicates);
+
+        var results = new List<(TKey, TKey2, TValue)>();
+        await using var reader = await cmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            var keyRaw = reader.GetValue(0);
+            var key2Raw = reader.GetValue(1);
+            var sumRaw = reader.GetValue(2);
+
+            var key = ConvertToType<TKey>(keyRaw);
+            var key2 = ConvertToType<TKey2>(key2Raw);
+            var sum = ConvertToType<TValue>(sumRaw);
+            if (key != null && key2 != null && sum != null)
+            {
+                results.Add((key, key2, sum));
+            }
+        }
+        return results;
+    }
+
+    public async Task<List<(TResult, TResult2)>> GetList2Async<TResult, TResult2>(IQueryable<T> query,
+        Expression<Func<T, TResult>> selector, Expression<Func<T, TResult2>> selector2)
+    {
+        var typedQuery = query as Query<T>;
+        if (typedQuery == null) return [];
+
+        var column1 = GetColumnNameFromSelector(selector);
+        var column2 = GetColumnNameFromSelector(selector2);
+
+        await using var connection = m_provider.CreateConnection();
+        await connection.OpenAsync();
+
+        var whereClause = BuildWhereClause(typedQuery.Predicates);
+        var orderClause = BuildOrderClause(typedQuery.OrderByColumns);
+        var sql = $"SELECT [{column1}], [{column2}] FROM {m_tableName} {whereClause} {orderClause}";
+
+        await using var cmd = new SqlCommand(sql, connection);
+        AddWhereParameters(cmd, typedQuery.Predicates);
+
+        var results = new List<(TResult, TResult2)>();
+        await using var reader = await cmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            var val1 = ConvertToType<TResult>(reader.GetValue(0));
+            var val2 = ConvertToType<TResult2>(reader.GetValue(1));
+            if (val1 != null && val2 != null)
+            {
+                results.Add((val1, val2));
+            }
+        }
+        return results;
+    }
+
+    public async Task<List<(TResult, TResult2, TResult3)>> GetList3Async<TResult, TResult2, TResult3>(IQueryable<T> query,
+        Expression<Func<T, TResult>> selector, Expression<Func<T, TResult2>> selector2,
+        Expression<Func<T, TResult3>> selector3)
+    {
+        var typedQuery = query as Query<T>;
+        if (typedQuery == null) return [];
+
+        var column1 = GetColumnNameFromSelector(selector);
+        var column2 = GetColumnNameFromSelector(selector2);
+        var column3 = GetColumnNameFromSelector(selector3);
+
+        await using var connection = m_provider.CreateConnection();
+        await connection.OpenAsync();
+
+        var whereClause = BuildWhereClause(typedQuery.Predicates);
+        var orderClause = BuildOrderClause(typedQuery.OrderByColumns);
+        var sql = $"SELECT [{column1}], [{column2}], [{column3}] FROM {m_tableName} {whereClause} {orderClause}";
+
+        await using var cmd = new SqlCommand(sql, connection);
+        AddWhereParameters(cmd, typedQuery.Predicates);
+
+        var results = new List<(TResult, TResult2, TResult3)>();
+        await using var reader = await cmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            var val1 = ConvertToType<TResult>(reader.GetValue(0));
+            var val2 = ConvertToType<TResult2>(reader.GetValue(1));
+            var val3 = ConvertToType<TResult3>(reader.GetValue(2));
+            if (val1 != null && val2 != null && val3 != null)
+            {
+                results.Add((val1, val2, val3));
+            }
+        }
+        return results;
+    }
+
+    /// <summary>
+    /// Converts a database value to the target type, handling enums, DateOnly, and nullable types.
+    /// </summary>
+    private static TTarget? ConvertToType<TTarget>(object? value)
+    {
+        if (value == null || value == DBNull.Value) return default;
+
+        var targetType = typeof(TTarget);
+        var underlyingType = Nullable.GetUnderlyingType(targetType) ?? targetType;
+
+        // Handle enums
+        if (underlyingType.IsEnum)
+        {
+            if (Enum.TryParse(underlyingType, value.ToString(), out var enumValue))
+                return (TTarget)enumValue!;
+            return default;
+        }
+
+        // Handle DateOnly
+        if (underlyingType == typeof(DateOnly) && value is DateTime dt)
+            return (TTarget)(object)DateOnly.FromDateTime(dt);
+
+        // Handle TimeOnly
+        if (underlyingType == typeof(TimeOnly) && value is TimeSpan ts)
+            return (TTarget)(object)TimeOnly.FromTimeSpan(ts);
+
+        // Standard conversion
+        try
+        {
+            return (TTarget)Convert.ChangeType(value, underlyingType);
+        }
+        catch
+        {
+            return default;
+        }
+    }
+
     private static string GetColumnNameFromSelector<TResult>(Expression<Func<T, TResult>> selector)
     {
         if (selector.Body is MemberExpression member)
