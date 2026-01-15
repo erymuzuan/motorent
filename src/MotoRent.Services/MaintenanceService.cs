@@ -13,10 +13,9 @@ public class MaintenanceService(RentalDataContext context)
 
     #region ServiceType CRUD
 
-    public async Task<LoadOperation<ServiceType>> GetServiceTypesAsync(int shopId, bool activeOnly = true)
+    public async Task<LoadOperation<ServiceType>> GetServiceTypesAsync(bool activeOnly = true)
     {
-        var query = this.Context.CreateQuery<ServiceType>()
-            .Where(st => st.ShopId == shopId);
+        var query = this.Context.CreateQuery<ServiceType>();
 
         if (activeOnly)
             query = query.Where(st => st.IsActive);
@@ -52,14 +51,14 @@ public class MaintenanceService(RentalDataContext context)
         return await session.SubmitChanges("DeleteServiceType");
     }
 
-    public async Task<SubmitOperation> CreateDefaultServiceTypesAsync(int shopId, string username)
+    public async Task<SubmitOperation> CreateDefaultServiceTypesAsync(string username)
     {
         var defaults = new List<ServiceType>
         {
-            new() { ShopId = shopId, Name = "Oil Change", Description = "Engine oil and filter replacement", DaysInterval = 30, KmInterval = 3000, SortOrder = 1, IsActive = true },
-            new() { ShopId = shopId, Name = "Brake Check", Description = "Brake pads, discs, and fluid inspection", DaysInterval = 60, KmInterval = 5000, SortOrder = 2, IsActive = true },
-            new() { ShopId = shopId, Name = "Tire Inspection", Description = "Tire pressure, wear, and condition check", DaysInterval = 90, KmInterval = 8000, SortOrder = 3, IsActive = true },
-            new() { ShopId = shopId, Name = "General Service", Description = "Full vehicle inspection and maintenance", DaysInterval = 180, KmInterval = 15000, SortOrder = 4, IsActive = true }
+            new() { Name = "Oil Change", Description = "Engine oil and filter replacement", DaysInterval = 30, KmInterval = 3000, SortOrder = 1, IsActive = true },
+            new() { Name = "Brake Check", Description = "Brake pads, discs, and fluid inspection", DaysInterval = 60, KmInterval = 5000, SortOrder = 2, IsActive = true },
+            new() { Name = "Tire Inspection", Description = "Tire pressure, wear, and condition check", DaysInterval = 90, KmInterval = 8000, SortOrder = 3, IsActive = true },
+            new() { Name = "General Service", Description = "Full vehicle inspection and maintenance", DaysInterval = 180, KmInterval = 15000, SortOrder = 4, IsActive = true }
         };
 
         using var session = this.Context.OpenSession(username);
@@ -137,10 +136,10 @@ public class MaintenanceService(RentalDataContext context)
         return await session.SubmitChanges("RecordService");
     }
 
-    public async Task<SubmitOperation> InitializeSchedulesForMotorbikeAsync(int motorbikeId, int shopId, string username)
+    public async Task<SubmitOperation> InitializeSchedulesForMotorbikeAsync(int motorbikeId, string username)
     {
-        // Get all active service types for the shop
-        var serviceTypesResult = await this.GetServiceTypesAsync(shopId, activeOnly: true);
+        // Get all active service types
+        var serviceTypesResult = await this.GetServiceTypesAsync(activeOnly: true);
         var motorbike = await this.Context.LoadOneAsync<Motorbike>(m => m.MotorbikeId == motorbikeId);
 
         if (motorbike == null)
@@ -223,11 +222,11 @@ public class MaintenanceService(RentalDataContext context)
     #region Dashboard Queries
 
     public async Task<List<MaintenanceAlertItem>> GetMaintenanceAlertsAsync(
-        int shopId, DateTimeOffset today, int limit = 10)
+        DateTimeOffset today, int limit = 10)
     {
-        // Get all motorbikes for the shop (excluding those already in maintenance)
+        // Get all motorbikes (excluding those already in maintenance)
         var bikesResult = await this.Context.LoadAsync(
-            this.Context.CreateQuery<Motorbike>().Where(m => m.ShopId == shopId && m.Status != "Maintenance"),
+            this.Context.CreateQuery<Motorbike>().Where(m => m.Status != "Maintenance"),
             page: 1, size: 1000, includeTotalRows: false);
 
         var alerts = new List<MaintenanceAlertItem>();
@@ -284,11 +283,10 @@ public class MaintenanceService(RentalDataContext context)
         };
     }
 
-    public async Task<ShopMaintenanceSummary> GetShopMaintenanceSummaryAsync(
-        int shopId, DateTimeOffset today)
+    public async Task<MaintenanceSummary> GetMaintenanceSummaryAsync(DateTimeOffset today)
     {
         var bikesResult = await this.Context.LoadAsync(
-            this.Context.CreateQuery<Motorbike>().Where(m => m.ShopId == shopId),
+            this.Context.CreateQuery<Motorbike>(),
             page: 1, size: 1000, includeTotalRows: false);
 
         int overdueBikes = 0, dueSoonBikes = 0, okBikes = 0;
@@ -304,9 +302,8 @@ public class MaintenanceService(RentalDataContext context)
             }
         }
 
-        return new ShopMaintenanceSummary
+        return new MaintenanceSummary
         {
-            ShopId = shopId,
             OverdueBikes = overdueBikes,
             DueSoonBikes = dueSoonBikes,
             OkBikes = okBikes,
@@ -357,9 +354,8 @@ public class MotorbikeMaintenanceSummary
     public int DueSoonCount { get; set; }
 }
 
-public class ShopMaintenanceSummary
+public class MaintenanceSummary
 {
-    public int ShopId { get; set; }
     public int OverdueBikes { get; set; }
     public int DueSoonBikes { get; set; }
     public int OkBikes { get; set; }

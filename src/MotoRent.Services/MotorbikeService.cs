@@ -8,14 +8,12 @@ public class MotorbikeService(RentalDataContext context)
     private RentalDataContext Context { get; } = context;
 
     public async Task<LoadOperation<Motorbike>> GetMotorbikesAsync(
-        int shopId,
         string? searchTerm = null,
         string? status = null,
         int page = 1,
         int pageSize = 20)
     {
-        var query = this.Context.CreateQuery<Motorbike>()
-            .Where(m => m.ShopId == shopId);
+        var query = this.Context.CreateQuery<Motorbike>();
 
         if (!string.IsNullOrWhiteSpace(status))
         {
@@ -80,10 +78,10 @@ public class MotorbikeService(RentalDataContext context)
         return await session.SubmitChanges("StatusUpdate");
     }
 
-    public async Task<Dictionary<string, int>> GetStatusCountsAsync(int shopId)
+    public async Task<Dictionary<string, int>> GetStatusCountsAsync()
     {
         var allBikes = await this.Context.LoadAsync(
-            this.Context.CreateQuery<Motorbike>().Where(m => m.ShopId == shopId),
+            this.Context.CreateQuery<Motorbike>(),
             page: 1, size: 1000, includeTotalRows: false);
 
         return allBikes.ItemCollection
@@ -94,11 +92,10 @@ public class MotorbikeService(RentalDataContext context)
     /// <summary>
     /// Gets available motorbikes for public browsing (tourist portal)
     /// </summary>
-    public async Task<IEnumerable<Motorbike>> GetAvailableMotorbikesAsync(int shopId)
+    public async Task<IEnumerable<Motorbike>> GetAvailableMotorbikesAsync()
     {
         var result = await this.Context.LoadAsync(
             this.Context.CreateQuery<Motorbike>()
-                .Where(m => m.ShopId == shopId)
                 .Where(m => m.Status == "Available"),
             page: 1, size: 100, includeTotalRows: false);
 

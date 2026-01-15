@@ -1,9 +1,8 @@
--- PricingRule table - Dynamic pricing rules for seasonal and event-based pricing
+-- PricingRule table - Dynamic pricing rules for seasonal and event-based pricing (organization-wide)
 CREATE TABLE [<schema>].[PricingRule]
 (
     [PricingRuleId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
     -- Computed columns for querying
-    [ShopId] AS CAST(JSON_VALUE([Json], '$.ShopId') AS INT),
     [Name] AS CAST(JSON_VALUE([Json], '$.Name') AS NVARCHAR(100)),
     [RuleType] AS CAST(JSON_VALUE([Json], '$.RuleType') AS NVARCHAR(20)),
     [StartDate] DATE NULL,
@@ -23,5 +22,5 @@ CREATE TABLE [<schema>].[PricingRule]
     [ChangedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
 )
 
--- Index for querying active rules by shop and date range
-CREATE INDEX IX_PricingRule_ShopDate ON [<schema>].[PricingRule]([ShopId], [StartDate], [EndDate], [IsActive])
+-- Index for querying active rules by date range
+CREATE INDEX IX_PricingRule_DateRange ON [<schema>].[PricingRule]([StartDate], [EndDate], [IsActive])

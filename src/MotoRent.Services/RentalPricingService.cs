@@ -111,7 +111,7 @@ public class RentalPricingService(
             {
                 var rentalDate = DateOnly.FromDateTime(startDate.Date.AddDays(i));
                 var calc = await this.DynamicPricingService.CalculateAdjustedRateAsync(
-                    shopId, vehicle.DailyRate, rentalDate, vehicle.VehicleType.ToString(), vehicle.VehicleId);
+                    vehicle.DailyRate, rentalDate, vehicle.VehicleType.ToString(), vehicle.VehicleId);
 
                 totalAdjusted += calc.AdjustedRate;
 

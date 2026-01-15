@@ -1,11 +1,10 @@
--- Accident table
+-- Accident table (organization-wide)
 CREATE TABLE [<schema>].[Accident]
 (
     [AccidentId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
     -- Computed columns for indexing
     [VehicleId] AS CAST(JSON_VALUE([Json], '$.VehicleId') AS INT),
     [RentalId] AS CAST(JSON_VALUE([Json], '$.RentalId') AS INT),
-    [ShopId] AS CAST(JSON_VALUE([Json], '$.ShopId') AS INT),
     [ReferenceNo] AS CAST(JSON_VALUE([Json], '$.ReferenceNo') AS NVARCHAR(50)),
     [Severity] AS CAST(JSON_VALUE([Json], '$.Severity') AS NVARCHAR(20)),
     [Status] AS CAST(JSON_VALUE([Json], '$.Status') AS NVARCHAR(20)),
@@ -29,7 +28,7 @@ CREATE TABLE [<schema>].[Accident]
 --
 
 -- Indexes
-CREATE INDEX IX_Accident_ShopId_Status ON [<schema>].[Accident]([ShopId], [Status])
+CREATE INDEX IX_Accident_Status ON [<schema>].[Accident]([Status])
 --
 CREATE INDEX IX_Accident_VehicleId ON [<schema>].[Accident]([VehicleId])
 --

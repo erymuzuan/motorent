@@ -22,11 +22,6 @@ public partial class Accident : Entity
     public int? RentalId { get; set; }
 
     /// <summary>
-    /// Shop responsible for handling this accident.
-    /// </summary>
-    public int ShopId { get; set; }
-
-    /// <summary>
     /// Unique accident reference number for external communication.
     /// Format: ACC-{YYYYMMDD}-{Sequence}
     /// </summary>

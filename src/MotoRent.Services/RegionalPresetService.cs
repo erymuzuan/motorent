@@ -77,25 +77,24 @@ public class RegionalPresetService
     /// <summary>
     /// Gets all pricing rules for a regional preset.
     /// </summary>
-    public List<PricingRule> GetPresetRules(RegionalPreset preset, int shopId)
+    public List<PricingRule> GetPresetRules(RegionalPreset preset)
     {
         var rules = preset switch
         {
-            RegionalPreset.AndamanCoast => GetAndamanCoastRules(shopId),
-            RegionalPreset.GulfCoast => GetGulfCoastRules(shopId),
-            RegionalPreset.SouthernBorder => GetSouthernBorderRules(shopId),
-            RegionalPreset.Northern => GetNorthernRules(shopId),
-            RegionalPreset.Eastern => GetEasternRules(shopId),
-            RegionalPreset.Central => GetCentralRules(shopId),
-            RegionalPreset.Western => GetWesternRules(shopId),
-            RegionalPreset.Isaan => GetIsaanRules(shopId),
+            RegionalPreset.AndamanCoast => GetAndamanCoastRules(),
+            RegionalPreset.GulfCoast => GetGulfCoastRules(),
+            RegionalPreset.SouthernBorder => GetSouthernBorderRules(),
+            RegionalPreset.Northern => GetNorthernRules(),
+            RegionalPreset.Eastern => GetEasternRules(),
+            RegionalPreset.Central => GetCentralRules(),
+            RegionalPreset.Western => GetWesternRules(),
+            RegionalPreset.Isaan => GetIsaanRules(),
             _ => []
         };
 
-        // Set ShopId and IsActive for all rules
+        // Set IsActive for all rules
         foreach (var rule in rules)
         {
-            rule.ShopId = shopId;
             rule.IsActive = true;
         }
 
@@ -104,7 +103,7 @@ public class RegionalPresetService
 
     // Andaman Coast (Phuket, Krabi) - 58 rules
 
-    private static List<PricingRule> GetAndamanCoastRules(int shopId) =>
+    private static List<PricingRule> GetAndamanCoastRules() =>
     [
         // === SEASONS ===
         new() { Name = "Ultra Peak Season", RuleType = RuleType.Season,
@@ -407,7 +406,7 @@ public class RegionalPresetService
     
     // Gulf Coast (Koh Samui) - 14 rules
 
-    private static List<PricingRule> GetGulfCoastRules(int shopId) =>
+    private static List<PricingRule> GetGulfCoastRules() =>
     [
         // === SEASONS (Opposite monsoon pattern!) ===
         new() { Name = "Peak Season", RuleType = RuleType.Season,
@@ -481,7 +480,7 @@ public class RegionalPresetService
     
     // Southern Border (Hat Yai) - 32 rules
 
-    private static List<PricingRule> GetSouthernBorderRules(int shopId) =>
+    private static List<PricingRule> GetSouthernBorderRules() =>
     [
         // === BASE WEEKEND PATTERN ===
         new() { Name = "Weekend (Sat)", RuleType = RuleType.DayOfWeek,
@@ -632,7 +631,7 @@ public class RegionalPresetService
     
     // Northern (Chiang Mai) - 14 rules
 
-    private static List<PricingRule> GetNorthernRules(int shopId) =>
+    private static List<PricingRule> GetNorthernRules() =>
     [
         // === SEASONS ===
         new() { Name = "Cool Season Peak", RuleType = RuleType.Season,
@@ -707,7 +706,7 @@ public class RegionalPresetService
     
     // Eastern (Pattaya) - 14 rules
 
-    private static List<PricingRule> GetEasternRules(int shopId) =>
+    private static List<PricingRule> GetEasternRules() =>
     [
         // === SEASONS ===
         new() { Name = "High Season", RuleType = RuleType.Season,
@@ -774,7 +773,7 @@ public class RegionalPresetService
     
     // Central (Bangkok) - 11 rules
 
-    private static List<PricingRule> GetCentralRules(int shopId) =>
+    private static List<PricingRule> GetCentralRules() =>
     [
         // === SEASONS ===
         new() { Name = "Cool Season", RuleType = RuleType.Season,
@@ -822,7 +821,7 @@ public class RegionalPresetService
     
     // Western (Hua Hin) - 9 rules
 
-    private static List<PricingRule> GetWesternRules(int shopId) =>
+    private static List<PricingRule> GetWesternRules() =>
     [
         // === SEASONS ===
         new() { Name = "Cool Season", RuleType = RuleType.Season,
@@ -868,7 +867,7 @@ public class RegionalPresetService
     
     // Isaan (Udon Thani) - 10 rules
 
-    private static List<PricingRule> GetIsaanRules(int shopId) =>
+    private static List<PricingRule> GetIsaanRules() =>
     [
         // === SEASONS (Domestic focus) ===
         new() { Name = "Cool Season", RuleType = RuleType.Season,

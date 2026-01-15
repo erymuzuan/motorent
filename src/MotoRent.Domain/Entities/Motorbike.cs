@@ -3,7 +3,6 @@ namespace MotoRent.Domain.Entities;
 public class Motorbike : Entity
 {
     public int MotorbikeId { get; set; }
-    public int ShopId { get; set; }
     public string LicensePlate { get; set; } = string.Empty;
     public string Brand { get; set; } = string.Empty;     // Honda, Yamaha, etc.
     public string Model { get; set; } = string.Empty;     // Click, PCX, Aerox

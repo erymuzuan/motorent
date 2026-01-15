@@ -4,7 +4,6 @@
 @attribute [Authorize(Policy = "RequireTenantManager")]
 @inherits LocalizedComponentBase<PricingRules>
 @inject DynamicPricingService PricingService
-@inject ShopService ShopService
 
 <MotoRentPageTitle>@Localizer["PricingRules"]</MotoRentPageTitle>
 
@@ -14,7 +13,7 @@
             <i class="ti ti-calendar me-1"></i>
             @Localizer["ViewCalendar"]
         </a>
-        <button type="button" class="btn btn-primary" @onclick="OpenAddDialog" disabled="@(m_selectedShopId == 0)">
+        <button type="button" class="btn btn-primary" @onclick="OpenAddDialog">
             <i class="ti ti-plus me-1"></i>
             @Localizer["AddRule"]
         </button>
@@ -25,16 +24,6 @@
     <div class="card-body">
         <div class="row g-3 align-items-center">
             <div class="col-md-4">
-                <label class="form-label">@Localizer["Shop"]</label>
-                <select class="form-select" @bind="m_selectedShopId" @bind:after="LoadDataAsync">
-                    <option value="0">@Localizer["SelectShop"]</option>
-                    @foreach (var shop in m_shops)
-                    {
-                        <option value="@shop.ShopId">@shop.Name</option>
-                    }
-                </select>
-            </div>
-            <div class="col-md-3">
                 <label class="form-label">@Localizer["RuleType"]</label>
                 <select class="form-select" @bind="m_typeFilter" @bind:after="LoadDataAsync">
                     <option value="">@Localizer["AllTypes"]</option>
@@ -44,7 +33,7 @@
                     }
                 </select>
             </div>
-            <div class="col-md-2">
+            <div class="col-md-3">
                 <label class="form-label">@Localizer["Status"]</label>
                 <select class="form-select" @bind="m_activeFilter" @bind:after="LoadDataAsync">
                     <option value="">@Localizer["AllStatus"]</option>
@@ -52,7 +41,7 @@
                     <option value="false">@Localizer["Inactive"]</option>
                 </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-5">
                 <label class="form-label">&nbsp;</label>
                 <div class="input-icon">
                     <span class="input-icon-addon">
@@ -65,19 +54,6 @@
         </div>
     </div>
 </div>
-
-@if (m_selectedShopId == 0)
-{
-    <div class="card">
-        <div class="card-body text-center py-5">
-            <i class="ti ti-building-store mb-3" style="font-size: 3rem; color: var(--tblr-secondary);"></i>
-            <h3 class="text-secondary">@Localizer["SelectShopPrompt"]</h3>
-            <p class="text-secondary">@Localizer["SelectShopDescription"]</p>
-        </div>
-    </div>
-}
-else
-{
     <LoadingSkeleton Loading="@m_loading" Mode="LoadingSkeleton.PlaceholderMode.Table">
         <div class="card">
             <div class="table-responsive">
@@ -182,25 +158,22 @@ else
         </div>
     </LoadingSkeleton>
 
-    @if (m_selectedShopId > 0 && m_rules.Count == 0 && !m_loading)
-    {
-        <div class="mt-3">
-            <button type="button" class="btn btn-outline-primary" @onclick="OpenApplyPresetDialog">
-                <i class="ti ti-template me-1"></i>
-                @Localizer["ApplyRegionalPreset"]
-            </button>
-            <small class="text-secondary ms-2">
-                @Localizer["ApplyRegionalPresetDescription"]
-            </small>
-        </div>
-    }
+@if (m_rules.Count == 0 && !m_loading)
+{
+    <div class="mt-3">
+        <button type="button" class="btn btn-outline-primary" @onclick="OpenApplyPresetDialog">
+            <i class="ti ti-template me-1"></i>
+            @Localizer["ApplyRegionalPreset"]
+        </button>
+        <small class="text-secondary ms-2">
+            @Localizer["ApplyRegionalPresetDescription"]
+        </small>
+    </div>
 }
 
 @code {
-    private List<Shop> m_shops = [];
     private List<PricingRule> m_rules = [];
     private bool m_loading;
-    private int m_selectedShopId;
     private string? m_searchTerm;
     private string? m_typeFilter;
     private string? m_activeFilter;
@@ -208,26 +181,11 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        // Load shops
-        var shopsResult = await this.ShopService.GetShopsAsync(null, true, 1, 100);
-        this.m_shops = shopsResult.ItemCollection;
-
-        // Auto-select first shop if available
-        if (this.m_shops.Count > 0)
-        {
-            this.m_selectedShopId = this.m_shops[0].ShopId;
-            await this.LoadDataAsync();
-        }
+        await this.LoadDataAsync();
     }
 
     private async Task LoadDataAsync()
     {
-        if (this.m_selectedShopId == 0)
-        {
-            this.m_rules.Clear();
-            return;
-        }
-
         this.m_loading = true;
         try
         {
@@ -238,7 +196,7 @@ else
                 _ => (bool?)null
             };
 
-            var allRules = await this.PricingService.GetRulesAsync(this.m_selectedShopId, activeOnly == true);
+            var allRules = await this.PricingService.GetRulesAsync(activeOnly == true);
 
             // Apply filters
             this.m_rules = allRules
@@ -281,7 +239,6 @@ else
     {
         var rule = new PricingRule
         {
-            ShopId = this.m_selectedShopId,
             IsActive = true,
             Multiplier = 1.0m,
             Priority = 10,
@@ -366,7 +323,6 @@ else
     {
         var result = await this.DialogService
             .Create<ApplyPresetDialog>(Localizer["ApplyRegionalPreset"])
-            .WithParameter(x => x.ShopId, this.m_selectedShopId)
             .Large()
             .ShowDialogAsync();
 

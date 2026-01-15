@@ -50,7 +50,6 @@ public class DynamicPricingService
     /// Returns the base rate unchanged if dynamic pricing is disabled.
     /// </summary>
     public async Task<PricingCalculation> CalculateAdjustedRateAsync(
-        int shopId,
         decimal baseRate,
         DateOnly rentalDate,
         string? vehicleType = null,
@@ -71,8 +70,8 @@ public class DynamicPricingService
             };
         }
 
-        // Load active rules for this shop
-        var rules = await LoadActiveRulesAsync(shopId, rentalDate, vehicleType, vehicleId);
+        // Load active rules
+        var rules = await LoadActiveRulesAsync(rentalDate, vehicleType, vehicleId);
 
         if (rules.Count == 0)
         {
@@ -117,13 +116,12 @@ public class DynamicPricingService
     /// Loads all active pricing rules that apply to the given date and filters.
     /// </summary>
     private async Task<List<PricingRule>> LoadActiveRulesAsync(
-        int shopId,
         DateOnly rentalDate,
         string? vehicleType,
         int? vehicleId)
     {
         var query = m_context.CreateQuery<PricingRule>()
-            .Where(r => r.ShopId == shopId && r.IsActive);
+            .Where(r => r.IsActive);
 
         var allRules = await m_context.LoadAsync(query, size: 500);
 
@@ -194,12 +192,11 @@ public class DynamicPricingService
     }
 
     /// <summary>
-    /// Gets all pricing rules for a shop.
+    /// Gets all pricing rules.
     /// </summary>
-    public async Task<List<PricingRule>> GetRulesAsync(int shopId, bool activeOnly = false)
+    public async Task<List<PricingRule>> GetRulesAsync(bool activeOnly = false)
     {
-        var query = m_context.CreateQuery<PricingRule>()
-            .Where(r => r.ShopId == shopId);
+        var query = m_context.CreateQuery<PricingRule>();
 
         if (activeOnly)
         {
@@ -224,7 +221,6 @@ public class DynamicPricingService
     /// Gets a multiplier calendar for a month showing the effective multiplier for each day.
     /// </summary>
     public async Task<Dictionary<DateOnly, decimal>> GetMultiplierCalendarAsync(
-        int shopId,
         int year,
         int month,
         string? vehicleType = null)
@@ -237,7 +233,7 @@ public class DynamicPricingService
         for (int day = 1; day <= daysInMonth; day++)
         {
             var date = new DateOnly(year, month, day);
-            var calc = await CalculateAdjustedRateAsync(shopId, baseRate, date, vehicleType);
+            var calc = await CalculateAdjustedRateAsync(baseRate, date, vehicleType);
             calendar[date] = calc.Multiplier;
         }
 
@@ -248,11 +244,10 @@ public class DynamicPricingService
     /// Gets active rules for a date range (useful for calendar display).
     /// </summary>
     public async Task<List<PricingRule>> GetActiveRulesForDateRangeAsync(
-        int shopId,
         DateOnly start,
         DateOnly end)
     {
-        var rules = await GetRulesAsync(shopId, activeOnly: true);
+        var rules = await GetRulesAsync(activeOnly: true);
 
         return rules.Where(r =>
         {

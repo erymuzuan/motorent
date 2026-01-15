@@ -2,12 +2,11 @@ namespace MotoRent.Domain.Entities;
 
 /// <summary>
 /// Defines a type of maintenance service with default intervals.
-/// Scoped per shop (organization).
+/// Organization-wide (universal).
 /// </summary>
 public class ServiceType : Entity
 {
     public int ServiceTypeId { get; set; }
-    public int ShopId { get; set; }
 
     /// <summary>
     /// Name of the service type (e.g., "Oil Change", "Brake Check")

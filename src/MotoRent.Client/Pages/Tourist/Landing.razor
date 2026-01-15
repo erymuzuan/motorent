@@ -368,19 +368,15 @@
             m_shops = await ShopService.GetActiveShopsAsync();
 
             // Load available bikes count and featured bikes
-            if (m_shops.Count > 0)
-            {
-                var firstShopId = m_shops[0].ShopId;
-                var availableBikes = await MotorbikeService.GetAvailableMotorbikesAsync(firstShopId);
-                var bikesList = availableBikes.ToList();
-                m_availableBikesCount = bikesList.Count;
+            var availableBikes = await MotorbikeService.GetAvailableMotorbikesAsync();
+            var bikesList = availableBikes.ToList();
+            m_availableBikesCount = bikesList.Count;
 
-                // Get featured bikes (top 4 by daily rate - assuming higher price = featured)
-                m_featuredBikes = bikesList
-                    .OrderByDescending(b => b.DailyRate)
-                    .Take(4)
-                    .ToList();
-            }
+            // Get featured bikes (top 4 by daily rate - assuming higher price = featured)
+            m_featuredBikes = bikesList
+                .OrderByDescending(b => b.DailyRate)
+                .Take(4)
+                .ToList();
         }
         catch (Exception ex)
         {

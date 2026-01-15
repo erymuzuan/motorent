@@ -4,7 +4,6 @@
 @attribute [Authorize(Policy = "RequireTenantManager")]
 @inherits LocalizedComponentBase<PricingCalendar>
 @inject DynamicPricingService PricingService
-@inject ShopService ShopService
 
 <MotoRentPageTitle>@Localizer["PricingCalendar"]</MotoRentPageTitle>
 
@@ -18,17 +17,7 @@
 <div class="card mb-3">
     <div class="card-body">
         <div class="row g-3 align-items-center">
-            <div class="col-md-4">
-                <label class="form-label">@Localizer["Shop"]</label>
-                <select class="form-select" @bind="m_selectedShopId" @bind:after="LoadDataAsync">
-                    <option value="0">@Localizer["SelectShop"]</option>
-                    @foreach (var shop in m_shops)
-                    {
-                        <option value="@shop.ShopId">@shop.Name</option>
-                    }
-                </select>
-            </div>
-            <div class="col-md-4">
+            <div class="col-md-6">
                 <label class="form-label">@Localizer["MonthYear"]</label>
                 <div class="d-flex align-items-center gap-2">
                     <button type="button" class="btn btn-icon btn-ghost-secondary"
@@ -44,7 +33,7 @@
                     </button>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-6">
                 <label class="form-label">@Localizer["VehicleType"]</label>
                 <select class="form-select" @bind="m_vehicleTypeFilter" @bind:after="LoadDataAsync">
                     <option value="">@Localizer["AllVehicles"]</option>
@@ -57,18 +46,6 @@
         </div>
     </div>
 </div>
-
-@if (m_selectedShopId == 0)
-{
-    <div class="card">
-        <div class="card-body text-center py-5">
-            <i class="ti ti-building-store mb-3" style="font-size: 3rem; color: var(--tblr-secondary);"></i>
-            <h3 class="text-secondary">@Localizer["SelectShopPrompt"]</h3>
-        </div>
-    </div>
-}
-else
-{
     <LoadingSkeleton Loading="@m_loading" Mode="LoadingSkeleton.PlaceholderMode.Card">
         <div class="card">
             <div class="card-body">
@@ -174,12 +151,9 @@ else
             </div>
         </div>
     }
-}
 
 @code {
-    private List<Shop> m_shops = [];
     private List<string> m_vehicleTypes = ["Motorbike", "Car", "Van", "JetSki", "Boat"];
-    private int m_selectedShopId;
     private string? m_vehicleTypeFilter;
     private DateTime m_currentDate = DateTime.Today;
     private bool m_loading;
@@ -190,32 +164,16 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        var shopsResult = await this.ShopService.GetShopsAsync(null, true, 1, 100);
-        this.m_shops = shopsResult.ItemCollection;
-
-        if (this.m_shops.Count > 0)
-        {
-            this.m_selectedShopId = this.m_shops[0].ShopId;
-            await this.LoadDataAsync();
-        }
+        await this.LoadDataAsync();
     }
 
     private async Task LoadDataAsync()
     {
-        if (this.m_selectedShopId == 0)
-        {
-            this.m_multiplierCalendar.Clear();
-            this.m_activeRules.Clear();
-            this.BuildCalendarWeeks();
-            return;
-        }
-
         this.m_loading = true;
         try
         {
             // Load multipliers for the month
             this.m_multiplierCalendar = await this.PricingService.GetMultiplierCalendarAsync(
-                this.m_selectedShopId,
                 this.m_currentDate.Year,
                 this.m_currentDate.Month,
                 this.m_vehicleTypeFilter);
@@ -224,7 +182,7 @@ else
             var startOfMonth = new DateOnly(this.m_currentDate.Year, this.m_currentDate.Month, 1);
             var endOfMonth = startOfMonth.AddMonths(1).AddDays(-1);
             this.m_activeRules = await this.PricingService.GetActiveRulesForDateRangeAsync(
-                this.m_selectedShopId, startOfMonth, endOfMonth);
+                startOfMonth, endOfMonth);
 
             this.BuildCalendarWeeks();
         }

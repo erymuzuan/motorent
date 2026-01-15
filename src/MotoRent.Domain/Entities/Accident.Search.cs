@@ -24,7 +24,6 @@ public partial class Accident : ISearchable
         ["Severity"] = this.Severity.ToString(),
         ["VehicleId"] = this.VehicleId,
         ["RentalId"] = this.RentalId ?? 0,
-        ["AccidentDate"] = this.AccidentDate.ToString("yyyy-MM-dd"),
-        ["ShopId"] = this.ShopId
+        ["AccidentDate"] = this.AccidentDate.ToString("yyyy-MM-dd")
     };
 }

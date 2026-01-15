@@ -108,9 +108,9 @@ public class ShopService(RentalDataContext context)
     {
         var stats = new Dictionary<string, int>();
 
-        // Count motorbikes
+        // Count motorbikes (organization-wide)
         var bikes = await this.Context.LoadAsync(
-            this.Context.CreateQuery<Motorbike>().Where(m => m.ShopId == shopId),
+            this.Context.CreateQuery<Motorbike>(),
             page: 1, size: 1000, includeTotalRows: true);
         stats["TotalMotorbikes"] = bikes.TotalRows;
 

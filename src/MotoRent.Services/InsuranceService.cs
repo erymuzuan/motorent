@@ -8,25 +8,12 @@ public class InsuranceService(RentalDataContext context)
     private RentalDataContext Context { get; } = context;
 
     public async Task<LoadOperation<Insurance>> GetInsurancesAsync(
-        int shopId,
         int page = 1,
         int pageSize = 20)
     {
-        // Load all and filter in memory (Repository doesn't handle complex expressions)
-        var all = await this.Context.LoadAsync(this.Context.CreateQuery<Insurance>(), 1, 1000, false);
-        var filtered = all.ItemCollection
-            .Where(i => i.ShopId == shopId || i.ShopId == 0)
-            .OrderByDescending(i => i.InsuranceId)
-            .ToList();
-
-        var result = new LoadOperation<Insurance>
-        {
-            Page = page,
-            PageSize = pageSize,
-            TotalRows = filtered.Count,
-            ItemCollection = filtered.Skip((page - 1) * pageSize).Take(pageSize).ToList()
-        };
-        return result;
+        var query = this.Context.CreateQuery<Insurance>()
+            .OrderByDescending(i => i.InsuranceId);
+        return await this.Context.LoadAsync(query, page, pageSize, includeTotalRows: true);
     }
 
     public async Task<Insurance?> GetInsuranceByIdAsync(int insuranceId)
@@ -34,13 +21,12 @@ public class InsuranceService(RentalDataContext context)
         return await this.Context.LoadOneAsync<Insurance>(i => i.InsuranceId == insuranceId);
     }
 
-    public async Task<List<Insurance>> GetActiveInsurancesAsync(int shopId)
+    public async Task<List<Insurance>> GetActiveInsurancesAsync()
     {
-        // Load all and filter in memory (Repository doesn't handle && expressions)
-        var all = await this.Context.LoadAsync(this.Context.CreateQuery<Insurance>(), 1, 1000, false);
-        return all.ItemCollection
-            .Where(i => (i.ShopId == shopId || i.ShopId == 0) && i.IsActive)
-            .ToList();
+        var result = await this.Context.LoadAsync(
+            this.Context.CreateQuery<Insurance>().Where(i => i.IsActive),
+            page: 1, size: 1000, includeTotalRows: false);
+        return result.ItemCollection;
     }
 
     public async Task<SubmitOperation> CreateInsuranceAsync(Insurance insurance, string username)
@@ -86,12 +72,10 @@ public class InsuranceService(RentalDataContext context)
         return await session.SubmitChanges("ToggleActive");
     }
 
-    public async Task<Dictionary<bool, int>> GetActiveCountsAsync(int shopId)
+    public async Task<Dictionary<bool, int>> GetActiveCountsAsync()
     {
-        // Load all and filter in memory
         var all = await this.Context.LoadAsync(this.Context.CreateQuery<Insurance>(), 1, 1000, false);
         return all.ItemCollection
-            .Where(i => i.ShopId == shopId || i.ShopId == 0)
             .GroupBy(i => i.IsActive)
             .ToDictionary(g => g.Key, g => g.Count());
     }

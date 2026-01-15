@@ -2,8 +2,6 @@
 CREATE TABLE [<schema>].[Renter]
 (
     [RenterId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
-    -- Computed columns for querying
-    [ShopId] AS CAST(JSON_VALUE([Json], '$.ShopId') AS INT),
     [FullName] AS CAST(JSON_VALUE([Json], '$.FullName') AS NVARCHAR(200)),
     [Phone] AS CAST(JSON_VALUE([Json], '$.Phone') AS NVARCHAR(50)),
     [PassportNo] AS CAST(JSON_VALUE([Json], '$.PassportNo') AS NVARCHAR(50)),
@@ -16,4 +14,4 @@ CREATE TABLE [<schema>].[Renter]
     [ChangedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
 )
 
-CREATE INDEX IX_Renter_ShopId ON [<schema>].[Renter]([ShopId])
+CREATE INDEX IX_<schema>Renter_PassportNo ON [<schema>].[Renter]([PassportNo], [FullName])

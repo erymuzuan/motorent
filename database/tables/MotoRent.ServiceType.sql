@@ -1,9 +1,8 @@
--- ServiceType table - Configurable maintenance service types
+-- ServiceType table - Configurable maintenance service types (organization-wide)
 CREATE TABLE [<schema>].[ServiceType]
 (
     [ServiceTypeId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
     -- Computed columns for querying
-    [ShopId] AS CAST(JSON_VALUE([Json], '$.ShopId') AS INT),
     [Name] AS CAST(JSON_VALUE([Json], '$.Name') AS NVARCHAR(100)),
     [DaysInterval] AS CAST(JSON_VALUE([Json], '$.DaysInterval') AS INT),
     [KmInterval] AS CAST(JSON_VALUE([Json], '$.KmInterval') AS INT),
@@ -18,5 +17,4 @@ CREATE TABLE [<schema>].[ServiceType]
     [ChangedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
 )
 
-CREATE INDEX IX_ServiceType_ShopId ON [<schema>].[ServiceType]([ShopId])
-CREATE INDEX IX_ServiceType_IsActive ON [<schema>].[ServiceType]([ShopId], [IsActive])
+CREATE INDEX IX_ServiceType_IsActive ON [<schema>].[ServiceType]([IsActive])

@@ -16,7 +16,7 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
     #region Query Methods
 
     /// <summary>
-    /// Gets vehicles with filtering options.
+    /// Gets vehicles with filtering options (organization-wide).
     /// </summary>
     public async Task<LoadOperation<Vehicle>> GetVehiclesAsync(
         int shopId,
@@ -27,14 +27,8 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
         int page = 1,
         int pageSize = 20)
     {
-        if (includePooled)
-        {
-            return await GetVehiclesWithPooledAsync(shopId, vehicleType, status, searchTerm, page, pageSize);
-        }
-
-        // Non-pooled: only vehicles at this specific shop
-        var query = this.Context.CreateQuery<Vehicle>()
-            .Where(v => v.HomeShopId == shopId || v.CurrentShopId == shopId);
+        // All vehicles are now organization-wide - shopId and includePooled are ignored for filtering
+        var query = this.Context.CreateQuery<Vehicle>();
 
         if (vehicleType.HasValue)
         {
@@ -51,75 +45,6 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
         var result = await this.Context.LoadAsync(query, page, pageSize, includeTotalRows: true);
 
         // Apply search term filter in memory
-        if (!string.IsNullOrWhiteSpace(searchTerm))
-        {
-            result.ItemCollection = ApplySearchFilter(result.ItemCollection, searchTerm);
-        }
-
-        return result;
-    }
-
-    /// <summary>
-    /// Gets vehicles including those from shared pools.
-    /// </summary>
-    private async Task<LoadOperation<Vehicle>> GetVehiclesWithPooledAsync(
-        int shopId,
-        VehicleType? vehicleType,
-        VehicleStatus? status,
-        string? searchTerm,
-        int page,
-        int pageSize)
-    {
-        // Get all shop IDs that share pools with this shop
-        var pooledShopIds = await PoolService.GetPooledShopIdsAsync(shopId);
-
-        // Query vehicles at any of the pooled shops OR vehicles in pools accessible to this shop
-        var query = this.Context.CreateQuery<Vehicle>()
-            .Where(v =>
-                pooledShopIds.IsInList(v.CurrentShopId) ||
-                (v.VehiclePoolId != null && v.VehiclePoolId > 0));
-
-        if (vehicleType.HasValue)
-        {
-            query = query.Where(v => v.VehicleType == vehicleType.Value);
-        }
-
-        if (status.HasValue)
-        {
-            query = query.Where(v => v.Status == status.Value);
-        }
-
-        query = query.OrderByDescending(v => v.VehicleId);
-
-        var result = await this.Context.LoadAsync(query, page, pageSize, includeTotalRows: true);
-
-        // Filter to only include pooled vehicles whose pools include this shop
-        var pools = await PoolService.GetPoolsForShopAsync(shopId);
-        var accessiblePoolIds = pools.Select(p => p.VehiclePoolId).ToHashSet();
-
-        // Filter by shop ownership/location or pool membership
-        var filtered = result.ItemCollection
-            .Where(v =>
-                // Vehicle's home is this shop
-                v.HomeShopId == shopId ||
-                // Vehicle is currently at this shop
-                v.CurrentShopId == shopId ||
-                // Vehicle is in an accessible pool
-                (v.VehiclePoolId.HasValue && accessiblePoolIds.Contains(v.VehiclePoolId.Value)))
-            .ToList();
-
-        // Fallback: if no vehicles found and no pools configured, this likely means
-        // the user's ShopId isn't set correctly. Return all vehicles as a fallback for MVP.
-        // TODO: Properly set ShopId claim during authentication
-        if (filtered.Count == 0 && pools.Count == 0 && result.ItemCollection.Count > 0)
-        {
-            // Keep all vehicles - user likely needs to configure their shop
-            filtered = result.ItemCollection;
-        }
-
-        result.ItemCollection = filtered;
-
-        // Apply search term filter
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
             result.ItemCollection = ApplySearchFilter(result.ItemCollection, searchTerm);
@@ -240,13 +165,13 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
     }
 
     /// <summary>
-    /// Gets vehicles by type at a specific shop.
+    /// Gets vehicles by type (organization-wide).
     /// </summary>
     public async Task<List<Vehicle>> GetVehiclesByTypeAsync(int shopId, VehicleType vehicleType)
     {
+        // shopId parameter kept for backwards compatibility but ignored
         var result = await this.Context.LoadAsync(
             this.Context.CreateQuery<Vehicle>()
-                .Where(v => v.HomeShopId == shopId || v.CurrentShopId == shopId)
                 .Where(v => v.VehicleType == vehicleType),
             page: 1, size: 500, includeTotalRows: false);
 
@@ -254,12 +179,12 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
     }
 
     /// <summary>
-    /// Gets status counts for vehicles at a shop.
+    /// Gets status counts for vehicles (organization-wide).
     /// </summary>
     public async Task<Dictionary<VehicleStatus, int>> GetStatusCountsAsync(int shopId, VehicleType? vehicleType = null)
     {
-        var query = this.Context.CreateQuery<Vehicle>()
-            .Where(v => v.HomeShopId == shopId || v.CurrentShopId == shopId);
+        // shopId parameter kept for backwards compatibility but ignored
+        var query = this.Context.CreateQuery<Vehicle>();
 
         if (vehicleType.HasValue)
         {
@@ -274,12 +199,13 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
     }
 
     /// <summary>
-    /// Gets vehicle type counts at a shop.
+    /// Gets vehicle type counts (organization-wide).
     /// </summary>
     public async Task<Dictionary<VehicleType, int>> GetTypeCountsAsync(int shopId)
     {
+        // shopId parameter kept for backwards compatibility but ignored
         var allVehicles = await this.Context.LoadAsync(
-            this.Context.CreateQuery<Vehicle>().Where(v => v.HomeShopId == shopId || v.CurrentShopId == shopId),
+            this.Context.CreateQuery<Vehicle>(),
             page: 1, size: 1000, includeTotalRows: false);
 
         return allVehicles.ItemCollection

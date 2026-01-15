@@ -6,7 +6,6 @@ namespace MotoRent.Domain.Entities;
 public class PricingRule : Entity
 {
     public int PricingRuleId { get; set; }
-    public int ShopId { get; set; }
     public string Name { get; set; } = string.Empty;           // "High Season 2025"
     public string? Description { get; set; }
     public PricingRuleType RuleType { get; set; } = PricingRuleType.Season;

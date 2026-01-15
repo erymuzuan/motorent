@@ -10,7 +10,6 @@ public class AccidentService(RentalDataContext context)
     #region Accident CRUD
 
     public async Task<LoadOperation<Accident>> GetAccidentsAsync(
-        int shopId,
         AccidentStatus? status = null,
         AccidentSeverity? severity = null,
         int? vehicleId = null,
@@ -21,7 +20,6 @@ public class AccidentService(RentalDataContext context)
         int pageSize = 20)
     {
         var query = this.Context.CreateQuery<Accident>()
-            .Where(a => a.ShopId == shopId)
             .OrderByDescending(a => a.AccidentDate);
 
         var result = await this.Context.LoadAsync(query, page, pageSize * 2, includeTotalRows: true);
@@ -340,10 +338,9 @@ public class AccidentService(RentalDataContext context)
 
     #region Statistics
 
-    public async Task<AccidentStatistics> GetStatisticsAsync(int shopId, DateTimeOffset? fromDate = null, DateTimeOffset? toDate = null)
+    public async Task<AccidentStatistics> GetStatisticsAsync(DateTimeOffset? fromDate = null, DateTimeOffset? toDate = null)
     {
-        var query = this.Context.CreateQuery<Accident>()
-            .Where(a => a.ShopId == shopId);
+        var query = this.Context.CreateQuery<Accident>();
 
         var result = await this.Context.LoadAsync(query, 1, 1000, true);
         var accidents = result.ItemCollection.AsEnumerable();

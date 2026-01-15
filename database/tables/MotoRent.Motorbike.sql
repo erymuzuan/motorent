@@ -1,9 +1,8 @@
--- Motorbike table
+-- Motorbike table (organization-wide)
 CREATE TABLE [<schema>].[Motorbike]
 (
     [MotorbikeId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
     -- Computed columns for querying
-    [ShopId] AS CAST(JSON_VALUE([Json], '$.ShopId') AS INT),
     [LicensePlate] AS CAST(JSON_VALUE([Json], '$.LicensePlate') AS NVARCHAR(20)),
     [Brand] AS CAST(JSON_VALUE([Json], '$.Brand') AS NVARCHAR(50)),
     [Model] AS CAST(JSON_VALUE([Json], '$.Model') AS NVARCHAR(50)),
@@ -18,4 +17,4 @@ CREATE TABLE [<schema>].[Motorbike]
     [ChangedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
 )
 
-CREATE INDEX IX_Motorbike_ShopId_Status ON [<schema>].[Motorbike]([ShopId], [Status])
+CREATE INDEX IX_Motorbike_Status ON [<schema>].[Motorbike]([Status])
