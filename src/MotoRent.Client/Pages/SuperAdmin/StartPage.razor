@@ -55,15 +55,6 @@
             </div>
         </div>
         <div class="mr-summary-card">
-            <div class="mr-summary-icon success">
-                <i class="ti ti-gift"></i>
-            </div>
-            <div class="mr-summary-content">
-                <h4>@Localizer["StatActiveInvites"]</h4>
-                <div class="mr-value">@m_activeInviteCount</div>
-            </div>
-        </div>
-        <div class="mr-summary-card">
             <div class="mr-summary-icon pending">
                 <i class="ti ti-alert-triangle"></i>
             </div>
@@ -137,25 +128,6 @@
                 </div>
                 <div class="mr-management-card-footer">
                     <span>@Localizer["CardImpersonateFooter"]</span>
-                    <i class="ti ti-arrow-right"></i>
-                </div>
-            </a>
-        </div>
-
-        <!-- Registration Invites Card -->
-        <div class="col-12 col-md-6 col-lg-4 mr-animate-in mr-animate-delay-2">
-            <a href="/super-admin/invites" class="mr-management-card">
-                <div class="mr-management-card-icon bg-success">
-                    <i class="ti ti-gift"></i>
-                </div>
-                <div class="mr-management-card-body">
-                    <h3 class="mr-management-card-title">@Localizer["CardInvitesTitle"]</h3>
-                    <p class="mr-management-card-text">
-                        @Localizer["CardInvitesText"]
-                    </p>
-                </div>
-                <div class="mr-management-card-footer">
-                    <span>@Localizer["CardInvitesFooter"]</span>
                     <i class="ti ti-arrow-right"></i>
                 </div>
             </a>
@@ -245,15 +217,11 @@
             <h3>@Localizer["QuickActions"]</h3>
         </div>
         <div class="mr-quick-actions-body">
-            <a href="/super-admin/organizations/new" class="mr-btn-primary-action">
+            <a href="/super-admin/organizations/create" class="mr-btn-primary-action">
                 <i class="ti ti-plus"></i>
                 @Localizer["ActionNewOrg"]
             </a>
-            <a href="/super-admin/invites/new" class="mr-btn-action success">
-                <i class="ti ti-mail-plus"></i>
-                @Localizer["ActionCreateInvite"]
-            </a>
-            <a href="/super-admin/logs?severity=error" class="mr-btn-action warning">
+            <a href="/super-admin/system-logs?severity=error" class="mr-btn-action warning">
                 <i class="ti ti-alert-circle"></i>
                 @Localizer["ActionViewErrors"]
             </a>
@@ -266,28 +234,24 @@
 </div>
 
 @code {
-    private int m_organizationCount = 0;
-    private int m_userCount = 0;
-    private int m_activeInviteCount = 0;
-    private int m_recentErrorCount = 0;
-    private int m_openSupportCount = 0;
+    private int m_organizationCount;
+    private int m_userCount;
+    private int m_recentErrorCount;
+    private int m_openSupportCount;
 
     protected override async Task OnInitializedAsync()
     {
-        m_organizationCount = await CoreDataContext.GetCountAsync(CoreDataContext.Organizations);
-        m_userCount = await CoreDataContext.GetCountAsync(CoreDataContext.Users);
-        
-        m_activeInviteCount = await CoreDataContext.GetCountAsync(
-            CoreDataContext.RegistrationInvites.Where(x => x.IsActive));
-            
+        this.m_organizationCount = await this.CoreDataContext.GetCountAsync(this.CoreDataContext.Organizations);
+        this.m_userCount = await this.CoreDataContext.GetCountAsync(this.CoreDataContext.Users);
+
         var errorSeverities = new[] { LogSeverity.Error, LogSeverity.Critical };
-        m_recentErrorCount = await CoreDataContext.GetCountAsync(
-            CoreDataContext.LogEntries
+        this.m_recentErrorCount = await this.CoreDataContext.GetCountAsync(
+            this.CoreDataContext.LogEntries
                 .Where(x => errorSeverities.IsInList(x.LogSeverity))
                 .Where(x => x.Status == LogStatus.New));
-            
-        m_openSupportCount = await CoreDataContext.GetCountAsync(
-            CoreDataContext.SupportRequests
+
+        this.m_openSupportCount = await this.CoreDataContext.GetCountAsync(
+            this.CoreDataContext.SupportRequests
                 .Where(x => x.Status != MotoRent.Domain.Helps.TaskStatus.Done)
                 .Where(x => x.Status != MotoRent.Domain.Helps.TaskStatus.Cancelled));
     }
