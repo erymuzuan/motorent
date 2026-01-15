@@ -397,6 +397,7 @@
                         <div class="mt-3 pt-3 border-top">
                             <h4 class="mb-2 fw-medium">@Localizer["ServiceStatus"]</h4>
                             <VehicleMaintenanceWidget VehicleId="@Entity.VehicleId"
+                                                      VehicleName="@GetVehicleDisplayName()"
                                                       CurrentMileage="@Entity.Mileage" />
                         </div>
                     }
@@ -585,6 +586,22 @@
     #endregion
 
     #region Helper Methods
+
+    private string GetVehicleDisplayName()
+    {
+        var parts = new List<string>();
+
+        if (!string.IsNullOrWhiteSpace(Entity.Brand))
+            parts.Add(Entity.Brand);
+
+        if (!string.IsNullOrWhiteSpace(Entity.Model))
+            parts.Add(Entity.Model);
+
+        if (!string.IsNullOrWhiteSpace(Entity.LicensePlate))
+            parts.Add($"({Entity.LicensePlate})");
+
+        return parts.Count > 0 ? string.Join(" ", parts) : Localizer["Vehicle"].Value;
+    }
 
     private static string GetVehicleTypeIcon(VehicleType type) => type switch
     {

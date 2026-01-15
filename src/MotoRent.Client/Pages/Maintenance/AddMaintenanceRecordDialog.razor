@@ -1,0 +1,178 @@
+@using MotoRent.Domain.Entities
+@using MotoRent.Services
+@inherits MotoRent.Client.Controls.LocalizedDialogBase<MaintenanceSchedule, AddMaintenanceRecordDialog>
+@inject MaintenanceService MaintenanceService
+
+<form id="@FormId" @onsubmit="SaveAsync" @onsubmit:preventDefault>
+    <div class="modal-body">
+        @if (m_loadingServiceTypes)
+        {
+            <div class="d-flex align-items-center justify-content-center py-4">
+                <div class="spinner-border text-primary me-2" role="status"></div>
+                <span>@Localizer["LoadingServiceTypes"]</span>
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-info mb-3">
+                <div class="d-flex">
+                    <i class="ti ti-info-circle me-2 mt-1"></i>
+                    <div>
+                        @Localizer["RecordingServiceFor"] <strong>@VehicleName</strong>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-3">
+                <div class="col-12">
+                    <label class="form-label required">@Localizer["ServiceType"]</label>
+                    <select class="form-select" @bind="m_selectedServiceTypeId" required>
+                        <option value="0" disabled>@Localizer["SelectServiceType"]</option>
+                        @foreach (var serviceType in m_serviceTypes)
+                        {
+                            <option value="@serviceType.ServiceTypeId">@serviceType.Name</option>
+                        }
+                    </select>
+                    @if (m_serviceTypes.Count == 0)
+                    {
+                        <small class="form-hint text-warning">
+                            <i class="ti ti-alert-triangle me-1"></i>
+                            @Localizer["NoServiceTypesConfigured"]
+                        </small>
+                    }
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label required">@Localizer["ServiceDate"]</label>
+                    <input type="date" class="form-control" @bind="m_serviceDate" required
+                           max="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label required">@Localizer["MileageAtService"]</label>
+                    <input type="number" class="form-control" @bind="m_serviceMileage" required min="0" />
+                    <small class="form-hint">@Localizer["CurrentMileage", CurrentMileage.ToString("N0")]</small>
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label">@Localizer["PerformedBy"]</label>
+                    <input type="text" class="form-control" @bind="m_performedBy"
+                           placeholder="@Localizer["PerformedByPlaceholder"]" />
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label">@Localizer["Notes"]</label>
+                    <textarea class="form-control" @bind="m_notes" rows="2"
+                              placeholder="@Localizer["NotesPlaceholder"]"></textarea>
+                </div>
+            </div>
+        }
+    </div>
+</form>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
+        @Localizer["Cancel"]
+    </button>
+    <button type="submit" form="@FormId" class="btn btn-success"
+            disabled="@(Saving || m_loadingServiceTypes || m_selectedServiceTypeId == 0)">
+        @if (Saving)
+        {
+            <span class="spinner-border spinner-border-sm me-2"></span>
+        }
+        <i class="ti ti-check me-1"></i>
+        @Localizer["RecordService"]
+    </button>
+</div>
+
+@code {
+    /// <summary>
+    /// The vehicle ID to record maintenance for.
+    /// </summary>
+    [Parameter]
+    public int VehicleId { get; set; }
+
+    /// <summary>
+    /// The vehicle name for display.
+    /// </summary>
+    [Parameter]
+    public string VehicleName { get; set; } = "";
+
+    /// <summary>
+    /// Current mileage of the vehicle.
+    /// </summary>
+    [Parameter]
+    public int CurrentMileage { get; set; }
+
+    private List<ServiceType> m_serviceTypes = [];
+    private bool m_loadingServiceTypes = true;
+    private int m_selectedServiceTypeId;
+    private DateTime m_serviceDate = DateTime.Today;
+    private int m_serviceMileage;
+    private string? m_performedBy;
+    private string? m_notes;
+
+    protected override async Task OnInitializedAsync()
+    {
+        m_serviceMileage = CurrentMileage;
+        FormValid = true;
+        await LoadServiceTypesAsync();
+    }
+
+    private async Task LoadServiceTypesAsync()
+    {
+        m_loadingServiceTypes = true;
+        try
+        {
+            var result = await MaintenanceService.GetServiceTypesAsync(activeOnly: true);
+            m_serviceTypes = result.ItemCollection.ToList();
+        }
+        finally
+        {
+            m_loadingServiceTypes = false;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (m_selectedServiceTypeId == 0)
+        {
+            ShowError(Localizer["PleaseSelectServiceType"].Value);
+            return;
+        }
+
+        Saving = true;
+        try
+        {
+            var request = new RecordServiceRequest
+            {
+                MotorbikeId = VehicleId,
+                ServiceTypeId = m_selectedServiceTypeId,
+                ServiceDate = new DateTimeOffset(m_serviceDate, TimeSpan.Zero),
+                ServiceMileage = m_serviceMileage,
+                PerformedBy = m_performedBy,
+                Notes = m_notes
+            };
+
+            var result = await MaintenanceService.RecordServiceAsync(request, UserName);
+
+            if (result.Success)
+            {
+                ShowSuccess(Localizer["ServiceRecordedSuccessfully"].Value);
+                Close();
+            }
+            else
+            {
+                ShowError(Localizer["FailedToRecord", result.Message].Value);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowError(Localizer["Error", ex.Message].Value);
+        }
+        finally
+        {
+            Saving = false;
+        }
+    }
+}
