@@ -1,0 +1,111 @@
+@*
+    FeatureView - Conditional rendering component based on organization settings.
+
+    Usage:
+    <FeatureView SettingKey="@SettingKeys.Rental_RequirePreInspection">
+        <InspectionStepComponent />
+    </FeatureView>
+
+    <FeatureView SettingKey="@SettingKeys.Portal_EnableOnlineBooking">
+        <ChildContent>
+            <OnlineBookingWidget />
+        </ChildContent>
+        <NotContent>
+            <p>Online booking is not available.</p>
+        </NotContent>
+    </FeatureView>
+*@
+@using MotoRent.Domain.Core
+@using MotoRent.Domain.Settings
+@inject ISettingConfig SettingConfig
+@inject IRequestContext RequestContext
+
+@if (m_loading)
+{
+    @* Show nothing while loading - prevents flash of incorrect content *@
+}
+else if (!m_hide)
+{
+    @ChildContent
+}
+else if (NotContent != null)
+{
+    @NotContent
+}
+
+@code {
+    /// <summary>
+    /// Setting key to check. If the setting value is true, child content is shown.
+    /// </summary>
+    [Parameter]
+    public string? SettingKey { get; set; }
+
+    /// <summary>
+    /// If true, checks user-specific setting instead of organization-wide setting.
+    /// </summary>
+    [Parameter]
+    public bool UserSetting { get; set; }
+
+    /// <summary>
+    /// Optional country filter. Only shows content if organization's country matches.
+    /// </summary>
+    [Parameter]
+    public string? Country { get; set; }
+
+    /// <summary>
+    /// If true, inverts the condition (shows content when setting is false).
+    /// </summary>
+    [Parameter]
+    public bool Invert { get; set; }
+
+    /// <summary>
+    /// Content to show when the feature is enabled.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// Alternative content to show when the feature is disabled.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? NotContent { get; set; }
+
+    private bool m_hide = true;
+    private bool m_loading = true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync();
+
+        try
+        {
+            m_loading = true;
+            m_hide = true;
+
+            // No child content = nothing to show
+            if (ChildContent == null)
+            {
+                return;
+            }
+
+            // Check setting key
+            if (!string.IsNullOrEmpty(SettingKey))
+            {
+                var userName = UserSetting ? RequestContext.GetUserName() : null;
+                var settingEnabled = await SettingConfig.GetBoolAsync(SettingKey, userName, false);
+
+                // Apply inversion if requested
+                m_hide = Invert ? settingEnabled : !settingEnabled;
+            }
+            else
+            {
+                // No setting key specified - show content by default
+                m_hide = false;
+            }
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+}

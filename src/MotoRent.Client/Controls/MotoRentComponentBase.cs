@@ -5,12 +5,13 @@ using Microsoft.Extensions.Logging;
 using MotoRent.Client.Services;
 using MotoRent.Domain.Core;
 using MotoRent.Domain.DataContext;
+using MotoRent.Domain.Settings;
 
 namespace MotoRent.Client.Controls;
 
 /// <summary>
 /// Base class for all MotoRent Blazor components.
-/// Provides common services: DataContext, RequestContext, DialogService, ToastService, Navigation, Logging, and CommonLocalizer.
+/// Provides common services: DataContext, RequestContext, DialogService, ToastService, Navigation, Logging, CommonLocalizer, and SettingConfig.
 /// </summary>
 public class MotoRentComponentBase : ComponentBase
 {
@@ -22,6 +23,7 @@ public class MotoRentComponentBase : ComponentBase
     [Inject] protected NavigationManager NavigationManager { get; set; } = null!;
     [Inject] protected IStringLocalizer<CommonResources> CommonLocalizer { get; set; } = null!;
     [Inject] protected IHashids HashId { get; set; } = null!;
+    [Inject] protected ISettingConfig SettingConfig { get; set; } = null!;
 
     #region Request Context Properties
 
