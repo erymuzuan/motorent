@@ -4,12 +4,15 @@
 @using MotoRent.Domain.Entities
 @using MotoRent.Domain.Models
 @using MotoRent.Domain.Settings
+@using MotoRent.Domain.Storage
 @attribute [Authorize(Policy = "RequireTenantStaff")]
 @using MotoRent.Client.Components.Shared
 @inherits LocalizedComponentBase<Vehicles>
 @inject VehicleService VehicleService
 @inject VehiclePoolService VehiclePoolService
 @inject MaintenanceService MaintenanceService
+@inject VehicleImageService VehicleImageService
+@inject IBinaryStore BinaryStore
 
 <MotoRentPageTitle>@Localizer["FleetManagement"]</MotoRentPageTitle>
 
@@ -244,12 +247,13 @@
             <div class="row row-cards">
                 @foreach (var group in m_vehicleGroups)
                 {
+                    var groupImageUrl = GetGroupImage(group);
                     <div class="col-sm-6 col-lg-4 col-xl-3">
                         <div class="card">
                             <div class="card-img-top img-responsive img-responsive-16by9 position-relative"
-                                 style="background-image: url('@GetGroupImage(group)'); background-color: #f8fafc; cursor: pointer;"
+                                 style="@(string.IsNullOrEmpty(groupImageUrl) ? "" : $"background-image: url('{groupImageUrl}');") background-color: #f8fafc; cursor: pointer;"
                                  @onclick="@(() => ToggleGroupExpanded(group.GroupKey))">
-                                @if (string.IsNullOrEmpty(group.ImagePath))
+                                @if (string.IsNullOrEmpty(groupImageUrl))
                                 {
                                     <div class="d-flex align-items-center justify-content-center h-100">
                                         <i class="ti @GetVehicleTypeIcon(group.VehicleType) text-secondary" style="font-size: 4rem; opacity: 0.3;"></i>
@@ -574,11 +578,12 @@
             <div class="row row-cards">
                 @foreach (var vehicle in m_vehicles)
                 {
+                    var vehicleImageUrl = GetVehicleImage(vehicle);
                     <div class="col-sm-6 col-lg-4 col-xl-3">
                         <div class="card card-sm cursor-pointer" @onclick="@(() => NavigateToEdit(vehicle))">
                             <div class="card-img-top img-responsive img-responsive-16by9"
-                                 style="background-image: url('@GetVehicleImage(vehicle)'); background-color: #f8fafc;">
-                                @if (string.IsNullOrEmpty(vehicle.ImagePath))
+                                 style="@(string.IsNullOrEmpty(vehicleImageUrl) ? "" : $"background-image: url('{vehicleImageUrl}');") background-color: #f8fafc;">
+                                @if (string.IsNullOrEmpty(vehicleImageUrl))
                                 {
                                     <div class="d-flex align-items-center justify-content-center h-100">
                                         <i class="ti @GetVehicleTypeIcon(vehicle.VehicleType) text-secondary" style="font-size: 4rem; opacity: 0.3;"></i>
@@ -605,7 +610,14 @@
                                 }
                             </div>
                             <div class="card-body">
-...
+                                <h3 class="card-title mb-1">@vehicle.Brand @vehicle.Model</h3>
+                                <div class="text-secondary mb-2">
+                                    @vehicle.LicensePlate
+                                    @if (!string.IsNullOrEmpty(vehicle.Color))
+                                    {
+                                        <span class="ms-2">@vehicle.Color</span>
+                                    }
+                                </div>
                                 <div class="d-flex align-items-center justify-content-between">
                                     <div>
                                         @if (vehicle.UsesIntervalPricing)
@@ -644,6 +656,7 @@
     private HashSet<string> m_expandedGroups = [];
     private Dictionary<VehicleStatus, int> m_statusCounts = new();
     private Dictionary<VehicleType, int> m_typeCounts = new();
+    private Dictionary<int, string> m_vehiclePrimaryImages = new();
     private List<string> m_availableBrands = [];
     private List<VehicleType> m_enabledVehicleTypes = [];
     private bool m_loading = true;
@@ -729,6 +742,17 @@
                     .Distinct()
                     .OrderBy(b => b)
                     .ToList();
+            }
+
+            // Load primary images for all vehicles
+            this.m_vehiclePrimaryImages.Clear();
+            foreach (var vehicle in this.m_vehicles)
+            {
+                var primaryImage = await this.VehicleImageService.GetPrimaryImageAsync(vehicle.VehicleId);
+                if (primaryImage != null && !string.IsNullOrEmpty(primaryImage.StoreId))
+                {
+                    this.m_vehiclePrimaryImages[vehicle.VehicleId] = this.BinaryStore.GetImageUrl(primaryImage.StoreId);
+                }
             }
         }
         catch (Exception ex)
@@ -898,36 +922,50 @@
         _ => "ti-circle"
     };
 
-    private static string GetVehicleImage(Vehicle vehicle)
+    private string GetVehicleImage(Vehicle vehicle)
     {
+        // First check loaded primary images
+        if (this.m_vehiclePrimaryImages.TryGetValue(vehicle.VehicleId, out var imageUrl))
+            return imageUrl;
+
+        // Fall back to ImagePath on entity
         if (!string.IsNullOrEmpty(vehicle.ImagePath))
             return vehicle.ImagePath;
 
-        return vehicle.VehicleType switch
-        {
-            VehicleType.Motorbike => "/images/vehicles/motorbike-placeholder.png",
-            VehicleType.Car => "/images/vehicles/car-placeholder.png",
-            VehicleType.JetSki => "/images/vehicles/jetski-placeholder.png",
-            VehicleType.Boat => "/images/vehicles/boat-placeholder.png",
-            VehicleType.Van => "/images/vehicles/van-placeholder.png",
-            _ => "/images/vehicles/default-placeholder.png"
-        };
+        // Return empty to show placeholder icon
+        return string.Empty;
     }
 
-    private static string GetGroupImage(VehicleGroup group)
+    private static string GetVehicleTypePlaceholder(VehicleType type) => type switch
     {
+        VehicleType.Motorbike => "/images/vehicles/motorbike-placeholder.png",
+        VehicleType.Car => "/images/vehicles/car-placeholder.png",
+        VehicleType.JetSki => "/images/vehicles/jetski-placeholder.png",
+        VehicleType.Boat => "/images/vehicles/boat-placeholder.png",
+        VehicleType.Van => "/images/vehicles/van-placeholder.png",
+        _ => "/images/vehicles/default-placeholder.png"
+    };
+
+    private string GetGroupImage(VehicleGroup group)
+    {
+        // First check if group has an image
         if (!string.IsNullOrEmpty(group.ImagePath))
             return group.ImagePath;
 
-        return group.VehicleType switch
+        // Check if any vehicle in the group has a loaded primary image
+        foreach (var vehicle in group.Vehicles)
         {
-            VehicleType.Motorbike => "/images/vehicles/motorbike-placeholder.png",
-            VehicleType.Car => "/images/vehicles/car-placeholder.png",
-            VehicleType.JetSki => "/images/vehicles/jetski-placeholder.png",
-            VehicleType.Boat => "/images/vehicles/boat-placeholder.png",
-            VehicleType.Van => "/images/vehicles/van-placeholder.png",
-            _ => "/images/vehicles/default-placeholder.png"
-        };
+            if (this.m_vehiclePrimaryImages.TryGetValue(vehicle.VehicleId, out var imageUrl))
+                return imageUrl;
+        }
+
+        // Check if any vehicle in the group has an ImagePath
+        var vehicleWithImage = group.Vehicles.FirstOrDefault(v => !string.IsNullOrEmpty(v.ImagePath));
+        if (vehicleWithImage != null)
+            return vehicleWithImage.ImagePath!;
+
+        // Return empty to show placeholder icon
+        return string.Empty;
     }
 
     private void ToggleGroupExpanded(string groupKey)
