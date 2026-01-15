@@ -5,8 +5,8 @@ CREATE TABLE [<schema>].[DepreciationEntry]
     -- Asset reference
     [AssetId] AS CAST(JSON_VALUE([Json], '$.AssetId') AS INT),
     -- Period
-    [PeriodStart] AS CAST(JSON_VALUE([Json], '$.PeriodStart') AS DATE),
-    [PeriodEnd] AS CAST(JSON_VALUE([Json], '$.PeriodEnd') AS DATE),
+    [PeriodStart] DATE NULL,
+    [PeriodEnd] DATE NULL,
     -- Amounts
     [Amount] AS CAST(JSON_VALUE([Json], '$.Amount') AS DECIMAL(12,2)),
     [BookValueStart] AS CAST(JSON_VALUE([Json], '$.BookValueStart') AS DECIMAL(12,2)),
@@ -23,11 +23,11 @@ CREATE TABLE [<schema>].[DepreciationEntry]
     [CreatedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
     [ChangedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
 )
-GO
+--
 
 CREATE INDEX IX_DepreciationEntry_AssetId ON [<schema>].[DepreciationEntry]([AssetId])
-GO
+--
 CREATE INDEX IX_DepreciationEntry_Period ON [<schema>].[DepreciationEntry]([AssetId], [PeriodStart], [PeriodEnd])
-GO
+--
 CREATE INDEX IX_DepreciationEntry_Type ON [<schema>].[DepreciationEntry]([EntryType])
-GO
+--

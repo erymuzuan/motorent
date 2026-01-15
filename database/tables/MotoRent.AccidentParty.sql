@@ -17,9 +17,9 @@ CREATE TABLE [<schema>].[AccidentParty]
     [CreatedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
     [ChangedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
 )
-GO
+--
 
 CREATE INDEX IX_AccidentParty_AccidentId ON [<schema>].[AccidentParty]([AccidentId])
-GO
+--
 CREATE INDEX IX_AccidentParty_PartyType ON [<schema>].[AccidentParty]([AccidentId], [PartyType])
-GO
+--

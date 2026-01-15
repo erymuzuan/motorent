@@ -15,7 +15,7 @@ CREATE TABLE [<schema>].[AccidentNote]
     [CreatedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
     [ChangedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
 )
-GO
+--
 
 CREATE INDEX IX_AccidentNote_AccidentId ON [<schema>].[AccidentNote]([AccidentId])
-GO
+--

@@ -15,9 +15,9 @@ CREATE TABLE [<schema>].[VehicleOwner]
     [CreatedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
     [ChangedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
 )
-GO
+--
 
 CREATE INDEX IX_VehicleOwner_Name ON [<schema>].[VehicleOwner]([Name])
-GO
+--
 CREATE INDEX IX_VehicleOwner_IsActive ON [<schema>].[VehicleOwner]([IsActive])
-GO
+--

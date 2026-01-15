@@ -9,8 +9,8 @@ CREATE TABLE [<schema>].[OwnerPayment]
     [PaymentModel] AS CAST(JSON_VALUE([Json], '$.PaymentModel') AS NVARCHAR(20)),
     [Amount] AS CAST(JSON_VALUE([Json], '$.Amount') AS DECIMAL(10,2)),
     [Status] AS CAST(JSON_VALUE([Json], '$.Status') AS NVARCHAR(20)),
-    [RentalStartDate] AS CAST(JSON_VALUE([Json], '$.RentalStartDate') AS DATETIMEOFFSET),
-    [RentalEndDate] AS CAST(JSON_VALUE([Json], '$.RentalEndDate') AS DATETIMEOFFSET),
+    [RentalStartDate] DATETIMEOFFSET NULL,
+    [RentalEndDate] DATETIMEOFFSET NULL,
     -- JSON storage
     [Json] NVARCHAR(MAX) NOT NULL,
     -- Audit columns
@@ -19,13 +19,13 @@ CREATE TABLE [<schema>].[OwnerPayment]
     [CreatedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
     [ChangedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
 )
-GO
+--
 
 CREATE INDEX IX_OwnerPayment_VehicleOwnerId_Status ON [<schema>].[OwnerPayment]([VehicleOwnerId], [Status])
-GO
+--
 CREATE INDEX IX_OwnerPayment_RentalId ON [<schema>].[OwnerPayment]([RentalId])
-GO
+--
 CREATE INDEX IX_OwnerPayment_Status ON [<schema>].[OwnerPayment]([Status])
-GO
+--
 CREATE INDEX IX_OwnerPayment_RentalStartDate ON [<schema>].[OwnerPayment]([RentalStartDate])
-GO
+--

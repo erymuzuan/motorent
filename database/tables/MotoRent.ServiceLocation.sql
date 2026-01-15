@@ -24,13 +24,13 @@ CREATE TABLE [<schema>].[ServiceLocation]
     [CreatedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
     [ChangedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
 )
-GO
+--
 
 -- Index for shop lookup
 CREATE INDEX IX_ServiceLocation_ShopId ON [<schema>].[ServiceLocation]([ShopId])
-GO
+--
 
 -- Index for active locations by type
 CREATE INDEX IX_ServiceLocation_ActiveType ON [<schema>].[ServiceLocation]([ShopId], [LocationType], [IsActive])
     WHERE [IsActive] = 1
-GO
+--

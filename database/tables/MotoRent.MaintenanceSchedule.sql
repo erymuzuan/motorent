@@ -5,9 +5,9 @@ CREATE TABLE [<schema>].[MaintenanceSchedule]
     -- Computed columns for querying
     [MotorbikeId] AS CAST(JSON_VALUE([Json], '$.MotorbikeId') AS INT),
     [ServiceTypeId] AS CAST(JSON_VALUE([Json], '$.ServiceTypeId') AS INT),
-    [LastServiceDate] AS CAST(JSON_VALUE([Json], '$.LastServiceDate') AS DATE),
+    [LastServiceDate] DATE NULL,
     [LastServiceMileage] AS CAST(JSON_VALUE([Json], '$.LastServiceMileage') AS INT),
-    [NextDueDate] AS CAST(JSON_VALUE([Json], '$.NextDueDate') AS DATE),
+    [NextDueDate] DATE NULL,
     [NextDueMileage] AS CAST(JSON_VALUE([Json], '$.NextDueMileage') AS INT),
     -- JSON storage
     [Json] NVARCHAR(MAX) NOT NULL,

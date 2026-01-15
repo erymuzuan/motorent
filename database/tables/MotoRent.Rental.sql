@@ -14,8 +14,8 @@ CREATE TABLE [<schema>].[Rental]
     [IntervalMinutes] AS CAST(JSON_VALUE([Json], '$.IntervalMinutes') AS INT),
     -- Status and Dates
     [Status] AS CAST(JSON_VALUE([Json], '$.Status') AS NVARCHAR(20)),
-    [StartDate] AS CAST(JSON_VALUE([Json], '$.StartDate') AS DATE),
-    [ExpectedEndDate] AS CAST(JSON_VALUE([Json], '$.ExpectedEndDate') AS DATE),
+    [StartDate] DATE NULL,
+    [ExpectedEndDate] DATE NULL,
     -- Driver/Guide
     [IncludeDriver] AS CAST(COALESCE(JSON_VALUE([Json], '$.IncludeDriver'), 'false') AS BIT),
     [IncludeGuide] AS CAST(COALESCE(JSON_VALUE([Json], '$.IncludeGuide'), 'false') AS BIT),
@@ -27,17 +27,17 @@ CREATE TABLE [<schema>].[Rental]
     [CreatedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
     [ChangedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
 )
-GO
+
 
 CREATE INDEX IX_Rental_RentedFromShopId_Status ON [<schema>].[Rental]([RentedFromShopId], [Status])
-GO
+
 CREATE INDEX IX_Rental_ReturnedToShopId ON [<schema>].[Rental]([ReturnedToShopId]) WHERE [ReturnedToShopId] IS NOT NULL
-GO
+
 CREATE INDEX IX_Rental_VehiclePoolId ON [<schema>].[Rental]([VehiclePoolId]) WHERE [VehiclePoolId] IS NOT NULL
-GO
+
 CREATE INDEX IX_Rental_RenterId ON [<schema>].[Rental]([RenterId])
-GO
+
 CREATE INDEX IX_Rental_VehicleId ON [<schema>].[Rental]([VehicleId])
-GO
+
 CREATE INDEX IX_Rental_DurationType ON [<schema>].[Rental]([DurationType])
-GO
+

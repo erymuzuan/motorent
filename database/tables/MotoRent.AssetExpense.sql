@@ -5,9 +5,9 @@ CREATE TABLE [<schema>].[AssetExpense]
     -- Asset reference
     [AssetId] AS CAST(JSON_VALUE([Json], '$.AssetId') AS INT),
     -- Expense details
-    [Category] AS CAST(JSON_VALUE([Json], '$.Category') AS NVARCHAR(30)),
+    [Cate--ry] AS CAST(JSON_VALUE([Json], '$.Cate--ry') AS NVARCHAR(30)),
     [Amount] AS CAST(JSON_VALUE([Json], '$.Amount') AS DECIMAL(12,2)),
-    [ExpenseDate] AS CAST(JSON_VALUE([Json], '$.ExpenseDate') AS DATE),
+    [ExpenseDate] DATE NULL,
     [IsPaid] AS CAST(JSON_VALUE([Json], '$.IsPaid') AS BIT),
     -- Related entities
     [RentalId] AS CAST(JSON_VALUE([Json], '$.RentalId') AS INT),
@@ -25,13 +25,13 @@ CREATE TABLE [<schema>].[AssetExpense]
     [CreatedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
     [ChangedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
 )
-GO
+--
 
 CREATE INDEX IX_AssetExpense_AssetId ON [<schema>].[AssetExpense]([AssetId])
-GO
-CREATE INDEX IX_AssetExpense_Category ON [<schema>].[AssetExpense]([AssetId], [Category])
-GO
+--
+CREATE INDEX IX_AssetExpense_Cate--ry ON [<schema>].[AssetExpense]([AssetId], [Cate--ry])
+--
 CREATE INDEX IX_AssetExpense_ExpenseDate ON [<schema>].[AssetExpense]([ExpenseDate])
-GO
+--
 CREATE INDEX IX_AssetExpense_AccountingPeriod ON [<schema>].[AssetExpense]([AccountingPeriod])
-GO
+--

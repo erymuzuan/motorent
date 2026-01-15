@@ -22,13 +22,13 @@ CREATE TABLE [MotoRent].[Comment]
     [CreatedTimestamp]  DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
     [ChangedTimestamp]  DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
 )
-GO
+--
 
 CREATE CLUSTERED INDEX [IX_Comment_EntityId] ON [MotoRent].[Comment]([EntityId] DESC)
-GO
+--
 
 CREATE INDEX [IX_Comment_Type] ON [MotoRent].[Comment]([Type], [Root])
-GO
+--
 
 CREATE INDEX [IX_Comment_ObjectWebId] ON [MotoRent].[Comment]([ObjectWebId])
-GO
+--

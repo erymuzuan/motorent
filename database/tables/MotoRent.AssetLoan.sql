@@ -10,12 +10,12 @@ CREATE TABLE [<schema>].[AssetLoan]
     [AnnualInterestRate] AS CAST(JSON_VALUE([Json], '$.AnnualInterestRate') AS DECIMAL(6,4)),
     [TermMonths] AS CAST(JSON_VALUE([Json], '$.TermMonths') AS INT),
     [MonthlyPayment] AS CAST(JSON_VALUE([Json], '$.MonthlyPayment') AS DECIMAL(12,2)),
-    [StartDate] AS CAST(JSON_VALUE([Json], '$.StartDate') AS DATE),
-    [EndDate] AS CAST(JSON_VALUE([Json], '$.EndDate') AS DATE),
+    [StartDate] DATE NULL,
+    [EndDate] DATE NULL,
     -- Current balances
     [RemainingPrincipal] AS CAST(JSON_VALUE([Json], '$.RemainingPrincipal') AS DECIMAL(12,2)),
     [PaymentsMade] AS CAST(JSON_VALUE([Json], '$.PaymentsMade') AS INT),
-    [NextPaymentDue] AS CAST(JSON_VALUE([Json], '$.NextPaymentDue') AS DATE),
+    [NextPaymentDue] DATE NULL,
     -- Status
     [Status] AS CAST(JSON_VALUE([Json], '$.Status') AS NVARCHAR(20)),
     -- JSON storage
@@ -26,11 +26,11 @@ CREATE TABLE [<schema>].[AssetLoan]
     [CreatedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
     [ChangedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
 )
-GO
+--
 
 CREATE INDEX IX_AssetLoan_AssetId ON [<schema>].[AssetLoan]([AssetId])
-GO
+--
 CREATE INDEX IX_AssetLoan_Status ON [<schema>].[AssetLoan]([Status])
-GO
+--
 CREATE INDEX IX_AssetLoan_NextPaymentDue ON [<schema>].[AssetLoan]([NextPaymentDue]) WHERE [Status] = 'Active'
-GO
+--

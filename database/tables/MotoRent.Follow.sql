@@ -16,7 +16,7 @@ CREATE TABLE [MotoRent].[Follow]
     [CreatedTimestamp]  DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
     [ChangedTimestamp]  DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
 )
-GO
+--
 
 CREATE INDEX [IX_Follow_EntityId_User_Type] ON [MotoRent].[Follow]([EntityId], [User], [Type])
-GO
+--

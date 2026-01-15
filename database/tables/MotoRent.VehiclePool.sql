@@ -14,7 +14,7 @@ CREATE TABLE [<schema>].[VehiclePool]
     [CreatedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
     [ChangedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
 )
-GO
+--
 
 CREATE INDEX IX_VehiclePool_IsActive ON [<schema>].[VehiclePool]([IsActive])
-GO
+--

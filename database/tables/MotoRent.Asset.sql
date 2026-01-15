@@ -5,9 +5,9 @@ CREATE TABLE [<schema>].[Asset]
     -- Vehicle reference
     [VehicleId] AS CAST(JSON_VALUE([Json], '$.VehicleId') AS INT),
     -- Acquisition
-    [AcquisitionDate] AS CAST(JSON_VALUE([Json], '$.AcquisitionDate') AS DATE),
+    [AcquisitionDate] DATE NULL,
     [AcquisitionCost] AS CAST(JSON_VALUE([Json], '$.AcquisitionCost') AS DECIMAL(12,2)),
-    [FirstRentalDate] AS CAST(JSON_VALUE([Json], '$.FirstRentalDate') AS DATE),
+    [FirstRentalDate] DATE NULL,
     [IsPreExisting] AS CAST(JSON_VALUE([Json], '$.IsPreExisting') AS BIT),
     -- Depreciation
     [DepreciationMethod] AS CAST(JSON_VALUE([Json], '$.DepreciationMethod') AS NVARCHAR(30)),
@@ -18,10 +18,10 @@ CREATE TABLE [<schema>].[Asset]
     [AccumulatedDepreciation] AS CAST(JSON_VALUE([Json], '$.AccumulatedDepreciation') AS DECIMAL(12,2)),
     [TotalExpenses] AS CAST(JSON_VALUE([Json], '$.TotalExpenses') AS DECIMAL(12,2)),
     [TotalRevenue] AS CAST(JSON_VALUE([Json], '$.TotalRevenue') AS DECIMAL(12,2)),
-    [LastDepreciationDate] AS CAST(JSON_VALUE([Json], '$.LastDepreciationDate') AS DATE),
+    [LastDepreciationDate] DATE NULL,
     -- Status
     [Status] AS CAST(JSON_VALUE([Json], '$.Status') AS NVARCHAR(20)),
-    [DisposalDate] AS CAST(JSON_VALUE([Json], '$.DisposalDate') AS DATE),
+    [DisposalDate] DATE NULL,
     -- Loan
     [AssetLoanId] AS CAST(JSON_VALUE([Json], '$.AssetLoanId') AS INT),
     -- JSON storage
@@ -32,13 +32,13 @@ CREATE TABLE [<schema>].[Asset]
     [CreatedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
     [ChangedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
 )
-GO
+--
 
 CREATE UNIQUE INDEX IX_Asset_VehicleId ON [<schema>].[Asset]([VehicleId])
-GO
+--
 CREATE INDEX IX_Asset_Status ON [<schema>].[Asset]([Status])
-GO
+--
 CREATE INDEX IX_Asset_AcquisitionDate ON [<schema>].[Asset]([AcquisitionDate])
-GO
+--
 CREATE INDEX IX_Asset_DepreciationMethod ON [<schema>].[Asset]([DepreciationMethod])
-GO
+--

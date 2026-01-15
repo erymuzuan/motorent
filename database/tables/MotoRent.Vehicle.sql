@@ -36,18 +36,18 @@ CREATE TABLE [<schema>].[Vehicle]
     [CreatedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
     [ChangedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
 )
-GO
+--
 
 -- Indexes for common query patterns
 CREATE INDEX IX_Vehicle_HomeShopId_Status ON [<schema>].[Vehicle]([HomeShopId], [Status])
-GO
+--
 CREATE INDEX IX_Vehicle_CurrentShopId_Status ON [<schema>].[Vehicle]([CurrentShopId], [Status])
-GO
+--
 CREATE INDEX IX_Vehicle_VehiclePoolId_Status ON [<schema>].[Vehicle]([VehiclePoolId], [Status]) WHERE [VehiclePoolId] IS NOT NULL
-GO
+--
 CREATE INDEX IX_Vehicle_VehicleType_Status ON [<schema>].[Vehicle]([VehicleType], [Status])
-GO
+--
 CREATE UNIQUE INDEX IX_Vehicle_LicensePlate ON [<schema>].[Vehicle]([LicensePlate])
-GO
+--
 CREATE INDEX IX_Vehicle_VehicleOwnerId ON [<schema>].[Vehicle]([VehicleOwnerId]) WHERE [VehicleOwnerId] IS NOT NULL
-GO
+--

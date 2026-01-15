@@ -6,8 +6,8 @@ CREATE TABLE [<schema>].[AssetLoanPayment]
     [AssetLoanId] AS CAST(JSON_VALUE([Json], '$.AssetLoanId') AS INT),
     -- Payment details
     [PaymentNumber] AS CAST(JSON_VALUE([Json], '$.PaymentNumber') AS INT),
-    [DueDate] AS CAST(JSON_VALUE([Json], '$.DueDate') AS DATE),
-    [PaidDate] AS CAST(JSON_VALUE([Json], '$.PaidDate') AS DATE),
+    [DueDate] DATE NULL,
+    [PaidDate] DATE NULL,
     [TotalAmount] AS CAST(JSON_VALUE([Json], '$.TotalAmount') AS DECIMAL(12,2)),
     [PrincipalAmount] AS CAST(JSON_VALUE([Json], '$.PrincipalAmount') AS DECIMAL(12,2)),
     [InterestAmount] AS CAST(JSON_VALUE([Json], '$.InterestAmount') AS DECIMAL(12,2)),
@@ -21,11 +21,11 @@ CREATE TABLE [<schema>].[AssetLoanPayment]
     [CreatedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
     [ChangedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
 )
-GO
+--
 
 CREATE INDEX IX_AssetLoanPayment_LoanId ON [<schema>].[AssetLoanPayment]([AssetLoanId])
-GO
+--
 CREATE INDEX IX_AssetLoanPayment_Status ON [<schema>].[AssetLoanPayment]([AssetLoanId], [Status])
-GO
+--
 CREATE INDEX IX_AssetLoanPayment_DueDate ON [<schema>].[AssetLoanPayment]([DueDate])
-GO
+--

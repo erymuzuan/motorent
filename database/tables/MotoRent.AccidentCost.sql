@@ -9,7 +9,7 @@ CREATE TABLE [<schema>].[AccidentCost]
     [ActualAmount] AS CAST(JSON_VALUE([Json], '$.ActualAmount') AS DECIMAL(12,2)),
     [IsCredit] AS CAST(JSON_VALUE([Json], '$.IsCredit') AS BIT),
     [IsApproved] AS CAST(JSON_VALUE([Json], '$.IsApproved') AS BIT),
-    [PaidDate] AS CAST(JSON_VALUE([Json], '$.PaidDate') AS DATE),
+    [PaidDate] DATE NULL,
     [AccidentPartyId] AS CAST(JSON_VALUE([Json], '$.AccidentPartyId') AS INT),
     -- JSON storage
     [Json] NVARCHAR(MAX) NOT NULL,
@@ -19,9 +19,9 @@ CREATE TABLE [<schema>].[AccidentCost]
     [CreatedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
     [ChangedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
 )
-GO
+--
 
 CREATE INDEX IX_AccidentCost_AccidentId ON [<schema>].[AccidentCost]([AccidentId])
-GO
+--
 CREATE INDEX IX_AccidentCost_CostType ON [<schema>].[AccidentCost]([AccidentId], [CostType])
-GO
+--
