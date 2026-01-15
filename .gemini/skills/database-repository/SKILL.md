@@ -27,7 +27,14 @@ CREATE TABLE [MotoRent].[Rental]
     [RenterId] AS CAST(JSON_VALUE([Json], '$.RenterId') AS INT),
     [MotorbikeId] AS CAST(JSON_VALUE([Json], '$.MotorbikeId') AS INT),
     [ShopId] AS CAST(JSON_VALUE([Json], '$.ShopId') AS INT),
+
+    -- DO NOT use JSON_VALUE function for DATE, DATETIMEOFFSET columns
     [StartDate] AS CAST(JSON_VALUE([Json], '$.StartDate') AS DATE),
+    -- USE PERSISTENT COLUMN INSTEAD
+    [EndDate] DATE NULL,
+    -- USE PERSISTENT COLUMN INSTEAD
+    [CheckInTimestamp] DATETIMEOFFSET NULL,
+
     -- JSON storage
     [Json] NVARCHAR(MAX) NOT NULL,
     -- Audit columns
@@ -234,7 +241,7 @@ var uniqueStatuses = await context.GetDistinctAsync(
 
 ```csharp
 // Instead of using Query properties:
-var query = context.Rentals
+var query = context.CreateQuery<Rental>()
     .Where(r => r.ShopId == shopId)
     .OrderByDescending(r => r.StartDate);
 
@@ -256,6 +263,8 @@ var result = await context.LoadAsync(query, page: 1, size: 20);
 | Batch related changes | Attach multiple entities in single session |
 | Use aggregates for stats | Use `GetCountAsync`, `GetSumAsync` instead of loading all entities |
 | CreateQuery over properties | Prefer `CreateQuery<T>()` over Query properties for flexibility |
+| DO NOT use JSON_VALUE function for DATE, DATETIMEOFFSET columns `[StarEndDatetDate] AS CAST(JSON_VALUE([Json], '$.StartDate') AS DATE` USE PERSISTENT COLUMN INSTEAD    `[EndDate] DATE NULL`  |
+
 
 ## Source
 - From: `E:\project\work\rx-erp` repository pattern

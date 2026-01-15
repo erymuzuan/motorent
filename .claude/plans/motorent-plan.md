@@ -364,7 +364,12 @@ CREATE TABLE [MotoRent].[Rental]
     [RenterId] AS CAST(JSON_VALUE([Json], '$.RenterId') AS INT),
     [MotorbikeId] AS CAST(JSON_VALUE([Json], '$.MotorbikeId') AS INT),
     [ShopId] AS CAST(JSON_VALUE([Json], '$.ShopId') AS INT),
+    -- DO NOT use JSON_VALUE function for DATE, DATETIMEOFFSET columns
     [StartDate] AS CAST(JSON_VALUE([Json], '$.StartDate') AS DATE),
+    -- USE PERSISTENT COLUMN INSTEAD
+    [EndDate] DATE NULL,
+    -- USE PERSISTENT COLUMN INSTEAD
+    [CheckInTimestamp] DATETIMEOFFSET NULL,
     -- JSON storage
     [Json] NVARCHAR(MAX) NOT NULL,
     -- Audit columns
