@@ -1,0 +1,434 @@
+@page "/finance/depreciation-report"
+@using Microsoft.AspNetCore.Authorization
+@using MotoRent.Domain.Entities
+@attribute [Authorize(Policy = "RequireTenantManager")]
+@inherits LocalizedComponentBase<DepreciationReport>
+@inject AssetService AssetService
+
+<MotoRentPageTitle>Depreciation Report</MotoRentPageTitle>
+
+<!-- Page Header -->
+<div class="mr-page-header">
+    <div class="container-xl">
+        <nav class="mr-breadcrumb">
+            <span class="mr-breadcrumb-item"><a href="/">Home</a></span>
+            <i class="ti ti-chevron-right mr-breadcrumb-separator"></i>
+            <span class="mr-breadcrumb-item"><a href="/finance">Finance</a></span>
+            <i class="ti ti-chevron-right mr-breadcrumb-separator"></i>
+            <span class="mr-breadcrumb-item"><a href="/finance/asset-dashboard">Asset Dashboard</a></span>
+            <i class="ti ti-chevron-right mr-breadcrumb-separator"></i>
+            <span class="mr-breadcrumb-item active">Depreciation Report</span>
+        </nav>
+        <div class="d-flex justify-content-between align-items-center pb-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="mr-header-icon mr-header-icon-finance">
+                    <i class="ti ti-report"></i>
+                </div>
+                <div>
+                    <h1 class="mr-page-title">Depreciation Report</h1>
+                    <p class="mr-page-subtitle mb-0">Monthly and yearly depreciation summaries</p>
+                </div>
+            </div>
+            <div class="btn-list">
+                <button class="btn btn-outline-secondary" @onclick="ExportToCsv">
+                    <i class="ti ti-download me-1"></i>
+                    Export CSV
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container-xl py-4">
+    @if (m_loading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- Filter Row -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label">Year</label>
+                        <select class="form-select" @bind="m_selectedYear" @bind:after="LoadReportAsync">
+                            @foreach (var year in m_availableYears)
+                            {
+                                <option value="@year">@year</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Report Type</label>
+                        <select class="form-select" @bind="m_reportType">
+                            <option value="monthly">Monthly Summary</option>
+                            <option value="asset">By Asset</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="row row-deck row-cards mb-4">
+            <div class="col-sm-6 col-lg-3">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="subheader">Total Depreciation (@m_selectedYear)</div>
+                        <div class="h1 mb-0 text-warning">@m_yearlyTotal.ToString("N0") <small class="text-muted">THB</small></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-lg-3">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="subheader">Average Monthly</div>
+                        <div class="h1 mb-0">@m_monthlyAverage.ToString("N0") <small class="text-muted">THB</small></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-lg-3">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="subheader">Assets Depreciated</div>
+                        <div class="h1 mb-0 text-primary">@m_assetsDepreciated</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-lg-3">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="subheader">Total Entries</div>
+                        <div class="h1 mb-0">@m_totalEntries</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if (m_reportType == "monthly")
+        {
+            <!-- Monthly Summary Chart -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="ti ti-chart-bar me-2"></i>
+                        Monthly Depreciation (@m_selectedYear)
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="depreciation-bar-chart">
+                        <svg viewBox="0 0 900 250" class="w-100" style="max-height: 250px;">
+                            @* Y-axis grid lines *@
+                            <g stroke="#e5e7eb" stroke-width="1">
+                                @for (int i = 0; i <= 4; i++)
+                                {
+                                    <line x1="60" y1="@(30 + i * 50)" x2="880" y2="@(30 + i * 50)" />
+                                }
+                            </g>
+
+                            @* Bars *@
+                            @for (int i = 0; i < 12; i++)
+                            {
+                                var month = i + 1;
+                                var value = m_monthlyData.GetValueOrDefault(month, 0);
+                                var maxValue = m_monthlyData.Any() ? m_monthlyData.Values.Max() : 1;
+                                var barHeight = maxValue > 0 ? (value / maxValue * 170) : 0;
+                                var x = 70 + i * 68;
+                                var y = 200 - barHeight;
+
+                                <rect x="@x" y="@y" width="50" height="@barHeight"
+                                      fill="@(value > 0 ? "#f59e0b" : "#e5e7eb")" rx="4" />
+
+                                @if (value > 0)
+                                {
+                                    @((MarkupString)$"<text x=\"{x + 25}\" y=\"{y - 5}\" text-anchor=\"middle\" font-size=\"10\" fill=\"#6b7280\">{(value / 1000).ToString("N0")}k</text>")
+                                }
+
+                                @((MarkupString)$"<text x=\"{x + 25}\" y=\"225\" text-anchor=\"middle\" font-size=\"11\" fill=\"#6b7280\">{GetMonthName(month)}</text>")
+                            }
+
+                            @* Y-axis labels *@
+                            @if (m_monthlyData.Any() && m_monthlyData.Values.Max() > 0)
+                            {
+                                var maxVal = m_monthlyData.Values.Max();
+                                @((MarkupString)$"<text x=\"55\" y=\"35\" text-anchor=\"end\" font-size=\"10\" fill=\"#6b7280\">{maxVal.ToString("N0")}</text>")
+                                @((MarkupString)$"<text x=\"55\" y=\"135\" text-anchor=\"end\" font-size=\"10\" fill=\"#6b7280\">{(maxVal / 2).ToString("N0")}</text>")
+                                @((MarkupString)"<text x=\"55\" y=\"205\" text-anchor=\"end\" font-size=\"10\" fill=\"#6b7280\">0</text>")
+                            }
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Monthly Table -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="ti ti-table me-2"></i>
+                        Monthly Breakdown
+                    </h3>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-vcenter card-table">
+                        <thead>
+                            <tr>
+                                <th>Month</th>
+                                <th class="text-end">Depreciation Amount</th>
+                                <th class="text-end">Entries</th>
+                                <th class="text-end">% of Year</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (int month = 1; month <= 12; month++)
+                            {
+                                var value = m_monthlyData.GetValueOrDefault(month, 0);
+                                var entries = m_monthlyEntries.GetValueOrDefault(month, 0);
+                                var percent = m_yearlyTotal > 0 ? (value / m_yearlyTotal * 100) : 0;
+
+                                <tr class="@(value == 0 ? "text-muted" : "")">
+                                    <td>
+                                        <span class="@(DateTime.Now.Month == month && DateTime.Now.Year == m_selectedYear ? "fw-bold text-primary" : "")">
+                                            @GetFullMonthName(month) @m_selectedYear
+                                        </span>
+                                    </td>
+                                    <td class="text-end">@value.ToString("N0") THB</td>
+                                    <td class="text-end">@entries</td>
+                                    <td class="text-end">
+                                        <div class="d-flex align-items-center justify-content-end">
+                                            <span class="me-2">@percent.ToString("N1")%</span>
+                                            <div class="progress" style="width: 60px; height: 6px;">
+                                                <div class="progress-bar bg-warning" style="width: @percent%"></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                            <tr class="fw-bold bg-light">
+                                <td>Total</td>
+                                <td class="text-end">@m_yearlyTotal.ToString("N0") THB</td>
+                                <td class="text-end">@m_totalEntries</td>
+                                <td class="text-end">100%</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+        else
+        {
+            <!-- By Asset Table -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="ti ti-car me-2"></i>
+                        Depreciation by Asset (@m_selectedYear)
+                    </h3>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-vcenter card-table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Vehicle</th>
+                                <th class="text-end">Starting Book Value</th>
+                                <th class="text-end">Total Depreciation</th>
+                                <th class="text-end">Ending Book Value</th>
+                                <th class="text-end">Entries</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var assetData in m_assetDepreciationData.OrderByDescending(x => x.TotalDepreciation))
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar bg-primary-lt me-2">
+                                                <i class="ti ti-motorbike"></i>
+                                            </div>
+                                            <div>
+                                                <div class="fw-bold">@assetData.VehicleName</div>
+                                                <small class="text-muted">@assetData.LicensePlate</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-end">@assetData.StartingBookValue.ToString("N0")</td>
+                                    <td class="text-end text-warning">-@assetData.TotalDepreciation.ToString("N0")</td>
+                                    <td class="text-end fw-bold">@assetData.EndingBookValue.ToString("N0")</td>
+                                    <td class="text-end">@assetData.EntryCount</td>
+                                    <td>
+                                        <a href="/finance/assets/@assetData.AssetId/details" class="btn btn-sm btn-outline-primary">
+                                            <i class="ti ti-chart-line"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                            @if (!m_assetDepreciationData.Any())
+                            {
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-4">
+                                        <i class="ti ti-database-off" style="font-size: 2rem;"></i>
+                                        <p class="mb-0 mt-2">No depreciation data for @m_selectedYear</p>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                        @if (m_assetDepreciationData.Any())
+                        {
+                            <tfoot>
+                                <tr class="fw-bold bg-light">
+                                    <td>Total (@m_assetDepreciationData.Count assets)</td>
+                                    <td class="text-end">-</td>
+                                    <td class="text-end text-warning">-@m_yearlyTotal.ToString("N0")</td>
+                                    <td class="text-end">-</td>
+                                    <td class="text-end">@m_totalEntries</td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        }
+                    </table>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private bool m_loading = true;
+    private int m_selectedYear = DateTime.Now.Year;
+    private string m_reportType = "monthly";
+    private List<int> m_availableYears = [];
+    private List<DepreciationEntry> m_allEntries = [];
+
+    private Dictionary<int, decimal> m_monthlyData = new();
+    private Dictionary<int, int> m_monthlyEntries = new();
+    private List<AssetDepreciationSummary> m_assetDepreciationData = [];
+
+    private decimal m_yearlyTotal;
+    private decimal m_monthlyAverage;
+    private int m_assetsDepreciated;
+    private int m_totalEntries;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Generate available years
+        var currentYear = DateTime.Now.Year;
+        m_availableYears = Enumerable.Range(currentYear - 5, 6).Reverse().ToList();
+
+        await LoadReportAsync();
+    }
+
+    private async Task LoadReportAsync()
+    {
+        try
+        {
+            m_loading = true;
+
+            // Load all depreciation entries
+            var assets = await AssetService.GetAssetsAsync(null, 1, 1000);
+            m_allEntries = [];
+
+            foreach (var asset in assets.ItemCollection)
+            {
+                var entries = await AssetService.GetDepreciationEntriesAsync(asset.AssetId);
+                foreach (var entry in entries)
+                {
+                    entry.VehicleName = asset.VehicleName;
+                }
+                m_allEntries.AddRange(entries);
+            }
+
+            // Filter by year
+            var yearEntries = m_allEntries
+                .Where(e => e.PeriodEnd.Year == m_selectedYear)
+                .ToList();
+
+            // Calculate monthly data
+            m_monthlyData = yearEntries
+                .GroupBy(e => e.PeriodEnd.Month)
+                .ToDictionary(g => g.Key, g => g.Sum(e => e.Amount));
+
+            m_monthlyEntries = yearEntries
+                .GroupBy(e => e.PeriodEnd.Month)
+                .ToDictionary(g => g.Key, g => g.Count());
+
+            // Calculate asset data
+            m_assetDepreciationData = yearEntries
+                .GroupBy(e => e.AssetId)
+                .Select(g =>
+                {
+                    var orderedEntries = g.OrderBy(e => e.PeriodEnd).ToList();
+                    var firstEntry = orderedEntries.FirstOrDefault();
+                    var lastEntry = orderedEntries.LastOrDefault();
+
+                    return new AssetDepreciationSummary
+                    {
+                        AssetId = g.Key,
+                        VehicleName = firstEntry?.VehicleName ?? "Unknown",
+                        LicensePlate = "", // Will be populated from asset
+                        StartingBookValue = firstEntry?.BookValueStart ?? 0,
+                        EndingBookValue = lastEntry?.BookValueEnd ?? 0,
+                        TotalDepreciation = g.Sum(e => e.Amount),
+                        EntryCount = g.Count()
+                    };
+                })
+                .ToList();
+
+            // Load license plates
+            foreach (var data in m_assetDepreciationData)
+            {
+                var asset = assets.ItemCollection.FirstOrDefault(a => a.AssetId == data.AssetId);
+                if (asset != null)
+                {
+                    data.LicensePlate = asset.LicensePlate ?? "";
+                }
+            }
+
+            // Calculate summary
+            m_yearlyTotal = yearEntries.Sum(e => e.Amount);
+            m_totalEntries = yearEntries.Count;
+            m_assetsDepreciated = yearEntries.Select(e => e.AssetId).Distinct().Count();
+            m_monthlyAverage = m_monthlyData.Any() ? m_monthlyData.Values.Average() : 0;
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private string GetMonthName(int month) => month switch
+    {
+        1 => "Jan", 2 => "Feb", 3 => "Mar", 4 => "Apr",
+        5 => "May", 6 => "Jun", 7 => "Jul", 8 => "Aug",
+        9 => "Sep", 10 => "Oct", 11 => "Nov", 12 => "Dec",
+        _ => ""
+    };
+
+    private string GetFullMonthName(int month) => month switch
+    {
+        1 => "January", 2 => "February", 3 => "March", 4 => "April",
+        5 => "May", 6 => "June", 7 => "July", 8 => "August",
+        9 => "September", 10 => "October", 11 => "November", 12 => "December",
+        _ => ""
+    };
+
+    private void ExportToCsv()
+    {
+        // TODO: Implement CSV export
+    }
+
+    private class AssetDepreciationSummary
+    {
+        public int AssetId { get; set; }
+        public string VehicleName { get; set; } = "";
+        public string LicensePlate { get; set; } = "";
+        public decimal StartingBookValue { get; set; }
+        public decimal EndingBookValue { get; set; }
+        public decimal TotalDepreciation { get; set; }
+        public int EntryCount { get; set; }
+    }
+}
