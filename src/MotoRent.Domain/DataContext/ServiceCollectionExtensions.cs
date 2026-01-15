@@ -45,6 +45,12 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IRepository<AccidentNote>, Repository<AccidentNote>>();
         // Comment entity
         services.AddSingleton<IRepository<Comment>, Repository<Comment>>();
+        // GPS tracking entities
+        services.AddSingleton<IRepository<GpsTrackingDevice>, Repository<GpsTrackingDevice>>();
+        services.AddSingleton<IRepository<GpsPosition>, Repository<GpsPosition>>();
+        services.AddSingleton<IRepository<Geofence>, Repository<Geofence>>();
+        services.AddSingleton<IRepository<GeofenceAlert>, Repository<GeofenceAlert>>();
+        services.AddSingleton<IRepository<TripHistory>, Repository<TripHistory>>();
 
         // Register repositories for Core entities (uses [Core] schema)
         services.AddSingleton<IRepository<Organization>, CoreRepository<Organization>>();

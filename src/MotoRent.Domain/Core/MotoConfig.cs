@@ -44,6 +44,21 @@ public static class MotoConfig
     // Google Maps Configuration
     public static string? GoogleMapKey => GetEnvironmentVariable("GoogleMapKey");
 
+    // GPS Provider Configuration
+    public static string? Gps2GoApiKey => GetEnvironmentVariable("Gps2GoApiKey");
+    public static string Gps2GoApiUrl => GetEnvironmentVariable("Gps2GoApiUrl") ?? "https://api.gps2go.co.th/v1";
+    public static string? FifotrackApiKey => GetEnvironmentVariable("FifotrackApiKey");
+    public static string FifotrackApiUrl => GetEnvironmentVariable("FifotrackApiUrl") ?? "https://api.fifotrack.com/v1";
+
+    // GPS Polling Configuration
+    public static int GpsPollingIntervalMinutes => GetEnvironmentVariableInt32("GpsPollingIntervalMinutes", 10);
+    public static int GpsDataRetentionDays => GetEnvironmentVariableInt32("GpsDataRetentionDays", 90);
+
+    // LINE Messaging Configuration
+    public static string? LineMessagingAccessToken => GetEnvironmentVariable("LineMessagingAccessToken");
+    public static string? LineMessagingChannelSecret => GetEnvironmentVariable("LineMessagingChannelSecret");
+    public static string LineMessagingApiUrl => GetEnvironmentVariable("LineMessagingApiUrl") ?? "https://api.line.me/v2/bot";
+
     // File Storage
     public static string FileStorageBasePath => GetEnvironmentVariable("FileStorageBasePath") ?? "uploads";
     public static int FileStorageMaxSizeMb => GetEnvironmentVariableInt32("FileStorageMaxSizeMb", 10);

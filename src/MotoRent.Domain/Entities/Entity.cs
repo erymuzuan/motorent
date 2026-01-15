@@ -49,6 +49,12 @@ namespace MotoRent.Domain.Entities;
 [JsonDerivedType(typeof(SupportRequest), nameof(SupportRequest))]
 // Global lookup entities
 [JsonDerivedType(typeof(VehicleModel), nameof(VehicleModel))]
+// GPS tracking entities
+[JsonDerivedType(typeof(GpsTrackingDevice), nameof(GpsTrackingDevice))]
+[JsonDerivedType(typeof(GpsPosition), nameof(GpsPosition))]
+[JsonDerivedType(typeof(Geofence), nameof(Geofence))]
+[JsonDerivedType(typeof(GeofenceAlert), nameof(GeofenceAlert))]
+[JsonDerivedType(typeof(TripHistory), nameof(TripHistory))]
 public abstract class Entity
 {
     public string? WebId { get; set; }

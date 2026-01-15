@@ -75,12 +75,24 @@ builder.Services.AddScoped<AccidentService>();
 // Comment service
 builder.Services.AddScoped<CommentService>();
 
+// GPS tracking services
+builder.Services.AddScoped<MotoRent.Services.Gps.GpsTrackingService>();
+builder.Services.AddScoped<MotoRent.Services.Gps.GeofenceService>();
+builder.Services.AddScoped<MotoRent.Services.Gps.GpsAlertService>();
+// GPS providers (registered as IEnumerable<IGpsProvider> for multi-provider support)
+builder.Services.AddScoped<MotoRent.Services.Gps.IGpsProvider, MotoRent.Services.Gps.MockGpsProvider>();
+builder.Services.AddScoped<MotoRent.Services.Gps.IGpsProvider, MotoRent.Services.Gps.Gps2GoProvider>();
+
 // Error logging services
 builder.Services.AddScoped<MotoRent.Domain.Core.ILogger, SqlLogger>();
 builder.Services.AddScoped<LogEntryService>();
 
 // Add HttpClient for external API calls (Gemini)
 builder.Services.AddHttpClient("Gemini", client => { client.Timeout = TimeSpan.FromSeconds(60); });
+
+// Add HttpClient for GPS providers
+builder.Services.AddHttpClient("GPS2GO", client => { client.Timeout = TimeSpan.FromSeconds(30); });
+builder.Services.AddHttpClient("Fifotrack", client => { client.Timeout = TimeSpan.FromSeconds(30); });
 
 // Add OpenSearch HttpClient (optional, enabled via MOTO_OpenSearchHost env var)
 var openSearchHost = Environment.GetEnvironmentVariable("MOTO_OpenSearchHost");
