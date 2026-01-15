@@ -38,7 +38,7 @@ public abstract class MotoRentDialogBase<TEntity> : MotoRentComponentBase where 
     /// <summary>
     /// Gets the form ID for the modal footer's form attribute.
     /// </summary>
-    protected virtual string FormId => this.GetType().Name.ToLowerInvariant().Replace("`1", "");
+    public virtual string FormId => this.GetType().Name.ToLowerInvariant().Replace("`1", "");
 
     /// <summary>
     /// Cancels the dialog without saving.

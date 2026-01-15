@@ -51,6 +51,12 @@ namespace MotoRent.Domain.Entities;
 [JsonDerivedType(typeof(SupportRequest), nameof(SupportRequest))]
 // Global lookup entities
 [JsonDerivedType(typeof(VehicleModel), nameof(VehicleModel))]
+// Asset depreciation entities
+[JsonDerivedType(typeof(Asset), nameof(Asset))]
+[JsonDerivedType(typeof(DepreciationEntry), nameof(DepreciationEntry))]
+[JsonDerivedType(typeof(AssetExpense), nameof(AssetExpense))]
+[JsonDerivedType(typeof(AssetLoan), nameof(AssetLoan))]
+[JsonDerivedType(typeof(AssetLoanPayment), nameof(AssetLoanPayment))]
 public abstract class Entity
 {
     public string? WebId { get; set; }

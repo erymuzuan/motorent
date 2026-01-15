@@ -3,10 +3,12 @@ using CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using MotoRent.Domain.DataContext;
 using MotoRent.Domain.Messaging;
 using MotoRent.Messaging;
 using MotoRent.Scheduler;
 using MotoRent.Scheduler.Runners;
+using MotoRent.Services;
 using Spectre.Console;
 
 await SchedulerProgram.RunAsync(args);
@@ -59,8 +61,14 @@ namespace MotoRent.Scheduler
                         return new RabbitMqMessageBroker(logger);
                     });
 
+                    // Register data context and services
+                    services.AddSingleton<RentalDataContext>();
+                    services.AddTransient<DepreciationCalculator>();
+                    services.AddTransient<AssetService>();
+
                     // Register task runners
                     services.AddTransient<ITaskRunner, RentalExpiryRunner>();
+                    services.AddTransient<ITaskRunner, DepreciationRunner>();
                 })
                 .Build();
 
@@ -142,6 +150,7 @@ namespace MotoRent.Scheduler
             Console.WriteLine();
             Console.WriteLine("Available Runners:");
             Console.WriteLine("  RentalExpiryRunner    Check for expiring rentals");
+            Console.WriteLine("  DepreciationRunner    Run monthly depreciation for all assets");
             Console.WriteLine();
             Console.WriteLine("Environment Variables:");
             Console.WriteLine("  MOTORENT_RabbitMqHost       RabbitMQ host (default: localhost)");

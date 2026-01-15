@@ -1,0 +1,160 @@
+@using MotoRent.Domain.Entities
+@inherits LocalizedDialogBase<Asset, AssetWriteOffDialog>
+@inject AssetService AssetService
+
+<form id="@FormId" @onsubmit="SaveAsync" @onsubmit:preventDefault>
+    <div class="modal-body">
+        @* Warning Banner *@
+        <div class="alert alert-danger mb-3">
+            <div class="d-flex align-items-center">
+                <i class="ti ti-alert-triangle me-2" style="font-size: 1.5rem;"></i>
+                <div>
+                    <strong>@Localizer["WriteOffWarning"]</strong>
+                    <div class="text-secondary">@Localizer["WriteOffWarningDescription"]</div>
+                </div>
+            </div>
+        </div>
+
+        @* Asset Summary *@
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-2">
+                            <span class="text-secondary">@Localizer["Vehicle"]:</span>
+                            <strong>@Asset.VehicleName</strong>
+                        </div>
+                        <div class="mb-2">
+                            <span class="text-secondary">@Localizer["LicensePlate"]:</span>
+                            <strong>@Asset.LicensePlate</strong>
+                        </div>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <div class="text-secondary">@Localizer["LossAmount"]</div>
+                        <div class="h2 mb-0 text-danger">-@Asset.CurrentBookValue.ToString("N0") THB</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label required">@Localizer["WriteOffReason"]</label>
+                <select class="form-select" @bind="m_reasonType" required>
+                    <option value="">@Localizer["SelectReason"]</option>
+                    <option value="Theft">@Localizer["ReasonTheft"]</option>
+                    <option value="Total Loss - Accident">@Localizer["ReasonTotalLossAccident"]</option>
+                    <option value="Total Loss - Natural Disaster">@Localizer["ReasonTotalLossDisaster"]</option>
+                    <option value="Irreparable Damage">@Localizer["ReasonIrreparableDamage"]</option>
+                    <option value="Other">@Localizer["ReasonOther"]</option>
+                </select>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label required">@Localizer["WriteOffDate"]</label>
+                <input type="date" class="form-control" @bind="m_writeOffDate" required />
+            </div>
+
+            <div class="col-12">
+                <label class="form-label required">@Localizer["ReasonDetails"]</label>
+                <textarea class="form-control" @bind="m_reasonDetails" rows="3" required
+                          placeholder="@Localizer["ReasonDetailsPlaceholder"]"></textarea>
+                <small class="text-muted">@Localizer["ReasonDetailsHelp"]</small>
+            </div>
+
+            @if (!string.IsNullOrEmpty(m_reasonType))
+            {
+                <div class="col-12">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="confirmWriteOff"
+                               @bind="m_confirmed" />
+                        <label class="form-check-label" for="confirmWriteOff">
+                            @Localizer["ConfirmWriteOffCheckbox"]
+                        </label>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</form>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
+        @Localizer["Cancel"]
+    </button>
+    <button type="submit" form="@FormId" class="btn btn-danger"
+            disabled="@(Saving || !m_confirmed)">
+        @if (Saving)
+        {
+            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+        }
+        <i class="ti ti-trash me-1"></i>
+        @Localizer["ConfirmWriteOff"]
+    </button>
+</div>
+
+@code {
+    [Parameter]
+    public Asset Asset { get; set; } = new();
+
+    private string? m_reasonType;
+    private string? m_reasonDetails;
+    private DateTime m_writeOffDate = DateTime.Today;
+    private bool m_confirmed;
+
+    protected override void OnInitialized()
+    {
+        FormValid = true;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrEmpty(m_reasonType))
+        {
+            ShowError("Please select a reason for write-off");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(m_reasonDetails))
+        {
+            ShowError("Please provide details about the write-off");
+            return;
+        }
+
+        if (!m_confirmed)
+        {
+            ShowError("Please confirm the write-off action");
+            return;
+        }
+
+        Saving = true;
+
+        try
+        {
+            var fullReason = $"{m_reasonType}: {m_reasonDetails}";
+
+            var result = await AssetService.WriteOffAssetAsync(
+                Asset.AssetId,
+                fullReason,
+                new DateTimeOffset(m_writeOffDate),
+                UserName);
+
+            if (result.Success)
+            {
+                Close();
+            }
+            else
+            {
+                ShowError($"Failed to write off asset: {result.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error: {ex.Message}");
+        }
+        finally
+        {
+            Saving = false;
+        }
+    }
+}

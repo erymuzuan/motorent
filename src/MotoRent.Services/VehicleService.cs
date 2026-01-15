@@ -215,6 +215,31 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
     }
 
     /// <summary>
+    /// Gets vehicles that don't have an asset record yet.
+    /// Used when creating new asset records.
+    /// </summary>
+    public async Task<List<Vehicle>> GetVehiclesWithoutAssetAsync()
+    {
+        // Get all vehicles
+        var allVehicles = await this.Context.LoadAsync(
+            this.Context.CreateQuery<Vehicle>(),
+            page: 1, size: 1000, includeTotalRows: false);
+
+        // Get all vehicle IDs that already have assets
+        var assetsResult = await this.Context.LoadAsync(
+            this.Context.CreateQuery<Asset>(),
+            page: 1, size: 1000, includeTotalRows: false);
+        var vehicleIdsWithAssets = assetsResult.ItemCollection.Select(a => a.VehicleId).ToHashSet();
+
+        // Return vehicles without assets
+        return allVehicles.ItemCollection
+            .Where(v => !vehicleIdsWithAssets.Contains(v.VehicleId))
+            .OrderBy(v => v.Brand)
+            .ThenBy(v => v.Model)
+            .ToList();
+    }
+
+    /// <summary>
     /// Gets vehicles by type at a specific shop.
     /// </summary>
     public async Task<List<Vehicle>> GetVehiclesByTypeAsync(int shopId, VehicleType vehicleType)

@@ -1,0 +1,386 @@
+@using MotoRent.Domain.Entities
+@inherits LocalizedDialogBase<Asset, AssetDialog>
+@inject AssetService AssetService
+@inject AssetLoanService LoanService
+@inject VehicleService VehicleService
+
+<form id="@FormId" @onsubmit="SaveAsync" @onsubmit:preventDefault>
+    <div class="card-body">
+        <div class="row g-3">
+            @* Vehicle Selection *@
+            <div class="col-12">
+                <label class="form-label required">@Localizer["Vehicle"]</label>
+                @if (IsNew)
+                {
+                    <select class="form-select" @bind="Entity.VehicleId" required>
+                        <option value="0">@Localizer["SelectVehicle"]</option>
+                        @foreach (var vehicle in m_availableVehicles)
+                        {
+                            <option value="@vehicle.VehicleId">@vehicle.Brand @vehicle.Model - @vehicle.LicensePlate</option>
+                        }
+                    </select>
+                    @if (!m_availableVehicles.Any())
+                    {
+                        <small class="text-muted">@Localizer["NoVehiclesAvailable"]</small>
+                    }
+                }
+                else
+                {
+                    <input type="text" class="form-control" value="@Entity.VehicleName - @Entity.LicensePlate" readonly />
+                }
+            </div>
+
+            @* Acquisition Section *@
+            <div class="col-12">
+                <hr class="my-2" />
+                <h4 class="mb-3">
+                    <i class="ti ti-shopping-cart me-1"></i>@Localizer["AcquisitionDetails"]
+                </h4>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label required">@Localizer["AcquisitionDate"]</label>
+                <input type="date" class="form-control" @bind="m_acquisitionDate" required />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label required">@Localizer["AcquisitionCost"]</label>
+                <div class="input-group">
+                    <span class="input-group-text">฿</span>
+                    <input type="number" class="form-control" @bind="Entity.AcquisitionCost" required min="0" step="0.01" />
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">@Localizer["VendorName"]</label>
+                <input type="text" class="form-control" @bind="Entity.VendorName" placeholder="Dealer/Vendor name" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">@Localizer["AcquisitionRef"]</label>
+                <input type="text" class="form-control" @bind="Entity.AcquisitionRef" placeholder="Invoice/Receipt #" />
+            </div>
+
+            <div class="col-12">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="isPreExisting" @bind="Entity.IsPreExisting" />
+                    <label class="form-check-label" for="isPreExisting">
+                        @Localizer["PreExistingAsset"]
+                    </label>
+                    <small class="d-block text-muted">@Localizer["PreExistingAssetHelp"]</small>
+                </div>
+            </div>
+
+            @if (Entity.IsPreExisting)
+            {
+                <div class="col-md-6">
+                    <label class="form-label">@Localizer["InitialBookValue"]</label>
+                    <div class="input-group">
+                        <span class="input-group-text">฿</span>
+                        <input type="number" class="form-control" @bind="Entity.InitialBookValue" min="0" step="0.01" />
+                    </div>
+                    <small class="text-muted">@Localizer["InitialBookValueHelp"]</small>
+                </div>
+            }
+
+            @* Depreciation Section *@
+            <div class="col-12">
+                <hr class="my-2" />
+                <h4 class="mb-3">
+                    <i class="ti ti-trending-down me-1"></i>@Localizer["DepreciationSettings"]
+                </h4>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label required">@Localizer["DepreciationMethod"]</label>
+                <select class="form-select" @bind="Entity.DepreciationMethod" required>
+                    @foreach (DepreciationMethod method in Enum.GetValues<DepreciationMethod>())
+                    {
+                        <option value="@method">@GetMethodLabel(method)</option>
+                    }
+                </select>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label required">@Localizer["UsefulLifeMonths"]</label>
+                <div class="input-group">
+                    <input type="number" class="form-control" @bind="Entity.UsefulLifeMonths" required min="1" max="240" />
+                    <span class="input-group-text">@Localizer["Months"]</span>
+                </div>
+                <small class="text-muted">@GetUsefulLifeYears()</small>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label required">@Localizer["ResidualValue"]</label>
+                <div class="input-group">
+                    <span class="input-group-text">฿</span>
+                    <input type="number" class="form-control" @bind="Entity.ResidualValue" required min="0" step="0.01" />
+                </div>
+                <small class="text-muted">@Localizer["ResidualValueHelp"]</small>
+            </div>
+
+            @* Method-specific settings *@
+            @if (Entity.DepreciationMethod == DepreciationMethod.DayOutOfDoor ||
+                 Entity.DepreciationMethod == DepreciationMethod.HybridDayOutThenStraightLine ||
+                 Entity.DepreciationMethod == DepreciationMethod.HybridDayOutThenDeclining)
+            {
+                <div class="col-md-6">
+                    <label class="form-label required">@Localizer["DayOutOfDoorPercent"]</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control" @bind="m_dayOutOfDoorPercent" required min="0" max="100" step="1" />
+                        <span class="input-group-text">%</span>
+                    </div>
+                    <small class="text-muted">@Localizer["DayOutOfDoorPercentHelp"]</small>
+                </div>
+            }
+
+            @if (Entity.DepreciationMethod == DepreciationMethod.DecliningBalance ||
+                 Entity.DepreciationMethod == DepreciationMethod.HybridDayOutThenDeclining)
+            {
+                <div class="col-md-6">
+                    <label class="form-label required">@Localizer["DecliningBalanceRate"]</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control" @bind="m_decliningBalanceRate" required min="0" max="100" step="1" />
+                        <span class="input-group-text">% / year</span>
+                    </div>
+                    <small class="text-muted">@Localizer["DecliningBalanceRateHelp"]</small>
+                </div>
+            }
+
+            @* Financing Section *@
+            <div class="col-12">
+                <hr class="my-2" />
+                <h4 class="mb-3">
+                    <i class="ti ti-credit-card me-1"></i>@Localizer["Financing"]
+                </h4>
+            </div>
+
+            <div class="col-12">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="hasLoan" @bind="m_hasLoan" />
+                    <label class="form-check-label" for="hasLoan">
+                        @Localizer["FinancedWithLoan"]
+                    </label>
+                </div>
+            </div>
+
+            @if (m_hasLoan)
+            {
+                <div class="col-md-6">
+                    <label class="form-label required">@Localizer["LenderName"]</label>
+                    <input type="text" class="form-control" @bind="m_loan.LenderName" required placeholder="Bank/Finance company" />
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label required">@Localizer["PrincipalAmount"]</label>
+                    <div class="input-group">
+                        <span class="input-group-text">฿</span>
+                        <input type="number" class="form-control" @bind="m_loan.PrincipalAmount" required min="0" step="0.01" />
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label required">@Localizer["AnnualInterestRate"]</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control" @bind="m_annualInterestRate" required min="0" max="100" step="0.01" />
+                        <span class="input-group-text">%</span>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label required">@Localizer["TermMonths"]</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control" @bind="m_loan.TermMonths" required min="1" max="120" />
+                        <span class="input-group-text">@Localizer["Months"]</span>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label required">@Localizer["LoanStartDate"]</label>
+                    <input type="date" class="form-control" @bind="m_loanStartDate" required />
+                </div>
+
+                @if (m_loan.PrincipalAmount > 0 && m_loan.TermMonths > 0)
+                {
+                    <div class="col-12">
+                        <div class="alert alert-info">
+                            <strong>@Localizer["EstimatedMonthlyPayment"]:</strong>
+                            ฿@CalculateMonthlyPayment().ToString("N2")
+                        </div>
+                    </div>
+                }
+            }
+
+            @* Notes *@
+            <div class="col-12">
+                <hr class="my-2" />
+                <label class="form-label">@Localizer["Notes"]</label>
+                <textarea class="form-control" @bind="Entity.Notes" rows="3" placeholder="@Localizer["NotesPlaceholder"]"></textarea>
+            </div>
+        </div>
+    </div>
+</form>
+
+@code {
+    [Parameter]
+    public EventCallback OnSaved { get; set; }
+
+    private List<Vehicle> m_availableVehicles = new();
+    private bool m_hasLoan;
+    private AssetLoan m_loan = new();
+    private DateTime m_acquisitionDate = DateTime.Today;
+    private DateTime m_loanStartDate = DateTime.Today;
+    private decimal m_dayOutOfDoorPercent = 20;
+    private decimal m_decliningBalanceRate = 25;
+    private decimal m_annualInterestRate = 5;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync();
+
+        if (IsNew)
+        {
+            // Load vehicles without asset records
+            var vehicles = await VehicleService.GetVehiclesWithoutAssetAsync();
+            m_availableVehicles = vehicles;
+
+            // Set defaults
+            Entity.AcquisitionDate = DateTimeOffset.Now;
+            Entity.UsefulLifeMonths = 60;
+            Entity.DepreciationMethod = DepreciationMethod.StraightLine;
+        }
+        else
+        {
+            // Load existing loan if any
+            if (Entity.AssetLoanId.HasValue)
+            {
+                var loan = await LoanService.GetLoanByIdAsync(Entity.AssetLoanId.Value);
+                if (loan != null)
+                {
+                    m_loan = loan;
+                    m_hasLoan = true;
+                    m_loanStartDate = loan.StartDate.LocalDateTime;
+                    m_annualInterestRate = loan.AnnualInterestRate * 100;
+                }
+            }
+
+            m_acquisitionDate = Entity.AcquisitionDate.LocalDateTime;
+        }
+
+        // Convert decimal rates to percentages for display
+        m_dayOutOfDoorPercent = (Entity.DayOutOfDoorPercent ?? 0.2m) * 100;
+        m_decliningBalanceRate = (Entity.DecliningBalanceRate ?? 0.25m) * 100;
+    }
+
+    private async Task SaveAsync()
+    {
+        Saving = true;
+
+        try
+        {
+            // Convert date
+            Entity.AcquisitionDate = new DateTimeOffset(m_acquisitionDate);
+
+            // Convert percentage fields back to decimals
+            Entity.DayOutOfDoorPercent = m_dayOutOfDoorPercent / 100;
+            Entity.DecliningBalanceRate = m_decliningBalanceRate / 100;
+
+            // Set initial book value
+            if (IsNew)
+            {
+                Entity.CurrentBookValue = Entity.IsPreExisting && Entity.InitialBookValue.HasValue
+                    ? Entity.InitialBookValue.Value
+                    : Entity.AcquisitionCost;
+                Entity.AccumulatedDepreciation = 0;
+                Entity.TotalExpenses = 0;
+                Entity.TotalRevenue = 0;
+                Entity.Status = AssetStatus.Active;
+
+                if (Entity.IsPreExisting)
+                {
+                    Entity.SystemEntryDate = DateTimeOffset.Now;
+                }
+
+                // Get vehicle details for denormalization
+                if (Entity.VehicleId > 0)
+                {
+                    var vehicle = await VehicleService.GetVehicleByIdAsync(Entity.VehicleId);
+                    if (vehicle != null)
+                    {
+                        Entity.VehicleName = $"{vehicle.Brand} {vehicle.Model}";
+                        Entity.LicensePlate = vehicle.LicensePlate;
+                    }
+                }
+            }
+
+            // Save asset first
+            var result = IsNew
+                ? await AssetService.CreateAssetAsync(Entity, UserName)
+                : await AssetService.UpdateAssetAsync(Entity, UserName);
+
+            if (!result.Success)
+            {
+                ShowError(result.Message ?? "Failed to save asset");
+                return;
+            }
+
+            // Create loan if needed
+            if (m_hasLoan && IsNew)
+            {
+                m_loan.AssetId = Entity.AssetId;
+                m_loan.StartDate = new DateTimeOffset(m_loanStartDate);
+                m_loan.AnnualInterestRate = m_annualInterestRate / 100;
+
+                var loanResult = await LoanService.CreateLoanAsync(m_loan, UserName);
+                if (!loanResult.Success)
+                {
+                    ShowError($"Asset created but loan failed: {loanResult.Message}");
+                    return;
+                }
+
+                // Update asset with loan reference
+                Entity.AssetLoanId = m_loan.AssetLoanId;
+                await AssetService.UpdateAssetAsync(Entity, UserName);
+            }
+
+            // Notify parent that save completed
+            if (OnSaved.HasDelegate)
+            {
+                await OnSaved.InvokeAsync();
+            }
+            else
+            {
+                Close();
+            }
+        }
+        finally
+        {
+            Saving = false;
+        }
+    }
+
+    private string GetMethodLabel(DepreciationMethod method) => method switch
+    {
+        DepreciationMethod.DayOutOfDoor => "Day Out of Door",
+        DepreciationMethod.StraightLine => "Straight Line",
+        DepreciationMethod.DecliningBalance => "Declining Balance",
+        DepreciationMethod.Custom => "Custom Schedule",
+        DepreciationMethod.HybridDayOutThenStraightLine => "Day Out + Straight Line",
+        DepreciationMethod.HybridDayOutThenDeclining => "Day Out + Declining Balance",
+        _ => method.ToString()
+    };
+
+    private string GetUsefulLifeYears()
+    {
+        var years = Entity.UsefulLifeMonths / 12.0;
+        return $"({years:N1} years)";
+    }
+
+    private decimal CalculateMonthlyPayment()
+    {
+        return LoanService.CalculateMonthlyPayment(
+            m_loan.PrincipalAmount,
+            m_annualInterestRate / 100,
+            m_loan.TermMonths);
+    }
+}

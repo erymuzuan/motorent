@@ -1,0 +1,159 @@
+@using MotoRent.Domain.Entities
+@inherits LocalizedDialogBase<Asset, AssetDisposalDialog>
+@inject AssetService AssetService
+
+<form id="@FormId" @onsubmit="SaveAsync" @onsubmit:preventDefault>
+    <div class="modal-body">
+        @* Asset Summary *@
+        <div class="alert alert-info mb-3">
+            <div class="d-flex">
+                <div class="flex-fill">
+                    <div class="mb-2">
+                        <strong>@Localizer["Vehicle"]:</strong> @Asset.VehicleName
+                    </div>
+                    <div class="mb-2">
+                        <strong>@Localizer["LicensePlate"]:</strong> @Asset.LicensePlate
+                    </div>
+                    <div>
+                        <strong>@Localizer["AcquisitionCost"]:</strong> @Asset.AcquisitionCost.ToString("N0") THB
+                    </div>
+                </div>
+                <div class="text-end">
+                    <div class="text-secondary">@Localizer["CurrentBookValue"]</div>
+                    <div class="h2 mb-0">@Asset.CurrentBookValue.ToString("N0") THB</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label required">@Localizer["DisposalAmount"]</label>
+                <div class="input-group">
+                    <span class="input-group-text">฿</span>
+                    <input type="number" class="form-control" @bind="m_disposalAmount"
+                           required min="0" step="0.01" />
+                </div>
+                <small class="text-muted">@Localizer["DisposalAmountHelp"]</small>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label required">@Localizer["DisposalDate"]</label>
+                <input type="date" class="form-control" @bind="m_disposalDate" required />
+            </div>
+
+            @* Gain/Loss Preview *@
+            <div class="col-12">
+                <div class="@GetGainLossClass()">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="ti ti-@GetGainLossIcon() me-2"></i>
+                            <strong>@Localizer["ExpectedGainLoss"]:</strong>
+                        </div>
+                        <div class="h4 mb-0">
+                            @GetGainLossText()
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">@Localizer["Notes"]</label>
+                <textarea class="form-control" @bind="m_notes" rows="3"
+                          placeholder="@Localizer["DisposalNotesPlaceholder"]"></textarea>
+            </div>
+        </div>
+    </div>
+</form>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
+        @Localizer["Cancel"]
+    </button>
+    <button type="submit" form="@FormId" class="btn btn-warning" disabled="@Saving">
+        @if (Saving)
+        {
+            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+        }
+        <i class="ti ti-cash me-1"></i>
+        @Localizer["ConfirmDisposal"]
+    </button>
+</div>
+
+@code {
+    [Parameter]
+    public Asset Asset { get; set; } = new();
+
+    private decimal m_disposalAmount;
+    private DateTime m_disposalDate = DateTime.Today;
+    private string? m_notes;
+
+    protected override void OnInitialized()
+    {
+        FormValid = true;
+        // Default to current book value as suggested sale price
+        m_disposalAmount = Asset.CurrentBookValue;
+    }
+
+    private decimal GetGainLoss() => m_disposalAmount - Asset.CurrentBookValue;
+
+    private string GetGainLossClass()
+    {
+        var gainLoss = GetGainLoss();
+        if (gainLoss > 0) return "alert alert-success";
+        if (gainLoss < 0) return "alert alert-danger";
+        return "alert alert-secondary";
+    }
+
+    private string GetGainLossIcon()
+    {
+        var gainLoss = GetGainLoss();
+        if (gainLoss > 0) return "trending-up";
+        if (gainLoss < 0) return "trending-down";
+        return "minus";
+    }
+
+    private string GetGainLossText()
+    {
+        var gainLoss = GetGainLoss();
+        var prefix = gainLoss >= 0 ? "+" : "";
+        return $"{prefix}{gainLoss:N0} THB";
+    }
+
+    private async Task SaveAsync()
+    {
+        if (m_disposalAmount < 0)
+        {
+            ShowError("Disposal amount cannot be negative");
+            return;
+        }
+
+        Saving = true;
+
+        try
+        {
+            var result = await AssetService.DisposeAssetAsync(
+                Asset.AssetId,
+                m_disposalAmount,
+                new DateTimeOffset(m_disposalDate),
+                m_notes,
+                UserName);
+
+            if (result.Success)
+            {
+                Close();
+            }
+            else
+            {
+                ShowError($"Failed to dispose asset: {result.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error: {ex.Message}");
+        }
+        finally
+        {
+            Saving = false;
+        }
+    }
+}

@@ -47,6 +47,12 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IRepository<AccidentNote>, Repository<AccidentNote>>();
         // Comment entity
         services.AddSingleton<IRepository<Comment>, Repository<Comment>>();
+        // Asset depreciation entities
+        services.AddSingleton<IRepository<Asset>, Repository<Asset>>();
+        services.AddSingleton<IRepository<DepreciationEntry>, Repository<DepreciationEntry>>();
+        services.AddSingleton<IRepository<AssetExpense>, Repository<AssetExpense>>();
+        services.AddSingleton<IRepository<AssetLoan>, Repository<AssetLoan>>();
+        services.AddSingleton<IRepository<AssetLoanPayment>, Repository<AssetLoanPayment>>();
 
         // Register repositories for Core entities (uses [Core] schema)
         services.AddSingleton<IRepository<Organization>, CoreRepository<Organization>>();
