@@ -67,6 +67,24 @@ public class CoreDataContext
     }
 
     /// <summary>
+    /// Gets the count of entities matching the query.
+    /// </summary>
+    public async Task<int> GetCountAsync<T>(IQueryable<T> query) where T : Entity
+    {
+        var repos = GetRepository<T>();
+        return await repos.GetCountAsync(query);
+    }
+
+    /// <summary>
+    /// Checks if any entity matches the query.
+    /// </summary>
+    public async Task<bool> ExistAsync<T>(IQueryable<T> query) where T : Entity
+    {
+        var repos = GetRepository<T>();
+        return await repos.ExistAsync(query);
+    }
+
+    /// <summary>
     /// Gets or creates a CoreRepository for the specified entity type.
     /// </summary>
     private CoreRepository<T> GetRepository<T>() where T : Entity

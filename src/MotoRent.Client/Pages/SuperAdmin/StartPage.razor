@@ -3,7 +3,10 @@
 @inherits LocalizedComponentBase<StartPage>
 @using Microsoft.AspNetCore.Authorization
 @using MotoRent.Domain.Core
+@using MotoRent.Domain.DataContext
+@using MotoRent.Domain.Helps
 @attribute [Authorize(Roles = UserAccount.SUPER_ADMIN)]
+@inject CoreDataContext CoreDataContext
 
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
@@ -270,7 +273,20 @@
 
     protected override async Task OnInitializedAsync()
     {
-        // TODO: Load actual counts from services
-        await Task.CompletedTask;
+        m_organizationCount = await CoreDataContext.GetCountAsync(CoreDataContext.Organizations);
+        m_userCount = await CoreDataContext.GetCountAsync(CoreDataContext.Users);
+        
+        m_activeInviteCount = await CoreDataContext.GetCountAsync(
+            CoreDataContext.RegistrationInvites.Where(x => x.IsActive));
+            
+        m_recentErrorCount = await CoreDataContext.GetCountAsync(
+            CoreDataContext.LogEntries
+                .Where(x => x.LogSeverity >= LogSeverity.Error)
+                .Where(x => x.Status == LogStatus.New));
+            
+        m_openSupportCount = await CoreDataContext.GetCountAsync(
+            CoreDataContext.SupportRequests
+                .Where(x => x.Status != MotoRent.Domain.Helps.TaskStatus.Done)
+                .Where(x => x.Status != MotoRent.Domain.Helps.TaskStatus.Cancelled));
     }
 }
