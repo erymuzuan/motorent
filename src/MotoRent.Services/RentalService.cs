@@ -84,6 +84,53 @@ public class RentalService(RentalDataContext context, VehiclePoolService? poolSe
             .ToDictionary(g => g.Key, g => g.Count());
     }
 
+    /// <summary>
+    /// Gets dynamic pricing statistics for completed rentals within a date range.
+    /// </summary>
+    public async Task<DynamicPricingStats> GetDynamicPricingStatsAsync(int shopId, DateTimeOffset fromDate, DateTimeOffset toDate)
+    {
+        var rentals = await this.Context.LoadAsync(
+            this.Context.CreateQuery<Rental>()
+                .Where(r => r.RentedFromShopId == shopId)
+                .Where(r => r.StartDate >= fromDate && r.StartDate <= toDate),
+            page: 1, size: 10000, includeTotalRows: false);
+
+        var completedRentals = rentals.ItemCollection.Where(r => r.Status is "Completed" or "Active").ToList();
+        var dynamicPricingRentals = completedRentals.Where(r => r.DynamicPricingApplied).ToList();
+
+        if (dynamicPricingRentals.Count == 0)
+        {
+            return new DynamicPricingStats
+            {
+                TotalRentals = completedRentals.Count,
+                RentalsWithDynamicPricing = 0,
+                BaseRevenue = completedRentals.Sum(r => r.BaseRentalRate * r.DayPricingBreakdown.Count),
+                ActualRevenue = completedRentals.Sum(r => r.TotalAmount),
+                DynamicPricingPremium = 0,
+                AverageMultiplier = 1.0m
+            };
+        }
+
+        var baseRevenue = dynamicPricingRentals.Sum(r => r.BaseRentalRate * r.DayPricingBreakdown.Count);
+        var adjustedRevenue = dynamicPricingRentals.Sum(r => r.DayPricingBreakdown.Sum(d => d.AdjustedRate));
+        var dynamicPricingPremium = adjustedRevenue - baseRevenue;
+        var avgMultiplier = dynamicPricingRentals.Average(r => r.AverageMultiplier);
+
+        return new DynamicPricingStats
+        {
+            TotalRentals = completedRentals.Count,
+            RentalsWithDynamicPricing = dynamicPricingRentals.Count,
+            BaseRevenue = baseRevenue,
+            ActualRevenue = adjustedRevenue,
+            DynamicPricingPremium = dynamicPricingPremium,
+            AverageMultiplier = avgMultiplier,
+            RuleBreakdown = dynamicPricingRentals
+                .SelectMany(r => r.DayPricingBreakdown.Where(d => d.HasAdjustment))
+                .GroupBy(d => d.RuleName ?? "Unknown")
+                .ToDictionary(g => g.Key, g => g.Count())
+        };
+    }
+
     public async Task<List<Rental>> GetTodaysDueReturnsAsync(int shopId, DateTimeOffset today)
     {
         var todayStart = today.Date;
@@ -1135,6 +1182,61 @@ public class ReservationResult
         Success = false,
         Message = message
     };
+}
+
+/// <summary>
+/// Statistics about dynamic pricing usage and revenue impact.
+/// </summary>
+public class DynamicPricingStats
+{
+    /// <summary>
+    /// Total number of rentals in the period.
+    /// </summary>
+    public int TotalRentals { get; set; }
+
+    /// <summary>
+    /// Number of rentals with dynamic pricing applied.
+    /// </summary>
+    public int RentalsWithDynamicPricing { get; set; }
+
+    /// <summary>
+    /// What revenue would have been without dynamic pricing.
+    /// </summary>
+    public decimal BaseRevenue { get; set; }
+
+    /// <summary>
+    /// Actual revenue with dynamic pricing.
+    /// </summary>
+    public decimal ActualRevenue { get; set; }
+
+    /// <summary>
+    /// Additional revenue earned from dynamic pricing (ActualRevenue - BaseRevenue).
+    /// </summary>
+    public decimal DynamicPricingPremium { get; set; }
+
+    /// <summary>
+    /// Average multiplier applied across all dynamic pricing rentals.
+    /// </summary>
+    public decimal AverageMultiplier { get; set; } = 1.0m;
+
+    /// <summary>
+    /// Breakdown by pricing rule name (e.g., "High Season" -> count of days applied).
+    /// </summary>
+    public Dictionary<string, int> RuleBreakdown { get; set; } = [];
+
+    /// <summary>
+    /// Percentage of rentals using dynamic pricing.
+    /// </summary>
+    public decimal DynamicPricingUsageRate => TotalRentals > 0
+        ? (decimal)RentalsWithDynamicPricing / TotalRentals * 100
+        : 0;
+
+    /// <summary>
+    /// Percentage increase in revenue from dynamic pricing.
+    /// </summary>
+    public decimal RevenueIncrease => BaseRevenue > 0
+        ? DynamicPricingPremium / BaseRevenue * 100
+        : 0;
 }
 
 #endregion

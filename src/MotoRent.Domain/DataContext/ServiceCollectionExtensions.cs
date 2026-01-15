@@ -35,6 +35,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IRepository<ServiceType>, Repository<ServiceType>>();
         services.AddSingleton<IRepository<MaintenanceSchedule>, Repository<MaintenanceSchedule>>();
         services.AddSingleton<IRepository<MaintenanceAlert>, Repository<MaintenanceAlert>>();
+        // Dynamic pricing entities
+        services.AddSingleton<IRepository<PricingRule>, Repository<PricingRule>>();
         // Third-party owner entities
         services.AddSingleton<IRepository<VehicleOwner>, Repository<VehicleOwner>>();
         services.AddSingleton<IRepository<OwnerPayment>, Repository<OwnerPayment>>();
@@ -46,6 +48,12 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IRepository<AccidentNote>, Repository<AccidentNote>>();
         // Comment entity
         services.AddSingleton<IRepository<Comment>, Repository<Comment>>();
+        // Asset depreciation entities
+        services.AddSingleton<IRepository<Asset>, Repository<Asset>>();
+        services.AddSingleton<IRepository<DepreciationEntry>, Repository<DepreciationEntry>>();
+        services.AddSingleton<IRepository<AssetExpense>, Repository<AssetExpense>>();
+        services.AddSingleton<IRepository<AssetLoan>, Repository<AssetLoan>>();
+        services.AddSingleton<IRepository<AssetLoanPayment>, Repository<AssetLoanPayment>>();
 
         // Register repositories for Core entities (uses [Core] schema)
         services.AddSingleton<IRepository<Organization>, CoreRepository<Organization>>();

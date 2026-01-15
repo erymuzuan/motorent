@@ -68,6 +68,8 @@ builder.Services.AddScoped<InvoiceService>();
 builder.Services.AddScoped<MaintenanceService>();
 builder.Services.AddScoped<MaintenanceAlertService>();
 builder.Services.AddScoped<AlertService>();
+builder.Services.AddScoped<DynamicPricingService>();
+builder.Services.AddScoped<RegionalPresetService>();
 builder.Services.AddScoped<DamageReportService>();
 // Third-party owner services
 builder.Services.AddScoped<VehicleOwnerService>();
@@ -76,6 +78,11 @@ builder.Services.AddScoped<OwnerPaymentService>();
 builder.Services.AddScoped<AccidentService>();
 // Comment service
 builder.Services.AddScoped<CommentService>();
+// Asset depreciation services
+builder.Services.AddSingleton<DepreciationCalculator>();
+builder.Services.AddScoped<AssetService>();
+builder.Services.AddScoped<AssetExpenseService>();
+builder.Services.AddScoped<AssetLoanService>();
 
 // Error logging services
 builder.Services.AddScoped<MotoRent.Domain.Core.ILogger, SqlLogger>();

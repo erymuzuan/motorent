@@ -1,0 +1,385 @@
+@page "/settings/pricing-calendar"
+@using Microsoft.AspNetCore.Authorization
+@using MotoRent.Domain.Entities
+@attribute [Authorize(Policy = "RequireTenantManager")]
+@inherits LocalizedComponentBase<PricingCalendar>
+@inject DynamicPricingService PricingService
+@inject ShopService ShopService
+
+<MotoRentPageTitle>@Localizer["PricingCalendar"]</MotoRentPageTitle>
+
+<TablerHeader Title="@Localizer["PricingCalendar"]" PreTitle="@Localizer["Settings"]">
+    <a href="/settings/pricing-rules" class="btn btn-outline-primary">
+        <i class="ti ti-list me-1"></i>
+        @Localizer["ViewRulesList"]
+    </a>
+</TablerHeader>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-3 align-items-center">
+            <div class="col-md-4">
+                <label class="form-label">@Localizer["Shop"]</label>
+                <select class="form-select" @bind="m_selectedShopId" @bind:after="LoadDataAsync">
+                    <option value="0">@Localizer["SelectShop"]</option>
+                    @foreach (var shop in m_shops)
+                    {
+                        <option value="@shop.ShopId">@shop.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">@Localizer["MonthYear"]</label>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-icon btn-ghost-secondary"
+                            @onclick="PreviousMonth" disabled="@m_loading">
+                        <i class="ti ti-chevron-left"></i>
+                    </button>
+                    <span class="fw-medium text-center" style="min-width: 150px;">
+                        @m_currentDate.ToString("MMMM yyyy")
+                    </span>
+                    <button type="button" class="btn btn-icon btn-ghost-secondary"
+                            @onclick="NextMonth" disabled="@m_loading">
+                        <i class="ti ti-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">@Localizer["VehicleType"]</label>
+                <select class="form-select" @bind="m_vehicleTypeFilter" @bind:after="LoadDataAsync">
+                    <option value="">@Localizer["AllVehicles"]</option>
+                    @foreach (var type in m_vehicleTypes)
+                    {
+                        <option value="@type">@Localizer[type]</option>
+                    }
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (m_selectedShopId == 0)
+{
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <i class="ti ti-building-store mb-3" style="font-size: 3rem; color: var(--tblr-secondary);"></i>
+            <h3 class="text-secondary">@Localizer["SelectShopPrompt"]</h3>
+        </div>
+    </div>
+}
+else
+{
+    <LoadingSkeleton Loading="@m_loading" Mode="LoadingSkeleton.PlaceholderMode.Card">
+        <div class="card">
+            <div class="card-body">
+                @* Legend *@
+                <div class="d-flex gap-3 mb-3 justify-content-end">
+                    <span class="d-flex align-items-center gap-1">
+                        <span class="badge bg-green-lt text-green">↓</span>
+                        <small class="text-secondary">@Localizer["Discount"]</small>
+                    </span>
+                    <span class="d-flex align-items-center gap-1">
+                        <span class="badge bg-secondary-lt text-secondary">—</span>
+                        <small class="text-secondary">@Localizer["Normal"]</small>
+                    </span>
+                    <span class="d-flex align-items-center gap-1">
+                        <span class="badge bg-orange-lt text-orange">↑</span>
+                        <small class="text-secondary">@Localizer["Shoulder"]</small>
+                    </span>
+                    <span class="d-flex align-items-center gap-1">
+                        <span class="badge bg-red-lt text-red">↑↑</span>
+                        <small class="text-secondary">@Localizer["Peak"]</small>
+                    </span>
+                </div>
+
+                @* Calendar Grid *@
+                <table class="table table-bordered calendar-table">
+                    <thead>
+                        <tr>
+                            @foreach (DayOfWeek day in Enum.GetValues<DayOfWeek>())
+                            {
+                                <th class="text-center">@Localizer[day.ToString().Substring(0, 3)]</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var week in m_calendarWeeks)
+                        {
+                            <tr>
+                                @foreach (var day in week)
+                                {
+                                    @if (day == null)
+                                    {
+                                        <td class="bg-light"></td>
+                                    }
+                                    else
+                                    {
+                                        var multiplier = GetMultiplierForDate(day.Value);
+                                        <td class="@GetDayCellClass(day.Value, multiplier)"
+                                            @onclick="@(() => ShowDayDetails(day.Value))"
+                                            style="cursor: pointer;">
+                                            <div class="d-flex flex-column align-items-center p-1">
+                                                <small class="text-secondary">@day.Value.Day</small>
+                                                <span class="badge @GetMultiplierBadgeClass(multiplier)">
+                                                    @FormatMultiplier(multiplier)
+                                                </span>
+                                            </div>
+                                        </td>
+                                    }
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </LoadingSkeleton>
+
+    @* Active Rules This Month *@
+    @if (m_activeRules.Count > 0)
+    {
+        <div class="card mt-3">
+            <div class="card-header">
+                <h3 class="card-title">@Localizer["ActiveRulesThisMonth"]</h3>
+            </div>
+            <div class="list-group list-group-flush">
+                @foreach (var rule in m_activeRules.OrderByDescending(r => r.Priority).Take(10))
+                {
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="fw-medium">@rule.Name</span>
+                                <small class="text-secondary d-block">
+                                    @if (rule.RuleType == PricingRuleType.DayOfWeek)
+                                    {
+                                        @Localizer[rule.ApplicableDayOfWeek?.ToString() ?? ""]
+                                    }
+                                    else
+                                    {
+                                        @rule.StartDate.ToString("MMM d") @:- @rule.EndDate.ToString("MMM d")
+                                    }
+                                </small>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge @GetRuleTypeBadgeClass(rule.RuleType)">
+                                    @Localizer[rule.RuleType.ToString()]
+                                </span>
+                                <span class="badge @GetMultiplierBadgeClass(rule.Multiplier)">
+                                    @FormatMultiplier(rule.Multiplier)
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private List<Shop> m_shops = [];
+    private List<string> m_vehicleTypes = ["Motorbike", "Car", "Van", "JetSki", "Boat"];
+    private int m_selectedShopId;
+    private string? m_vehicleTypeFilter;
+    private DateTime m_currentDate = DateTime.Today;
+    private bool m_loading;
+
+    private Dictionary<DateOnly, decimal> m_multiplierCalendar = [];
+    private List<List<DateOnly?>> m_calendarWeeks = [];
+    private List<PricingRule> m_activeRules = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var shopsResult = await this.ShopService.GetShopsAsync(null, true, 1, 100);
+        this.m_shops = shopsResult.ItemCollection;
+
+        if (this.m_shops.Count > 0)
+        {
+            this.m_selectedShopId = this.m_shops[0].ShopId;
+            await this.LoadDataAsync();
+        }
+    }
+
+    private async Task LoadDataAsync()
+    {
+        if (this.m_selectedShopId == 0)
+        {
+            this.m_multiplierCalendar.Clear();
+            this.m_activeRules.Clear();
+            this.BuildCalendarWeeks();
+            return;
+        }
+
+        this.m_loading = true;
+        try
+        {
+            // Load multipliers for the month
+            this.m_multiplierCalendar = await this.PricingService.GetMultiplierCalendarAsync(
+                this.m_selectedShopId,
+                this.m_currentDate.Year,
+                this.m_currentDate.Month,
+                this.m_vehicleTypeFilter);
+
+            // Load active rules for the month
+            var startOfMonth = new DateOnly(this.m_currentDate.Year, this.m_currentDate.Month, 1);
+            var endOfMonth = startOfMonth.AddMonths(1).AddDays(-1);
+            this.m_activeRules = await this.PricingService.GetActiveRulesForDateRangeAsync(
+                this.m_selectedShopId, startOfMonth, endOfMonth);
+
+            this.BuildCalendarWeeks();
+        }
+        catch (Exception ex)
+        {
+            this.ShowError($"Error loading calendar: {ex.Message}");
+        }
+        finally
+        {
+            this.m_loading = false;
+        }
+    }
+
+    private void BuildCalendarWeeks()
+    {
+        this.m_calendarWeeks.Clear();
+        var firstDay = new DateTime(this.m_currentDate.Year, this.m_currentDate.Month, 1);
+        var daysInMonth = DateTime.DaysInMonth(this.m_currentDate.Year, this.m_currentDate.Month);
+
+        var currentWeek = new List<DateOnly?>();
+
+        // Add empty cells for days before the first of month
+        var dayOfWeek = (int)firstDay.DayOfWeek;
+        for (int i = 0; i < dayOfWeek; i++)
+        {
+            currentWeek.Add(null);
+        }
+
+        // Add each day of the month
+        for (int day = 1; day <= daysInMonth; day++)
+        {
+            var date = new DateOnly(this.m_currentDate.Year, this.m_currentDate.Month, day);
+            currentWeek.Add(date);
+
+            if (currentWeek.Count == 7)
+            {
+                this.m_calendarWeeks.Add(currentWeek);
+                currentWeek = [];
+            }
+        }
+
+        // Add remaining empty cells
+        if (currentWeek.Count > 0)
+        {
+            while (currentWeek.Count < 7)
+            {
+                currentWeek.Add(null);
+            }
+            this.m_calendarWeeks.Add(currentWeek);
+        }
+    }
+
+    private async Task PreviousMonth()
+    {
+        this.m_currentDate = this.m_currentDate.AddMonths(-1);
+        await this.LoadDataAsync();
+    }
+
+    private async Task NextMonth()
+    {
+        this.m_currentDate = this.m_currentDate.AddMonths(1);
+        await this.LoadDataAsync();
+    }
+
+    private decimal GetMultiplierForDate(DateOnly date)
+    {
+        return this.m_multiplierCalendar.TryGetValue(date, out var multiplier) ? multiplier : 1.0m;
+    }
+
+    private void ShowDayDetails(DateOnly date)
+    {
+        var multiplier = GetMultiplierForDate(date);
+        var applicableRules = this.m_activeRules
+            .Where(r => RuleAppliesToDate(r, date))
+            .OrderByDescending(r => r.Priority)
+            .ToList();
+
+        if (applicableRules.Count > 0)
+        {
+            var rulesText = string.Join("\n", applicableRules.Select(r =>
+                $"• {r.Name} ({FormatMultiplier(r.Multiplier)}, P{r.Priority})"));
+            this.ShowInfo($"{date:ddd, MMM d}\n\nMultiplier: {FormatMultiplier(multiplier)}\n\nApplicable Rules:\n{rulesText}");
+        }
+        else
+        {
+            this.ShowInfo($"{date:ddd, MMM d}\n\nNo pricing rules apply to this date.");
+        }
+    }
+
+    private bool RuleAppliesToDate(PricingRule rule, DateOnly date)
+    {
+        if (rule.RuleType == PricingRuleType.DayOfWeek)
+        {
+            return rule.ApplicableDayOfWeek == date.DayOfWeek;
+        }
+
+        if (rule.IsRecurring && rule.RecurringMonth.HasValue)
+        {
+            var ruleStartMonth = rule.StartDate.Month;
+            var ruleStartDay = rule.StartDate.Day;
+            var ruleEndMonth = rule.EndDate.Month;
+            var ruleEndDay = rule.EndDate.Day;
+
+            if (ruleStartMonth <= ruleEndMonth)
+            {
+                return date.Month >= ruleStartMonth && date.Month <= ruleEndMonth &&
+                       (date.Month != ruleStartMonth || date.Day >= ruleStartDay) &&
+                       (date.Month != ruleEndMonth || date.Day <= ruleEndDay);
+            }
+            else
+            {
+                return (date.Month >= ruleStartMonth &&
+                        (date.Month != ruleStartMonth || date.Day >= ruleStartDay)) ||
+                       (date.Month <= ruleEndMonth &&
+                        (date.Month != ruleEndMonth || date.Day <= ruleEndDay));
+            }
+        }
+
+        return date >= rule.StartDate && date <= rule.EndDate;
+    }
+
+    private static string GetDayCellClass(DateOnly date, decimal multiplier)
+    {
+        if (date == DateOnly.FromDateTime(DateTime.Today))
+            return "bg-primary-lt";
+
+        if (multiplier < 0.9m) return "bg-green-lt";
+        if (multiplier > 1.5m) return "bg-red-lt";
+        if (multiplier > 1.2m) return "bg-orange-lt";
+
+        return "";
+    }
+
+    private static string GetMultiplierBadgeClass(decimal multiplier)
+    {
+        if (multiplier < 0.9m) return "bg-green-lt text-green";
+        if (multiplier > 1.5m) return "bg-red-lt text-red";
+        if (multiplier > 1.2m) return "bg-orange-lt text-orange";
+        if (multiplier > 1.0m) return "bg-yellow-lt text-yellow";
+        return "bg-secondary-lt text-secondary";
+    }
+
+    private static string GetRuleTypeBadgeClass(PricingRuleType type) => type switch
+    {
+        PricingRuleType.Season => "bg-orange-lt text-orange",
+        PricingRuleType.Event => "bg-purple-lt text-purple",
+        PricingRuleType.DayOfWeek => "bg-azure-lt text-azure",
+        PricingRuleType.Custom => "bg-teal-lt text-teal",
+        _ => "bg-secondary-lt text-secondary"
+    };
+
+    private static string FormatMultiplier(decimal multiplier)
+    {
+        if (multiplier == 1.0m) return "—";
+        var pct = (multiplier - 1.0m) * 100;
+        return pct >= 0 ? $"+{pct:N0}%" : $"{pct:N0}%";
+    }
+}

@@ -65,11 +65,15 @@ namespace MotoRent.Scheduler
                     // Add MotoRent data context (required for services)
                     services.AddMotoRentDataContext(MotoConfig.SqlConnectionString);
 
+                    // Register data context and services
+                    services.AddSingleton<RentalDataContext>();
+                    services.AddTransient<DepreciationCalculator>();
+                    services.AddTransient<AssetService>();
+
                     // Register task runners
                     services.AddScoped<MaintenanceService>();
                     services.AddScoped<MaintenanceAlertService>();
                     services.AddTransient<ITaskRunner, RentalExpiryRunner>();
-                    services.AddTransient<ITaskRunner, MaintenanceAlertRunner>();
                 })
                 .Build();
 
@@ -151,6 +155,7 @@ namespace MotoRent.Scheduler
             Console.WriteLine();
             Console.WriteLine("Available Runners:");
             Console.WriteLine("  RentalExpiryRunner    Check for expiring rentals");
+            Console.WriteLine("  DepreciationRunner    Run monthly depreciation for all assets");
             Console.WriteLine();
             Console.WriteLine("Environment Variables:");
             Console.WriteLine("  MOTORENT_RabbitMqHost       RabbitMQ host (default: localhost)");

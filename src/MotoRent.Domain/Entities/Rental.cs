@@ -324,6 +324,33 @@ public partial class Rental : Entity
     /// </summary>
     public string? OutOfHoursDropoffBand { get; set; }
 
+    // Dynamic Pricing
+
+    /// <summary>
+    /// Whether dynamic pricing was applied to this rental.
+    /// </summary>
+    public bool DynamicPricingApplied { get; set; }
+
+    /// <summary>
+    /// Base daily rate before dynamic pricing adjustment.
+    /// </summary>
+    public decimal BaseRentalRate { get; set; }
+
+    /// <summary>
+    /// Average multiplier applied across all rental days.
+    /// </summary>
+    public decimal AverageMultiplier { get; set; } = 1.0m;
+
+    /// <summary>
+    /// Summary of applied pricing rules (e.g., "High Season ×2, Weekend ×3").
+    /// </summary>
+    public string? AppliedPricingRules { get; set; }
+
+    /// <summary>
+    /// Per-day pricing breakdown showing adjustments for each day.
+    /// </summary>
+    public List<RentalDayPricing> DayPricingBreakdown { get; set; } = [];
+
     // Inspection Tracking
 
     /// <summary>
