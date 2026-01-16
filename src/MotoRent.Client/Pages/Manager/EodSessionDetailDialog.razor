@@ -1,0 +1,262 @@
+@using MotoRent.Domain.Entities
+@using MotoRent.Services
+@inherits MotoRentComponentBase
+@inject TillService TillService
+@inject IModalService ModalService
+
+<div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+    @if (m_loading)
+    {
+        <div class="progress progress-sm mb-3">
+            <div class="progress-bar progress-bar-indeterminate"></div>
+        </div>
+    }
+    else if (m_session == null)
+    {
+        <div class="alert alert-warning">Session not found</div>
+    }
+    else
+    {
+        @* Session Header *@
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h4 class="mb-2">@m_session.StaffDisplayName</h4>
+                        <div class="text-secondary mb-2">
+                            <i class="ti ti-clock me-1"></i>
+                            @FormatDateTime(m_session.OpenedAt)
+                            @if (m_session.ClosedAt.HasValue)
+                            {
+                                <text> - @FormatDateTime(m_session.ClosedAt)</text>
+                            }
+                        </div>
+                        <span class="badge @GetStatusBadgeClass(m_session.Status)">
+                            @m_session.Status
+                        </span>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="row text-center">
+                            <div class="col-4">
+                                <small class="text-secondary d-block">Float</small>
+                                <span class="fw-semibold">@FormatCurrency(m_session.OpeningFloat)</span>
+                            </div>
+                            <div class="col-4">
+                                <small class="text-success d-block">Cash In</small>
+                                <span class="fw-semibold text-success">@FormatCurrency(m_session.TotalCashIn)</span>
+                            </div>
+                            <div class="col-4">
+                                <small class="text-danger d-block">Cash Out</small>
+                                <span class="fw-semibold text-danger">@FormatCurrency(m_session.TotalCashOut)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* Reconciliation Summary *@
+        @if (m_session.ClosedAt.HasValue)
+        {
+            <div class="card mb-4 @(m_session.Variance == 0 ? "border-success" : "border-warning")">
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <small class="text-secondary d-block">Expected</small>
+                            <span class="h4">@FormatCurrency(m_session.ExpectedCash)</span>
+                        </div>
+                        <div class="col-4">
+                            <small class="text-secondary d-block">Actual</small>
+                            <span class="h4">@FormatCurrency(m_session.ActualCash)</span>
+                        </div>
+                        <div class="col-4">
+                            <small class="text-secondary d-block">Variance</small>
+                            <span class="h4 @GetVarianceClass(m_session.Variance)">
+                                @(m_session.Variance >= 0 ? "+" : "")@FormatCurrency(m_session.Variance)
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @* Verification Info *@
+        @if (m_session.VerifiedAt.HasValue)
+        {
+            <div class="alert alert-success mb-4">
+                <div class="d-flex align-items-center">
+                    <i class="ti ti-shield-check me-2" style="font-size: 1.5rem;"></i>
+                    <div>
+                        <div class="fw-semibold">Verified by @m_session.VerifiedByUserName</div>
+                        <small>@FormatDateTime(m_session.VerifiedAt)</small>
+                        @if (!string.IsNullOrEmpty(m_session.VerificationNotes))
+                        {
+                            <div class="mt-1">@m_session.VerificationNotes</div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+        @* Transactions List *@
+        <h4 class="mb-3">Transactions (@m_transactions.Count)</h4>
+        @if (!m_transactions.Any())
+        {
+            <div class="text-center py-4 text-secondary">
+                <i class="ti ti-receipt-off" style="font-size: 2rem;"></i>
+                <div class="mt-2">No transactions</div>
+            </div>
+        }
+        else
+        {
+            <div class="list-group list-group-flush">
+                @foreach (var txn in m_transactions)
+                {
+                    <div class="list-group-item px-0">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="d-flex gap-3">
+                                <span class="avatar @GetTransactionAvatarClass(txn)">
+                                    <i class="@GetTransactionIcon(txn)"></i>
+                                </span>
+                                <div>
+                                    <div class="fw-medium">@GetTransactionTypeName(txn.TransactionType)</div>
+                                    <div class="text-secondary small">@txn.Description</div>
+                                    @if (!string.IsNullOrEmpty(txn.RecipientName))
+                                    {
+                                        <small class="text-secondary">
+                                            <i class="ti ti-user me-1"></i>@txn.RecipientName
+                                        </small>
+                                    }
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <div class="@GetAmountColorClass(txn) fw-bold">
+                                    @(txn.Direction == TillTransactionDirection.In ? "+" : "-")@FormatCurrency(txn.Amount)
+                                </div>
+                                <small class="text-secondary">
+                                    @FormatTime(txn.TransactionTime)
+                                </small>
+                                @if (txn.IsVerified)
+                                {
+                                    <div>
+                                        <span class="badge bg-success-lt text-success">
+                                            <i class="ti ti-check"></i>
+                                        </span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    }
+</div>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-secondary" @onclick="Cancel">
+        Close
+    </button>
+</div>
+
+@code {
+    [Parameter]
+    public int SessionId { get; set; }
+
+    private bool m_loading = true;
+    private TillSession? m_session;
+    private List<TillTransaction> m_transactions = [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            m_loading = true;
+            m_session = await TillService.GetSessionByIdAsync(SessionId);
+            m_transactions = await TillService.GetTransactionsAsync(SessionId);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading session details");
+            ShowError("Failed to load session details");
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        ModalService.Close(ModalResult.Cancel());
+    }
+
+    private static string GetStatusBadgeClass(TillSessionStatus status) => status switch
+    {
+        TillSessionStatus.Open => "bg-primary",
+        TillSessionStatus.Closed => "bg-success-lt text-success",
+        TillSessionStatus.ClosedWithVariance => "bg-warning-lt text-warning",
+        TillSessionStatus.Verified => "bg-success",
+        _ => "bg-secondary"
+    };
+
+    private static string GetVarianceClass(decimal variance)
+    {
+        if (variance == 0) return "text-success";
+        if (variance > 0) return "text-info";
+        return "text-danger";
+    }
+
+    private static string GetTransactionTypeName(TillTransactionType type) => type switch
+    {
+        TillTransactionType.RentalPayment => "Rental Payment",
+        TillTransactionType.BookingDeposit => "Booking Deposit",
+        TillTransactionType.SecurityDeposit => "Security Deposit",
+        TillTransactionType.DamageCharge => "Damage Charge",
+        TillTransactionType.LateFee => "Late Fee",
+        TillTransactionType.TopUp => "Top Up",
+        TillTransactionType.CardPayment => "Card Payment",
+        TillTransactionType.BankTransfer => "Bank Transfer",
+        TillTransactionType.PromptPay => "PromptPay",
+        TillTransactionType.DepositRefund => "Deposit Refund",
+        TillTransactionType.FuelReimbursement => "Fuel Reimbursement",
+        TillTransactionType.AgentCommission => "Agent Commission",
+        TillTransactionType.PettyCash => "Petty Cash",
+        TillTransactionType.Drop => "Cash Drop",
+        _ => type.ToString()
+    };
+
+    private static string GetTransactionIcon(TillTransaction txn) => txn.TransactionType switch
+    {
+        TillTransactionType.RentalPayment => "ti ti-motorbike",
+        TillTransactionType.TopUp => "ti ti-cash",
+        TillTransactionType.CardPayment => "ti ti-credit-card",
+        TillTransactionType.BankTransfer => "ti ti-building-bank",
+        TillTransactionType.PromptPay => "ti ti-qrcode",
+        TillTransactionType.DepositRefund => "ti ti-arrow-back",
+        TillTransactionType.FuelReimbursement => "ti ti-gas-station",
+        TillTransactionType.AgentCommission => "ti ti-users",
+        TillTransactionType.PettyCash => "ti ti-wallet",
+        TillTransactionType.Drop => "ti ti-safe",
+        _ => "ti ti-receipt"
+    };
+
+    private static string GetTransactionAvatarClass(TillTransaction txn)
+    {
+        if (txn.Direction == TillTransactionDirection.In)
+        {
+            return txn.AffectsCash ? "bg-success-lt" : "bg-info-lt";
+        }
+        return "bg-danger-lt";
+    }
+
+    private static string GetAmountColorClass(TillTransaction txn)
+    {
+        return txn.Direction == TillTransactionDirection.In ? "text-success" : "text-danger";
+    }
+}

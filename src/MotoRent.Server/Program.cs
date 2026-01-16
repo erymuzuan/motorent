@@ -84,6 +84,8 @@ builder.Services.AddSingleton<DepreciationCalculator>();
 builder.Services.AddScoped<AssetService>();
 builder.Services.AddScoped<AssetExpenseService>();
 builder.Services.AddScoped<AssetLoanService>();
+// Cashier till services
+builder.Services.AddScoped<TillService>();
 
 // Error logging services
 builder.Services.AddScoped<MotoRent.Domain.Core.ILogger, SqlLogger>();

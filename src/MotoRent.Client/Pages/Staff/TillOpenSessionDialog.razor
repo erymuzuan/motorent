@@ -1,0 +1,98 @@
+@inherits MotoRentComponentBase
+@inject TillService TillService
+@inject IModalService ModalService
+
+<form id="openSessionForm" @onsubmit="SaveAsync" @onsubmit:preventDefault>
+    <div class="modal-body">
+        <div class="text-center mb-4">
+            <span class="avatar avatar-xl bg-primary-lt mb-3">
+                <i class="ti ti-cash-register" style="font-size: 2rem;"></i>
+            </span>
+            <p class="text-secondary">
+                Enter the amount of cash currently in your drawer to start your shift.
+            </p>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label required">Opening Float</label>
+            <div class="input-group input-group-lg">
+                <span class="input-group-text">฿</span>
+                <input type="number" class="form-control text-end" @bind="m_openingFloat"
+                       required min="0" step="100" placeholder="0" autofocus />
+            </div>
+            <small class="form-hint">
+                Count all cash in your drawer before starting
+            </small>
+        </div>
+
+        <div class="mb-0">
+            <label class="form-label">Notes (optional)</label>
+            <textarea class="form-control" @bind="m_notes" rows="2"
+                      placeholder="Any notes about opening the till..."></textarea>
+        </div>
+    </div>
+</form>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
+        Cancel
+    </button>
+    <button type="submit" form="openSessionForm" class="btn btn-primary" disabled="@m_saving">
+        @if (m_saving)
+        {
+            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+        }
+        <i class="ti ti-login me-1"></i>
+        Open Session
+    </button>
+</div>
+
+@code {
+    [Parameter]
+    public int ShopId { get; set; }
+
+    private decimal m_openingFloat;
+    private string? m_notes;
+    private bool m_saving;
+
+    private void Cancel()
+    {
+        ModalService.Close(ModalResult.Cancel());
+    }
+
+    private async Task SaveAsync()
+    {
+        if (m_saving) return;
+
+        try
+        {
+            m_saving = true;
+
+            var displayName = UserName;
+            var result = await TillService.OpenSessionAsync(
+                ShopId,
+                UserName,
+                displayName,
+                m_openingFloat,
+                m_notes);
+
+            if (result.Success)
+            {
+                ModalService.Close(ModalResult.Ok(result));
+            }
+            else
+            {
+                ShowError(result.Message ?? "Failed to open session");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error opening till session");
+            ShowError("Failed to open session");
+        }
+        finally
+        {
+            m_saving = false;
+        }
+    }
+}

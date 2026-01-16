@@ -1,0 +1,142 @@
+@using MotoRent.Domain.Entities
+@using MotoRent.Services
+@inherits MotoRentComponentBase
+@inject TillService TillService
+@inject IModalService ModalService
+
+<form id="verifySessionForm" @onsubmit="SaveAsync" @onsubmit:preventDefault>
+    <div class="modal-body">
+        <div class="text-center mb-4">
+            @if (Variance == 0)
+            {
+                <span class="avatar avatar-xl bg-success-lt mb-3">
+                    <i class="ti ti-check" style="font-size: 2rem;"></i>
+                </span>
+                <h4>Session Balanced</h4>
+                <p class="text-secondary">
+                    @StaffName's session closed with no variance.
+                </p>
+            }
+            else
+            {
+                <span class="avatar avatar-xl @(Variance > 0 ? "bg-info-lt" : "bg-warning-lt") mb-3">
+                    <i class="@(Variance > 0 ? "ti ti-trending-up" : "ti ti-trending-down")" style="font-size: 2rem;"></i>
+                </span>
+                <h4>@(Variance > 0 ? "Cash Over" : "Cash Short")</h4>
+                <p class="text-secondary">
+                    @StaffName's session closed with a
+                    <span class="@(Variance > 0 ? "text-info" : "text-danger") fw-bold">
+                        @FormatCurrency(Math.Abs(Variance))
+                    </span>
+                    @(Variance > 0 ? "surplus" : "shortage").
+                </p>
+            }
+        </div>
+
+        @if (Variance != 0)
+        {
+            <div class="alert @(Variance > 0 ? "alert-info" : "alert-warning") mb-4">
+                <div class="d-flex align-items-start">
+                    <i class="ti ti-info-circle me-2 mt-1"></i>
+                    <div>
+                        @if (Variance > 0)
+                        {
+                            <text>
+                                A cash surplus may indicate an unrecorded cash drop, customer overpayment,
+                                or a counting error. Please investigate before verifying.
+                            </text>
+                        }
+                        else
+                        {
+                            <text>
+                                A cash shortage may indicate an unrecorded payout, counting error,
+                                or potential theft. Please investigate before verifying.
+                            </text>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+        <div class="mb-0">
+            <label class="form-label">Verification Notes</label>
+            <textarea class="form-control" @bind="m_notes" rows="3"
+                      placeholder="@GetNotesPlaceholder()"></textarea>
+            <small class="form-hint">
+                Add any notes about your verification (optional but recommended for variances)
+            </small>
+        </div>
+    </div>
+</form>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
+        Cancel
+    </button>
+    <button type="submit" form="verifySessionForm" class="btn btn-primary" disabled="@m_saving">
+        @if (m_saving)
+        {
+            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+        }
+        <i class="ti ti-shield-check me-1"></i>
+        Verify Session
+    </button>
+</div>
+
+@code {
+    [Parameter]
+    public int SessionId { get; set; }
+
+    [Parameter]
+    public string StaffName { get; set; } = "";
+
+    [Parameter]
+    public decimal Variance { get; set; }
+
+    private string? m_notes;
+    private bool m_saving;
+
+    private string GetNotesPlaceholder()
+    {
+        if (Variance == 0)
+            return "Session verified - no issues noted";
+        if (Variance > 0)
+            return "Explain the surplus (e.g., unrecorded drop, overpayment)";
+        return "Explain the shortage (e.g., unrecorded payout, counting error)";
+    }
+
+    private void Cancel()
+    {
+        ModalService.Close(ModalResult.Cancel());
+    }
+
+    private async Task SaveAsync()
+    {
+        if (m_saving) return;
+
+        try
+        {
+            m_saving = true;
+
+            var result = await TillService.VerifySessionAsync(SessionId, UserName, m_notes);
+
+            if (result.Success)
+            {
+                ModalService.Close(ModalResult.Ok(result));
+            }
+            else
+            {
+                ShowError(result.Message ?? "Failed to verify session");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error verifying session");
+            ShowError("Failed to verify session");
+        }
+        finally
+        {
+            m_saving = false;
+        }
+    }
+}

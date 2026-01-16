@@ -1,0 +1,476 @@
+@page "/staff/till"
+@using MotoRent.Domain.Entities
+@using MotoRent.Services
+@using Microsoft.AspNetCore.Authorization
+@inherits MotoRentComponentBase
+@attribute [Authorize(Policy = "RequireTenantStaff")]
+@inject TillService TillService
+@inject ShopService ShopService
+
+<PageTitle>Cashier Till - MotoRent</PageTitle>
+
+@if (m_loading)
+{
+    <div class="container-xl py-4">
+        <div class="progress progress-sm mb-3">
+            <div class="progress-bar progress-bar-indeterminate"></div>
+        </div>
+        <div class="placeholder-glow">
+            <div class="card mb-3">
+                <div class="card-body">
+                    <span class="placeholder col-4"></span>
+                    <span class="placeholder col-6"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+else if (m_session == null)
+{
+    @* No active session - show Open Session UI *@
+    <div class="container-xl py-4">
+        <div class="page-header mb-4">
+            <div class="row align-items-center">
+                <div class="col">
+                    <h2 class="page-title">
+                        <i class="ti ti-cash-register me-2"></i>
+                        Cashier Till
+                    </h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="row justify-content-center">
+            <div class="col-md-6 col-lg-5">
+                <div class="card">
+                    <div class="card-body text-center py-5">
+                        <div class="mb-4">
+                            <span class="avatar avatar-xl bg-primary-lt">
+                                <i class="ti ti-lock-open" style="font-size: 2rem;"></i>
+                            </span>
+                        </div>
+                        <h3>Start Your Shift</h3>
+                        <p class="text-secondary mb-4">
+                            Open a new till session to start recording transactions
+                        </p>
+                        <button type="button" class="btn btn-primary btn-lg" @onclick="OpenSessionDialog">
+                            <i class="ti ti-plus me-2"></i>
+                            Open Till Session
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    @* Active session - show Till Dashboard *@
+    <div class="container-xl py-3">
+        @* Session Header *@
+        <div class="card bg-primary text-white mb-3">
+            <div class="card-body py-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-white text-primary">OPEN</span>
+                            <span class="fw-semibold">@m_session.StaffDisplayName</span>
+                        </div>
+                        <small class="text-white-50">
+                            Started @FormatDateTime(m_session.OpenedAt)
+                        </small>
+                    </div>
+                    <div class="text-end">
+                        <small class="text-white-50">Opening Float</small>
+                        <div class="h3 mb-0">@FormatCurrency(m_session.OpeningFloat)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* Cash Balance Cards *@
+        <div class="row g-3 mb-3">
+            <div class="col-6">
+                <div class="card">
+                    <div class="card-body py-3">
+                        <div class="d-flex align-items-center">
+                            <span class="avatar bg-success-lt me-3">
+                                <i class="ti ti-arrow-down-left text-success"></i>
+                            </span>
+                            <div>
+                                <small class="text-secondary d-block">Cash In</small>
+                                <span class="h3 mb-0 text-success">@FormatCurrency(m_session.TotalCashIn)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="card">
+                    <div class="card-body py-3">
+                        <div class="d-flex align-items-center">
+                            <span class="avatar bg-danger-lt me-3">
+                                <i class="ti ti-arrow-up-right text-danger"></i>
+                            </span>
+                            <div>
+                                <small class="text-secondary d-block">Cash Out</small>
+                                <span class="h3 mb-0 text-danger">@FormatCurrency(m_session.TotalCashOut)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* Expected Balance *@
+        <div class="card mb-3">
+            <div class="card-body py-3 text-center">
+                <small class="text-secondary">Expected Cash in Till</small>
+                <div class="h1 mb-0">@FormatCurrency(m_session.ExpectedCash)</div>
+                @if (m_session.TotalDropped > 0)
+                {
+                    <small class="text-secondary">
+                        <i class="ti ti-safe me-1"></i>
+                        @FormatCurrency(m_session.TotalDropped) dropped to safe
+                    </small>
+                }
+            </div>
+        </div>
+
+        @* Non-Cash Summary (if any) *@
+        @if (m_session.TotalNonCashPayments > 0)
+        {
+            <div class="card mb-3">
+                <div class="card-header py-2">
+                    <h4 class="card-title mb-0">
+                        <i class="ti ti-credit-card me-2"></i>
+                        Non-Cash Payments
+                    </h4>
+                </div>
+                <div class="card-body py-2">
+                    <div class="row g-2 text-center">
+                        @if (m_session.TotalCardPayments > 0)
+                        {
+                            <div class="col">
+                                <small class="text-secondary d-block">Card</small>
+                                <span class="fw-semibold">@FormatCurrency(m_session.TotalCardPayments)</span>
+                            </div>
+                        }
+                        @if (m_session.TotalBankTransfers > 0)
+                        {
+                            <div class="col">
+                                <small class="text-secondary d-block">Bank Transfer</small>
+                                <span class="fw-semibold">@FormatCurrency(m_session.TotalBankTransfers)</span>
+                            </div>
+                        }
+                        @if (m_session.TotalPromptPay > 0)
+                        {
+                            <div class="col">
+                                <small class="text-secondary d-block">PromptPay</small>
+                                <span class="fw-semibold">@FormatCurrency(m_session.TotalPromptPay)</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+        @* Quick Actions *@
+        <div class="card mb-3">
+            <div class="card-header py-2">
+                <h4 class="card-title mb-0">Quick Payouts</h4>
+            </div>
+            <div class="card-body py-2">
+                <div class="row g-2">
+                    <div class="col-4">
+                        <button type="button" class="btn btn-outline-warning w-100"
+                                @onclick="@(() => RecordPayoutDialog(TillTransactionType.FuelReimbursement))">
+                            <i class="ti ti-gas-station d-block mb-1" style="font-size: 1.5rem;"></i>
+                            <small>Fuel</small>
+                        </button>
+                    </div>
+                    <div class="col-4">
+                        <button type="button" class="btn btn-outline-info w-100"
+                                @onclick="@(() => RecordPayoutDialog(TillTransactionType.AgentCommission))">
+                            <i class="ti ti-users d-block mb-1" style="font-size: 1.5rem;"></i>
+                            <small>Agent</small>
+                        </button>
+                    </div>
+                    <div class="col-4">
+                        <button type="button" class="btn btn-outline-secondary w-100"
+                                @onclick="@(() => RecordPayoutDialog(TillTransactionType.PettyCash))">
+                            <i class="ti ti-wallet d-block mb-1" style="font-size: 1.5rem;"></i>
+                            <small>Petty Cash</small>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* Till Operations *@
+        <div class="card mb-3">
+            <div class="card-header py-2">
+                <h4 class="card-title mb-0">Till Operations</h4>
+            </div>
+            <div class="card-body py-2">
+                <div class="row g-2">
+                    <div class="col-4">
+                        <button type="button" class="btn btn-outline-danger w-100" @onclick="CashDropDialog">
+                            <i class="ti ti-safe d-block mb-1" style="font-size: 1.5rem;"></i>
+                            <small>Cash Drop</small>
+                        </button>
+                    </div>
+                    <div class="col-4">
+                        <button type="button" class="btn btn-outline-success w-100" @onclick="TopUpDialog">
+                            <i class="ti ti-cash d-block mb-1" style="font-size: 1.5rem;"></i>
+                            <small>Top Up</small>
+                        </button>
+                    </div>
+                    <div class="col-4">
+                        <button type="button" class="btn btn-primary w-100" @onclick="CloseSessionDialog">
+                            <i class="ti ti-logout d-block mb-1" style="font-size: 1.5rem;"></i>
+                            <small>Close Shift</small>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* Recent Transactions *@
+        <div class="card">
+            <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                <h4 class="card-title mb-0">Recent Transactions</h4>
+                <button type="button" class="btn btn-sm btn-ghost-secondary" @onclick="ViewHistoryDialog">
+                    View All
+                </button>
+            </div>
+            <div class="list-group list-group-flush">
+                @if (!m_recentTransactions.Any())
+                {
+                    <div class="list-group-item text-center text-secondary py-4">
+                        <i class="ti ti-receipt-off" style="font-size: 2rem;"></i>
+                        <div class="mt-2">No transactions yet</div>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var txn in m_recentTransactions)
+                    {
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="d-flex gap-2">
+                                    <span class="avatar avatar-sm @GetTransactionAvatarClass(txn)">
+                                        <i class="@GetTransactionIcon(txn)"></i>
+                                    </span>
+                                    <div>
+                                        <div class="fw-medium">@GetTransactionTypeName(txn.TransactionType)</div>
+                                        <small class="text-secondary">@txn.Description</small>
+                                    </div>
+                                </div>
+                                <div class="text-end">
+                                    <div class="@GetAmountColorClass(txn) fw-semibold">
+                                        @(txn.Direction == TillTransactionDirection.In ? "+" : "-")@FormatCurrency(txn.Amount)
+                                    </div>
+                                    <small class="text-secondary">@FormatTime(txn.TransactionTime)</small>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool m_loading = true;
+    private int m_shopId;
+    private TillSession? m_session;
+    private List<TillTransaction> m_recentTransactions = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            m_loading = true;
+
+            // Get current shop
+            var shops = await ShopService.GetShopsAsync(page: 1, pageSize: 1);
+            if (shops.ItemCollection.Any())
+            {
+                m_shopId = shops.ItemCollection.First().ShopId;
+
+                // Get active session
+                m_session = await TillService.GetActiveSessionAsync(m_shopId, UserName);
+
+                // Load recent transactions if session exists
+                if (m_session != null)
+                {
+                    m_recentTransactions = await TillService.GetRecentTransactionsAsync(m_session.TillSessionId, 10);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading till data");
+            ShowError("Failed to load till data");
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private async Task OpenSessionDialog()
+    {
+        var result = await DialogService.Create<TillOpenSessionDialog>("Open Till Session")
+            .WithParameter(x => x.ShopId, m_shopId)
+            .WithSize(ModalSize.Medium)
+            .ShowDialogAsync();
+
+        if (result is { Cancelled: false })
+        {
+            ShowSuccess("Till session opened");
+            await LoadDataAsync();
+        }
+    }
+
+    private async Task CloseSessionDialog()
+    {
+        if (m_session == null) return;
+
+        var result = await DialogService.Create<TillCloseSessionDialog>("Close Till Session")
+            .WithParameter(x => x.Entity, m_session)
+            .WithSize(ModalSize.Medium)
+            .ShowDialogAsync();
+
+        if (result is { Cancelled: false })
+        {
+            ShowSuccess("Till session closed");
+            m_session = null;
+            m_recentTransactions.Clear();
+            StateHasChanged();
+        }
+    }
+
+    private async Task RecordPayoutDialog(TillTransactionType type)
+    {
+        if (m_session == null) return;
+
+        var result = await DialogService.Create<TillRecordPayoutDialog>(GetTransactionTypeName(type))
+            .WithParameter(x => x.SessionId, m_session.TillSessionId)
+            .WithParameter(x => x.PayoutType, type)
+            .WithSize(ModalSize.Medium)
+            .ShowDialogAsync();
+
+        if (result is { Cancelled: false })
+        {
+            ShowSuccess("Payout recorded");
+            await LoadDataAsync();
+        }
+    }
+
+    private async Task CashDropDialog()
+    {
+        if (m_session == null) return;
+
+        var result = await DialogService.Create<TillCashDropDialog>("Cash Drop")
+            .WithParameter(x => x.SessionId, m_session.TillSessionId)
+            .WithParameter(x => x.IsDrop, true)
+            .WithSize(ModalSize.Small)
+            .ShowDialogAsync();
+
+        if (result is { Cancelled: false })
+        {
+            ShowSuccess("Cash drop recorded");
+            await LoadDataAsync();
+        }
+    }
+
+    private async Task TopUpDialog()
+    {
+        if (m_session == null) return;
+
+        var result = await DialogService.Create<TillCashDropDialog>("Top Up")
+            .WithParameter(x => x.SessionId, m_session.TillSessionId)
+            .WithParameter(x => x.IsDrop, false)
+            .WithSize(ModalSize.Small)
+            .ShowDialogAsync();
+
+        if (result is { Cancelled: false })
+        {
+            ShowSuccess("Top up recorded");
+            await LoadDataAsync();
+        }
+    }
+
+    private async Task ViewHistoryDialog()
+    {
+        if (m_session == null) return;
+
+        await DialogService.Create<TillHistoryDialog>("Transaction History")
+            .WithParameter(x => x.SessionId, m_session.TillSessionId)
+            .WithSize(ModalSize.Large)
+            .ShowDialogAsync();
+    }
+
+    private static string GetTransactionTypeName(TillTransactionType type) => type switch
+    {
+        TillTransactionType.RentalPayment => "Rental Payment",
+        TillTransactionType.BookingDeposit => "Booking Deposit",
+        TillTransactionType.SecurityDeposit => "Security Deposit",
+        TillTransactionType.DamageCharge => "Damage Charge",
+        TillTransactionType.LateFee => "Late Fee",
+        TillTransactionType.Surcharge => "Surcharge",
+        TillTransactionType.MiscellaneousIncome => "Miscellaneous",
+        TillTransactionType.TopUp => "Top Up",
+        TillTransactionType.CardPayment => "Card Payment",
+        TillTransactionType.BankTransfer => "Bank Transfer",
+        TillTransactionType.PromptPay => "PromptPay",
+        TillTransactionType.DepositRefund => "Deposit Refund",
+        TillTransactionType.FuelReimbursement => "Fuel Reimbursement",
+        TillTransactionType.AgentCommission => "Agent Commission",
+        TillTransactionType.PettyCash => "Petty Cash",
+        TillTransactionType.Drop => "Cash Drop",
+        TillTransactionType.CashShortage => "Cash Shortage",
+        _ => type.ToString()
+    };
+
+    private static string GetTransactionIcon(TillTransaction txn) => txn.TransactionType switch
+    {
+        TillTransactionType.RentalPayment => "ti ti-motorbike",
+        TillTransactionType.BookingDeposit => "ti ti-calendar-check",
+        TillTransactionType.SecurityDeposit => "ti ti-shield-check",
+        TillTransactionType.DamageCharge => "ti ti-alert-triangle",
+        TillTransactionType.LateFee => "ti ti-clock-exclamation",
+        TillTransactionType.TopUp => "ti ti-cash",
+        TillTransactionType.CardPayment => "ti ti-credit-card",
+        TillTransactionType.BankTransfer => "ti ti-building-bank",
+        TillTransactionType.PromptPay => "ti ti-qrcode",
+        TillTransactionType.DepositRefund => "ti ti-arrow-back",
+        TillTransactionType.FuelReimbursement => "ti ti-gas-station",
+        TillTransactionType.AgentCommission => "ti ti-users",
+        TillTransactionType.PettyCash => "ti ti-wallet",
+        TillTransactionType.Drop => "ti ti-safe",
+        _ => "ti ti-receipt"
+    };
+
+    private static string GetTransactionAvatarClass(TillTransaction txn)
+    {
+        if (txn.Direction == TillTransactionDirection.In)
+        {
+            return txn.AffectsCash ? "bg-success-lt" : "bg-info-lt";
+        }
+        return "bg-danger-lt";
+    }
+
+    private static string GetAmountColorClass(TillTransaction txn)
+    {
+        return txn.Direction == TillTransactionDirection.In ? "text-success" : "text-danger";
+    }
+}

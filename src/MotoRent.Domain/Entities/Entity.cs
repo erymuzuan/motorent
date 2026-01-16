@@ -59,6 +59,9 @@ namespace MotoRent.Domain.Entities;
 [JsonDerivedType(typeof(AssetExpense), nameof(AssetExpense))]
 [JsonDerivedType(typeof(AssetLoan), nameof(AssetLoan))]
 [JsonDerivedType(typeof(AssetLoanPayment), nameof(AssetLoanPayment))]
+// Till/Cashier entities
+[JsonDerivedType(typeof(TillSession), nameof(TillSession))]
+[JsonDerivedType(typeof(TillTransaction), nameof(TillTransaction))]
 public abstract class Entity
 {
     public string? WebId { get; set; }

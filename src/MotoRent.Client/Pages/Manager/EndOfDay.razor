@@ -1,0 +1,430 @@
+@page "/manager/eod"
+@using MotoRent.Domain.Entities
+@using MotoRent.Services
+@using Microsoft.AspNetCore.Authorization
+@inherits MotoRentComponentBase
+@attribute [Authorize(Policy = "RequireTenantManager")]
+@inject TillService TillService
+@inject ShopService ShopService
+
+<PageTitle>End of Day - MotoRent</PageTitle>
+
+<div class="container-xl py-4">
+    <div class="page-header mb-4">
+        <div class="row align-items-center">
+            <div class="col">
+                <h2 class="page-title">
+                    <i class="ti ti-report-analytics me-2"></i>
+                    End of Day Reconciliation
+                </h2>
+            </div>
+            <div class="col-auto">
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="ti ti-calendar"></i>
+                    </span>
+                    <input type="date" class="form-control" @bind="m_selectedDate" @bind:event="onchange"
+                           @bind:after="LoadDataAsync" max="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (m_loading)
+    {
+        <div class="progress progress-sm mb-3">
+            <div class="progress-bar progress-bar-indeterminate"></div>
+        </div>
+        <div class="row g-3">
+            @for (int i = 0; i < 4; i++)
+            {
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-body placeholder-glow">
+                            <span class="placeholder col-6"></span>
+                            <span class="placeholder col-4 ms-2"></span>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else if (m_summary == null)
+    {
+        <div class="alert alert-info">
+            No data available for the selected date.
+        </div>
+    }
+    else
+    {
+        @* Summary Cards *@
+        <div class="row g-3 mb-4">
+            <div class="col-md-3 col-6">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <span class="avatar bg-success-lt me-3">
+                                <i class="ti ti-cash"></i>
+                            </span>
+                            <div>
+                                <small class="text-secondary">Total Cash In</small>
+                                <div class="h3 mb-0 text-success">@FormatCurrency(m_summary.TotalCashIn)</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <span class="avatar bg-danger-lt me-3">
+                                <i class="ti ti-cash-off"></i>
+                            </span>
+                            <div>
+                                <small class="text-secondary">Total Cash Out</small>
+                                <div class="h3 mb-0 text-danger">@FormatCurrency(m_summary.TotalCashOut)</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <span class="avatar bg-info-lt me-3">
+                                <i class="ti ti-credit-card"></i>
+                            </span>
+                            <div>
+                                <small class="text-secondary">Electronic Payments</small>
+                                <div class="h3 mb-0 text-info">@FormatCurrency(m_summary.TotalElectronicPayments)</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <span class="avatar bg-purple-lt me-3">
+                                <i class="ti ti-safe"></i>
+                            </span>
+                            <div>
+                                <small class="text-secondary">Dropped to Safe</small>
+                                <div class="h3 mb-0 text-purple">@FormatCurrency(m_summary.TotalDropped)</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* Payment Breakdown *@
+        @if (m_summary.TotalElectronicPayments > 0)
+        {
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h4 class="card-title mb-0">Payment Method Breakdown</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        @if (m_summary.TotalCardPayments > 0)
+                        {
+                            <div class="col-md-4">
+                                <div class="d-flex align-items-center">
+                                    <i class="ti ti-credit-card me-2 text-info"></i>
+                                    <div>
+                                        <small class="text-secondary d-block">Card Payments</small>
+                                        <span class="fw-semibold">@FormatCurrency(m_summary.TotalCardPayments)</span>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                        @if (m_summary.TotalBankTransfers > 0)
+                        {
+                            <div class="col-md-4">
+                                <div class="d-flex align-items-center">
+                                    <i class="ti ti-building-bank me-2 text-primary"></i>
+                                    <div>
+                                        <small class="text-secondary d-block">Bank Transfers</small>
+                                        <span class="fw-semibold">@FormatCurrency(m_summary.TotalBankTransfers)</span>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                        @if (m_summary.TotalPromptPay > 0)
+                        {
+                            <div class="col-md-4">
+                                <div class="d-flex align-items-center">
+                                    <i class="ti ti-qrcode me-2 text-success"></i>
+                                    <div>
+                                        <small class="text-secondary d-block">PromptPay</small>
+                                        <span class="fw-semibold">@FormatCurrency(m_summary.TotalPromptPay)</span>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+        @* Sessions Overview *@
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="card-title mb-0">
+                    Till Sessions
+                    <span class="badge bg-secondary ms-2">@m_summary.TotalSessions</span>
+                </h4>
+                <div class="d-flex gap-2">
+                    @if (m_summary.Sessions.Any(s => s.Status != TillSessionStatus.Verified && s.ClosedAt.HasValue))
+                    {
+                        <button type="button" class="btn btn-sm btn-primary" @onclick="VerifyAllSessions">
+                            <i class="ti ti-check-all me-1"></i>
+                            Verify All
+                        </button>
+                    }
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-vcenter card-table">
+                    <thead>
+                        <tr>
+                            <th>Staff</th>
+                            <th>Time</th>
+                            <th class="text-end">Float</th>
+                            <th class="text-end">Cash In</th>
+                            <th class="text-end">Cash Out</th>
+                            <th class="text-end">Expected</th>
+                            <th class="text-end">Actual</th>
+                            <th class="text-end">Variance</th>
+                            <th>Status</th>
+                            <th class="w-1"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var session in m_summary.Sessions)
+                        {
+                            <tr>
+                                <td>@session.StaffDisplayName</td>
+                                <td>
+                                    <small>
+                                        @FormatTime(session.OpenedAt) -
+                                        @(session.ClosedAt.HasValue ? FormatTime(session.ClosedAt) : "Open")
+                                    </small>
+                                </td>
+                                <td class="text-end">@FormatCurrency(session.OpeningFloat)</td>
+                                <td class="text-end text-success">@FormatCurrency(session.TotalCashIn)</td>
+                                <td class="text-end text-danger">@FormatCurrency(session.TotalCashOut + session.TotalDropped)</td>
+                                <td class="text-end">@FormatCurrency(session.ExpectedCash)</td>
+                                <td class="text-end">
+                                    @if (session.ClosedAt.HasValue)
+                                    {
+                                        @FormatCurrency(session.ActualCash)
+                                    }
+                                    else
+                                    {
+                                        <span class="text-secondary">-</span>
+                                    }
+                                </td>
+                                <td class="text-end">
+                                    @if (session.ClosedAt.HasValue)
+                                    {
+                                        <span class="@GetVarianceClass(session.Variance)">
+                                            @(session.Variance >= 0 ? "+" : "")@FormatCurrency(session.Variance)
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-secondary">-</span>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="badge @GetStatusBadgeClass(session.Status)">
+                                        @GetStatusText(session.Status)
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="btn-group">
+                                        <button type="button" class="btn btn-sm btn-ghost-secondary"
+                                                @onclick="@(() => ViewSessionDetails(session))">
+                                            <i class="ti ti-eye"></i>
+                                        </button>
+                                        @if (session.Status != TillSessionStatus.Open && session.Status != TillSessionStatus.Verified)
+                                        {
+                                            <button type="button" class="btn btn-sm btn-ghost-primary"
+                                                    @onclick="@(() => VerifySession(session))">
+                                                <i class="ti ti-check"></i>
+                                            </button>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        @* Variance Summary *@
+        @if (m_summary.SessionsWithVariance > 0 || m_summary.TotalVariance != 0)
+        {
+            <div class="card @(m_summary.TotalVariance == 0 ? "border-success" : "border-warning")">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <span class="avatar avatar-lg @(m_summary.TotalVariance == 0 ? "bg-success-lt" : "bg-warning-lt")">
+                                <i class="@(m_summary.TotalVariance == 0 ? "ti ti-check" : "ti ti-alert-triangle")"></i>
+                            </span>
+                        </div>
+                        <div class="col">
+                            <h3 class="mb-0">
+                                Total Variance: @(m_summary.TotalVariance >= 0 ? "+" : "")@FormatCurrency(m_summary.TotalVariance)
+                            </h3>
+                            <p class="text-secondary mb-0">
+                                @if (m_summary.TotalVariance == 0)
+                                {
+                                    <text>All sessions balanced correctly</text>
+                                }
+                                else
+                                {
+                                    <text>@m_summary.SessionsWithVariance session(s) with variance</text>
+                                }
+                            </p>
+                        </div>
+                        <div class="col-auto">
+                            <span class="badge @(m_summary.VerifiedSessions == m_summary.TotalSessions ? "bg-success" : "bg-warning")">
+                                @m_summary.VerifiedSessions / @m_summary.TotalSessions Verified
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private bool m_loading = true;
+    private int m_shopId;
+    private DateTime m_selectedDate = DateTime.Today;
+    private DailyTillSummary? m_summary;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Get current shop
+        var shops = await ShopService.GetShopsAsync(page: 1, pageSize: 1);
+        if (shops.ItemCollection.Any())
+        {
+            m_shopId = shops.ItemCollection.First().ShopId;
+        }
+
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            m_loading = true;
+
+            if (m_shopId > 0)
+            {
+                m_summary = await TillService.GetDailySummaryAsync(m_shopId, m_selectedDate);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading EOD data");
+            ShowError("Failed to load End of Day data");
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private async Task ViewSessionDetails(TillSessionSummary session)
+    {
+        await DialogService.Create<EodSessionDetailDialog>("Session Details")
+            .WithParameter(x => x.SessionId, session.TillSessionId)
+            .WithSize(ModalSize.Large)
+            .ShowDialogAsync();
+    }
+
+    private async Task VerifySession(TillSessionSummary session)
+    {
+        var result = await DialogService.Create<EodVerifySessionDialog>("Verify Session")
+            .WithParameter(x => x.SessionId, session.TillSessionId)
+            .WithParameter(x => x.StaffName, session.StaffDisplayName)
+            .WithParameter(x => x.Variance, session.Variance)
+            .WithSize(ModalSize.Medium)
+            .ShowDialogAsync();
+
+        if (result is { Cancelled: false })
+        {
+            ShowSuccess("Session verified");
+            await LoadDataAsync();
+        }
+    }
+
+    private async Task VerifyAllSessions()
+    {
+        if (m_summary == null) return;
+
+        var unverified = m_summary.Sessions
+            .Where(s => s.Status != TillSessionStatus.Open && s.Status != TillSessionStatus.Verified)
+            .ToList();
+
+        if (!unverified.Any())
+        {
+            ShowInfo("All sessions are already verified");
+            return;
+        }
+
+        var confirmed = await DialogService.ConfirmYesNoAsync(
+            $"Verify all {unverified.Count} unverified sessions?",
+            "Verify All Sessions");
+
+        if (!confirmed) return;
+
+        foreach (var session in unverified)
+        {
+            await TillService.VerifySessionAsync(session.TillSessionId, UserName);
+        }
+
+        ShowSuccess($"Verified {unverified.Count} sessions");
+        await LoadDataAsync();
+    }
+
+    private static string GetVarianceClass(decimal variance)
+    {
+        if (variance == 0) return "text-success";
+        if (variance > 0) return "text-info";
+        return "text-danger fw-bold";
+    }
+
+    private static string GetStatusBadgeClass(TillSessionStatus status) => status switch
+    {
+        TillSessionStatus.Open => "bg-primary",
+        TillSessionStatus.Reconciling => "bg-warning",
+        TillSessionStatus.Closed => "bg-success-lt text-success",
+        TillSessionStatus.ClosedWithVariance => "bg-warning-lt text-warning",
+        TillSessionStatus.PendingVerification => "bg-info-lt text-info",
+        TillSessionStatus.Verified => "bg-success",
+        _ => "bg-secondary"
+    };
+
+    private static string GetStatusText(TillSessionStatus status) => status switch
+    {
+        TillSessionStatus.Open => "Open",
+        TillSessionStatus.Reconciling => "Reconciling",
+        TillSessionStatus.Closed => "Closed",
+        TillSessionStatus.ClosedWithVariance => "Variance",
+        TillSessionStatus.PendingVerification => "Pending",
+        TillSessionStatus.Verified => "Verified",
+        _ => status.ToString()
+    };
+}

@@ -1,0 +1,110 @@
+@inherits MotoRentComponentBase
+@inject TillService TillService
+@inject IModalService ModalService
+
+<form id="cashDropForm" @onsubmit="SaveAsync" @onsubmit:preventDefault>
+    <div class="modal-body">
+        <div class="text-center mb-4">
+            <span class="avatar avatar-xl @(IsDrop ? "bg-danger-lt" : "bg-success-lt") mb-3">
+                <i class="@(IsDrop ? "ti ti-safe" : "ti ti-cash")" style="font-size: 2rem;"></i>
+            </span>
+            <p class="text-secondary">
+                @if (IsDrop)
+                {
+                    <text>Transfer cash from your till to the safe</text>
+                }
+                else
+                {
+                    <text>Add cash from the safe to your till</text>
+                }
+            </p>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label required">Amount</label>
+            <div class="input-group input-group-lg">
+                <span class="input-group-text">฿</span>
+                <input type="number" class="form-control text-end" @bind="m_amount"
+                       required min="1" step="100" placeholder="0" autofocus />
+            </div>
+        </div>
+
+        <div class="mb-0">
+            <label class="form-label">Notes</label>
+            <textarea class="form-control" @bind="m_notes" rows="2"
+                      placeholder="Optional notes..."></textarea>
+        </div>
+    </div>
+</form>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
+        Cancel
+    </button>
+    <button type="submit" form="cashDropForm" class="btn @(IsDrop ? "btn-danger" : "btn-success")"
+            disabled="@m_saving">
+        @if (m_saving)
+        {
+            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+        }
+        @if (IsDrop)
+        {
+            <i class="ti ti-safe me-1"></i>
+            <text>Drop Cash</text>
+        }
+        else
+        {
+            <i class="ti ti-cash me-1"></i>
+            <text>Top Up</text>
+        }
+    </button>
+</div>
+
+@code {
+    [Parameter]
+    public int SessionId { get; set; }
+
+    [Parameter]
+    public bool IsDrop { get; set; } = true;
+
+    private decimal m_amount;
+    private string? m_notes;
+    private bool m_saving;
+
+    private void Cancel()
+    {
+        ModalService.Close(ModalResult.Cancel());
+    }
+
+    private async Task SaveAsync()
+    {
+        if (m_saving || m_amount <= 0) return;
+
+        try
+        {
+            m_saving = true;
+
+            var result = IsDrop
+                ? await TillService.RecordDropAsync(SessionId, m_amount, UserName, m_notes)
+                : await TillService.RecordTopUpAsync(SessionId, m_amount, UserName, m_notes);
+
+            if (result.Success)
+            {
+                ModalService.Close(ModalResult.Ok(result));
+            }
+            else
+            {
+                ShowError(result.Message ?? "Failed to record transaction");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error recording cash drop/top up");
+            ShowError("Failed to record transaction");
+        }
+        finally
+        {
+            m_saving = false;
+        }
+    }
+}

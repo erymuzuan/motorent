@@ -1,0 +1,157 @@
+@using MotoRent.Domain.Entities
+@inherits MotoRentComponentBase
+@inject TillService TillService
+@inject IModalService ModalService
+
+<form id="recordPayoutForm" @onsubmit="SaveAsync" @onsubmit:preventDefault>
+    <div class="modal-body">
+        <div class="mb-3">
+            <label class="form-label required">Amount</label>
+            <div class="input-group input-group-lg">
+                <span class="input-group-text">฿</span>
+                <input type="number" class="form-control text-end" @bind="m_amount"
+                       required min="1" step="10" placeholder="0" autofocus />
+            </div>
+        </div>
+
+        @if (PayoutType == TillTransactionType.FuelReimbursement)
+        {
+            <div class="mb-3">
+                <label class="form-label">Recipient</label>
+                <input type="text" class="form-control" @bind="m_recipientName"
+                       placeholder="Staff or customer name" />
+            </div>
+        }
+        else if (PayoutType == TillTransactionType.AgentCommission)
+        {
+            <div class="mb-3">
+                <label class="form-label required">Agent Name</label>
+                <input type="text" class="form-control" @bind="m_recipientName" required
+                       placeholder="Agent or referrer name" />
+            </div>
+        }
+
+        <div class="mb-3">
+            <label class="form-label">Category</label>
+            <select class="form-select" @bind="m_category">
+                <option value="">-- Select category --</option>
+                @foreach (var cat in GetCategories())
+                {
+                    <option value="@cat">@cat</option>
+                }
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Receipt Number</label>
+            <input type="text" class="form-control" @bind="m_receiptNumber"
+                   placeholder="Receipt or reference number" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Description</label>
+            <input type="text" class="form-control" @bind="m_description" required
+                   placeholder="Brief description of the payout" />
+        </div>
+
+        <div class="mb-0">
+            <label class="form-label">Notes</label>
+            <textarea class="form-control" @bind="m_notes" rows="2"
+                      placeholder="Additional notes (optional)"></textarea>
+        </div>
+    </div>
+</form>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
+        Cancel
+    </button>
+    <button type="submit" form="recordPayoutForm" class="btn btn-danger" disabled="@m_saving">
+        @if (m_saving)
+        {
+            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+        }
+        <i class="ti ti-cash-off me-1"></i>
+        Record Payout
+    </button>
+</div>
+
+@code {
+    [Parameter]
+    public int SessionId { get; set; }
+
+    [Parameter]
+    public TillTransactionType PayoutType { get; set; }
+
+    private decimal m_amount;
+    private string? m_category;
+    private string? m_recipientName;
+    private string? m_receiptNumber;
+    private string m_description = "";
+    private string? m_notes;
+    private bool m_saving;
+
+    protected override void OnParametersSet()
+    {
+        // Set default description based on type
+        m_description = PayoutType switch
+        {
+            TillTransactionType.FuelReimbursement => "Fuel reimbursement",
+            TillTransactionType.AgentCommission => "Agent commission",
+            TillTransactionType.PettyCash => "Petty cash expense",
+            _ => ""
+        };
+    }
+
+    private IEnumerable<string> GetCategories() => PayoutType switch
+    {
+        TillTransactionType.FuelReimbursement => ["Full Tank Refill", "Partial Refill", "Delivery Fuel"],
+        TillTransactionType.AgentCommission => ["Booking Agent", "Hotel Referral", "Walk-in Referral"],
+        TillTransactionType.PettyCash => ["Office Supplies", "Cleaning", "Transport", "Food & Beverage", "Repairs", "Other"],
+        _ => []
+    };
+
+    private void Cancel()
+    {
+        ModalService.Close(ModalResult.Cancel());
+    }
+
+    private async Task SaveAsync()
+    {
+        if (m_saving || m_amount <= 0) return;
+
+        try
+        {
+            m_saving = true;
+
+            var result = await TillService.RecordPayoutAsync(
+                SessionId,
+                PayoutType,
+                m_amount,
+                m_description,
+                UserName,
+                category: m_category,
+                recipientName: m_recipientName,
+                receiptNumber: m_receiptNumber,
+                notes: m_notes);
+
+            if (result.Success)
+            {
+                ModalService.Close(ModalResult.Ok(result));
+            }
+            else
+            {
+                ShowError(result.Message ?? "Failed to record payout");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error recording payout");
+            ShowError("Failed to record payout");
+        }
+        finally
+        {
+            m_saving = false;
+        }
+    }
+}
