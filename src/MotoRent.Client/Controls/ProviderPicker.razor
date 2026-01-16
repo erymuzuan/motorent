@@ -40,6 +40,17 @@
                     </button>
                 </li>
             }
+            @if (ShowCustomProvider)
+            {
+                <li>
+                    <button class="dropdown-item d-flex align-items-center @(Value == User.CUSTOM ? "active" : "")"
+                            type="button"
+                            @onclick="@(() => SelectProvider(User.CUSTOM))">
+                        <i class="ti ti-dots me-2" style="font-size: 20px;"></i>
+                        <span>Custom</span>
+                    </button>
+                </li>
+            }
         </ul>
     </div>
     @if (!string.IsNullOrEmpty(Hint))
@@ -66,6 +77,8 @@
 
     [Parameter] public bool ShowLineProvider { get; set; } = true;
 
+    [Parameter] public bool ShowCustomProvider { get; set; }
+
     [Parameter] public bool Required { get; set; }
 
     [Parameter] public string? Hint { get; set; }
@@ -81,6 +94,7 @@
         User.GOOGLE => (MarkupString)GoogleIcon,
         User.MICROSOFT => (MarkupString)MicrosoftIcon,
         User.LINE => (MarkupString)LineIcon,
+        User.CUSTOM => (MarkupString)"""<i class="ti ti-dots me-2" style="font-size: 20px;"></i>""",
         _ => (MarkupString)GoogleIcon
     };
 
@@ -89,6 +103,7 @@
         User.GOOGLE => "Google",
         User.MICROSOFT => "Microsoft",
         User.LINE => "LINE",
+        User.CUSTOM => "Custom",
         _ => "Google"
     };
 }
