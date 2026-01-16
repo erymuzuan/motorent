@@ -50,6 +50,10 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IRepository<AccidentNote>, Repository<AccidentNote>>();
         // Comment entity
         services.AddSingleton<IRepository<Comment>, Repository<Comment>>();
+        // Agent entities
+        services.AddSingleton<IRepository<Agent>, Repository<Agent>>();
+        services.AddSingleton<IRepository<AgentCommission>, Repository<AgentCommission>>();
+        services.AddSingleton<IRepository<AgentInvoice>, Repository<AgentInvoice>>();
         // Asset depreciation entities
         services.AddSingleton<IRepository<Asset>, Repository<Asset>>();
         services.AddSingleton<IRepository<DepreciationEntry>, Repository<DepreciationEntry>>();

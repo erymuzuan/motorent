@@ -1,69 +1,69 @@
 @inherits LocalizedDialogBase<OwnerPayment, MarkAsPaidDialog>
 @inject OwnerPaymentService OwnerPaymentService
 
-<form id="@FormId" @onsubmit="SaveAsync" @onsubmit:preventDefault>
+<form id="@this.FormId" @onsubmit="this.SaveAsync" @onsubmit:preventDefault>
     <div class="modal-body">
         @* Payment Summary *@
         <div class="alert alert-info mb-3">
             <div class="d-flex">
                 <div class="flex-fill">
                     <div class="mb-2">
-                        <strong>Owner:</strong> @Payment.VehicleOwnerName
+                        <strong>@this.Localizer["Owner"]:</strong> @this.Payment.VehicleOwnerName
                     </div>
                     <div class="mb-2">
-                        <strong>Vehicle:</strong> @Payment.VehicleName
+                        <strong>@this.Localizer["Vehicle"]:</strong> @this.Payment.VehicleName
                     </div>
                     <div>
-                        <strong>Period:</strong> @Payment.RentalStartDate.ToString("dd MMM") - @Payment.RentalEndDate.ToString("dd MMM yyyy")
-                        (@Payment.RentalDays day(s))
+                        <strong>@this.Localizer["Period"]:</strong> @this.Payment.RentalStartDate.ToString("dd MMM") - @this.Payment.RentalEndDate.ToString("dd MMM yyyy")
+                        (@this.Localizer["DaysCount", this.Payment.RentalDays])
                     </div>
                 </div>
                 <div class="text-end">
-                    <div class="text-secondary">Amount Due</div>
-                    <div class="h2 mb-0">@Payment.Amount.ToString("N0") THB</div>
+                    <div class="text-secondary">@this.Localizer["AmountDue"]</div>
+                    <div class="h2 mb-0">@this.Payment.Amount.ToString("N0") @this.Localizer["CurrencyTHB"]</div>
                 </div>
             </div>
         </div>
 
         <div class="row g-3">
             <div class="col-md-6">
-                <label class="form-label required">Payment Method</label>
-                <select class="form-select" @bind="m_paymentMethod" required>
-                    <option value="">Select method...</option>
-                    <option value="Bank Transfer">Bank Transfer</option>
-                    <option value="PromptPay">PromptPay</option>
-                    <option value="Cash">Cash</option>
-                    <option value="Cheque">Cheque</option>
-                    <option value="Other">Other</option>
+                <label class="form-label required">@this.Localizer["PaymentMethod"]</label>
+                <select class="form-select" @bind="this.PaymentMethod" required>
+                    <option value="">@this.Localizer["SelectMethod"]</option>
+                    <option value="Bank Transfer">@this.Localizer["BankTransfer"]</option>
+                    <option value="PromptPay">@this.Localizer["PromptPay"]</option>
+                    <option value="Cash">@this.Localizer["Cash"]</option>
+                    <option value="Cheque">@this.Localizer["Cheque"]</option>
+                    <option value="Other">@this.Localizer["Other"]</option>
                 </select>
             </div>
 
             <div class="col-md-6">
-                <label class="form-label">Payment Reference</label>
-                <input type="text" class="form-control" @bind="m_paymentRef"
-                       placeholder="Transaction ID, cheque number, etc." />
+                <label class="form-label">@this.Localizer["PaymentReference"]</label>
+                <input type="text" class="form-control" @bind="this.PaymentRef"
+                       placeholder="@this.Localizer["PaymentRefPlaceholder"]" />
             </div>
 
             <div class="col-12">
-                <label class="form-label">Notes</label>
-                <textarea class="form-control" @bind="m_notes" rows="2"
-                          placeholder="Additional notes about this payment..."></textarea>
+                <label class="form-label">@this.Localizer["Notes"]</label>
+                <textarea class="form-control" @bind="this.Notes" rows="2"
+                          placeholder="@this.Localizer["PaymentNotesPlaceholder"]"></textarea>
             </div>
         </div>
     </div>
 </form>
 
 <div class="modal-footer">
-    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
-        Cancel
+    <button type="button" class="btn btn-ghost-secondary" @onclick="this.Cancel">
+        @this.Localizer["Cancel"]
     </button>
-    <button type="submit" form="@FormId" class="btn btn-success" disabled="@Saving">
-        @if (Saving)
+    <button type="submit" form="@this.FormId" class="btn btn-success" disabled="@this.Saving">
+        @if (this.Saving)
         {
             <span class="spinner-border spinner-border-sm me-2" role="status"></span>
         }
         <i class="ti ti-check me-1"></i>
-        Confirm Payment
+        @this.Localizer["ConfirmPayment"]
     </button>
 </div>
 
@@ -71,9 +71,9 @@
     [Parameter]
     public OwnerPayment Payment { get; set; } = new();
 
-    private string? m_paymentMethod;
-    private string? m_paymentRef;
-    private string? m_notes;
+    private string? PaymentMethod { get; set; }
+    private string? PaymentRef { get; set; }
+    private string? Notes { get; set; }
 
     protected override void OnInitialized()
     {
@@ -82,9 +82,9 @@
 
     private async Task SaveAsync()
     {
-        if (string.IsNullOrEmpty(this.m_paymentMethod))
+        if (string.IsNullOrEmpty(this.PaymentMethod))
         {
-            this.ShowError("Please select a payment method");
+            this.ShowError(this.Localizer["SelectPaymentMethodRequired"]);
             return;
         }
 
@@ -94,9 +94,9 @@
         {
             var result = await this.OwnerPaymentService.MarkAsPaidAsync(
                 this.Payment.OwnerPaymentId,
-                this.m_paymentMethod,
-                this.m_paymentRef,
-                this.m_notes,
+                this.PaymentMethod,
+                this.PaymentRef,
+                this.Notes,
                 this.UserName);
 
             if (result.Success)
@@ -105,12 +105,12 @@
             }
             else
             {
-                this.ShowError($"Failed to mark as paid: {result.Message}");
+                this.ShowError(this.Localizer["MarkAsPaidFailed", result.Message ?? ""]);
             }
         }
         catch (Exception ex)
         {
-            this.ShowError($"Error: {ex.Message}");
+            this.ShowError($"{this.Localizer["Error"]}: {ex.Message}");
         }
         finally
         {

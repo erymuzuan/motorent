@@ -15,12 +15,12 @@
                         <strong>@Localizer["LicensePlate"]:</strong> @Asset.LicensePlate
                     </div>
                     <div>
-                        <strong>@Localizer["AcquisitionCost"]:</strong> @Asset.AcquisitionCost.ToString("N0") THB
+                        <strong>@Localizer["AcquisitionCost"]:</strong> @Asset.AcquisitionCost.ToString("N0") @Localizer["CurrencyTHB"]
                     </div>
                 </div>
                 <div class="text-end">
                     <div class="text-secondary">@Localizer["CurrentBookValue"]</div>
-                    <div class="h2 mb-0">@Asset.CurrentBookValue.ToString("N0") THB</div>
+                    <div class="h2 mb-0">@Asset.CurrentBookValue.ToString("N0") @Localizer["CurrencyTHB"]</div>
                 </div>
             </div>
         </div>
@@ -29,7 +29,7 @@
             <div class="col-md-6">
                 <label class="form-label required">@Localizer["DisposalAmount"]</label>
                 <div class="input-group">
-                    <span class="input-group-text">฿</span>
+                    <span class="input-group-text">@Localizer["CurrencyTHBShort"]</span>
                     <input type="number" class="form-control" @bind="m_disposalAmount"
                            required min="0" step="0.01" />
                 </div>
@@ -116,14 +116,14 @@
     {
         var gainLoss = GetGainLoss();
         var prefix = gainLoss >= 0 ? "+" : "";
-        return $"{prefix}{gainLoss:N0} THB";
+        return $"{prefix}{gainLoss:N0} {Localizer["CurrencyTHB"]}";
     }
 
     private async Task SaveAsync()
     {
         if (m_disposalAmount < 0)
         {
-            ShowError("Disposal amount cannot be negative");
+            ShowError(Localizer["DisposalAmountNegativeError"]);
             return;
         }
 
@@ -144,12 +144,12 @@
             }
             else
             {
-                ShowError($"Failed to dispose asset: {result.Message}");
+                ShowError(Localizer["DisposeAssetFailed", result.Message ?? ""]);
             }
         }
         catch (Exception ex)
         {
-            ShowError($"Error: {ex.Message}");
+            ShowError($"{Localizer["Error"]}: {ex.Message}");
         }
         finally
         {

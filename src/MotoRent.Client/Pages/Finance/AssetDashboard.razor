@@ -6,17 +6,17 @@
 @inject AssetExpenseService ExpenseService
 @inject AssetLoanService LoanService
 
-<MotoRentPageTitle>Asset Dashboard</MotoRentPageTitle>
+<MotoRentPageTitle>@this.Localizer["AssetDashboard"]</MotoRentPageTitle>
 
 <!-- Page Header with Gradient Icon -->
 <div class="mr-page-header">
     <div class="container-xl">
         <nav class="mr-breadcrumb">
-            <span class="mr-breadcrumb-item"><a href="/">Home</a></span>
+            <span class="mr-breadcrumb-item"><a href="/">@this.CommonLocalizer["Home"]</a></span>
             <i class="ti ti-chevron-right mr-breadcrumb-separator"></i>
-            <span class="mr-breadcrumb-item"><a href="/finance">Finance</a></span>
+            <span class="mr-breadcrumb-item"><a href="/finance">@this.Localizer["Finance"]</a></span>
             <i class="ti ti-chevron-right mr-breadcrumb-separator"></i>
-            <span class="mr-breadcrumb-item active">Asset Dashboard</span>
+            <span class="mr-breadcrumb-item active">@this.Localizer["AssetDashboard"]</span>
         </nav>
         <div class="d-flex justify-content-between align-items-center pb-3">
             <div class="d-flex align-items-center gap-3">
@@ -24,14 +24,14 @@
                     <i class="ti ti-chart-pie"></i>
                 </div>
                 <div>
-                    <h1 class="mr-page-title">Asset Financial Overview</h1>
-                    <p class="mr-page-subtitle mb-0">Track depreciation, ROI, and fleet performance</p>
+                    <h1 class="mr-page-title">@this.Localizer["AssetFinancialOverview"]</h1>
+                    <p class="mr-page-subtitle mb-0">@this.Localizer["AssetOverviewDescription"]</p>
                 </div>
             </div>
             <div class="btn-list">
                 <a href="/finance/assets/new" class="btn btn-primary">
                     <i class="ti ti-plus me-1"></i>
-                    Add Asset
+                    @this.Localizer["AddAsset"]
                 </a>
             </div>
         </div>
@@ -43,7 +43,7 @@
     {
         <div class="text-center py-5">
             <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
+                <span class="visually-hidden">@this.CommonLocalizer["Loading"]</span>
             </div>
         </div>
     }
@@ -57,10 +57,10 @@
                     <i class="ti ti-building-bank"></i>
                 </div>
                 <div class="mr-kpi-content">
-                    <span class="mr-kpi-label">Total Invested</span>
+                    <span class="mr-kpi-label">@this.Localizer["TotalInvested"]</span>
                     <span class="mr-kpi-value">@m_summary.TotalAcquisitionCost.ToString("N0")</span>
                     <span class="mr-kpi-subtext">
-                        <i class="ti ti-motorbike"></i> @m_summary.ActiveAssets vehicles
+                        <i class="ti ti-motorbike"></i> @this.Localizer["ActiveVehiclesCount", m_summary.ActiveAssets]
                     </span>
                 </div>
                 <div class="mr-kpi-trend neutral">
@@ -74,10 +74,10 @@
                     <i class="ti ti-receipt"></i>
                 </div>
                 <div class="mr-kpi-content">
-                    <span class="mr-kpi-label">Current Book Value</span>
+                    <span class="mr-kpi-label">@this.Localizer["CurrentBookValue"]</span>
                     <span class="mr-kpi-value">@m_summary.TotalCurrentBookValue.ToString("N0")</span>
                     <span class="mr-kpi-subtext">
-                        @((m_summary.TotalCurrentBookValue / Math.Max(1, m_summary.TotalAcquisitionCost) * 100).ToString("N0"))% of original
+                        @this.Localizer["PercentOfOriginal", (m_summary.TotalCurrentBookValue / Math.Max(1, m_summary.TotalAcquisitionCost) * 100).ToString("N0")]
                     </span>
                 </div>
                 <div class="mr-kpi-gauge">
@@ -95,10 +95,10 @@
                     <i class="ti ti-trending-down"></i>
                 </div>
                 <div class="mr-kpi-content">
-                    <span class="mr-kpi-label">Accumulated Depreciation</span>
+                    <span class="mr-kpi-label">@this.Localizer["AccumulatedDepreciation"]</span>
                     <span class="mr-kpi-value mr-kpi-warning">@m_summary.TotalAccumulatedDepreciation.ToString("N0")</span>
                     <span class="mr-kpi-subtext">
-                        @((m_summary.TotalAccumulatedDepreciation / Math.Max(1, m_summary.TotalAcquisitionCost) * 100).ToString("N0"))% depreciated
+                        @this.Localizer["PercentDepreciated", (m_summary.TotalAccumulatedDepreciation / Math.Max(1, m_summary.TotalAcquisitionCost) * 100).ToString("N0")]
                     </span>
                 </div>
                 <div class="mr-kpi-progress">
@@ -112,12 +112,12 @@
                     <i class="ti ti-@(m_summary.NetProfitLoss >= 0 ? "trending-up" : "trending-down")"></i>
                 </div>
                 <div class="mr-kpi-content">
-                    <span class="mr-kpi-label">Net Profit/Loss</span>
+                    <span class="mr-kpi-label">@this.Localizer["NetProfitLoss"]</span>
                     <span class="mr-kpi-value @(m_summary.NetProfitLoss >= 0 ? "mr-kpi-success" : "mr-kpi-danger")">
                         @(m_summary.NetProfitLoss >= 0 ? "+" : "")@m_summary.NetProfitLoss.ToString("N0")
                     </span>
                     <span class="mr-kpi-subtext">
-                        Revenue: @m_summary.TotalRevenue.ToString("N0")
+                        @this.Localizer["Revenue"]: @m_summary.TotalRevenue.ToString("N0")
                     </span>
                 </div>
                 <div class="mr-kpi-trend @(m_summary.NetProfitLoss >= 0 ? "up" : "down")">
@@ -131,10 +131,10 @@
                     <i class="ti ti-percentage"></i>
                 </div>
                 <div class="mr-kpi-content">
-                    <span class="mr-kpi-label">Fleet ROI</span>
+                    <span class="mr-kpi-label">@this.Localizer["FleetROI"]</span>
                     <span class="mr-kpi-value mr-kpi-highlight">@m_fleetROI.ToString("N1")%</span>
                     <span class="mr-kpi-subtext">
-                        <i class="ti ti-chart-line"></i> Return on Investment
+                        <i class="ti ti-chart-line"></i> @this.Localizer["ReturnOnInvestment"]
                     </span>
                 </div>
             </div>
@@ -148,7 +148,7 @@
                     <div class="mr-chart-header">
                         <div class="mr-chart-title">
                             <i class="ti ti-chart-donut"></i>
-                            <h3>Expense Breakdown</h3>
+                            <h3>@this.Localizer["ExpenseBreakdown"]</h3>
                         </div>
                     </div>
                     <div class="mr-chart-body">
@@ -165,7 +165,7 @@
                         </div>
                     </div>
                     <div class="mr-chart-footer">
-                        <span class="mr-expense-total">Total: @m_totalExpenses.ToString("N0") THB</span>
+                        <span class="mr-expense-total">@this.Localizer["TotalExpensesLabel", m_totalExpenses.ToString("N0")]</span>
                     </div>
                 </div>
             </div>
@@ -177,7 +177,7 @@
                         <div class="mr-performance-icon warning">
                             <i class="ti ti-alert-triangle"></i>
                         </div>
-                        <h3>Attention Needed</h3>
+                        <h3>@this.Localizer["AttentionNeeded"]</h3>
                         @if (m_totalAlerts > 0)
                         {
                             <span class="mr-alert-badge">@m_totalAlerts</span>
@@ -192,9 +192,9 @@
                                         <i class="ti ti-calculator"></i>
                                     </div>
                                     <div class="mr-alert-content">
-                                        <span class="mr-alert-title">Depreciation Due</span>
+                                        <span class="mr-alert-title">@this.Localizer["DepreciationDue"]</span>
                                         <span class="mr-alert-desc">
-                                            @m_assetsNeedingDepreciation assets need monthly depreciation
+                                            @this.Localizer["AssetsNeedingDepreciationCount", m_assetsNeedingDepreciation]
                                         </span>
                                     </div>
                                     <div class="mr-alert-action">
@@ -210,9 +210,9 @@
                                         <i class="ti ti-credit-card-off"></i>
                                     </div>
                                     <div class="mr-alert-content">
-                                        <span class="mr-alert-title">Overdue Payments</span>
+                                        <span class="mr-alert-title">@this.Localizer["OverduePayments"]</span>
                                         <span class="mr-alert-desc">
-                                            @m_overduePayments loan payments overdue
+                                            @this.Localizer["OverduePaymentsCount", m_overduePayments]
                                         </span>
                                     </div>
                                     <div class="mr-alert-action">
@@ -228,9 +228,9 @@
                                         <i class="ti ti-calendar-due"></i>
                                     </div>
                                     <div class="mr-alert-content">
-                                        <span class="mr-alert-title">Upcoming Payments</span>
+                                        <span class="mr-alert-title">@this.Localizer["UpcomingPayments"]</span>
                                         <span class="mr-alert-desc">
-                                            @m_upcomingPayments payments due this week
+                                            @this.Localizer["UpcomingPaymentsCount", m_upcomingPayments]
                                         </span>
                                     </div>
                                     <div class="mr-alert-action">
@@ -246,9 +246,9 @@
                                         <i class="ti ti-trending-down"></i>
                                     </div>
                                     <div class="mr-alert-content">
-                                        <span class="mr-alert-title">Underperforming</span>
+                                        <span class="mr-alert-title">@this.Localizer["Underperforming"]</span>
                                         <span class="mr-alert-desc">
-                                            @m_underperformingAssets assets with negative ROI
+                                            @this.Localizer["UnderperformingAssetsCount", m_underperformingAssets]
                                         </span>
                                     </div>
                                     <div class="mr-alert-action">
@@ -261,8 +261,8 @@
                             {
                                 <div class="mr-all-clear">
                                     <i class="ti ti-circle-check"></i>
-                                    <span>All Clear</span>
-                                    <p>No immediate actions required</p>
+                                    <span>@this.Localizer["AllClear"]</span>
+                                    <p>@this.Localizer["NoImmediateActions"]</p>
                                 </div>
                             }
                         </div>
@@ -280,8 +280,8 @@
                         <div class="mr-performance-icon success">
                             <i class="ti ti-trophy"></i>
                         </div>
-                        <h3>Top Performers</h3>
-                        <span class="mr-performance-badge">Highest ROI</span>
+                        <h3>@this.Localizer["TopPerformers"]</h3>
+                        <span class="mr-performance-badge">@this.Localizer["HighestROI"]</span>
                     </div>
                     <div class="mr-performance-body">
                         @if (m_topPerformers.Any())
@@ -302,7 +302,7 @@
                                                 @asset.ROIPercent.ToString("N1")%
                                             </span>
                                             <span class="mr-performer-revenue">
-                                                @asset.TotalRevenue.ToString("N0") THB
+                                                @this.Localizer["RevenueLabel", asset.TotalRevenue.ToString("N0")]
                                             </span>
                                         </div>
                                     </a>
@@ -314,13 +314,13 @@
                         {
                             <div class="mr-empty-state">
                                 <i class="ti ti-chart-bar-off"></i>
-                                <span>No performance data yet</span>
+                                <span>@this.Localizer["NoPerformanceData"]</span>
                             </div>
                         }
                     </div>
                     <div class="mr-performance-footer">
                         <a href="/finance/reports/profitability" class="btn btn-ghost-primary btn-sm">
-                            View All Performance <i class="ti ti-arrow-right ms-1"></i>
+                            @this.Localizer["ViewAllPerformance"] <i class="ti ti-arrow-right ms-1"></i>
                         </a>
                     </div>
                 </div>
@@ -333,7 +333,7 @@
                         <div class="mr-performance-icon" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;">
                             <i class="ti ti-trending-down-2"></i>
                         </div>
-                        <h3>Underperforming Assets</h3>
+                        <h3>@this.Localizer["UnderperformingAssets"]</h3>
                     </div>
                     <div class="mr-performance-body">
                         @if (m_worstPerformers.Any())
@@ -352,7 +352,7 @@
                                                 @asset.ROIPercent.ToString("N1")%
                                             </span>
                                             <span class="mr-performer-revenue">
-                                                Loss: @Math.Abs(asset.NetProfitLoss).ToString("N0") THB
+                                                @this.Localizer["LossLabel", Math.Abs(asset.NetProfitLoss).ToString("N0")]
                                             </span>
                                         </div>
                                     </a>
@@ -363,8 +363,8 @@
                         {
                             <div class="mr-all-clear">
                                 <i class="ti ti-circle-check"></i>
-                                <span>All assets profitable</span>
-                                <p>No underperforming assets</p>
+                                <span>@this.Localizer["AllAssetsProfitable"]</span>
+                                <p>@this.Localizer["NoUnderperformingAssets"]</p>
                             </div>
                         }
                     </div>
@@ -377,25 +377,25 @@
             <div class="card-header">
                 <h3 class="card-title">
                     <i class="ti ti-list me-2"></i>
-                    All Assets
+                    @this.Localizer["AllAssets"]
                 </h3>
                 <div class="card-actions">
                     <div class="btn-group me-2">
                         <button class="btn btn-sm @(m_statusFilter == null ? "btn-primary" : "btn-outline-secondary")"
                                 @onclick="() => FilterByStatus(null)">
-                            All (@m_summary.TotalAssets)
+                            @this.Localizer["AllCount", m_summary.TotalAssets]
                         </button>
                         <button class="btn btn-sm @(m_statusFilter == AssetStatus.Active ? "btn-primary" : "btn-outline-secondary")"
                                 @onclick="() => FilterByStatus(AssetStatus.Active)">
-                            <i class="ti ti-circle-check me-1"></i>Active (@m_summary.ActiveAssets)
+                            <i class="ti ti-circle-check me-1"></i>@this.Localizer["ActiveCount", m_summary.ActiveAssets]
                         </button>
                         <button class="btn btn-sm @(m_statusFilter == AssetStatus.Disposed ? "btn-primary" : "btn-outline-secondary")"
                                 @onclick="() => FilterByStatus(AssetStatus.Disposed)">
-                            <i class="ti ti-cash me-1"></i>Disposed (@m_summary.DisposedAssets)
+                            <i class="ti ti-cash me-1"></i>@this.Localizer["DisposedCount", m_summary.DisposedAssets]
                         </button>
                         <button class="btn btn-sm @(m_statusFilter == AssetStatus.WriteOff ? "btn-primary" : "btn-outline-secondary")"
                                 @onclick="() => FilterByStatus(AssetStatus.WriteOff)">
-                            <i class="ti ti-trash me-1"></i>Written Off (@m_summary.WrittenOffAssets)
+                            <i class="ti ti-trash me-1"></i>@this.Localizer["WrittenOffCount", m_summary.WrittenOffAssets]
                         </button>
                     </div>
                 </div>
@@ -404,12 +404,12 @@
                 <table class="table table-vcenter card-table table-hover">
                     <thead>
                         <tr>
-                            <th>Vehicle</th>
-                            <th>Status</th>
-                            <th class="text-end">Acquisition Cost</th>
-                            <th class="text-end">Book Value</th>
-                            <th class="text-end">Depreciation</th>
-                            <th class="text-end">ROI</th>
+                            <th>@this.Localizer["Vehicle"]</th>
+                            <th>@this.Localizer["Status"]</th>
+                            <th class="text-end">@this.Localizer["AcquisitionCost"]</th>
+                            <th class="text-end">@this.Localizer["BookValue"]</th>
+                            <th class="text-end">@this.Localizer["Depreciation"]</th>
+                            <th class="text-end">@this.Localizer["ROI"]</th>
                             <th></th>
                         </tr>
                     </thead>
@@ -445,10 +445,10 @@
                                 </td>
                                 <td>
                                     <div class="btn-group">
-                                        <a href="/finance/assets/@asset.AssetId/details" class="btn btn-sm btn-outline-primary" title="View Details">
+                                        <a href="/finance/assets/@asset.AssetId/details" class="btn btn-sm btn-outline-primary" title="@this.Localizer["ViewDetails"]">
                                             <i class="ti ti-chart-line"></i>
                                         </a>
-                                        <a href="/finance/assets/@asset.AssetId" class="btn btn-sm btn-outline-secondary" title="Edit">
+                                        <a href="/finance/assets/@asset.AssetId" class="btn btn-sm btn-outline-secondary" title="@this.Localizer["Edit"]">
                                             <i class="ti ti-edit"></i>
                                         </a>
                                     </div>
@@ -460,7 +460,7 @@
                             <tr>
                                 <td colspan="7" class="text-center text-muted py-4">
                                     <i class="ti ti-database-off" style="font-size: 2rem;"></i>
-                                    <p class="mb-0 mt-2">No assets found</p>
+                                    <p class="mb-0 mt-2">@this.Localizer["NoAssetsFound"]</p>
                                 </td>
                             </tr>
                         }
@@ -473,24 +473,24 @@
         <div class="mr-quick-actions mr-animate-in mr-animate-delay-3 mt-4">
             <div class="mr-quick-actions-header">
                 <i class="ti ti-bolt"></i>
-                <h3>Quick Actions</h3>
+                <h3>@this.Localizer["QuickActions"]</h3>
             </div>
             <div class="mr-quick-actions-body">
                 <a href="/finance/depreciation/run" class="btn btn-primary">
                     <i class="ti ti-calculator me-1"></i>
-                    Run Monthly Depreciation
+                    @this.Localizer["RunMonthlyDepreciation"]
                 </a>
                 <a href="/finance/expenses/new" class="btn btn-success">
                     <i class="ti ti-receipt-2 me-1"></i>
-                    Record Expense
+                    @this.Localizer["RecordExpense"]
                 </a>
                 <a href="/finance/depreciation-report" class="btn btn-outline-secondary">
                     <i class="ti ti-report me-1"></i>
-                    Depreciation Report
+                    @this.Localizer["DepreciationReport"]
                 </a>
                 <a href="/finance/loans" class="btn btn-outline-info">
                     <i class="ti ti-credit-card me-1"></i>
-                    Manage Loans
+                    @this.Localizer["ManageLoans"]
                 </a>
             </div>
         </div>
