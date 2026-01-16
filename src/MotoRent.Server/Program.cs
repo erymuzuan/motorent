@@ -79,6 +79,8 @@ builder.Services.AddScoped<OwnerPaymentService>();
 builder.Services.AddScoped<AccidentService>();
 // Comment service
 builder.Services.AddScoped<CommentService>();
+// Notification service
+builder.Services.AddScoped<NotificationService>();
 // Asset depreciation services
 builder.Services.AddSingleton<DepreciationCalculator>();
 builder.Services.AddScoped<AssetService>();
@@ -91,6 +93,8 @@ builder.Services.AddScoped<LogEntryService>();
 
 // Add HttpClient for external API calls (Gemini)
 builder.Services.AddHttpClient("Gemini", client => { client.Timeout = TimeSpan.FromSeconds(60); });
+// Add HttpClient for NotificationService (Email + LINE)
+builder.Services.AddHttpClient<NotificationService>(client => { client.Timeout = TimeSpan.FromSeconds(30); });
 
 // Add OpenSearch HttpClient (optional, enabled via MOTO_OpenSearchHost env var)
 var openSearchHost = Environment.GetEnvironmentVariable("MOTO_OpenSearchHost");
