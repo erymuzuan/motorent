@@ -1,4 +1,5 @@
 @page "/rentals/checkin"
+@page "/rentals/checkin/{BookingRef}"
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize(Policy = "RequireTenantStaff")]
 @inherits LocalizedComponentBase<CheckIn>
@@ -11,6 +12,7 @@
 @inject VehicleService VehicleService
 @inject InsuranceService InsuranceService
 @inject AccessoryService AccessoryService
+@inject BookingService BookingService
 
 <MotoRentPageTitle>@Localizer["PageTitle"]</MotoRentPageTitle>
 
@@ -147,6 +149,12 @@
     private int m_activeStep;
     private bool m_processing;
 
+    // Booking pre-fill support
+    [Parameter] public string? BookingRef { get; set; }
+    private Booking? m_sourceBooking;
+    private BookingItem? m_sourceBookingItem;
+    private bool m_loadingBooking;
+
     protected override void OnInitialized()
     {
         // Require shop selection for check-in
@@ -156,6 +164,128 @@
             this.NavigationManager.NavigateTo("/rentals");
             return;
         }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Load booking if BookingRef is provided
+        if (!string.IsNullOrEmpty(this.BookingRef) && this.m_sourceBooking == null)
+        {
+            await this.LoadBookingAsync();
+        }
+    }
+
+    private async Task LoadBookingAsync()
+    {
+        this.m_loadingBooking = true;
+        try
+        {
+            this.m_sourceBooking = await this.BookingService.GetBookingByRefAsync(this.BookingRef!);
+
+            if (this.m_sourceBooking == null)
+            {
+                this.ShowError(this.Localizer["BookingNotFound", this.BookingRef!]);
+                this.NavigationManager.NavigateTo("/bookings");
+                return;
+            }
+
+            // Check booking status - must be Pending or Confirmed
+            if (this.m_sourceBooking.Status != BookingStatus.Pending &&
+                this.m_sourceBooking.Status != BookingStatus.Confirmed)
+            {
+                this.ShowWarning(this.Localizer["BookingNotAvailableForCheckIn"]);
+                this.NavigationManager.NavigateTo($"/bookings/{this.BookingRef}");
+                return;
+            }
+
+            // Get the first pending item for check-in
+            this.m_sourceBookingItem = this.m_sourceBooking.Items
+                .FirstOrDefault(i => i.ItemStatus == "Pending");
+
+            if (this.m_sourceBookingItem == null)
+            {
+                this.ShowWarning(this.Localizer["NoItemsToCheckIn"]);
+                this.NavigationManager.NavigateTo($"/bookings/{this.BookingRef}");
+                return;
+            }
+
+            // Pre-fill from booking
+            await this.PrefillFromBookingAsync();
+        }
+        catch (Exception ex)
+        {
+            this.ShowError(this.Localizer["ErrorLoading", ex.Message]);
+        }
+        finally
+        {
+            this.m_loadingBooking = false;
+        }
+    }
+
+    private async Task PrefillFromBookingAsync()
+    {
+        if (this.m_sourceBooking == null || this.m_sourceBookingItem == null)
+            return;
+
+        // Step 1: Create or find renter from booking customer info
+        if (this.m_sourceBooking.RenterId.HasValue && this.m_sourceBooking.RenterId > 0)
+        {
+            // Link to existing renter
+            this.m_selectedRenter = await this.RenterService.GetRenterByIdAsync(this.m_sourceBooking.RenterId.Value);
+        }
+        else
+        {
+            // Create new renter from booking customer info
+            var newRenter = new Renter
+            {
+                FullName = this.m_sourceBooking.CustomerName ?? "",
+                Phone = this.m_sourceBooking.CustomerPhone ?? "",
+                Email = this.m_sourceBooking.CustomerEmail ?? "",
+                Nationality = this.m_sourceBooking.CustomerNationality ?? "",
+                PassportNo = this.m_sourceBooking.CustomerPassportNo ?? "",
+                HotelName = this.m_sourceBooking.HotelName ?? ""
+            };
+            this.m_selectedRenter = newRenter;
+        }
+
+        // Step 2: Find matching vehicle at current shop
+        var currentShopId = this.RequestContext.GetShopId();
+
+        // Check if preferred vehicle ID is set and available
+        if (this.m_sourceBookingItem.PreferredVehicleId.HasValue)
+        {
+            var preferredVehicle = await this.VehicleService.GetVehicleByIdAsync(
+                this.m_sourceBookingItem.PreferredVehicleId.Value);
+            if (preferredVehicle?.Status == VehicleStatus.Available)
+            {
+                this.m_selectedVehicle = preferredVehicle;
+            }
+        }
+
+        // If no preferred vehicle or not available, find by group key
+        if (this.m_selectedVehicle == null && !string.IsNullOrEmpty(this.m_sourceBookingItem.VehicleGroupKey))
+        {
+            this.m_selectedVehicle = await this.VehicleService.GetAvailableVehicleFromGroupAsync(
+                currentShopId,
+                this.m_sourceBookingItem.VehicleGroupKey,
+                this.m_sourceBookingItem.PreferredColor);
+        }
+
+        // Step 3: Pre-fill rental configuration
+        if (this.m_selectedVehicle != null)
+        {
+            this.m_rentalConfig.StartDate = this.m_sourceBooking.StartDate.DateTime;
+            this.m_rentalConfig.EndDate = this.m_sourceBooking.EndDate.DateTime;
+
+            // Pre-select insurance if specified in booking
+            if (this.m_sourceBookingItem.InsuranceId.HasValue)
+            {
+                this.m_rentalConfig.SelectedInsuranceId = this.m_sourceBookingItem.InsuranceId;
+            }
+        }
+
+        // Show booking info toast
+        this.ShowInfo(this.Localizer["BookingLoaded", this.BookingRef!]);
     }
 
     // Step 1: Renter selection
@@ -299,6 +429,18 @@
 
             if (result.Success)
             {
+                // If this check-in is from a booking, update the booking
+                if (this.m_sourceBooking != null && this.m_sourceBookingItem != null)
+                {
+                    await this.BookingService.CheckInItemAsync(
+                        this.m_sourceBooking.BookingId,
+                        this.m_sourceBookingItem.ItemId,
+                        this.m_selectedVehicle!.VehicleId,
+                        this.RequestContext.GetShopId(),
+                        result.RentalId,
+                        this.UserName);
+                }
+
                 this.ShowSuccess(this.GetLocalizedText("CheckInSuccess", result.RentalId));
                 this.NavigationManager.NavigateTo("/rentals");
             }

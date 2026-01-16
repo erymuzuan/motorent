@@ -161,6 +161,66 @@ public static class SettingKeys
 
     #endregion
 
+    #region Booking Settings
+
+    /// <summary>
+    /// Payment model for bookings (string: Flexible, DepositRequired, FullPrepay, PayAtPickup).
+    /// </summary>
+    public const string Booking_PaymentModel = "Booking.PaymentModel";
+
+    /// <summary>
+    /// Deposit percentage required at booking (int: 0-100).
+    /// </summary>
+    public const string Booking_DepositPercent = "Booking.DepositPercent";
+
+    /// <summary>
+    /// Minimum deposit amount (decimal).
+    /// </summary>
+    public const string Booking_MinDepositAmount = "Booking.MinDepositAmount";
+
+    /// <summary>
+    /// Allow multiple vehicles in one booking (bool).
+    /// </summary>
+    public const string Booking_AllowMultiVehicle = "Booking.AllowMultiVehicle";
+
+    /// <summary>
+    /// Cancellation policy (string: Free, TimeBased, NonRefundable).
+    /// </summary>
+    public const string Booking_CancellationPolicy = "Booking.CancellationPolicy";
+
+    /// <summary>
+    /// Hours before pickup for free cancellation (int).
+    /// Only applicable when CancellationPolicy is TimeBased.
+    /// </summary>
+    public const string Booking_FreeCancelHours = "Booking.FreeCancelHours";
+
+    /// <summary>
+    /// Penalty percentage for late cancellation (int: 0-100).
+    /// </summary>
+    public const string Booking_LateCancelPenaltyPercent = "Booking.LateCancelPenaltyPercent";
+
+    /// <summary>
+    /// Penalty percentage for no-show (int: 0-100).
+    /// </summary>
+    public const string Booking_NoShowPenaltyPercent = "Booking.NoShowPenaltyPercent";
+
+    /// <summary>
+    /// Send booking confirmation notification (bool).
+    /// </summary>
+    public const string Booking_SendConfirmation = "Booking.SendConfirmation";
+
+    /// <summary>
+    /// Send booking reminder notification (bool).
+    /// </summary>
+    public const string Booking_SendReminder = "Booking.SendReminder";
+
+    /// <summary>
+    /// Hours before pickup to send reminder (int).
+    /// </summary>
+    public const string Booking_ReminderHours = "Booking.ReminderHours";
+
+    #endregion
+
     #region Fleet Settings
 
     /// <summary>

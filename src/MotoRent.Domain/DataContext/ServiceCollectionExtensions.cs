@@ -23,6 +23,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IRepository<VehiclePool>, Repository<VehiclePool>>();
         services.AddSingleton<IRepository<Motorbike>, Repository<Motorbike>>();  // Deprecated: Use Vehicle
         services.AddSingleton<IRepository<Rental>, Repository<Rental>>();
+        services.AddSingleton<IRepository<Booking>, Repository<Booking>>();
         services.AddSingleton<IRepository<Deposit>, Repository<Deposit>>();
         services.AddSingleton<IRepository<Insurance>, Repository<Insurance>>();
         services.AddSingleton<IRepository<Accessory>, Repository<Accessory>>();

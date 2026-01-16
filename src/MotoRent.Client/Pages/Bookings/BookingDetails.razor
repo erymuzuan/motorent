@@ -1,0 +1,468 @@
+@page "/bookings/{BookingRef}"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using MotoRent.Domain.Entities
+@using MotoRent.Services
+@attribute [Authorize(Policy = "RequireTenantStaff")]
+@inherits LocalizedComponentBase<BookingDetails>
+@inject BookingService BookingService
+@inject ShopService ShopService
+
+<MotoRentPageTitle>@Localizer["PageTitle"] @BookingRef</MotoRentPageTitle>
+
+<div class="mr-page-header mr-animate-in">
+    <div class="container-xl">
+        <nav class="mr-breadcrumb">
+            <span class="mr-breadcrumb-item"><a href="/"><i class="ti ti-home"></i></a></span>
+            <span class="mr-breadcrumb-separator"><i class="ti ti-chevron-right"></i></span>
+            <span class="mr-breadcrumb-item"><a href="/bookings">@Localizer["Bookings"]</a></span>
+            <span class="mr-breadcrumb-separator"><i class="ti ti-chevron-right"></i></span>
+            <span class="mr-breadcrumb-item active">@BookingRef</span>
+        </nav>
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="mr-page-title">
+                    <i class="ti ti-calendar-event"></i>
+                    @Localizer["Header"] <span class="text-primary">@BookingRef</span>
+                </h1>
+                <p class="mr-page-subtitle">@GetStatusDescription()</p>
+            </div>
+            <div class="d-flex gap-2">
+                @if (m_booking?.CanCheckIn == true)
+                {
+                    <a href="/rentals/checkin/@BookingRef" class="mr-btn-primary-action">
+                        <i class="ti ti-login"></i>
+                        @Localizer["CheckIn"]
+                    </a>
+                }
+                @if (m_booking?.CanBeCancelled == true)
+                {
+                    <button class="btn btn-outline-danger" @onclick="CancelBooking">
+                        <i class="ti ti-x"></i>
+                        @Localizer["Cancel"]
+                    </button>
+                }
+                <a href="/bookings" class="mr-btn-header-action">
+                    <i class="ti ti-arrow-left"></i>
+                    @CommonLocalizer["BackToList"]
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container-xl">
+    <LoadingSkeleton Loading="@m_loading" Mode="LoadingSkeleton.PlaceholderMode.Card" Rows="4">
+        @if (m_booking == null)
+        {
+            <div class="mr-empty-state">
+                <div class="mr-empty-state-icon">
+                    <i class="ti ti-calendar-off"></i>
+                </div>
+                <h3>@Localizer["BookingNotFound"]</h3>
+                <p>@Localizer["BookingNotFoundDescription"]</p>
+                <a href="/bookings" class="mr-btn-primary-action">
+                    <i class="ti ti-arrow-left"></i>
+                    @CommonLocalizer["BackToList"]
+                </a>
+            </div>
+        }
+        else
+        {
+            <div class="row">
+                @* Main Content - Left Column *@
+                <div class="col-lg-8">
+                    @* Status Card *@
+                    <div class="mr-card mb-3 mr-animate-in mr-animate-delay-1">
+                        <div class="mr-card-header d-flex justify-content-between align-items-center">
+                            <span><i class="ti ti-flag me-2"></i>@Localizer["Status"]</span>
+                            <span class="mr-status-badge @GetStatusBadgeClass()">@Localizer[m_booking.Status ?? ""]</span>
+                        </div>
+                        <div class="mr-card-body p-3">
+                            <div class="row">
+                                <div class="col-sm-6 mb-2">
+                                    <span class="text-muted">@Localizer["Created"]:</span><br />
+                                    <strong>@m_booking.CreatedTimestamp.ToString("MMM d, yyyy h:mm tt")</strong>
+                                </div>
+                                <div class="col-sm-6 mb-2">
+                                    <span class="text-muted">@Localizer["Source"]:</span><br />
+                                    <strong>@Localizer[m_booking.BookingSource]</strong>
+                                </div>
+                                @if (m_booking.Status == BookingStatus.Confirmed && m_booking.Status != BookingStatus.CheckedIn)
+                                {
+                                    <div class="col-12 mt-2">
+                                        <button class="btn btn-sm btn-outline-warning" @onclick="ChangeStatus">
+                                            <i class="ti ti-edit"></i> @Localizer["ChangeStatus"]
+                                        </button>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    @* Customer Card *@
+                    <div class="mr-card mb-3 mr-animate-in mr-animate-delay-2">
+                        <div class="mr-card-header d-flex justify-content-between align-items-center">
+                            <span><i class="ti ti-user me-2"></i>@Localizer["Customer"]</span>
+                            <button class="btn btn-sm btn-outline-primary" @onclick="EditCustomer">
+                                <i class="ti ti-edit"></i> @Localizer["Edit"]
+                            </button>
+                        </div>
+                        <div class="mr-card-body p-3">
+                            <div class="row">
+                                <div class="col-sm-6 mb-2">
+                                    <span class="text-muted">@Localizer["Name"]:</span><br />
+                                    <strong>@m_booking.CustomerName</strong>
+                                </div>
+                                <div class="col-sm-6 mb-2">
+                                    <span class="text-muted">@Localizer["Phone"]:</span><br />
+                                    <strong class="mr-mono">@m_booking.CustomerPhone</strong>
+                                </div>
+                                @if (!string.IsNullOrEmpty(m_booking.CustomerEmail))
+                                {
+                                    <div class="col-sm-6 mb-2">
+                                        <span class="text-muted">@Localizer["Email"]:</span><br />
+                                        <strong>@m_booking.CustomerEmail</strong>
+                                    </div>
+                                }
+                                @if (!string.IsNullOrEmpty(m_booking.CustomerNationality))
+                                {
+                                    <div class="col-sm-6 mb-2">
+                                        <span class="text-muted">@Localizer["Nationality"]:</span><br />
+                                        <strong>@m_booking.CustomerNationality</strong>
+                                    </div>
+                                }
+                                @if (!string.IsNullOrEmpty(m_booking.HotelName))
+                                {
+                                    <div class="col-sm-6 mb-2">
+                                        <span class="text-muted">@Localizer["Hotel"]:</span><br />
+                                        <strong>@m_booking.HotelName</strong>
+                                    </div>
+                                }
+                                @if (!string.IsNullOrEmpty(m_booking.Notes))
+                                {
+                                    <div class="col-12 mt-2 p-2 rounded" style="background: var(--mr-surface-secondary);">
+                                        <span class="text-muted">@Localizer["Notes"]:</span><br />
+                                        @m_booking.Notes
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    @* Vehicles Card *@
+                    <div class="mr-card mb-3 mr-animate-in mr-animate-delay-3">
+                        <div class="mr-card-header d-flex justify-content-between align-items-center">
+                            <span><i class="ti ti-motorbike me-2"></i>@Localizer["Vehicles"] (@m_booking.Items.Count)</span>
+                            @if (m_booking.CanBeCancelled)
+                            {
+                                <button class="btn btn-sm btn-outline-primary" @onclick="AddVehicle">
+                                    <i class="ti ti-plus"></i> @Localizer["AddVehicle"]
+                                </button>
+                            }
+                        </div>
+                        <div class="mr-card-body p-0">
+                            @foreach (var item in m_booking.Items)
+                            {
+                                <div class="p-3 @(item != m_booking.Items.Last() ? "border-bottom" : "")">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <h6 class="mb-1">@item.VehicleDisplayName</h6>
+                                            @if (!string.IsNullOrEmpty(item.PreferredColor))
+                                            {
+                                                <span class="badge bg-secondary me-1">@item.PreferredColor</span>
+                                            }
+                                            @if (!string.IsNullOrEmpty(item.InsuranceName))
+                                            {
+                                                <span class="badge bg-info">@item.InsuranceName</span>
+                                            }
+                                            <span class="mr-status-badge @GetItemStatusBadgeClass(item)">@Localizer[item.ItemStatus]</span>
+                                        </div>
+                                        <div class="text-end">
+                                            <strong>@FormatCurrency(item.ItemTotal)</strong>
+                                            @if (item.IsPending && m_booking.CanBeCancelled)
+                                            {
+                                                <div class="mt-1">
+                                                    <button class="btn btn-sm btn-link text-danger p-0" @onclick="@(() => RemoveVehicle(item))">
+                                                        <i class="ti ti-trash"></i>
+                                                    </button>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                    @if (item.IsCheckedIn)
+                                    {
+                                        <div class="mt-2 small text-muted">
+                                            <i class="ti ti-check"></i> @Localizer["AssignedVehicle"]: <strong>@item.AssignedVehiclePlate</strong>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                @* Sidebar - Right Column *@
+                <div class="col-lg-4">
+                    @* Payment Summary *@
+                    <div class="mr-card mb-3 mr-animate-in mr-animate-delay-1">
+                        <div class="mr-card-header bg-primary text-white">
+                            <i class="ti ti-receipt me-2"></i>@Localizer["PaymentSummary"]
+                        </div>
+                        <div class="mr-card-body p-3">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>@Localizer["TotalAmount"]:</span>
+                                <span class="fw-bold">@FormatCurrency(m_booking.TotalAmount)</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>@Localizer["DepositRequired"]:</span>
+                                <span>@FormatCurrency(m_booking.DepositRequired)</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>@Localizer["AmountPaid"]:</span>
+                                <span class="@(m_booking.AmountPaid >= m_booking.DepositRequired ? "text-success" : "text-warning")">
+                                    @FormatCurrency(m_booking.AmountPaid)
+                                    @if (m_booking.AmountPaid >= m_booking.DepositRequired)
+                                    {
+                                        <i class="ti ti-check"></i>
+                                    }
+                                </span>
+                            </div>
+                            <hr />
+                            <div class="d-flex justify-content-between fw-bold fs-5">
+                                <span>@Localizer["BalanceDue"]:</span>
+                                <span class="@(m_booking.BalanceDue > 0 ? "text-warning" : "text-success")">
+                                    @FormatCurrency(m_booking.BalanceDue)
+                                </span>
+                            </div>
+                            <div class="mt-3">
+                                <button class="btn btn-primary w-100" @onclick="RecordPayment">
+                                    <i class="ti ti-plus"></i> @Localizer["RecordPayment"]
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    @* Schedule Card *@
+                    <div class="mr-card mb-3 mr-animate-in mr-animate-delay-2">
+                        <div class="mr-card-header d-flex justify-content-between align-items-center">
+                            <span><i class="ti ti-calendar me-2"></i>@Localizer["Schedule"]</span>
+                            <button class="btn btn-sm btn-outline-primary" @onclick="ChangeSchedule">
+                                <i class="ti ti-edit"></i>
+                            </button>
+                        </div>
+                        <div class="mr-card-body p-3">
+                            <div class="mb-2">
+                                <span class="text-muted">@Localizer["Pickup"]:</span><br />
+                                <strong>@m_booking.StartDate.ToString("MMM d, yyyy")</strong>
+                                @if (m_booking.PickupTime.HasValue)
+                                {
+                                    <span class="text-muted">@Localizer["At"] @m_booking.PickupTime.Value.ToString(@"hh\:mm")</span>
+                                }
+                            </div>
+                            <div class="mb-2">
+                                <span class="text-muted">@Localizer["Return"]:</span><br />
+                                <strong>@m_booking.EndDate.ToString("MMM d, yyyy")</strong>
+                            </div>
+                            <div class="mb-2">
+                                <span class="text-muted">@Localizer["Duration"]:</span><br />
+                                <strong>@m_booking.Days @Localizer["Days"]</strong>
+                            </div>
+                            @if (m_booking.PreferredShopName != null)
+                            {
+                                <div>
+                                    <span class="text-muted">@Localizer["PreferredShop"]:</span><br />
+                                    <strong>@m_booking.PreferredShopName</strong>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    @* Change History *@
+                    <div class="mr-card mr-animate-in mr-animate-delay-3">
+                        <div class="mr-card-header">
+                            <i class="ti ti-history me-2"></i>@Localizer["ChangeHistory"]
+                        </div>
+                        <div class="mr-card-body p-3" style="max-height: 300px; overflow-y: auto;">
+                            @if (m_booking.ChangeHistory.Count == 0)
+                            {
+                                <p class="text-muted text-center mb-0">@Localizer["NoHistory"]</p>
+                            }
+                            else
+                            {
+                                @foreach (var change in m_booking.ChangeHistory.OrderByDescending(c => c.ChangedAt).Take(10))
+                                {
+                                    <div class="mb-2 pb-2 border-bottom">
+                                        <div class="small text-muted">@change.ChangedAt.ToString("MMM d, h:mm tt")</div>
+                                        <div>@change.Description</div>
+                                        <div class="small text-muted">@Localizer["By"]: @change.ChangedBy</div>
+                                    </div>
+                                }
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </LoadingSkeleton>
+</div>
+
+@code {
+    [Parameter]
+    public string BookingRef { get; set; } = string.Empty;
+
+    private Booking? m_booking;
+    private bool m_loading = true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadBookingAsync();
+    }
+
+    private async Task LoadBookingAsync()
+    {
+        m_loading = true;
+        try
+        {
+            m_booking = await BookingService.GetBookingByRefAsync(BookingRef);
+        }
+        catch (Exception ex)
+        {
+            ShowError(Localizer["ErrorLoading", ex.Message]);
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private string GetStatusDescription()
+    {
+        if (m_booking == null) return "";
+        return m_booking.Status switch
+        {
+            BookingStatus.Pending => Localizer["StatusDescPending"],
+            BookingStatus.Confirmed => Localizer["StatusDescConfirmed"],
+            BookingStatus.CheckedIn => Localizer["StatusDescCheckedIn"],
+            BookingStatus.Completed => Localizer["StatusDescCompleted"],
+            BookingStatus.Cancelled => Localizer["StatusDescCancelled"],
+            _ => ""
+        };
+    }
+
+    private string GetStatusBadgeClass()
+    {
+        return m_booking?.Status switch
+        {
+            BookingStatus.Pending => "pending",
+            BookingStatus.Confirmed => "success",
+            BookingStatus.CheckedIn => "info",
+            BookingStatus.Completed => "success",
+            BookingStatus.Cancelled => "danger",
+            _ => "pending"
+        };
+    }
+
+    private static string GetItemStatusBadgeClass(BookingItem item)
+    {
+        return item.ItemStatus switch
+        {
+            BookingItemStatus.Pending => "pending",
+            BookingItemStatus.CheckedIn => "info",
+            BookingItemStatus.Cancelled => "danger",
+            _ => "pending"
+        };
+    }
+
+    private async Task ChangeStatus()
+    {
+        // TODO: Open status change dialog
+        if (m_booking?.Status == BookingStatus.Pending)
+        {
+            if (!await DialogService.ConfirmAsync(Localizer["ConfirmBooking"]))
+                return;
+
+            var result = await BookingService.ConfirmBookingAsync(m_booking.BookingId, UserName);
+            if (result.Success)
+            {
+                ShowSuccess(Localizer["BookingConfirmed"]);
+                await LoadBookingAsync();
+            }
+            else
+            {
+                ShowError(result.Message ?? Localizer["ErrorChangingStatus"]);
+            }
+        }
+    }
+
+    private async Task CancelBooking()
+    {
+        if (m_booking == null) return;
+
+        var reason = await DialogService.PromptAsync(
+            Localizer["CancelReason"],
+            Localizer["CancelBookingTitle"]);
+
+        if (string.IsNullOrEmpty(reason)) return;
+
+        var result = await BookingService.CancelBookingAsync(m_booking.BookingId, reason, UserName);
+        if (result.Success)
+        {
+            ShowSuccess(Localizer["BookingCancelled", result.RefundAmount]);
+            await LoadBookingAsync();
+        }
+        else
+        {
+            ShowError(result.Error ?? Localizer["ErrorCancelling"]);
+        }
+    }
+
+    private async Task EditCustomer()
+    {
+        // TODO: Open customer edit dialog
+        ToastService.ShowInfo(Localizer["FeatureComingSoon"]);
+        await Task.CompletedTask;
+    }
+
+    private async Task AddVehicle()
+    {
+        // TODO: Open add vehicle dialog
+        ToastService.ShowInfo(Localizer["FeatureComingSoon"]);
+        await Task.CompletedTask;
+    }
+
+    private async Task RemoveVehicle(BookingItem item)
+    {
+        if (m_booking == null) return;
+
+        if (!await DialogService.ConfirmYesNoAsync(
+            Localizer["ConfirmRemoveVehicle", item.VehicleDisplayName],
+            Localizer["RemoveVehicle"]))
+            return;
+
+        var result = await BookingService.RemoveVehicleItemAsync(m_booking.BookingId, item.ItemId, UserName);
+        if (result.Success)
+        {
+            ShowSuccess(Localizer["VehicleRemoved"]);
+            await LoadBookingAsync();
+        }
+        else
+        {
+            ShowError(result.Message ?? Localizer["ErrorRemovingVehicle"]);
+        }
+    }
+
+    private async Task RecordPayment()
+    {
+        // TODO: Open payment dialog
+        ToastService.ShowInfo(Localizer["FeatureComingSoon"]);
+        await Task.CompletedTask;
+    }
+
+    private async Task ChangeSchedule()
+    {
+        // TODO: Open schedule change dialog
+        ToastService.ShowInfo(Localizer["FeatureComingSoon"]);
+        await Task.CompletedTask;
+    }
+}

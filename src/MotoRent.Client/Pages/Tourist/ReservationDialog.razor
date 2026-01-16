@@ -2,25 +2,28 @@
 @using MotoRent.Domain.Entities
 @using MotoRent.Domain.Models
 @using MotoRent.Services
-@inject RentalService RentalService
+@inject BookingService BookingService
 @inject InsuranceService InsuranceService
 
 <div class="modal-body">
     @* Step Indicator *@
-    <div class="steps steps-counter steps-primary mb-4">
-        <a href="#" class="step-item @(m_activeStep == 0 ? "active" : "") @(m_activeStep > 0 ? "step-item-completed" : "")"
-           @onclick="@(() => GoToStep(0))" @onclick:preventDefault>
-            Rental Details
-        </a>
-        <a href="#" class="step-item @(m_activeStep == 1 ? "active" : "") @(m_activeStep > 1 ? "step-item-completed" : "")"
-           @onclick="@(() => GoToStep(1))" @onclick:preventDefault>
-            Your Information
-        </a>
-        <a href="#" class="step-item @(m_activeStep == 2 ? "active" : "")"
-           @onclick="@(() => GoToStep(2))" @onclick:preventDefault>
-            Confirm
-        </a>
-    </div>
+    @if (!m_bookingComplete)
+    {
+        <div class="steps steps-counter steps-primary mb-4">
+            <a href="#" class="step-item @(m_activeStep == 0 ? "active" : "") @(m_activeStep > 0 ? "step-item-completed" : "")"
+               @onclick="@(() => GoToStep(0))" @onclick:preventDefault>
+                Rental Details
+            </a>
+            <a href="#" class="step-item @(m_activeStep == 1 ? "active" : "") @(m_activeStep > 1 ? "step-item-completed" : "")"
+               @onclick="@(() => GoToStep(1))" @onclick:preventDefault>
+                Your Information
+            </a>
+            <a href="#" class="step-item @(m_activeStep == 2 ? "active" : "")"
+               @onclick="@(() => GoToStep(2))" @onclick:preventDefault>
+                Confirm
+            </a>
+        </div>
+    }
 
     @* Step 1: Dates & Insurance *@
     @if (m_activeStep == 0)
@@ -257,33 +260,107 @@
             </label>
         </div>
     }
+
+    @* Booking Complete Success Screen *@
+    @if (m_bookingComplete && m_createdBooking != null)
+    {
+        <div class="text-center py-4">
+            <div class="mb-4">
+                <span class="avatar avatar-xl bg-success-lt rounded-circle">
+                    <i class="ti ti-check fs-1 text-success"></i>
+                </span>
+            </div>
+
+            <h2 class="text-success mb-3">Booking Confirmed!</h2>
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="mb-3">
+                        <small class="text-secondary">Your Booking Reference</small>
+                        <div class="h1 text-primary mb-0">@m_createdBooking.BookingRef</div>
+                    </div>
+                    <p class="text-secondary mb-0">
+                        Please save this reference number. You'll need it when you arrive for pickup.
+                    </p>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body text-start">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <small class="text-secondary">Vehicle</small>
+                            <div class="fw-bold">@DisplayName</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <small class="text-secondary">Rental Period</small>
+                            <div>@FormatDate(m_startDate ?? DateTime.Today) - @FormatDate(m_endDate ?? DateTime.Today)</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <small class="text-secondary">Customer</small>
+                            <div class="fw-bold">@m_contactInfo.FullName</div>
+                            <div class="small">@m_contactInfo.Phone</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <small class="text-secondary">Total Amount</small>
+                            <div class="h4 text-primary mb-0">@FormatCurrency(m_totalAmount)</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert alert-info text-start">
+                <div class="d-flex align-items-start">
+                    <i class="ti ti-info-circle me-2 mt-1"></i>
+                    <div>
+                        <strong>Next Steps:</strong>
+                        <ul class="mb-0 mt-2 ps-3">
+                            <li>A confirmation email will be sent to <strong>@m_contactInfo.Email</strong></li>
+                            <li>Bring your passport and payment to our shop at least 30 minutes before pickup</li>
+                            <li>Show your booking reference <strong>@m_createdBooking.BookingRef</strong> at the counter</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
 </div>
 
 <div class="modal-footer">
-    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">Cancel</button>
-    @if (m_activeStep > 0)
+    @if (m_bookingComplete)
     {
-        <button type="button" class="btn btn-outline-primary" @onclick="PreviousStep">
-            <i class="ti ti-arrow-left me-1"></i>
-            Back
-        </button>
-    }
-    @if (m_activeStep < 2)
-    {
-        <button type="button" class="btn btn-primary" disabled="@(!CanProceed)" @onclick="NextStep">
-            Next
-            <i class="ti ti-arrow-right ms-1"></i>
+        <button type="button" class="btn btn-primary" @onclick="Close">
+            <i class="ti ti-check me-1"></i>
+            Done
         </button>
     }
     else
     {
-        <button type="button" class="btn btn-primary" disabled="@(!CanSubmit || m_submitting)" @onclick="SubmitReservation">
-            @if (m_submitting)
-            {
-                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
-            }
-            Submit Reservation
-        </button>
+        <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">Cancel</button>
+        @if (m_activeStep > 0)
+        {
+            <button type="button" class="btn btn-outline-primary" @onclick="PreviousStep">
+                <i class="ti ti-arrow-left me-1"></i>
+                Back
+            </button>
+        }
+        @if (m_activeStep < 2)
+        {
+            <button type="button" class="btn btn-primary" disabled="@(!CanProceed)" @onclick="NextStep">
+                Next
+                <i class="ti ti-arrow-right ms-1"></i>
+            </button>
+        }
+        else
+        {
+            <button type="button" class="btn btn-primary" disabled="@(!CanSubmit || m_submitting)" @onclick="SubmitBooking">
+                @if (m_submitting)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                }
+                Submit Booking
+            </button>
+        }
     }
 </div>
 
@@ -311,12 +388,28 @@
     // Step 3: Confirmation
     private bool m_agreedToTerms;
 
+    // Booking completion
+    private bool m_bookingComplete;
+    private Booking? m_createdBooking;
+
     // Display helpers that work with both Motorbike and VehicleGroup
     private string DisplayName => this.VehicleGroup?.DisplayName
         ?? (this.Motorbike != null ? $"{this.Motorbike.Brand} {this.Motorbike.Model} {this.Motorbike.Year}" : "");
     private decimal DailyRate => this.VehicleGroup?.MinDailyRate ?? this.Motorbike?.DailyRate ?? 0;
     private decimal DepositAmount => this.VehicleGroup?.MinDepositAmount ?? this.Motorbike?.DepositAmount ?? 0;
     private bool IsGroupReservation => this.VehicleGroup != null;
+
+    // VehicleGroupKey - from VehicleGroup or build from Motorbike
+    private string GetVehicleGroupKey()
+    {
+        if (this.VehicleGroup != null)
+            return this.VehicleGroup.GroupKey;
+
+        if (this.Motorbike != null)
+            return $"{this.Motorbike.Brand}|{this.Motorbike.Model}|{this.Motorbike.Year}|Motorbike|{this.Motorbike.EngineCC}";
+
+        return string.Empty;
+    }
 
     // Calculations
     private int m_days => this.m_startDate.HasValue && this.m_endDate.HasValue
@@ -364,6 +457,8 @@
 
     private void Cancel() => this.ModalInstance?.Cancel();
 
+    private void Close() => this.ModalInstance?.Close(this.m_createdBooking?.BookingRef);
+
     private void GoToStep(int step)
     {
         if (step <= this.m_activeStep)
@@ -382,44 +477,54 @@
             this.m_activeStep--;
     }
 
-    private async Task SubmitReservation()
+    private async Task SubmitBooking()
     {
         if (!this.CanSubmit) return;
 
         this.m_submitting = true;
         try
         {
-            var request = new ReservationRequest
+            var request = new CreateBookingRequest
             {
-                ShopId = this.RequestContext.GetShopId(),
-                // For group reservations, VehicleId may be 0; for individual, use the Motorbike's ID
-                VehicleId = this.IsGroupReservation ? 0 : (this.Motorbike?.MotorbikeId ?? 0),
-                VehicleGroupKey = this.VehicleGroup?.GroupKey,
-                PreferredColor = this.m_preferredColor,
+                PreferredShopId = this.RequestContext.GetShopId(),
+                CustomerName = this.m_contactInfo.FullName,
+                CustomerPhone = this.m_contactInfo.Phone,
+                CustomerEmail = this.m_contactInfo.Email,
+                CustomerNationality = this.m_contactInfo.Nationality,
+                CustomerPassportNo = this.m_contactInfo.PassportNo,
+                HotelName = this.m_contactInfo.HotelName,
+                Notes = this.m_contactInfo.Notes,
                 StartDate = new DateTimeOffset(DateTime.SpecifyKind(this.m_startDate!.Value.Date, DateTimeKind.Unspecified), TimeSpan.Zero),
                 EndDate = new DateTimeOffset(DateTime.SpecifyKind(this.m_endDate!.Value.Date, DateTimeKind.Unspecified), TimeSpan.Zero),
-                InsuranceId = this.m_selectedInsuranceId,
-                DailyRate = this.DailyRate,
-                TotalAmount = this.m_totalAmount,
-                // Contact info
-                RenterName = this.m_contactInfo.FullName,
-                RenterPhone = this.m_contactInfo.Phone,
-                RenterEmail = this.m_contactInfo.Email,
-                RenterNationality = this.m_contactInfo.Nationality,
-                RenterPassport = this.m_contactInfo.PassportNo,
-                HotelName = this.m_contactInfo.HotelName,
-                Notes = this.m_contactInfo.Notes
+                BookingSource = "TouristPortal",
+                Items =
+                [
+                    new BookingItemRequest
+                    {
+                        VehicleGroupKey = this.GetVehicleGroupKey(),
+                        PreferredVehicleId = this.IsGroupReservation ? null : this.Motorbike?.MotorbikeId,
+                        PreferredColor = this.m_preferredColor,
+                        InsuranceId = this.m_selectedInsuranceId,
+                        InsuranceName = this.m_selectedInsurance?.Name,
+                        DailyRate = this.DailyRate,
+                        InsuranceRate = this.m_selectedInsurance?.DailyRate ?? 0,
+                        DepositAmount = this.DepositAmount,
+                        ItemTotal = this.m_totalAmount,
+                        VehicleDisplayName = this.DisplayName
+                    }
+                ]
             };
 
-            var result = await this.RentalService.CreateReservationAsync(request);
+            var result = await this.BookingService.CreateBookingAsync(request, this.m_contactInfo.Email);
 
-            if (result.Success)
+            if (result.Success && result.Booking != null)
             {
-                this.ModalInstance?.Close(result.RentalId);
+                this.m_createdBooking = result.Booking;
+                this.m_bookingComplete = true;
             }
             else
             {
-                this.ShowError($"Reservation failed: {result.Message}");
+                this.ShowError($"Booking failed: {result.Error}");
             }
         }
         catch (Exception ex)

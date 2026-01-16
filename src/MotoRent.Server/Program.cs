@@ -57,6 +57,7 @@ builder.Services.AddScoped<RenterService>();
 builder.Services.AddScoped<InsuranceService>();
 builder.Services.AddScoped<AccessoryService>();
 builder.Services.AddScoped<RentalService>();
+builder.Services.AddScoped<BookingService>();
 builder.Services.AddScoped<ShopService>();
 builder.Services.AddScoped<ShopScheduleService>();
 builder.Services.AddScoped<OperatingHoursService>();
@@ -319,3 +320,4 @@ app.MapRazorComponents<App>()
     .AddAdditionalAssemblies(typeof(MotoRent.Client._Imports).Assembly);
 
 app.Run(); 
+

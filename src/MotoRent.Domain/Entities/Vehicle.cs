@@ -282,4 +282,40 @@ public partial class Vehicle : Entity
     /// </summary>
     [JsonIgnore]
     public bool IsPooled => this.VehiclePoolId.HasValue && this.VehiclePoolId > 0;
+
+    /// <summary>
+    /// Gets the group key for matching vehicles across shops.
+    /// Format: "Brand|Model|Year|VehicleType|EngineCC" (e.g., "Honda|Click|2024|Motorbike|125")
+    /// Used for cross-shop booking fulfillment.
+    /// </summary>
+    public string GetGroupKey()
+    {
+        var engine = this.VehicleType switch
+        {
+            VehicleType.Motorbike => this.EngineCC?.ToString() ?? "0",
+            VehicleType.Car => this.EngineLiters?.ToString("F1") ?? "0",
+            _ => "0"
+        };
+        return $"{this.Brand}|{this.Model}|{this.Year}|{this.VehicleType}|{engine}";
+    }
+
+    /// <summary>
+    /// Gets a display-friendly vehicle name with engine size.
+    /// </summary>
+    [JsonIgnore]
+    public string DisplayNameWithEngine
+    {
+        get
+        {
+            var engine = this.VehicleType switch
+            {
+                VehicleType.Motorbike when this.EngineCC.HasValue => $"{this.EngineCC}cc",
+                VehicleType.Car when this.EngineLiters.HasValue => $"{this.EngineLiters:F1}L",
+                _ => ""
+            };
+            return string.IsNullOrEmpty(engine)
+                ? this.DisplayName
+                : $"{this.DisplayName} {engine}";
+        }
+    }
 }

@@ -1,0 +1,835 @@
+@page "/bookings/create"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using MotoRent.Domain.Entities
+@using MotoRent.Services
+@attribute [Authorize(Policy = "RequireTenantStaff")]
+@inherits LocalizedComponentBase<CreateBooking>
+@inject BookingService BookingService
+@inject RenterService RenterService
+@inject VehicleService VehicleService
+@inject ShopService ShopService
+@inject InsuranceService InsuranceService
+@inject AccessoryService AccessoryService
+
+<MotoRentPageTitle>@Localizer["PageTitle"]</MotoRentPageTitle>
+
+<div class="mr-page-header mr-animate-in">
+    <div class="container-xl">
+        <nav class="mr-breadcrumb">
+            <span class="mr-breadcrumb-item"><a href="/"><i class="ti ti-home"></i></a></span>
+            <span class="mr-breadcrumb-separator"><i class="ti ti-chevron-right"></i></span>
+            <span class="mr-breadcrumb-item"><a href="/bookings">@Localizer["Bookings"]</a></span>
+            <span class="mr-breadcrumb-separator"><i class="ti ti-chevron-right"></i></span>
+            <span class="mr-breadcrumb-item active">@Localizer["NewBooking"]</span>
+        </nav>
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="mr-page-title">
+                    <i class="ti ti-calendar-plus"></i>
+                    @Localizer["Header"]
+                </h1>
+                <p class="mr-page-subtitle">@Localizer["SubHeader"]</p>
+            </div>
+            <a href="/bookings" class="mr-btn-header-action">
+                <i class="ti ti-arrow-left"></i>
+                @CommonLocalizer["BackToList"]
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="container-xl">
+<div class="mr-card mr-animate-in mr-animate-delay-1">
+    <div class="mr-card-body p-4">
+        @* Step indicators *@
+        <div class="mr-filter-tabs mb-4" style="justify-content: center;">
+            @for (int i = 0; i < m_stepKeys.Length; i++)
+            {
+                var stepIndex = i;
+                var isActive = m_activeStep == stepIndex;
+                var isCompleted = m_activeStep > stepIndex;
+                <button type="button"
+                        class="mr-filter-tab @(isActive ? "active" : "") @(isCompleted ? "text-success" : "")"
+                        disabled="@(stepIndex > m_activeStep)"
+                        @onclick="@(() => GoToStep(stepIndex))">
+                    @if (isCompleted)
+                    {
+                        <i class="ti ti-check me-1"></i>
+                    }
+                    else
+                    {
+                        <span class="me-1">@(stepIndex + 1).</span>
+                    }
+                    @Localizer[m_stepKeys[stepIndex]]
+                </button>
+            }
+        </div>
+
+        <hr class="my-4" style="border-color: var(--mr-border-light);" />
+
+        @* Step content *@
+        @switch (m_activeStep)
+        {
+            case 0:
+                @* Step 1: Customer Info *@
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">@Localizer["CustomerName"] *</label>
+                        <input type="text" class="form-control" @bind="m_request.CustomerName" placeholder="@Localizer["CustomerNamePlaceholder"]" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">@Localizer["CustomerPhone"] *</label>
+                        <input type="tel" class="form-control" @bind="m_request.CustomerPhone" placeholder="@Localizer["CustomerPhonePlaceholder"]" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">@Localizer["CustomerEmail"]</label>
+                        <input type="email" class="form-control" @bind="m_request.CustomerEmail" placeholder="@Localizer["CustomerEmailPlaceholder"]" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">@Localizer["Nationality"]</label>
+                        <input type="text" class="form-control" @bind="m_request.CustomerNationality" placeholder="@Localizer["NationalityPlaceholder"]" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">@Localizer["PassportNo"]</label>
+                        <input type="text" class="form-control" @bind="m_request.CustomerPassportNo" placeholder="@Localizer["PassportNoPlaceholder"]" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">@Localizer["HotelName"]</label>
+                        <input type="text" class="form-control" @bind="m_request.HotelName" placeholder="@Localizer["HotelNamePlaceholder"]" />
+                    </div>
+                    <div class="col-12 mb-3">
+                        <label class="form-label">@Localizer["Notes"]</label>
+                        <textarea class="form-control" rows="2" @bind="m_request.Notes" placeholder="@Localizer["NotesPlaceholder"]"></textarea>
+                    </div>
+                </div>
+
+                @* Link existing renter *@
+                @if (m_linkedRenter == null)
+                {
+                    <div class="mt-3 p-3 rounded" style="background: var(--mr-surface-secondary);">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <span class="text-muted">@Localizer["LinkExistingRenter"]</span>
+                            <button type="button" class="btn btn-sm btn-outline-primary" @onclick="SearchRenters">
+                                <i class="ti ti-search"></i> @Localizer["Search"]
+                            </button>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="mt-3 p-3 rounded border border-success" style="background: rgba(var(--tblr-success-rgb), 0.1);">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <i class="ti ti-user-check text-success me-2"></i>
+                                <strong>@m_linkedRenter.FullName</strong> - @m_linkedRenter.Phone
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-danger" @onclick="UnlinkRenter">
+                                <i class="ti ti-x"></i>
+                            </button>
+                        </div>
+                    </div>
+                }
+                break;
+
+            case 1:
+                @* Step 2: Dates & Vehicle Selection *@
+                <div class="row mb-4">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">@Localizer["StartDate"] *</label>
+                        <input type="date" class="form-control" @bind="m_startDate" min="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">@Localizer["EndDate"] *</label>
+                        <input type="date" class="form-control" @bind="m_endDate" min="@m_startDate.ToString("yyyy-MM-dd")" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">@Localizer["PickupTime"]</label>
+                        <input type="time" class="form-control" @bind="m_pickupTime" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">@Localizer["PreferredShop"]</label>
+                        <select class="form-select" @bind="m_request.PreferredShopId">
+                            <option value="">@Localizer["AnyShop"]</option>
+                            @foreach (var shop in m_shops)
+                            {
+                                <option value="@shop.ShopId">@shop.Name</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+
+                @* Vehicle selection *@
+                <h5 class="mb-3">@Localizer["SelectVehicles"]</h5>
+
+                <LoadingSkeleton Loading="@m_loadingVehicles" Mode="LoadingSkeleton.PlaceholderMode.Card" Rows="2">
+                    @if (m_availableVehicles.Count == 0)
+                    {
+                        <div class="text-center text-muted py-4">
+                            <i class="ti ti-car-off" style="font-size: 3rem;"></i>
+                            <p class="mt-2">@Localizer["NoVehiclesAvailable"]</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="row">
+                            @foreach (var vehicle in m_availableVehicles)
+                            {
+                                var isSelected = m_selectedVehicles.Any(v => v.VehicleId == vehicle.VehicleId);
+                                <div class="col-md-6 col-lg-4 mb-3">
+                                    <div class="mr-card @(isSelected ? "border-primary" : "")" style="cursor: pointer;" @onclick="@(() => ToggleVehicle(vehicle))">
+                                        <div class="mr-card-body p-3">
+                                            <div class="d-flex justify-content-between align-items-start">
+                                                <div>
+                                                    <h6 class="mb-1">@vehicle.DisplayNameWithEngine</h6>
+                                                    <span class="text-muted small">@vehicle.LicensePlate</span>
+                                                </div>
+                                                @if (isSelected)
+                                                {
+                                                    <i class="ti ti-circle-check text-primary" style="font-size: 1.5rem;"></i>
+                                                }
+                                            </div>
+                                            <div class="mt-2">
+                                                <span class="text-primary fw-bold">@FormatCurrency(vehicle.DailyRate)</span>
+                                                <span class="text-muted">/day</span>
+                                            </div>
+                                            @if (vehicle.Color != null)
+                                            {
+                                                <span class="badge bg-secondary mt-1">@vehicle.Color</span>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </LoadingSkeleton>
+
+                @* Selected vehicles summary *@
+                @if (m_selectedVehicles.Count > 0)
+                {
+                    <div class="mt-4 p-3 rounded" style="background: var(--mr-surface-secondary);">
+                        <h6 class="mb-2">@Localizer["SelectedVehicles"] (@m_selectedVehicles.Count)</h6>
+                        @foreach (var vehicle in m_selectedVehicles)
+                        {
+                            <div class="d-flex justify-content-between align-items-center py-1">
+                                <span>@vehicle.DisplayNameWithEngine</span>
+                                <span>@FormatCurrency(vehicle.DailyRate) x @m_days @Localizer["Days"] = @FormatCurrency(vehicle.DailyRate * m_days)</span>
+                            </div>
+                        }
+                    </div>
+                }
+                break;
+
+            case 2:
+                @* Step 3: Add-ons (Insurance, Accessories) *@
+                @if (m_bookingItems.Count == 0)
+                {
+                    <div class="text-center text-muted py-4">
+                        <i class="ti ti-alert-circle" style="font-size: 3rem;"></i>
+                        <p class="mt-2">@Localizer["NoVehiclesSelected"]</p>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var item in m_bookingItems)
+                    {
+                        <div class="mr-card mb-3">
+                            <div class="mr-card-header">
+                                <span class="fw-bold">@item.VehicleDisplayName</span>
+                            </div>
+                            <div class="mr-card-body p-3">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">@Localizer["Insurance"]</label>
+                                        <select class="form-select" @bind="item.InsuranceId" @bind:after="() => OnInsuranceChanged(item)">
+                                            <option value="">@Localizer["NoInsurance"]</option>
+                                            @foreach (var insurance in m_insurancePackages)
+                                            {
+                                                <option value="@insurance.InsuranceId">@insurance.Name - @FormatCurrency(insurance.DailyRate)/day</option>
+                                            }
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">@Localizer["PreferredColor"]</label>
+                                        <input type="text" class="form-control" @bind="item.PreferredColor" placeholder="@Localizer["PreferredColorPlaceholder"]" />
+                                    </div>
+                                </div>
+
+                                @* Accessories *@
+                                <label class="form-label">@Localizer["Accessories"]</label>
+                                <div class="row">
+                                    @foreach (var accessory in m_accessories)
+                                    {
+                                        var isSelected = (item.AccessoryIds ?? []).Contains(accessory.AccessoryId);
+                                        <div class="col-md-4 col-lg-3 mb-2">
+                                            <div class="form-check">
+                                                <input type="checkbox" class="form-check-input"
+                                                       checked="@isSelected"
+                                                       @onchange="@(() => ToggleAccessory(item, accessory))" />
+                                                <label class="form-check-label">
+                                                    @accessory.Name (@FormatCurrency(accessory.DailyRate)/day)
+                                                </label>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+
+                                @* Item subtotal *@
+                                <div class="mt-3 pt-2 border-top">
+                                    <div class="d-flex justify-content-between">
+                                        <span>@Localizer["ItemTotal"]:</span>
+                                        <span class="fw-bold">@FormatCurrency(item.ItemTotal)</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                }
+                break;
+
+            case 3:
+                @* Step 4: Payment *@
+                <div class="row">
+                    <div class="col-md-8">
+                        <h5 class="mb-3">@Localizer["BookingSummary"]</h5>
+
+                        @* Summary table *@
+                        <table class="table">
+                            <tbody>
+                                @foreach (var item in m_bookingItems)
+                                {
+                                    <tr>
+                                        <td>@item.VehicleDisplayName</td>
+                                        <td class="text-end">@FormatCurrency(item.ItemTotal)</td>
+                                    </tr>
+                                    @if (item.InsuranceRate > 0)
+                                    {
+                                        <tr class="text-muted small">
+                                            <td class="ps-4">+ @item.InsuranceName</td>
+                                            <td class="text-end">@FormatCurrency(item.InsuranceRate * m_days)</td>
+                                        </tr>
+                                    }
+                                }
+                                <tr class="border-top fw-bold">
+                                    <td>@Localizer["TotalAmount"]</td>
+                                    <td class="text-end text-primary">@FormatCurrency(m_totalAmount)</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        @* Deposit requirement *@
+                        <div class="p-3 rounded mb-3" style="background: var(--mr-surface-secondary);">
+                            <div class="d-flex justify-content-between">
+                                <span>@Localizer["DepositRequired"]:</span>
+                                <span class="fw-bold">@FormatCurrency(m_depositRequired)</span>
+                            </div>
+                        </div>
+
+                        @* Payment options *@
+                        <h6 class="mb-2">@Localizer["RecordPayment"]</h6>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">@Localizer["PaymentAmount"]</label>
+                                <input type="number" class="form-control" @bind="m_paymentAmount" step="0.01" min="0" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">@Localizer["PaymentMethod"]</label>
+                                <select class="form-select" @bind="m_paymentMethod">
+                                    <option value="Cash">@Localizer["Cash"]</option>
+                                    <option value="Card">@Localizer["Card"]</option>
+                                    <option value="PromptPay">@Localizer["PromptPay"]</option>
+                                    <option value="BankTransfer">@Localizer["BankTransfer"]</option>
+                                </select>
+                            </div>
+                            <div class="col-12 mb-3">
+                                <label class="form-label">@Localizer["TransactionRef"]</label>
+                                <input type="text" class="form-control" @bind="m_transactionRef" placeholder="@Localizer["TransactionRefPlaceholder"]" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="mr-card" style="position: sticky; top: 1rem;">
+                            <div class="mr-card-header">
+                                <span class="fw-bold">@Localizer["PaymentSummary"]</span>
+                            </div>
+                            <div class="mr-card-body p-3">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>@Localizer["TotalAmount"]:</span>
+                                    <span>@FormatCurrency(m_totalAmount)</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>@Localizer["Payment"]:</span>
+                                    <span class="text-success">-@FormatCurrency(m_paymentAmount)</span>
+                                </div>
+                                <hr />
+                                <div class="d-flex justify-content-between fw-bold">
+                                    <span>@Localizer["BalanceDue"]:</span>
+                                    <span class="@(m_totalAmount - m_paymentAmount > 0 ? "text-warning" : "text-success")">
+                                        @FormatCurrency(m_totalAmount - m_paymentAmount)
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                break;
+
+            case 4:
+                @* Step 5: Confirmation *@
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="mr-card mb-3">
+                            <div class="mr-card-header">
+                                <i class="ti ti-user me-2"></i>@Localizer["CustomerInfo"]
+                            </div>
+                            <div class="mr-card-body p-3">
+                                <div class="row">
+                                    <div class="col-6 mb-2">
+                                        <span class="text-muted">@Localizer["Name"]:</span><br />
+                                        <strong>@m_request.CustomerName</strong>
+                                    </div>
+                                    <div class="col-6 mb-2">
+                                        <span class="text-muted">@Localizer["Phone"]:</span><br />
+                                        <strong>@m_request.CustomerPhone</strong>
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(m_request.CustomerEmail))
+                                    {
+                                        <div class="col-6 mb-2">
+                                            <span class="text-muted">@Localizer["Email"]:</span><br />
+                                            <strong>@m_request.CustomerEmail</strong>
+                                        </div>
+                                    }
+                                    @if (!string.IsNullOrEmpty(m_request.HotelName))
+                                    {
+                                        <div class="col-6 mb-2">
+                                            <span class="text-muted">@Localizer["Hotel"]:</span><br />
+                                            <strong>@m_request.HotelName</strong>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mr-card mb-3">
+                            <div class="mr-card-header">
+                                <i class="ti ti-calendar me-2"></i>@Localizer["RentalDetails"]
+                            </div>
+                            <div class="mr-card-body p-3">
+                                <div class="row">
+                                    <div class="col-6 mb-2">
+                                        <span class="text-muted">@Localizer["Period"]:</span><br />
+                                        <strong>@m_startDate.ToString("MMM d") - @m_endDate.ToString("MMM d, yyyy")</strong>
+                                    </div>
+                                    <div class="col-6 mb-2">
+                                        <span class="text-muted">@Localizer["Duration"]:</span><br />
+                                        <strong>@m_days @Localizer["Days"]</strong>
+                                    </div>
+                                    @if (m_pickupTime.HasValue)
+                                    {
+                                        <div class="col-6 mb-2">
+                                            <span class="text-muted">@Localizer["PickupTime"]:</span><br />
+                                            <strong>@m_pickupTime.Value.ToString("HH:mm")</strong>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mr-card mb-3">
+                            <div class="mr-card-header">
+                                <i class="ti ti-motorbike me-2"></i>@Localizer["Vehicles"] (@m_bookingItems.Count)
+                            </div>
+                            <div class="mr-card-body p-0">
+                                <table class="table mb-0">
+                                    <tbody>
+                                        @foreach (var item in m_bookingItems)
+                                        {
+                                            <tr>
+                                                <td>
+                                                    <strong>@item.VehicleDisplayName</strong>
+                                                    @if (!string.IsNullOrEmpty(item.InsuranceName))
+                                                    {
+                                                        <br /><small class="text-muted">+ @item.InsuranceName</small>
+                                                    }
+                                                </td>
+                                                <td class="text-end">@FormatCurrency(item.ItemTotal)</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="mr-card" style="position: sticky; top: 1rem;">
+                            <div class="mr-card-header bg-primary text-white">
+                                <span class="fw-bold">@Localizer["BookingTotal"]</span>
+                            </div>
+                            <div class="mr-card-body p-3">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>@Localizer["Subtotal"]:</span>
+                                    <span>@FormatCurrency(m_totalAmount)</span>
+                                </div>
+                                @if (m_paymentAmount > 0)
+                                {
+                                    <div class="d-flex justify-content-between mb-2 text-success">
+                                        <span>@Localizer["Deposit"]:</span>
+                                        <span>-@FormatCurrency(m_paymentAmount)</span>
+                                    </div>
+                                }
+                                <hr />
+                                <div class="d-flex justify-content-between fw-bold fs-5">
+                                    <span>@Localizer["Balance"]:</span>
+                                    <span class="text-primary">@FormatCurrency(m_totalAmount - m_paymentAmount)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                break;
+        }
+
+        @* Navigation buttons *@
+        <div class="d-flex justify-content-between mt-4 pt-3" style="border-top: 1px solid var(--mr-border-light);">
+            <button type="button" class="mr-btn-cancel"
+                    disabled="@(m_activeStep == 0)"
+                    @onclick="PreviousStep">
+                <i class="ti ti-arrow-left"></i>
+                @CommonLocalizer["Previous"]
+            </button>
+
+            @if (m_activeStep < 4)
+            {
+                <button type="button" class="mr-btn-primary-action"
+                        disabled="@(!CanProceedToNextStep())"
+                        @onclick="NextStep">
+                    @CommonLocalizer["Next"]
+                    <i class="ti ti-arrow-right"></i>
+                </button>
+            }
+            else
+            {
+                <button type="button" class="mr-btn-primary-action"
+                        disabled="@(!CanCreateBooking())"
+                        @onclick="CreateBookingAsync">
+                    <i class="ti ti-check"></i>
+                    @Localizer["CreateBooking"]
+                </button>
+            }
+        </div>
+    </div>
+</div>
+</div>
+
+@if (m_processing)
+{
+    <div class="modal-backdrop show" style="opacity: 0.8;"></div>
+    <div class="d-flex flex-column align-items-center justify-content-center position-fixed top-50 start-50 translate-middle" style="z-index: 1060;">
+        <div class="mr-card p-4 text-center" style="min-width: 200px;">
+            <div class="spinner-border mb-3" style="width: 3rem; height: 3rem; color: var(--mr-accent-primary);" role="status"></div>
+            <h5 class="mr-text-primary mb-0">@Localizer["ProcessingMessage"]</h5>
+        </div>
+    </div>
+}
+
+@code {
+    private readonly string[] m_stepKeys = ["Customer", "Vehicles", "AddOns", "Payment", "Confirmation"];
+    private int m_activeStep;
+    private bool m_processing;
+    private bool m_loadingVehicles;
+
+    // Form data
+    private CreateBookingRequest m_request = new();
+    private DateTime m_startDate = DateTime.Today;
+    private DateTime m_endDate = DateTime.Today.AddDays(3);
+    private TimeOnly? m_pickupTime;
+
+    // Linked renter
+    private Renter? m_linkedRenter;
+
+    // Data
+    private List<Shop> m_shops = [];
+    private List<Vehicle> m_availableVehicles = [];
+    private List<Vehicle> m_selectedVehicles = [];
+    private List<Insurance> m_insurancePackages = [];
+    private List<Accessory> m_accessories = [];
+    private List<BookingItemRequest> m_bookingItems = [];
+
+    // Payment
+    private decimal m_paymentAmount;
+    private string m_paymentMethod = "Cash";
+    private string? m_transactionRef;
+
+    // Calculated
+    private int m_days => Math.Max(1, (int)(m_endDate - m_startDate).TotalDays + 1);
+    private decimal m_totalAmount => m_bookingItems.Sum(i => i.ItemTotal);
+    private decimal m_depositRequired => m_bookingItems.Sum(i => i.DepositAmount);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadInitialDataAsync();
+    }
+
+    private async Task LoadInitialDataAsync()
+    {
+        try
+        {
+            var shopsTask = ShopService.GetShopsAsync(page: 1, pageSize: 100);
+            var insuranceTask = InsuranceService.GetActiveInsurancesAsync();
+
+            await Task.WhenAll(shopsTask, insuranceTask);
+
+            m_shops = (await shopsTask).ItemCollection.ToList();
+            m_insurancePackages = await insuranceTask;
+        }
+        catch (Exception ex)
+        {
+            ShowError(Localizer["ErrorLoadingData", ex.Message]);
+        }
+    }
+
+    private async Task LoadAvailableVehiclesAsync()
+    {
+        m_loadingVehicles = true;
+        try
+        {
+            // Get vehicles from preferred shop or current shop context
+            var shopId = m_request.PreferredShopId ?? RequestContext.GetShopId();
+            if (shopId > 0)
+            {
+                var availability = await VehicleService.GetAvailableVehiclesForShopAsync(shopId);
+                m_availableVehicles = availability.Select(a => a.Vehicle).ToList();
+
+                // Load accessories for this shop
+                m_accessories = await AccessoryService.GetAvailableAccessoriesAsync(shopId);
+            }
+            else
+            {
+                // No specific shop - load all available vehicles across the organization
+                // ShopId is ignored for organization-wide queries, pass 0
+                var result = await VehicleService.GetVehiclesAsync(
+                    shopId: 0,
+                    status: VehicleStatus.Available,
+                    page: 1, pageSize: 100);
+                m_availableVehicles = result.ItemCollection.ToList();
+
+                // Load accessories from all shops (or first shop if available)
+                if (m_shops.Count > 0)
+                {
+                    m_accessories = await AccessoryService.GetAvailableAccessoriesAsync(m_shops.First().ShopId);
+                }
+                else
+                {
+                    m_accessories = [];
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowError(Localizer["ErrorLoadingVehicles", ex.Message]);
+            m_availableVehicles = [];
+        }
+        finally
+        {
+            m_loadingVehicles = false;
+        }
+    }
+
+    private void ToggleVehicle(Vehicle vehicle)
+    {
+        if (m_selectedVehicles.Any(v => v.VehicleId == vehicle.VehicleId))
+        {
+            m_selectedVehicles.RemoveAll(v => v.VehicleId == vehicle.VehicleId);
+        }
+        else
+        {
+            m_selectedVehicles.Add(vehicle);
+        }
+    }
+
+    private void BuildBookingItems()
+    {
+        m_bookingItems.Clear();
+        foreach (var vehicle in m_selectedVehicles)
+        {
+            m_bookingItems.Add(new BookingItemRequest
+            {
+                VehicleGroupKey = vehicle.GetGroupKey(),
+                PreferredVehicleId = vehicle.VehicleId,
+                VehicleDisplayName = vehicle.DisplayNameWithEngine,
+                DailyRate = vehicle.DailyRate,
+                DepositAmount = vehicle.DepositAmount,
+                ItemTotal = vehicle.DailyRate * m_days,
+                AccessoryIds = []
+            });
+        }
+    }
+
+    private void OnInsuranceChanged(BookingItemRequest item)
+    {
+        if (item.InsuranceId.HasValue)
+        {
+            var insurance = m_insurancePackages.FirstOrDefault(i => i.InsuranceId == item.InsuranceId);
+            if (insurance != null)
+            {
+                item.InsuranceName = insurance.Name;
+                item.InsuranceRate = insurance.DailyRate;
+            }
+        }
+        else
+        {
+            item.InsuranceName = null;
+            item.InsuranceRate = 0;
+        }
+        RecalculateItemTotal(item);
+    }
+
+    private void ToggleAccessory(BookingItemRequest item, Accessory accessory)
+    {
+        item.AccessoryIds ??= [];
+        if (item.AccessoryIds.Contains(accessory.AccessoryId))
+        {
+            item.AccessoryIds.Remove(accessory.AccessoryId);
+            item.AccessoriesTotal -= accessory.DailyRate * m_days;
+        }
+        else
+        {
+            item.AccessoryIds.Add(accessory.AccessoryId);
+            item.AccessoriesTotal += accessory.DailyRate * m_days;
+        }
+        RecalculateItemTotal(item);
+    }
+
+    private void RecalculateItemTotal(BookingItemRequest item)
+    {
+        item.ItemTotal = (item.DailyRate + item.InsuranceRate) * m_days + item.AccessoriesTotal;
+    }
+
+    private bool CanProceedToNextStep()
+    {
+        return m_activeStep switch
+        {
+            0 => !string.IsNullOrWhiteSpace(m_request.CustomerName) && !string.IsNullOrWhiteSpace(m_request.CustomerPhone),
+            1 => m_selectedVehicles.Count > 0 && m_startDate <= m_endDate,
+            2 => m_bookingItems.Count > 0,
+            3 => true, // Payment is optional
+            4 => true,
+            _ => false
+        };
+    }
+
+    private bool CanCreateBooking()
+    {
+        return !string.IsNullOrWhiteSpace(m_request.CustomerName) &&
+               !string.IsNullOrWhiteSpace(m_request.CustomerPhone) &&
+               m_bookingItems.Count > 0;
+    }
+
+    private async Task NextStep()
+    {
+        if (m_activeStep == 0)
+        {
+            // Load vehicles when moving to step 2
+            await LoadAvailableVehiclesAsync();
+        }
+        else if (m_activeStep == 1)
+        {
+            // Build booking items when moving to step 3
+            BuildBookingItems();
+        }
+
+        if (m_activeStep < 4 && CanProceedToNextStep())
+            m_activeStep++;
+    }
+
+    private void PreviousStep()
+    {
+        if (m_activeStep > 0)
+            m_activeStep--;
+    }
+
+    private void GoToStep(int step)
+    {
+        if (step < m_activeStep)
+            m_activeStep = step;
+    }
+
+    private async Task SearchRenters()
+    {
+        // For now, show info that search is available via customer list
+        // TODO: Implement renter search popup
+        ToastService.ShowInfo(Localizer["SearchRenterHint"]);
+        await Task.CompletedTask;
+    }
+
+    private void UnlinkRenter()
+    {
+        m_linkedRenter = null;
+    }
+
+    private async Task CreateBookingAsync()
+    {
+        Console.WriteLine("=== CreateBookingAsync CALLED ===");
+        m_processing = true;
+        try
+        {
+            Console.WriteLine($"Creating booking for: {m_request.CustomerName}, Items: {m_bookingItems.Count}");
+            // Build the request
+            m_request.StartDate = m_startDate;
+            m_request.EndDate = m_endDate;
+            m_request.PickupTime = m_pickupTime.HasValue ? m_pickupTime.Value.ToTimeSpan() : null;
+            m_request.Items = m_bookingItems;
+            m_request.BookingSource = "Staff";
+
+            // Set preferred shop name
+            if (m_request.PreferredShopId.HasValue)
+            {
+                var shop = m_shops.FirstOrDefault(s => s.ShopId == m_request.PreferredShopId);
+                m_request.PreferredShopName = shop?.Name;
+            }
+
+            Console.WriteLine($"Calling BookingService.CreateBookingAsync with UserName: {UserName}");
+            var result = await BookingService.CreateBookingAsync(m_request, UserName);
+            Console.WriteLine($"Result: Success={result.Success}, Error={result.Error}, Booking={result.Booking?.BookingRef}");
+
+            if (result.Success && result.Booking != null)
+            {
+                Console.WriteLine($"Booking created successfully: {result.Booking.BookingRef}");
+                // Record payment if any
+                if (m_paymentAmount > 0)
+                {
+                    var payment = new BookingPayment
+                    {
+                        Amount = m_paymentAmount,
+                        PaymentMethod = m_paymentMethod,
+                        PaymentType = BookingPaymentType.Deposit,
+                        TransactionRef = m_transactionRef
+                    };
+                    await BookingService.RecordPaymentAsync(result.Booking.BookingId, payment, UserName);
+                }
+
+                ShowSuccess(Localizer["BookingCreated", result.Booking.BookingRef]);
+                Console.WriteLine($"Navigating to /bookings/{result.Booking.BookingRef}");
+                NavigationManager.NavigateTo($"/bookings/{result.Booking.BookingRef}");
+            }
+            else
+            {
+                Console.WriteLine($"Booking creation failed: {result.Error}");
+                ShowError(result.Error ?? Localizer["ErrorCreatingBooking"]);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"EXCEPTION in CreateBookingAsync: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            ShowError(Localizer["ErrorCreatingBooking", ex.Message]);
+        }
+        finally
+        {
+            m_processing = false;
+        }
+    }
+}
