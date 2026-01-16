@@ -2,12 +2,12 @@
 @using MotoRent.Domain.Entities
 @using MotoRent.Services
 @using Microsoft.AspNetCore.Authorization
-@inherits MotoRentComponentBase
+@inherits LocalizedComponentBase<EndOfDay>
 @attribute [Authorize(Policy = "RequireTenantManager")]
 @inject TillService TillService
 @inject ShopService ShopService
 
-<PageTitle>End of Day - MotoRent</PageTitle>
+<PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 <div class="container-xl py-4">
     <div class="page-header mb-4">
@@ -15,7 +15,7 @@
             <div class="col">
                 <h2 class="page-title">
                     <i class="ti ti-report-analytics me-2"></i>
-                    End of Day Reconciliation
+                    @Localizer["EndOfDayReconciliation"]
                 </h2>
             </div>
             <div class="col-auto">
@@ -52,7 +52,7 @@
     else if (m_summary == null)
     {
         <div class="alert alert-info">
-            No data available for the selected date.
+            @Localizer["NoDataAvailable"]
         </div>
     }
     else
@@ -67,7 +67,7 @@
                                 <i class="ti ti-cash"></i>
                             </span>
                             <div>
-                                <small class="text-secondary">Total Cash In</small>
+                                <small class="text-secondary">@Localizer["TotalCashIn"]</small>
                                 <div class="h3 mb-0 text-success">@FormatCurrency(m_summary.TotalCashIn)</div>
                             </div>
                         </div>
@@ -82,7 +82,7 @@
                                 <i class="ti ti-cash-off"></i>
                             </span>
                             <div>
-                                <small class="text-secondary">Total Cash Out</small>
+                                <small class="text-secondary">@Localizer["TotalCashOut"]</small>
                                 <div class="h3 mb-0 text-danger">@FormatCurrency(m_summary.TotalCashOut)</div>
                             </div>
                         </div>
@@ -97,7 +97,7 @@
                                 <i class="ti ti-credit-card"></i>
                             </span>
                             <div>
-                                <small class="text-secondary">Electronic Payments</small>
+                                <small class="text-secondary">@Localizer["ElectronicPayments"]</small>
                                 <div class="h3 mb-0 text-info">@FormatCurrency(m_summary.TotalElectronicPayments)</div>
                             </div>
                         </div>
@@ -112,7 +112,7 @@
                                 <i class="ti ti-safe"></i>
                             </span>
                             <div>
-                                <small class="text-secondary">Dropped to Safe</small>
+                                <small class="text-secondary">@Localizer["DroppedToSafe"]</small>
                                 <div class="h3 mb-0 text-purple">@FormatCurrency(m_summary.TotalDropped)</div>
                             </div>
                         </div>
@@ -126,7 +126,7 @@
         {
             <div class="card mb-4">
                 <div class="card-header">
-                    <h4 class="card-title mb-0">Payment Method Breakdown</h4>
+                    <h4 class="card-title mb-0">@Localizer["PaymentMethodBreakdown"]</h4>
                 </div>
                 <div class="card-body">
                     <div class="row g-3">
@@ -136,7 +136,7 @@
                                 <div class="d-flex align-items-center">
                                     <i class="ti ti-credit-card me-2 text-info"></i>
                                     <div>
-                                        <small class="text-secondary d-block">Card Payments</small>
+                                        <small class="text-secondary d-block">@Localizer["CardPayments"]</small>
                                         <span class="fw-semibold">@FormatCurrency(m_summary.TotalCardPayments)</span>
                                     </div>
                                 </div>
@@ -148,7 +148,7 @@
                                 <div class="d-flex align-items-center">
                                     <i class="ti ti-building-bank me-2 text-primary"></i>
                                     <div>
-                                        <small class="text-secondary d-block">Bank Transfers</small>
+                                        <small class="text-secondary d-block">@Localizer["BankTransfers"]</small>
                                         <span class="fw-semibold">@FormatCurrency(m_summary.TotalBankTransfers)</span>
                                     </div>
                                 </div>
@@ -160,7 +160,7 @@
                                 <div class="d-flex align-items-center">
                                     <i class="ti ti-qrcode me-2 text-success"></i>
                                     <div>
-                                        <small class="text-secondary d-block">PromptPay</small>
+                                        <small class="text-secondary d-block">@Localizer["PromptPay"]</small>
                                         <span class="fw-semibold">@FormatCurrency(m_summary.TotalPromptPay)</span>
                                     </div>
                                 </div>
@@ -175,7 +175,7 @@
         <div class="card mb-4">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h4 class="card-title mb-0">
-                    Till Sessions
+                    @Localizer["TillSessions"]
                     <span class="badge bg-secondary ms-2">@m_summary.TotalSessions</span>
                 </h4>
                 <div class="d-flex gap-2">
@@ -183,7 +183,7 @@
                     {
                         <button type="button" class="btn btn-sm btn-primary" @onclick="VerifyAllSessions">
                             <i class="ti ti-check-all me-1"></i>
-                            Verify All
+                            @Localizer["VerifyAll"]
                         </button>
                     }
                 </div>
@@ -192,15 +192,15 @@
                 <table class="table table-vcenter card-table">
                     <thead>
                         <tr>
-                            <th>Staff</th>
-                            <th>Time</th>
-                            <th class="text-end">Float</th>
-                            <th class="text-end">Cash In</th>
-                            <th class="text-end">Cash Out</th>
-                            <th class="text-end">Expected</th>
-                            <th class="text-end">Actual</th>
-                            <th class="text-end">Variance</th>
-                            <th>Status</th>
+                            <th>@Localizer["Staff"]</th>
+                            <th>@Localizer["Time"]</th>
+                            <th class="text-end">@Localizer["Float"]</th>
+                            <th class="text-end">@Localizer["CashIn"]</th>
+                            <th class="text-end">@Localizer["CashOut"]</th>
+                            <th class="text-end">@Localizer["Expected"]</th>
+                            <th class="text-end">@Localizer["Actual"]</th>
+                            <th class="text-end">@Localizer["Variance"]</th>
+                            <th>@Localizer["Status"]</th>
                             <th class="w-1"></th>
                         </tr>
                     </thead>
@@ -212,7 +212,7 @@
                                 <td>
                                     <small>
                                         @FormatTime(session.OpenedAt) -
-                                        @(session.ClosedAt.HasValue ? FormatTime(session.ClosedAt) : "Open")
+                                        @(session.ClosedAt.HasValue ? FormatTime(session.ClosedAt) : Localizer["Open"])
                                     </small>
                                 </td>
                                 <td class="text-end">@FormatCurrency(session.OpeningFloat)</td>
@@ -281,22 +281,22 @@
                         </div>
                         <div class="col">
                             <h3 class="mb-0">
-                                Total Variance: @(m_summary.TotalVariance >= 0 ? "+" : "")@FormatCurrency(m_summary.TotalVariance)
+                                @Localizer["TotalVariance"]: @(m_summary.TotalVariance >= 0 ? "+" : "")@FormatCurrency(m_summary.TotalVariance)
                             </h3>
                             <p class="text-secondary mb-0">
                                 @if (m_summary.TotalVariance == 0)
                                 {
-                                    <text>All sessions balanced correctly</text>
+                                    @Localizer["AllSessionsBalanced"]
                                 }
                                 else
                                 {
-                                    <text>@m_summary.SessionsWithVariance session(s) with variance</text>
+                                    @Localizer["SessionsWithVariance", m_summary.SessionsWithVariance]
                                 }
                             </p>
                         </div>
                         <div class="col-auto">
                             <span class="badge @(m_summary.VerifiedSessions == m_summary.TotalSessions ? "bg-success" : "bg-warning")">
-                                @m_summary.VerifiedSessions / @m_summary.TotalSessions Verified
+                                @Localizer["VerifiedCount", m_summary.VerifiedSessions, m_summary.TotalSessions]
                             </span>
                         </div>
                     </div>
@@ -338,7 +338,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading EOD data");
-            ShowError("Failed to load End of Day data");
+            ShowError(Localizer["LoadDataFailed"]);
         }
         finally
         {
@@ -348,7 +348,7 @@
 
     private async Task ViewSessionDetails(TillSessionSummary session)
     {
-        await DialogService.Create<EodSessionDetailDialog>("Session Details")
+        await DialogService.Create<EodSessionDetailDialog>(Localizer["SessionDetails"])
             .WithParameter(x => x.SessionId, session.TillSessionId)
             .WithSize(ModalSize.Large)
             .ShowDialogAsync();
@@ -356,7 +356,7 @@
 
     private async Task VerifySession(TillSessionSummary session)
     {
-        var result = await DialogService.Create<EodVerifySessionDialog>("Verify Session")
+        var result = await DialogService.Create<EodVerifySessionDialog>(Localizer["VerifySession"])
             .WithParameter(x => x.SessionId, session.TillSessionId)
             .WithParameter(x => x.StaffName, session.StaffDisplayName)
             .WithParameter(x => x.Variance, session.Variance)
@@ -365,7 +365,7 @@
 
         if (result is { Cancelled: false })
         {
-            ShowSuccess("Session verified");
+            ShowSuccess(Localizer["SessionVerified"]);
             await LoadDataAsync();
         }
     }
@@ -380,13 +380,13 @@
 
         if (!unverified.Any())
         {
-            ShowInfo("All sessions are already verified");
+            ShowInfo(Localizer["AllSessionsAlreadyVerified"]);
             return;
         }
 
         var confirmed = await DialogService.ConfirmYesNoAsync(
-            $"Verify all {unverified.Count} unverified sessions?",
-            "Verify All Sessions");
+            Localizer["VerifyAllConfirmation", unverified.Count],
+            Localizer["VerifyAllSessions"]);
 
         if (!confirmed) return;
 
@@ -395,7 +395,7 @@
             await TillService.VerifySessionAsync(session.TillSessionId, UserName);
         }
 
-        ShowSuccess($"Verified {unverified.Count} sessions");
+        ShowSuccess(Localizer["VerifiedSessionsCount", unverified.Count]);
         await LoadDataAsync();
     }
 
@@ -417,14 +417,14 @@
         _ => "bg-secondary"
     };
 
-    private static string GetStatusText(TillSessionStatus status) => status switch
+    private string GetStatusText(TillSessionStatus status) => status switch
     {
-        TillSessionStatus.Open => "Open",
-        TillSessionStatus.Reconciling => "Reconciling",
-        TillSessionStatus.Closed => "Closed",
-        TillSessionStatus.ClosedWithVariance => "Variance",
-        TillSessionStatus.PendingVerification => "Pending",
-        TillSessionStatus.Verified => "Verified",
+        TillSessionStatus.Open => Localizer["StatusOpen"],
+        TillSessionStatus.Reconciling => Localizer["StatusReconciling"],
+        TillSessionStatus.Closed => Localizer["StatusClosed"],
+        TillSessionStatus.ClosedWithVariance => Localizer["StatusVariance"],
+        TillSessionStatus.PendingVerification => Localizer["StatusPending"],
+        TillSessionStatus.Verified => Localizer["StatusVerified"],
         _ => status.ToString()
     };
 }

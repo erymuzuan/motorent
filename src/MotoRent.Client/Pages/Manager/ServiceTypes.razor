@@ -6,20 +6,20 @@
 @inject MaintenanceService MaintenanceService
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "RequireTenantManager")]
 
-<MotoRentPageTitle>Service Types</MotoRentPageTitle>
+<MotoRentPageTitle>@Localizer["PageTitle"]</MotoRentPageTitle>
 
-<TablerHeader Title="Maintenance Service Types" PreTitle="Configuration">
+<TablerHeader Title="@Localizer["Header"]" PreTitle="@Localizer["PreTitle"]">
     <div class="btn-list">
         @if (m_serviceTypes.Count == 0 && !m_loading)
         {
             <button type="button" class="btn btn-outline-success" @onclick="CreateDefaultTypesAsync">
                 <i class="ti ti-wand me-1"></i>
-                Create Defaults
+                @Localizer["CreateDefaults"]
             </button>
         }
         <button type="button" class="btn btn-primary" @onclick="OpenAddDialogAsync">
             <i class="ti ti-plus me-1"></i>
-            Add Service Type
+            @Localizer["AddServiceType"]
         </button>
     </div>
 </TablerHeader>
@@ -30,13 +30,13 @@
         <div class="card">
             <div class="card-body text-center py-5">
                 <i class="ti ti-tool mb-3" style="font-size: 3rem; color: var(--tblr-secondary);"></i>
-                <h3>No Service Types Defined</h3>
+                <h3>@Localizer["NoServiceTypesDefined"]</h3>
                 <p class="text-secondary">
-                    Create service types to track maintenance schedules for your motorbikes.
+                    @Localizer["NoServiceTypesDescription"]
                 </p>
                 <button type="button" class="btn btn-success" @onclick="CreateDefaultTypesAsync">
                     <i class="ti ti-wand me-1"></i>
-                    Create Default Types
+                    @Localizer["CreateDefaultTypes"]
                 </button>
             </div>
         </div>
@@ -48,12 +48,12 @@
                 <table class="table table-vcenter card-table">
                     <thead>
                         <tr>
-                            <th>Name</th>
-                            <th>Description</th>
-                            <th class="text-center">Days</th>
-                            <th class="text-center">Kilometers</th>
-                            <th class="text-center">Status</th>
-                            <th class="w-1">Actions</th>
+                            <th>@Localizer["Name"]</th>
+                            <th>@Localizer["Description"]</th>
+                            <th class="text-center">@Localizer["Days"]</th>
+                            <th class="text-center">@Localizer["Kilometers"]</th>
+                            <th class="text-center">@Localizer["Status"]</th>
+                            <th class="w-1">@CommonLocalizer["Actions"]</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -62,24 +62,24 @@
                             <tr class="@(st.IsActive ? "" : "text-secondary")">
                                 <td>
                                     <strong>@st.Name</strong>
-                                    <small class="d-block text-secondary">Order: @st.SortOrder</small>
+                                    <small class="d-block text-secondary">@Localizer["Order"]: @st.SortOrder</small>
                                 </td>
                                 <td>@(st.Description ?? "-")</td>
-                                <td class="text-center">@st.DaysInterval days</td>
-                                <td class="text-center">@st.KmInterval.ToString("N0") km</td>
+                                <td class="text-center">@Localizer["DaysCount", st.DaysInterval]</td>
+                                <td class="text-center">@Localizer["KmCount", st.KmInterval.ToString("N0")]</td>
                                 <td class="text-center">
                                     <span class="badge @(st.IsActive ? "bg-success" : "bg-secondary")">
-                                        @(st.IsActive ? "Active" : "Inactive")
+                                        @(st.IsActive ? Localizer["StatusActive"] : Localizer["StatusInactive"])
                                     </span>
                                 </td>
                                 <td>
                                     <div class="btn-list flex-nowrap">
                                         <button type="button" class="btn btn-icon btn-ghost-primary"
-                                                title="Edit" @onclick="@(() => OpenEditDialogAsync(st))">
+                                                title="@CommonLocalizer["Edit"]" @onclick="@(() => OpenEditDialogAsync(st))">
                                             <i class="ti ti-edit"></i>
                                         </button>
                                         <button type="button" class="btn btn-icon btn-ghost-danger"
-                                                title="Delete" @onclick="@(() => ConfirmDeleteAsync(st))">
+                                                title="@CommonLocalizer["Delete"]" @onclick="@(() => ConfirmDeleteAsync(st))">
                                             <i class="ti ti-trash"></i>
                                         </button>
                                     </div>
@@ -92,6 +92,110 @@
         </div>
     }
 </LoadingSkeleton>
+
+@code {
+    private bool m_loading = true;
+    private List<ServiceType> m_serviceTypes = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        m_loading = true;
+        try
+        {
+            var result = await MaintenanceService.GetServiceTypesAsync(activeOnly: false);
+            m_serviceTypes = result.ItemCollection.ToList();
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private async Task OpenAddDialogAsync()
+    {
+        var serviceType = new ServiceType
+        {
+            IsActive = true,
+            DaysInterval = 30,
+            KmInterval = 3000,
+            SortOrder = m_serviceTypes.Count + 1
+        };
+
+        var result = await DialogService
+            .Create<ServiceTypeDialog>(Localizer["AddServiceType"])
+            .WithParameter(x => x.Entity, serviceType)
+            .WithParameter(x => x.IsNew, true)
+            .ShowDialogAsync();
+
+        if (!result.Cancelled)
+        {
+            await LoadDataAsync();
+            ShowSuccess(Localizer["ServiceTypeAdded"]);
+        }
+    }
+
+    private async Task OpenEditDialogAsync(ServiceType st)
+    {
+        var clone = st.Clone();
+
+        var result = await DialogService
+            .Create<ServiceTypeDialog>(Localizer["EditServiceType"])
+            .WithParameter(x => x.Entity, clone)
+            .WithParameter(x => x.IsNew, false)
+            .ShowDialogAsync();
+
+        if (!result.Cancelled)
+        {
+            await LoadDataAsync();
+            ShowSuccess(Localizer["ServiceTypeUpdated"]);
+        }
+    }
+
+    private async Task ConfirmDeleteAsync(ServiceType st)
+    {
+        if (!await ConfirmAsync(Localizer["DeleteConfirmation", st.Name],
+            Localizer["DeleteWarning"]))
+            return;
+
+        var result = await MaintenanceService.DeleteServiceTypeAsync(st, UserName);
+        if (result.Success)
+        {
+            await LoadDataAsync();
+            ShowSuccess(Localizer["ServiceTypeDeleted"]);
+        }
+        else
+        {
+            ShowError(Localizer["DeleteFailed", result.Message ?? ""]);
+        }
+    }
+
+    private async Task CreateDefaultTypesAsync()
+    {
+        m_loading = true;
+        try
+        {
+            var result = await MaintenanceService.CreateDefaultServiceTypesAsync(UserName);
+            if (result.Success)
+            {
+                await LoadDataAsync();
+                ShowSuccess(Localizer["DefaultServiceTypesCreated"]);
+            }
+            else
+            {
+                ShowError(Localizer["CreateDefaultsFailed", result.Message ?? ""]);
+            }
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+}
 
 @code {
     private bool m_loading = true;

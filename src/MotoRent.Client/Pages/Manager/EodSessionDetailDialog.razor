@@ -1,6 +1,6 @@
 @using MotoRent.Domain.Entities
 @using MotoRent.Services
-@inherits MotoRentComponentBase
+@inherits LocalizedComponentBase<EodSessionDetailDialog>
 @inject TillService TillService
 @inject IModalService ModalService
 
@@ -13,7 +13,7 @@
     }
     else if (m_session == null)
     {
-        <div class="alert alert-warning">Session not found</div>
+        <div class="alert alert-warning">@Localizer["SessionNotFound"]</div>
     }
     else
     {
@@ -32,21 +32,21 @@
                             }
                         </div>
                         <span class="badge @GetStatusBadgeClass(m_session.Status)">
-                            @m_session.Status
+                            @GetStatusText(m_session.Status)
                         </span>
                     </div>
                     <div class="col-md-6">
                         <div class="row text-center">
                             <div class="col-4">
-                                <small class="text-secondary d-block">Float</small>
+                                <small class="text-secondary d-block">@Localizer["Float"]</small>
                                 <span class="fw-semibold">@FormatCurrency(m_session.OpeningFloat)</span>
                             </div>
                             <div class="col-4">
-                                <small class="text-success d-block">Cash In</small>
+                                <small class="text-success d-block">@Localizer["CashIn"]</small>
                                 <span class="fw-semibold text-success">@FormatCurrency(m_session.TotalCashIn)</span>
                             </div>
                             <div class="col-4">
-                                <small class="text-danger d-block">Cash Out</small>
+                                <small class="text-danger d-block">@Localizer["CashOut"]</small>
                                 <span class="fw-semibold text-danger">@FormatCurrency(m_session.TotalCashOut)</span>
                             </div>
                         </div>
@@ -62,15 +62,15 @@
                 <div class="card-body">
                     <div class="row text-center">
                         <div class="col-4">
-                            <small class="text-secondary d-block">Expected</small>
+                            <small class="text-secondary d-block">@Localizer["Expected"]</small>
                             <span class="h4">@FormatCurrency(m_session.ExpectedCash)</span>
                         </div>
                         <div class="col-4">
-                            <small class="text-secondary d-block">Actual</small>
+                            <small class="text-secondary d-block">@Localizer["Actual"]</small>
                             <span class="h4">@FormatCurrency(m_session.ActualCash)</span>
                         </div>
                         <div class="col-4">
-                            <small class="text-secondary d-block">Variance</small>
+                            <small class="text-secondary d-block">@Localizer["Variance"]</small>
                             <span class="h4 @GetVarianceClass(m_session.Variance)">
                                 @(m_session.Variance >= 0 ? "+" : "")@FormatCurrency(m_session.Variance)
                             </span>
@@ -87,7 +87,7 @@
                 <div class="d-flex align-items-center">
                     <i class="ti ti-shield-check me-2" style="font-size: 1.5rem;"></i>
                     <div>
-                        <div class="fw-semibold">Verified by @m_session.VerifiedByUserName</div>
+                        <div class="fw-semibold">@Localizer["VerifiedBy", m_session.VerifiedByUserName]</div>
                         <small>@FormatDateTime(m_session.VerifiedAt)</small>
                         @if (!string.IsNullOrEmpty(m_session.VerificationNotes))
                         {
@@ -99,12 +99,12 @@
         }
 
         @* Transactions List *@
-        <h4 class="mb-3">Transactions (@m_transactions.Count)</h4>
+        <h4 class="mb-3">@Localizer["TransactionsCount", m_transactions.Count]</h4>
         @if (!m_transactions.Any())
         {
             <div class="text-center py-4 text-secondary">
                 <i class="ti ti-receipt-off" style="font-size: 2rem;"></i>
-                <div class="mt-2">No transactions</div>
+                <div class="mt-2">@Localizer["NoTransactions"]</div>
             </div>
         }
         else
@@ -155,7 +155,7 @@
 
 <div class="modal-footer">
     <button type="button" class="btn btn-secondary" @onclick="Cancel">
-        Close
+        @CommonLocalizer["Close"]
     </button>
 </div>
 
@@ -183,7 +183,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading session details");
-            ShowError("Failed to load session details");
+            ShowError(Localizer["LoadDetailsFailed"]);
         }
         finally
         {
@@ -205,6 +205,15 @@
         _ => "bg-secondary"
     };
 
+    private string GetStatusText(TillSessionStatus status) => status switch
+    {
+        TillSessionStatus.Open => Localizer["StatusOpen"],
+        TillSessionStatus.Closed => Localizer["StatusClosed"],
+        TillSessionStatus.ClosedWithVariance => Localizer["StatusVariance"],
+        TillSessionStatus.Verified => Localizer["StatusVerified"],
+        _ => status.ToString()
+    };
+
     private static string GetVarianceClass(decimal variance)
     {
         if (variance == 0) return "text-success";
@@ -212,22 +221,22 @@
         return "text-danger";
     }
 
-    private static string GetTransactionTypeName(TillTransactionType type) => type switch
+    private string GetTransactionTypeName(TillTransactionType type) => type switch
     {
-        TillTransactionType.RentalPayment => "Rental Payment",
-        TillTransactionType.BookingDeposit => "Booking Deposit",
-        TillTransactionType.SecurityDeposit => "Security Deposit",
-        TillTransactionType.DamageCharge => "Damage Charge",
-        TillTransactionType.LateFee => "Late Fee",
-        TillTransactionType.TopUp => "Top Up",
-        TillTransactionType.CardPayment => "Card Payment",
-        TillTransactionType.BankTransfer => "Bank Transfer",
-        TillTransactionType.PromptPay => "PromptPay",
-        TillTransactionType.DepositRefund => "Deposit Refund",
-        TillTransactionType.FuelReimbursement => "Fuel Reimbursement",
-        TillTransactionType.AgentCommission => "Agent Commission",
-        TillTransactionType.PettyCash => "Petty Cash",
-        TillTransactionType.Drop => "Cash Drop",
+        TillTransactionType.RentalPayment => Localizer["TxnRentalPayment"],
+        TillTransactionType.BookingDeposit => Localizer["TxnBookingDeposit"],
+        TillTransactionType.SecurityDeposit => Localizer["TxnSecurityDeposit"],
+        TillTransactionType.DamageCharge => Localizer["TxnDamageCharge"],
+        TillTransactionType.LateFee => Localizer["TxnLateFee"],
+        TillTransactionType.TopUp => Localizer["TxnTopUp"],
+        TillTransactionType.CardPayment => Localizer["TxnCardPayment"],
+        TillTransactionType.BankTransfer => Localizer["TxnBankTransfer"],
+        TillTransactionType.PromptPay => Localizer["TxnPromptPay"],
+        TillTransactionType.DepositRefund => Localizer["TxnDepositRefund"],
+        TillTransactionType.FuelReimbursement => Localizer["TxnFuelReimbursement"],
+        TillTransactionType.AgentCommission => Localizer["TxnAgentCommission"],
+        TillTransactionType.PettyCash => Localizer["TxnPettyCash"],
+        TillTransactionType.Drop => Localizer["TxnCashDrop"],
         _ => type.ToString()
     };
 

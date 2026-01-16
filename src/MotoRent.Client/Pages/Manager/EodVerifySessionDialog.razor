@@ -1,6 +1,6 @@
 @using MotoRent.Domain.Entities
 @using MotoRent.Services
-@inherits MotoRentComponentBase
+@inherits LocalizedComponentBase<EodVerifySessionDialog>
 @inject TillService TillService
 @inject IModalService ModalService
 
@@ -12,9 +12,9 @@
                 <span class="avatar avatar-xl bg-success-lt mb-3">
                     <i class="ti ti-check" style="font-size: 2rem;"></i>
                 </span>
-                <h4>Session Balanced</h4>
+                <h4>@Localizer["SessionBalanced"]</h4>
                 <p class="text-secondary">
-                    @StaffName's session closed with no variance.
+                    @Localizer["SessionBalancedMessage", StaffName]
                 </p>
             }
             else
@@ -22,13 +22,9 @@
                 <span class="avatar avatar-xl @(Variance > 0 ? "bg-info-lt" : "bg-warning-lt") mb-3">
                     <i class="@(Variance > 0 ? "ti ti-trending-up" : "ti ti-trending-down")" style="font-size: 2rem;"></i>
                 </span>
-                <h4>@(Variance > 0 ? "Cash Over" : "Cash Short")</h4>
+                <h4>@(Variance > 0 ? Localizer["CashOver"] : Localizer["CashShort"])</h4>
                 <p class="text-secondary">
-                    @StaffName's session closed with a
-                    <span class="@(Variance > 0 ? "text-info" : "text-danger") fw-bold">
-                        @FormatCurrency(Math.Abs(Variance))
-                    </span>
-                    @(Variance > 0 ? "surplus" : "shortage").
+                    @Localizer["SessionVarianceMessage", StaffName, Localizer[Variance > 0 ? "Surplus" : "Shortage"], FormatCurrency(Math.Abs(Variance))]
                 </p>
             }
         </div>
@@ -41,17 +37,11 @@
                     <div>
                         @if (Variance > 0)
                         {
-                            <text>
-                                A cash surplus may indicate an unrecorded cash drop, customer overpayment,
-                                or a counting error. Please investigate before verifying.
-                            </text>
+                            @Localizer["SurplusWarning"]
                         }
                         else
                         {
-                            <text>
-                                A cash shortage may indicate an unrecorded payout, counting error,
-                                or potential theft. Please investigate before verifying.
-                            </text>
+                            @Localizer["ShortageWarning"]
                         }
                     </div>
                 </div>
@@ -59,11 +49,11 @@
         }
 
         <div class="mb-0">
-            <label class="form-label">Verification Notes</label>
+            <label class="form-label">@Localizer["VerificationNotes"]</label>
             <textarea class="form-control" @bind="m_notes" rows="3"
                       placeholder="@GetNotesPlaceholder()"></textarea>
             <small class="form-hint">
-                Add any notes about your verification (optional but recommended for variances)
+                @Localizer["VerificationNotesHint"]
             </small>
         </div>
     </div>
@@ -71,7 +61,7 @@
 
 <div class="modal-footer">
     <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
-        Cancel
+        @CommonLocalizer["Cancel"]
     </button>
     <button type="submit" form="verifySessionForm" class="btn btn-primary" disabled="@m_saving">
         @if (m_saving)
@@ -79,7 +69,7 @@
             <span class="spinner-border spinner-border-sm me-2" role="status"></span>
         }
         <i class="ti ti-shield-check me-1"></i>
-        Verify Session
+        @Localizer["VerifySession"]
     </button>
 </div>
 
@@ -99,10 +89,10 @@
     private string GetNotesPlaceholder()
     {
         if (Variance == 0)
-            return "Session verified - no issues noted";
+            return Localizer["PlaceholderBalanced"];
         if (Variance > 0)
-            return "Explain the surplus (e.g., unrecorded drop, overpayment)";
-        return "Explain the shortage (e.g., unrecorded payout, counting error)";
+            return Localizer["PlaceholderSurplus"];
+        return Localizer["PlaceholderShortage"];
     }
 
     private void Cancel()
@@ -126,13 +116,13 @@
             }
             else
             {
-                ShowError(result.Message ?? "Failed to verify session");
+                ShowError(result.Message ?? Localizer["VerifyFailed"]);
             }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error verifying session");
-            ShowError("Failed to verify session");
+            ShowError(Localizer["VerifyError"]);
         }
         finally
         {
