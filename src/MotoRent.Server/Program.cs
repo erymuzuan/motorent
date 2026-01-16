@@ -81,6 +81,8 @@ builder.Services.AddScoped<AccidentService>();
 builder.Services.AddScoped<CommentService>();
 // Notification service
 builder.Services.AddScoped<NotificationService>();
+// Cancellation policy service
+builder.Services.AddScoped<CancellationPolicyService>();
 // Asset depreciation services
 builder.Services.AddSingleton<DepreciationCalculator>();
 builder.Services.AddScoped<AssetService>();
