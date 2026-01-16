@@ -1,61 +1,61 @@
-@inherits MotoRentComponentBase
+@using MotoRent.Domain.Entities
+@inherits LocalizedDialogBase<TillTransaction, TillCashDropDialog>
 @inject TillService TillService
-@inject IModalService ModalService
 
-<form id="cashDropForm" @onsubmit="SaveAsync" @onsubmit:preventDefault>
+<form id="cashDropForm" @onsubmit="this.SaveAsync" @onsubmit:preventDefault>
     <div class="modal-body">
         <div class="text-center mb-4">
-            <span class="avatar avatar-xl @(IsDrop ? "bg-danger-lt" : "bg-success-lt") mb-3">
-                <i class="@(IsDrop ? "ti ti-safe" : "ti ti-cash")" style="font-size: 2rem;"></i>
+            <span class="avatar avatar-xl @(this.IsDrop ? "bg-danger-lt" : "bg-success-lt") mb-3">
+                <i class="@(this.IsDrop ? "ti ti-safe" : "ti ti-cash")" style="font-size: 2rem;"></i>
             </span>
             <p class="text-secondary">
-                @if (IsDrop)
+                @if (this.IsDrop)
                 {
-                    <text>Transfer cash from your till to the safe</text>
+                    @Localizer["CashDropDescription"]
                 }
                 else
                 {
-                    <text>Add cash from the safe to your till</text>
+                    @Localizer["TopUpDescription"]
                 }
             </p>
         </div>
 
         <div class="mb-3">
-            <label class="form-label required">Amount</label>
+            <label class="form-label required">@Localizer["Amount"]</label>
             <div class="input-group input-group-lg">
                 <span class="input-group-text">฿</span>
-                <input type="number" class="form-control text-end" @bind="m_amount"
+                <input type="number" class="form-control text-end" @bind="this.Amount"
                        required min="1" step="100" placeholder="0" autofocus />
             </div>
         </div>
 
         <div class="mb-0">
-            <label class="form-label">Notes</label>
-            <textarea class="form-control" @bind="m_notes" rows="2"
-                      placeholder="Optional notes..."></textarea>
+            <label class="form-label">@Localizer["Notes"]</label>
+            <textarea class="form-control" @bind="this.Notes" rows="2"
+                      placeholder="@Localizer["NotesPlaceholder"]"></textarea>
         </div>
     </div>
 </form>
 
 <div class="modal-footer">
-    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
-        Cancel
+    <button type="button" class="btn btn-ghost-secondary" @onclick="this.Cancel">
+        @Localizer["Cancel"]
     </button>
-    <button type="submit" form="cashDropForm" class="btn @(IsDrop ? "btn-danger" : "btn-success")"
-            disabled="@m_saving">
-        @if (m_saving)
+    <button type="submit" form="cashDropForm" class="btn @(this.IsDrop ? "btn-danger" : "btn-success")"
+            disabled="@this.Saving">
+        @if (this.Saving)
         {
             <span class="spinner-border spinner-border-sm me-2" role="status"></span>
         }
-        @if (IsDrop)
+        @if (this.IsDrop)
         {
             <i class="ti ti-safe me-1"></i>
-            <text>Drop Cash</text>
+            @Localizer["DropCash"]
         }
         else
         {
             <i class="ti ti-cash me-1"></i>
-            <text>Top Up</text>
+            @Localizer["TopUp"]
         }
     </button>
 </div>
@@ -67,44 +67,44 @@
     [Parameter]
     public bool IsDrop { get; set; } = true;
 
-    private decimal m_amount;
-    private string? m_notes;
-    private bool m_saving;
+    private decimal Amount { get; set; }
+    private string? Notes { get; set; }
+    private bool Saving { get; set; }
 
     private void Cancel()
     {
-        ModalService.Close(ModalResult.Cancel());
+        this.ModalService.Close(ModalResult.Cancel());
     }
 
     private async Task SaveAsync()
     {
-        if (m_saving || m_amount <= 0) return;
+        if (this.Saving || this.Amount <= 0) return;
 
         try
         {
-            m_saving = true;
+            this.Saving = true;
 
-            var result = IsDrop
-                ? await TillService.RecordDropAsync(SessionId, m_amount, UserName, m_notes)
-                : await TillService.RecordTopUpAsync(SessionId, m_amount, UserName, m_notes);
+            var result = this.IsDrop
+                ? await this.TillService.RecordDropAsync(this.SessionId, this.Amount, this.UserName, this.Notes)
+                : await this.TillService.RecordTopUpAsync(this.SessionId, this.Amount, this.UserName, this.Notes);
 
             if (result.Success)
             {
-                ModalService.Close(ModalResult.Ok(result));
+                this.ModalService.Close(ModalResult.Ok(result));
             }
             else
             {
-                ShowError(result.Message ?? "Failed to record transaction");
+                this.ShowError(result.Message ?? "Failed to record transaction");
             }
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error recording cash drop/top up");
-            ShowError("Failed to record transaction");
+            this.Logger.LogError(ex, "Error recording cash drop/top up");
+            this.ShowError("Failed to record transaction");
         }
         finally
         {
-            m_saving = false;
+            this.Saving = false;
         }
     }
 }

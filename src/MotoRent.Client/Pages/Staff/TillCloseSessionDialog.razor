@@ -1,25 +1,24 @@
 @using MotoRent.Domain.Entities
-@inherits MotoRentComponentBase
+@inherits LocalizedDialogBase<TillSession, TillCloseSessionDialog>
 @inject TillService TillService
-@inject IModalService ModalService
 
-<form id="closeSessionForm" @onsubmit="SaveAsync" @onsubmit:preventDefault>
+<form id="closeSessionForm" @onsubmit="this.SaveAsync" @onsubmit:preventDefault>
     <div class="modal-body">
         @* Session Summary *@
         <div class="card bg-muted-lt mb-4">
             <div class="card-body py-3">
                 <div class="row text-center">
                     <div class="col-4 border-end">
-                        <small class="text-secondary d-block">Opening</small>
-                        <span class="fw-semibold">@FormatCurrency(Entity.OpeningFloat)</span>
+                        <small class="text-secondary d-block">@Localizer["Opening"]</small>
+                        <span class="fw-semibold">@this.FormatCurrency(this.Entity.OpeningFloat)</span>
                     </div>
                     <div class="col-4 border-end">
-                        <small class="text-success d-block">Cash In</small>
-                        <span class="fw-semibold text-success">+@FormatCurrency(Entity.TotalCashIn)</span>
+                        <small class="text-success d-block">@Localizer["CashIn"]</small>
+                        <span class="fw-semibold text-success">+@this.FormatCurrency(this.Entity.TotalCashIn)</span>
                     </div>
                     <div class="col-4">
-                        <small class="text-danger d-block">Cash Out</small>
-                        <span class="fw-semibold text-danger">-@FormatCurrency(Entity.TotalCashOut + Entity.TotalDropped)</span>
+                        <small class="text-danger d-block">@Localizer["CashOut"]</small>
+                        <span class="fw-semibold text-danger">-@this.FormatCurrency(this.Entity.TotalCashOut + this.Entity.TotalDropped)</span>
                     </div>
                 </div>
             </div>
@@ -28,43 +27,43 @@
         @* Expected vs Actual *@
         <div class="row g-3 mb-4">
             <div class="col-6">
-                <label class="form-label">Expected Cash</label>
+                <label class="form-label">@Localizer["ExpectedCash"]</label>
                 <div class="form-control-plaintext h3 mb-0">
-                    @FormatCurrency(Entity.ExpectedCash)
+                    @this.FormatCurrency(this.Entity.ExpectedCash)
                 </div>
             </div>
             <div class="col-6">
-                <label class="form-label required">Actual Cash Count</label>
+                <label class="form-label required">@Localizer["ActualCashCount"]</label>
                 <div class="input-group input-group-lg">
                     <span class="input-group-text">฿</span>
-                    <input type="number" class="form-control text-end" @bind="m_actualCash"
+                    <input type="number" class="form-control text-end" @bind="this.ActualCash"
                            @bind:event="oninput" required min="0" step="100" autofocus />
                 </div>
             </div>
         </div>
 
         @* Variance Display *@
-        @if (m_actualCash > 0 || HasEnteredAmount)
+        @if (this.ActualCash > 0 || this.HasEnteredAmount)
         {
-            var variance = m_actualCash - Entity.ExpectedCash;
+            var variance = this.ActualCash - this.Entity.ExpectedCash;
             var varianceClass = variance == 0 ? "bg-success-lt text-success" :
                                variance > 0 ? "bg-info-lt text-info" :
                                "bg-danger-lt text-danger";
             var varianceIcon = variance == 0 ? "ti-check" :
                               variance > 0 ? "ti-trending-up" :
                               "ti-trending-down";
-            var varianceText = variance == 0 ? "Balanced" :
-                              variance > 0 ? "Over" : "Short";
+            var varianceText = variance == 0 ? Localizer["Balanced"].Value :
+                              variance > 0 ? Localizer["Over"].Value : Localizer["Short"].Value;
 
             <div class="alert @varianceClass mb-4">
                 <div class="d-flex align-items-center">
                     <i class="ti @varianceIcon me-2" style="font-size: 1.5rem;"></i>
                     <div>
-                        <div class="fw-semibold">@varianceText: @FormatCurrency(Math.Abs(variance))</div>
+                        <div class="fw-semibold">@varianceText: @this.FormatCurrency(Math.Abs(variance))</div>
                         @if (variance != 0)
                         {
                             <small>
-                                @(variance > 0 ? "Your till has more cash than expected" : "Your till is short by this amount")
+                                @(variance > 0 ? Localizer["OverMessage"].Value : Localizer["ShortMessage"].Value)
                             </small>
                         }
                     </div>
@@ -73,38 +72,38 @@
         }
 
         @* Variance Acknowledgment *@
-        @if (HasVariance)
+        @if (this.HasVariance)
         {
             <div class="mb-3">
                 <label class="form-check">
-                    <input type="checkbox" class="form-check-input" @bind="m_acknowledgeVariance" />
+                    <input type="checkbox" class="form-check-input" @bind="this.AcknowledgeVariance" />
                     <span class="form-check-label">
-                        I acknowledge this variance and confirm the cash count is correct
+                        @Localizer["AcknowledgeVariance"]
                     </span>
                 </label>
             </div>
         }
 
         <div class="mb-0">
-            <label class="form-label">Closing Notes</label>
-            <textarea class="form-control" @bind="m_notes" rows="2"
-                      placeholder="Any notes about closing the till..."></textarea>
+            <label class="form-label">@Localizer["ClosingNotes"]</label>
+            <textarea class="form-control" @bind="this.Notes" rows="2"
+                      placeholder="@Localizer["ClosingNotesPlaceholder"]"></textarea>
         </div>
     </div>
 </form>
 
 <div class="modal-footer">
-    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
-        Cancel
+    <button type="button" class="btn btn-ghost-secondary" @onclick="this.Cancel">
+        @Localizer["Cancel"]
     </button>
     <button type="submit" form="closeSessionForm" class="btn btn-primary"
-            disabled="@(!CanClose)">
-        @if (m_saving)
+            disabled="@(!this.CanClose)">
+        @if (this.Saving)
         {
             <span class="spinner-border spinner-border-sm me-2" role="status"></span>
         }
         <i class="ti ti-logout me-1"></i>
-        Close Session
+        @Localizer["CloseSession"]
     </button>
 </div>
 
@@ -112,57 +111,57 @@
     [Parameter]
     public TillSession Entity { get; set; } = new();
 
-    private decimal m_actualCash;
-    private string? m_notes;
-    private bool m_acknowledgeVariance;
-    private bool m_saving;
+    private decimal ActualCash { get; set; }
+    private string? Notes { get; set; }
+    private bool AcknowledgeVariance { get; set; }
+    private bool Saving { get; set; }
 
-    private bool HasEnteredAmount => m_actualCash > 0;
-    private bool HasVariance => HasEnteredAmount && m_actualCash != Entity.ExpectedCash;
-    private bool CanClose => !m_saving && HasEnteredAmount && (!HasVariance || m_acknowledgeVariance);
+    private bool HasEnteredAmount => this.ActualCash > 0;
+    private bool HasVariance => this.HasEnteredAmount && this.ActualCash != this.Entity.ExpectedCash;
+    private bool CanClose => !this.Saving && this.HasEnteredAmount && (!this.HasVariance || this.AcknowledgeVariance);
 
     protected override void OnParametersSet()
     {
         // Pre-fill with expected amount
-        m_actualCash = Entity.ExpectedCash;
+        this.ActualCash = this.Entity.ExpectedCash;
     }
 
     private void Cancel()
     {
-        ModalService.Close(ModalResult.Cancel());
+        this.ModalService.Close(ModalResult.Cancel());
     }
 
     private async Task SaveAsync()
     {
-        if (!CanClose) return;
+        if (!this.CanClose) return;
 
         try
         {
-            m_saving = true;
+            this.Saving = true;
 
-            var result = await TillService.CloseSessionAsync(
-                Entity.TillSessionId,
-                m_actualCash,
-                m_notes,
-                UserName);
+            var result = await this.TillService.CloseSessionAsync(
+                this.Entity.TillSessionId,
+                this.ActualCash,
+                this.Notes,
+                this.UserName);
 
             if (result.Success)
             {
-                ModalService.Close(ModalResult.Ok(result));
+                this.ModalService.Close(ModalResult.Ok(result));
             }
             else
             {
-                ShowError(result.Message ?? "Failed to close session");
+                this.ShowError(result.Message ?? "Failed to close session");
             }
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error closing till session");
-            ShowError("Failed to close session");
+            this.Logger.LogError(ex, "Error closing till session");
+            this.ShowError("Failed to close session");
         }
         finally
         {
-            m_saving = false;
+            this.Saving = false;
         }
     }
 }

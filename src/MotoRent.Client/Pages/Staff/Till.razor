@@ -2,30 +2,20 @@
 @using MotoRent.Domain.Entities
 @using MotoRent.Services
 @using Microsoft.AspNetCore.Authorization
-@inherits MotoRentComponentBase
+@inherits LocalizedComponentBase<Till>
 @attribute [Authorize(Policy = "RequireTenantStaff")]
 @inject TillService TillService
 @inject ShopService ShopService
 
-<PageTitle>Cashier Till - MotoRent</PageTitle>
+<MotoRentPageTitle>@Localizer["CashierTill"]</MotoRentPageTitle>
 
-@if (m_loading)
+@if (this.Loading)
 {
     <div class="container-xl py-4">
-        <div class="progress progress-sm mb-3">
-            <div class="progress-bar progress-bar-indeterminate"></div>
-        </div>
-        <div class="placeholder-glow">
-            <div class="card mb-3">
-                <div class="card-body">
-                    <span class="placeholder col-4"></span>
-                    <span class="placeholder col-6"></span>
-                </div>
-            </div>
-        </div>
+        <LoadingSkeleton Loading="true" Mode="LoadingSkeleton.PlaceholderMode.Card" />
     </div>
 }
-else if (m_session == null)
+else if (this.Session is null)
 {
     @* No active session - show Open Session UI *@
     <div class="container-xl py-4">
@@ -34,7 +24,7 @@ else if (m_session == null)
                 <div class="col">
                     <h2 class="page-title">
                         <i class="ti ti-cash-register me-2"></i>
-                        Cashier Till
+                        @Localizer["CashierTill"]
                     </h2>
                 </div>
             </div>
@@ -49,13 +39,13 @@ else if (m_session == null)
                                 <i class="ti ti-lock-open" style="font-size: 2rem;"></i>
                             </span>
                         </div>
-                        <h3>Start Your Shift</h3>
+                        <h3>@Localizer["StartYourShift"]</h3>
                         <p class="text-secondary mb-4">
-                            Open a new till session to start recording transactions
+                            @Localizer["OpenNewTillSessionDescription"]
                         </p>
-                        <button type="button" class="btn btn-primary btn-lg" @onclick="OpenSessionDialog">
+                        <button type="button" class="btn btn-primary btn-lg" @onclick="this.OpenSessionDialog">
                             <i class="ti ti-plus me-2"></i>
-                            Open Till Session
+                            @Localizer["OpenTillSession"]
                         </button>
                     </div>
                 </div>
@@ -66,23 +56,23 @@ else if (m_session == null)
 else
 {
     @* Active session - show Till Dashboard *@
-    <div class="container-xl py-3">
+    <div class="container-xl py-3 mt-5">
         @* Session Header *@
         <div class="card bg-primary text-white mb-3">
             <div class="card-body py-3">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <div class="d-flex align-items-center gap-2">
-                            <span class="badge bg-white text-primary">OPEN</span>
-                            <span class="fw-semibold">@m_session.StaffDisplayName</span>
+                            <span class="badge bg-white text-primary">@Localizer["Open"]</span>
+                            <span class="fw-semibold">@this.Session!.StaffDisplayName</span>
                         </div>
                         <small class="text-white-50">
-                            Started @FormatDateTime(m_session.OpenedAt)
+                            @Localizer["Started"] @this.FormatDateTime(this.Session.OpenedAt)
                         </small>
                     </div>
                     <div class="text-end">
-                        <small class="text-white-50">Opening Float</small>
-                        <div class="h3 mb-0">@FormatCurrency(m_session.OpeningFloat)</div>
+                        <small class="text-white-50">@Localizer["OpeningFloat"]</small>
+                        <div class="h3 mb-0">@this.FormatCurrency(this.Session.OpeningFloat)</div>
                     </div>
                 </div>
             </div>
@@ -98,8 +88,8 @@ else
                                 <i class="ti ti-arrow-down-left text-success"></i>
                             </span>
                             <div>
-                                <small class="text-secondary d-block">Cash In</small>
-                                <span class="h3 mb-0 text-success">@FormatCurrency(m_session.TotalCashIn)</span>
+                                <small class="text-secondary d-block">@Localizer["CashIn"]</small>
+                                <span class="h3 mb-0 text-success">@this.FormatCurrency(this.Session.TotalCashIn)</span>
                             </div>
                         </div>
                     </div>
@@ -113,8 +103,8 @@ else
                                 <i class="ti ti-arrow-up-right text-danger"></i>
                             </span>
                             <div>
-                                <small class="text-secondary d-block">Cash Out</small>
-                                <span class="h3 mb-0 text-danger">@FormatCurrency(m_session.TotalCashOut)</span>
+                                <small class="text-secondary d-block">@Localizer["CashOut"]</small>
+                                <span class="h3 mb-0 text-danger">@this.FormatCurrency(this.Session.TotalCashOut)</span>
                             </div>
                         </div>
                     </div>
@@ -125,49 +115,49 @@ else
         @* Expected Balance *@
         <div class="card mb-3">
             <div class="card-body py-3 text-center">
-                <small class="text-secondary">Expected Cash in Till</small>
-                <div class="h1 mb-0">@FormatCurrency(m_session.ExpectedCash)</div>
-                @if (m_session.TotalDropped > 0)
+                <small class="text-secondary">@Localizer["ExpectedCashInTill"]</small>
+                <div class="h1 mb-0">@this.FormatCurrency(this.Session.ExpectedCash)</div>
+                @if (this.Session.TotalDropped > 0)
                 {
                     <small class="text-secondary">
                         <i class="ti ti-safe me-1"></i>
-                        @FormatCurrency(m_session.TotalDropped) dropped to safe
+                        @Localizer["DroppedToSafe", $"{this.Session.TotalDropped:N0}"]
                     </small>
                 }
             </div>
         </div>
 
         @* Non-Cash Summary (if any) *@
-        @if (m_session.TotalNonCashPayments > 0)
+        @if (this.Session.TotalNonCashPayments > 0)
         {
             <div class="card mb-3">
                 <div class="card-header py-2">
                     <h4 class="card-title mb-0">
                         <i class="ti ti-credit-card me-2"></i>
-                        Non-Cash Payments
+                        @Localizer["NonCashPayments"]
                     </h4>
                 </div>
                 <div class="card-body py-2">
                     <div class="row g-2 text-center">
-                        @if (m_session.TotalCardPayments > 0)
+                        @if (this.Session.TotalCardPayments > 0)
                         {
                             <div class="col">
-                                <small class="text-secondary d-block">Card</small>
-                                <span class="fw-semibold">@FormatCurrency(m_session.TotalCardPayments)</span>
+                                <small class="text-secondary d-block">@Localizer["Card"]</small>
+                                <span class="fw-semibold">@this.FormatCurrency(this.Session.TotalCardPayments)</span>
                             </div>
                         }
-                        @if (m_session.TotalBankTransfers > 0)
+                        @if (this.Session.TotalBankTransfers > 0)
                         {
                             <div class="col">
-                                <small class="text-secondary d-block">Bank Transfer</small>
-                                <span class="fw-semibold">@FormatCurrency(m_session.TotalBankTransfers)</span>
+                                <small class="text-secondary d-block">@Localizer["BankTransfer"]</small>
+                                <span class="fw-semibold">@this.FormatCurrency(this.Session.TotalBankTransfers)</span>
                             </div>
                         }
-                        @if (m_session.TotalPromptPay > 0)
+                        @if (this.Session.TotalPromptPay > 0)
                         {
                             <div class="col">
-                                <small class="text-secondary d-block">PromptPay</small>
-                                <span class="fw-semibold">@FormatCurrency(m_session.TotalPromptPay)</span>
+                                <small class="text-secondary d-block">@Localizer["PromptPay"]</small>
+                                <span class="fw-semibold">@this.FormatCurrency(this.Session.TotalPromptPay)</span>
                             </div>
                         }
                     </div>
@@ -178,29 +168,29 @@ else
         @* Quick Actions *@
         <div class="card mb-3">
             <div class="card-header py-2">
-                <h4 class="card-title mb-0">Quick Payouts</h4>
+                <h4 class="card-title mb-0">@Localizer["QuickPayouts"]</h4>
             </div>
             <div class="card-body py-2">
                 <div class="row g-2">
                     <div class="col-4">
                         <button type="button" class="btn btn-outline-warning w-100"
-                                @onclick="@(() => RecordPayoutDialog(TillTransactionType.FuelReimbursement))">
+                                @onclick="@(() => this.RecordPayoutDialog(TillTransactionType.FuelReimbursement))">
                             <i class="ti ti-gas-station d-block mb-1" style="font-size: 1.5rem;"></i>
-                            <small>Fuel</small>
+                            <small>@Localizer["Fuel"]</small>
                         </button>
                     </div>
                     <div class="col-4">
                         <button type="button" class="btn btn-outline-info w-100"
-                                @onclick="@(() => RecordPayoutDialog(TillTransactionType.AgentCommission))">
+                                @onclick="@(() => this.RecordPayoutDialog(TillTransactionType.AgentCommission))">
                             <i class="ti ti-users d-block mb-1" style="font-size: 1.5rem;"></i>
-                            <small>Agent</small>
+                            <small>@Localizer["Agent"]</small>
                         </button>
                     </div>
                     <div class="col-4">
                         <button type="button" class="btn btn-outline-secondary w-100"
-                                @onclick="@(() => RecordPayoutDialog(TillTransactionType.PettyCash))">
+                                @onclick="@(() => this.RecordPayoutDialog(TillTransactionType.PettyCash))">
                             <i class="ti ti-wallet d-block mb-1" style="font-size: 1.5rem;"></i>
-                            <small>Petty Cash</small>
+                            <small>@Localizer["PettyCash"]</small>
                         </button>
                     </div>
                 </div>
@@ -210,26 +200,26 @@ else
         @* Till Operations *@
         <div class="card mb-3">
             <div class="card-header py-2">
-                <h4 class="card-title mb-0">Till Operations</h4>
+                <h4 class="card-title mb-0">@Localizer["TillOperations"]</h4>
             </div>
             <div class="card-body py-2">
                 <div class="row g-2">
                     <div class="col-4">
-                        <button type="button" class="btn btn-outline-danger w-100" @onclick="CashDropDialog">
+                        <button type="button" class="btn btn-outline-danger w-100" @onclick="this.CashDropDialog">
                             <i class="ti ti-safe d-block mb-1" style="font-size: 1.5rem;"></i>
-                            <small>Cash Drop</small>
+                            <small>@Localizer["CashDrop"]</small>
                         </button>
                     </div>
                     <div class="col-4">
-                        <button type="button" class="btn btn-outline-success w-100" @onclick="TopUpDialog">
+                        <button type="button" class="btn btn-outline-success w-100" @onclick="this.TopUpDialog">
                             <i class="ti ti-cash d-block mb-1" style="font-size: 1.5rem;"></i>
-                            <small>Top Up</small>
+                            <small>@Localizer["TopUp"]</small>
                         </button>
                     </div>
                     <div class="col-4">
-                        <button type="button" class="btn btn-primary w-100" @onclick="CloseSessionDialog">
+                        <button type="button" class="btn btn-primary w-100" @onclick="this.CloseSessionDialog">
                             <i class="ti ti-logout d-block mb-1" style="font-size: 1.5rem;"></i>
-                            <small>Close Shift</small>
+                            <small>@Localizer["CloseShift"]</small>
                         </button>
                     </div>
                 </div>
@@ -239,22 +229,22 @@ else
         @* Recent Transactions *@
         <div class="card">
             <div class="card-header py-2 d-flex justify-content-between align-items-center">
-                <h4 class="card-title mb-0">Recent Transactions</h4>
-                <button type="button" class="btn btn-sm btn-ghost-secondary" @onclick="ViewHistoryDialog">
-                    View All
+                <h4 class="card-title mb-0">@Localizer["RecentTransactions"]</h4>
+                <button type="button" class="btn btn-sm btn-ghost-secondary" @onclick="this.ViewHistoryDialog">
+                    @Localizer["ViewAll"]
                 </button>
             </div>
             <div class="list-group list-group-flush">
-                @if (!m_recentTransactions.Any())
+                @if (!this.RecentTransactions.Any())
                 {
                     <div class="list-group-item text-center text-secondary py-4">
                         <i class="ti ti-receipt-off" style="font-size: 2rem;"></i>
-                        <div class="mt-2">No transactions yet</div>
+                        <div class="mt-2">@Localizer["NoTransactionsYet"]</div>
                     </div>
                 }
                 else
                 {
-                    @foreach (var txn in m_recentTransactions)
+                    @foreach (var txn in this.RecentTransactions)
                     {
                         <div class="list-group-item">
                             <div class="d-flex justify-content-between align-items-start">
@@ -269,9 +259,9 @@ else
                                 </div>
                                 <div class="text-end">
                                     <div class="@GetAmountColorClass(txn) fw-semibold">
-                                        @(txn.Direction == TillTransactionDirection.In ? "+" : "-")@FormatCurrency(txn.Amount)
+                                        @(txn.Direction == TillTransactionDirection.In ? "+" : "-")@this.FormatCurrency(txn.Amount)
                                     </div>
-                                    <small class="text-secondary">@FormatTime(txn.TransactionTime)</small>
+                                    <small class="text-secondary">@this.FormatTime(txn.TransactionTime)</small>
                                 </div>
                             </div>
                         </div>
@@ -283,138 +273,138 @@ else
 }
 
 @code {
-    private bool m_loading = true;
-    private int m_shopId;
-    private TillSession? m_session;
-    private List<TillTransaction> m_recentTransactions = [];
+    private bool Loading { get; set; } = true;
+    private int ShopId { get; set; }
+    private TillSession? Session { get; set; }
+    private List<TillTransaction> RecentTransactions { get; set; } = [];
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadDataAsync();
+        await this.LoadDataAsync();
     }
 
     private async Task LoadDataAsync()
     {
         try
         {
-            m_loading = true;
+            this.Loading = true;
 
             // Get current shop
-            var shops = await ShopService.GetShopsAsync(page: 1, pageSize: 1);
+            var shops = await this.ShopService.GetShopsAsync(page: 1, pageSize: 1);
             if (shops.ItemCollection.Any())
             {
-                m_shopId = shops.ItemCollection.First().ShopId;
+                this.ShopId = shops.ItemCollection.First().ShopId;
 
                 // Get active session
-                m_session = await TillService.GetActiveSessionAsync(m_shopId, UserName);
+                this.Session = await this.TillService.GetActiveSessionAsync(this.ShopId, this.UserName);
 
                 // Load recent transactions if session exists
-                if (m_session != null)
+                if (this.Session is not null)
                 {
-                    m_recentTransactions = await TillService.GetRecentTransactionsAsync(m_session.TillSessionId, 10);
+                    this.RecentTransactions = await this.TillService.GetRecentTransactionsAsync(this.Session.TillSessionId, 10);
                 }
             }
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error loading till data");
-            ShowError("Failed to load till data");
+            this.Logger.LogError(ex, "Error loading till data");
+            this.ShowError("Failed to load till data");
         }
         finally
         {
-            m_loading = false;
+            this.Loading = false;
         }
     }
 
     private async Task OpenSessionDialog()
     {
-        var result = await DialogService.Create<TillOpenSessionDialog>("Open Till Session")
-            .WithParameter(x => x.ShopId, m_shopId)
+        var result = await this.DialogService.Create<TillOpenSessionDialog>("Open Till Session")
+            .WithParameter(x => x.ShopId, this.ShopId)
             .WithSize(ModalSize.Medium)
             .ShowDialogAsync();
 
         if (result is { Cancelled: false })
         {
-            ShowSuccess("Till session opened");
-            await LoadDataAsync();
+            this.ShowSuccess("Till session opened");
+            await this.LoadDataAsync();
         }
     }
 
     private async Task CloseSessionDialog()
     {
-        if (m_session == null) return;
+        if (this.Session is null) return;
 
-        var result = await DialogService.Create<TillCloseSessionDialog>("Close Till Session")
-            .WithParameter(x => x.Entity, m_session)
+        var result = await this.DialogService.Create<TillCloseSessionDialog>("Close Till Session")
+            .WithParameter(x => x.Entity, this.Session)
             .WithSize(ModalSize.Medium)
             .ShowDialogAsync();
 
         if (result is { Cancelled: false })
         {
-            ShowSuccess("Till session closed");
-            m_session = null;
-            m_recentTransactions.Clear();
-            StateHasChanged();
+            this.ShowSuccess("Till session closed");
+            this.Session = null;
+            this.RecentTransactions.Clear();
+            this.StateHasChanged();
         }
     }
 
     private async Task RecordPayoutDialog(TillTransactionType type)
     {
-        if (m_session == null) return;
+        if (this.Session is null) return;
 
-        var result = await DialogService.Create<TillRecordPayoutDialog>(GetTransactionTypeName(type))
-            .WithParameter(x => x.SessionId, m_session.TillSessionId)
+        var result = await this.DialogService.Create<TillRecordPayoutDialog>(GetTransactionTypeName(type))
+            .WithParameter(x => x.SessionId, this.Session.TillSessionId)
             .WithParameter(x => x.PayoutType, type)
             .WithSize(ModalSize.Medium)
             .ShowDialogAsync();
 
         if (result is { Cancelled: false })
         {
-            ShowSuccess("Payout recorded");
-            await LoadDataAsync();
+            this.ShowSuccess("Payout recorded");
+            await this.LoadDataAsync();
         }
     }
 
     private async Task CashDropDialog()
     {
-        if (m_session == null) return;
+        if (this.Session is null) return;
 
-        var result = await DialogService.Create<TillCashDropDialog>("Cash Drop")
-            .WithParameter(x => x.SessionId, m_session.TillSessionId)
+        var result = await this.DialogService.Create<TillCashDropDialog>("Cash Drop")
+            .WithParameter(x => x.SessionId, this.Session.TillSessionId)
             .WithParameter(x => x.IsDrop, true)
             .WithSize(ModalSize.Small)
             .ShowDialogAsync();
 
         if (result is { Cancelled: false })
         {
-            ShowSuccess("Cash drop recorded");
-            await LoadDataAsync();
+            this.ShowSuccess("Cash drop recorded");
+            await this.LoadDataAsync();
         }
     }
 
     private async Task TopUpDialog()
     {
-        if (m_session == null) return;
+        if (this.Session is null) return;
 
-        var result = await DialogService.Create<TillCashDropDialog>("Top Up")
-            .WithParameter(x => x.SessionId, m_session.TillSessionId)
+        var result = await this.DialogService.Create<TillCashDropDialog>("Top Up")
+            .WithParameter(x => x.SessionId, this.Session.TillSessionId)
             .WithParameter(x => x.IsDrop, false)
             .WithSize(ModalSize.Small)
             .ShowDialogAsync();
 
         if (result is { Cancelled: false })
         {
-            ShowSuccess("Top up recorded");
-            await LoadDataAsync();
+            this.ShowSuccess("Top up recorded");
+            await this.LoadDataAsync();
         }
     }
 
     private async Task ViewHistoryDialog()
     {
-        if (m_session == null) return;
+        if (this.Session is null) return;
 
-        await DialogService.Create<TillHistoryDialog>("Transaction History")
-            .WithParameter(x => x.SessionId, m_session.TillSessionId)
+        await this.DialogService.Create<TillHistoryDialog>("Transaction History")
+            .WithParameter(x => x.SessionId, this.Session.TillSessionId)
             .WithSize(ModalSize.Large)
             .ShowDialogAsync();
     }

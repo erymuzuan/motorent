@@ -1,26 +1,25 @@
 @using MotoRent.Domain.Entities
-@inherits MotoRentComponentBase
+@inherits LocalizedDialogBase<TillTransaction, TillHistoryDialog>
 @inject TillService TillService
-@inject IModalService ModalService
 
 <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
-    @if (m_loading)
+    @if (this.Loading)
     {
         <div class="progress progress-sm mb-3">
             <div class="progress-bar progress-bar-indeterminate"></div>
         </div>
     }
-    else if (!m_transactions.Any())
+    else if (!this.Transactions.Any())
     {
         <div class="text-center py-5 text-secondary">
             <i class="ti ti-receipt-off" style="font-size: 3rem;"></i>
-            <div class="mt-2">No transactions recorded</div>
+            <div class="mt-2">@Localizer["NoTransactionsRecorded"]</div>
         </div>
     }
     else
     {
         <div class="list-group list-group-flush">
-            @foreach (var txn in m_transactions)
+            @foreach (var txn in this.Transactions)
             {
                 <div class="list-group-item px-0">
                     <div class="d-flex justify-content-between align-items-start">
@@ -47,10 +46,10 @@
                         </div>
                         <div class="text-end">
                             <div class="@GetAmountColorClass(txn) fw-bold">
-                                @(txn.Direction == TillTransactionDirection.In ? "+" : "-")@FormatCurrency(txn.Amount)
+                                @(txn.Direction == TillTransactionDirection.In ? "+" : "-")@this.FormatCurrency(txn.Amount)
                             </div>
                             <small class="text-secondary">
-                                @FormatDateTime(txn.TransactionTime)
+                                @this.FormatDateTime(txn.TransactionTime)
                             </small>
                         </div>
                     </div>
@@ -67,8 +66,8 @@
 </div>
 
 <div class="modal-footer">
-    <button type="button" class="btn btn-secondary" @onclick="Cancel">
-        Close
+    <button type="button" class="btn btn-secondary" @onclick="this.Cancel">
+        @Localizer["Close"]
     </button>
 </div>
 
@@ -76,35 +75,35 @@
     [Parameter]
     public int SessionId { get; set; }
 
-    private bool m_loading = true;
-    private List<TillTransaction> m_transactions = [];
+    private bool Loading { get; set; } = true;
+    private List<TillTransaction> Transactions { get; set; } = [];
 
     protected override async Task OnParametersSetAsync()
     {
-        await LoadDataAsync();
+        await this.LoadDataAsync();
     }
 
     private async Task LoadDataAsync()
     {
         try
         {
-            m_loading = true;
-            m_transactions = await TillService.GetTransactionsAsync(SessionId);
+            this.Loading = true;
+            this.Transactions = await this.TillService.GetTransactionsAsync(this.SessionId);
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error loading transactions");
-            ShowError("Failed to load transactions");
+            this.Logger.LogError(ex, "Error loading transactions");
+            this.ShowError("Failed to load transactions");
         }
         finally
         {
-            m_loading = false;
+            this.Loading = false;
         }
     }
 
     private void Cancel()
     {
-        ModalService.Close(ModalResult.Cancel());
+        this.ModalService.Close(ModalResult.Cancel());
     }
 
     private static string GetTransactionTypeName(TillTransactionType type) => type switch
