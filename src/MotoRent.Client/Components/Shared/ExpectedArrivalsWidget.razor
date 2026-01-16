@@ -1,0 +1,136 @@
+@using MotoRent.Domain.Entities
+@using MotoRent.Services
+@inherits LocalizedComponentBase<ExpectedArrivalsWidget>
+@inject BookingService BookingService
+
+<div class="mr-card">
+    <div class="mr-card-header">
+        <div class="mr-card-title">
+            <i class="ti ti-calendar-event me-2 text-primary"></i>@this.Localizer["ExpectedArrivals"]
+            @if (this.m_bookings.Count > 0)
+            {
+                <span class="badge bg-primary ms-2">@this.m_totalRows</span>
+            }
+        </div>
+        <a href="/bookings" class="btn btn-sm btn-outline-primary">
+            @this.Localizer["ViewAll"] <i class="ti ti-arrow-right ms-1"></i>
+        </a>
+    </div>
+    <div class="mr-card-body p-0">
+        <LoadingSkeleton Loading="@this.m_loading" Mode="LoadingSkeleton.PlaceholderMode.List" Rows="3">
+            <div class="list-group list-group-flush">
+                @if (this.m_bookings.Count == 0)
+                {
+                    <div class="list-group-item text-center text-secondary py-4">
+                        <i class="ti ti-calendar-off fs-1 d-block mb-2 opacity-50"></i>
+                        @this.Localizer["NoExpectedArrivals"]
+                    </div>
+                }
+                else
+                {
+                    @foreach (var booking in this.m_bookings)
+                    {
+                        <a href="/bookings/@booking.BookingRef" class="list-group-item list-group-item-action d-flex align-items-center">
+                            <div class="me-3">
+                                @if (booking.PaymentStatus == BookingPaymentStatus.FullyPaid)
+                                {
+                                    <span class="avatar avatar-sm bg-success-lt" title="@this.Localizer["FullyPaid"]">
+                                        <i class="ti ti-check"></i>
+                                    </span>
+                                }
+                                else if (booking.PaymentStatus == BookingPaymentStatus.PartiallyPaid)
+                                {
+                                    <span class="avatar avatar-sm bg-warning-lt" title="@this.Localizer["PartiallyPaid"]">
+                                        <i class="ti ti-clock"></i>
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="avatar avatar-sm bg-danger-lt" title="@this.Localizer["Unpaid"]">
+                                        <i class="ti ti-currency-baht"></i>
+                                    </span>
+                                }
+                            </div>
+                            <div class="flex-fill">
+                                <div class="fw-bold">@booking.CustomerName</div>
+                                <div class="text-secondary small">
+                                    @booking.BookingRef - @booking.Items.Count @(booking.Items.Count == 1 ? this.Localizer["Vehicle"] : this.Localizer["Vehicles"])
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <div class="small @(this.IsToday(booking.StartDate) ? "text-primary fw-bold" : "text-secondary")">
+                                    @this.FormatArrivalDate(booking.StartDate)
+                                </div>
+                                @if (booking.PickupTime.HasValue)
+                                {
+                                    <div class="small text-secondary">@booking.PickupTime.Value.ToString(@"hh\:mm")</div>
+                                }
+                                <a href="/rentals/checkin/@booking.BookingRef" class="btn btn-icon btn-sm btn-ghost-primary"
+                                   title="@this.Localizer["StartCheckIn"]" @onclick:stopPropagation="true">
+                                    <i class="ti ti-login"></i>
+                                </a>
+                            </div>
+                        </a>
+                    }
+                }
+            </div>
+        </LoadingSkeleton>
+    </div>
+</div>
+
+@code {
+    private List<Booking> m_bookings = [];
+    private int m_totalRows;
+    private bool m_loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await this.LoadBookingsAsync();
+    }
+
+    private async Task LoadBookingsAsync()
+    {
+        this.m_loading = true;
+        try
+        {
+            // Get today's and tomorrow's expected arrivals
+            var today = DateTimeOffset.Now.Date;
+            var dayAfterTomorrow = today.AddDays(2);
+
+            var result = await this.BookingService.GetUpcomingBookingsAsync(
+                today,
+                dayAfterTomorrow,
+                page: 1,
+                size: 5);
+
+            this.m_bookings = result.ItemCollection;
+            this.m_totalRows = result.TotalRows;
+        }
+        catch (Exception ex)
+        {
+            this.Logger.LogError(ex, "Error loading expected arrivals for widget");
+        }
+        finally
+        {
+            this.m_loading = false;
+        }
+    }
+
+    private bool IsToday(DateTimeOffset date)
+    {
+        return date.Date == DateTimeOffset.Now.Date;
+    }
+
+    private string FormatArrivalDate(DateTimeOffset date)
+    {
+        if (date.Date == DateTimeOffset.Now.Date)
+        {
+            return this.Localizer["Today"];
+        }
+        else if (date.Date == DateTimeOffset.Now.Date.AddDays(1))
+        {
+            return this.Localizer["Tomorrow"];
+        }
+        return date.ToString("dd MMM");
+    }
+}

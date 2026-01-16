@@ -174,6 +174,23 @@ public class BookingService
     }
 
     /// <summary>
+    /// Gets upcoming bookings for a date range with pagination (for dashboard widget).
+    /// </summary>
+    public async Task<LoadOperation<Booking>> GetUpcomingBookingsAsync(
+        DateTimeOffset startDate,
+        DateTimeOffset endDate,
+        int page = 1,
+        int size = 10)
+    {
+        var query = m_context.CreateQuery<Booking>()
+            .Where(b => b.StartDate >= startDate && b.StartDate < endDate)
+            .Where(b => b.Status == BookingStatus.Pending || b.Status == BookingStatus.Confirmed)
+            .OrderBy(b => b.StartDate);
+
+        return await m_context.LoadAsync(query, page, size, includeTotalRows: true);
+    }
+
+    /// <summary>
     /// Generates a unique 6-character booking reference.
     /// </summary>
     public async Task<string> GenerateBookingRefAsync()
