@@ -136,6 +136,118 @@ public class MaintenanceService(RentalDataContext context)
         return await session.SubmitChanges("RecordService");
     }
 
+    #endregion
+
+    #region MaintenanceRecord Operations (Detailed History)
+
+    /// <summary>
+    /// Creates a detailed maintenance record with photos and documents
+    /// </summary>
+    public async Task<(SubmitOperation Operation, MaintenanceRecord? Record)> CreateMaintenanceRecordAsync(
+        CreateMaintenanceRecordRequest request, string username)
+    {
+        var serviceType = await this.Context.LoadOneAsync<ServiceType>(
+            st => st.ServiceTypeId == request.ServiceTypeId);
+
+        if (serviceType == null)
+            return (SubmitOperation.CreateFailure("Service type not found"), null);
+
+        var vehicle = await this.Context.LoadOneAsync<Vehicle>(
+            v => v.VehicleId == request.VehicleId);
+
+        if (vehicle == null)
+            return (SubmitOperation.CreateFailure("Vehicle not found"), null);
+
+        // Create the detailed record
+        var record = new MaintenanceRecord
+        {
+            VehicleId = request.VehicleId,
+            ServiceTypeId = request.ServiceTypeId,
+            ServiceTypeName = serviceType.Name,
+            ServiceDate = request.ServiceDate,
+            ServiceMileage = request.ServiceMileage,
+            Cost = request.Cost,
+            Workshop = request.Workshop ?? new WorkshopInfo(),
+            Notes = request.Notes,
+            Photos = request.Photos ?? [],
+            Documents = request.Documents ?? []
+        };
+
+        using var session = this.Context.OpenSession(username);
+        session.Attach(record);
+
+        // Also update the maintenance schedule to track next-due status
+        var schedule = await this.Context.LoadOneAsync<MaintenanceSchedule>(
+            ms => ms.MotorbikeId == request.VehicleId && ms.ServiceTypeId == request.ServiceTypeId);
+
+        if (schedule == null)
+        {
+            schedule = new MaintenanceSchedule
+            {
+                MotorbikeId = request.VehicleId,
+                ServiceTypeId = request.ServiceTypeId,
+                ServiceTypeName = serviceType.Name,
+                MotorbikeName = $"{vehicle.Brand} {vehicle.Model} ({vehicle.LicensePlate})"
+            };
+        }
+
+        schedule.LastServiceDate = request.ServiceDate;
+        schedule.LastServiceMileage = request.ServiceMileage;
+        schedule.LastServiceBy = request.Workshop?.Name;
+        schedule.LastServiceNotes = request.Notes;
+        schedule.NextDueDate = request.ServiceDate.AddDays(serviceType.DaysInterval);
+        schedule.NextDueMileage = request.ServiceMileage + serviceType.KmInterval;
+        session.Attach(schedule);
+
+        // Update vehicle's last service date
+        vehicle.LastServiceDate = request.ServiceDate;
+        session.Attach(vehicle);
+
+        var result = await session.SubmitChanges("CreateMaintenanceRecord");
+        return (result, result.Success ? record : null);
+    }
+
+    /// <summary>
+    /// Gets maintenance records for a vehicle
+    /// </summary>
+    public async Task<List<MaintenanceRecord>> GetMaintenanceRecordsAsync(int vehicleId)
+    {
+        var result = await this.Context.LoadAsync(
+            this.Context.CreateQuery<MaintenanceRecord>()
+                .Where(r => r.VehicleId == vehicleId)
+                .OrderByDescending(r => r.ServiceDate),
+            page: 1, size: 100, includeTotalRows: false);
+        return result.ItemCollection.ToList();
+    }
+
+    /// <summary>
+    /// Gets a single maintenance record by ID
+    /// </summary>
+    public async Task<MaintenanceRecord?> GetMaintenanceRecordByIdAsync(int recordId)
+    {
+        return await this.Context.LoadOneAsync<MaintenanceRecord>(r => r.MaintenanceRecordId == recordId);
+    }
+
+    /// <summary>
+    /// Updates a maintenance record
+    /// </summary>
+    public async Task<SubmitOperation> UpdateMaintenanceRecordAsync(MaintenanceRecord record, string username)
+    {
+        using var session = this.Context.OpenSession(username);
+        session.Attach(record);
+        return await session.SubmitChanges("UpdateMaintenanceRecord");
+    }
+
+    /// <summary>
+    /// Deletes a maintenance record
+    /// </summary>
+    public async Task<SubmitOperation> DeleteMaintenanceRecordAsync(MaintenanceRecord record, string username)
+    {
+        using var session = this.Context.OpenSession(username);
+        session.Delete(record);
+        return await session.SubmitChanges("DeleteMaintenanceRecord");
+    }
+
     public async Task<SubmitOperation> InitializeSchedulesForMotorbikeAsync(int motorbikeId, string username)
     {
         // Get all active service types
@@ -283,6 +395,35 @@ public class MaintenanceService(RentalDataContext context)
         };
     }
 
+    /// <summary>
+    /// Gets maintenance summary for a Vehicle entity (unified vehicle system).
+    /// </summary>
+    public async Task<VehicleMaintenanceSummary> GetVehicleMaintenanceSummaryAsync(
+        int vehicleId, int? currentMileage, DateTimeOffset today)
+    {
+        var schedules = await this.GetSchedulesWithStatusForMotorbikeAsync(
+            vehicleId, currentMileage ?? 0, today);
+
+        var overdueCount = schedules.Count(s => s.Status == MaintenanceStatus.Overdue);
+        var dueSoonCount = schedules.Count(s => s.Status == MaintenanceStatus.DueSoon);
+
+        return new VehicleMaintenanceSummary
+        {
+            VehicleId = vehicleId,
+            OverallStatus = overdueCount > 0
+                ? MaintenanceStatus.Overdue
+                : dueSoonCount > 0
+                    ? MaintenanceStatus.DueSoon
+                    : MaintenanceStatus.Ok,
+            Schedules = schedules,
+            OverdueCount = overdueCount,
+            DueSoonCount = dueSoonCount,
+            OkCount = schedules.Count(s => s.Status == MaintenanceStatus.Ok),
+            TotalSchedules = schedules.Count,
+            HasSchedules = schedules.Count > 0
+        };
+    }
+
     public async Task<MaintenanceSummary> GetMaintenanceSummaryAsync(DateTimeOffset today)
     {
         var bikesResult = await this.Context.LoadAsync(
@@ -360,6 +501,34 @@ public class MaintenanceSummary
     public int DueSoonBikes { get; set; }
     public int OkBikes { get; set; }
     public int TotalBikes { get; set; }
+}
+
+public class VehicleMaintenanceSummary
+{
+    public int VehicleId { get; set; }
+    public MaintenanceStatus OverallStatus { get; set; }
+    public List<MaintenanceScheduleWithStatus> Schedules { get; set; } = [];
+    public int OverdueCount { get; set; }
+    public int DueSoonCount { get; set; }
+    public int OkCount { get; set; }
+    public int TotalSchedules { get; set; }
+    public bool HasSchedules { get; set; }
+}
+
+/// <summary>
+/// Request object for creating a detailed maintenance record
+/// </summary>
+public class CreateMaintenanceRecordRequest
+{
+    public int VehicleId { get; set; }
+    public int ServiceTypeId { get; set; }
+    public DateTimeOffset ServiceDate { get; set; }
+    public int ServiceMileage { get; set; }
+    public decimal? Cost { get; set; }
+    public WorkshopInfo? Workshop { get; set; }
+    public string? Notes { get; set; }
+    public List<MaintenancePhoto>? Photos { get; set; }
+    public List<MaintenanceDocument>? Documents { get; set; }
 }
 
 #endregion

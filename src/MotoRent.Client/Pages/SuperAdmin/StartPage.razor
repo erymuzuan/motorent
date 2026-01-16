@@ -244,11 +244,13 @@
         this.m_organizationCount = await this.CoreDataContext.GetCountAsync(this.CoreDataContext.Organizations);
         this.m_userCount = await this.CoreDataContext.GetCountAsync(this.CoreDataContext.Users);
 
-        var errorSeverities = new[] { LogSeverity.Error, LogSeverity.Critical };
-        this.m_recentErrorCount = await this.CoreDataContext.GetCountAsync(
-            this.CoreDataContext.LogEntries
-                .Where(x => errorSeverities.IsInList(x.LogSeverity))
-                .Where(x => x.Status == LogStatus.New));
+        // Load recent error logs and count in memory (enum to string comparison issue with SQL)
+        var logsResult = await this.CoreDataContext.LoadAsync(
+            this.CoreDataContext.LogEntries.OrderByDescending(x => x.DateTime),
+            page: 1, size: 100, includeTotalRows: false);
+        this.m_recentErrorCount = logsResult.ItemCollection
+            .Count(x => (x.LogSeverity == LogSeverity.Error || x.LogSeverity == LogSeverity.Critical)
+                        && x.Status == LogStatus.New);
 
         this.m_openSupportCount = await this.CoreDataContext.GetCountAsync(
             this.CoreDataContext.SupportRequests

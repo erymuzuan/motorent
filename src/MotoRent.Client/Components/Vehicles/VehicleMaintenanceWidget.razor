@@ -1,0 +1,190 @@
+@using MotoRent.Domain.Entities
+@using MotoRent.Services
+
+@inherits LocalizedComponentBase<VehicleMaintenanceWidget>
+@inject MaintenanceService MaintenanceService
+
+<div class="mr-maintenance-summary">
+    @if (m_loading)
+    {
+        <div class="d-flex align-items-center text-secondary">
+            <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+            <span>@Localizer["LoadingMaintenance"]</span>
+        </div>
+    }
+    else if (m_summary == null || !m_summary.HasSchedules)
+    {
+        <div class="mr-info-panel mr-info-panel-sm">
+            <div class="mr-info-panel-icon">
+                <i class="ti ti-calendar-off"></i>
+            </div>
+            <div class="flex-grow-1">
+                <p class="mr-info-panel-text mb-0">@Localizer["NoMaintenanceSchedules"]</p>
+                <a href="/maintenance/alerts" class="small">@Localizer["ViewMaintenancePage"]</a>
+            </div>
+            <a href="/vehicles/@EncodeId(VehicleId)/maintenance/add" class="btn btn-ghost-primary btn-sm">
+                <i class="ti ti-plus me-1"></i>
+                @Localizer["AddRecord"]
+            </a>
+        </div>
+    }
+    else
+    {
+        <div class="d-flex flex-column gap-3">
+            @* Overall Status *@
+            <div class="d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-2">
+                    <MaintenanceStatusBadge Status="@m_summary.OverallStatus"
+                                            OverdueCount="@m_summary.OverdueCount"
+                                            DueSoonCount="@m_summary.DueSoonCount" />
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="/vehicles/@EncodeId(VehicleId)/maintenance/add" class="btn btn-ghost-primary btn-sm">
+                        <i class="ti ti-plus me-1"></i>
+                        @Localizer["AddRecord"]
+                    </a>
+                    <a href="/maintenance/alerts" class="btn btn-ghost-secondary btn-sm">
+                        <i class="ti ti-external-link me-1"></i>
+                        @Localizer["ViewAll"]
+                    </a>
+                </div>
+            </div>
+
+            @* Service Status Summary *@
+            <div class="row g-2">
+                @if (m_summary.OverdueCount > 0)
+                {
+                    <div class="col-auto">
+                        <div class="mr-stat-mini mr-stat-danger">
+                            <i class="ti ti-alert-circle"></i>
+                            <span>@m_summary.OverdueCount @Localizer["Overdue"]</span>
+                        </div>
+                    </div>
+                }
+                @if (m_summary.DueSoonCount > 0)
+                {
+                    <div class="col-auto">
+                        <div class="mr-stat-mini mr-stat-warning">
+                            <i class="ti ti-clock-exclamation"></i>
+                            <span>@m_summary.DueSoonCount @Localizer["DueSoon"]</span>
+                        </div>
+                    </div>
+                }
+                @if (m_summary.OkCount > 0)
+                {
+                    <div class="col-auto">
+                        <div class="mr-stat-mini mr-stat-success">
+                            <i class="ti ti-circle-check"></i>
+                            <span>@m_summary.OkCount @Localizer["UpToDate"]</span>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            @* Upcoming Services Preview *@
+            @if (m_summary.Schedules.Any(s => s.Status != MaintenanceStatus.Ok))
+            {
+                <div class="mr-service-list">
+                    @foreach (var schedule in m_summary.Schedules
+                        .Where(s => s.Status != MaintenanceStatus.Ok)
+                        .OrderBy(s => s.Status == MaintenanceStatus.Overdue ? 0 : 1)
+                        .Take(3))
+                    {
+                        <div class="mr-service-item @GetServiceItemClass(schedule.Status)">
+                            <div class="d-flex align-items-center">
+                                <i class="@GetServiceIcon(schedule.Status) me-2"></i>
+                                <span class="fw-medium">@schedule.Schedule.ServiceTypeName</span>
+                            </div>
+                            <div class="small text-secondary">
+                                @if (schedule.Schedule.NextDueDate.HasValue)
+                                {
+                                    <span>@FormatDueDate(schedule.Schedule.NextDueDate.Value)</span>
+                                }
+                                @if (schedule.Schedule.NextDueMileage.HasValue)
+                                {
+                                    <text> / @schedule.Schedule.NextDueMileage.Value.ToString("N0") km</text>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// The vehicle ID to show maintenance summary for.
+    /// </summary>
+    [Parameter]
+    public int VehicleId { get; set; }
+
+    /// <summary>
+    /// The vehicle name for display in dialogs.
+    /// </summary>
+    [Parameter]
+    public string VehicleName { get; set; } = "";
+
+    /// <summary>
+    /// Current mileage of the vehicle (for status calculation).
+    /// </summary>
+    [Parameter]
+    public int? CurrentMileage { get; set; }
+
+    private VehicleMaintenanceSummary? m_summary;
+    private bool m_loading = true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (this.VehicleId > 0)
+        {
+            await this.LoadSummaryAsync();
+        }
+    }
+
+    private async Task LoadSummaryAsync()
+    {
+        this.m_loading = true;
+        try
+        {
+            this.m_summary = await this.MaintenanceService.GetVehicleMaintenanceSummaryAsync(
+                this.VehicleId, this.CurrentMileage, DateTimeOffset.Now);
+        }
+        finally
+        {
+            this.m_loading = false;
+        }
+    }
+
+    private static string GetServiceItemClass(MaintenanceStatus status) => status switch
+    {
+        MaintenanceStatus.Overdue => "mr-service-item-danger",
+        MaintenanceStatus.DueSoon => "mr-service-item-warning",
+        _ => ""
+    };
+
+    private static string GetServiceIcon(MaintenanceStatus status) => status switch
+    {
+        MaintenanceStatus.Overdue => "ti ti-alert-circle text-danger",
+        MaintenanceStatus.DueSoon => "ti ti-clock-exclamation text-warning",
+        _ => "ti ti-circle-check text-success"
+    };
+
+    private string FormatDueDate(DateTimeOffset dueDate)
+    {
+        var today = DateTimeOffset.Now.Date;
+        var due = dueDate.Date;
+        var diff = (due - today).Days;
+
+        if (diff < 0)
+            return this.Localizer["OverdueByDays", Math.Abs(diff)];
+        if (diff == 0)
+            return this.Localizer["DueToday"];
+        if (diff == 1)
+            return this.Localizer["DueTomorrow"];
+        if (diff <= 7)
+            return this.Localizer["DueInDays", diff];
+        return due.ToString("d MMM");
+    }
+}

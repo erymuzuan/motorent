@@ -36,6 +36,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IRepository<ServiceType>, Repository<ServiceType>>();
         services.AddSingleton<IRepository<MaintenanceSchedule>, Repository<MaintenanceSchedule>>();
         services.AddSingleton<IRepository<MaintenanceAlert>, Repository<MaintenanceAlert>>();
+        services.AddSingleton<IRepository<MaintenanceRecord>, Repository<MaintenanceRecord>>();
         // Dynamic pricing entities
         services.AddSingleton<IRepository<PricingRule>, Repository<PricingRule>>();
         // Third-party owner entities
