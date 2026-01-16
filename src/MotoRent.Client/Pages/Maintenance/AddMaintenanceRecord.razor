@@ -1,0 +1,475 @@
+@page "/vehicles/{VehicleIdEncoded}/maintenance/add"
+@using MotoRent.Domain.Entities
+@using MotoRent.Domain.Storage
+@using MotoRent.Services
+@inherits LocalizedComponentBase<AddMaintenanceRecord>
+@inject MaintenanceService MaintenanceService
+@inject VehicleService VehicleService
+@inject IBinaryStore BinaryStore
+
+<MotoRentPageTitle>@Localizer["AddMaintenanceRecord"]</MotoRentPageTitle>
+
+@* Page Header *@
+<div class="mr-page-header">
+    <div class="container-xl">
+        <nav class="mr-breadcrumb">
+            <span class="mr-breadcrumb-item"><a href="/"><i class="ti ti-home"></i></a></span>
+            <span class="mr-breadcrumb-separator"><i class="ti ti-chevron-right"></i></span>
+            <span class="mr-breadcrumb-item"><a href="/vehicles">@Localizer["Fleet"]</a></span>
+            <span class="mr-breadcrumb-separator"><i class="ti ti-chevron-right"></i></span>
+            <span class="mr-breadcrumb-item"><a href="/vehicles/@VehicleIdEncoded/edit">@m_vehicleName</a></span>
+            <span class="mr-breadcrumb-separator"><i class="ti ti-chevron-right"></i></span>
+            <span class="mr-breadcrumb-item active">@Localizer["AddMaintenanceRecord"]</span>
+        </nav>
+
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="mr-page-title">
+                    <i class="ti ti-tool"></i>
+                    @Localizer["AddMaintenanceRecord"]
+                </h1>
+                <p class="mr-page-subtitle">@m_vehicleName</p>
+            </div>
+            <a href="/vehicles/@VehicleIdEncoded/edit" class="mr-btn-header-action">
+                <i class="ti ti-arrow-left"></i>
+                @Localizer["BackToVehicle"]
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="container-xl">
+    @if (m_loading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2 text-muted">@Localizer["Loading"]...</p>
+        </div>
+    }
+    else if (m_vehicle == null)
+    {
+        <div class="alert alert-danger">
+            <i class="ti ti-alert-circle me-2"></i>
+            @Localizer["VehicleNotFound"]
+        </div>
+    }
+    else
+    {
+        <form id="maintenance-form" @onsubmit="SaveAsync" @onsubmit:preventDefault>
+            <div class="row">
+                @* Left Column: Service Details *@
+                <div class="col-lg-8">
+                    @* Service Type & Date Card *@
+                    <div class="mr-form-panel mb-3">
+                        <div class="mr-form-panel-header">
+                            <div class="mr-form-panel-header-icon">
+                                <i class="ti ti-settings"></i>
+                            </div>
+                            <h3 class="mr-form-panel-title">@Localizer["ServiceDetails"]</h3>
+                        </div>
+                        <div class="mr-form-panel-body">
+                            @* Service Type *@
+                            <div class="mb-3">
+                                <label class="mr-form-label">@Localizer["ServiceType"] <span class="required">*</span></label>
+                                @if (m_loadingServiceTypes)
+                                {
+                                    <div class="text-muted">
+                                        <span class="spinner-border spinner-border-sm me-2"></span>
+                                        @Localizer["LoadingServiceTypes"]...
+                                    </div>
+                                }
+                                else if (m_serviceTypes.Count == 0)
+                                {
+                                    <div class="alert alert-warning mb-0">
+                                        <i class="ti ti-alert-triangle me-2"></i>
+                                        @Localizer["NoServiceTypesConfigured"]
+                                    </div>
+                                }
+                                else
+                                {
+                                    <select class="mr-form-control" @bind="m_record.ServiceTypeId" required>
+                                        <option value="0">@Localizer["SelectServiceType"]</option>
+                                        @foreach (var st in m_serviceTypes)
+                                        {
+                                            <option value="@st.ServiceTypeId">@st.Name</option>
+                                        }
+                                    </select>
+                                }
+                            </div>
+
+                            <div class="row g-3">
+                                @* Service Date *@
+                                <div class="col-md-4">
+                                    <label class="mr-form-label">@Localizer["ServiceDate"] <span class="required">*</span></label>
+                                    <input type="date" class="mr-form-control" @bind="m_serviceDate" required
+                                           max="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                                </div>
+
+                                @* Mileage at Service *@
+                                <div class="col-md-4">
+                                    <label class="mr-form-label">@Localizer["MileageAtService"]</label>
+                                    <div class="input-group">
+                                        <input type="number" class="mr-form-control" @bind="m_record.ServiceMileage"
+                                               min="0" placeholder="@((m_vehicle.Mileage ?? 0).ToString("N0"))" />
+                                        <span class="input-group-text">km</span>
+                                    </div>
+                                    <div class="mr-form-hint">
+                                        @Localizer["CurrentMileage", (m_vehicle.Mileage ?? 0).ToString("N0")]
+                                    </div>
+                                </div>
+
+                                @* Cost *@
+                                <div class="col-md-4">
+                                    <label class="mr-form-label">@Localizer["Cost"]</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">฿</span>
+                                        <input type="number" class="mr-form-control" @bind="m_record.Cost"
+                                               step="0.01" min="0" placeholder="0.00" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            @* Notes *@
+                            <div class="mt-3">
+                                <label class="mr-form-label">@Localizer["Notes"]</label>
+                                <textarea class="mr-form-control" @bind="m_record.Notes" rows="3"
+                                          placeholder="@Localizer["NotesPlaceholder"]"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    @* Workshop Info Card *@
+                    <div class="mr-form-panel mb-3">
+                        <div class="mr-form-panel-header">
+                            <div class="mr-form-panel-header-icon">
+                                <i class="ti ti-building-garage"></i>
+                            </div>
+                            <h3 class="mr-form-panel-title">@Localizer["WorkshopInfo"]</h3>
+                        </div>
+                        <div class="mr-form-panel-body">
+                            <div class="row g-3">
+                                @* Workshop Name *@
+                                <div class="col-md-6">
+                                    <label class="mr-form-label">@Localizer["WorkshopName"]</label>
+                                    <input type="text" class="mr-form-control" @bind="m_record.Workshop.Name"
+                                           placeholder="@Localizer["WorkshopNamePlaceholder"]" />
+                                </div>
+
+                                @* Phone *@
+                                <div class="col-md-6">
+                                    <label class="mr-form-label">@Localizer["Phone"]</label>
+                                    <input type="tel" class="mr-form-control" @bind="m_record.Workshop.Phone"
+                                           placeholder="@Localizer["PhonePlaceholder"]" />
+                                </div>
+
+                                @* Address *@
+                                <div class="col-12">
+                                    <label class="mr-form-label">@Localizer["Address"]</label>
+                                    <input type="text" class="mr-form-control" @bind="m_record.Workshop.Address"
+                                           placeholder="@Localizer["AddressPlaceholder"]" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    @* Action Buttons *@
+                    <div class="mr-card mb-4">
+                        <div class="mr-card-footer d-flex justify-content-between align-items-center">
+                            <a href="/vehicles/@VehicleIdEncoded/edit" class="btn btn-ghost-secondary">
+                                <i class="ti ti-x me-1"></i>@Localizer["Cancel"]
+                            </a>
+                            <button type="submit" class="mr-btn-primary-action" disabled="@(m_saving || m_record.ServiceTypeId == 0)">
+                                @if (m_saving)
+                                {
+                                    <span class="spinner-border spinner-border-sm" role="status"></span>
+                                    <span>@Localizer["Saving"]...</span>
+                                }
+                                else
+                                {
+                                    <i class="ti ti-device-floppy"></i>
+                                    <span>@Localizer["SaveRecord"]</span>
+                                }
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                @* Right Column: Photos & Documents *@
+                <div class="col-lg-4">
+                    @* Photos Card *@
+                    <div class="mr-form-panel mb-3">
+                        <div class="mr-form-panel-header">
+                            <div class="mr-form-panel-header-icon">
+                                <i class="ti ti-photo"></i>
+                            </div>
+                            <h3 class="mr-form-panel-title">@Localizer["Photos"]</h3>
+                            <span class="badge bg-secondary ms-auto">@m_record.Photos.Count / @c_maxPhotos</span>
+                        </div>
+                        <div class="mr-form-panel-body">
+                            <p class="text-muted small mb-3">@Localizer["PhotosHint"]</p>
+
+                            @* Photo Grid *@
+                            @if (m_record.Photos.Count > 0)
+                            {
+                                <div class="row g-2 mb-3">
+                                    @foreach (var photo in m_record.Photos)
+                                    {
+                                        <div class="col-4">
+                                            <div class="position-relative">
+                                                <img src="@BinaryStore.GetImageUrl(photo.StoreId)"
+                                                     alt="@(photo.Caption ?? "Photo")"
+                                                     class="img-thumbnail w-100"
+                                                     style="height: 80px; object-fit: cover;" />
+                                                <button type="button"
+                                                        class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1 p-0"
+                                                        style="width: 20px; height: 20px; line-height: 1;"
+                                                        @onclick="@(() => RemovePhoto(photo))"
+                                                        title="@Localizer["Remove"]">
+                                                    <i class="ti ti-x" style="font-size: 12px;"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+
+                            @* Upload Zone *@
+                            @if (m_record.Photos.Count < c_maxPhotos)
+                            {
+                                <ImageUpload StoreId="@m_pendingPhotoStoreId"
+                                             StoreIdChanged="OnPhotoUploaded"
+                                             Title="@Localizer["UploadPhoto"]"
+                                             HelpHint="@Localizer["DropOrClick"]"
+                                             Capture="ImageUpload.CameraCapture.Environment" />
+                            }
+                            else
+                            {
+                                <div class="text-center text-muted py-3">
+                                    <i class="ti ti-photo-check fs-3 mb-2 d-block"></i>
+                                    @Localizer["MaxPhotosReached"]
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    @* Documents Card *@
+                    <div class="mr-form-panel mb-3">
+                        <div class="mr-form-panel-header">
+                            <div class="mr-form-panel-header-icon">
+                                <i class="ti ti-file-text"></i>
+                            </div>
+                            <h3 class="mr-form-panel-title">@Localizer["Documents"]</h3>
+                            <span class="badge bg-secondary ms-auto">@m_record.Documents.Count / @c_maxDocuments</span>
+                        </div>
+                        <div class="mr-form-panel-body">
+                            <p class="text-muted small mb-3">@Localizer["DocumentsHint"]</p>
+
+                            @* Document List *@
+                            @if (m_record.Documents.Count > 0)
+                            {
+                                <div class="list-group list-group-flush mb-3">
+                                    @foreach (var doc in m_record.Documents)
+                                    {
+                                        <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                            <div class="d-flex align-items-center">
+                                                <i class="ti @GetDocumentIcon(doc.DocumentType) me-2 text-primary"></i>
+                                                <div>
+                                                    <div class="fw-medium small">@(doc.FileName ?? doc.DocumentType)</div>
+                                                    <div class="text-muted" style="font-size: 0.75rem;">@doc.DocumentType</div>
+                                                </div>
+                                            </div>
+                                            <button type="button" class="btn btn-ghost-danger btn-sm p-1"
+                                                    @onclick="@(() => RemoveDocument(doc))"
+                                                    title="@Localizer["Remove"]">
+                                                <i class="ti ti-trash" style="font-size: 14px;"></i>
+                                            </button>
+                                        </div>
+                                    }
+                                </div>
+                            }
+
+                            @* Upload Document *@
+                            @if (m_record.Documents.Count < c_maxDocuments)
+                            {
+                                <div class="mb-2">
+                                    <label class="mr-form-label small">@Localizer["DocumentType"]</label>
+                                    <select class="form-select form-select-sm" @bind="m_pendingDocumentType">
+                                        <option value="Receipt">@Localizer["Receipt"]</option>
+                                        <option value="Invoice">@Localizer["Invoice"]</option>
+                                        <option value="Warranty">@Localizer["Warranty"]</option>
+                                        <option value="Other">@Localizer["Other"]</option>
+                                    </select>
+                                </div>
+                                <FileUpload StoreId="@m_pendingDocumentStoreId"
+                                            StoreIdChanged="OnDocumentUploaded"
+                                            AcceptedExtensions=".pdf,.jpg,.jpeg,.png" />
+                            }
+                            else
+                            {
+                                <div class="text-center text-muted py-3">
+                                    <i class="ti ti-file-check fs-3 mb-2 d-block"></i>
+                                    @Localizer["MaxDocumentsReached"]
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    }
+</div>
+
+@code {
+    private const int c_maxPhotos = 10;
+    private const int c_maxDocuments = 5;
+
+    [Parameter]
+    public string VehicleIdEncoded { get; set; } = "";
+
+    private Vehicle? m_vehicle;
+    private string m_vehicleName = "";
+    private bool m_loading = true;
+    private bool m_loadingServiceTypes = true;
+    private bool m_saving;
+    private DateTime m_serviceDate = DateTime.Today;
+    private List<ServiceType> m_serviceTypes = [];
+    private MaintenanceRecord m_record = new();
+
+    // Pending upload state
+    private string? m_pendingPhotoStoreId;
+    private string? m_pendingDocumentStoreId;
+    private string m_pendingDocumentType = "Receipt";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        m_loading = true;
+        try
+        {
+            var vehicleId = DecodeId(VehicleIdEncoded);
+            m_vehicle = await VehicleService.GetVehicleByIdAsync(vehicleId);
+
+            if (m_vehicle != null)
+            {
+                m_vehicleName = $"{m_vehicle.Brand} {m_vehicle.Model} ({m_vehicle.LicensePlate})";
+                m_record = new MaintenanceRecord
+                {
+                    VehicleId = vehicleId,
+                    ServiceMileage = m_vehicle.Mileage ?? 0
+                };
+
+                // Load service types
+                m_loadingServiceTypes = true;
+                StateHasChanged();
+
+                var serviceTypesResult = await MaintenanceService.GetServiceTypesAsync(activeOnly: true);
+                m_serviceTypes = serviceTypesResult.ItemCollection.ToList();
+                m_loadingServiceTypes = false;
+            }
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private async Task OnPhotoUploaded(string? storeId)
+    {
+        if (string.IsNullOrEmpty(storeId)) return;
+        if (m_record.Photos.Count >= c_maxPhotos) return;
+
+        m_record.Photos.Add(new MaintenancePhoto
+        {
+            StoreId = storeId,
+            UploadedOn = DateTimeOffset.Now
+        });
+
+        m_pendingPhotoStoreId = null;
+        StateHasChanged();
+    }
+
+    private void RemovePhoto(MaintenancePhoto photo)
+    {
+        m_record.Photos.Remove(photo);
+    }
+
+    private async Task OnDocumentUploaded(string? storeId)
+    {
+        if (string.IsNullOrEmpty(storeId)) return;
+        if (m_record.Documents.Count >= c_maxDocuments) return;
+
+        m_record.Documents.Add(new MaintenanceDocument
+        {
+            StoreId = storeId,
+            DocumentType = m_pendingDocumentType,
+            UploadedOn = DateTimeOffset.Now
+        });
+
+        m_pendingDocumentStoreId = null;
+        m_pendingDocumentType = "Receipt";
+        StateHasChanged();
+    }
+
+    private void RemoveDocument(MaintenanceDocument doc)
+    {
+        m_record.Documents.Remove(doc);
+    }
+
+    private static string GetDocumentIcon(string docType) => docType switch
+    {
+        "Receipt" => "ti-receipt",
+        "Invoice" => "ti-file-invoice",
+        "Warranty" => "ti-certificate",
+        _ => "ti-file"
+    };
+
+    private async Task SaveAsync()
+    {
+        if (m_record.ServiceTypeId == 0)
+        {
+            ShowError(Localizer["PleaseSelectServiceType"]);
+            return;
+        }
+
+        m_saving = true;
+        try
+        {
+            var request = new CreateMaintenanceRecordRequest
+            {
+                VehicleId = m_record.VehicleId,
+                ServiceTypeId = m_record.ServiceTypeId,
+                ServiceDate = new DateTimeOffset(m_serviceDate, TimeSpan.Zero),
+                ServiceMileage = m_record.ServiceMileage,
+                Cost = m_record.Cost,
+                Workshop = m_record.Workshop,
+                Notes = m_record.Notes,
+                Photos = m_record.Photos,
+                Documents = m_record.Documents
+            };
+
+            var (result, record) = await MaintenanceService.CreateMaintenanceRecordAsync(request, UserName);
+
+            if (result.Success)
+            {
+                ShowSuccess(Localizer["RecordSavedSuccessfully"]);
+                NavigationManager.NavigateTo($"/vehicles/{VehicleIdEncoded}/edit");
+            }
+            else
+            {
+                ShowError(result.Message ?? Localizer["SaveFailed"]);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowError($"{Localizer["Error"]}: {ex.Message}");
+        }
+        finally
+        {
+            m_saving = false;
+        }
+    }
+}

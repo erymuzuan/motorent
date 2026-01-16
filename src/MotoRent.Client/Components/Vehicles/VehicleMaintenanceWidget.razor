@@ -1,10 +1,8 @@
 @using MotoRent.Domain.Entities
 @using MotoRent.Services
-@using MotoRent.Client.Pages.Maintenance
 
 @inherits LocalizedComponentBase<VehicleMaintenanceWidget>
 @inject MaintenanceService MaintenanceService
-@inject DialogService DialogService
 
 <div class="mr-maintenance-summary">
     @if (m_loading)
@@ -24,10 +22,10 @@
                 <p class="mr-info-panel-text mb-0">@Localizer["NoMaintenanceSchedules"]</p>
                 <a href="/maintenance/alerts" class="small">@Localizer["ViewMaintenancePage"]</a>
             </div>
-            <button type="button" class="btn btn-ghost-primary btn-sm" @onclick="AddMaintenanceRecordAsync">
+            <a href="/vehicles/@EncodeId(VehicleId)/maintenance/add" class="btn btn-ghost-primary btn-sm">
                 <i class="ti ti-plus me-1"></i>
                 @Localizer["AddRecord"]
-            </button>
+            </a>
         </div>
     }
     else
@@ -41,10 +39,10 @@
                                             DueSoonCount="@m_summary.DueSoonCount" />
                 </div>
                 <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-ghost-primary btn-sm" @onclick="AddMaintenanceRecordAsync">
+                    <a href="/vehicles/@EncodeId(VehicleId)/maintenance/add" class="btn btn-ghost-primary btn-sm">
                         <i class="ti ti-plus me-1"></i>
                         @Localizer["AddRecord"]
-                    </button>
+                    </a>
                     <a href="/maintenance/alerts" class="btn btn-ghost-secondary btn-sm">
                         <i class="ti ti-external-link me-1"></i>
                         @Localizer["ViewAll"]
@@ -188,21 +186,5 @@
         if (diff <= 7)
             return this.Localizer["DueInDays", diff];
         return due.ToString("d MMM");
-    }
-
-    private async Task AddMaintenanceRecordAsync()
-    {
-        var result = await this.DialogService.Create<AddMaintenanceRecordDialog>(this.Localizer["AddMaintenanceRecord"])
-            .WithParameter(x => x.VehicleId, this.VehicleId)
-            .WithParameter(x => x.VehicleName, this.VehicleName)
-            .WithParameter(x => x.CurrentMileage, this.CurrentMileage ?? 0)
-            .WithSize(ModalSize.Medium)
-            .ShowDialogAsync();
-
-        if (!result.Cancelled)
-        {
-            // Refresh the summary after adding a record
-            await this.LoadSummaryAsync();
-        }
     }
 }
