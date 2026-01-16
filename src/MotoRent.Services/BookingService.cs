@@ -191,6 +191,38 @@ public class BookingService
     }
 
     /// <summary>
+    /// Gets bookings for a tourist by email or phone (for rental history page).
+    /// Only returns bookings that haven't been checked in yet (Pending, Confirmed).
+    /// </summary>
+    public async Task<List<Booking>> GetBookingsForTouristAsync(string? email, string? phone)
+    {
+        if (string.IsNullOrWhiteSpace(email) && string.IsNullOrWhiteSpace(phone))
+            return [];
+
+        var query = m_context.CreateQuery<Booking>()
+            .Where(b => b.Status == BookingStatus.Pending || b.Status == BookingStatus.Confirmed);
+
+        // Filter by email or phone
+        if (!string.IsNullOrWhiteSpace(email) && !string.IsNullOrWhiteSpace(phone))
+        {
+            query = query.Where(b => b.CustomerEmail == email || b.CustomerPhone == phone);
+        }
+        else if (!string.IsNullOrWhiteSpace(email))
+        {
+            query = query.Where(b => b.CustomerEmail == email);
+        }
+        else
+        {
+            query = query.Where(b => b.CustomerPhone == phone);
+        }
+
+        query = query.OrderByDescending(b => b.StartDate);
+
+        var result = await m_context.LoadAsync(query, 1, 50, includeTotalRows: false);
+        return result.ItemCollection.ToList();
+    }
+
+    /// <summary>
     /// Generates a unique 6-character booking reference.
     /// </summary>
     public async Task<string> GenerateBookingRefAsync()
