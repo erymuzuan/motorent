@@ -5,7 +5,7 @@ description: Run dotnet watch, fix compile errors, and verify features in browse
 
 # Watch & Verify Skill
 
-This skill runs `dotnet watch` to continuously build and run the MotoRent server, monitors for compile errors, fixes them, and uses Claude in Chrome to verify features work correctly.
+This skill uses GitHub Copilot CLI to run `dotnet watch`, monitor compiler output, fix errors, and guide the user through verification steps. Because the CLI cannot drive a GUI browser, provide clear manual verification instructions (or scripted HTTP checks) once the server is running.
 
 ## When to activate
 
@@ -20,18 +20,24 @@ Trigger on requests like:
 
 ### 1. Start dotnet watch in background
 
-```bash
-dotnet watch --project ./src/MotoRent.Server/MotoRent.Server.csproj
+Use the `powershell` tool with `mode:"async"` so the watch process can keep running while you continue working:
+
+```jsonc
+{
+  "command": "dotnet watch --project ./src/MotoRent.Server/MotoRent.Server.csproj",
+  "mode": "async",
+  "description": "Run MotoRent with hot reload"
+}
 ```
 
-Run this in the background using `run_in_background: true` so you can continue working while it runs.
+Capture the returned `sessionId`; you will need it for `read_powershell`, `write_powershell`, and `stop_powershell`.
 
 ### 2. Monitor for compile errors
 
 Check the background task output periodically:
-- Use `TaskOutput` tool with `block: false` to check current status
-- Look for error patterns like `error CS`, `Build FAILED`, or exception messages
-- Skip permission prompts - auto-accept them
+- Use `read_powershell` (with sensible delays) to pull incremental output
+- Watch for signatures such as `error CS`, `Unhandled exception`, `Build FAILED`, or `Hot reload of changes succeeded`
+- If watch prompts for input (rare), respond with `write_powershell` to send `{enter}` or the required character
 
 ### 3. Fix compile errors
 
@@ -47,46 +53,41 @@ Common error patterns:
 - `error CS1061: 'X' does not contain a definition for 'Y'` - wrong property/method name
 - `error CS0246: The type or namespace name 'X' could not be found` - missing reference
 
-### 4. Verify in browser with Claude in Chrome
+### 4. Coordinate verification
 
-Once build succeeds:
-1. Get browser tab context with `tabs_context_mcp`
-2. Create a new tab with `tabs_create_mcp`
-3. Navigate to url configured in environment variable `MOTO_BaseUrl`
-4. Use `read_page`, `find`, and `computer` tools to interact with the app
-5. Verify the feature works as expected
+Once watch reports success (look for `Now listening on https://localhost:5001`):
+1. Surface the URLs printed by `dotnet watch` so the user knows where to browse.
+2. Provide step-by-step instructions describing what to click, which tenant/user to impersonate, and what results to expect.
+3. When possible, run CLI-based smoke checks (e.g., `powershell` > `Invoke-WebRequest` or `curl`) against public endpoints to confirm the API responds.
+4. Document the observed behavior (from CLI output or user feedback) before proceeding.
 
 ### 5. Fix-and-verify loop
 
-If browser verification fails:
+If verification fails:
 1. Identify what went wrong (missing element, wrong behavior, error displayed)
 2. Go back to the code and fix the issue
 3. Wait for rebuild
-4. Verify again in browser
+4. Re-run manual/CLI verification steps
 5. Repeat until feature works correctly
-6. if the server output "Unable to apply hot reload because of a rude edit" or when changes don't seem to be applying correctly. Press "Ctrl + R" to restart the watch
+6. If hot reload reports a "rude edit" or changes stop applying, end the current `dotnet watch` session with `stop_powershell` and start a fresh one
 
 ## Example session
 
 ```
 User: watch and verify the motorbike list page works
 
-Claude: Starting dotnet watch in background...
+Copilot CLI: Starting dotnet watch with an async PowerShell session...
 [Runs: dotnet watch --project ./src/MotoRent.Server/MotoRent.Server.csproj]
 
 Checking build status...
 Build succeeded! Server running on https://localhost:5001
 
-Opening browser to verify...
-[Opens Chrome, navigates to https://localhost:5001/motorbikes]
+Verification plan for the user:
+- Navigate to https://localhost:5001/motorbikes
+- Confirm table renders 5 motorbikes with status badges and working Edit buttons
+- Report any console errors
 
-Checking the motorbike list page...
-- Page loads correctly
-- Table displays 5 motorbikes
-- Status badges show correctly
-- Edit button is clickable
-
-Feature verified successfully!
+Feature verified successfully via manual walkthrough!
 ```
 
 ## Error fixing example
@@ -95,7 +96,7 @@ Feature verified successfully!
 Build output shows:
 error CS1061: 'Motorbike' does not contain a definition for 'Plates'
 
-Claude: Found compile error. The property should be 'LicensePlate' not 'Plates'.
+Copilot CLI: Found compile error. The property should be 'LicensePlate' not 'Plates'.
 [Reads file, fixes the property name]
 
 Waiting for rebuild...
@@ -104,7 +105,7 @@ Build succeeded! Verifying in browser...
 
 ## Browser verification checklist
 
-When verifying a page, check:
+Use this checklist when describing manual test steps or validating with CLI tools:
 - [ ] Page loads without errors (no 500, no exceptions in console)
 - [ ] Main content displays correctly
 - [ ] Interactive elements respond (buttons, links, forms)
@@ -114,35 +115,31 @@ When verifying a page, check:
 ## Stopping the watch
 
 When done or when user asks to stop:
-1. Use `KillShell` tool with the background task ID
-2. Report that watch has been stopped
+1. Call `stop_powershell` with the sessionId returned when watch started (or send `{ctrl+c}` with `write_powershell` if a graceful shutdown is preferred)
+2. Confirm that the process ended (no further output) before moving on
+3. If a restart is required, launch a brand-new async session
 
 ## Impersonation
 
-When user asks to impersonate a user, or when testing features that require a specific role/tenant:
+When the user asks to impersonate someone, describe the UI steps they should follow once the app is running (since Copilot CLI cannot operate the browser directly):
 
-1. Navigate to `/super-admin/impersonate`
-2. Select the appropriate user based on:
-   - If user specified a name, find and select that user
-   - If testing a feature, select a user with the appropriate role (OrgAdmin, ShopManager, Staff, Mechanic)
-   - Ensure the correct tenant/organization is selected
-3. Click the impersonate button
-4. Verify the impersonation succeeded (check user context in header/menu)
-5. Continue with the verification task
+1. Instruct them to open `/super-admin/impersonate`
+2. Tell them which user/tenant to select (OrgAdmin, ShopManager, Staff, Mechanic, etc.)
+3. Remind them to click the Impersonate button and confirm the header reflects the new user
+4. Continue guiding them through the requested scenario while watch keeps running
 
 ### Example
 
 ```
 User: watch and test the rental page as a shop manager
 
-Claude: Starting dotnet watch...
+Copilot CLI: Starting dotnet watch...
 Build succeeded!
 
-Navigating to /super-admin/impersonate...
-Selecting user "John" with role "ShopManager" in tenant "Phuket Bikes"...
-Impersonation successful!
-
-Now navigating to /rentals to verify the page...
+Ask the user to:
+1. Browse to /super-admin/impersonate
+2. Select "John" with role "ShopManager" under "Phuket Bikes"
+3. Confirm the header shows the impersonated user, then open /rentals and verify the page
 ```
 
 ## Constraints
@@ -150,6 +147,6 @@ Now navigating to /rentals to verify the page...
 - Always run dotnet watch in background mode
 - Check build output before attempting browser verification
 - Fix errors one at a time to avoid cascading issues
-- Take screenshots when verifying complex interactions
+- Provide clear instructions for manual verification (screenshots are optional and handled by the user)
 - Report clear success/failure status to the user
 - When impersonating, always use the /super-admin/impersonate page
