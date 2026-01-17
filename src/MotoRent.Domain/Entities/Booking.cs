@@ -303,6 +303,13 @@ public class Booking : Entity
     /// </summary>
     public bool CanCheckIn => Status == BookingStatus.Pending || Status == BookingStatus.Confirmed;
 
+    /// <summary>
+    /// Whether this booking can receive payments (not cancelled/completed and has balance due).
+    /// </summary>
+    public bool CanReceivePayment => Status != BookingStatus.Cancelled &&
+                                      Status != BookingStatus.Completed &&
+                                      BalanceDue > 0;
+
     public override int GetId() => BookingId;
     public override void SetId(int value) => BookingId = value;
 }

@@ -445,6 +445,48 @@ public class ReceiptService(RentalDataContext context, ShopService shopService)
         return receipt;
     }
 
+    /// <summary>
+    /// Generates a booking deposit receipt (simple overload for quick payments).
+    /// </summary>
+    public async Task<Receipt?> GenerateBookingDepositReceiptAsync(
+        int bookingId,
+        decimal amount,
+        string paymentMethod,
+        int? tillSessionId,
+        string username)
+    {
+        var booking = await Context.LoadOneAsync<Booking>(b => b.BookingId == bookingId);
+        if (booking == null)
+            return null;
+
+        // Get renter if linked
+        Renter? renter = null;
+        if (booking.RenterId.HasValue)
+        {
+            renter = await Context.LoadOneAsync<Renter>(r => r.RenterId == booking.RenterId.Value);
+        }
+
+        // Create payment record
+        var payments = new List<ReceiptPayment>
+        {
+            new()
+            {
+                Method = paymentMethod,
+                Amount = amount,
+                AmountInBaseCurrency = amount,
+                Currency = SupportedCurrencies.THB
+            }
+        };
+
+        return await GenerateBookingDepositReceiptAsync(
+            bookingId,
+            booking,
+            renter,
+            tillSessionId,
+            payments,
+            username);
+    }
+
     #endregion
 
     #region Actions

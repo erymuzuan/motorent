@@ -1,11 +1,13 @@
 @page "/staff/till"
 @using MotoRent.Domain.Entities
 @using MotoRent.Services
+@using MotoRent.Client.Components.Receipts
 @using Microsoft.AspNetCore.Authorization
 @inherits LocalizedComponentBase<Till>
 @attribute [Authorize(Policy = "RequireTenantStaff")]
 @inject TillService TillService
 @inject ShopService ShopService
+@inject ReceiptService ReceiptService
 
 <MotoRentPageTitle>@Localizer["CashierTill"]</MotoRentPageTitle>
 
@@ -181,7 +183,85 @@ else
             </div>
         }
 
-        @* ========== QUICK ACTIONS ========== *@
+        @* ========== SESSION RECEIPTS ========== *@
+        @if (this.m_sessionReceipts.Any())
+        {
+            <div class="mr-card mb-4">
+                <div class="mr-card-header">
+                    <i class="ti ti-receipt text-primary me-2"></i>
+                    <span class="mr-card-title">@Localizer["SessionReceipts"]</span>
+                    <span class="badge bg-primary ms-2">@this.m_sessionReceipts.Count</span>
+                    <button type="button" class="btn btn-sm btn-ghost-primary ms-auto" @onclick="this.ViewAllReceiptsDialog">
+                        @Localizer["ViewAll"]
+                        <i class="ti ti-chevron-right ms-1"></i>
+                    </button>
+                </div>
+                <div class="mr-receipt-list">
+                    @foreach (var receipt in this.m_sessionReceipts.Take(5))
+                    {
+                        <div class="mr-receipt-item" @onclick="@(() => this.ViewReceiptDialog(receipt))">
+                            <div class="mr-receipt-icon @GetReceiptTypeClass(receipt)">
+                                <i class="@GetReceiptTypeIcon(receipt)"></i>
+                            </div>
+                            <div class="mr-receipt-details">
+                                <div class="mr-receipt-no">@receipt.ReceiptNo</div>
+                                <div class="mr-receipt-customer">@receipt.CustomerName</div>
+                            </div>
+                            <div class="mr-receipt-amount">
+                                ฿@receipt.GrandTotal.ToString("N0")
+                            </div>
+                            <div class="mr-receipt-time">
+                                @this.FormatTime(receipt.IssuedOn)
+                            </div>
+                            <button type="button" class="btn btn-sm btn-icon btn-ghost-primary"
+                                    @onclick:stopPropagation="true"
+                                    @onclick="@(() => this.PrintReceiptDialog(receipt))">
+                                <i class="ti ti-printer"></i>
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        @* ========== QUICK PAYMENTS (Cash In) ========== *@
+        <div class="mb-4">
+            <h4 class="mr-section-title mb-3">
+                <i class="ti ti-coin"></i>
+                @Localizer["QuickPayments"]
+            </h4>
+            <div class="row g-2">
+                <div class="col-4">
+                    <button type="button" class="mr-quick-action mr-quick-action-rental"
+                            @onclick="this.ReceiveRentalPaymentDialog">
+                        <div class="mr-quick-action-icon">
+                            <i class="ti ti-motorbike"></i>
+                        </div>
+                        <span class="mr-quick-action-label">@Localizer["RentalPayment"]</span>
+                    </button>
+                </div>
+                <div class="col-4">
+                    <button type="button" class="mr-quick-action mr-quick-action-deposit"
+                            @onclick="this.ReceiveDepositDialog">
+                        <div class="mr-quick-action-icon">
+                            <i class="ti ti-shield-check"></i>
+                        </div>
+                        <span class="mr-quick-action-label">@Localizer["Deposit"]</span>
+                    </button>
+                </div>
+                <div class="col-4">
+                    <button type="button" class="mr-quick-action mr-quick-action-booking"
+                            @onclick="this.ReceiveBookingDepositDialog">
+                        <div class="mr-quick-action-icon">
+                            <i class="ti ti-calendar-check"></i>
+                        </div>
+                        <span class="mr-quick-action-label">@Localizer["BookingDeposit"]</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        @* ========== QUICK PAYOUTS (Cash Out) ========== *@
         <div class="mb-4">
             <h4 class="mr-section-title mb-3">
                 <i class="ti ti-bolt"></i>
@@ -298,6 +378,7 @@ else
     private int m_shopId;
     private TillSession? m_session;
     private List<TillTransaction> m_recentTransactions = [];
+    private List<Receipt> m_sessionReceipts = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -319,10 +400,11 @@ else
                 // Get active session
                 this.m_session = await this.TillService.GetActiveSessionAsync(this.m_shopId, this.UserName);
 
-                // Load recent transactions if session exists
+                // Load recent transactions and receipts if session exists
                 if (this.m_session is not null)
                 {
                     this.m_recentTransactions = await this.TillService.GetRecentTransactionsAsync(this.m_session.TillSessionId, 10);
+                    this.m_sessionReceipts = await this.ReceiptService.GetReceiptsByTillSessionAsync(this.m_session.TillSessionId);
                 }
             }
         }
@@ -365,6 +447,7 @@ else
             this.ShowSuccess("Till session closed");
             this.m_session = null;
             this.m_recentTransactions.Clear();
+            this.m_sessionReceipts.Clear();
             this.StateHasChanged();
         }
     }
@@ -431,6 +514,50 @@ else
             .ShowDialogAsync();
     }
 
+    private async Task ViewReceiptDialog(Receipt receipt)
+    {
+        await this.DialogService.Create<ReceiptPrintDialog>(Localizer["Receipt"])
+            .WithParameter(x => x.Entity, receipt)
+            .WithParameter(x => x.IsReprint, true)
+            .WithSize(ModalSize.Large)
+            .ShowDialogAsync();
+    }
+
+    private async Task PrintReceiptDialog(Receipt receipt)
+    {
+        await this.DialogService.Create<ReceiptPrintDialog>(Localizer["Receipt"])
+            .WithParameter(x => x.Entity, receipt)
+            .WithParameter(x => x.IsReprint, true)
+            .WithSize(ModalSize.Large)
+            .ShowDialogAsync();
+    }
+
+    private async Task ViewAllReceiptsDialog()
+    {
+        if (this.m_session is null) return;
+
+        await this.DialogService.Create<TillReceiptsDialog>(Localizer["SessionReceipts"])
+            .WithParameter(x => x.SessionId, this.m_session.TillSessionId)
+            .WithSize(ModalSize.Large)
+            .ShowDialogAsync();
+    }
+
+    private static string GetReceiptTypeIcon(Receipt receipt) => receipt.ReceiptType switch
+    {
+        ReceiptTypes.CheckIn => "ti ti-login",
+        ReceiptTypes.Settlement => "ti ti-logout",
+        ReceiptTypes.BookingDeposit => "ti ti-calendar-check",
+        _ => "ti ti-receipt"
+    };
+
+    private static string GetReceiptTypeClass(Receipt receipt) => receipt.ReceiptType switch
+    {
+        ReceiptTypes.CheckIn => "mr-receipt-icon-checkin",
+        ReceiptTypes.Settlement => "mr-receipt-icon-settlement",
+        ReceiptTypes.BookingDeposit => "mr-receipt-icon-booking",
+        _ => "mr-receipt-icon-default"
+    };
+
     private string GetTransactionTypeName(TillTransactionType type) => type switch
     {
         TillTransactionType.RentalPayment => Localizer["TxnRentalPayment"],
@@ -484,5 +611,56 @@ else
     private static string GetAmountColorClass(TillTransaction txn)
     {
         return txn.Direction == TillTransactionDirection.In ? "mr-amount-in" : "mr-amount-out";
+    }
+
+    private async Task ReceiveRentalPaymentDialog()
+    {
+        if (this.m_session is null) return;
+
+        var result = await this.DialogService.Create<TillReceivePaymentDialog>(Localizer["RentalPayment"])
+            .WithParameter(x => x.SessionId, this.m_session.TillSessionId)
+            .WithParameter(x => x.ShopId, this.m_shopId)
+            .WithSize(ModalSize.Medium)
+            .ShowDialogAsync();
+
+        if (result is { Cancelled: false })
+        {
+            this.ShowSuccess(Localizer["PaymentRecorded"]);
+            await this.LoadDataAsync();
+        }
+    }
+
+    private async Task ReceiveDepositDialog()
+    {
+        if (this.m_session is null) return;
+
+        var result = await this.DialogService.Create<TillReceiveDepositDialog>(Localizer["Deposit"])
+            .WithParameter(x => x.SessionId, this.m_session.TillSessionId)
+            .WithParameter(x => x.ShopId, this.m_shopId)
+            .WithSize(ModalSize.Medium)
+            .ShowDialogAsync();
+
+        if (result is { Cancelled: false })
+        {
+            this.ShowSuccess(Localizer["DepositRecorded"]);
+            await this.LoadDataAsync();
+        }
+    }
+
+    private async Task ReceiveBookingDepositDialog()
+    {
+        if (this.m_session is null) return;
+
+        var result = await this.DialogService.Create<TillBookingDepositDialog>(Localizer["BookingDeposit"])
+            .WithParameter(x => x.SessionId, this.m_session.TillSessionId)
+            .WithParameter(x => x.ShopId, this.m_shopId)
+            .WithSize(ModalSize.Medium)
+            .ShowDialogAsync();
+
+        if (result is { Cancelled: false })
+        {
+            this.ShowSuccess(Localizer["PaymentRecorded"]);
+            await this.LoadDataAsync();
+        }
     }
 }

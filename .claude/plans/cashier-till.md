@@ -536,3 +536,65 @@ Task<SubmitOperation> RecordReprintAsync(receiptId, username);
 5. ✅ **Void Receipt**: Can void with reason, status changes to Voided
 6. ✅ **Multi-Currency**: Payment records track currency and exchange rate
 7. ✅ **Localization**: English and Thai resource files created
+
+---
+
+## 13. Quick Payments (Till-Centric Receiving)
+
+### Overview
+Direct payment receiving from the Till page, making it the central hub for all cashier cash operations.
+
+### Quick Payment Buttons
+| Button | Transaction Type | Use Case |
+|--------|-----------------|----------|
+| Rental Payment | RentalPayment | Record additional payments for active rentals |
+| Deposit | SecurityDeposit | Record security deposits for active rentals |
+| Booking Deposit | BookingDeposit | Record deposits for pending/confirmed bookings |
+
+### Files Created
+| File | Purpose |
+|------|---------|
+| `Pages/Staff/TillReceivePaymentDialog.razor` | Search rental, record payment |
+| `Pages/Staff/TillReceiveDepositDialog.razor` | Search rental, record deposit |
+| `Pages/Staff/TillBookingDepositDialog.razor` | Search booking, record deposit + receipt |
+| `Resources/Pages/Staff/TillReceivePaymentDialog.resx` | Localization (+ .en, .th) |
+| `Resources/Pages/Staff/TillReceiveDepositDialog.resx` | Localization (+ .en, .th) |
+| `Resources/Pages/Staff/TillBookingDepositDialog.resx` | Localization (+ .en, .th) |
+
+### CSS Styles Added
+- `.mr-quick-action-rental` - Green theme for rental payments
+- `.mr-quick-action-deposit` - Blue theme for security deposits
+- `.mr-quick-action-booking` - Purple theme for booking deposits
+
+### Integration Points
+- Till.razor: Quick Payments section with 3 buttons
+- TillService: Uses existing `RecordCashInAsync()` method
+- ReceiptService: Generates BookingDeposit receipt
+- BookingService: Updates booking's AmountPaid via `RecordPaymentAsync()`
+
+### ReceiptService Method Added
+```csharp
+// Simple overload for quick payments
+Task<Receipt?> GenerateBookingDepositReceiptAsync(
+    int bookingId,
+    decimal amount,
+    string paymentMethod,
+    int? tillSessionId,
+    string username);
+```
+
+### Booking Entity Property Added
+```csharp
+// Whether booking can receive payments (not cancelled/completed and has balance due)
+public bool CanReceivePayment => Status != BookingStatus.Cancelled &&
+                                  Status != BookingStatus.Completed &&
+                                  BalanceDue > 0;
+```
+
+### Verification Checklist
+1. [ ] Quick Payments section appears on Till page
+2. [ ] Can search and select active rentals for payment
+3. [ ] Can search bookings by reference code
+4. [ ] Payments recorded correctly (Cash In increases)
+5. [ ] Non-cash payments tracked separately
+6. [ ] Booking deposit generates receipt
