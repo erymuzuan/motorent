@@ -52,6 +52,49 @@ public class TillService(RentalDataContext context)
     }
 
     /// <summary>
+    /// Gets any active (open) session for a staff member across all shops.
+    /// Used by header button to display till status.
+    /// </summary>
+    public async Task<TillSession?> GetActiveSessionForUserAsync(string staffUserName)
+    {
+        return await Context.LoadOneAsync<TillSession>(s =>
+            s.StaffUserName == staffUserName &&
+            s.Status == TillSessionStatus.Open);
+    }
+
+    /// <summary>
+    /// Checks if a staff member can open a new session at a shop.
+    /// Enforces one-till-per-staff-per-shop-per-day constraint.
+    /// </summary>
+    public async Task<(bool CanOpen, string? Reason)> CanOpenSessionAsync(int shopId, string staffUserName)
+    {
+        // Check if staff already has an open session anywhere
+        var existingOpen = await GetActiveSessionForUserAsync(staffUserName);
+        if (existingOpen != null)
+        {
+            return (false, $"You already have an open till session at shop {existingOpen.ShopId}. Close it first.");
+        }
+
+        // Check for same-day session at this shop (one till per staff per shop per day)
+        var today = DateTimeOffset.Now.Date;
+        var todayStart = new DateTimeOffset(today, TimeSpan.Zero);
+        var todayEnd = todayStart.AddDays(1);
+
+        var existingToday = await Context.LoadOneAsync<TillSession>(s =>
+            s.ShopId == shopId &&
+            s.StaffUserName == staffUserName &&
+            s.OpenedAt >= todayStart &&
+            s.OpenedAt < todayEnd);
+
+        if (existingToday != null)
+        {
+            return (false, "You already had a till session at this shop today.");
+        }
+
+        return (true, null);
+    }
+
+    /// <summary>
     /// Gets all active sessions at a shop.
     /// </summary>
     public async Task<List<TillSession>> GetActiveSessionsAsync(int shopId)
@@ -318,7 +361,62 @@ public class TillService(RentalDataContext context)
     #region Integration Methods
 
     /// <summary>
-    /// Records a rental payment to the till.
+    /// Records a rental payment to the till using tillSessionId directly.
+    /// All payment methods are recorded (cash affects drawer, others for reporting).
+    /// </summary>
+    public async Task<SubmitOperation> RecordRentalPaymentToTillAsync(
+        int tillSessionId,
+        string paymentMethod,
+        int? paymentId,
+        int rentalId,
+        decimal amount,
+        string description,
+        string recordedByUserName)
+    {
+        var type = paymentMethod.ToLower() switch
+        {
+            "cash" => TillTransactionType.RentalPayment,
+            "card" => TillTransactionType.CardPayment,
+            "banktransfer" => TillTransactionType.BankTransfer,
+            "promptpay" => TillTransactionType.PromptPay,
+            "qrcode" => TillTransactionType.PromptPay, // QRCode is typically PromptPay in Thailand
+            _ => TillTransactionType.RentalPayment
+        };
+
+        return await RecordCashInAsync(
+            tillSessionId,
+            type,
+            amount,
+            description,
+            recordedByUserName,
+            paymentId: paymentId,
+            rentalId: rentalId);
+    }
+
+    /// <summary>
+    /// Records a deposit collection to the till using tillSessionId directly.
+    /// Only cash deposits affect the drawer; card pre-auth is recorded for reporting.
+    /// </summary>
+    public async Task<SubmitOperation> RecordDepositToTillAsync(
+        int tillSessionId,
+        int? depositId,
+        int rentalId,
+        decimal amount,
+        string description,
+        string recordedByUserName)
+    {
+        return await RecordCashInAsync(
+            tillSessionId,
+            TillTransactionType.SecurityDeposit,
+            amount,
+            description,
+            recordedByUserName,
+            depositId: depositId,
+            rentalId: rentalId);
+    }
+
+    /// <summary>
+    /// Records a rental payment to the till (legacy method using shopId/staffUserName).
     /// Call this when processing cash/card payments during check-in/check-out.
     /// </summary>
     public async Task<SubmitOperation> RecordRentalPaymentToTillAsync(

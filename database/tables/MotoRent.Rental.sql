@@ -19,6 +19,8 @@ CREATE TABLE [<schema>].[Rental]
     -- Driver/Guide
     [IncludeDriver] AS CAST(COALESCE(JSON_VALUE([Json], '$.IncludeDriver'), 'false') AS BIT),
     [IncludeGuide] AS CAST(COALESCE(JSON_VALUE([Json], '$.IncludeGuide'), 'false') AS BIT),
+    -- Till Session
+    [TillSessionId] AS CAST(JSON_VALUE([Json], '$.TillSessionId') AS INT),
     -- JSON storage
     [Json] NVARCHAR(MAX) NOT NULL,
     -- Audit columns
@@ -40,4 +42,6 @@ CREATE INDEX IX_Rental_RenterId ON [<schema>].[Rental]([RenterId])
 CREATE INDEX IX_Rental_VehicleId ON [<schema>].[Rental]([VehicleId])
 
 CREATE INDEX IX_Rental_DurationType ON [<schema>].[Rental]([DurationType])
+
+CREATE INDEX IX_Rental_TillSessionId ON [<schema>].[Rental]([TillSessionId]) WHERE [TillSessionId] IS NOT NULL
 

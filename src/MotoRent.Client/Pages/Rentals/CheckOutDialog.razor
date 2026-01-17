@@ -12,6 +12,7 @@
 @inject ServiceLocationService LocationService
 @inject OperatingHoursService HoursService
 @inject RentalPricingService PricingService
+@inject TillService TillService
 
 <div class="checkout-dialog">
     @if (m_loading)
@@ -1297,6 +1298,9 @@
     private decimal m_dropoffOutOfHoursFee;
     private OutOfHoursResult? m_dropoffOutOfHoursBand;
 
+    // Till session for recording deposit refunds
+    private TillSession? m_tillSession;
+
     // Calculated values
     private int m_extraDays => this.m_actualReturnDate.HasValue && !this.m_isIntervalRental
         ? Math.Max(0, (int)(this.m_actualReturnDate.Value - this.Entity.ExpectedEndDate.Date).TotalDays)
@@ -1376,6 +1380,9 @@
             // Load dropoff service locations
             this.m_dropoffLocations = await this.LocationService.GetActiveLocationsAsync(
                 this.RequestContext.GetShopId(), pickupOnly: null, dropoffOnly: true);
+
+            // Load active till session for recording deposit refunds
+            this.m_tillSession = await this.TillService.GetActiveSessionForUserAsync(this.UserName);
 
             // Check if rental already has a dropoff location configured
             if (this.Entity.DropoffLocationId.HasValue)
@@ -1501,6 +1508,12 @@
 
             if (result.Success)
             {
+                // Record deposit refund to till session (if cash refund and till is open)
+                if (this.m_tillSession != null && this.m_refundAmount > 0 && this.m_refundMethod == "Cash")
+                {
+                    await this.RecordDepositRefundToTillAsync(result.RefundAmount);
+                }
+
                 var message = Localizer["CheckOutCompleted"].Value;
                 if (this.m_refundAmount > 0)
                     message += $" {Localizer["RefundLabel", FormatCurrency(result.RefundAmount)]}";
@@ -1521,6 +1534,36 @@
         finally
         {
             this.Saving = false;
+        }
+    }
+
+    /// <summary>
+    /// Records the deposit refund to the till session.
+    /// Only cash refunds are recorded to the till.
+    /// </summary>
+    private async Task RecordDepositRefundToTillAsync(decimal refundAmount)
+    {
+        if (this.m_tillSession == null || refundAmount <= 0) return;
+
+        try
+        {
+            var rentalNo = $"#{Entity.RentalId}";
+
+            // Load the deposit to get its ID
+            var deposit = await this.DataContext.LoadOneAsync<Deposit>(d => d.RentalId == this.Entity.RentalId);
+
+            await this.TillService.RecordDepositRefundFromTillAsync(
+                this.m_tillSession.ShopId,
+                this.UserName,
+                deposit?.DepositId ?? 0,
+                this.Entity.RentalId,
+                refundAmount,
+                $"Deposit refund {rentalNo}");
+        }
+        catch (Exception ex)
+        {
+            // Log but don't fail the checkout if till recording fails
+            this.Logger.LogError(ex, "Failed to record deposit refund to till session");
         }
     }
 }

@@ -9,13 +9,13 @@
 
 <MotoRentPageTitle>@Localizer["CashierTill"]</MotoRentPageTitle>
 
-@if (this.Loading)
+@if (this.m_loading)
 {
     <div class="container-xl py-4">
         <LoadingSkeleton Loading="true" Mode="LoadingSkeleton.PlaceholderMode.Card" />
     </div>
 }
-else if (this.Session is null)
+else if (this.m_session is null)
 {
     @* No active session - show Open Session UI *@
     <div class="container-xl py-4">
@@ -64,15 +64,15 @@ else
                     <div>
                         <div class="d-flex align-items-center gap-2">
                             <span class="badge bg-white text-primary">@Localizer["Open"]</span>
-                            <span class="fw-semibold">@this.Session!.StaffDisplayName</span>
+                            <span class="fw-semibold">@this.m_session!.StaffDisplayName</span>
                         </div>
                         <small class="text-white-50">
-                            @Localizer["Started"] @this.FormatDateTime(this.Session.OpenedAt)
+                            @Localizer["Started"] @this.FormatDateTime(this.m_session.OpenedAt)
                         </small>
                     </div>
                     <div class="text-end">
                         <small class="text-white-50">@Localizer["OpeningFloat"]</small>
-                        <div class="h3 mb-0">@this.FormatCurrency(this.Session.OpeningFloat)</div>
+                        <div class="h3 mb-0">@this.FormatCurrency(this.m_session.OpeningFloat)</div>
                     </div>
                 </div>
             </div>
@@ -89,7 +89,7 @@ else
                             </span>
                             <div>
                                 <small class="text-secondary d-block">@Localizer["CashIn"]</small>
-                                <span class="h3 mb-0 text-success">@this.FormatCurrency(this.Session.TotalCashIn)</span>
+                                <span class="h3 mb-0 text-success">@this.FormatCurrency(this.m_session.TotalCashIn)</span>
                             </div>
                         </div>
                     </div>
@@ -104,7 +104,7 @@ else
                             </span>
                             <div>
                                 <small class="text-secondary d-block">@Localizer["CashOut"]</small>
-                                <span class="h3 mb-0 text-danger">@this.FormatCurrency(this.Session.TotalCashOut)</span>
+                                <span class="h3 mb-0 text-danger">@this.FormatCurrency(this.m_session.TotalCashOut)</span>
                             </div>
                         </div>
                     </div>
@@ -116,19 +116,19 @@ else
         <div class="card mb-3">
             <div class="card-body py-3 text-center">
                 <small class="text-secondary">@Localizer["ExpectedCashInTill"]</small>
-                <div class="h1 mb-0">@this.FormatCurrency(this.Session.ExpectedCash)</div>
-                @if (this.Session.TotalDropped > 0)
+                <div class="h1 mb-0">@this.FormatCurrency(this.m_session.ExpectedCash)</div>
+                @if (this.m_session.TotalDropped > 0)
                 {
                     <small class="text-secondary">
                         <i class="ti ti-safe me-1"></i>
-                        @Localizer["DroppedToSafe", $"{this.Session.TotalDropped:N0}"]
+                        @Localizer["DroppedToSafe", $"{this.m_session.TotalDropped:N0}"]
                     </small>
                 }
             </div>
         </div>
 
         @* Non-Cash Summary (if any) *@
-        @if (this.Session.TotalNonCashPayments > 0)
+        @if (this.m_session.TotalNonCashPayments > 0)
         {
             <div class="card mb-3">
                 <div class="card-header py-2">
@@ -139,25 +139,25 @@ else
                 </div>
                 <div class="card-body py-2">
                     <div class="row g-2 text-center">
-                        @if (this.Session.TotalCardPayments > 0)
+                        @if (this.m_session.TotalCardPayments > 0)
                         {
                             <div class="col">
                                 <small class="text-secondary d-block">@Localizer["Card"]</small>
-                                <span class="fw-semibold">@this.FormatCurrency(this.Session.TotalCardPayments)</span>
+                                <span class="fw-semibold">@this.FormatCurrency(this.m_session.TotalCardPayments)</span>
                             </div>
                         }
-                        @if (this.Session.TotalBankTransfers > 0)
+                        @if (this.m_session.TotalBankTransfers > 0)
                         {
                             <div class="col">
                                 <small class="text-secondary d-block">@Localizer["BankTransfer"]</small>
-                                <span class="fw-semibold">@this.FormatCurrency(this.Session.TotalBankTransfers)</span>
+                                <span class="fw-semibold">@this.FormatCurrency(this.m_session.TotalBankTransfers)</span>
                             </div>
                         }
-                        @if (this.Session.TotalPromptPay > 0)
+                        @if (this.m_session.TotalPromptPay > 0)
                         {
                             <div class="col">
                                 <small class="text-secondary d-block">@Localizer["PromptPay"]</small>
-                                <span class="fw-semibold">@this.FormatCurrency(this.Session.TotalPromptPay)</span>
+                                <span class="fw-semibold">@this.FormatCurrency(this.m_session.TotalPromptPay)</span>
                             </div>
                         }
                     </div>
@@ -235,7 +235,7 @@ else
                 </button>
             </div>
             <div class="list-group list-group-flush">
-                @if (!this.RecentTransactions.Any())
+                @if (!this.m_recentTransactions.Any())
                 {
                     <div class="list-group-item text-center text-secondary py-4">
                         <i class="ti ti-receipt-off" style="font-size: 2rem;"></i>
@@ -244,7 +244,7 @@ else
                 }
                 else
                 {
-                    @foreach (var txn in this.RecentTransactions)
+                    @foreach (var txn in this.m_recentTransactions)
                     {
                         <div class="list-group-item">
                             <div class="d-flex justify-content-between align-items-start">
@@ -273,10 +273,10 @@ else
 }
 
 @code {
-    private bool Loading { get; set; } = true;
-    private int ShopId { get; set; }
-    private TillSession? Session { get; set; }
-    private List<TillTransaction> RecentTransactions { get; set; } = [];
+    private bool m_loading = true;
+    private int m_shopId;
+    private TillSession? m_session;
+    private List<TillTransaction> m_recentTransactions = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -287,21 +287,21 @@ else
     {
         try
         {
-            this.Loading = true;
+            this.m_loading = true;
 
             // Get current shop
             var shops = await this.ShopService.GetShopsAsync(page: 1, pageSize: 1);
             if (shops.ItemCollection.Any())
             {
-                this.ShopId = shops.ItemCollection.First().ShopId;
+                this.m_shopId = shops.ItemCollection.First().ShopId;
 
                 // Get active session
-                this.Session = await this.TillService.GetActiveSessionAsync(this.ShopId, this.UserName);
+                this.m_session = await this.TillService.GetActiveSessionAsync(this.m_shopId, this.UserName);
 
                 // Load recent transactions if session exists
-                if (this.Session is not null)
+                if (this.m_session is not null)
                 {
-                    this.RecentTransactions = await this.TillService.GetRecentTransactionsAsync(this.Session.TillSessionId, 10);
+                    this.m_recentTransactions = await this.TillService.GetRecentTransactionsAsync(this.m_session.TillSessionId, 10);
                 }
             }
         }
@@ -312,14 +312,14 @@ else
         }
         finally
         {
-            this.Loading = false;
+            this.m_loading = false;
         }
     }
 
     private async Task OpenSessionDialog()
     {
         var result = await this.DialogService.Create<TillOpenSessionDialog>("Open Till Session")
-            .WithParameter(x => x.ShopId, this.ShopId)
+            .WithParameter(x => x.ShopId, this.m_shopId)
             .WithSize(ModalSize.Medium)
             .ShowDialogAsync();
 
@@ -332,28 +332,28 @@ else
 
     private async Task CloseSessionDialog()
     {
-        if (this.Session is null) return;
+        if (this.m_session is null) return;
 
         var result = await this.DialogService.Create<TillCloseSessionDialog>("Close Till Session")
-            .WithParameter(x => x.Entity, this.Session)
+            .WithParameter(x => x.Entity, this.m_session)
             .WithSize(ModalSize.Medium)
             .ShowDialogAsync();
 
         if (result is { Cancelled: false })
         {
             this.ShowSuccess("Till session closed");
-            this.Session = null;
-            this.RecentTransactions.Clear();
+            this.m_session = null;
+            this.m_recentTransactions.Clear();
             this.StateHasChanged();
         }
     }
 
     private async Task RecordPayoutDialog(TillTransactionType type)
     {
-        if (this.Session is null) return;
+        if (this.m_session is null) return;
 
         var result = await this.DialogService.Create<TillRecordPayoutDialog>(GetTransactionTypeName(type))
-            .WithParameter(x => x.SessionId, this.Session.TillSessionId)
+            .WithParameter(x => x.SessionId, this.m_session.TillSessionId)
             .WithParameter(x => x.PayoutType, type)
             .WithSize(ModalSize.Medium)
             .ShowDialogAsync();
@@ -367,10 +367,10 @@ else
 
     private async Task CashDropDialog()
     {
-        if (this.Session is null) return;
+        if (this.m_session is null) return;
 
         var result = await this.DialogService.Create<TillCashDropDialog>("Cash Drop")
-            .WithParameter(x => x.SessionId, this.Session.TillSessionId)
+            .WithParameter(x => x.SessionId, this.m_session.TillSessionId)
             .WithParameter(x => x.IsDrop, true)
             .WithSize(ModalSize.Small)
             .ShowDialogAsync();
@@ -384,10 +384,10 @@ else
 
     private async Task TopUpDialog()
     {
-        if (this.Session is null) return;
+        if (this.m_session is null) return;
 
         var result = await this.DialogService.Create<TillCashDropDialog>("Top Up")
-            .WithParameter(x => x.SessionId, this.Session.TillSessionId)
+            .WithParameter(x => x.SessionId, this.m_session.TillSessionId)
             .WithParameter(x => x.IsDrop, false)
             .WithSize(ModalSize.Small)
             .ShowDialogAsync();
@@ -401,10 +401,10 @@ else
 
     private async Task ViewHistoryDialog()
     {
-        if (this.Session is null) return;
+        if (this.m_session is null) return;
 
         await this.DialogService.Create<TillHistoryDialog>("Transaction History")
-            .WithParameter(x => x.SessionId, this.Session.TillSessionId)
+            .WithParameter(x => x.SessionId, this.m_session.TillSessionId)
             .WithSize(ModalSize.Large)
             .ShowDialogAsync();
     }

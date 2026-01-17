@@ -13,6 +13,7 @@
 @inject InsuranceService InsuranceService
 @inject AccessoryService AccessoryService
 @inject BookingService BookingService
+@inject TillService TillService
 
 <MotoRentPageTitle>@Localizer["PageTitle"]</MotoRentPageTitle>
 
@@ -155,13 +156,17 @@
     private BookingItem? m_sourceBookingItem;
     private bool m_loadingBooking;
 
-    protected override void OnInitialized()
+    // Active till session for check-in
+    private TillSession? m_tillSession;
+
+    protected override async Task OnInitializedAsync()
     {
-        // Require shop selection for check-in
-        if (this.RequestContext.GetShopId() == 0)
+        // Require an active till session for check-in
+        m_tillSession = await this.TillService.GetActiveSessionForUserAsync(this.UserName);
+        if (m_tillSession == null)
         {
-            this.ToastService.ShowWarning(this.Localizer["ShopRequired"]);
-            this.NavigationManager.NavigateTo("/rentals");
+            this.ToastService.ShowWarning(this.Localizer["TillSessionRequired"]);
+            this.NavigationManager.NavigateTo("/staff/till");
             return;
         }
     }
@@ -364,7 +369,7 @@
 
     private async Task CompleteCheckIn()
     {
-        if (this.m_selectedRenter == null || this.m_selectedVehicle == null)
+        if (this.m_selectedRenter == null || this.m_selectedVehicle == null || this.m_tillSession == null)
         {
             this.ShowError(this.Localizer["ValidationError"]);
             return;
@@ -375,7 +380,9 @@
         {
             var request = new CheckInRequest
             {
-                ShopId = this.RequestContext.GetShopId(),
+                // Use till session's shop ID
+                ShopId = this.m_tillSession.ShopId,
+                TillSessionId = this.m_tillSession.TillSessionId,
                 RenterId = this.m_selectedRenter.RenterId,
                 VehicleId = this.m_selectedVehicle.VehicleId,
                 SignatureImagePath = null, // Physical signature collected on printed agreement
@@ -429,6 +436,9 @@
 
             if (result.Success)
             {
+                // Record payment to till session (all payment methods)
+                await this.RecordPaymentToTillAsync(result.RentalId);
+
                 // If this check-in is from a booking, update the booking
                 if (this.m_sourceBooking != null && this.m_sourceBookingItem != null)
                 {
@@ -436,7 +446,7 @@
                         this.m_sourceBooking.BookingId,
                         this.m_sourceBookingItem.ItemId,
                         this.m_selectedVehicle!.VehicleId,
-                        this.RequestContext.GetShopId(),
+                        this.m_tillSession!.ShopId,
                         result.RentalId,
                         this.UserName);
                 }
@@ -456,6 +466,53 @@
         finally
         {
             this.m_processing = false;
+        }
+    }
+
+    /// <summary>
+    /// Records the rental and deposit payments to the till session.
+    /// All payment methods are recorded (cash affects drawer, others for reporting).
+    /// </summary>
+    private async Task RecordPaymentToTillAsync(int rentalId)
+    {
+        if (this.m_tillSession == null) return;
+
+        try
+        {
+            var rentalNo = $"#{rentalId}";
+
+            // Record rental payment to till (all payment methods)
+            if (this.m_rentalConfig.TotalAmount > 0 || this.m_intervalConfig.TotalAmount > 0)
+            {
+                var totalAmount = this.IsIntervalRental ? this.m_intervalConfig.TotalAmount : this.m_rentalConfig.TotalAmount;
+                var paymentMethod = this.m_depositInfo.PaymentMethod;
+
+                await this.TillService.RecordRentalPaymentToTillAsync(
+                    this.m_tillSession.TillSessionId,
+                    paymentMethod,
+                    null, // paymentId - will be linked later
+                    rentalId,
+                    totalAmount,
+                    $"Rental payment {rentalNo}",
+                    this.UserName);
+            }
+
+            // Record deposit to till (if cash deposit)
+            if (this.m_depositInfo.Amount > 0 && this.m_depositInfo.DepositType == "Cash")
+            {
+                await this.TillService.RecordDepositToTillAsync(
+                    this.m_tillSession.TillSessionId,
+                    null, // depositId - will be linked later
+                    rentalId,
+                    this.m_depositInfo.Amount,
+                    $"Security deposit {rentalNo}",
+                    this.UserName);
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log but don't fail the check-in if till recording fails
+            this.Logger.LogError(ex, "Failed to record payment to till session");
         }
     }
 }

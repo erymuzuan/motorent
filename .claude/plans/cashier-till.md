@@ -1,14 +1,81 @@
 # Cashier Till System Implementation Plan
 
 ## Overview
-A dedicated cashier till system for MotoRent staff with individual sessions, cash drawer management, payouts, and shift reconciliation. Includes manager EOD verification workflow.
+A dedicated cashier till system for MotoRent staff with individual sessions, cash drawer management, payouts, and shift reconciliation. **The till becomes the central context for all rental operations**, replacing the header shop selector.
 
 ## User Requirements
 - **Individual staff sessions** - Each staff opens/closes their own session
 - **Payouts** - Fuel reimbursements, agent commissions, petty cash
 - **Reconciliation** - End of each shift with variance tracking
 - **Manager EOD** - End of day verification for all sessions, cash drops, card payments
-- **UI** - Dedicated `/staff/till` page and `/manager/eod` page
+- **Till-centric architecture** - All rental check-in/out must be associated with an open till
+- **Shop selection via Till** - Staff selects shop when opening till, not via header
+
+---
+
+## PHASE 2: Till-Centric Architecture (NEW)
+
+### Key Changes
+
+1. **Remove Header Shop Selector**
+   - File: `src/MotoRent.Client/Layout/MainLayout.razor`
+   - Remove the shop dropdown (lines 66-105)
+   - Replace with Till Status Button:
+     - If till open: Shows "Till: {ShopName}" → links to `/staff/till`
+     - If no till: Shows "Open Till" button → opens inline dialog
+
+2. **Till Session Constraints**
+   - One open till per staff per shop per day
+   - Staff can have multiple tills for different shops (if multi-shop access)
+   - Cannot open new till for same shop until previous one is closed
+
+3. **Rental-Till Association**
+   - Add `TillSessionId` (nullable int) to `Rental` entity
+   - `RentedFromShopId` is derived from `TillSession.ShopId`
+   - All rental operations require active till context
+
+4. **Check-In Flow Changes**
+   - Remove shop requirement check from `RequestContext.GetShopId()`
+   - Instead check for active till session for current user
+   - If no till: Show inline `OpenTillDialog` with shop selection
+   - Once till selected, proceed with check-in using till's ShopId
+
+5. **Check-Out Flow Changes**
+   - Get till context from the rental's associated till or user's active till
+   - Record cash refunds to the active till session
+
+### New/Modified Files
+
+| File | Change |
+|------|--------|
+| `src/MotoRent.Client/Layout/MainLayout.razor` | Replace shop selector with Till status button |
+| `src/MotoRent.Domain/Entities/Rental.cs` | Add `TillSessionId` property |
+| `src/MotoRent.Services/TillService.cs` | Add `GetActiveSessionForUserAsync(userName)` |
+| `src/MotoRent.Client/Pages/Rentals/CheckIn.razor` | Use till context instead of shop context |
+| `src/MotoRent.Client/Pages/Rentals/CheckOutDialog.razor` | Use till context for refunds |
+| `src/MotoRent.Client/Pages/Staff/TillOpenSessionDialog.razor` | Add shop selector dropdown |
+| `src/MotoRent.Server/Controllers/AccountController.cs` | Remove/deprecate SwitchShop endpoint |
+
+### TillService New Methods
+```csharp
+// Get any active till for user (across all shops)
+Task<TillSession?> GetActiveSessionForUserAsync(string userName);
+
+// Check if user can open till for shop (one per day rule)
+Task<bool> CanOpenSessionAsync(int shopId, string userName, DateOnly date);
+
+// Get user's accessible shops for till opening
+Task<List<Shop>> GetShopsForTillOpeningAsync(string userName);
+```
+
+### Header Till Button Component
+```
+File: src/MotoRent.Client/Components/Shared/TillStatusButton.razor
+```
+- Shows current till status with shop name
+- Clicking navigates to `/staff/till`
+- If no till, shows "Open Till" with shop selection modal
+- Badge shows expected cash amount
 
 ---
 
@@ -218,42 +285,106 @@ public class DailyTillSummary
 
 ---
 
-## 6. Integration Points
+## 6. Integration Points (Till-Centric)
 
-### Check-In (CollectDepositStep.razor)
-When PaymentMethod = "Cash", record to active till session:
+### Check-In Flow (CheckIn.razor)
+
+**Step 1: Validate Till Context**
 ```csharp
-await TillService.RecordCashInAsync(sessionId,
-    TillTransactionType.RentalPayment, amount,
-    $"Check-in #{rentalId}", paymentId: paymentId);
+// Instead of RequestContext.GetShopId()
+var activeTill = await TillService.GetActiveSessionForUserAsync(UserName);
+if (activeTill == null)
+{
+    // Show OpenTillPrompt component with shop selection
+    m_showOpenTillPrompt = true;
+    return;
+}
+m_tillSession = activeTill;
+m_shopId = activeTill.ShopId; // Derive shop from till
 ```
 
-For Card/PromptPay/BankTransfer, also record (for tracking, not cash):
+**Step 2: Create Rental with Till Reference**
 ```csharp
-await TillService.RecordCardPaymentAsync(sessionId,
-    amount, $"Card payment for rental #{rentalId}",
+var request = new CheckInRequest
+{
+    ShopId = m_tillSession.ShopId,        // From till
+    TillSessionId = m_tillSession.TillSessionId, // NEW: Link rental to till
+    RenterId = ...,
+    VehicleId = ...,
+};
+```
+
+**Step 3: Record Payment to Till**
+```csharp
+// Cash payment
+await TillService.RecordCashInAsync(m_tillSession.TillSessionId,
+    TillTransactionType.RentalPayment, amount,
+    $"Check-in #{rentalId}", paymentId: paymentId, rentalId: rentalId);
+
+// Non-cash (tracking only)
+await TillService.RecordCardPaymentAsync(m_tillSession.TillSessionId,
+    amount, $"Card payment #{rentalId}",
     paymentId: paymentId, rentalId: rentalId);
 ```
 
-### Check-Out (CheckOutDialog.razor)
-When refund method = "Cash", record from active till session:
+### Check-Out Flow (CheckOutDialog.razor)
+
+**Step 1: Get Till Context**
 ```csharp
-await TillService.RecordPayoutAsync(sessionId,
-    TillTransactionType.DepositRefund, refundAmount,
-    $"Deposit refund #{rentalId}", depositId: depositId);
+// Get user's active till (may be different shop for pooled vehicles)
+var activeTill = await TillService.GetActiveSessionForUserAsync(UserName);
+if (activeTill == null)
+{
+    // For check-out, show warning but allow if rental has associated till
+    ShowWarning("No active till - cash refunds unavailable");
+}
 ```
+
+**Step 2: Record Refund to Till**
+```csharp
+if (refundMethod == "Cash" && activeTill != null)
+{
+    await TillService.RecordPayoutAsync(activeTill.TillSessionId,
+        TillTransactionType.DepositRefund, refundAmount,
+        $"Deposit refund #{rentalId}", depositId: depositId, rentalId: rentalId);
+}
+```
+
+### Header Till Button (MainLayout.razor)
+
+**Replace shop selector with:**
+```razor
+<TillStatusButton />
+```
+
+**TillStatusButton behavior:**
+- Loads user's active till on render
+- If till exists: Shows "📦 {ShopName} | ฿{ExpectedCash}" → links to /staff/till
+- If no till: Shows "🔓 Open Till" button → opens OpenTillPrompt modal
 
 ---
 
 ## 7. Files to Modify
 
+### Core Changes (Already Implemented)
 | File | Change |
 |------|--------|
 | `src/MotoRent.Domain/Entities/Entity.cs` | Add JsonDerivedType for TillSession, TillTransaction |
 | `src/MotoRent.Server/Program.cs` | Register TillService and repositories |
 | `src/MotoRent.Client/Layout/NavMenu.razor` | Add Till menu item under Staff section, EOD under Manager |
-| `src/MotoRent.Client/Pages/Rentals/CheckIn.razor` | Call TillService for cash payments |
-| `src/MotoRent.Client/Pages/Rentals/CheckOutDialog.razor` | Call TillService for cash refunds |
+
+### Phase 2: Till-Centric Architecture
+| File | Change |
+|------|--------|
+| `src/MotoRent.Client/Layout/MainLayout.razor` | **Remove shop selector**, add TillStatusButton component |
+| `src/MotoRent.Domain/Entities/Rental.cs` | Add `TillSessionId` (nullable int) property |
+| `database/tables/MotoRent.Rental.sql` | Add computed column for TillSessionId |
+| `src/MotoRent.Services/TillService.cs` | Add `GetActiveSessionForUserAsync`, `CanOpenSessionAsync` |
+| `src/MotoRent.Client/Pages/Staff/TillOpenSessionDialog.razor` | Add shop picker dropdown |
+| `src/MotoRent.Client/Pages/Rentals/CheckIn.razor` | Replace shop check with till check, show open-till prompt if needed |
+| `src/MotoRent.Client/Pages/Rentals/CheckOutDialog.razor` | Use till context for refunds |
+| `src/MotoRent.Client/Components/Shared/TillStatusButton.razor` | **New**: Header till status/button |
+| `src/MotoRent.Client/Components/Shared/OpenTillPrompt.razor` | **New**: Inline prompt for opening till |
 
 ---
 
@@ -288,15 +419,35 @@ Key terms: CashierTill, OpenSession, CloseSession, OpeningFloat, ExpectedCash, A
 
 ## 10. Verification Checklist
 
-### Staff Workflow
-1. **Open Session**: Staff can open till with float amount
-2. **Record Payout**: Can record fuel/agent/petty cash payouts with receipts
-3. **Cash Drop/TopUp**: Can move cash to/from safe
-4. **Integration**: Cash payments in check-in/out appear in till
-5. **Reconciliation**: Can close shift with actual count, variance tracked
-6. **History**: Can view past sessions and transactions
+### Phase 1 - Staff Workflow (DONE)
+1. ✅ **Open Session**: Staff can open till with float amount
+2. ✅ **Record Payout**: Can record fuel/agent/petty cash payouts with receipts
+3. ✅ **Cash Drop/TopUp**: Can move cash to/from safe
+4. ✅ **Reconciliation**: Can close shift with actual count, variance tracked
+5. ✅ **History**: Can view past sessions and transactions
 
-### Manager Workflow
+### Phase 2 - Till-Centric Architecture
+
+**Test Setup:**
+```bash
+# Start watch mode
+dotnet watch --project src/MotoRent.Server
+
+# Browser: Navigate to http://localhost:5092
+# Impersonate: admin@krabirentals.com
+```
+
+**Verification Steps:**
+1. **Shop Selection**: Staff selects shop when opening till (not header dropdown)
+2. **One Till Constraint**: Cannot open second till for same shop same day
+3. **Header Button**: Shows "Till: {ShopName}" when open, "Open Till" when not
+4. **All Payments Recorded**: Cash, Card, PromptPay, BankTransfer all appear in till history
+5. **Cash vs Non-Cash**: Only cash transactions affect drawer balance (AffectsCash=true)
+6. **Rental-Till Link**: Rentals have TillSessionId, ShopId derived from till
+7. **Check-In Flow**: Must have active till to process check-in
+8. **Check-Out Flow**: Deposit refunds recorded to active till
+
+### Manager Workflow (Future)
 1. **EOD View**: Manager can see all sessions for a date
 2. **Summary**: Daily totals for cash, card, drops displayed correctly
 3. **Verify Session**: Can verify individual sessions with notes
@@ -306,8 +457,8 @@ Key terms: CashierTill, OpenSession, CloseSession, OpeningFloat, ExpectedCash, A
 
 ### Technical
 1. **Build**: `dotnet build` succeeds
-2. **Manual Test**: Complete full staff workflow in browser
-3. **Manual Test**: Complete full manager EOD workflow in browser
+2. **Code Standards**: All files use m_ prefix for private fields
+3. **Localization**: All UI text uses Localizer[], .th.resx and .en.resx present
 
 ---
 

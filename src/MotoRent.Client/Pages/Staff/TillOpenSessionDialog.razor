@@ -1,5 +1,7 @@
 @inherits LocalizedDialogBase<TillSession, TillOpenSessionDialog>
+@using MotoRent.Domain.Entities
 @inject TillService TillService
+@inject ShopService ShopService
 
 <form id="openSessionForm" @onsubmit="this.SaveAsync" @onsubmit:preventDefault>
     <div class="modal-body">
@@ -12,23 +14,59 @@
             </p>
         </div>
 
-        <div class="mb-3">
-            <label class="form-label required">@Localizer["OpeningFloat"]</label>
-            <div class="input-group input-group-lg">
-                <span class="input-group-text">฿</span>
-                <input type="number" class="form-control text-end" @bind="this.OpeningFloat"
-                       required min="0" step="100" placeholder="0" autofocus />
+        @if (m_loading)
+        {
+            <div class="d-flex justify-content-center py-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
             </div>
-            <small class="form-hint">
-                @Localizer["CountAllCashHint"]
-            </small>
-        </div>
+        }
+        else
+        {
+            @* Shop Selector *@
+            <div class="mb-3">
+                <label class="form-label required">@Localizer["SelectShop"]</label>
+                <select class="form-select form-select-lg" @bind="m_selectedShopId" required>
+                    <option value="0" disabled>@Localizer["ChooseShop"]</option>
+                    @foreach (var shop in m_shops)
+                    {
+                        <option value="@shop.ShopId">
+                            @shop.Name
+                            @if (!string.IsNullOrEmpty(shop.Location))
+                            {
+                                @($" ({shop.Location})")
+                            }
+                        </option>
+                    }
+                </select>
+                @if (!string.IsNullOrEmpty(m_validationError))
+                {
+                    <small class="text-danger mt-1 d-block">
+                        <i class="ti ti-alert-circle me-1"></i>
+                        @m_validationError
+                    </small>
+                }
+            </div>
 
-        <div class="mb-0">
-            <label class="form-label">@Localizer["NotesOptional"]</label>
-            <textarea class="form-control" @bind="this.Notes" rows="2"
-                      placeholder="@Localizer["NotesPlaceholder"]"></textarea>
-        </div>
+            <div class="mb-3">
+                <label class="form-label required">@Localizer["OpeningFloat"]</label>
+                <div class="input-group input-group-lg">
+                    <span class="input-group-text">฿</span>
+                    <input type="number" class="form-control text-end" @bind="m_openingFloat"
+                           required min="0" step="100" placeholder="0" />
+                </div>
+                <small class="form-hint">
+                    @Localizer["CountAllCashHint"]
+                </small>
+            </div>
+
+            <div class="mb-0">
+                <label class="form-label">@Localizer["NotesOptional"]</label>
+                <textarea class="form-control" @bind="m_notes" rows="2"
+                          placeholder="@Localizer["NotesPlaceholder"]"></textarea>
+            </div>
+        }
     </div>
 </form>
 
@@ -36,8 +74,9 @@
     <button type="button" class="btn btn-ghost-secondary" @onclick="this.Cancel">
         @Localizer["Cancel"]
     </button>
-    <button type="submit" form="openSessionForm" class="btn btn-primary" disabled="@this.Saving">
-        @if (this.Saving)
+    <button type="submit" form="openSessionForm" class="btn btn-primary"
+            disabled="@(m_saving || m_loading || m_selectedShopId == 0)">
+        @if (m_saving)
         {
             <span class="spinner-border spinner-border-sm me-2" role="status"></span>
         }
@@ -47,12 +86,54 @@
 </div>
 
 @code {
+    /// <summary>
+    /// Optional pre-selected shop ID. If provided, the shop dropdown will be pre-selected.
+    /// </summary>
     [Parameter]
     public int ShopId { get; set; }
 
-    private decimal OpeningFloat { get; set; }
-    private string? Notes { get; set; }
-    private bool Saving { get; set; }
+    private bool m_loading = true;
+    private bool m_saving;
+    private List<Shop> m_shops = [];
+    private int m_selectedShopId;
+    private decimal m_openingFloat;
+    private string? m_notes;
+    private string? m_validationError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await this.LoadShopsAsync();
+    }
+
+    private async Task LoadShopsAsync()
+    {
+        m_loading = true;
+        try
+        {
+            var result = await this.ShopService.GetShopsAsync(page: 1, pageSize: 100);
+            m_shops = result.ItemCollection.ToList();
+
+            // Pre-select shop if provided
+            if (this.ShopId > 0 && m_shops.Any(s => s.ShopId == this.ShopId))
+            {
+                m_selectedShopId = this.ShopId;
+            }
+            else if (m_shops.Count == 1)
+            {
+                // Auto-select if only one shop
+                m_selectedShopId = m_shops[0].ShopId;
+            }
+        }
+        catch (Exception ex)
+        {
+            this.Logger.LogError(ex, "Error loading shops");
+            this.ShowError("Failed to load shops");
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
 
     private void Cancel()
     {
@@ -61,19 +142,28 @@
 
     private async Task SaveAsync()
     {
-        if (this.Saving) return;
+        if (m_saving || m_selectedShopId == 0) return;
 
         try
         {
-            this.Saving = true;
+            m_saving = true;
+            m_validationError = null;
+
+            // Validate can open session
+            var (canOpen, reason) = await this.TillService.CanOpenSessionAsync(m_selectedShopId, this.UserName);
+            if (!canOpen)
+            {
+                m_validationError = reason;
+                return;
+            }
 
             var displayName = this.UserName;
             var result = await this.TillService.OpenSessionAsync(
-                this.ShopId,
+                m_selectedShopId,
                 this.UserName,
                 displayName,
-                this.OpeningFloat,
-                this.Notes);
+                m_openingFloat,
+                m_notes);
 
             if (result.Success)
             {
@@ -91,7 +181,7 @@
         }
         finally
         {
-            this.Saving = false;
+            m_saving = false;
         }
     }
 }

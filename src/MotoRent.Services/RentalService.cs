@@ -247,7 +247,9 @@ public class RentalService(RentalDataContext context, VehiclePoolService? poolSe
                 IsOutOfHoursDropoff = request.IsOutOfHoursDropoff,
                 OutOfHoursDropoffBand = request.OutOfHoursDropoffBand,
                 // Pre-rental inspection
-                PreRentalInspection = request.PreRentalInspection
+                PreRentalInspection = request.PreRentalInspection,
+                // Till session
+                TillSessionId = request.TillSessionId
             };
             session.Attach(rental);
 
@@ -368,7 +370,8 @@ public class RentalService(RentalDataContext context, VehiclePoolService? poolSe
             Status = "Active",
             Notes = request.Notes,
             VehicleName = $"{motorbike.Brand} {motorbike.Model}",
-            PreRentalInspection = request.PreRentalInspection
+            PreRentalInspection = request.PreRentalInspection,
+            TillSessionId = request.TillSessionId
         };
         session.Attach(rental);
 
@@ -1015,6 +1018,9 @@ public class CheckInRequest
 
     // Pre-rental inspection
     public InspectionInfo? PreRentalInspection { get; set; }
+
+    // Till session for recording payment
+    public int? TillSessionId { get; set; }
 
     // Backward compatibility
     [Obsolete("Use VehicleId instead")]

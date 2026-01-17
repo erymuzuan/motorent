@@ -250,6 +250,12 @@ public partial class Rental : Entity
     public int? InsuranceId { get; set; }
     public int? DepositId { get; set; }
 
+    /// <summary>
+    /// Till session that processed this rental (check-in).
+    /// Links rental to staff member's till for reconciliation.
+    /// </summary>
+    public int? TillSessionId { get; set; }
+
     // Pick-up/Drop-off Locations
 
     /// <summary>
