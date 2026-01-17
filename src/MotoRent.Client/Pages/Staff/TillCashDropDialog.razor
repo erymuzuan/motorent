@@ -25,8 +25,15 @@
             <div class="input-group input-group-lg">
                 <span class="input-group-text">฿</span>
                 <input type="number" class="form-control text-end" @bind="this.Amount"
-                       required min="1" step="100" placeholder="0" autofocus />
+                       required min="1" step="any" max="@(this.IsDrop ? this.AvailableCash : decimal.MaxValue)"
+                       placeholder="0" autofocus />
             </div>
+            @if (this.IsDrop && this.AvailableCash > 0)
+            {
+                <div class="form-hint mt-1">
+                    @Localizer["AvailableCash"]: <strong>฿@this.AvailableCash.ToString("N0")</strong>
+                </div>
+            }
         </div>
 
         <div class="mb-0">
@@ -67,6 +74,9 @@
     [Parameter]
     public bool IsDrop { get; set; } = true;
 
+    [Parameter]
+    public decimal AvailableCash { get; set; }
+
     private decimal Amount { get; set; }
     private string? Notes { get; set; }
     private bool Saving { get; set; }
@@ -79,6 +89,13 @@
     private async Task SaveAsync()
     {
         if (this.Saving || this.Amount <= 0) return;
+
+        // Validate drop amount doesn't exceed available cash
+        if (this.IsDrop && this.Amount > this.AvailableCash)
+        {
+            this.ShowError(Localizer["CannotDropMoreThanAvailable"]);
+            return;
+        }
 
         try
         {

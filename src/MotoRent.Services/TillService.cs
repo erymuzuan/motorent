@@ -255,7 +255,8 @@ public class TillService(RentalDataContext context)
         string? receiptNumber = null,
         int? depositId = null,
         int? rentalId = null,
-        string? notes = null)
+        string? notes = null,
+        List<TillAttachment>? attachments = null)
     {
         var session = await GetSessionByIdAsync(sessionId);
         if (session == null)
@@ -280,6 +281,12 @@ public class TillService(RentalDataContext context)
             RecordedByUserName = username,
             Notes = notes
         };
+
+        // Add attachments if provided
+        if (attachments is { Count: > 0 })
+        {
+            transaction.Attachments.AddRange(attachments);
+        }
 
         // Update session totals
         if (transaction.AffectsCash)

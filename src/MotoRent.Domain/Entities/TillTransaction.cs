@@ -37,6 +37,11 @@ public class TillTransaction : Entity
     public DateTimeOffset? VerifiedAt { get; set; }
 
     /// <summary>
+    /// Attachments such as receipts, photos, or other supporting documents
+    /// </summary>
+    public List<TillAttachment> Attachments { get; set; } = [];
+
+    /// <summary>
     /// Whether this transaction affects the cash balance.
     /// Card, BankTransfer, and PromptPay are tracked but don't affect cash.
     /// </summary>
@@ -50,4 +55,35 @@ public class TillTransaction : Entity
 
     public override int GetId() => TillTransactionId;
     public override void SetId(int value) => TillTransactionId = value;
+}
+
+/// <summary>
+/// Represents an attachment (receipt photo, document) for a till transaction
+/// </summary>
+public class TillAttachment
+{
+    /// <summary>
+    /// Unique identifier for this attachment within the transaction
+    /// </summary>
+    public string AttachmentId { get; set; } = Guid.NewGuid().ToString("N");
+
+    /// <summary>
+    /// BinaryStore ID for the uploaded file
+    /// </summary>
+    public string StoreId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Type of attachment (Receipt, Photo, Document)
+    /// </summary>
+    public string AttachmentType { get; set; } = "Receipt";
+
+    /// <summary>
+    /// Optional caption or description
+    /// </summary>
+    public string? Caption { get; set; }
+
+    /// <summary>
+    /// When the attachment was uploaded
+    /// </summary>
+    public DateTimeOffset UploadedOn { get; set; } = DateTimeOffset.Now;
 }

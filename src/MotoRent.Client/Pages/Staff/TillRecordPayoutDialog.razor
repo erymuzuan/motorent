@@ -1,6 +1,8 @@
 @using MotoRent.Domain.Entities
+@using MotoRent.Domain.Storage
 @inherits LocalizedDialogBase<TillTransaction, TillRecordPayoutDialog>
 @inject TillService TillService
+@inject IBinaryStore BinaryStore
 
 <form id="recordPayoutForm" @onsubmit="this.SaveAsync" @onsubmit:preventDefault>
     <div class="modal-body">
@@ -9,7 +11,7 @@
             <div class="input-group input-group-lg">
                 <span class="input-group-text">฿</span>
                 <input type="number" class="form-control text-end" @bind="this.Amount"
-                       required min="1" step="10" placeholder="0" autofocus />
+                       required min="1" step="any" placeholder="0" autofocus />
             </div>
         </div>
 
@@ -53,10 +55,61 @@
                    placeholder="@Localizer["DescriptionPlaceholder"]" />
         </div>
 
-        <div class="mb-0">
+        <div class="mb-3">
             <label class="form-label">@Localizer["Notes"]</label>
             <textarea class="form-control" @bind="this.Notes" rows="2"
                       placeholder="@Localizer["NotesPlaceholder"]"></textarea>
+        </div>
+
+        @* Attachments Section *@
+        <div class="mb-0">
+            <label class="form-label">
+                @Localizer["Attachments"]
+                <span class="badge bg-secondary ms-1">@m_attachments.Count / @c_maxAttachments</span>
+            </label>
+            <p class="form-hint mb-2">@Localizer["AttachmentsHint"]</p>
+
+            @* Attachment Grid *@
+            @if (m_attachments.Count > 0)
+            {
+                <div class="row g-2 mb-3">
+                    @foreach (var attachment in m_attachments)
+                    {
+                        <div class="col-4">
+                            <div class="position-relative">
+                                <img src="@BinaryStore.GetImageUrl(attachment.StoreId)"
+                                     alt="@(attachment.Caption ?? "Attachment")"
+                                     class="img-thumbnail w-100"
+                                     style="height: 80px; object-fit: cover;" />
+                                <button type="button"
+                                        class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1 p-0"
+                                        style="width: 20px; height: 20px; line-height: 1;"
+                                        @onclick="@(() => RemoveAttachment(attachment))"
+                                        title="@Localizer["Remove"]">
+                                    <i class="ti ti-x" style="font-size: 12px;"></i>
+                                </button>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+
+            @* Upload Zone *@
+            @if (m_attachments.Count < c_maxAttachments)
+            {
+                <ImageUpload StoreId="@m_pendingStoreId"
+                             StoreIdChanged="OnAttachmentUploaded"
+                             Title="@Localizer["UploadReceipt"]"
+                             HelpHint="@Localizer["DropOrClick"]"
+                             Capture="ImageUpload.CameraCapture.Environment" />
+            }
+            else
+            {
+                <div class="text-center text-muted py-2">
+                    <i class="ti ti-photo-check"></i>
+                    @Localizer["MaxAttachmentsReached"]
+                </div>
+            }
         </div>
     </div>
 </form>
@@ -76,6 +129,8 @@
 </div>
 
 @code {
+    private const int c_maxAttachments = 5;
+
     [Parameter]
     public int SessionId { get; set; }
 
@@ -89,6 +144,10 @@
     private string Description { get; set; } = "";
     private string? Notes { get; set; }
     private bool Saving { get; set; }
+
+    // Attachments
+    private readonly List<TillAttachment> m_attachments = [];
+    private string? m_pendingStoreId;
 
     protected override void OnParametersSet()
     {
@@ -115,6 +174,28 @@
         this.ModalService.Close(ModalResult.Cancel());
     }
 
+    private Task OnAttachmentUploaded(string? storeId)
+    {
+        if (string.IsNullOrEmpty(storeId)) return Task.CompletedTask;
+        if (m_attachments.Count >= c_maxAttachments) return Task.CompletedTask;
+
+        m_attachments.Add(new TillAttachment
+        {
+            StoreId = storeId,
+            AttachmentType = "Receipt",
+            UploadedOn = DateTimeOffset.Now
+        });
+
+        m_pendingStoreId = null;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private void RemoveAttachment(TillAttachment attachment)
+    {
+        m_attachments.Remove(attachment);
+    }
+
     private async Task SaveAsync()
     {
         if (this.Saving || this.Amount <= 0) return;
@@ -132,7 +213,8 @@
                 category: this.Category,
                 recipientName: this.RecipientName,
                 receiptNumber: this.ReceiptNumber,
-                notes: this.Notes);
+                notes: this.Notes,
+                attachments: m_attachments);
 
             if (result.Success)
             {
