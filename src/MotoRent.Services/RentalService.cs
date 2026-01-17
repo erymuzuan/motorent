@@ -54,7 +54,34 @@ public class RentalService(RentalDataContext context, VehiclePoolService? poolSe
     public async Task<Rental?> GetRentalByWebIdAsync(string webId)
     {
         if (string.IsNullOrEmpty(webId)) return null;
-        return await this.Context.LoadOneAsync<Rental>(r => r.WebId == webId);
+
+        var rental = await this.Context.LoadOneAsync<Rental>(r => r.WebId == webId);
+        return rental;
+    }
+
+    /// <summary>
+    /// Get a rental by its WebId with explicit tenant schema.
+    /// Used by tourist pages where IRequestContext may not resolve correctly during SignalR calls.
+    /// </summary>
+    public async Task<Rental?> GetRentalByWebIdAsync(string webId, string accountNo)
+    {
+        if (string.IsNullOrEmpty(webId) || string.IsNullOrEmpty(accountNo)) return null;
+
+        var queryProvider = ObjectBuilder.GetObject<QueryProvider>();
+        await using var connection = queryProvider.CreateConnection();
+        await connection.OpenAsync();
+
+        var sql = $"SELECT TOP 1 [Json] FROM [{accountNo}].[Rental] WHERE [WebId] = @WebId";
+        await using var command = new Microsoft.Data.SqlClient.SqlCommand(sql, connection);
+        command.Parameters.AddWithValue("@WebId", webId);
+
+        var result = await command.ExecuteScalarAsync();
+        if (result is string json)
+        {
+            return System.Text.Json.JsonSerializer.Deserialize<Rental>(json, Domain.Core.JsonSerializerService.GetDefaultOptions());
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -69,6 +96,31 @@ public class RentalService(RentalDataContext context, VehiclePoolService? poolSe
     {
         if (vehicleId <= 0) return null;
         return await this.Context.LoadOneAsync<Vehicle>(v => v.VehicleId == vehicleId);
+    }
+
+    /// <summary>
+    /// Get vehicle info for a rental with explicit tenant schema.
+    /// Used by tourist pages where IRequestContext may not resolve correctly during SignalR calls.
+    /// </summary>
+    public async Task<Vehicle?> GetVehicleForRentalAsync(int vehicleId, string accountNo)
+    {
+        if (vehicleId <= 0 || string.IsNullOrEmpty(accountNo)) return null;
+
+        var queryProvider = ObjectBuilder.GetObject<QueryProvider>();
+        await using var connection = queryProvider.CreateConnection();
+        await connection.OpenAsync();
+
+        var sql = $"SELECT TOP 1 [Json] FROM [{accountNo}].[Vehicle] WHERE [VehicleId] = @VehicleId";
+        await using var command = new Microsoft.Data.SqlClient.SqlCommand(sql, connection);
+        command.Parameters.AddWithValue("@VehicleId", vehicleId);
+
+        var result = await command.ExecuteScalarAsync();
+        if (result is string json)
+        {
+            return System.Text.Json.JsonSerializer.Deserialize<Vehicle>(json, Domain.Core.JsonSerializerService.GetDefaultOptions());
+        }
+
+        return null;
     }
 
     public async Task<SubmitOperation> CreateRentalAsync(Rental rental, string username)

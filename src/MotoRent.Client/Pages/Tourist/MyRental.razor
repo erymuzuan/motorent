@@ -14,9 +14,9 @@
 @inject NetworkStateService NetworkState
 @inject IJSRuntime JS
 
-<PageTitle>My Rental - @TenantName</PageTitle>
+<PageTitle>My Rental - @this.TenantName</PageTitle>
 
-@if (m_loading)
+@if (this.Loading)
 {
     <div class="d-flex justify-content-center align-items-center" style="min-height: 60vh;">
         <div class="text-center">
@@ -25,7 +25,7 @@
         </div>
     </div>
 }
-else if (m_rental == null)
+else if (this.Rental is null)
 {
     <div class="container-xl py-5">
         <div class="card">
@@ -35,9 +35,9 @@ else if (m_rental == null)
                 <p class="text-secondary mb-4">
                     We couldn't find a rental with this reference. Please check your QR code or contact the shop.
                 </p>
-                @if (!string.IsNullOrEmpty(TenantAccountNo))
+                @if (!string.IsNullOrEmpty(this.TenantAccountNo))
                 {
-                    <a href="@BrowseUrl" class="btn btn-primary">
+                    <a href="@this.BrowseUrl" class="btn btn-primary">
                         <i class="ti ti-motorbike me-1"></i>
                         Browse Vehicles
                     </a>
@@ -53,18 +53,18 @@ else
             @* Main Content Column *@
             <div class="col-12 col-lg-8">
                 @* Rental Status Banner *@
-                <div class="card mb-4 border-0 @GetStatusCardClass()">
+                <div class="card mb-4 border-0 @this.GetStatusCardClass()">
                     <div class="card-body">
                         <div class="d-flex align-items-center gap-3">
-                            <div class="status-icon-circle @GetStatusIconClass()">
-                                <i class="ti @GetStatusIcon()"></i>
+                            <div class="status-icon-circle @this.GetStatusIconClass()">
+                                <i class="ti @this.GetStatusIcon()"></i>
                             </div>
                             <div class="flex-fill">
                                 <div class="d-flex align-items-center gap-2 mb-1">
-                                    <h4 class="mb-0">@GetStatusTitle()</h4>
-                                    <span class="badge @GetStatusBadgeClass()">@m_rental.Status</span>
+                                    <h4 class="mb-0">@this.GetStatusTitle()</h4>
+                                    <span class="badge @this.GetStatusBadgeClass()">@this.Rental.Status</span>
                                 </div>
-                                <p class="mb-0 opacity-75">@GetStatusDescription()</p>
+                                <p class="mb-0 opacity-75">@this.GetStatusDescription()</p>
                             </div>
                         </div>
                     </div>
@@ -82,15 +82,15 @@ else
                         <div class="row g-4">
                             <div class="col-12 col-md-5">
                                 <div class="vehicle-image-container">
-                                    <img src="@GetVehicleImageUrl()" alt="@m_rental.VehicleName" class="vehicle-image" />
+                                    <img src="@this.GetVehicleImageUrl()" alt="@this.Rental.VehicleName" class="vehicle-image" />
                                 </div>
                             </div>
                             <div class="col-12 col-md-7">
-                                <h4 class="mb-2">@m_rental.VehicleName</h4>
-                                @if (!string.IsNullOrEmpty(m_vehicleLicensePlate))
+                                <h4 class="mb-2">@this.Rental.VehicleName</h4>
+                                @if (!string.IsNullOrEmpty(this.VehicleLicensePlate))
                                 {
                                     <div class="license-plate mb-3">
-                                        <span>@m_vehicleLicensePlate</span>
+                                        <span>@this.VehicleLicensePlate</span>
                                     </div>
                                 }
 
@@ -98,19 +98,19 @@ else
                                     <div class="info-row">
                                         <i class="ti ti-calendar text-muted"></i>
                                         <span class="label">Pickup</span>
-                                        <span class="value">@FormatDateTime(m_rental.StartDate)</span>
+                                        <span class="value">@this.FormatDateTime(this.Rental.StartDate)</span>
                                     </div>
                                     <div class="info-row">
                                         <i class="ti ti-calendar-due text-muted"></i>
                                         <span class="label">Return</span>
-                                        <span class="value">@FormatDateTime(m_rental.ExpectedEndDate)</span>
+                                        <span class="value">@this.FormatDateTime(this.Rental.ExpectedEndDate)</span>
                                     </div>
-                                    @if (m_rental.MileageStart > 0)
+                                    @if (this.Rental.MileageStart > 0)
                                     {
                                         <div class="info-row">
                                             <i class="ti ti-dashboard text-muted"></i>
                                             <span class="label">Start Mileage</span>
-                                            <span class="value">@m_rental.MileageStart.ToString("N0") km</span>
+                                            <span class="value">@this.Rental.MileageStart.ToString("N0") km</span>
                                         </div>
                                     }
                                 </div>
@@ -131,43 +131,43 @@ else
                         <div class="pricing-breakdown">
                             <div class="pricing-row">
                                 <span>Rental Reference</span>
-                                <strong>#@m_rental.RentalId</strong>
+                                <strong>#@this.Rental.RentalId</strong>
                             </div>
                             <div class="pricing-row">
                                 <span>Duration</span>
-                                <span>@GetDurationText()</span>
+                                <span>@this.GetDurationText()</span>
                             </div>
                             <div class="pricing-row">
-                                <span>@GetRateLabel()</span>
-                                <span>@FormatCurrency(m_rental.RentalRate)</span>
+                                <span>@this.GetRateLabel()</span>
+                                <span>@this.FormatCurrency(this.Rental.RentalRate)</span>
                             </div>
-                            @if (m_rental.IncludeDriver)
+                            @if (this.Rental.IncludeDriver)
                             {
                                 <div class="pricing-row">
                                     <span>Driver</span>
-                                    <span>@FormatCurrency(m_rental.DriverFee)</span>
+                                    <span>@this.FormatCurrency(this.Rental.DriverFee)</span>
                                 </div>
                             }
-                            @if (m_rental.IncludeGuide)
+                            @if (this.Rental.IncludeGuide)
                             {
                                 <div class="pricing-row">
                                     <span>Guide</span>
-                                    <span>@FormatCurrency(m_rental.GuideFee)</span>
+                                    <span>@this.FormatCurrency(this.Rental.GuideFee)</span>
                                 </div>
                             }
                             <hr />
                             <div class="pricing-row total">
                                 <span>Total Amount</span>
-                                <strong>@FormatCurrency(m_rental.TotalAmount)</strong>
+                                <strong>@this.FormatCurrency(this.Rental.TotalAmount)</strong>
                             </div>
                         </div>
 
-                        @if (!string.IsNullOrEmpty(m_rental.Notes))
+                        @if (!string.IsNullOrEmpty(this.Rental.Notes))
                         {
                             <div class="mt-3 p-3 bg-light rounded">
                                 <small class="text-secondary">
                                     <i class="ti ti-note me-1"></i>
-                                    @m_rental.Notes
+                                    @this.Rental.Notes
                                 </small>
                             </div>
                         }
@@ -175,7 +175,7 @@ else
                 </div>
 
                 @* Quick Actions *@
-                @if (m_rental.Status is "Active" or "Reserved")
+                @if (this.Rental.Status is "Active" or "Reserved")
                 {
                     <div class="card mb-4">
                         <div class="card-header">
@@ -187,25 +187,25 @@ else
                         <div class="card-body">
                             <div class="row g-3">
                                 <div class="col-6 col-md-3">
-                                    <button type="button" class="action-card" @onclick="ExtendRental">
+                                    <button type="button" class="action-card" @onclick="this.ExtendRental">
                                         <i class="ti ti-calendar-plus text-primary"></i>
                                         <span>Extend</span>
                                     </button>
                                 </div>
                                 <div class="col-6 col-md-3">
-                                    <button type="button" class="action-card" @onclick="ViewContract">
+                                    <button type="button" class="action-card" @onclick="this.ViewContract">
                                         <i class="ti ti-file-text text-info"></i>
                                         <span>Contract</span>
                                     </button>
                                 </div>
                                 <div class="col-6 col-md-3">
-                                    <button type="button" class="action-card" @onclick="ReportAccident">
+                                    <button type="button" class="action-card" @onclick="this.ReportAccident">
                                         <i class="ti ti-alert-triangle text-warning"></i>
                                         <span>Report Issue</span>
                                     </button>
                                 </div>
                                 <div class="col-6 col-md-3">
-                                    <button type="button" class="action-card emergency" @onclick="ShowEmergencyCard">
+                                    <button type="button" class="action-card emergency" @onclick="this.ShowEmergencyCard">
                                         <i class="ti ti-first-aid-kit text-danger"></i>
                                         <span>Emergency</span>
                                     </button>
@@ -229,10 +229,10 @@ else
                             <li class="mb-2">Return the vehicle with the same fuel level</li>
                             <li class="mb-2">Report any damage or issues immediately</li>
                             <li class="mb-2">Keep this page bookmarked for quick access</li>
-                            @if (m_rental.Status == "Active")
+                            @if (this.Rental.Status == "Active")
                             {
                                 <li class="mb-0">
-                                    <strong>Return by @FormatDateTime(m_rental.ExpectedEndDate)</strong> to avoid late fees
+                                    <strong>Return by @this.FormatDateTime(this.Rental.ExpectedEndDate)</strong> to avoid late fees
                                 </li>
                             }
                         </ul>
@@ -243,31 +243,31 @@ else
             @* Sidebar Column *@
             <div class="col-12 col-lg-4">
                 @* Shop Contact Card *@
-                @if (m_shopContactInfo != null)
+                @if (this.ShopContactInfo is not null)
                 {
-                    <ShopContactCard ContactInfo="@m_shopContactInfo" Class="mb-4" />
+                    <ShopContactCard ContactInfo="@this.ShopContactInfo" Class="mb-4" />
                 }
 
                 @* Download for Offline Use *@
                 <div class="card mb-4">
                     <div class="card-body">
                         <div class="d-flex align-items-start gap-3">
-                            <div class="offline-icon @(m_isDownloaded ? "downloaded" : "")">
-                                <i class="ti @(m_isDownloaded ? "ti-cloud-check" : "ti-cloud-download")"></i>
+                            <div class="offline-icon @(this.IsDownloaded ? "downloaded" : "")">
+                                <i class="ti @(this.IsDownloaded ? "ti-cloud-check" : "ti-cloud-download")"></i>
                             </div>
                             <div class="flex-fill">
-                                <h5 class="mb-1">@(m_isDownloaded ? "Saved Offline" : "Save for Offline")</h5>
-                                @if (m_isDownloaded)
+                                <h5 class="mb-1">@(this.IsDownloaded ? "Saved Offline" : "Save for Offline")</h5>
+                                @if (this.IsDownloaded)
                                 {
                                     <p class="text-success small mb-2">
                                         <i class="ti ti-check me-1"></i>
                                         Available offline
                                     </p>
                                     <small class="text-secondary d-block mb-3">
-                                        Last synced: @FormatLastSync()
+                                        Last synced: @this.FormatLastSync()
                                     </small>
-                                    <button type="button" class="btn btn-outline-primary btn-sm w-100" @onclick="RefreshOfflineData" disabled="@m_downloading">
-                                        @if (m_downloading)
+                                    <button type="button" class="btn btn-outline-primary btn-sm w-100" @onclick="this.RefreshOfflineData" disabled="@this.Downloading">
+                                        @if (this.Downloading)
                                         {
                                             <span class="spinner-border spinner-border-sm me-1" role="status"></span>
                                             <span>Syncing...</span>
@@ -284,8 +284,8 @@ else
                                     <p class="text-secondary small mb-3">
                                         Download this rental info to access it even without internet.
                                     </p>
-                                    <button type="button" class="btn btn-primary btn-sm w-100" @onclick="DownloadForOffline" disabled="@m_downloading">
-                                        @if (m_downloading)
+                                    <button type="button" class="btn btn-primary btn-sm w-100" @onclick="this.DownloadForOffline" disabled="@this.Downloading">
+                                        @if (this.Downloading)
                                         {
                                             <span class="spinner-border spinner-border-sm me-1" role="status"></span>
                                             <span>Downloading...</span>
@@ -303,15 +303,15 @@ else
                 </div>
 
                 @* QR Code for Staff *@
-                @if (m_rental.Status is "Active" or "Reserved")
+                @if (this.Rental.Status is "Active" or "Reserved")
                 {
                     <div class="card">
                         <div class="card-body text-center">
                             <p class="text-secondary small mb-3">Show this to staff at pickup/return</p>
                             <div class="qr-code-container mb-2">
-                                <img src="@GetQRCodeUrl()" alt="QR Code" class="qr-code-image" />
+                                <img src="@this.GetQRCodeUrl()" alt="QR Code" class="qr-code-image" />
                             </div>
-                            <small class="text-secondary">Rental #@m_rental.RentalId</small>
+                            <small class="text-secondary">Rental #@this.Rental.RentalId</small>
                         </div>
                     </div>
                 }
@@ -320,207 +320,36 @@ else
     </div>
 
     @* Floating Shop Contact Button *@
-    @if (m_shopContactInfo != null)
+    @if (this.ShopContactInfo is not null)
     {
-        <ShopContactFAB ContactInfo="@m_shopContactInfo" />
+        <ShopContactFAB ContactInfo="@this.ShopContactInfo" />
     }
 }
-
-<style>
-    .status-icon-circle {
-        width: 56px;
-        height: 56px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.5rem;
-        flex-shrink: 0;
-    }
-
-    .status-icon-circle.active {
-        background: rgba(47, 179, 68, 0.15);
-        color: #2fb344;
-    }
-
-    .status-icon-circle.reserved {
-        background: rgba(66, 153, 225, 0.15);
-        color: #4299e1;
-    }
-
-    .status-icon-circle.completed {
-        background: rgba(134, 142, 150, 0.15);
-        color: #868e96;
-    }
-
-    .bg-success-subtle { background: rgba(47, 179, 68, 0.1); }
-    .bg-info-subtle { background: rgba(66, 153, 225, 0.1); }
-    .bg-secondary-subtle { background: rgba(134, 142, 150, 0.1); }
-
-    .vehicle-image-container {
-        background: var(--tblr-bg-surface-secondary);
-        border-radius: 12px;
-        overflow: hidden;
-        aspect-ratio: 4/3;
-    }
-
-    .vehicle-image {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
-
-    .license-plate {
-        display: inline-block;
-        background: #1e293b;
-        color: white;
-        padding: 6px 16px;
-        border-radius: 6px;
-        font-family: monospace;
-        font-size: 1.1rem;
-        font-weight: 600;
-        letter-spacing: 1px;
-    }
-
-    .info-row {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .info-row i {
-        width: 20px;
-        flex-shrink: 0;
-    }
-
-    .info-row .label {
-        color: var(--tblr-secondary);
-        min-width: 100px;
-    }
-
-    .info-row .value {
-        font-weight: 500;
-    }
-
-    .pricing-breakdown {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-    }
-
-    .pricing-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .pricing-row.total {
-        font-size: 1.1rem;
-        color: var(--tenant-primary, #00897B);
-    }
-
-    .action-card {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        padding: 20px 12px;
-        border-radius: 12px;
-        border: 1px solid var(--tblr-border-color);
-        background: white;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        width: 100%;
-    }
-
-    .action-card:hover {
-        border-color: var(--tenant-primary, #00897B);
-        background: var(--tblr-bg-surface-secondary);
-        transform: translateY(-2px);
-    }
-
-    .action-card i {
-        font-size: 1.5rem;
-    }
-
-    .action-card span {
-        font-size: 0.85rem;
-        font-weight: 500;
-    }
-
-    .action-card.emergency {
-        border-color: #dc354533;
-        background: #dc354508;
-    }
-
-    .action-card.emergency:hover {
-        border-color: #dc3545;
-        background: #dc354515;
-    }
-
-    .offline-icon {
-        width: 48px;
-        height: 48px;
-        border-radius: 12px;
-        background: var(--tenant-primary, #00897B);
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.5rem;
-        flex-shrink: 0;
-        transition: background-color 0.3s ease;
-    }
-
-    .offline-icon.downloaded {
-        background: #2fb344;
-    }
-
-    .qr-code-container {
-        background: white;
-        padding: 16px;
-        border-radius: 12px;
-        display: inline-block;
-    }
-
-    .qr-code-image {
-        width: 160px;
-        height: 160px;
-    }
-
-    /* Responsive adjustments */
-    @@media (max-width: 992px) {
-        .col-lg-4 {
-            order: -1; /* Shop contact first on mobile */
-        }
-    }
-</style>
 
 @code {
     [Parameter] public new string AccountNo { get; set; } = "";
     [Parameter] public string RentalWebId { get; set; } = "";
 
-    private bool m_loading = true;
-    private bool m_downloading;
-    private bool m_isDownloaded;
-    private DateTimeOffset? m_lastSyncAt;
-    private Rental? m_rental;
-    private Shop? m_shop;
-    private ShopContactInfo? m_shopContactInfo;
-    private string? m_vehicleLicensePlate;
-
-    protected override async Task OnParametersSetAsync()
-    {
-        await LoadRentalAsync();
-    }
+    private bool Loading { get; set; } = true;
+    private bool Initialized { get; set; }
+    private bool Downloading { get; set; }
+    private bool IsDownloaded { get; set; }
+    private DateTimeOffset? LastSyncAt { get; set; }
+    private Rental? Rental { get; set; }
+    private Shop? Shop { get; set; }
+    private ShopContactInfo? ShopContactInfo { get; set; }
+    private string? VehicleLicensePlate { get; set; }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
+            // Load data only after first render (not during prerendering)
+            // This ensures the IRequestContext has access to the correct HTTP context/tenant
+            await this.LoadRentalAsync();
+
             // Check if rental is already saved offline
-            await CheckOfflineStatusAsync();
+            await this.CheckOfflineStatusAsync();
         }
     }
 
@@ -528,16 +357,16 @@ else
     {
         try
         {
-            await OfflineDb.InitializeAsync();
-            var offlineRental = await OfflineDb.GetRentalByWebIdAsync(RentalWebId);
+            await this.OfflineDb.InitializeAsync();
+            var offlineRental = await this.OfflineDb.GetRentalByWebIdAsync(this.RentalWebId);
             if (offlineRental != null)
             {
-                m_isDownloaded = true;
+                this.IsDownloaded = true;
                 if (DateTimeOffset.TryParse(offlineRental.LastSyncAt, out var lastSync))
                 {
-                    m_lastSyncAt = lastSync;
+                    this.LastSyncAt = lastSync;
                 }
-                StateHasChanged();
+                this.StateHasChanged();
             }
         }
         catch (Exception ex)
@@ -548,53 +377,72 @@ else
 
     private async Task LoadRentalAsync()
     {
-        m_loading = true;
-        StateHasChanged();
+        if (this.Initialized) return; // Prevent double loading
+        this.Initialized = true;
+        this.Loading = true;
 
         try
         {
-            // First try to load by WebId (string)
-            m_rental = await RentalService.GetRentalByWebIdAsync(RentalWebId);
-
-            // If not found by WebId, try as RentalId
-            if (m_rental == null && int.TryParse(RentalWebId, out var rentalId))
+            // Use the explicit accountNo overload to ensure correct schema resolution
+            // This bypasses IRequestContext which may not work correctly during SignalR calls
+            var accountNo = this.AccountNo;
+            if (!string.IsNullOrEmpty(accountNo))
             {
-                m_rental = await RentalService.GetRentalAsync(rentalId);
+                this.Rental = await this.RentalService.GetRentalByWebIdAsync(this.RentalWebId, accountNo);
             }
 
-            if (m_rental != null)
+            // Fallback: try without explicit schema (relies on IRequestContext)
+            if (this.Rental == null)
             {
-                // Load shop info for contact card
-                m_shop = await ShopService.GetShopByIdAsync(m_rental.RentedFromShopId);
-                if (m_shop != null)
+                this.Rental = await this.RentalService.GetRentalByWebIdAsync(this.RentalWebId);
+            }
+
+            // If not found by WebId, try as RentalId
+            if (this.Rental == null && int.TryParse(this.RentalWebId, out var rentalId))
+            {
+                this.Rental = await this.RentalService.GetRentalAsync(rentalId);
+            }
+
+            if (this.Rental != null)
+            {
+                // Load shop info for contact card (use explicit schema for tourist pages)
+                this.Shop = !string.IsNullOrEmpty(accountNo)
+                    ? await this.ShopService.GetShopByIdAsync(this.Rental.RentedFromShopId, accountNo)
+                    : await this.ShopService.GetShopByIdAsync(this.Rental.RentedFromShopId);
+
+                if (this.Shop != null)
                 {
-                    m_shopContactInfo = ShopContactInfo.FromShop(
-                        m_shop,
-                        renterName: m_rental.RenterName,
-                        rentalReference: m_rental.RentalId.ToString(),
-                        vehicleInfo: $"{m_rental.VehicleName} ({m_vehicleLicensePlate})"
+                    this.ShopContactInfo = Domain.Tourist.ShopContactInfo.FromShop(
+                        this.Shop,
+                        renterName: this.Rental.RenterName,
+                        rentalReference: this.Rental.RentalId.ToString(),
+                        vehicleInfo: $"{this.Rental.VehicleName} ({this.VehicleLicensePlate})"
                     );
                 }
 
-                // Load vehicle license plate
-                var vehicle = await RentalService.GetVehicleForRentalAsync(m_rental.VehicleId);
+                // Load vehicle license plate (use explicit schema for tourist pages)
+                var vehicle = !string.IsNullOrEmpty(accountNo)
+                    ? await this.RentalService.GetVehicleForRentalAsync(this.Rental.VehicleId, accountNo)
+                    : await this.RentalService.GetVehicleForRentalAsync(this.Rental.VehicleId);
+
                 if (vehicle != null)
                 {
-                    m_vehicleLicensePlate = vehicle.LicensePlate;
+                    this.VehicleLicensePlate = vehicle.LicensePlate;
                 }
             }
         }
         catch (Exception ex)
         {
-            ShowError($"Error loading rental: {ex.Message}");
+            this.ShowError($"Error loading rental: {ex.Message}");
         }
         finally
         {
-            m_loading = false;
+            this.Loading = false;
+            this.StateHasChanged(); // Update UI after data is loaded in OnAfterRenderAsync
         }
     }
 
-    private string GetStatusCardClass() => m_rental?.Status switch
+    private string GetStatusCardClass() => this.Rental?.Status switch
     {
         "Active" => "bg-success-subtle",
         "Reserved" => "bg-info-subtle",
@@ -602,7 +450,7 @@ else
         _ => ""
     };
 
-    private string GetStatusIconClass() => m_rental?.Status switch
+    private string GetStatusIconClass() => this.Rental?.Status switch
     {
         "Active" => "active",
         "Reserved" => "reserved",
@@ -610,7 +458,7 @@ else
         _ => ""
     };
 
-    private string GetStatusIcon() => m_rental?.Status switch
+    private string GetStatusIcon() => this.Rental?.Status switch
     {
         "Active" => "ti-steering-wheel",
         "Reserved" => "ti-calendar-check",
@@ -619,7 +467,7 @@ else
         _ => "ti-info-circle"
     };
 
-    private string GetStatusTitle() => m_rental?.Status switch
+    private string GetStatusTitle() => this.Rental?.Status switch
     {
         "Active" => "Rental Active",
         "Reserved" => "Reservation Confirmed",
@@ -628,16 +476,16 @@ else
         _ => "Unknown Status"
     };
 
-    private string GetStatusDescription() => m_rental?.Status switch
+    private string GetStatusDescription() => this.Rental?.Status switch
     {
-        "Active" => $"Enjoy your ride! Return by {FormatDateTime(m_rental!.ExpectedEndDate)}",
-        "Reserved" => $"Pick up on {FormatDateTime(m_rental!.StartDate)}",
+        "Active" => $"Enjoy your ride! Return by {this.FormatDateTime(this.Rental!.ExpectedEndDate)}",
+        "Reserved" => $"Pick up on {this.FormatDateTime(this.Rental!.StartDate)}",
         "Completed" => "Thank you for renting with us!",
         "Cancelled" => "This rental has been cancelled.",
         _ => ""
     };
 
-    private string GetStatusBadgeClass() => m_rental?.Status switch
+    private string GetStatusBadgeClass() => this.Rental?.Status switch
     {
         "Active" => "bg-success",
         "Reserved" => "bg-info",
@@ -659,58 +507,58 @@ else
 
     private string GetDurationText()
     {
-        if (m_rental == null) return "";
+        if (this.Rental is null) return "";
 
-        var days = (m_rental.ExpectedEndDate - m_rental.StartDate).Days;
+        var days = (this.Rental.ExpectedEndDate - this.Rental.StartDate).Days;
         if (days == 0) days = 1;
 
-        return m_rental.DurationType == RentalDurationType.Daily
+        return this.Rental.DurationType == RentalDurationType.Daily
             ? $"{days} day{(days > 1 ? "s" : "")}"
-            : $"{m_rental.IntervalMinutes} minutes";
+            : $"{this.Rental.IntervalMinutes} minutes";
     }
 
     private string GetRateLabel()
     {
-        return m_rental?.DurationType == RentalDurationType.Daily
+        return this.Rental?.DurationType == RentalDurationType.Daily
             ? "Daily Rate"
-            : $"{m_rental?.IntervalMinutes}-min Rate";
+            : $"{this.Rental?.IntervalMinutes}-min Rate";
     }
 
     private string GetQRCodeUrl()
     {
-        var qrData = $"MOTORENT-{m_rental?.RentalId}-{m_rental?.WebId}";
+        var qrData = $"MOTORENT-{this.Rental?.RentalId}-{this.Rental?.WebId}";
         return $"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={Uri.EscapeDataString(qrData)}";
     }
 
     private async Task ExtendRental()
     {
-        if (m_shopContactInfo != null && !string.IsNullOrEmpty(m_shopContactInfo.WhatsAppUrl))
+        if (this.ShopContactInfo is { WhatsAppUrl: { Length: > 0 } whatsAppUrl })
         {
-            await JS.InvokeVoidAsync("open", m_shopContactInfo.WhatsAppUrl, "_blank");
+            await this.JS.InvokeVoidAsync("open", whatsAppUrl, "_blank");
         }
-        else if (m_shopContactInfo != null && !string.IsNullOrEmpty(m_shopContactInfo.PhoneUrl))
+        else if (this.ShopContactInfo is { PhoneUrl: { Length: > 0 } phoneUrl })
         {
-            await JS.InvokeVoidAsync("open", m_shopContactInfo.PhoneUrl, "_self");
+            await this.JS.InvokeVoidAsync("open", phoneUrl, "_self");
         }
         else
         {
-            ShowInfo("Please contact the shop to extend your rental.");
+            this.ShowInfo("Please contact the shop to extend your rental.");
         }
     }
 
     private void ViewContract()
     {
-        if (m_rental != null)
+        if (this.Rental is not null)
         {
-            NavigateToTenant($"my-rental/{RentalWebId}/contract");
+            this.NavigateToTenant($"my-rental/{this.RentalWebId}/contract");
         }
     }
 
     private void ReportAccident()
     {
-        if (m_rental != null)
+        if (this.Rental is not null)
         {
-            NavigateToTenant($"my-rental/{RentalWebId}/accident-report");
+            this.NavigateToTenant($"my-rental/{this.RentalWebId}/accident-report");
         }
     }
 
@@ -722,67 +570,67 @@ else
                       "Ambulance: 1669\n" +
                       "Police: 191\n\n";
 
-        if (m_shop != null)
+        if (this.Shop is not null)
         {
-            message += $"Shop: {m_shop.Phone}";
+            message += $"Shop: {this.Shop.Phone}";
         }
 
-        await DialogService.ShowMessageAsync(message, "Emergency Contacts");
+        await this.DialogService.ShowMessageAsync(message, "Emergency Contacts");
     }
 
     private async Task DownloadForOffline()
     {
-        if (m_rental == null) return;
+        if (this.Rental is null) return;
 
-        m_downloading = true;
-        StateHasChanged();
+        this.Downloading = true;
+        this.StateHasChanged();
 
         try
         {
-            await OfflineDb.InitializeAsync();
+            await this.OfflineDb.InitializeAsync();
 
             // Create the offline rental package
             var offlinePackage = new OfflineRentalPackage
             {
-                RentalId = m_rental.RentalId,
-                WebId = m_rental.WebId.ToString(),
-                AccountNo = TenantAccountNo ?? "",
-                Status = m_rental.Status,
-                StartDate = m_rental.StartDate,
-                ExpectedEndDate = m_rental.ExpectedEndDate,
-                RentalRate = m_rental.RentalRate,
-                TotalAmount = m_rental.TotalAmount,
+                RentalId = this.Rental.RentalId,
+                WebId = this.Rental.WebId.ToString(),
+                AccountNo = this.TenantAccountNo ?? "",
+                Status = this.Rental.Status,
+                StartDate = this.Rental.StartDate,
+                ExpectedEndDate = this.Rental.ExpectedEndDate,
+                RentalRate = this.Rental.RentalRate,
+                TotalAmount = this.Rental.TotalAmount,
                 Vehicle = new OfflineVehicleInfo
                 {
-                    VehicleId = m_rental.VehicleId,
-                    Brand = m_rental.VehicleName?.Split(' ').FirstOrDefault() ?? "",
-                    Model = m_rental.VehicleName ?? "",
-                    LicensePlate = m_vehicleLicensePlate ?? "",
-                    ImageUrl = GetVehicleImageUrl()
+                    VehicleId = this.Rental.VehicleId,
+                    Brand = this.Rental.VehicleName?.Split(' ').FirstOrDefault() ?? "",
+                    Model = this.Rental.VehicleName ?? "",
+                    LicensePlate = this.VehicleLicensePlate ?? "",
+                    ImageUrl = this.GetVehicleImageUrl()
                 },
                 Renter = new OfflineRenterInfo
                 {
-                    RenterId = m_rental.RenterId,
-                    FullName = m_rental.RenterName ?? ""
+                    RenterId = this.Rental.RenterId,
+                    FullName = this.Rental.RenterName ?? ""
                 }
             };
 
             // Add shop info if available
-            if (m_shop != null && m_shopContactInfo != null)
+            if (this.Shop is not null && this.ShopContactInfo is not null)
             {
                 offlinePackage.Shop = new OfflineShopInfo
                 {
-                    ShopId = m_shop.ShopId,
-                    Name = m_shop.Name,
-                    Phone = m_shop.Phone,
-                    Address = m_shop.Address,
-                    Latitude = m_shop.GpsLocation?.Lat ?? 0,
-                    Longitude = m_shop.GpsLocation?.Lng ?? 0,
-                    WhatsAppUrl = m_shopContactInfo.WhatsAppUrl,
-                    LineUrl = m_shopContactInfo.LineUrl,
-                    GoogleMapsUrl = m_shopContactInfo.GoogleMapsUrl,
-                    Hours = m_shopContactInfo.Hours,
-                    IsCurrentlyOpen = m_shopContactInfo.IsCurrentlyOpen
+                    ShopId = this.Shop.ShopId,
+                    Name = this.Shop.Name,
+                    Phone = this.Shop.Phone,
+                    Address = this.Shop.Address,
+                    Latitude = this.Shop.GpsLocation?.Lat ?? 0,
+                    Longitude = this.Shop.GpsLocation?.Lng ?? 0,
+                    WhatsAppUrl = this.ShopContactInfo.WhatsAppUrl,
+                    LineUrl = this.ShopContactInfo.LineUrl,
+                    GoogleMapsUrl = this.ShopContactInfo.GoogleMapsUrl,
+                    Hours = this.ShopContactInfo.Hours,
+                    IsCurrentlyOpen = this.ShopContactInfo.IsCurrentlyOpen
                 };
             }
 
@@ -811,52 +659,52 @@ else
                 Phone = "191",
                 Priority = 3
             });
-            if (m_shop != null && !string.IsNullOrEmpty(m_shop.Phone))
+            if (this.Shop is { Phone: { Length: > 0 } shopPhone })
             {
                 offlinePackage.EmergencyContacts.Add(new OfflineEmergencyContact
                 {
                     Id = "shop",
                     Type = "shop",
-                    Name = m_shop.Name,
-                    Phone = m_shop.Phone,
+                    Name = this.Shop.Name,
+                    Phone = shopPhone,
                     Priority = 4
                 });
             }
 
             // Save to IndexedDB
-            await OfflineDb.SaveRentalPackageAsync(offlinePackage);
+            await this.OfflineDb.SaveRentalPackageAsync(offlinePackage);
 
-            m_isDownloaded = true;
-            m_lastSyncAt = DateTimeOffset.Now;
-            ShowSuccess("Rental saved for offline use!");
+            this.IsDownloaded = true;
+            this.LastSyncAt = DateTimeOffset.Now;
+            this.ShowSuccess("Rental saved for offline use!");
         }
         catch (Exception ex)
         {
             Console.WriteLine($"[MyRental] Error downloading for offline: {ex.Message}");
-            ShowError("Failed to save for offline. Please try again.");
+            this.ShowError("Failed to save for offline. Please try again.");
         }
         finally
         {
-            m_downloading = false;
-            StateHasChanged();
+            this.Downloading = false;
+            this.StateHasChanged();
         }
     }
 
     private async Task RefreshOfflineData()
     {
-        await DownloadForOffline();
+        await this.DownloadForOffline();
     }
 
     private string FormatLastSync()
     {
-        if (!m_lastSyncAt.HasValue) return "Unknown";
+        if (!this.LastSyncAt.HasValue) return "Unknown";
 
-        var diff = DateTimeOffset.Now - m_lastSyncAt.Value;
+        var diff = DateTimeOffset.Now - this.LastSyncAt.Value;
 
         if (diff.TotalMinutes < 1) return "Just now";
         if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes} min ago";
         if (diff.TotalHours < 24) return $"{(int)diff.TotalHours} hours ago";
 
-        return m_lastSyncAt.Value.ToString("MMM d, h:mm tt");
+        return this.LastSyncAt.Value.ToString("MMM d, h:mm tt");
     }
 }

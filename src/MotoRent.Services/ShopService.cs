@@ -52,6 +52,31 @@ public class ShopService(RentalDataContext context)
         return await this.Context.LoadOneAsync<Shop>(s => s.ShopId == shopId);
     }
 
+    /// <summary>
+    /// Get a shop by ID with explicit tenant schema.
+    /// Used by tourist pages where IRequestContext may not resolve correctly during SignalR calls.
+    /// </summary>
+    public async Task<Shop?> GetShopByIdAsync(int shopId, string accountNo)
+    {
+        if (shopId <= 0 || string.IsNullOrEmpty(accountNo)) return null;
+
+        var queryProvider = ObjectBuilder.GetObject<QueryProvider>();
+        await using var connection = queryProvider.CreateConnection();
+        await connection.OpenAsync();
+
+        var sql = $"SELECT TOP 1 [Json] FROM [{accountNo}].[Shop] WHERE [ShopId] = @ShopId";
+        await using var command = new Microsoft.Data.SqlClient.SqlCommand(sql, connection);
+        command.Parameters.AddWithValue("@ShopId", shopId);
+
+        var result = await command.ExecuteScalarAsync();
+        if (result is string json)
+        {
+            return System.Text.Json.JsonSerializer.Deserialize<Shop>(json, Domain.Core.JsonSerializerService.GetDefaultOptions());
+        }
+
+        return null;
+    }
+
     public async Task<SubmitOperation> CreateShopAsync(Shop shop, string username)
     {
         using var session = this.Context.OpenSession(username);
