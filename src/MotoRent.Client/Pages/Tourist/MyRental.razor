@@ -7,6 +7,7 @@
 @using MotoRent.Domain.Tourist
 @using MotoRent.Services
 @using MotoRent.Client.Components.Tourist
+@using MotoRent.Client.Services
 @using MotoRent.Client.Services.Offline
 @inject RentalService RentalService
 @inject ShopService ShopService
@@ -47,273 +48,308 @@ else if (this.Rental is null)
 else
 {
     <div class="mr-rental-page">
-        @* Mobile-first: Offline/Sync status bar at top *@
-        <div class="mr-sync-bar @(this.IsDownloaded ? "synced" : "")">
-            <div class="mr-sync-content">
-                @if (this.IsDownloaded)
-                {
-                    <div class="mr-sync-status">
-                        <i class="ti ti-cloud-check"></i>
-                        <span>Saved Offline</span>
-                        <small>@this.FormatLastSync()</small>
-                    </div>
-                    <button type="button" class="mr-sync-btn" @onclick="this.RefreshOfflineData" disabled="@this.Downloading">
-                        @if (this.Downloading)
-                        {
-                            <span class="mr-spinner-sm"></span>
-                        }
-                        else
-                        {
-                            <i class="ti ti-refresh"></i>
-                        }
-                        Sync
-                    </button>
-                }
-                else
-                {
-                    <div class="mr-sync-status">
-                        <i class="ti ti-cloud-off"></i>
-                        <span>Not saved offline</span>
-                    </div>
-                    <button type="button" class="mr-sync-btn primary" @onclick="this.DownloadForOffline" disabled="@this.Downloading">
-                        @if (this.Downloading)
-                        {
-                            <span class="mr-spinner-sm"></span>
-                        }
-                        else
-                        {
-                            <i class="ti ti-download"></i>
-                        }
-                        Save
-                    </button>
-                }
-            </div>
-        </div>
-
-        @* Status Hero Section *@
-        <div class="mr-status-hero @this.GetStatusHeroClass()">
-            <div class="mr-status-icon">
-                <i class="ti @this.GetStatusIcon()"></i>
-            </div>
-            <div class="mr-status-info">
-                <div class="mr-status-badge-row">
-                    <span class="mr-status-badge @this.GetStatusBadgeClass()">@this.Rental.Status</span>
+        @* ===== App Header ===== *@
+        <header class="mr-app-header">
+            <div class="mr-header-left">
+                <div class="mr-header-logo">
+                    <i class="ti ti-motorbike"></i>
                 </div>
-                <h1 class="mr-status-title">@this.GetStatusTitle()</h1>
-                <p class="mr-status-desc">@this.GetStatusDescription()</p>
-            </div>
-            @if (this.Rental.Status == "Active")
-            {
-                <div class="mr-countdown">
-                    <div class="mr-countdown-label">Return in</div>
-                    <div class="mr-countdown-value">@this.GetDaysRemaining()</div>
-                    <div class="mr-countdown-unit">@this.GetDaysRemainingUnit()</div>
-                </div>
-            }
-        </div>
-
-        @* QR Code Section - Important for staff pickup/return *@
-        @if (this.Rental.Status is "Active" or "Reserved")
-        {
-            <div class="mr-qr-section">
-                <div class="mr-qr-card">
-                    <div class="mr-qr-header">
-                        <i class="ti ti-qrcode"></i>
-                        <span>Show to Staff</span>
+                <div class="mr-header-info">
+                    <div class="mr-header-title">@(this.TenantName ?? "MotoRent")</div>
+                    <div class="mr-connection-status">
+                        <div class="mr-status-dot @(this.IsOnline ? "" : "offline")"></div>
+                        <span class="mr-connection-text">
+                            @if (this.IsOnline)
+                            {
+                                @:Connected
+                            }
+                            else if (this.IsDownloaded)
+                            {
+                                @:Offline (@this.FormatLastSync())
+                            }
+                            else
+                            {
+                                @:Offline
+                            }
+                        </span>
                     </div>
-                    <div class="mr-qr-code">
-                        <img src="@this.GetQRCodeUrl()" alt="QR Code" />
-                    </div>
-                    <div class="mr-qr-ref">Rental #@this.Rental.RentalId</div>
                 </div>
             </div>
-        }
-
-        @* Vehicle Card *@
-        <div class="mr-section">
-            <div class="mr-card mr-vehicle-card">
-                <div class="mr-vehicle-image">
-                    <img src="@this.GetVehicleImageUrl()" alt="@this.Rental.VehicleName" />
-                    <div class="mr-vehicle-overlay">
-                        <span class="mr-vehicle-name">@this.Rental.VehicleName</span>
-                    </div>
-                </div>
-                <div class="mr-vehicle-details">
-                    @if (!string.IsNullOrEmpty(this.VehicleLicensePlate))
+            <div class="mr-header-actions">
+                <button type="button" class="mr-header-btn @(this.Downloading ? "syncing" : "")" @onclick="this.ToggleSync" title="Sync for offline">
+                    @if (this.Downloading)
                     {
-                        <div class="mr-license-plate">
-                            <span class="mr-plate-text">@this.VehicleLicensePlate</span>
-                        </div>
+                        <i class="ti ti-refresh"></i>
                     }
-                    <div class="mr-vehicle-info-grid">
-                        <div class="mr-info-item">
-                            <i class="ti ti-calendar-event"></i>
-                            <div class="mr-info-content">
-                                <span class="mr-info-label">Pickup</span>
-                                <span class="mr-info-value">@this.FormatDateTimeMobile(this.Rental.StartDate)</span>
-                            </div>
+                    else if (this.IsDownloaded)
+                    {
+                        <i class="ti ti-cloud-check"></i>
+                    }
+                    else
+                    {
+                        <i class="ti ti-cloud-download"></i>
+                    }
+                </button>
+                <button type="button" class="mr-header-btn" @onclick="this.ShowQRCode" title="Show QR Code">
+                    <i class="ti ti-qrcode"></i>
+                </button>
+            </div>
+        </header>
+
+        @* ===== RIDE Tab Content (Dashboard) ===== *@
+        @if (m_activeTab == "ride")
+        {
+            @* Greeting Section *@
+            <div class="mr-greeting-section">
+                <div class="mr-greeting-row">
+                    <div class="mr-greeting-text">
+                        <h2>@this.GetGreeting()</h2>
+                        <p>@this.GetGreetingSubtext()</p>
+                    </div>
+                    <div class="mr-weather-widget">
+                        <i class="ti ti-sun mr-weather-icon"></i>
+                        <div class="mr-weather-info">
+                            <span class="mr-weather-temp">31°C</span>
+                            <span class="mr-weather-rain">Rain: 10%</span>
                         </div>
-                        <div class="mr-info-item">
-                            <i class="ti ti-calendar-due"></i>
-                            <div class="mr-info-content">
-                                <span class="mr-info-label">Return</span>
-                                <span class="mr-info-value">@this.FormatDateTimeMobile(this.Rental.ExpectedEndDate)</span>
-                            </div>
-                        </div>
-                        @if (this.Rental.MileageStart > 0)
-                        {
-                            <div class="mr-info-item full-width">
-                                <i class="ti ti-gauge"></i>
-                                <div class="mr-info-content">
-                                    <span class="mr-info-label">Start Mileage</span>
-                                    <span class="mr-info-value">@this.Rental.MileageStart.ToString("N0") km</span>
+                    </div>
+                </div>
+            </div>
+
+            @* Active Rental Card (Dark Theme) *@
+            @if (this.Rental.Status is "Active" or "Reserved")
+            {
+                <div class="mr-rental-card">
+                    <div class="mr-rental-glow"></div>
+                    <div class="mr-rental-content">
+                        <div class="mr-rental-header">
+                            <div class="mr-rental-vehicle">
+                                <div class="mr-vehicle-icon">
+                                    <i class="ti ti-motorbike"></i>
+                                </div>
+                                <div class="mr-vehicle-info">
+                                    <h3>@this.Rental.VehicleName</h3>
+                                    <div class="mr-vehicle-plate">@this.VehicleLicensePlate</div>
                                 </div>
                             </div>
-                        }
+                            <div class="mr-rental-timer">
+                                <div class="mr-timer-label">@this.GetTimerLabel()</div>
+                                <div class="mr-timer-value">@this.GetTimeRemaining()</div>
+                            </div>
+                        </div>
+                        <div class="mr-rental-footer">
+                            <div class="mr-fuel-gauge">
+                                <div class="mr-fuel-header">
+                                    <i class="ti ti-droplet"></i>
+                                    <span>Fuel</span>
+                                </div>
+                                <div class="mr-fuel-content">
+                                    <span class="mr-fuel-percent">85%</span>
+                                    <div class="mr-fuel-bar">
+                                        <div class="mr-fuel-fill" style="width: 85%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="button" class="mr-extend-btn" @onclick="this.ExtendRental">
+                                Extend
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            @* Quick Actions Grid *@
+            <div class="mr-quick-actions">
+                <div class="mr-actions-grid">
+                    <div class="mr-action-item" @onclick="this.ShowEmergencyCard">
+                        <button type="button" class="mr-action-btn sos">
+                            <i class="ti ti-first-aid-kit"></i>
+                        </button>
+                        <span class="mr-action-label">SOS</span>
+                    </div>
+                    <div class="mr-action-item" @onclick="this.NavigateToShop">
+                        <button type="button" class="mr-action-btn map">
+                            <i class="ti ti-navigation"></i>
+                        </button>
+                        <span class="mr-action-label">Map</span>
+                    </div>
+                    <div class="mr-action-item" @onclick="this.ContactSupport">
+                        <button type="button" class="mr-action-btn support">
+                            <i class="ti ti-phone"></i>
+                        </button>
+                        <span class="mr-action-label">Support</span>
+                    </div>
+                    <div class="mr-action-item" @onclick="this.ShowTips">
+                        <button type="button" class="mr-action-btn tips">
+                            <i class="ti ti-bulb"></i>
+                        </button>
+                        <span class="mr-action-label">Tips</span>
                     </div>
                 </div>
             </div>
-        </div>
 
-        @* Quick Actions - Large touch targets for mobile *@
-        @if (this.Rental.Status is "Active" or "Reserved")
+            @* Pro Tip Card *@
+            <div class="mr-pro-tip">
+                <div class="mr-pro-tip-content">
+                    <div class="mr-pro-tip-icon">
+                        <i class="ti ti-bolt"></i>
+                    </div>
+                    <div class="mr-pro-tip-text">
+                        <h4>Pro Biker Hack</h4>
+                        <p>@this.GetCurrentTip()</p>
+                    </div>
+                </div>
+            </div>
+
+            @* Adventure Feed *@
+            <div class="mr-adventure-feed">
+                <div class="mr-feed-header">
+                    <h3>Adventure Feed</h3>
+                    <button type="button" class="mr-feed-filter">Nearby Only</button>
+                </div>
+                <div class="mr-spots-list">
+                    @foreach (var spot in m_nearbySpots)
+                    {
+                        <div class="mr-spot-card" @onclick="() => NavigateToSpot(spot)">
+                            <div class="mr-spot-icon @spot.ColorClass">
+                                @spot.Emoji
+                            </div>
+                            <div class="mr-spot-info">
+                                <div class="mr-spot-meta">
+                                    <span class="mr-spot-type @spot.ColorClass">@spot.Type</span>
+                                    <span class="mr-spot-distance">• @spot.Distance</span>
+                                </div>
+                                <p class="mr-spot-name">@spot.Name</p>
+                            </div>
+                            <div class="mr-spot-nav">
+                                <i class="ti ti-navigation"></i>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        @* ===== ROUTES Tab Content ===== *@
+        @if (m_activeTab == "routes")
         {
-            <div class="mr-section">
-                <h2 class="mr-section-title">
-                    <i class="ti ti-bolt"></i>
-                    Quick Actions
-                </h2>
-                <div class="mr-actions-grid">
-                    <button type="button" class="mr-action-btn" @onclick="this.ExtendRental">
-                        <div class="mr-action-icon extend">
-                            <i class="ti ti-calendar-plus"></i>
+            <div class="mr-routes-content">
+                <div class="mr-map-placeholder">
+                    <div class="mr-map-icon">
+                        <i class="ti ti-map-pin"></i>
+                    </div>
+                    <h3>Live Navigator</h3>
+                    <p>Optimizing routes for the best island views...</p>
+                </div>
+                <div class="mr-map-actions">
+                    <button type="button" class="mr-map-action gas" @onclick="this.FindGasStations">
+                        <i class="ti ti-gas-station"></i>
+                        <div class="mr-map-action-text">
+                            <strong>Gas Stations</strong>
+                            <span>Find nearby</span>
                         </div>
-                        <span class="mr-action-label">Extend Rental</span>
                     </button>
-                    <button type="button" class="mr-action-btn" @onclick="this.ViewContract">
-                        <div class="mr-action-icon contract">
-                            <i class="ti ti-file-text"></i>
+                    <button type="button" class="mr-map-action photo" @onclick="this.FindPhotoSpots">
+                        <i class="ti ti-camera"></i>
+                        <div class="mr-map-action-text">
+                            <strong>Photo Spots</strong>
+                            <span>Insta-worthy</span>
                         </div>
-                        <span class="mr-action-label">View Contract</span>
-                    </button>
-                    <button type="button" class="mr-action-btn" @onclick="this.ReportAccident">
-                        <div class="mr-action-icon report">
-                            <i class="ti ti-alert-triangle"></i>
-                        </div>
-                        <span class="mr-action-label">Report Issue</span>
-                    </button>
-                    <button type="button" class="mr-action-btn emergency" @onclick="this.ShowEmergencyCard">
-                        <div class="mr-action-icon emergency">
-                            <i class="ti ti-first-aid-kit"></i>
-                        </div>
-                        <span class="mr-action-label">Emergency</span>
                     </button>
                 </div>
             </div>
         }
 
-        @* Rental Details Card *@
-        <div class="mr-section">
-            <h2 class="mr-section-title">
-                <i class="ti ti-receipt"></i>
-                Rental Details
-            </h2>
-            <div class="mr-card mr-details-card">
-                <div class="mr-detail-row">
-                    <span class="mr-detail-label">Reference</span>
-                    <span class="mr-detail-value">#@this.Rental.RentalId</span>
-                </div>
-                <div class="mr-detail-row">
-                    <span class="mr-detail-label">Duration</span>
-                    <span class="mr-detail-value">@this.GetDurationText()</span>
-                </div>
-                <div class="mr-detail-row">
-                    <span class="mr-detail-label">@this.GetRateLabel()</span>
-                    <span class="mr-detail-value">@this.FormatCurrency(this.Rental.RentalRate)</span>
-                </div>
-                @if (this.Rental.IncludeDriver)
-                {
-                    <div class="mr-detail-row">
-                        <span class="mr-detail-label">Driver Fee</span>
-                        <span class="mr-detail-value">@this.FormatCurrency(this.Rental.DriverFee)</span>
-                    </div>
-                }
-                @if (this.Rental.IncludeGuide)
-                {
-                    <div class="mr-detail-row">
-                        <span class="mr-detail-label">Guide Fee</span>
-                        <span class="mr-detail-value">@this.FormatCurrency(this.Rental.GuideFee)</span>
-                    </div>
-                }
-                <div class="mr-detail-divider"></div>
-                <div class="mr-detail-row total">
-                    <span class="mr-detail-label">Total Amount</span>
-                    <span class="mr-detail-value">@this.FormatCurrency(this.Rental.TotalAmount)</span>
-                </div>
-            </div>
-
-            @if (!string.IsNullOrEmpty(this.Rental.Notes))
-            {
-                <div class="mr-notes">
-                    <i class="ti ti-note"></i>
-                    <span>@this.Rental.Notes</span>
-                </div>
-            }
-        </div>
-
-        @* Important Reminders *@
-        <div class="mr-section">
-            <div class="mr-reminder-card">
-                <div class="mr-reminder-header">
-                    <i class="ti ti-alert-circle"></i>
-                    <span>Important Reminders</span>
-                </div>
-                <ul class="mr-reminder-list">
-                    <li>
-                        <i class="ti ti-helmet"></i>
-                        Always wear a helmet while riding
-                    </li>
-                    <li>
-                        <i class="ti ti-gas-station"></i>
-                        Return with the same fuel level
-                    </li>
-                    <li>
-                        <i class="ti ti-camera"></i>
-                        Report any damage immediately
-                    </li>
-                    <li>
-                        <i class="ti ti-bookmark"></i>
-                        Bookmark this page for quick access
-                    </li>
-                    @if (this.Rental.Status == "Active")
-                    {
-                        <li class="highlight">
-                            <i class="ti ti-clock"></i>
-                            <strong>Return by @this.FormatDateTimeMobile(this.Rental.ExpectedEndDate)</strong>
-                        </li>
-                    }
-                </ul>
-            </div>
-        </div>
-
-        @* Shop Contact Section *@
-        @if (this.ShopContactInfo is not null)
+        @* ===== SAFETY Tab Content ===== *@
+        @if (m_activeTab == "safety")
         {
-            <div class="mr-section">
-                <h2 class="mr-section-title">
-                    <i class="ti ti-building-store"></i>
-                    Shop Contact
-                </h2>
-                <ShopContactCard ContactInfo="@this.ShopContactInfo" Class="mr-shop-card" />
+            <div class="mr-safety-content">
+                <div class="mr-safety-header">
+                    <h2>Safety & Rules</h2>
+                    <p>Essential info for a smooth ride.</p>
+                </div>
+
+                <div class="mr-safety-rules">
+                    <div class="mr-safety-rule">
+                        <span class="mr-rule-icon">⬅️</span>
+                        <div class="mr-rule-text">
+                            <h4>Left Side Traffic</h4>
+                            <p>Always stay on the left. Thai traffic can be unpredictable.</p>
+                        </div>
+                    </div>
+                    <div class="mr-safety-rule">
+                        <span class="mr-rule-icon">🪖</span>
+                        <div class="mr-rule-text">
+                            <h4>Helmet Policy</h4>
+                            <p>Mandatory for driver & pillion. Police check often.</p>
+                        </div>
+                    </div>
+                    <div class="mr-safety-rule">
+                        <span class="mr-rule-icon">⛽</span>
+                        <div class="mr-rule-text">
+                            <h4>Fuel Logic</h4>
+                            <p>Look for '91' or '95' gas. Red bottles are roadside spares.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mr-docs-section">
+                    <h3>Digital Documents</h3>
+                    <div class="mr-docs-list">
+                        <div class="mr-doc-item" @onclick="this.ViewContract">
+                            <div class="mr-doc-info">
+                                <div class="mr-doc-icon">
+                                    <i class="ti ti-file-text"></i>
+                                </div>
+                                <span class="mr-doc-name">Rental Contract</span>
+                            </div>
+                            <i class="ti ti-external-link mr-doc-arrow"></i>
+                        </div>
+                        <div class="mr-doc-item" @onclick="this.ShowRentalDetails">
+                            <div class="mr-doc-info">
+                                <div class="mr-doc-icon">
+                                    <i class="ti ti-receipt"></i>
+                                </div>
+                                <span class="mr-doc-name">Rental Details</span>
+                            </div>
+                            <i class="ti ti-external-link mr-doc-arrow"></i>
+                        </div>
+                        <div class="mr-doc-item" @onclick="this.ReportAccident">
+                            <div class="mr-doc-info">
+                                <div class="mr-doc-icon">
+                                    <i class="ti ti-alert-triangle"></i>
+                                </div>
+                                <span class="mr-doc-name">Report an Issue</span>
+                            </div>
+                            <i class="ti ti-external-link mr-doc-arrow"></i>
+                        </div>
+                    </div>
+                </div>
             </div>
         }
     </div>
 
-    @* Floating Contact Button *@
-    @if (this.ShopContactInfo is not null)
-    {
-        <ShopContactFAB ContactInfo="@this.ShopContactInfo" />
-    }
+    @* ===== Bottom Navigation ===== *@
+    <nav class="mr-bottom-nav">
+        <button type="button" class="mr-nav-item @(m_activeTab == "ride" ? "active" : "")" @onclick="@(() => SetActiveTab("ride"))">
+            <i class="ti ti-motorbike"></i>
+            <span>Ride</span>
+        </button>
+        <button type="button" class="mr-nav-item @(m_activeTab == "routes" ? "active" : "")" @onclick="@(() => SetActiveTab("routes"))">
+            <i class="ti ti-navigation"></i>
+            <span>Routes</span>
+        </button>
+        <div class="mr-talk-btn">
+            <button type="button" class="mr-talk-btn-inner" @onclick="this.OpenChatAssistant">
+                <i class="ti ti-message-dots"></i>
+            </button>
+            <span class="mr-talk-label">Talk</span>
+        </div>
+        <button type="button" class="mr-nav-item @(m_activeTab == "safety" ? "active" : "")" @onclick="@(() => SetActiveTab("safety"))">
+            <i class="ti ti-shield-check"></i>
+            <span>Safety</span>
+        </button>
+    </nav>
 }
 
 @code {
@@ -324,16 +360,40 @@ else
     private bool Initialized { get; set; }
     private bool Downloading { get; set; }
     private bool IsDownloaded { get; set; }
+    private bool IsOnline { get; set; } = true;
     private DateTimeOffset? LastSyncAt { get; set; }
     private Rental? Rental { get; set; }
     private Shop? Shop { get; set; }
     private ShopContactInfo? ShopContactInfo { get; set; }
     private string? VehicleLicensePlate { get; set; }
 
+    private string m_activeTab = "ride";
+    private int m_tipIndex = 0;
+
+    private static readonly string[] s_proTips =
+    [
+        "Avoid the main highway to Rawai between 4 PM - 6 PM. Take the coastal backroad for zero traffic and better views! 🌊",
+        "Gas stations close early in rural areas. Fill up before 8 PM if you're heading to the hills! ⛽",
+        "Carry small bills for parking. Most beach spots charge 20-50 THB. 💵",
+        "Download offline maps before heading to remote beaches - signal can be spotty! 📱"
+    ];
+
+    private record NearbySpot(string Name, string Type, string Distance, string Emoji, string ColorClass, double Lat, double Lng);
+
+    private readonly List<NearbySpot> m_nearbySpots =
+    [
+        new("Big Buddha", "Must Visit", "4.2km", "🕉️", "purple", 7.8277, 98.3127),
+        new("Promthep Cape", "Best Sunset", "12km", "🌅", "orange", 7.7598, 98.3031),
+        new("Old Phuket Town", "Food & Photo", "8.5km", "🏘️", "blue", 7.8852, 98.3894),
+        new("Yanui Beach", "Hidden Gem", "13.2km", "🏖️", "teal", 7.7656, 98.3044)
+    ];
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
+            await this.NetworkState.InitializeAsync();
+            this.IsOnline = this.NetworkState.IsOnline;
             await this.LoadRentalAsync();
             await this.CheckOfflineStatusAsync();
         }
@@ -422,72 +482,63 @@ else
         }
     }
 
-    private string GetStatusHeroClass() => this.Rental?.Status switch
+    private void SetActiveTab(string tab)
     {
-        "Active" => "status-active",
-        "Reserved" => "status-reserved",
-        "Completed" => "status-completed",
-        "Cancelled" => "status-cancelled",
-        _ => ""
-    };
-
-    private string GetStatusIcon() => this.Rental?.Status switch
-    {
-        "Active" => "ti-steering-wheel",
-        "Reserved" => "ti-calendar-check",
-        "Completed" => "ti-circle-check",
-        "Cancelled" => "ti-x",
-        _ => "ti-info-circle"
-    };
-
-    private string GetStatusTitle() => this.Rental?.Status switch
-    {
-        "Active" => "Enjoy Your Ride!",
-        "Reserved" => "Reservation Confirmed",
-        "Completed" => "Thanks for Riding!",
-        "Cancelled" => "Rental Cancelled",
-        _ => "Unknown Status"
-    };
-
-    private string GetStatusDescription() => this.Rental?.Status switch
-    {
-        "Active" => $"Return by {this.FormatDateTimeMobile(this.Rental!.ExpectedEndDate)}",
-        "Reserved" => $"Pick up on {this.FormatDateTimeMobile(this.Rental!.StartDate)}",
-        "Completed" => "We hope to see you again!",
-        "Cancelled" => "This rental has been cancelled.",
-        _ => ""
-    };
-
-    private string GetStatusBadgeClass() => this.Rental?.Status switch
-    {
-        "Active" => "badge-active",
-        "Reserved" => "badge-reserved",
-        "Completed" => "badge-completed",
-        "Cancelled" => "badge-cancelled",
-        _ => ""
-    };
-
-    private string GetDaysRemaining()
-    {
-        if (this.Rental is null) return "0";
-        var remaining = this.Rental.ExpectedEndDate - DateTimeOffset.Now;
-        if (remaining.TotalDays >= 1) return ((int)remaining.TotalDays).ToString();
-        if (remaining.TotalHours >= 1) return ((int)remaining.TotalHours).ToString();
-        return remaining.TotalMinutes > 0 ? ((int)remaining.TotalMinutes).ToString() : "0";
+        m_activeTab = tab;
     }
 
-    private string GetDaysRemainingUnit()
+    private string GetGreeting()
     {
-        if (this.Rental is null) return "days";
-        var remaining = this.Rental.ExpectedEndDate - DateTimeOffset.Now;
-        if (remaining.TotalDays >= 1) return remaining.TotalDays >= 2 ? "days" : "day";
-        if (remaining.TotalHours >= 1) return remaining.TotalHours >= 2 ? "hours" : "hour";
-        return "mins";
+        var hour = DateTime.Now.Hour;
+        if (hour < 12) return "Good Morning, Rider!";
+        if (hour < 17) return "Hello, Rider!";
+        return "Good Evening, Rider!";
     }
 
-    private string GetVehicleImageUrl()
+    private string GetGreetingSubtext()
     {
-        return "https://placehold.co/600x400/00897B/white?text=Your+Vehicle";
+        if (this.Rental?.Status == "Reserved")
+        {
+            return $"Pickup on {this.FormatDateTimeMobile(this.Rental.StartDate)} 📅";
+        }
+        return "Perfect day for a ride 🌴";
+    }
+
+    private string GetTimerLabel()
+    {
+        return this.Rental?.Status == "Reserved" ? "Pickup In" : "Return In";
+    }
+
+    private string GetTimeRemaining()
+    {
+        if (this.Rental is null) return "0d";
+
+        var targetDate = this.Rental.Status == "Reserved"
+            ? this.Rental.StartDate
+            : this.Rental.ExpectedEndDate;
+
+        var remaining = targetDate - DateTimeOffset.Now;
+
+        if (remaining.TotalDays >= 1)
+        {
+            var days = (int)remaining.TotalDays;
+            var hours = remaining.Hours;
+            return hours > 0 ? $"{days}d {hours:D2}h" : $"{days}d";
+        }
+        if (remaining.TotalHours >= 1)
+        {
+            return $"{(int)remaining.TotalHours}h {remaining.Minutes:D2}m";
+        }
+        if (remaining.TotalMinutes > 0)
+        {
+            return $"{(int)remaining.TotalMinutes}m";
+        }
+        return "0m";
+    }
+
+    private string GetCurrentTip()
+    {
+        return s_proTips[m_tipIndex % s_proTips.Length];
     }
 
     private string FormatDateTimeMobile(DateTimeOffset date)
@@ -495,27 +546,38 @@ else
         return date.ToString("MMM d, h:mm tt");
     }
 
-    private string GetDurationText()
-    {
-        if (this.Rental is null) return "";
-        var days = (this.Rental.ExpectedEndDate - this.Rental.StartDate).Days;
-        if (days == 0) days = 1;
-        return this.Rental.DurationType == RentalDurationType.Daily
-            ? $"{days} day{(days > 1 ? "s" : "")}"
-            : $"{this.Rental.IntervalMinutes} minutes";
-    }
-
-    private string GetRateLabel()
-    {
-        return this.Rental?.DurationType == RentalDurationType.Daily
-            ? "Daily Rate"
-            : $"{this.Rental?.IntervalMinutes}-min Rate";
-    }
-
     private string GetQRCodeUrl()
     {
         var qrData = $"MOTORENT-{this.Rental?.RentalId}-{this.Rental?.WebId}";
         return $"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={Uri.EscapeDataString(qrData)}";
+    }
+
+    private async Task ShowQRCode()
+    {
+        if (this.Rental is null) return;
+
+        await this.DialogService.Create<QRCodeDialog>("Show to Staff")
+            .WithParameter(x => x.QRCodeUrl, this.GetQRCodeUrl())
+            .WithParameter(x => x.RentalId, this.Rental.RentalId)
+            .WithParameter(x => x.Status, this.Rental.Status)
+            .WithSize(ModalSize.Small)
+            .ShowDialogAsync();
+    }
+
+    private async Task ShowRentalDetails()
+    {
+        if (this.Rental is null) return;
+
+        await this.DialogService.Create<RentalDetailsDialog>("Rental Details")
+            .WithParameter(x => x.Rental, this.Rental)
+            .WithSize(ModalSize.Medium)
+            .ShowDialogAsync();
+    }
+
+    private async Task ToggleSync()
+    {
+        if (this.Downloading) return;
+        await this.DownloadForOffline();
     }
 
     private async Task ExtendRental()
@@ -565,6 +627,78 @@ else
         await this.DialogService.ShowMessageAsync(message, "Emergency Contacts");
     }
 
+    private async Task NavigateToShop()
+    {
+        if (this.ShopContactInfo?.GoogleMapsUrl is { Length: > 0 } url)
+        {
+            await this.JS.InvokeVoidAsync("open", url, "_blank");
+        }
+        else
+        {
+            this.ShowInfo("Shop location not available.");
+        }
+    }
+
+    private async Task ContactSupport()
+    {
+        if (this.ShopContactInfo is { PhoneUrl: { Length: > 0 } phoneUrl })
+        {
+            await this.JS.InvokeVoidAsync("open", phoneUrl, "_self");
+        }
+        else if (this.ShopContactInfo is { WhatsAppUrl: { Length: > 0 } whatsAppUrl })
+        {
+            await this.JS.InvokeVoidAsync("open", whatsAppUrl, "_blank");
+        }
+        else
+        {
+            this.ShowInfo("Contact information not available.");
+        }
+    }
+
+    private void ShowTips()
+    {
+        m_tipIndex = (m_tipIndex + 1) % s_proTips.Length;
+        this.StateHasChanged();
+    }
+
+    private async Task NavigateToSpot(NearbySpot spot)
+    {
+        var url = $"https://www.google.com/maps/dir/?api=1&destination={spot.Lat},{spot.Lng}";
+        await this.JS.InvokeVoidAsync("open", url, "_blank");
+    }
+
+    private async Task FindGasStations()
+    {
+        var url = "https://www.google.com/maps/search/gas+station/";
+        await this.JS.InvokeVoidAsync("open", url, "_blank");
+    }
+
+    private async Task FindPhotoSpots()
+    {
+        var url = "https://www.google.com/maps/search/viewpoint+phuket/";
+        await this.JS.InvokeVoidAsync("open", url, "_blank");
+    }
+
+    private async Task OpenChatAssistant()
+    {
+        if (this.ShopContactInfo is { WhatsAppUrl: { Length: > 0 } whatsAppUrl })
+        {
+            await this.JS.InvokeVoidAsync("open", whatsAppUrl, "_blank");
+        }
+        else if (this.ShopContactInfo is { LineUrl: { Length: > 0 } lineUrl })
+        {
+            await this.JS.InvokeVoidAsync("open", lineUrl, "_blank");
+        }
+        else if (this.ShopContactInfo is { PhoneUrl: { Length: > 0 } phoneUrl })
+        {
+            await this.JS.InvokeVoidAsync("open", phoneUrl, "_self");
+        }
+        else
+        {
+            this.ShowInfo("Chat is not available. Please call the shop directly.");
+        }
+    }
+
     private async Task DownloadForOffline()
     {
         if (this.Rental is null) return;
@@ -592,7 +726,7 @@ else
                     Brand = this.Rental.VehicleName?.Split(' ').FirstOrDefault() ?? "",
                     Model = this.Rental.VehicleName ?? "",
                     LicensePlate = this.VehicleLicensePlate ?? "",
-                    ImageUrl = this.GetVehicleImageUrl()
+                    ImageUrl = ""
                 },
                 Renter = new OfflineRenterInfo
                 {
@@ -644,11 +778,6 @@ else
             this.Downloading = false;
             this.StateHasChanged();
         }
-    }
-
-    private async Task RefreshOfflineData()
-    {
-        await this.DownloadForOffline();
     }
 
     private string FormatLastSync()

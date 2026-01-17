@@ -1,0 +1,230 @@
+@* Rental details breakdown dialog for tourists *@
+@inherits MotoRentComponentBase
+@using MotoRent.Domain.Entities
+
+<div class="rental-details-dialog">
+    <div class="modal-body">
+        @if (Rental is not null)
+        {
+            <div class="detail-section">
+                <div class="detail-row">
+                    <span class="detail-label">Reference</span>
+                    <span class="detail-value">#@Rental.RentalId</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Status</span>
+                    <span class="detail-badge @GetStatusClass()">@Rental.Status</span>
+                </div>
+            </div>
+
+            <div class="detail-divider"></div>
+
+            <div class="detail-section">
+                <h4 class="section-title">Duration</h4>
+                <div class="detail-row">
+                    <span class="detail-label">Start Date</span>
+                    <span class="detail-value">@FormatDateTimeValue(Rental.StartDate)</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">End Date</span>
+                    <span class="detail-value">@FormatDateTimeValue(Rental.ExpectedEndDate)</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Duration</span>
+                    <span class="detail-value">@GetDurationText()</span>
+                </div>
+            </div>
+
+            <div class="detail-divider"></div>
+
+            <div class="detail-section">
+                <h4 class="section-title">Charges</h4>
+                <div class="detail-row">
+                    <span class="detail-label">@GetRateLabel()</span>
+                    <span class="detail-value">@FormatMoney(Rental.RentalRate)</span>
+                </div>
+                @if (Rental.IncludeDriver)
+                {
+                    <div class="detail-row">
+                        <span class="detail-label">Driver Fee</span>
+                        <span class="detail-value">@FormatMoney(Rental.DriverFee)</span>
+                    </div>
+                }
+                @if (Rental.IncludeGuide)
+                {
+                    <div class="detail-row">
+                        <span class="detail-label">Guide Fee</span>
+                        <span class="detail-value">@FormatMoney(Rental.GuideFee)</span>
+                    </div>
+                }
+            </div>
+
+            <div class="detail-divider"></div>
+
+            <div class="detail-section total-section">
+                <div class="detail-row total">
+                    <span class="detail-label">Total Amount</span>
+                    <span class="detail-value">@FormatMoney(Rental.TotalAmount)</span>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(Rental.Notes))
+            {
+                <div class="detail-divider"></div>
+                <div class="detail-section">
+                    <h4 class="section-title">Notes</h4>
+                    <p class="detail-notes">@Rental.Notes</p>
+                </div>
+            }
+        }
+    </div>
+
+    <div class="modal-footer">
+        <button type="button" class="btn btn-ghost-secondary" @onclick="Close">Close</button>
+    </div>
+</div>
+
+<style>
+    .rental-details-dialog {
+        --detail-primary: var(--tenant-primary, #00897B);
+    }
+
+    .detail-section {
+        padding: 8px 0;
+    }
+
+    .section-title {
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #64748b;
+        margin: 0 0 12px;
+    }
+
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+    }
+
+    .detail-label {
+        font-size: 14px;
+        color: #64748b;
+    }
+
+    .detail-value {
+        font-size: 14px;
+        font-weight: 600;
+        color: #1e293b;
+    }
+
+    .detail-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .detail-badge.active {
+        background: #dcfce7;
+        color: #16a34a;
+    }
+
+    .detail-badge.reserved {
+        background: #dbeafe;
+        color: #2563eb;
+    }
+
+    .detail-badge.completed {
+        background: #f1f5f9;
+        color: #64748b;
+    }
+
+    .detail-badge.cancelled {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .detail-divider {
+        height: 1px;
+        background: #e2e8f0;
+        margin: 8px 0;
+    }
+
+    .total-section {
+        background: #f8fafc;
+        margin: 0 -24px;
+        padding: 16px 24px;
+        border-radius: 12px;
+    }
+
+    .detail-row.total .detail-label {
+        font-size: 16px;
+        font-weight: 600;
+        color: #1e293b;
+    }
+
+    .detail-row.total .detail-value {
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--detail-primary);
+    }
+
+    .detail-notes {
+        font-size: 14px;
+        color: #475569;
+        line-height: 1.5;
+        margin: 0;
+        padding: 12px;
+        background: #f8fafc;
+        border-radius: 8px;
+    }
+</style>
+
+@code {
+    [CascadingParameter] private ModalInstance? ModalInstance { get; set; }
+
+    [Parameter] public Rental? Rental { get; set; }
+
+    private string GetStatusClass() => Rental?.Status?.ToLower() switch
+    {
+        "active" => "active",
+        "reserved" => "reserved",
+        "completed" => "completed",
+        "cancelled" => "cancelled",
+        _ => "completed"
+    };
+
+    private string FormatDateTimeValue(DateTimeOffset date)
+    {
+        return date.ToString("MMM d, yyyy h:mm tt");
+    }
+
+    private string GetDurationText()
+    {
+        if (Rental is null) return "";
+        var days = (Rental.ExpectedEndDate - Rental.StartDate).Days;
+        if (days == 0) days = 1;
+        return Rental.DurationType == RentalDurationType.Daily
+            ? $"{days} day{(days > 1 ? "s" : "")}"
+            : $"{Rental.IntervalMinutes} minutes";
+    }
+
+    private string GetRateLabel()
+    {
+        return Rental?.DurationType == RentalDurationType.Daily
+            ? "Daily Rate"
+            : $"{Rental?.IntervalMinutes}-min Rate";
+    }
+
+    private string FormatMoney(decimal amount)
+    {
+        return amount.ToString("C0", new System.Globalization.CultureInfo("th-TH"));
+    }
+
+    private void Close() => ModalInstance?.Close();
+}
