@@ -16,6 +16,10 @@ namespace MotoRent.Domain.Entities;
 [JsonDerivedType(typeof(Motorbike), nameof(Motorbike))]  // Deprecated: Use Vehicle instead
 [JsonDerivedType(typeof(Rental), nameof(Rental))]
 [JsonDerivedType(typeof(Booking), nameof(Booking))]
+// Agent booking entities
+[JsonDerivedType(typeof(Agent), nameof(Agent))]
+[JsonDerivedType(typeof(AgentCommission), nameof(AgentCommission))]
+[JsonDerivedType(typeof(AgentInvoice), nameof(AgentInvoice))]
 [JsonDerivedType(typeof(Deposit), nameof(Deposit))]
 [JsonDerivedType(typeof(Insurance), nameof(Insurance))]
 [JsonDerivedType(typeof(Accessory), nameof(Accessory))]

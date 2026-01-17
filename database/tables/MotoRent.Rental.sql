@@ -12,6 +12,8 @@ CREATE TABLE [<schema>].[Rental]
     -- Duration Type (defaults to Daily for backward compatibility)
     [DurationType] AS CAST(COALESCE(JSON_VALUE([Json], '$.DurationType'), 'Daily') AS NVARCHAR(20)),
     [IntervalMinutes] AS CAST(JSON_VALUE([Json], '$.IntervalMinutes') AS INT),
+    -- Booking Reference (for rentals created from bookings)
+    [BookingId] AS CAST(JSON_VALUE([Json], '$.BookingId') AS INT),
     -- Status and Dates
     [Status] AS CAST(JSON_VALUE([Json], '$.Status') AS NVARCHAR(20)),
     [StartDate] DATE NULL,
@@ -42,6 +44,8 @@ CREATE INDEX IX_Rental_RenterId ON [<schema>].[Rental]([RenterId])
 CREATE INDEX IX_Rental_VehicleId ON [<schema>].[Rental]([VehicleId])
 
 CREATE INDEX IX_Rental_DurationType ON [<schema>].[Rental]([DurationType])
+
+CREATE INDEX IX_Rental_BookingId ON [<schema>].[Rental]([BookingId]) WHERE [BookingId] IS NOT NULL
 
 CREATE INDEX IX_Rental_TillSessionId ON [<schema>].[Rental]([TillSessionId]) WHERE [TillSessionId] IS NOT NULL
 

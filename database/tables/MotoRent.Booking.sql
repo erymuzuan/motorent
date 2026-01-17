@@ -24,6 +24,8 @@ CREATE TABLE [<schema>].[Booking]
     [AmountPaid] AS CAST(JSON_VALUE([Json], '$.AmountPaid') AS MONEY),
     -- Source
     [BookingSource] AS CAST(JSON_VALUE([Json], '$.BookingSource') AS NVARCHAR(20)),
+    -- Agent (for agent-referred bookings)
+    [AgentId] AS CAST(JSON_VALUE([Json], '$.AgentId') AS INT),
     -- JSON storage
     [Json] NVARCHAR(MAX) NOT NULL,
     -- Audit columns
@@ -51,4 +53,7 @@ CREATE INDEX IX_Booking_CustomerEmail ON [<schema>].[Booking]([CustomerEmail])
 
 -- Index for linked renter (no filter - computed column)
 CREATE INDEX IX_Booking_RenterId ON [<schema>].[Booking]([RenterId])
+
+-- Index for agent-referred bookings
+CREATE INDEX IX_Booking_AgentId ON [<schema>].[Booking]([AgentId])
 

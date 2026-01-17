@@ -1,0 +1,346 @@
+@page "/agents"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Policy = "RequireTenantManager")]
+@inherits LocalizedComponentBase<AgentList>
+@inject AgentService AgentService
+
+<MotoRentPageTitle>@Localizer["Agents"]</MotoRentPageTitle>
+
+<TablerHeader Title="@Localizer["Agents"]" PreTitle="@Localizer["Partners and Referrals"]">
+    <button type="button" class="btn btn-primary" @onclick="OpenAddDialog">
+        <i class="ti ti-plus me-1"></i>
+        @Localizer["AddAgent"]
+    </button>
+</TablerHeader>
+
+<div class="row">
+    @* Filters Column *@
+    <div class="col-md-3">
+        <div class="card mb-3">
+            <div class="card-header">
+                <h3 class="card-title">@Localizer["Filters"]</h3>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">@Localizer["Search"]</label>
+                    <div class="input-icon">
+                        <span class="input-icon-addon">
+                            <i class="ti ti-search"></i>
+                        </span>
+                        <input type="text" class="form-control" placeholder="@Localizer["SearchPlaceholder"]"
+                               @bind="this.SearchTerm" @bind:event="oninput" @onkeyup="OnSearchKeyUp" />
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">@Localizer["AgentType"]</label>
+                    <select class="form-select" @bind="this.AgentTypeFilter" @bind:after="LoadDataAsync">
+                        <option value="">@Localizer["AllTypes"]</option>
+                        @foreach (var type in AgentType.All)
+                        {
+                            <option value="@type">@Localizer[type]</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">@Localizer["Status"]</label>
+                    <select class="form-select" @bind="this.StatusFilter" @bind:after="LoadDataAsync">
+                        <option value="">@Localizer["AllStatuses"]</option>
+                        @foreach (var status in AgentStatus.All)
+                        {
+                            <option value="@status">@Localizer[status]</option>
+                        }
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        @* Summary Card *@
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">@Localizer["Summary"]</h3>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    <div class="list-group-item d-flex justify-content-between">
+                        <span>@Localizer["TotalAgents"]</span>
+                        <strong>@this.TotalCount</strong>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between">
+                        <span class="text-success">@Localizer["Active"]</span>
+                        <strong class="text-success">@this.ActiveCount</strong>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between">
+                        <span class="text-secondary">@Localizer["Inactive"]</span>
+                        <strong class="text-secondary">@this.InactiveCount</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Agents Table Column *@
+    <div class="col-md-9">
+        <LoadingSkeleton Loading="@this.Loading" Mode="LoadingSkeleton.PlaceholderMode.Table">
+            <div class="card">
+                <div class="table-responsive">
+                    <table class="table table-vcenter card-table">
+                        <thead>
+                            <tr>
+                                <th>@Localizer["Code"]</th>
+                                <th>@Localizer["Name"]</th>
+                                <th>@Localizer["Type"]</th>
+                                <th>@Localizer["Commission"]</th>
+                                <th class="text-end">@Localizer["Balance"]</th>
+                                <th>@Localizer["Status"]</th>
+                                <th class="w-1"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var agent in this.Agents)
+                            {
+                                <tr>
+                                    <td>
+                                        <a href="/agents/@agent.AgentId" class="text-decoration-none">
+                                            <strong>@agent.AgentCode</strong>
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <div>@agent.Name</div>
+                                        @if (!string.IsNullOrEmpty(agent.ContactPerson))
+                                        {
+                                            <small class="text-secondary">@agent.ContactPerson</small>
+                                        }
+                                    </td>
+                                    <td>
+                                        <span class="badge @GetAgentTypeBadgeClass(agent.AgentType)">
+                                            @Localizer[agent.AgentType]
+                                        </span>
+                                    </td>
+                                    <td>
+                                        @FormatCommissionRate(agent)
+                                    </td>
+                                    <td class="text-end">
+                                        @if (agent.CommissionBalance > 0)
+                                        {
+                                            <span class="text-success fw-bold">@agent.CommissionBalance.ToString("N0") ฿</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-secondary">0 ฿</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <span class="badge @GetStatusBadgeClass(agent.Status)">
+                                            @Localizer[agent.Status]
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-list flex-nowrap">
+                                            <a href="/agents/@agent.AgentId" class="btn btn-sm btn-ghost-primary">
+                                                <i class="ti ti-eye"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-sm btn-ghost-secondary"
+                                                    @onclick="@(() => OpenEditDialog(agent))">
+                                                <i class="ti ti-edit"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-ghost-danger"
+                                                    @onclick="@(() => DeleteAgentAsync(agent))">
+                                                <i class="ti ti-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </LoadingSkeleton>
+
+        @if (!this.Loading && this.Agents.Count == 0)
+        {
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="ti ti-users-group mb-3" style="font-size: 3rem; color: var(--tblr-secondary);"></i>
+                    <h3 class="text-secondary">@Localizer["NoAgentsFound"]</h3>
+                    <p class="text-secondary">
+                        @if (string.IsNullOrEmpty(this.SearchTerm) && string.IsNullOrEmpty(this.StatusFilter) && string.IsNullOrEmpty(this.AgentTypeFilter))
+                        {
+                            <span>@Localizer["NoAgentsHint"]</span>
+                        }
+                        else
+                        {
+                            <span>@Localizer["AdjustFilters"]</span>
+                        }
+                    </p>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<Agent> Agents { get; } = [];
+    private bool Loading { get; set; }
+    private string? SearchTerm { get; set; }
+    private string? AgentTypeFilter { get; set; }
+    private string? StatusFilter { get; set; }
+    private int TotalCount { get; set; }
+    private int ActiveCount { get; set; }
+    private int InactiveCount { get; set; }
+    private System.Timers.Timer? m_debounceTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await this.LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        if (this.Loading) return;
+        this.Loading = true;
+        try
+        {
+            var result = await this.AgentService.GetAgentsAsync(
+                status: this.StatusFilter,
+                agentType: this.AgentTypeFilter,
+                search: this.SearchTerm,
+                page: 1,
+                pageSize: 100);
+
+            this.Agents.Clear();
+            this.Agents.AddRange(result.ItemCollection);
+
+            // Get counts for summary
+            var allResult = await this.AgentService.GetAgentsAsync(page: 1, pageSize: 1000);
+            var allAgents = allResult.ItemCollection.ToList();
+            this.TotalCount = allAgents.Count;
+            this.ActiveCount = allAgents.Count(a => a.Status == AgentStatus.Active);
+            this.InactiveCount = allAgents.Count(a => a.Status != AgentStatus.Active);
+        }
+        catch (Exception ex)
+        {
+            this.ShowError($"Error loading agents: {ex.Message}");
+        }
+        finally
+        {
+            this.Loading = false;
+        }
+    }
+
+    private void OnSearchKeyUp(KeyboardEventArgs e)
+    {
+        this.m_debounceTimer?.Stop();
+        this.m_debounceTimer?.Dispose();
+        this.m_debounceTimer = new System.Timers.Timer(300);
+        this.m_debounceTimer.Elapsed += async (_, _) =>
+        {
+            this.m_debounceTimer?.Stop();
+            await this.InvokeAsync(async () =>
+            {
+                await this.LoadDataAsync();
+                this.StateHasChanged();
+            });
+        };
+        this.m_debounceTimer.Start();
+    }
+
+    private async Task OpenAddDialog()
+    {
+        var agent = new Agent
+        {
+            Status = AgentStatus.Active,
+            AgentType = AgentType.TourGuide,
+            CommissionType = AgentCommissionType.Percentage,
+            CommissionRate = 10
+        };
+
+        var result = await this.DialogService
+            .Create<AgentDialog>(this.Localizer["AddAgent"])
+            .WithParameter(x => x.Entity, agent)
+            .WithParameter(x => x.IsNew, true)
+            .Large()
+            .ShowDialogAsync();
+
+        if (!result.Cancelled)
+        {
+            await this.LoadDataAsync();
+            this.ShowSuccess(this.Localizer["AgentCreated"]);
+        }
+    }
+
+    private async Task OpenEditDialog(Agent agent)
+    {
+        var result = await this.DialogService
+            .Create<AgentDialog>(this.Localizer["EditAgent"])
+            .WithParameter(x => x.Entity, agent.Clone())
+            .WithParameter(x => x.IsNew, false)
+            .Large()
+            .ShowDialogAsync();
+
+        if (!result.Cancelled)
+        {
+            await this.LoadDataAsync();
+            this.ShowSuccess(this.Localizer["AgentUpdated"]);
+        }
+    }
+
+    private async Task DeleteAgentAsync(Agent agent)
+    {
+        var confirmed = await this.DialogService.ConfirmAsync(
+            this.Localizer["DeleteAgentConfirm"],
+            this.Localizer["DeleteAgentMessage", agent.Name]);
+
+        if (!confirmed) return;
+
+        var result = await this.AgentService.DeleteAgentAsync(agent.AgentId, this.UserName);
+
+        if (result.Success)
+        {
+            await this.LoadDataAsync();
+            this.ShowSuccess(this.Localizer["AgentDeleted"]);
+        }
+        else
+        {
+            this.ShowError(result.Message ?? this.Localizer["DeleteFailed"]);
+        }
+    }
+
+    private static string GetAgentTypeBadgeClass(string agentType) => agentType switch
+    {
+        AgentType.TourGuide => "bg-blue-lt",
+        AgentType.Hotel => "bg-purple-lt",
+        AgentType.TravelAgency => "bg-green-lt",
+        AgentType.Concierge => "bg-orange-lt",
+        AgentType.Resort => "bg-cyan-lt",
+        AgentType.TransportCompany => "bg-yellow-lt",
+        _ => "bg-secondary-lt"
+    };
+
+    private static string GetStatusBadgeClass(string status) => status switch
+    {
+        AgentStatus.Active => "bg-success",
+        AgentStatus.Inactive => "bg-secondary",
+        AgentStatus.Suspended => "bg-danger",
+        _ => "bg-secondary"
+    };
+
+    private string FormatCommissionRate(Agent agent)
+    {
+        return agent.CommissionType switch
+        {
+            AgentCommissionType.Percentage => $"{agent.CommissionRate}%",
+            AgentCommissionType.FixedPerBooking => $"฿{agent.CommissionRate:N0}/booking",
+            AgentCommissionType.FixedPerVehicle => $"฿{agent.CommissionRate:N0}/vehicle",
+            AgentCommissionType.FixedPerDay => $"฿{agent.CommissionRate:N0}/day",
+            _ => $"{agent.CommissionRate}"
+        };
+    }
+
+    public void Dispose()
+    {
+        this.m_debounceTimer?.Dispose();
+    }
+}

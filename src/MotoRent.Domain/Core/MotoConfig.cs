@@ -68,6 +68,17 @@ public static class MotoConfig
     public static string ApplicationName => GetEnvironmentVariable("ApplicationName") ?? "MotoRent";
     public static string BaseUrl => GetEnvironmentVariable("BaseUrl") ?? "https://localhost:7103";
 
+    // SMTP Email Configuration
+    public static string? SmtpHost => GetEnvironmentVariable("SmtpHost");
+    public static int SmtpPort => GetEnvironmentVariableInt32("SmtpPort", 587);
+    public static string? SmtpUser => GetEnvironmentVariable("SmtpUser");
+    public static string? SmtpPassword => GetEnvironmentVariable("SmtpPassword");
+    public static string SmtpFromEmail => GetEnvironmentVariable("SmtpFromEmail") ?? "noreply@motorent.com";
+    public static string SmtpFromName => GetEnvironmentVariable("SmtpFromName") ?? "MotoRent";
+
+    // LINE Notify Configuration (for shop staff notifications)
+    public static string? LineNotifyToken => GetEnvironmentVariable("LineNotifyToken");
+
     #region Helper Methods
 
     public static string? GetEnvironmentVariable(string setting, bool usePrefix = true)

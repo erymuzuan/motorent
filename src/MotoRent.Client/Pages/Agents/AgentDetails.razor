@@ -1,0 +1,502 @@
+@page "/agents/{AgentId:int}"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Policy = "RequireTenantManager")]
+@inherits LocalizedComponentBase<AgentDetails>
+@inject AgentService AgentService
+@inject AgentCommissionService CommissionService
+@inject AgentInvoiceService InvoiceService
+@inject BookingService BookingService
+
+<MotoRentPageTitle>@(this.Agent?.Name ?? this.Localizer["AgentDetails"])</MotoRentPageTitle>
+
+<TablerHeader Title="@(this.Agent?.Name ?? this.Localizer["Loading"])" PreTitle="@this.Localizer["AgentDetails"]">
+    @if (this.Agent != null)
+    {
+        <div class="btn-list">
+            <button type="button" class="btn btn-outline-primary" @onclick="this.OpenEditDialog">
+                <i class="ti ti-edit me-1"></i>
+                @this.Localizer["Edit"]
+            </button>
+            <a href="/agents" class="btn btn-ghost-secondary">
+                <i class="ti ti-arrow-left me-1"></i>
+                @this.Localizer["BackToList"]
+            </a>
+        </div>
+    }
+</TablerHeader>
+
+<LoadingSkeleton Loading="@this.Loading" Mode="LoadingSkeleton.PlaceholderMode.Card">
+    @if (this.Agent != null)
+    {
+        <div class="row">
+            @* Left Column - Agent Info *@
+            <div class="col-lg-4">
+                @* Agent Info Card *@
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between align-items-center w-100">
+                            <h3 class="card-title">@this.Localizer["AgentInfo"]</h3>
+                            <span class="badge @GetStatusBadgeClass(this.Agent.Status)">
+                                @this.Localizer[this.Agent.Status]
+                            </span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="datagrid">
+                            <div class="datagrid-item">
+                                <div class="datagrid-title">@this.Localizer["Code"]</div>
+                                <div class="datagrid-content"><strong>@this.Agent.AgentCode</strong></div>
+                            </div>
+                            <div class="datagrid-item">
+                                <div class="datagrid-title">@this.Localizer["Type"]</div>
+                                <div class="datagrid-content">
+                                    <span class="badge @GetAgentTypeBadgeClass(this.Agent.AgentType)">
+                                        @this.Localizer[this.Agent.AgentType]
+                                    </span>
+                                </div>
+                            </div>
+                            @if (!string.IsNullOrEmpty(this.Agent.ContactPerson))
+                            {
+                                <div class="datagrid-item">
+                                    <div class="datagrid-title">@this.Localizer["ContactPerson"]</div>
+                                    <div class="datagrid-content">@this.Agent.ContactPerson</div>
+                                </div>
+                            }
+                            @if (!string.IsNullOrEmpty(this.Agent.Phone))
+                            {
+                                <div class="datagrid-item">
+                                    <div class="datagrid-title">@this.Localizer["Phone"]</div>
+                                    <div class="datagrid-content">
+                                        <a href="tel:@this.Agent.Phone">@this.Agent.Phone</a>
+                                    </div>
+                                </div>
+                            }
+                            @if (!string.IsNullOrEmpty(this.Agent.Email))
+                            {
+                                <div class="datagrid-item">
+                                    <div class="datagrid-title">@this.Localizer["Email"]</div>
+                                    <div class="datagrid-content">
+                                        <a href="mailto:@this.Agent.Email">@this.Agent.Email</a>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                @* Commission Settings Card *@
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h3 class="card-title">@this.Localizer["CommissionSettings"]</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="datagrid">
+                            <div class="datagrid-item">
+                                <div class="datagrid-title">@this.Localizer["CommissionType"]</div>
+                                <div class="datagrid-content">@this.Localizer[this.Agent.CommissionType]</div>
+                            </div>
+                            <div class="datagrid-item">
+                                <div class="datagrid-title">@this.Localizer["Rate"]</div>
+                                <div class="datagrid-content">
+                                    <strong>@this.FormatCommissionRate(this.Agent)</strong>
+                                </div>
+                            </div>
+                            @if (this.Agent.MinCommission.HasValue)
+                            {
+                                <div class="datagrid-item">
+                                    <div class="datagrid-title">@this.Localizer["MinCommission"]</div>
+                                    <div class="datagrid-content">฿@this.Agent.MinCommission.Value.ToString("N0")</div>
+                                </div>
+                            }
+                            @if (this.Agent.MaxCommission.HasValue)
+                            {
+                                <div class="datagrid-item">
+                                    <div class="datagrid-title">@this.Localizer["MaxCommission"]</div>
+                                    <div class="datagrid-content">฿@this.Agent.MaxCommission.Value.ToString("N0")</div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                @* Statistics Card *@
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h3 class="card-title">@this.Localizer["Statistics"]</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-6">
+                                <div class="card card-sm bg-primary-lt">
+                                    <div class="card-body text-center">
+                                        <div class="h1 mb-0">@this.Agent.TotalBookings</div>
+                                        <div class="text-secondary">@this.Localizer["TotalBookings"]</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="card card-sm bg-success-lt">
+                                    <div class="card-body text-center">
+                                        <div class="h2 mb-0">฿@this.Agent.TotalCommissionEarned.ToString("N0")</div>
+                                        <div class="text-secondary">@this.Localizer["Earned"]</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="card card-sm">
+                                    <div class="card-body text-center">
+                                        <div class="h2 mb-0">฿@this.Agent.TotalCommissionPaid.ToString("N0")</div>
+                                        <div class="text-secondary">@this.Localizer["Paid"]</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="card card-sm @(this.Agent.CommissionBalance > 0 ? "bg-warning-lt" : "")">
+                                    <div class="card-body text-center">
+                                        <div class="h2 mb-0">฿@this.Agent.CommissionBalance.ToString("N0")</div>
+                                        <div class="text-secondary">@this.Localizer["Balance"]</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* Right Column - Tabs *@
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header">
+                        <ul class="nav nav-tabs card-header-tabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button type="button" class="nav-link @(this.ActiveTab == "bookings" ? "active" : "")"
+                                        @onclick="@(() => this.SwitchTabAsync("bookings"))">
+                                    <i class="ti ti-calendar me-1"></i>
+                                    @this.Localizer["Bookings"]
+                                    @if (this.Bookings.Count > 0)
+                                    {
+                                        <span class="badge bg-primary ms-1">@this.Bookings.Count</span>
+                                    }
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button type="button" class="nav-link @(this.ActiveTab == "commissions" ? "active" : "")"
+                                        @onclick="@(() => this.SwitchTabAsync("commissions"))">
+                                    <i class="ti ti-percentage me-1"></i>
+                                    @this.Localizer["Commissions"]
+                                    @if (this.Commissions.Count > 0)
+                                    {
+                                        <span class="badge bg-primary ms-1">@this.Commissions.Count</span>
+                                    }
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button type="button" class="nav-link @(this.ActiveTab == "invoices" ? "active" : "")"
+                                        @onclick="@(() => this.SwitchTabAsync("invoices"))">
+                                    <i class="ti ti-file-invoice me-1"></i>
+                                    @this.Localizer["Invoices"]
+                                    @if (this.Invoices.Count > 0)
+                                    {
+                                        <span class="badge bg-primary ms-1">@this.Invoices.Count</span>
+                                    }
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="card-body">
+                        @* Bookings Tab *@
+                        @if (this.ActiveTab == "bookings")
+                        {
+                            @if (this.Bookings.Count > 0)
+                            {
+                                <div class="table-responsive">
+                                    <table class="table table-vcenter">
+                                        <thead>
+                                            <tr>
+                                                <th>@this.Localizer["BookingRef"]</th>
+                                                <th>@this.Localizer["Customer"]</th>
+                                                <th>@this.Localizer["Dates"]</th>
+                                                <th class="text-end">@this.Localizer["Amount"]</th>
+                                                <th>@this.Localizer["Status"]</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var booking in this.Bookings)
+                                            {
+                                                <tr>
+                                                    <td>
+                                                        <a href="/bookings/@booking.BookingRef">@booking.BookingRef</a>
+                                                    </td>
+                                                    <td>@booking.CustomerName</td>
+                                                    <td>
+                                                        @booking.StartDate.ToString("dd MMM") - @booking.EndDate.ToString("dd MMM")
+                                                    </td>
+                                                    <td class="text-end">฿@booking.TotalAmount.ToString("N0")</td>
+                                                    <td>
+                                                        <span class="badge @GetBookingStatusBadgeClass(booking.Status)">
+                                                            @booking.Status
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="text-center py-4 text-secondary">
+                                    <i class="ti ti-calendar-off" style="font-size: 2rem;"></i>
+                                    <p class="mt-2">@this.Localizer["NoBookingsYet"]</p>
+                                </div>
+                            }
+                        }
+
+                        @* Commissions Tab *@
+                        @if (this.ActiveTab == "commissions")
+                        {
+                            @if (this.Commissions.Count > 0)
+                            {
+                                <div class="table-responsive">
+                                    <table class="table table-vcenter">
+                                        <thead>
+                                            <tr>
+                                                <th>@this.Localizer["BookingRef"]</th>
+                                                <th>@this.Localizer["Customer"]</th>
+                                                <th class="text-end">@this.Localizer["BookingTotal"]</th>
+                                                <th class="text-end">@this.Localizer["Commission"]</th>
+                                                <th>@this.Localizer["Status"]</th>
+                                                <th>@this.Localizer["Date"]</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var commission in this.Commissions)
+                                            {
+                                                <tr>
+                                                    <td>@commission.BookingRef</td>
+                                                    <td>@commission.CustomerName</td>
+                                                    <td class="text-end">฿@commission.BookingTotal.ToString("N0")</td>
+                                                    <td class="text-end fw-bold">฿@commission.CommissionAmount.ToString("N0")</td>
+                                                    <td>
+                                                        <span class="badge @GetCommissionStatusBadgeClass(commission.Status)">
+                                                            @this.Localizer[commission.Status]
+                                                        </span>
+                                                    </td>
+                                                    <td>@commission.CreatedTimestamp.ToString("dd MMM yyyy")</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="text-center py-4 text-secondary">
+                                    <i class="ti ti-percentage" style="font-size: 2rem;"></i>
+                                    <p class="mt-2">@this.Localizer["NoCommissionsYet"]</p>
+                                </div>
+                            }
+                        }
+
+                        @* Invoices Tab *@
+                        @if (this.ActiveTab == "invoices")
+                        {
+                            @if (this.Agent.CanGenerateInvoice)
+                            {
+                                @if (this.Invoices.Count > 0)
+                                {
+                                    <div class="table-responsive">
+                                        <table class="table table-vcenter">
+                                            <thead>
+                                                <tr>
+                                                    <th>@this.Localizer["InvoiceNo"]</th>
+                                                    <th>@this.Localizer["Customer"]</th>
+                                                    <th>@this.Localizer["Date"]</th>
+                                                    <th class="text-end">@this.Localizer["Amount"]</th>
+                                                    <th>@this.Localizer["PaymentStatus"]</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var invoice in this.Invoices)
+                                                {
+                                                    <tr>
+                                                        <td><strong>@invoice.InvoiceNo</strong></td>
+                                                        <td>@invoice.CustomerName</td>
+                                                        <td>@invoice.InvoiceDate.ToString("dd MMM yyyy")</td>
+                                                        <td class="text-end">฿@invoice.TotalAmount.ToString("N0")</td>
+                                                        <td>
+                                                            <span class="badge @GetPaymentStatusBadgeClass(invoice.PaymentStatus)">
+                                                                @this.Localizer[invoice.PaymentStatus]
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="text-center py-4 text-secondary">
+                                        <i class="ti ti-file-invoice" style="font-size: 2rem;"></i>
+                                        <p class="mt-2">@this.Localizer["NoInvoicesYet"]</p>
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                <div class="alert alert-info">
+                                    <i class="ti ti-info-circle me-2"></i>
+                                    @this.Localizer["InvoicingNotEnabled"]
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</LoadingSkeleton>
+
+@code {
+    [Parameter]
+    public int AgentId { get; set; }
+
+    private Agent? Agent { get; set; }
+    private List<Booking> Bookings { get; } = [];
+    private List<AgentCommission> Commissions { get; } = [];
+    private List<AgentInvoice> Invoices { get; } = [];
+    private bool Loading { get; set; }
+    private string ActiveTab { get; set; } = "bookings";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await this.LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        if (this.Loading) return;
+        this.Loading = true;
+        try
+        {
+            this.Agent = await this.AgentService.GetAgentByIdAsync(this.AgentId);
+            if (this.Agent != null)
+            {
+                await this.LoadTabDataAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            this.ShowError($"Error loading agent: {ex.Message}");
+        }
+        finally
+        {
+            this.Loading = false;
+        }
+    }
+
+    private async Task LoadTabDataAsync()
+    {
+        switch (this.ActiveTab)
+        {
+            case "bookings":
+                var bookingsResult = await this.BookingService.GetAgentBookingsAsync(this.AgentId, page: 1, pageSize: 50);
+                this.Bookings.Clear();
+                this.Bookings.AddRange(bookingsResult.ItemCollection);
+                break;
+            case "commissions":
+                var commissionsResult = await this.CommissionService.GetCommissionsAsync(agentId: this.AgentId, page: 1, pageSize: 50);
+                this.Commissions.Clear();
+                this.Commissions.AddRange(commissionsResult.ItemCollection);
+                break;
+            case "invoices":
+                var invoicesResult = await this.InvoiceService.GetInvoicesAsync(agentId: this.AgentId, page: 1, pageSize: 50);
+                this.Invoices.Clear();
+                this.Invoices.AddRange(invoicesResult.ItemCollection);
+                break;
+        }
+    }
+
+    private async Task SwitchTabAsync(string tab)
+    {
+        this.ActiveTab = tab;
+        await this.LoadTabDataAsync();
+    }
+
+    private async Task OpenEditDialog()
+    {
+        if (this.Agent == null) return;
+
+        var result = await this.DialogService
+            .Create<AgentDialog>(this.Localizer["EditAgent"])
+            .WithParameter(x => x.Entity, this.Agent.Clone())
+            .WithParameter(x => x.IsNew, false)
+            .Large()
+            .ShowDialogAsync();
+
+        if (!result.Cancelled)
+        {
+            await this.LoadDataAsync();
+            this.ShowSuccess(this.Localizer["AgentUpdated"]);
+        }
+    }
+
+    private static string GetStatusBadgeClass(string status) => status switch
+    {
+        AgentStatus.Active => "bg-success",
+        AgentStatus.Inactive => "bg-secondary",
+        AgentStatus.Suspended => "bg-danger",
+        _ => "bg-secondary"
+    };
+
+    private static string GetAgentTypeBadgeClass(string agentType) => agentType switch
+    {
+        AgentType.TourGuide => "bg-blue-lt",
+        AgentType.Hotel => "bg-purple-lt",
+        AgentType.TravelAgency => "bg-green-lt",
+        AgentType.Concierge => "bg-orange-lt",
+        AgentType.Resort => "bg-cyan-lt",
+        AgentType.TransportCompany => "bg-yellow-lt",
+        _ => "bg-secondary-lt"
+    };
+
+    private static string GetBookingStatusBadgeClass(string status) => status switch
+    {
+        BookingStatus.Pending => "bg-warning",
+        BookingStatus.Confirmed => "bg-success",
+        BookingStatus.CheckedIn => "bg-info",
+        BookingStatus.Completed => "bg-primary",
+        BookingStatus.Cancelled => "bg-secondary",
+        _ => "bg-secondary"
+    };
+
+    private static string GetCommissionStatusBadgeClass(string status) => status switch
+    {
+        AgentCommissionStatus.Pending => "bg-warning",
+        AgentCommissionStatus.Approved => "bg-info",
+        AgentCommissionStatus.Paid => "bg-success",
+        AgentCommissionStatus.Voided => "bg-secondary",
+        _ => "bg-secondary"
+    };
+
+    private static string GetPaymentStatusBadgeClass(string status) => status switch
+    {
+        BookingPaymentStatus.Unpaid => "bg-danger-lt",
+        BookingPaymentStatus.PartiallyPaid => "bg-warning",
+        BookingPaymentStatus.FullyPaid => "bg-success",
+        _ => "bg-secondary"
+    };
+
+    private string FormatCommissionRate(Agent agent)
+    {
+        return agent.CommissionType switch
+        {
+            AgentCommissionType.Percentage => $"{agent.CommissionRate}%",
+            AgentCommissionType.FixedPerBooking => $"฿{agent.CommissionRate:N0}/booking",
+            AgentCommissionType.FixedPerVehicle => $"฿{agent.CommissionRate:N0}/vehicle",
+            AgentCommissionType.FixedPerDay => $"฿{agent.CommissionRate:N0}/day",
+            _ => $"{agent.CommissionRate}"
+        };
+    }
+}

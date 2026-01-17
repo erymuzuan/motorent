@@ -5,13 +5,13 @@
 @inject OwnerPaymentService OwnerPaymentService
 @inject VehicleOwnerService VehicleOwnerService
 
-<MotoRentPageTitle>Owner Payments</MotoRentPageTitle>
+<MotoRentPageTitle>@this.Localizer["OwnerPayments"]</MotoRentPageTitle>
 
-<TablerHeader Title="Owner Payments" PreTitle="Third-Party Fleet">
+<TablerHeader Title="@this.Localizer["OwnerPayments"]" PreTitle="@this.Localizer["ThirdPartyFleet"]">
     <div class="d-flex gap-2">
         <button type="button" class="btn btn-outline-secondary" @onclick="ExportAsync" disabled="@m_loading">
             <i class="ti ti-download me-1"></i>
-            Export
+            @this.Localizer["Export"]
         </button>
     </div>
 </TablerHeader>
@@ -28,13 +28,13 @@
                         </span>
                     </div>
                     <div class="col">
-                        <div class="font-weight-medium">Pending Payments</div>
+                        <div class="font-weight-medium">@this.Localizer["PendingPayments"]</div>
                         <div class="text-secondary">
-                            @m_pendingCount payments
+                            @this.Localizer["PaymentsCount", m_pendingCount]
                         </div>
                     </div>
                     <div class="col-auto">
-                        <div class="h2 mb-0">@m_pendingTotal.ToString("N0") THB</div>
+                        <div class="h2 mb-0">@m_pendingTotal.ToString("N0") @this.Localizer["CurrencyTHB"]</div>
                     </div>
                 </div>
             </div>
@@ -50,13 +50,13 @@
                         </span>
                     </div>
                     <div class="col">
-                        <div class="font-weight-medium">Paid This Month</div>
+                        <div class="font-weight-medium">@this.Localizer["PaidThisMonth"]</div>
                         <div class="text-secondary">
-                            @m_paidCount payments
+                            @this.Localizer["PaymentsCount", m_paidCount]
                         </div>
                     </div>
                     <div class="col-auto">
-                        <div class="h2 mb-0">@m_paidTotal.ToString("N0") THB</div>
+                        <div class="h2 mb-0">@m_paidTotal.ToString("N0") @this.Localizer["CurrencyTHB"]</div>
                     </div>
                 </div>
             </div>
@@ -69,9 +69,9 @@
     <div class="card-body">
         <div class="row g-3 align-items-end">
             <div class="col-md-3">
-                <label class="form-label">Owner</label>
+                <label class="form-label">@this.Localizer["Owner"]</label>
                 <select class="form-select" @bind="m_ownerFilter" @bind:after="LoadDataAsync">
-                    <option value="">All Owners</option>
+                    <option value="">@this.Localizer["AllOwners"]</option>
                     @foreach (var owner in m_owners)
                     {
                         <option value="@owner.VehicleOwnerId">@owner.Name</option>
@@ -79,26 +79,26 @@
                 </select>
             </div>
             <div class="col-md-2">
-                <label class="form-label">Status</label>
+                <label class="form-label">@this.CommonLocalizer["Status"]</label>
                 <select class="form-select" @bind="m_statusFilter" @bind:after="LoadDataAsync">
-                    <option value="">All Status</option>
-                    <option value="@OwnerPaymentStatus.Pending">Pending</option>
-                    <option value="@OwnerPaymentStatus.Paid">Paid</option>
-                    <option value="@OwnerPaymentStatus.Cancelled">Cancelled</option>
+                    <option value="">@this.Localizer["AllStatus"]</option>
+                    <option value="@OwnerPaymentStatus.Pending">@this.CommonLocalizer["Pending"]</option>
+                    <option value="@OwnerPaymentStatus.Paid">@this.CommonLocalizer["Paid"]</option>
+                    <option value="@OwnerPaymentStatus.Cancelled">@this.CommonLocalizer["Cancelled"]</option>
                 </select>
             </div>
             <div class="col-md-2">
-                <label class="form-label">From Date</label>
+                <label class="form-label">@this.Localizer["FromDate"]</label>
                 <input type="date" class="form-control" @bind="m_fromDate" @bind:after="LoadDataAsync" />
             </div>
             <div class="col-md-2">
-                <label class="form-label">To Date</label>
+                <label class="form-label">@this.Localizer["ToDate"]</label>
                 <input type="date" class="form-control" @bind="m_toDate" @bind:after="LoadDataAsync" />
             </div>
             <div class="col-md-3 text-end">
                 <button type="button" class="btn btn-ghost-secondary" @onclick="ClearFilters">
                     <i class="ti ti-x me-1"></i>
-                    Clear Filters
+                    @this.Localizer["ClearFilters"]
                 </button>
             </div>
         </div>
@@ -112,12 +112,12 @@
             <table class="table table-vcenter card-table">
                 <thead>
                     <tr>
-                        <th>Owner</th>
-                        <th>Vehicle</th>
-                        <th>Rental Period</th>
-                        <th>Payment Model</th>
-                        <th class="text-end">Amount</th>
-                        <th>Status</th>
+                        <th>@this.Localizer["Owner"]</th>
+                        <th>@this.Localizer["Vehicle"]</th>
+                        <th>@this.Localizer["RentalPeriod"]</th>
+                        <th>@this.Localizer["PaymentModel"]</th>
+                        <th class="text-end">@this.Localizer["Amount"]</th>
+                        <th>@this.Localizer["Status"]</th>
                         <th class="w-1"></th>
                     </tr>
                 </thead>
@@ -133,37 +133,37 @@
                             </td>
                             <td>
                                 <div>@payment.RentalStartDate.ToString("dd MMM") - @payment.RentalEndDate.ToString("dd MMM yyyy")</div>
-                                <div class="text-secondary small">@payment.RentalDays day(s)</div>
+                                <div class="text-secondary small">@this.Localizer["DaysCount", payment.RentalDays]</div>
                             </td>
                             <td>
                                 @if (payment.PaymentModel is OwnerPaymentModel.DailyRate)
                                 {
-                                    <span>@payment.CalculationRate.ToString("N0") THB/day</span>
+                                    <span>@this.Localizer["DailyRateLabel", payment.CalculationRate.ToString("N0")]</span>
                                 }
                                 else
                                 {
-                                    <span>@((payment.CalculationRate * 100).ToString("N0"))% of @payment.GrossRentalAmount.ToString("N0")</span>
+                                    <span>@this.Localizer["PercentageOfLabel", (payment.CalculationRate * 100).ToString("N0"), payment.GrossRentalAmount.ToString("N0")]</span>
                                 }
                             </td>
                             <td class="text-end">
                                 <span class="h4 mb-0">@payment.Amount.ToString("N0")</span>
-                                <span class="text-secondary">THB</span>
+                                <span class="text-secondary">@this.Localizer["CurrencyTHB"]</span>
                             </td>
                             <td>
                                 @switch (payment.Status)
                                 {
                                     case OwnerPaymentStatus.Pending:
-                                        <span class="badge bg-warning">Pending</span>
+                                        <span class="badge bg-warning">@this.CommonLocalizer["Pending"]</span>
                                         break;
                                     case OwnerPaymentStatus.Paid:
-                                        <span class="badge bg-success">Paid</span>
+                                        <span class="badge bg-success">@this.CommonLocalizer["Paid"]</span>
                                         if (payment.PaidOn is { } paidOn)
                                         {
                                             <div class="text-secondary small">@paidOn.ToString("dd MMM")</div>
                                         }
                                         break;
                                     case OwnerPaymentStatus.Cancelled:
-                                        <span class="badge bg-secondary">Cancelled</span>
+                                        <span class="badge bg-secondary">@this.CommonLocalizer["Cancelled"]</span>
                                         break;
                                 }
                             </td>
@@ -174,7 +174,7 @@
                                         <button type="button" class="btn btn-sm btn-success"
                                                 @onclick="@(() => OpenMarkAsPaidDialog(payment))">
                                             <i class="ti ti-check me-1"></i>
-                                            Mark Paid
+                                            @this.Localizer["MarkPaid"]
                                         </button>
                                         <button type="button" class="btn btn-sm btn-ghost-danger"
                                                 @onclick="@(() => CancelPayment(payment))">
@@ -203,15 +203,15 @@
     <div class="card">
         <div class="card-body text-center py-5">
             <i class="ti ti-receipt-off mb-3" style="font-size: 3rem; color: var(--tblr-secondary);"></i>
-            <h3 class="text-secondary">No owner payments found</h3>
+            <h3 class="text-secondary">@this.Localizer["NoOwnerPaymentsFound"]</h3>
             <p class="text-secondary">
                 @if (string.IsNullOrEmpty(m_ownerFilter) && m_statusFilter is null && m_fromDate is null && m_toDate is null)
                 {
-                    <span>Owner payments will appear here when rentals of third-party vehicles are completed.</span>
+                    <span>@this.Localizer["NoOwnerPaymentsHelp"]</span>
                 }
                 else
                 {
-                    <span>Try adjusting your filters.</span>
+                    <span>@this.Localizer["TryAdjustingFilters"]</span>
                 }
             </p>
         </div>
@@ -284,7 +284,7 @@
         }
         catch (Exception ex)
         {
-            this.ShowError($"Error loading payments: {ex.Message}");
+            this.ShowError(this.Localizer["ErrorLoadingPayments", ex.Message]);
         }
         finally
         {
@@ -304,56 +304,56 @@
     private async Task OpenMarkAsPaidDialog(OwnerPayment payment)
     {
         var result = await this.DialogService
-            .Create<MarkAsPaidDialog>("Mark Payment as Paid")
+            .Create<MarkAsPaidDialog>(this.Localizer["MarkPaymentAsPaid"])
             .WithParameter(x => x.Payment, payment)
             .ShowDialogAsync();
 
         if (!result.Cancelled)
         {
             await this.LoadDataAsync();
-            this.ShowSuccess($"Payment of {payment.Amount:N0} THB marked as paid");
+            this.ShowSuccess(this.Localizer["PaymentMarkedAsPaid", payment.Amount.ToString("N0")]);
         }
     }
 
     private async Task CancelPayment(OwnerPayment payment)
     {
         if (!await this.DialogService.ConfirmYesNoAsync(
-            $"Are you sure you want to cancel this payment of {payment.Amount:N0} THB to {payment.VehicleOwnerName}?",
-            "Cancel Payment"))
+            this.Localizer["ConfirmCancelPayment", payment.Amount.ToString("N0"), payment.VehicleOwnerName],
+            this.Localizer["CancelPayment"]))
             return;
 
         var result = await this.OwnerPaymentService.CancelPaymentAsync(
             payment.OwnerPaymentId,
-            "Cancelled by user",
+            this.Localizer["CancelledByUser"],
             this.UserName);
 
         if (result.Success)
         {
             await this.LoadDataAsync();
-            this.ShowSuccess("Payment cancelled");
+            this.ShowSuccess(this.Localizer["PaymentCancelled"]);
         }
         else
         {
-            this.ShowError($"Failed to cancel: {result.Message}");
+            this.ShowError(this.Localizer["CancelPaymentFailed", result.Message ?? ""]);
         }
     }
 
     private async Task ViewPaymentDetails(OwnerPayment payment)
     {
-        var message = $"Payment Details:\n" +
-                      $"- Amount: {payment.Amount:N0} THB\n" +
-                      $"- Method: {payment.PaymentMethod ?? "Not specified"}\n" +
-                      $"- Reference: {payment.PaymentRef ?? "None"}\n" +
-                      $"- Paid On: {payment.PaidOn?.ToString("dd MMM yyyy HH:mm") ?? "N/A"}\n" +
-                      $"- Notes: {payment.Notes ?? "None"}";
+        var message = $"{this.Localizer["PaymentDetails"]}:\n" +
+                      $"- {this.Localizer["Amount"]}: {payment.Amount.ToString("N0")} {this.Localizer["CurrencyTHB"]}\n" +
+                      $"- {this.Localizer["Method"]}: {payment.PaymentMethod ?? this.Localizer["NotSpecified"]}\n" +
+                      $"- {this.Localizer["Reference"]}: {payment.PaymentRef ?? this.Localizer["None"]}\n" +
+                      $"- {this.Localizer["PaidOn"]}: {payment.PaidOn?.ToString("dd MMM yyyy HH:mm") ?? this.Localizer["NotAvailable"]}\n" +
+                      $"- {this.Localizer["Notes"]}: {payment.Notes ?? this.Localizer["None"]}";
 
-        await this.DialogService.ShowMessageAsync(message, "Payment Details");
+        await this.DialogService.ShowMessageAsync(message, this.Localizer["PaymentDetails"]);
     }
 
     private async Task ExportAsync()
     {
         // TODO: Implement export functionality
-        this.ShowInfo("Export feature coming soon");
+        this.ShowInfo(this.Localizer["ExportComingSoon"]);
         await Task.CompletedTask;
     }
 }

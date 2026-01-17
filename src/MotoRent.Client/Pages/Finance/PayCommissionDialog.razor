@@ -1,0 +1,138 @@
+@inherits LocalizedDialogBase<AgentCommission, PayCommissionDialog>
+@inject AgentCommissionService CommissionService
+
+<form id="@this.FormId" @onsubmit="this.SaveAsync" @onsubmit:preventDefault>
+    <div class="modal-body">
+        @* Commission Summary *@
+        <div class="alert alert-info mb-3">
+            <div class="d-flex">
+                <div class="flex-fill">
+                    <div class="mb-2">
+                        <strong>@this.Localizer["Agent"]:</strong> @this.Commission.AgentName (@this.Commission.AgentCode)
+                    </div>
+                    <div>
+                        <strong>@this.Localizer["Booking"]:</strong> @this.Commission.BookingRef
+                    </div>
+                </div>
+                <div class="text-end">
+                    <div class="text-secondary">@this.Localizer["CommissionAmount"]</div>
+                    <div class="h2 mb-0">@this.Commission.CommissionAmount.ToString("N0") @this.Localizer["CurrencyTHB"]</div>
+                </div>
+            </div>
+        </div>
+...
+        catch (Exception ex)
+        {
+            this.ShowError($"{this.Localizer["Error"]}: {ex.Message}");
+        }
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label required">@this.Localizer["PaymentMethod"]</label>
+                <select class="form-select" @bind="this.PaymentMethod" required>
+                    <option value="">@this.Localizer["SelectMethod"]</option>
+                    <option value="Cash">@this.Localizer["Cash"]</option>
+                    <option value="BankTransfer">@this.Localizer["BankTransfer"]</option>
+                    <option value="PromptPay">@this.Localizer["PromptPay"]</option>
+                </select>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">@this.Localizer["PaymentReference"]</label>
+                <input type="text" class="form-control" @bind="this.PaymentRef"
+                       placeholder="@this.Localizer["ReferencePlaceholder"]" />
+            </div>
+        </div>
+    </div>
+</form>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="this.Cancel">
+        @this.Localizer["Cancel"]
+    </button>
+    <button type="submit" form="@this.FormId" class="btn btn-success" disabled="@this.Saving">
+        @if (this.Saving)
+        {
+            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+        }
+        <i class="ti ti-cash me-1"></i>
+        @this.Localizer["ConfirmPayment"]
+    </button>
+</div>
+
+@code {
+    [Parameter]
+    public AgentCommission Commission { get; set; } = new();
+
+    [Parameter]
+    public bool IsBulk { get; set; }
+
+    [Parameter]
+    public int[] CommissionIds { get; set; } = [];
+
+    private string? PaymentMethod { get; set; }
+    private string? PaymentRef { get; set; }
+
+    protected override void OnInitialized()
+    {
+        this.FormValid = true;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrEmpty(this.PaymentMethod))
+        {
+            this.ShowError(this.Localizer["SelectPaymentMethodRequired"]);
+            return;
+        }
+
+        this.Saving = true;
+
+        try
+        {
+            if (this.IsBulk && this.CommissionIds.Length > 0)
+            {
+                var result = await this.CommissionService.PayCommissionsAsync(
+                    this.CommissionIds,
+                    this.PaymentMethod,
+                    this.PaymentRef,
+                    this.UserName);
+
+                if (result.AllSucceeded)
+                {
+                    this.Close(result);
+                }
+                else
+                {
+                    this.ShowWarning(this.Localizer["PartialPayment", result.SuccessCount, result.FailedCount]);
+                    this.Close(result);
+                }
+            }
+            else
+            {
+                var result = await this.CommissionService.PayCommissionAsync(
+                    this.Commission.AgentCommissionId,
+                    this.PaymentMethod,
+                    this.PaymentRef,
+                    this.UserName);
+
+                if (result.Success)
+                {
+                    this.Close(result);
+                }
+                else
+                {
+                    this.ShowError($"{this.Localizer["PaymentFailed"]}: {result.Message}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            this.ShowError($"Error: {ex.Message}");
+        }
+        finally
+        {
+            this.Saving = false;
+        }
+    }
+}

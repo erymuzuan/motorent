@@ -57,4 +57,7 @@ public static class BookingChangeType
     public const string CheckedIn = "CheckedIn";
     public const string Cancelled = "Cancelled";
     public const string NotesChange = "NotesChange";
+    public const string AgentAssigned = "AgentAssigned";
+    public const string AgentRemoved = "AgentRemoved";
+    public const string AgentFinancialsUpdated = "AgentFinancialsUpdated";
 }

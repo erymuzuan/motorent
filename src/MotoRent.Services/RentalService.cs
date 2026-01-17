@@ -4,10 +4,16 @@ using MotoRent.Domain.Models;
 
 namespace MotoRent.Services;
 
-public class RentalService(RentalDataContext context, VehiclePoolService? poolService = null)
+public class RentalService(
+    RentalDataContext context,
+    VehiclePoolService? poolService = null,
+    BookingService? bookingService = null,
+    AgentCommissionService? commissionService = null)
 {
     private RentalDataContext Context { get; } = context;
     private VehiclePoolService? PoolService { get; } = poolService;
+    private BookingService? BookingService { get; } = bookingService;
+    private AgentCommissionService? CommissionService { get; } = commissionService;
 
     #region CRUD Operations
 
@@ -615,6 +621,9 @@ public class RentalService(RentalDataContext context, VehiclePoolService? poolSe
 
             if (result.Success)
             {
+                // 12. Make agent commission eligible if this rental is from an agent booking
+                await MakeAgentCommissionEligibleAsync(rental, username);
+
                 return CheckOutResult.CreateSuccess(
                     rentalId: request.RentalId,
                     additionalCharges: additionalCharges,
@@ -950,6 +959,25 @@ I agree to the following terms and conditions:
 6. I will not sublet or lend the vehicle to any third party.
 
 By signing below, I acknowledge that I have read, understood, and agree to these terms.";
+    }
+
+    /// <summary>
+    /// Makes agent commission eligible when a rental linked to an agent booking is completed.
+    /// </summary>
+    private async Task MakeAgentCommissionEligibleAsync(Rental rental, string username)
+    {
+        if (!rental.BookingId.HasValue || BookingService == null || CommissionService == null)
+            return;
+
+        var booking = await BookingService.GetBookingByIdAsync(rental.BookingId.Value);
+        if (booking == null || !booking.IsAgentBooking)
+            return;
+
+        var commission = await CommissionService.GetCommissionByBookingAsync(booking.BookingId);
+        if (commission != null && commission.Status == AgentCommissionStatus.Pending && !commission.RentalId.HasValue)
+        {
+            await CommissionService.MakeEligibleAsync(commission.AgentCommissionId, rental.RentalId, username);
+        }
     }
 
     #endregion

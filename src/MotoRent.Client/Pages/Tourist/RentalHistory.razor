@@ -6,6 +6,7 @@
 @using MotoRent.Services
 @using MotoRent.Client.Controls
 @inject RentalService RentalService
+@inject BookingService BookingService
 @inject IJSRuntime JS
 
 <PageTitle>My Rentals - @TenantName</PageTitle>
@@ -79,12 +80,89 @@
                 </button>
             </div>
 
-            @if (m_rentals.Count == 0)
+            @* Upcoming Bookings Section *@
+            @if (m_bookings.Count > 0)
+            {
+                <div class="mb-4">
+                    <h4 class="mb-3">
+                        <i class="ti ti-calendar-event me-2 text-primary"></i>
+                        Upcoming Bookings
+                    </h4>
+                    <div class="row g-4">
+                        @foreach (var booking in m_bookings)
+                        {
+                            <div class="col-12 col-md-6">
+                                <div class="card border-primary">
+                                    <div class="card-header bg-primary-lt">
+                                        <div class="d-flex justify-content-between align-items-start w-100">
+                                            <div>
+                                                <h4 class="card-title mb-0">Booking @booking.BookingRef</h4>
+                                                <small class="text-secondary">
+                                                    @FormatDate(booking.StartDate.DateTime) - @FormatDate(booking.EndDate.DateTime)
+                                                </small>
+                                            </div>
+                                            <span class="badge @GetBookingStatusBadgeClass(booking.Status)">@booking.Status</span>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="d-flex flex-column gap-2">
+                                            <div class="d-flex justify-content-between">
+                                                <span class="text-secondary">Vehicles</span>
+                                                <span>@booking.Items.Count @(booking.Items.Count == 1 ? "vehicle" : "vehicles")</span>
+                                            </div>
+                                            @foreach (var item in booking.Items.Take(2))
+                                            {
+                                                <div class="d-flex justify-content-between small">
+                                                    <span class="text-secondary">@item.VehicleDisplayName</span>
+                                                    <span>@FormatCurrency(item.DailyRate)/day</span>
+                                                </div>
+                                            }
+                                            @if (booking.Items.Count > 2)
+                                            {
+                                                <small class="text-secondary">+@(booking.Items.Count - 2) more...</small>
+                                            }
+                                            <hr class="my-1" />
+                                            <div class="d-flex justify-content-between">
+                                                <span class="text-secondary">Total Amount</span>
+                                                <strong class="text-primary">@FormatCurrency(booking.TotalAmount)</strong>
+                                            </div>
+                                            <div class="d-flex justify-content-between">
+                                                <span class="text-secondary">Payment Status</span>
+                                                <span class="@(booking.PaymentStatus == BookingPaymentStatus.FullyPaid ? "text-success" : booking.PaymentStatus == BookingPaymentStatus.PartiallyPaid ? "text-warning" : "text-danger")">
+                                                    @(booking.PaymentStatus == BookingPaymentStatus.FullyPaid ? "Paid" : booking.PaymentStatus == BookingPaymentStatus.PartiallyPaid ? "Partial" : "Unpaid")
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-footer">
+                                        <div class="d-flex justify-content-between w-100">
+                                            <a href="@TenantUrl($"booking/{booking.BookingRef}")" class="btn btn-ghost-primary btn-sm">
+                                                <i class="ti ti-eye me-1"></i>
+                                                View Details
+                                            </a>
+                                            @if (booking.Status == BookingStatus.Pending || booking.Status == BookingStatus.Confirmed)
+                                            {
+                                                <button type="button" class="btn btn-ghost-danger btn-sm"
+                                                        @onclick="@(() => CancelBooking(booking))">
+                                                    Cancel
+                                                </button>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            @* Rentals Section *@
+            @if (m_rentals.Count == 0 && m_bookings.Count == 0)
             {
                 <div class="card bg-light">
                     <div class="card-body py-5 text-center">
                         <i class="ti ti-history fs-1 text-secondary mb-3"></i>
-                        <h4 class="text-secondary">No rentals found</h4>
+                        <h4 class="text-secondary">No rentals or bookings found</h4>
                         <p class="text-secondary mb-4">
                             You haven't made any rentals yet. Start exploring our motorbikes!
                         </p>
@@ -92,8 +170,15 @@
                     </div>
                 </div>
             }
-            else
+            @if (m_rentals.Count > 0)
             {
+                @if (m_bookings.Count > 0)
+                {
+                    <h4 class="mb-3">
+                        <i class="ti ti-history me-2 text-secondary"></i>
+                        Rental History
+                    </h4>
+                }
                 <div class="row g-4">
                     @foreach (var rental in m_rentals)
                     {
@@ -255,6 +340,7 @@
     private string? m_email;
     private string? m_phone;
     private List<Rental> m_rentals = [];
+    private List<Booking> m_bookings = [];
 
     private async Task SearchRentals()
     {
@@ -264,7 +350,12 @@
         this.m_searching = true;
         try
         {
+            // Load rentals
             this.m_rentals = await this.RentalService.GetRentalHistoryForTouristAsync(0, this.m_email, this.m_phone);
+
+            // Load bookings (not yet checked in)
+            this.m_bookings = await this.BookingService.GetBookingsForTouristAsync(this.m_email, this.m_phone);
+
             this.m_isVerified = true;
         }
         catch (Exception ex)
@@ -283,6 +374,7 @@
         this.m_email = null;
         this.m_phone = null;
         this.m_rentals.Clear();
+        this.m_bookings.Clear();
     }
 
     private async Task CancelReservation(Rental rental)
@@ -371,5 +463,45 @@
     {
         this.ShowInfo($"Receipt download for Rental #{rental.RentalId} - Feature coming soon!");
         await Task.CompletedTask;
+    }
+
+    private static string GetBookingStatusBadgeClass(string? status) => status switch
+    {
+        BookingStatus.Pending => "bg-warning",
+        BookingStatus.Confirmed => "bg-success",
+        BookingStatus.CheckedIn => "bg-info",
+        BookingStatus.Completed => "bg-secondary",
+        BookingStatus.Cancelled => "bg-danger",
+        _ => "bg-secondary"
+    };
+
+    private async Task CancelBooking(Booking booking)
+    {
+        if (!await this.DialogService.ConfirmYesNoAsync(
+            "Are you sure you want to cancel this booking? This action cannot be undone.",
+            "Cancel Booking"))
+            return;
+
+        try
+        {
+            var result = await this.BookingService.CancelBookingAsync(
+                booking.BookingId,
+                "Cancelled by customer via portal",
+                "tourist");
+
+            if (result.Success)
+            {
+                this.ShowSuccess("Booking cancelled successfully");
+                await this.SearchRentals(); // Refresh
+            }
+            else
+            {
+                this.ShowError(result.Error ?? "Failed to cancel booking");
+            }
+        }
+        catch (Exception ex)
+        {
+            this.ShowError($"Error: {ex.Message}");
+        }
     }
 }

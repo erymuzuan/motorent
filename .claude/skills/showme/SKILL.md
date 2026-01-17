@@ -1,14 +1,16 @@
-# ShowMe - Visual Mockup & Annotation Tool for Claude Code
+# ShowMe - Visual Mockup & Annotation Tool for Copilot CLI
 
-ShowMe lets you create visual mockups with coordinate-tracked annotations across multiple pages. Draw, annotate, and provide component-specific feedback that Claude can see and act on.
+ShowMe lets you create visual mockups with coordinate-tracked annotations across multiple pages. Draw, annotate, and provide component-specific feedback that Copilot CLI can see and act on.
 
-## Instructions for Claude
+## Instructions for Copilot CLI
 
 When the user invokes `/showme`, execute this command and wait for the result:
 
 ```bash
 bun run ../ai.apps/ShowMe/server/index.ts
 ```
+
+Run the command through the `powershell` tool (typically `mode:"sync"` with a generous `initial_wait`) so that stdout, stderr, and the resulting JSON are captured in the transcript.
 
 The command will:
 
@@ -150,7 +152,7 @@ You should:
 3. Switch to annotation mode and add markers
 4. Click annotations to add component-specific feedback
 5. Add global notes at the bottom for overall context
-6. Click "Send to Claude" when done
+6. Click "Send to Copilot" when done
 
 ---
 
