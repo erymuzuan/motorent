@@ -1,6 +1,7 @@
 @using MotoRent.Domain.Entities
 @using MotoRent.Domain.Models
 @using MotoRent.Client.Components.Shared
+@using MotoRent.Client.Components.Receipts
 @using MotoRent.Client.Controls
 @inherits LocalizedDialogBase<Rental, CheckOutDialog>
 @inject RentalService RentalService
@@ -13,6 +14,8 @@
 @inject OperatingHoursService HoursService
 @inject RentalPricingService PricingService
 @inject TillService TillService
+@inject ReceiptService ReceiptService
+@inject DamageReportService DamageReportService
 
 <div class="checkout-dialog">
     @if (m_loading)
@@ -1514,6 +1517,9 @@
                     await this.RecordDepositRefundToTillAsync(result.RefundAmount);
                 }
 
+                // Generate and show settlement receipt
+                await this.GenerateAndShowSettlementReceiptAsync(result);
+
                 var message = Localizer["CheckOutCompleted"].Value;
                 if (this.m_refundAmount > 0)
                     message += $" {Localizer["RefundLabel", FormatCurrency(result.RefundAmount)]}";
@@ -1564,6 +1570,99 @@
         {
             // Log but don't fail the checkout if till recording fails
             this.Logger.LogError(ex, "Failed to record deposit refund to till session");
+        }
+    }
+
+    /// <summary>
+    /// Generates a settlement receipt and shows the print dialog.
+    /// </summary>
+    private async Task GenerateAndShowSettlementReceiptAsync(CheckOutResult result)
+    {
+        try
+        {
+            // Get renter and vehicle
+            var renter = await this.RenterService.GetRenterByIdAsync(this.Entity.RenterId);
+            var vehicle = await this.VehicleService.GetVehicleByIdAsync(this.Entity.VehicleId);
+
+            if (renter == null || vehicle == null) return;
+
+            // Get damage reports
+            List<DamageReport>? damages = null;
+            if (this.m_damageEstimate > 0)
+            {
+                damages = await this.DamageReportService.GetByRentalAsync(this.Entity.RentalId);
+            }
+
+            // Calculate extra days charge
+            var extraDays = this.m_extraDays;
+            var extraDaysCharge = this.m_extraDaysCharge;
+
+            // Get location fee
+            var locationFee = this.m_dropoffLocationFee + this.m_dropoffOutOfHoursFee;
+            var locationName = this.m_selectedDropoffLocation?.Name;
+
+            // Create refund payments
+            var payments = new List<ReceiptPayment>();
+            if (result.RefundAmount > 0)
+            {
+                payments.Add(new ReceiptPayment
+                {
+                    Method = this.m_refundMethod,
+                    Amount = result.RefundAmount,
+                    Currency = SupportedCurrencies.THB,
+                    ExchangeRate = 1.0m,
+                    AmountInBaseCurrency = result.RefundAmount,
+                    PaidAt = DateTimeOffset.Now
+                });
+            }
+
+            // If there's an amount due (deposit doesn't cover charges)
+            var amountDue = Math.Max(0, this.m_totalAdditional - this.m_depositAmount);
+            if (amountDue > 0)
+            {
+                payments.Add(new ReceiptPayment
+                {
+                    Method = this.m_refundMethod,
+                    Amount = amountDue,
+                    Currency = SupportedCurrencies.THB,
+                    ExchangeRate = 1.0m,
+                    AmountInBaseCurrency = amountDue,
+                    PaidAt = DateTimeOffset.Now
+                });
+            }
+
+            // Generate the receipt
+            var receipt = await this.ReceiptService.GenerateSettlementReceiptAsync(
+                this.Entity.RentalId,
+                this.m_tillSession?.TillSessionId,
+                this.Entity,
+                renter,
+                vehicle,
+                this.m_depositAmount,
+                extraDaysCharge,
+                extraDays,
+                this.m_damageEstimate,
+                damages,
+                locationFee,
+                locationName,
+                result.RefundAmount,
+                amountDue,
+                payments,
+                this.UserName);
+
+            // Show print dialog
+            await this.DialogService
+                .Create<ReceiptPrintDialog>(this.CommonLocalizer["SettlementReceipt"])
+                .WithParameter(x => x.Entity, receipt)
+                .WithParameter(x => x.IsReprint, false)
+                .Large()
+                .ShowDialogAsync();
+        }
+        catch (Exception ex)
+        {
+            // Log but don't fail the checkout if receipt generation fails
+            this.Logger.LogError(ex, "Failed to generate settlement receipt");
+            this.ShowWarning(this.Localizer["ReceiptGenerationFailed"]);
         }
     }
 }

@@ -1,0 +1,388 @@
+@using MotoRent.Domain.Entities
+@inherits MotoRent.Client.Controls.MotoRentComponentBase
+
+@* Receipt Document - Print-optimized A4 layout *@
+<div class="receipt-document" id="receipt-content">
+    @if (Receipt == null)
+    {
+        <div class="alert alert-warning">
+            <i class="ti ti-alert-circle me-2"></i>
+            No receipt data available.
+        </div>
+    }
+    else
+    {
+        @* Receipt Header *@
+        <div class="receipt-header">
+            <div class="row">
+                <div class="col-6">
+                    <h3 class="text-primary mb-0">@GetReceiptTitle()</h3>
+                    <div class="fw-bold fs-4">@Receipt.ReceiptNo</div>
+                    <small class="text-secondary">@FormatDateTime(Receipt.IssuedOn)</small>
+                </div>
+                <div class="col-6 text-end">
+                    @if (!string.IsNullOrEmpty(Receipt.ShopName))
+                    {
+                        <h5 class="mb-1">@Receipt.ShopName</h5>
+                    }
+                    @if (!string.IsNullOrEmpty(Receipt.ShopAddress))
+                    {
+                        <div class="small text-secondary">@Receipt.ShopAddress</div>
+                    }
+                    @if (!string.IsNullOrEmpty(Receipt.ShopPhone))
+                    {
+                        <div class="small text-secondary">Tel: @Receipt.ShopPhone</div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <hr class="my-3" />
+
+        @* Customer & Vehicle Info *@
+        <div class="row mb-4">
+            <div class="col-6">
+                <div class="subheader text-secondary">CUSTOMER</div>
+                <div class="fw-bold">@Receipt.CustomerName</div>
+                @if (!string.IsNullOrEmpty(Receipt.CustomerPassportNo))
+                {
+                    <div class="small">ID/Passport: @Receipt.CustomerPassportNo</div>
+                }
+                @if (!string.IsNullOrEmpty(Receipt.CustomerPhone))
+                {
+                    <div class="small">Tel: @Receipt.CustomerPhone</div>
+                }
+            </div>
+            <div class="col-6">
+                @if (!string.IsNullOrEmpty(Receipt.VehicleName) || !string.IsNullOrEmpty(Receipt.LicensePlate))
+                {
+                    <div class="subheader text-secondary">VEHICLE</div>
+                    @if (!string.IsNullOrEmpty(Receipt.VehicleName))
+                    {
+                        <div class="fw-bold">@Receipt.VehicleName</div>
+                    }
+                    @if (!string.IsNullOrEmpty(Receipt.LicensePlate))
+                    {
+                        <div class="small">License: @Receipt.LicensePlate</div>
+                    }
+                }
+            </div>
+        </div>
+
+        @* Line Items Table *@
+        @if (Receipt.Items.Any())
+        {
+            <div class="table-responsive mb-4">
+                <table class="table table-vcenter">
+                    <thead>
+                        <tr class="bg-light">
+                            <th>Description</th>
+                            <th class="text-center" style="width: 80px;">Qty</th>
+                            <th class="text-end" style="width: 100px;">Unit Price</th>
+                            <th class="text-end" style="width: 120px;">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Receipt.Items.OrderBy(i => i.SortOrder))
+                        {
+                            <tr class="@(item.IsDeduction ? "table-danger" : "")">
+                                <td>
+                                    <div class="fw-medium">
+                                        @if (item.IsDeduction)
+                                        {
+                                            <i class="ti ti-minus-circle text-danger me-1"></i>
+                                        }
+                                        @item.Description
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(item.Detail))
+                                    {
+                                        <small class="text-secondary">@item.Detail</small>
+                                    }
+                                </td>
+                                <td class="text-center">
+                                    @if (item.Quantity != 1 || item.UnitPrice > 0)
+                                    {
+                                        @item.Quantity.ToString("N0")
+                                    }
+                                </td>
+                                <td class="text-end">
+                                    @if (item.UnitPrice > 0)
+                                    {
+                                        @FormatCurrency(item.UnitPrice)
+                                    }
+                                </td>
+                                <td class="text-end fw-medium">
+                                    @if (item.IsDeduction)
+                                    {
+                                        <span class="text-danger">-@FormatCurrency(item.Amount)</span>
+                                    }
+                                    else
+                                    {
+                                        @FormatCurrency(item.Amount)
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        @* Totals Section *@
+        <div class="row mb-4">
+            <div class="col-6">
+                @* Settlement-specific info *@
+                @if (Receipt.ReceiptType == ReceiptTypes.Settlement)
+                {
+                    <div class="card bg-light">
+                        <div class="card-body p-3">
+                            <div class="subheader text-secondary">SETTLEMENT SUMMARY</div>
+                            <div class="d-flex justify-content-between small mb-1">
+                                <span>Deposit Held:</span>
+                                <span>@FormatCurrency(Receipt.DepositHeld)</span>
+                            </div>
+                            @if (Receipt.DeductionsTotal > 0)
+                            {
+                                <div class="d-flex justify-content-between small mb-1">
+                                    <span>Deductions:</span>
+                                    <span class="text-danger">-@FormatCurrency(Receipt.DeductionsTotal)</span>
+                                </div>
+                            }
+                            <hr class="my-2" />
+                            @if (Receipt.RefundAmount > 0)
+                            {
+                                <div class="d-flex justify-content-between fw-medium">
+                                    <span>Refund:</span>
+                                    <span class="text-success">@FormatCurrency(Receipt.RefundAmount)</span>
+                                </div>
+                            }
+                            @if (Receipt.AmountDue > 0)
+                            {
+                                <div class="d-flex justify-content-between fw-medium">
+                                    <span>Amount Due:</span>
+                                    <span class="text-danger">@FormatCurrency(Receipt.AmountDue)</span>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+            <div class="col-6">
+                <div class="text-end">
+                    @if (Receipt.ReceiptType != ReceiptTypes.Settlement && Receipt.Subtotal != Receipt.GrandTotal)
+                    {
+                        <div class="d-flex justify-content-end align-items-center mb-1">
+                            <span class="small me-3">Subtotal:</span>
+                            <span class="small" style="min-width: 100px;">@FormatCurrency(Receipt.Subtotal)</span>
+                        </div>
+                    }
+                    <hr class="my-2" />
+                    <div class="d-flex justify-content-end align-items-center">
+                        <span class="h5 me-3 mb-0">@(Receipt.ReceiptType == ReceiptTypes.Settlement && Receipt.AmountDue > 0 ? "Amount Due:" : "Total:")</span>
+                        <span class="h4 text-primary mb-0" style="min-width: 100px;">
+                            @if (Receipt.ReceiptType == ReceiptTypes.Settlement)
+                            {
+                                @if (Receipt.AmountDue > 0)
+                                {
+                                    @FormatCurrency(Receipt.AmountDue)
+                                }
+                                else if (Receipt.RefundAmount > 0)
+                                {
+                                    <span class="text-success">@FormatCurrency(Receipt.RefundAmount) Refund</span>
+                                }
+                                else
+                                {
+                                    @FormatCurrency(0)
+                                }
+                            }
+                            else
+                            {
+                                @FormatCurrency(Receipt.GrandTotal)
+                            }
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* Payment Details *@
+        @if (Receipt.Payments.Any())
+        {
+            <hr class="my-3" />
+            <div class="subheader text-secondary mb-2">PAYMENT</div>
+            <div class="table-responsive">
+                <table class="table table-vcenter table-sm">
+                    <thead>
+                        <tr>
+                            <th>Method</th>
+                            <th>Currency</th>
+                            <th class="text-end">Amount</th>
+                            @if (Receipt.Payments.Any(p => p.Currency != SupportedCurrencies.THB))
+                            {
+                                <th class="text-center">Rate</th>
+                                <th class="text-end">THB</th>
+                            }
+                            <th>Reference</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var payment in Receipt.Payments)
+                        {
+                            <tr>
+                                <td>
+                                    <span class="badge @GetPaymentMethodBadgeClass(payment.Method)">
+                                        @GetPaymentMethodDisplay(payment.Method)
+                                    </span>
+                                </td>
+                                <td>@payment.Currency</td>
+                                <td class="text-end fw-medium">
+                                    @if (payment.Currency == SupportedCurrencies.THB)
+                                    {
+                                        @FormatCurrency(payment.Amount)
+                                    }
+                                    else
+                                    {
+                                        @payment.Amount.ToString("N2") @payment.Currency
+                                    }
+                                </td>
+                                @if (Receipt.Payments.Any(p => p.Currency != SupportedCurrencies.THB))
+                                {
+                                    <td class="text-center">
+                                        @if (payment.Currency != SupportedCurrencies.THB)
+                                        {
+                                            @payment.ExchangeRate.ToString("N2")
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td class="text-end">
+                                        @FormatCurrency(payment.AmountInBaseCurrency)
+                                    </td>
+                                }
+                                <td class="text-secondary small">
+                                    @if (!string.IsNullOrEmpty(payment.Reference))
+                                    {
+                                        @payment.Reference
+                                    }
+                                    @if (!string.IsNullOrEmpty(payment.CardLastFour))
+                                    {
+                                        <span>****@payment.CardLastFour</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        @* Footer *@
+        <hr class="my-3" />
+        <div class="text-center">
+            <p class="text-secondary small mb-1">
+                Thank you for your business!
+            </p>
+            <p class="text-secondary small mb-0">
+                @if (Receipt.Status == ReceiptStatus.Voided)
+                {
+                    <span class="badge bg-danger fs-5">VOIDED</span>
+                    @if (!string.IsNullOrEmpty(Receipt.VoidReason))
+                    {
+                        <br /><small>Reason: @Receipt.VoidReason</small>
+                    }
+                }
+            </p>
+            @if (Receipt.ReprintCount > 0)
+            {
+                <p class="text-warning small mb-0">
+                    <i class="ti ti-copy me-1"></i>REPRINT (@Receipt.ReprintCount)
+                </p>
+            }
+        </div>
+
+        @* Staff Info *@
+        <div class="mt-4 small text-secondary">
+            <div class="d-flex justify-content-between">
+                <span>Issued by: @Receipt.IssuedByUserName</span>
+                <span>@FormatDateTime(Receipt.IssuedOn)</span>
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .receipt-document {
+        padding: 16px;
+        background: white;
+        max-width: 210mm; /* A4 width */
+        margin: 0 auto;
+    }
+
+    .receipt-header h3 {
+        letter-spacing: 0.05em;
+    }
+
+    .subheader {
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 4px;
+    }
+
+    @@media print {
+        .receipt-document {
+            padding: 0;
+            max-width: 100%;
+        }
+
+        .table-danger {
+            background-color: #fee !important;
+        }
+
+        .text-danger {
+            color: #d63939 !important;
+        }
+
+        .text-success {
+            color: #2fb344 !important;
+        }
+
+        .badge {
+            border: 1px solid currentColor;
+        }
+    }
+</style>
+
+@code {
+    [Parameter]
+    public Receipt? Receipt { get; set; }
+
+    private string GetReceiptTitle() => Receipt?.ReceiptType switch
+    {
+        ReceiptTypes.BookingDeposit => "BOOKING DEPOSIT RECEIPT",
+        ReceiptTypes.CheckIn => "CHECK-IN RECEIPT",
+        ReceiptTypes.Settlement => "SETTLEMENT RECEIPT",
+        _ => "RECEIPT"
+    };
+
+    private static string GetPaymentMethodBadgeClass(string method) => method switch
+    {
+        PaymentMethods.Cash => "bg-success",
+        PaymentMethods.Card => "bg-primary",
+        PaymentMethods.PromptPay => "bg-info",
+        PaymentMethods.BankTransfer => "bg-secondary",
+        _ => "bg-secondary"
+    };
+
+    private static string GetPaymentMethodDisplay(string method) => method switch
+    {
+        PaymentMethods.Cash => "Cash",
+        PaymentMethods.Card => "Card",
+        PaymentMethods.PromptPay => "PromptPay",
+        PaymentMethods.BankTransfer => "Bank Transfer",
+        _ => method
+    };
+}

@@ -2,8 +2,10 @@
 @page "/rentals/checkin/{BookingRef}"
 @using Microsoft.AspNetCore.Authorization
 @using MotoRent.Client.Pages.Rentals.CheckInSteps
+@using MotoRent.Client.Components.Receipts
 @using MotoRent.Domain.Entities
 @using MotoRent.Domain.Models
+@using MotoRent.Services
 @attribute [Authorize(Policy = "RequireTenantStaff")]
 @inherits LocalizedComponentBase<CheckIn>
 @inject RentalService RentalService
@@ -11,6 +13,10 @@
 @inject VehicleService VehicleService
 @inject BookingService BookingService
 @inject TillService TillService
+@inject ReceiptService ReceiptService
+@inject InsuranceService InsuranceService
+@inject AccessoryService AccessoryService
+@inject DepositService DepositService
 
 <MotoRentPageTitle>@Localizer["PageTitle"]</MotoRentPageTitle>
 
@@ -448,6 +454,9 @@
                         this.UserName);
                 }
 
+                // Generate and show receipt
+                await this.GenerateAndShowReceiptAsync(result.RentalId);
+
                 this.ShowSuccess(this.GetLocalizedText("CheckInSuccess", result.RentalId));
                 this.NavigationManager.NavigateTo("/rentals");
             }
@@ -510,6 +519,126 @@
         {
             // Log but don't fail the check-in if till recording fails
             this.Logger.LogError(ex, "Failed to record payment to till session");
+        }
+    }
+
+    /// <summary>
+    /// Generates a check-in receipt and shows the print dialog.
+    /// </summary>
+    private async Task GenerateAndShowReceiptAsync(int rentalId)
+    {
+        if (this.m_selectedRenter == null || this.m_selectedVehicle == null || this.m_tillSession == null)
+            return;
+
+        try
+        {
+            // Load the rental to get all calculated values
+            var rental = await this.RentalService.GetRentalByIdAsync(rentalId);
+            if (rental == null) return;
+
+            // Get deposit information
+            Deposit? deposit = null;
+            if (this.m_depositInfo.Amount > 0)
+            {
+                deposit = await this.DepositService.GetDepositByRentalIdAsync(rentalId);
+            }
+
+            // Get insurance if selected
+            Insurance? insurance = null;
+            if (this.m_rentalConfig.SelectedInsuranceId.HasValue)
+            {
+                insurance = await this.InsuranceService.GetInsuranceByIdAsync(this.m_rentalConfig.SelectedInsuranceId.Value);
+            }
+
+            // Get selected accessories
+            var rentalDays = this.m_rentalConfig.Days;
+            var accessoryInfos = new List<ReceiptAccessoryInfo>();
+            foreach (var acc in this.m_rentalConfig.SelectedAccessories)
+            {
+                accessoryInfos.Add(new ReceiptAccessoryInfo
+                {
+                    AccessoryId = acc.Accessory.AccessoryId,
+                    Name = acc.Accessory.Name,
+                    Quantity = acc.Quantity,
+                    DailyRate = acc.Accessory.DailyRate,
+                    Days = rentalDays,
+                    TotalAmount = acc.TotalAmount
+                });
+            }
+
+            // Create payment records
+            var payments = new List<ReceiptPayment>();
+
+            // Add rental payment
+            var totalAmount = this.IsIntervalRental ? this.m_intervalConfig.TotalAmount : this.m_rentalConfig.TotalAmount;
+            if (totalAmount > 0)
+            {
+                payments.Add(new ReceiptPayment
+                {
+                    Method = this.m_depositInfo.PaymentMethod,
+                    Amount = totalAmount,
+                    Currency = SupportedCurrencies.THB,
+                    ExchangeRate = 1.0m,
+                    AmountInBaseCurrency = totalAmount,
+                    Reference = this.m_depositInfo.PaymentTransactionRef,
+                    PaidAt = DateTimeOffset.Now
+                });
+            }
+
+            // Add deposit payment if separate from rental payment
+            if (deposit != null && deposit.Amount > 0 && this.m_depositInfo.DepositType == "Cash")
+            {
+                payments.Add(new ReceiptPayment
+                {
+                    Method = PaymentMethods.Cash,
+                    Amount = deposit.Amount,
+                    Currency = SupportedCurrencies.THB,
+                    ExchangeRate = 1.0m,
+                    AmountInBaseCurrency = deposit.Amount,
+                    PaidAt = DateTimeOffset.Now
+                });
+            }
+            else if (deposit != null && deposit.Amount > 0 && this.m_depositInfo.DepositType == "Card")
+            {
+                payments.Add(new ReceiptPayment
+                {
+                    Method = PaymentMethods.Card,
+                    Amount = deposit.Amount,
+                    Currency = SupportedCurrencies.THB,
+                    ExchangeRate = 1.0m,
+                    AmountInBaseCurrency = deposit.Amount,
+                    CardLastFour = this.m_depositInfo.CardLast4,
+                    Reference = this.m_depositInfo.TransactionRef,
+                    PaidAt = DateTimeOffset.Now
+                });
+            }
+
+            // Generate the receipt
+            var receipt = await this.ReceiptService.GenerateCheckInReceiptAsync(
+                rentalId,
+                this.m_tillSession.TillSessionId,
+                rental,
+                this.m_selectedRenter,
+                this.m_selectedVehicle,
+                deposit,
+                insurance,
+                accessoryInfos,
+                payments,
+                this.UserName);
+
+            // Show print dialog
+            await this.DialogService
+                .Create<ReceiptPrintDialog>(this.CommonLocalizer["Receipt"])
+                .WithParameter(x => x.Entity, receipt)
+                .WithParameter(x => x.IsReprint, false)
+                .Large()
+                .ShowDialogAsync();
+        }
+        catch (Exception ex)
+        {
+            // Log but don't fail the check-in if receipt generation fails
+            this.Logger.LogError(ex, "Failed to generate check-in receipt");
+            this.ShowWarning(this.Localizer["ReceiptGenerationFailed"]);
         }
     }
 }
