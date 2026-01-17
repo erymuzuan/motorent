@@ -469,3 +469,70 @@ dotnet watch --project src/MotoRent.Server
 - Sessions can only be closed by the staff who opened them
 - Verified sessions cannot be modified
 - All transactions are audited with timestamps and usernames
+
+---
+
+## 12. Receipt System (DONE)
+
+### Overview
+Comprehensive Receipt entity for consolidating all charges into printable documents for each transaction type.
+
+### Receipt Types
+1. **Booking Deposit** - When customer pays deposit for a booking
+2. **Check-In** - Combined receipt for rental + deposit + insurance + accessories
+3. **Settlement** - Check-out receipt showing deposit, deductions, refund
+
+### Entities Created
+| File | Purpose |
+|------|---------|
+| `src/MotoRent.Domain/Entities/Receipt.cs` | Main receipt entity with customer/shop info |
+| `src/MotoRent.Domain/Entities/ReceiptItem.cs` | Line items (rental, insurance, accessories, etc.) |
+| `src/MotoRent.Domain/Entities/ReceiptPayment.cs` | Payment records with multi-currency support |
+| `src/MotoRent.Domain/Entities/ReceiptStatus.cs` | Status/type constants |
+
+### Key Features
+- **Split Payments**: Multiple payment methods per receipt (cash + card, etc.)
+- **Multi-Currency**: Cash payments in THB, USD, EUR, GBP, CNY, JPY, AUD, RUB with exchange rates
+- **A4 Print Format**: Print-optimized layout via `ReceiptDocument.razor`
+- **Reprint Tracking**: Count of reprints tracked per receipt
+- **Void Capability**: Receipts can be voided with reason tracking
+- **Receipt Number Format**: `RCP-YYMMDD-XXXXX` (e.g., RCP-260117-00042)
+
+### Files Created
+| File | Purpose |
+|------|---------|
+| `database/tables/MotoRent.Receipt.sql` | SQL schema with computed columns |
+| `src/MotoRent.Services/ReceiptService.cs` | Business logic + `ReceiptAccessoryInfo` DTO |
+| `src/MotoRent.Client/Components/Receipts/ReceiptDocument.razor` | A4 print layout |
+| `src/MotoRent.Client/Components/Receipts/ReceiptPrintDialog.razor` | Print dialog |
+| `src/MotoRent.Client/Pages/Finance/Receipts.razor` | Receipt history page |
+
+### Integration Points
+- **CheckIn.razor**: Generates check-in receipt after successful rental creation
+- **CheckOutDialog.razor**: Generates settlement receipt after check-out
+
+### ReceiptService Methods
+```csharp
+// Generate receipts
+Task<Receipt> GenerateCheckInReceiptAsync(rentalId, tillSessionId, rental, renter, vehicle, deposit, insurance, accessories, payments, username);
+Task<Receipt> GenerateSettlementReceiptAsync(rentalId, tillSessionId, rental, renter, vehicle, depositHeld, extraDaysCharge, extraDays, damageCharge, damages, locationFee, locationName, refundAmount, amountDue, payments, username);
+Task<Receipt> GenerateBookingDepositReceiptAsync(bookingId, tillSessionId, booking, renter, payments, username);
+
+// CRUD
+Task<Receipt?> GetByIdAsync(receiptId);
+Task<Receipt?> GetByReceiptNoAsync(receiptNo);
+Task<LoadOperation<Receipt>> GetReceiptsAsync(shopId, filters...);
+
+// Actions
+Task<SubmitOperation> VoidReceiptAsync(receiptId, reason, username);
+Task<SubmitOperation> RecordReprintAsync(receiptId, username);
+```
+
+### Verification Checklist
+1. ✅ **Check-In Receipt**: Shows rental, deposit, insurance, accessories line items
+2. ✅ **Settlement Receipt**: Shows deposit held, deductions, refund amount
+3. ✅ **Print Dialog**: Opens with A4 layout, Print button works
+4. ✅ **Receipt History**: `/finance/receipts` shows all receipts with filters
+5. ✅ **Void Receipt**: Can void with reason, status changes to Voided
+6. ✅ **Multi-Currency**: Payment records track currency and exchange rate
+7. ✅ **Localization**: English and Thai resource files created
