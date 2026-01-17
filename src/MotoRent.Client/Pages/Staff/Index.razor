@@ -1,7 +1,9 @@
 @page "/staff"
 @using MotoRent.Client.Components.Staff
 @using MotoRent.Domain
+@using MotoRent.Domain.Entities
 @using Microsoft.AspNetCore.Authorization
+@inject MotoRent.Services.BookingService BookingService
 @attribute [Authorize(Policy = "RequireTenantStaff")]
 @inherits LocalizedComponentBase<Index>
 
@@ -96,6 +98,126 @@
     </div>
 </div>
 
+@* Expected Arrivals Section *@
+<div class="mr-staff-arrivals">
+    <div class="mr-staff-arrivals-header">
+        <div class="mr-staff-arrivals-title">
+            <i class="ti ti-calendar-event"></i>
+            <h3>@Localizer["ExpectedArrivals"]</h3>
+        </div>
+        @if (m_missedCount > 0)
+        {
+            <span class="mr-staff-missed-badge mr-pulse" @onclick="@(() => SetBookingFilter("missed"))">
+                @Localizer["MissedCount", m_missedCount]
+            </span>
+        }
+    </div>
+
+    @* Search Bar *@
+    <div class="mr-staff-arrivals-search">
+        <i class="ti ti-search"></i>
+        <input type="text"
+               placeholder="@Localizer["SearchBookings"]"
+               value="@m_bookingSearchTerm"
+               @oninput="OnSearchInput" />
+        @if (!string.IsNullOrWhiteSpace(m_bookingSearchTerm))
+        {
+            <button class="mr-staff-search-clear" @onclick="ClearSearch">
+                <i class="ti ti-x"></i>
+            </button>
+        }
+    </div>
+
+    @* Filter Tabs *@
+    <div class="mr-staff-arrivals-tabs">
+        <button class="@(m_bookingFilter == "upcoming" ? "active" : "")"
+                @onclick="@(() => SetBookingFilter("upcoming"))">
+            @Localizer["Upcoming"]
+        </button>
+        <button class="@(m_bookingFilter == "missed" ? "active" : "")"
+                @onclick="@(() => SetBookingFilter("missed"))">
+            @Localizer["Missed"]
+            @if (m_missedCount > 0)
+            {
+                <span class="tab-badge">@m_missedCount</span>
+            }
+        </button>
+    </div>
+
+    @* Booking List *@
+    <div class="mr-staff-arrivals-list">
+        @if (!m_filteredBookings.Any())
+        {
+            <div class="mr-staff-arrivals-empty">
+                <i class="ti ti-calendar-off"></i>
+                <p>@GetEmptyMessage()</p>
+            </div>
+        }
+        else
+        {
+            @foreach (var booking in m_filteredBookings.Take(5))
+            {
+                <div class="mr-staff-arrival-item @(IsMissed(booking) ? "missed" : "")">
+                    <div class="mr-staff-arrival-avatar @GetPaymentStatusClass(booking)">
+                        <i class="ti ti-user"></i>
+                    </div>
+                    <div class="mr-staff-arrival-info">
+                        <div class="mr-staff-arrival-ref">
+                            <span class="mr-mono">@booking.BookingRef</span>
+                            <span class="mr-staff-arrival-dot">·</span>
+                            <span>@booking.CustomerName</span>
+                        </div>
+                        <div class="mr-staff-arrival-details">
+                            <i class="ti ti-motorbike"></i>
+                            @if (booking.VehicleCount == 1)
+                            {
+                                @(booking.Items.FirstOrDefault()?.VehicleDisplayName ?? Localizer["Vehicle"])
+                            }
+                            else
+                            {
+                                @Localizer["VehicleCount", booking.VehicleCount]
+                            }
+                            @if (booking.IsAgentBooking)
+                            {
+                                <span class="mr-staff-arrival-agent">
+                                    @Localizer["ViaAgent", booking.AgentCode ?? booking.AgentName]
+                                </span>
+                            }
+                        </div>
+                    </div>
+                    <div class="mr-staff-arrival-time">
+                        @if (IsMissed(booking))
+                        {
+                            <span class="mr-staff-arrival-missed-badge">@Localizer["MissedLabel"]</span>
+                        }
+                        else
+                        {
+                            <span class="mr-staff-arrival-date">@GetArrivalDateText(booking)</span>
+                            @if (booking.PickupTime.HasValue)
+                            {
+                                <span class="mr-staff-arrival-time-value">@booking.PickupTime.Value.ToString(@"hh\:mm")</span>
+                            }
+                        }
+                    </div>
+                    <button class="mr-staff-arrival-btn"
+                            @onclick="@(() => StartCheckIn(booking.BookingRef))">
+                        <i class="ti ti-login"></i>
+                        @Localizer["CheckIn"]
+                    </button>
+                </div>
+            }
+        }
+    </div>
+
+    @if (m_filteredBookings.Count > 5)
+    {
+        <button class="mr-staff-arrivals-view-all" @onclick="ViewAllBookings">
+            <span>@Localizer["ViewAllCount", m_filteredBookings.Count]</span>
+            <i class="ti ti-chevron-right"></i>
+        </button>
+    }
+</div>
+
 @* Due Today Section *@
 <div class="mr-staff-due-today">
     <div class="mr-staff-due-header">
@@ -179,6 +301,14 @@
     private int m_maintenanceCount;
     private List<DueTodayItem> m_dueTodayRentals = [];
 
+    // Booking arrivals state
+    private List<Booking> m_upcomingBookings = [];
+    private List<Booking> m_filteredBookings = [];
+    private string m_bookingSearchTerm = "";
+    private string m_bookingFilter = "upcoming";
+    private int m_missedCount;
+    private System.Timers.Timer? m_searchDebounceTimer;
+
     protected override async Task OnInitializedAsync()
     {
         await this.LoadDataAsync();
@@ -213,7 +343,18 @@
                 new("Alex Brown", "Honda Wave 110", "E-7890", 5, TimeOnly.Parse("12:00"), false),
             ];
 
-            await Task.CompletedTask;
+            // Load today's and tomorrow's bookings
+            var today = DateTimeOffset.Now.Date;
+            var tomorrow = today.AddDays(2);
+            var bookingsResult = await BookingService.GetUpcomingBookingsAsync(today, tomorrow, 1, 50);
+            m_upcomingBookings = bookingsResult.ItemCollection.ToList();
+
+            // Calculate missed (past pickup time, still Pending/Confirmed)
+            var now = DateTime.Now;
+            m_missedCount = m_upcomingBookings.Count(b => IsMissed(b));
+
+            // Apply filter
+            ApplyBookingFilter();
         }
         finally
         {
@@ -225,6 +366,115 @@
     {
         this.NavigationManager.NavigateTo($"/staff/return?rentalId={EncodeId(rentalId)}");
     }
+
+    #region Booking Arrivals Methods
+
+    private void ApplyBookingFilter()
+    {
+        if (!string.IsNullOrWhiteSpace(m_bookingSearchTerm))
+        {
+            var term = m_bookingSearchTerm.ToLowerInvariant();
+            m_filteredBookings = m_upcomingBookings
+                .Where(b =>
+                    b.BookingRef.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                    b.CustomerName.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                    (b.CustomerPassportNo?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (b.AgentCode?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (b.AgentName?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false))
+                .ToList();
+        }
+        else if (m_bookingFilter == "missed")
+        {
+            m_filteredBookings = m_upcomingBookings
+                .Where(b => IsMissed(b))
+                .OrderBy(b => b.PickupTime)
+                .ToList();
+        }
+        else // "upcoming"
+        {
+            m_filteredBookings = m_upcomingBookings
+                .Where(b => !IsMissed(b))
+                .OrderBy(b => b.StartDate)
+                .ThenBy(b => b.PickupTime)
+                .ToList();
+        }
+    }
+
+    private bool IsMissed(Booking booking)
+    {
+        var today = DateTimeOffset.Now.Date;
+        var now = DateTime.Now.TimeOfDay;
+        return booking.StartDate.Date <= today &&
+               booking.PickupTime.HasValue &&
+               booking.PickupTime.Value < now;
+    }
+
+    private string GetArrivalDateText(Booking booking)
+    {
+        var today = DateTimeOffset.Now.Date;
+        if (booking.StartDate.Date == today) return Localizer["Today"];
+        if (booking.StartDate.Date == today.AddDays(1)) return Localizer["Tomorrow"];
+        return booking.StartDate.ToString("ddd MMM d");
+    }
+
+    private string GetPaymentStatusClass(Booking booking) => booking.PaymentStatus switch
+    {
+        BookingPaymentStatus.FullyPaid => "payment-full",
+        BookingPaymentStatus.PartiallyPaid => "payment-partial",
+        _ => "payment-none"
+    };
+
+    private string GetEmptyMessage() => m_bookingFilter switch
+    {
+        "missed" => Localizer["NoMissedBookings"],
+        _ when !string.IsNullOrWhiteSpace(m_bookingSearchTerm) => Localizer["NoSearchResults"],
+        _ => Localizer["NoUpcomingBookings"]
+    };
+
+    private void SetBookingFilter(string filter)
+    {
+        m_bookingFilter = filter;
+        m_bookingSearchTerm = "";
+        ApplyBookingFilter();
+    }
+
+    private void OnSearchInput(ChangeEventArgs e)
+    {
+        m_bookingSearchTerm = e.Value?.ToString() ?? "";
+        m_searchDebounceTimer?.Stop();
+        m_searchDebounceTimer?.Dispose();
+        m_searchDebounceTimer = new System.Timers.Timer(300);
+        m_searchDebounceTimer.Elapsed += async (_, _) =>
+        {
+            await InvokeAsync(() =>
+            {
+                ApplyBookingFilter();
+                StateHasChanged();
+            });
+            m_searchDebounceTimer?.Dispose();
+        };
+        m_searchDebounceTimer.AutoReset = false;
+        m_searchDebounceTimer.Start();
+    }
+
+    private void ClearSearch()
+    {
+        m_bookingSearchTerm = "";
+        m_bookingFilter = "upcoming";
+        ApplyBookingFilter();
+    }
+
+    private void StartCheckIn(string bookingRef)
+    {
+        NavigationManager.NavigateTo($"/rentals/checkin/{bookingRef}");
+    }
+
+    private void ViewAllBookings()
+    {
+        NavigationManager.NavigateTo("/bookings");
+    }
+
+    #endregion
 
     private record DueTodayItem(
         string RenterName,
