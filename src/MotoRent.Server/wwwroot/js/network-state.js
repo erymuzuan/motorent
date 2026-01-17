@@ -169,6 +169,10 @@ const MotoRentNetwork = (function () {
     };
 })();
 
+// Explicitly attach to window for Blazor JS interop
+// This ensures the API is available immediately when Blazor starts
+window.MotoRentNetwork = MotoRentNetwork;
+
 // Export for module systems if available
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = MotoRentNetwork;

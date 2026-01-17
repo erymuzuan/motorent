@@ -35,29 +35,48 @@ public class NetworkStateService : IAsyncDisposable
 
     /// <summary>
     /// Initialize the service and register for connectivity events.
+    /// Includes retry logic for cases where JavaScript hasn't loaded yet.
     /// </summary>
     public async Task InitializeAsync()
     {
         if (m_initialized) return;
 
-        try
+        const int maxRetries = 3;
+        const int retryDelayMs = 100;
+
+        for (var attempt = 1; attempt <= maxRetries; attempt++)
         {
-            m_dotNetRef = DotNetObjectReference.Create(this);
+            try
+            {
+                m_dotNetRef ??= DotNetObjectReference.Create(this);
 
-            // Check initial state
-            m_isOnline = await m_jsRuntime.InvokeAsync<bool>("MotoRentNetwork.isOnline");
+                // Check initial state
+                m_isOnline = await m_jsRuntime.InvokeAsync<bool>("MotoRentNetwork.isOnline");
 
-            // Register for events
-            await m_jsRuntime.InvokeVoidAsync("MotoRentNetwork.registerCallback", m_dotNetRef);
+                // Register for events
+                await m_jsRuntime.InvokeVoidAsync("MotoRentNetwork.registerCallback", m_dotNetRef);
 
-            m_initialized = true;
-            Console.WriteLine($"[NetworkStateService] Initialized. Online: {m_isOnline}");
-        }
-        catch (JSException ex)
-        {
-            Console.WriteLine($"[NetworkStateService] Init error: {ex.Message}");
-            // Assume online if we can't determine state
-            m_isOnline = true;
+                m_initialized = true;
+                Console.WriteLine($"[NetworkStateService] Initialized. Online: {m_isOnline}");
+                return;
+            }
+            catch (JSException) when (attempt < maxRetries)
+            {
+                // JavaScript not loaded yet, wait and retry
+                await Task.Delay(retryDelayMs * attempt);
+            }
+            catch (JSException ex)
+            {
+                Console.WriteLine($"[NetworkStateService] JS not available after {maxRetries} attempts: {ex.Message}");
+                // Assume online if we can't determine state
+                m_isOnline = true;
+            }
+            catch (InvalidOperationException)
+            {
+                // Prerendering - JS interop not available
+                m_isOnline = true;
+                return;
+            }
         }
     }
 
