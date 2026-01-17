@@ -1,7 +1,7 @@
 @*
     TillStatusButton - Shows till status in the header and allows opening new sessions.
-    When staff has an open till: Shows "Till: {ShopName}" with link to till page
-    When no open till: Shows "Open Till" button that opens the shop picker dialog
+    When staff has an open till: Shows "Till #{Number}" with link to till page
+    When no open till: Shows prominent "Open Till" button
 *@
 @using MotoRent.Domain.Core
 @using MotoRent.Domain.DataContext
@@ -17,25 +17,27 @@
 <div class="nav-item d-none d-md-flex me-3">
     @if (m_loading)
     {
-        <span class="nav-link px-0 text-secondary">
-            <i class="ti ti-loader-2 ti-spin me-1"></i>
+        <span class="mr-till-btn mr-till-btn-loading">
+            <i class="ti ti-loader-2 ti-spin"></i>
         </span>
     }
     else if (m_activeSession != null)
     {
         @* Has open till - show status with link *@
-        <a href="/staff/till" class="nav-link px-2 d-flex align-items-center btn btn-sm btn-ghost-success">
-            <i class="ti ti-cash-register me-1 text-success"></i>
-            <span class="d-none d-lg-inline text-success fw-medium">@m_shopName</span>
+        <a href="/staff/till" class="mr-till-btn mr-till-btn-active">
+            <span class="mr-till-btn-indicator"></span>
+            <i class="ti ti-cash-register"></i>
+            <span class="mr-till-btn-label">
+                @Localizer["Till"] #@m_activeSession.TillSessionId
+            </span>
         </a>
     }
     else
     {
-        @* No open till - show button to open *@
-        <button type="button" class="nav-link px-2 d-flex align-items-center btn btn-sm btn-ghost-secondary"
-                @onclick="OpenTillDialog">
-            <i class="ti ti-cash-register me-1"></i>
-            <span class="d-none d-lg-inline">@Localizer["OpenTill"]</span>
+        @* No open till - show prominent button to open *@
+        <button type="button" class="mr-till-btn mr-till-btn-open" @onclick="OpenTillDialog">
+            <i class="ti ti-cash-register"></i>
+            <span class="mr-till-btn-label">@Localizer["OpenTill"]</span>
         </button>
     }
 </div>
@@ -43,7 +45,6 @@
 @code {
     private bool m_loading = true;
     private TillSession? m_activeSession;
-    private string? m_shopName;
 
     /// <summary>
     /// Event callback when a till session is opened.
@@ -67,13 +68,6 @@
 
             // Get active till session for this user
             m_activeSession = await TillService.GetActiveSessionForUserAsync(userName);
-
-            // Load shop name if session exists
-            if (m_activeSession != null)
-            {
-                var shop = await RentalContext.LoadOneAsync<Shop>(s => s.ShopId == m_activeSession.ShopId);
-                m_shopName = shop?.Name ?? $"Shop {m_activeSession.ShopId}";
-            }
         }
         catch
         {

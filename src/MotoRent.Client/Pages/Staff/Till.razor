@@ -17,37 +17,43 @@
 }
 else if (this.m_session is null)
 {
-    @* No active session - show Open Session UI *@
-    <div class="container-xl py-4">
-        <div class="page-header mb-4">
-            <div class="row align-items-center">
-                <div class="col">
-                    <h2 class="page-title">
-                        <i class="ti ti-cash-register me-2"></i>
+    @* ========== NO ACTIVE SESSION - OPEN SESSION UI ========== *@
+    <div class="mr-page-header">
+        <div class="container-xl">
+            <nav class="mr-breadcrumb">
+                <span class="mr-breadcrumb-item"><a href="/"><i class="ti ti-home"></i></a></span>
+                <span class="mr-breadcrumb-separator"><i class="ti ti-chevron-right"></i></span>
+                <span class="mr-breadcrumb-item active">@Localizer["CashierTill"]</span>
+            </nav>
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="mr-page-title">
+                        <i class="ti ti-cash-register"></i>
                         @Localizer["CashierTill"]
-                    </h2>
+                    </h1>
+                    <p class="mr-page-subtitle">@Localizer["ManageYourCashDrawer"]</p>
                 </div>
             </div>
         </div>
+    </div>
 
+    <div class="container-xl py-4">
         <div class="row justify-content-center">
-            <div class="col-md-6 col-lg-5">
-                <div class="card">
-                    <div class="card-body text-center py-5">
-                        <div class="mb-4">
-                            <span class="avatar avatar-xl bg-primary-lt">
-                                <i class="ti ti-lock-open" style="font-size: 2rem;"></i>
-                            </span>
+            <div class="col-md-8 col-lg-6">
+                <div class="mr-card text-center p-5">
+                    <div class="mb-4">
+                        <div class="mr-till-open-icon">
+                            <i class="ti ti-lock-open"></i>
                         </div>
-                        <h3>@Localizer["StartYourShift"]</h3>
-                        <p class="text-secondary mb-4">
-                            @Localizer["OpenNewTillSessionDescription"]
-                        </p>
-                        <button type="button" class="btn btn-primary btn-lg" @onclick="this.OpenSessionDialog">
-                            <i class="ti ti-plus me-2"></i>
-                            @Localizer["OpenTillSession"]
-                        </button>
                     </div>
+                    <h2 class="mb-2">@Localizer["StartYourShift"]</h2>
+                    <p class="text-secondary mb-4 px-4">
+                        @Localizer["OpenNewTillSessionDescription"]
+                    </p>
+                    <button type="button" class="mr-btn-primary-action" @onclick="this.OpenSessionDialog">
+                        <i class="ti ti-player-play"></i>
+                        @Localizer["OpenTillSession"]
+                    </button>
                 </div>
             </div>
         </div>
@@ -55,109 +61,119 @@ else if (this.m_session is null)
 }
 else
 {
-    @* Active session - show Till Dashboard *@
-    <div class="container-xl py-3 mt-5">
-        @* Session Header *@
-        <div class="card bg-primary text-white mb-3">
-            <div class="card-body py-3">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="badge bg-white text-primary">@Localizer["Open"]</span>
-                            <span class="fw-semibold">@this.m_session!.StaffDisplayName</span>
-                        </div>
-                        <small class="text-white-50">
-                            @Localizer["Started"] @this.FormatDateTime(this.m_session.OpenedAt)
-                        </small>
-                    </div>
-                    <div class="text-end">
-                        <small class="text-white-50">@Localizer["OpeningFloat"]</small>
-                        <div class="h3 mb-0">@this.FormatCurrency(this.m_session.OpeningFloat)</div>
-                    </div>
+    @* ========== ACTIVE SESSION - TILL DASHBOARD ========== *@
+
+    @* Session Status Bar *@
+    <div class="mr-till-session-bar">
+        <div class="container-xl">
+            <div class="d-flex justify-content-between align-items-center py-2">
+                <div class="d-flex align-items-center gap-3">
+                    <span class="mr-status-badge mr-status-badge-success">
+                        <span class="mr-status-dot"></span>
+                        @Localizer["SessionActive"]
+                    </span>
+                    <span class="text-white-50 d-none d-sm-inline">
+                        <i class="ti ti-user me-1"></i>@this.m_session!.StaffDisplayName
+                    </span>
+                </div>
+                <div class="d-flex align-items-center gap-2 text-white-50">
+                    <i class="ti ti-clock"></i>
+                    <span>@Localizer["Started"] @this.FormatTime(this.m_session.OpenedAt)</span>
                 </div>
             </div>
         </div>
+    </div>
 
-        @* Cash Balance Cards *@
-        <div class="row g-3 mb-3">
-            <div class="col-6">
-                <div class="card">
-                    <div class="card-body py-3">
-                        <div class="d-flex align-items-center">
-                            <span class="avatar bg-success-lt me-3">
-                                <i class="ti ti-arrow-down-left text-success"></i>
-                            </span>
-                            <div>
-                                <small class="text-secondary d-block">@Localizer["CashIn"]</small>
-                                <span class="h3 mb-0 text-success">@this.FormatCurrency(this.m_session.TotalCashIn)</span>
-                            </div>
-                        </div>
-                    </div>
+    <div class="container-xl py-3">
+        @* ========== CASH BALANCE HERO ========== *@
+        <div class="mr-till-hero mb-4">
+            <div class="mr-till-hero-content">
+                <div class="mr-till-hero-label">@Localizer["ExpectedCashInTill"]</div>
+                <div class="mr-till-hero-amount">
+                    <span class="mr-till-currency">฿</span>
+                    <span class="mr-till-value">@this.m_session.ExpectedCash.ToString("N0")</span>
                 </div>
-            </div>
-            <div class="col-6">
-                <div class="card">
-                    <div class="card-body py-3">
-                        <div class="d-flex align-items-center">
-                            <span class="avatar bg-danger-lt me-3">
-                                <i class="ti ti-arrow-up-right text-danger"></i>
-                            </span>
-                            <div>
-                                <small class="text-secondary d-block">@Localizer["CashOut"]</small>
-                                <span class="h3 mb-0 text-danger">@this.FormatCurrency(this.m_session.TotalCashOut)</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        @* Expected Balance *@
-        <div class="card mb-3">
-            <div class="card-body py-3 text-center">
-                <small class="text-secondary">@Localizer["ExpectedCashInTill"]</small>
-                <div class="h1 mb-0">@this.FormatCurrency(this.m_session.ExpectedCash)</div>
                 @if (this.m_session.TotalDropped > 0)
                 {
-                    <small class="text-secondary">
-                        <i class="ti ti-safe me-1"></i>
+                    <div class="mr-till-hero-subtitle">
+                        <i class="ti ti-archive me-1"></i>
                         @Localizer["DroppedToSafe", $"{this.m_session.TotalDropped:N0}"]
-                    </small>
+                    </div>
                 }
+            </div>
+            <div class="mr-till-hero-meta">
+                <div class="mr-till-meta-item">
+                    <span class="mr-till-meta-label">@Localizer["OpeningFloat"]</span>
+                    <span class="mr-till-meta-value">฿@this.m_session.OpeningFloat.ToString("N0")</span>
+                </div>
             </div>
         </div>
 
-        @* Non-Cash Summary (if any) *@
+        @* ========== CASH FLOW CARDS ========== *@
+        <div class="row g-3 mb-4">
+            <div class="col-6">
+                <div class="mr-till-stat-card mr-till-stat-in">
+                    <div class="mr-till-stat-icon">
+                        <i class="ti ti-trending-up"></i>
+                    </div>
+                    <div class="mr-till-stat-content">
+                        <div class="mr-till-stat-label">@Localizer["CashIn"]</div>
+                        <div class="mr-till-stat-value">฿@this.m_session.TotalCashIn.ToString("N0")</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="mr-till-stat-card mr-till-stat-out">
+                    <div class="mr-till-stat-icon">
+                        <i class="ti ti-trending-down"></i>
+                    </div>
+                    <div class="mr-till-stat-content">
+                        <div class="mr-till-stat-label">@Localizer["CashOut"]</div>
+                        <div class="mr-till-stat-value">฿@this.m_session.TotalCashOut.ToString("N0")</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* ========== NON-CASH PAYMENTS SUMMARY ========== *@
         @if (this.m_session.TotalNonCashPayments > 0)
         {
-            <div class="card mb-3">
-                <div class="card-header py-2">
-                    <h4 class="card-title mb-0">
-                        <i class="ti ti-credit-card me-2"></i>
-                        @Localizer["NonCashPayments"]
-                    </h4>
+            <div class="mr-card mb-4">
+                <div class="mr-card-header">
+                    <i class="ti ti-credit-card text-info me-2"></i>
+                    <span class="mr-card-title">@Localizer["NonCashPayments"]</span>
+                    <span class="ms-auto fw-semibold">฿@this.m_session.TotalNonCashPayments.ToString("N0")</span>
                 </div>
-                <div class="card-body py-2">
-                    <div class="row g-2 text-center">
+                <div class="mr-card-body py-2">
+                    <div class="d-flex gap-4 justify-content-center flex-wrap">
                         @if (this.m_session.TotalCardPayments > 0)
                         {
-                            <div class="col">
-                                <small class="text-secondary d-block">@Localizer["Card"]</small>
-                                <span class="fw-semibold">@this.FormatCurrency(this.m_session.TotalCardPayments)</span>
+                            <div class="text-center">
+                                <div class="mr-payment-icon bg-primary-lt text-primary">
+                                    <i class="ti ti-credit-card"></i>
+                                </div>
+                                <div class="small text-secondary mt-1">@Localizer["Card"]</div>
+                                <div class="fw-semibold">฿@this.m_session.TotalCardPayments.ToString("N0")</div>
                             </div>
                         }
                         @if (this.m_session.TotalBankTransfers > 0)
                         {
-                            <div class="col">
-                                <small class="text-secondary d-block">@Localizer["BankTransfer"]</small>
-                                <span class="fw-semibold">@this.FormatCurrency(this.m_session.TotalBankTransfers)</span>
+                            <div class="text-center">
+                                <div class="mr-payment-icon bg-info-lt text-info">
+                                    <i class="ti ti-building-bank"></i>
+                                </div>
+                                <div class="small text-secondary mt-1">@Localizer["BankTransfer"]</div>
+                                <div class="fw-semibold">฿@this.m_session.TotalBankTransfers.ToString("N0")</div>
                             </div>
                         }
                         @if (this.m_session.TotalPromptPay > 0)
                         {
-                            <div class="col">
-                                <small class="text-secondary d-block">@Localizer["PromptPay"]</small>
-                                <span class="fw-semibold">@this.FormatCurrency(this.m_session.TotalPromptPay)</span>
+                            <div class="text-center">
+                                <div class="mr-payment-icon bg-success-lt text-success">
+                                    <i class="ti ti-qrcode"></i>
+                                </div>
+                                <div class="small text-secondary mt-1">@Localizer["PromptPay"]</div>
+                                <div class="fw-semibold">฿@this.m_session.TotalPromptPay.ToString("N0")</div>
                             </div>
                         }
                     </div>
@@ -165,104 +181,109 @@ else
             </div>
         }
 
-        @* Quick Actions *@
-        <div class="card mb-3">
-            <div class="card-header py-2">
-                <h4 class="card-title mb-0">@Localizer["QuickPayouts"]</h4>
-            </div>
-            <div class="card-body py-2">
-                <div class="row g-2">
-                    <div class="col-4">
-                        <button type="button" class="btn btn-outline-warning w-100"
-                                @onclick="@(() => this.RecordPayoutDialog(TillTransactionType.FuelReimbursement))">
-                            <i class="ti ti-gas-station d-block mb-1" style="font-size: 1.5rem;"></i>
-                            <small>@Localizer["Fuel"]</small>
-                        </button>
-                    </div>
-                    <div class="col-4">
-                        <button type="button" class="btn btn-outline-info w-100"
-                                @onclick="@(() => this.RecordPayoutDialog(TillTransactionType.AgentCommission))">
-                            <i class="ti ti-users d-block mb-1" style="font-size: 1.5rem;"></i>
-                            <small>@Localizer["Agent"]</small>
-                        </button>
-                    </div>
-                    <div class="col-4">
-                        <button type="button" class="btn btn-outline-secondary w-100"
-                                @onclick="@(() => this.RecordPayoutDialog(TillTransactionType.PettyCash))">
-                            <i class="ti ti-wallet d-block mb-1" style="font-size: 1.5rem;"></i>
-                            <small>@Localizer["PettyCash"]</small>
-                        </button>
-                    </div>
+        @* ========== QUICK ACTIONS ========== *@
+        <div class="mb-4">
+            <h4 class="mr-section-title mb-3">
+                <i class="ti ti-bolt"></i>
+                @Localizer["QuickPayouts"]
+            </h4>
+            <div class="row g-2">
+                <div class="col-4">
+                    <button type="button" class="mr-quick-action mr-quick-action-fuel"
+                            @onclick="@(() => this.RecordPayoutDialog(TillTransactionType.FuelReimbursement))">
+                        <div class="mr-quick-action-icon">
+                            <i class="ti ti-gas-station"></i>
+                        </div>
+                        <span class="mr-quick-action-label">@Localizer["Fuel"]</span>
+                    </button>
+                </div>
+                <div class="col-4">
+                    <button type="button" class="mr-quick-action mr-quick-action-agent"
+                            @onclick="@(() => this.RecordPayoutDialog(TillTransactionType.AgentCommission))">
+                        <div class="mr-quick-action-icon">
+                            <i class="ti ti-users"></i>
+                        </div>
+                        <span class="mr-quick-action-label">@Localizer["Agent"]</span>
+                    </button>
+                </div>
+                <div class="col-4">
+                    <button type="button" class="mr-quick-action mr-quick-action-petty"
+                            @onclick="@(() => this.RecordPayoutDialog(TillTransactionType.PettyCash))">
+                        <div class="mr-quick-action-icon">
+                            <i class="ti ti-wallet"></i>
+                        </div>
+                        <span class="mr-quick-action-label">@Localizer["PettyCash"]</span>
+                    </button>
                 </div>
             </div>
         </div>
 
-        @* Till Operations *@
-        <div class="card mb-3">
-            <div class="card-header py-2">
-                <h4 class="card-title mb-0">@Localizer["TillOperations"]</h4>
-            </div>
-            <div class="card-body py-2">
-                <div class="row g-2">
-                    <div class="col-4">
-                        <button type="button" class="btn btn-outline-danger w-100" @onclick="this.CashDropDialog">
-                            <i class="ti ti-safe d-block mb-1" style="font-size: 1.5rem;"></i>
-                            <small>@Localizer["CashDrop"]</small>
-                        </button>
-                    </div>
-                    <div class="col-4">
-                        <button type="button" class="btn btn-outline-success w-100" @onclick="this.TopUpDialog">
-                            <i class="ti ti-cash d-block mb-1" style="font-size: 1.5rem;"></i>
-                            <small>@Localizer["TopUp"]</small>
-                        </button>
-                    </div>
-                    <div class="col-4">
-                        <button type="button" class="btn btn-primary w-100" @onclick="this.CloseSessionDialog">
-                            <i class="ti ti-logout d-block mb-1" style="font-size: 1.5rem;"></i>
-                            <small>@Localizer["CloseShift"]</small>
-                        </button>
-                    </div>
+        @* ========== TILL OPERATIONS ========== *@
+        <div class="mb-4">
+            <h4 class="mr-section-title mb-3">
+                <i class="ti ti-settings"></i>
+                @Localizer["TillOperations"]
+            </h4>
+            <div class="row g-2">
+                <div class="col-4">
+                    <button type="button" class="mr-till-operation mr-till-operation-drop" @onclick="this.CashDropDialog">
+                        <i class="ti ti-archive"></i>
+                        <span>@Localizer["CashDrop"]</span>
+                    </button>
+                </div>
+                <div class="col-4">
+                    <button type="button" class="mr-till-operation mr-till-operation-topup" @onclick="this.TopUpDialog">
+                        <i class="ti ti-cash"></i>
+                        <span>@Localizer["TopUp"]</span>
+                    </button>
+                </div>
+                <div class="col-4">
+                    <button type="button" class="mr-till-operation mr-till-operation-close" @onclick="this.CloseSessionDialog">
+                        <i class="ti ti-door-exit"></i>
+                        <span>@Localizer["CloseShift"]</span>
+                    </button>
                 </div>
             </div>
         </div>
 
-        @* Recent Transactions *@
-        <div class="card">
-            <div class="card-header py-2 d-flex justify-content-between align-items-center">
-                <h4 class="card-title mb-0">@Localizer["RecentTransactions"]</h4>
-                <button type="button" class="btn btn-sm btn-ghost-secondary" @onclick="this.ViewHistoryDialog">
+        @* ========== RECENT TRANSACTIONS ========== *@
+        <div class="mr-card">
+            <div class="mr-card-header">
+                <i class="ti ti-list-details text-primary me-2"></i>
+                <span class="mr-card-title">@Localizer["RecentTransactions"]</span>
+                <button type="button" class="btn btn-sm btn-ghost-primary ms-auto" @onclick="this.ViewHistoryDialog">
                     @Localizer["ViewAll"]
+                    <i class="ti ti-chevron-right ms-1"></i>
                 </button>
             </div>
-            <div class="list-group list-group-flush">
+            <div class="mr-transaction-list">
                 @if (!this.m_recentTransactions.Any())
                 {
-                    <div class="list-group-item text-center text-secondary py-4">
-                        <i class="ti ti-receipt-off" style="font-size: 2rem;"></i>
-                        <div class="mt-2">@Localizer["NoTransactionsYet"]</div>
+                    <div class="mr-empty-state py-5">
+                        <div class="mr-empty-state-icon">
+                            <i class="ti ti-receipt-off"></i>
+                        </div>
+                        <div class="mr-empty-state-title">@Localizer["NoTransactionsYet"]</div>
+                        <div class="mr-empty-state-subtitle">@Localizer["TransactionsWillAppearHere"]</div>
                     </div>
                 }
                 else
                 {
                     @foreach (var txn in this.m_recentTransactions)
                     {
-                        <div class="list-group-item">
-                            <div class="d-flex justify-content-between align-items-start">
-                                <div class="d-flex gap-2">
-                                    <span class="avatar avatar-sm @GetTransactionAvatarClass(txn)">
-                                        <i class="@GetTransactionIcon(txn)"></i>
-                                    </span>
-                                    <div>
-                                        <div class="fw-medium">@GetTransactionTypeName(txn.TransactionType)</div>
-                                        <small class="text-secondary">@txn.Description</small>
-                                    </div>
-                                </div>
-                                <div class="text-end">
-                                    <div class="@GetAmountColorClass(txn) fw-semibold">
-                                        @(txn.Direction == TillTransactionDirection.In ? "+" : "-")@this.FormatCurrency(txn.Amount)
-                                    </div>
-                                    <small class="text-secondary">@this.FormatTime(txn.TransactionTime)</small>
-                                </div>
+                        <div class="mr-transaction-item">
+                            <div class="mr-transaction-icon @GetTransactionIconClass(txn)">
+                                <i class="@GetTransactionIcon(txn)"></i>
+                            </div>
+                            <div class="mr-transaction-details">
+                                <div class="mr-transaction-type">@GetTransactionTypeName(txn.TransactionType)</div>
+                                <div class="mr-transaction-desc">@txn.Description</div>
+                            </div>
+                            <div class="mr-transaction-amount @GetAmountColorClass(txn)">
+                                @(txn.Direction == TillTransactionDirection.In ? "+" : "−")฿@txn.Amount.ToString("N0")
+                            </div>
+                            <div class="mr-transaction-time">
+                                @this.FormatTime(txn.TransactionTime)
                             </div>
                         </div>
                     }
@@ -447,21 +468,21 @@ else
         TillTransactionType.FuelReimbursement => "ti ti-gas-station",
         TillTransactionType.AgentCommission => "ti ti-users",
         TillTransactionType.PettyCash => "ti ti-wallet",
-        TillTransactionType.Drop => "ti ti-safe",
+        TillTransactionType.Drop => "ti ti-archive",
         _ => "ti ti-receipt"
     };
 
-    private static string GetTransactionAvatarClass(TillTransaction txn)
+    private static string GetTransactionIconClass(TillTransaction txn)
     {
         if (txn.Direction == TillTransactionDirection.In)
         {
-            return txn.AffectsCash ? "bg-success-lt" : "bg-info-lt";
+            return txn.AffectsCash ? "mr-txn-icon-in" : "mr-txn-icon-non-cash";
         }
-        return "bg-danger-lt";
+        return "mr-txn-icon-out";
     }
 
     private static string GetAmountColorClass(TillTransaction txn)
     {
-        return txn.Direction == TillTransactionDirection.In ? "text-success" : "text-danger";
+        return txn.Direction == TillTransactionDirection.In ? "mr-amount-in" : "mr-amount-out";
     }
 }
