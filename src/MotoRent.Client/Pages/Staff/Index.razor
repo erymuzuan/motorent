@@ -7,121 +7,167 @@
 
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
+@* Fleet Status Hero *@
+<div class="mr-staff-hero">
+    <div class="mr-staff-hero-bg"></div>
+    <div class="mr-staff-hero-content">
+        <div class="mr-staff-hero-stats">
+            <div class="mr-staff-stat mr-staff-stat-available">
+                <div class="mr-staff-stat-icon">
+                    <i class="ti ti-motorbike"></i>
+                </div>
+                <div class="mr-staff-stat-info">
+                    <span class="mr-staff-stat-value">@m_availableBikes</span>
+                    <span class="mr-staff-stat-label">@Localizer["Available"]</span>
+                </div>
+            </div>
+            <div class="mr-staff-stat mr-staff-stat-rented">
+                <div class="mr-staff-stat-icon">
+                    <i class="ti ti-key"></i>
+                </div>
+                <div class="mr-staff-stat-info">
+                    <span class="mr-staff-stat-value">@m_activeCount</span>
+                    <span class="mr-staff-stat-label">@Localizer["Rented"]</span>
+                </div>
+            </div>
+            <div class="mr-staff-stat mr-staff-stat-maintenance">
+                <div class="mr-staff-stat-icon">
+                    <i class="ti ti-tool"></i>
+                </div>
+                <div class="mr-staff-stat-info">
+                    <span class="mr-staff-stat-value">@m_maintenanceCount</span>
+                    <span class="mr-staff-stat-label">@Localizer["Maintenance"]</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 @* Main Action Cards *@
-<div class="row g-3 mb-4">
-    <div class="col-6">
-        <StaffActionCard Icon="ti-login"
-                         Title="@Localizer["NewCheckIn"]"
-                         Subtitle="@Localizer["NewCheckInSubtitle"]"
-                         IconColor="primary"
-                         OnClick="@(() => NavigationManager.NavigateTo("/rentals/checkin"))" />
+<div class="mr-staff-actions">
+    <div class="mr-staff-action mr-staff-action-checkin" @onclick="@(() => NavigationManager.NavigateTo("/rentals/checkin"))">
+        <div class="mr-staff-action-icon">
+            <i class="ti ti-login"></i>
+        </div>
+        <div class="mr-staff-action-content">
+            <h3>@Localizer["NewCheckIn"]</h3>
+            <p>@Localizer["NewCheckInSubtitle"]</p>
+        </div>
+        <div class="mr-staff-action-arrow">
+            <i class="ti ti-chevron-right"></i>
+        </div>
     </div>
 
-    <div class="col-6">
-        <StaffActionCard Icon="ti-logout"
-                         Title="@Localizer["ReturnBike"]"
-                         Subtitle="@Localizer["ReturnBikeSubtitle"]"
-                         IconColor="secondary"
-                         OnClick="@(() => NavigationManager.NavigateTo("/staff/return"))" />
+    <div class="mr-staff-action mr-staff-action-return" @onclick="@(() => NavigationManager.NavigateTo("/staff/return"))">
+        <div class="mr-staff-action-icon">
+            <i class="ti ti-logout"></i>
+        </div>
+        <div class="mr-staff-action-content">
+            <h3>@Localizer["ReturnBike"]</h3>
+            <p>@Localizer["ReturnBikeSubtitle"]</p>
+        </div>
+        <div class="mr-staff-action-arrow">
+            <i class="ti ti-chevron-right"></i>
+        </div>
+    </div>
+</div>
+
+@* Quick Access Cards *@
+<div class="mr-staff-quick-cards">
+    <div class="mr-staff-quick-card mr-staff-quick-active" @onclick="@(() => NavigationManager.NavigateTo("/staff/rentals"))">
+        <div class="mr-staff-quick-header">
+            <i class="ti ti-receipt"></i>
+            <span class="mr-staff-quick-badge bg-success">@m_activeCount</span>
+        </div>
+        <h4>@Localizer["Active"]</h4>
+        <p>@Localizer["ActiveSubtitle"]</p>
     </div>
 
-    <div class="col-6">
-        <StaffActionCard Icon="ti-receipt"
-                         Title="@Localizer["Active"]"
-                         Subtitle="@Localizer["ActiveSubtitle"]"
-                         IconColor="success"
-                         BadgeCount="@m_activeCount"
-                         BadgeColor="success"
-                         OnClick="@(() => NavigationManager.NavigateTo("/staff/rentals"))" />
-    </div>
-
-    <div class="col-6">
-        <StaffActionCard Icon="ti-alert-triangle"
-                         Title="@Localizer["Overdue"]"
-                         Subtitle="@Localizer["OverdueSubtitle"]"
-                         IconColor="danger"
-                         BadgeCount="@m_overdueCount"
-                         BadgeColor="danger"
-                         OnClick="@(() => NavigationManager.NavigateTo("/staff/rentals?filter=overdue"))" />
+    <div class="mr-staff-quick-card mr-staff-quick-overdue @(m_overdueCount > 0 ? "has-items" : "")" @onclick="@(() => NavigationManager.NavigateTo("/staff/rentals?filter=overdue"))">
+        <div class="mr-staff-quick-header">
+            <i class="ti ti-alert-triangle"></i>
+            @if (m_overdueCount > 0)
+            {
+                <span class="mr-staff-quick-badge bg-danger mr-pulse">@m_overdueCount</span>
+            }
+        </div>
+        <h4>@Localizer["Overdue"]</h4>
+        <p>@Localizer["OverdueSubtitle"]</p>
     </div>
 </div>
 
 @* Due Today Section *@
-<div class="card">
-    <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h4 class="card-title mb-0">
-                <i class="ti ti-clock me-2" style="vertical-align: middle;"></i>
-                @Localizer["DueToday"]
-            </h4>
-            <span class="badge bg-warning">@m_dueTodayRentals.Count</span>
+<div class="mr-staff-due-today">
+    <div class="mr-staff-due-header">
+        <div class="mr-staff-due-title">
+            <i class="ti ti-clock"></i>
+            <h3>@Localizer["DueToday"]</h3>
         </div>
+        @if (m_dueTodayRentals.Count > 0)
+        {
+            <span class="mr-staff-due-count">@m_dueTodayRentals.Count</span>
+        }
+    </div>
 
+    <div class="mr-staff-due-content">
         @if (m_loading)
         {
-            <div class="progress progress-sm">
-                <div class="progress-bar progress-bar-indeterminate"></div>
+            <div class="mr-staff-due-loading">
+                <div class="progress progress-sm">
+                    <div class="progress-bar progress-bar-indeterminate"></div>
+                </div>
             </div>
         }
         else if (m_dueTodayRentals.Count == 0)
         {
-            <div class="alert alert-info">
-                @Localizer["NoBikesDueToday"]
+            <div class="mr-staff-due-empty">
+                <i class="ti ti-mood-happy"></i>
+                <p>@Localizer["NoBikesDueToday"]</p>
             </div>
         }
         else
         {
-            <div class="d-flex flex-column gap-2">
+            <div class="mr-staff-due-list">
                 @foreach (var rental in m_dueTodayRentals.Take(5))
                 {
-                    <div class="card bg-muted-lt">
-                        <div class="card-body py-2 px-3">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <div class="fw-medium">@rental.RenterName</div>
-                                    <small class="text-secondary">
-                                        @rental.MotorbikeName (@rental.LicensePlate)
-                                    </small>
-                                </div>
-                                <div class="text-end">
-                                    <div class="@(rental.IsOverdue ? "text-danger" : "text-warning") small">
-                                        @(rental.IsOverdue ? Localizer["OverdueLabel"] : rental.DueTime?.ToString("HH:mm") ?? Localizer["Today"])
-                                    </div>
-                                    <button type="button" class="btn btn-sm btn-ghost-primary"
-                                            @onclick="@(() => ProcessReturn(rental.RentalId))">
-                                        @Localizer["Return"]
-                                    </button>
-                                </div>
+                    <div class="mr-staff-due-item @(rental.IsOverdue ? "overdue" : "")">
+                        <div class="mr-staff-due-item-avatar">
+                            <i class="ti ti-user"></i>
+                        </div>
+                        <div class="mr-staff-due-item-info">
+                            <div class="mr-staff-due-item-name">@rental.RenterName</div>
+                            <div class="mr-staff-due-item-bike">
+                                <i class="ti ti-motorbike"></i>
+                                @rental.MotorbikeName
+                                <span class="mr-staff-due-item-plate">@rental.LicensePlate</span>
                             </div>
                         </div>
+                        <div class="mr-staff-due-item-time">
+                            @if (rental.IsOverdue)
+                            {
+                                <span class="mr-staff-due-overdue-badge">@Localizer["OverdueLabel"]</span>
+                            }
+                            else
+                            {
+                                <span class="mr-staff-due-time-value">@(rental.DueTime?.ToString("HH:mm") ?? Localizer["Today"])</span>
+                            }
+                        </div>
+                        <button type="button" class="mr-staff-due-item-btn" @onclick="@(() => ProcessReturn(rental.RentalId))" @onclick:stopPropagation="true">
+                            <i class="ti ti-arrow-back-up"></i>
+                            @Localizer["Return"]
+                        </button>
                     </div>
                 }
             </div>
 
             @if (m_dueTodayRentals.Count > 5)
             {
-                <button type="button" class="btn btn-ghost-primary w-100 mt-2"
-                        @onclick="@(() => NavigationManager.NavigateTo("/staff/rentals?filter=duetoday"))">
-                    @Localizer["ViewAllCount", m_dueTodayRentals.Count]
+                <button type="button" class="mr-staff-due-view-all" @onclick="@(() => NavigationManager.NavigateTo("/staff/rentals?filter=duetoday"))">
+                    <span>@Localizer["ViewAllCount", m_dueTodayRentals.Count]</span>
+                    <i class="ti ti-chevron-right"></i>
                 </button>
             }
         }
-    </div>
-</div>
-
-@* Quick Stats Footer *@
-<div class="row g-2 mt-4">
-    <div class="col-4 text-center">
-        <div class="h3 text-primary mb-0">@m_availableBikes</div>
-        <small class="text-secondary">@Localizer["Available"]</small>
-    </div>
-    <div class="col-4 text-center border-start border-end">
-        <div class="h3 text-success mb-0">@m_activeCount</div>
-        <small class="text-secondary">@Localizer["Rented"]</small>
-    </div>
-    <div class="col-4 text-center">
-        <div class="h3 text-warning mb-0">@m_maintenanceCount</div>
-        <small class="text-secondary">@Localizer["Maintenance"]</small>
     </div>
 </div>
 
