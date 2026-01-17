@@ -63,6 +63,7 @@ public static class ServiceCollectionExtensions
         // Cashier Till entities
         services.AddSingleton<IRepository<TillSession>, Repository<TillSession>>();
         services.AddSingleton<IRepository<TillTransaction>, Repository<TillTransaction>>();
+        services.AddSingleton<IRepository<Receipt>, Repository<Receipt>>();
 
         // Register repositories for Core entities (uses [Core] schema)
         services.AddSingleton<IRepository<Organization>, CoreRepository<Organization>>();
