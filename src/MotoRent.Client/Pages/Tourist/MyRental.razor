@@ -1,0 +1,862 @@
+@page "/tourist/{AccountNo}/my-rental/{RentalWebId}"
+@page "/r/{RentalWebId}"
+@using Microsoft.AspNetCore.Authorization
+@attribute [AllowAnonymous]
+@inherits TouristComponentBase
+@using MotoRent.Domain.Entities
+@using MotoRent.Domain.Tourist
+@using MotoRent.Services
+@using MotoRent.Client.Components.Tourist
+@using MotoRent.Client.Services.Offline
+@inject RentalService RentalService
+@inject ShopService ShopService
+@inject IndexedDbService OfflineDb
+@inject NetworkStateService NetworkState
+@inject IJSRuntime JS
+
+<PageTitle>My Rental - @TenantName</PageTitle>
+
+@if (m_loading)
+{
+    <div class="d-flex justify-content-center align-items-center" style="min-height: 60vh;">
+        <div class="text-center">
+            <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;"></div>
+            <p class="text-secondary">Loading your rental...</p>
+        </div>
+    </div>
+}
+else if (m_rental == null)
+{
+    <div class="container-xl py-5">
+        <div class="card">
+            <div class="card-body py-5 text-center">
+                <i class="ti ti-file-x fs-1 text-danger mb-3"></i>
+                <h3>Rental Not Found</h3>
+                <p class="text-secondary mb-4">
+                    We couldn't find a rental with this reference. Please check your QR code or contact the shop.
+                </p>
+                @if (!string.IsNullOrEmpty(TenantAccountNo))
+                {
+                    <a href="@BrowseUrl" class="btn btn-primary">
+                        <i class="ti ti-motorbike me-1"></i>
+                        Browse Vehicles
+                    </a>
+                }
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="container-xl py-4">
+        <div class="row g-4">
+            @* Main Content Column *@
+            <div class="col-12 col-lg-8">
+                @* Rental Status Banner *@
+                <div class="card mb-4 border-0 @GetStatusCardClass()">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="status-icon-circle @GetStatusIconClass()">
+                                <i class="ti @GetStatusIcon()"></i>
+                            </div>
+                            <div class="flex-fill">
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <h4 class="mb-0">@GetStatusTitle()</h4>
+                                    <span class="badge @GetStatusBadgeClass()">@m_rental.Status</span>
+                                </div>
+                                <p class="mb-0 opacity-75">@GetStatusDescription()</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                @* Vehicle Info Card *@
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h3 class="card-title mb-0">
+                            <i class="ti ti-motorbike me-2"></i>
+                            Your Vehicle
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-4">
+                            <div class="col-12 col-md-5">
+                                <div class="vehicle-image-container">
+                                    <img src="@GetVehicleImageUrl()" alt="@m_rental.VehicleName" class="vehicle-image" />
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-7">
+                                <h4 class="mb-2">@m_rental.VehicleName</h4>
+                                @if (!string.IsNullOrEmpty(m_vehicleLicensePlate))
+                                {
+                                    <div class="license-plate mb-3">
+                                        <span>@m_vehicleLicensePlate</span>
+                                    </div>
+                                }
+
+                                <div class="d-flex flex-column gap-2">
+                                    <div class="info-row">
+                                        <i class="ti ti-calendar text-muted"></i>
+                                        <span class="label">Pickup</span>
+                                        <span class="value">@FormatDateTime(m_rental.StartDate)</span>
+                                    </div>
+                                    <div class="info-row">
+                                        <i class="ti ti-calendar-due text-muted"></i>
+                                        <span class="label">Return</span>
+                                        <span class="value">@FormatDateTime(m_rental.ExpectedEndDate)</span>
+                                    </div>
+                                    @if (m_rental.MileageStart > 0)
+                                    {
+                                        <div class="info-row">
+                                            <i class="ti ti-dashboard text-muted"></i>
+                                            <span class="label">Start Mileage</span>
+                                            <span class="value">@m_rental.MileageStart.ToString("N0") km</span>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                @* Rental Details Card *@
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h3 class="card-title mb-0">
+                            <i class="ti ti-receipt me-2"></i>
+                            Rental Details
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="pricing-breakdown">
+                            <div class="pricing-row">
+                                <span>Rental Reference</span>
+                                <strong>#@m_rental.RentalId</strong>
+                            </div>
+                            <div class="pricing-row">
+                                <span>Duration</span>
+                                <span>@GetDurationText()</span>
+                            </div>
+                            <div class="pricing-row">
+                                <span>@GetRateLabel()</span>
+                                <span>@FormatCurrency(m_rental.RentalRate)</span>
+                            </div>
+                            @if (m_rental.IncludeDriver)
+                            {
+                                <div class="pricing-row">
+                                    <span>Driver</span>
+                                    <span>@FormatCurrency(m_rental.DriverFee)</span>
+                                </div>
+                            }
+                            @if (m_rental.IncludeGuide)
+                            {
+                                <div class="pricing-row">
+                                    <span>Guide</span>
+                                    <span>@FormatCurrency(m_rental.GuideFee)</span>
+                                </div>
+                            }
+                            <hr />
+                            <div class="pricing-row total">
+                                <span>Total Amount</span>
+                                <strong>@FormatCurrency(m_rental.TotalAmount)</strong>
+                            </div>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(m_rental.Notes))
+                        {
+                            <div class="mt-3 p-3 bg-light rounded">
+                                <small class="text-secondary">
+                                    <i class="ti ti-note me-1"></i>
+                                    @m_rental.Notes
+                                </small>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                @* Quick Actions *@
+                @if (m_rental.Status is "Active" or "Reserved")
+                {
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h3 class="card-title mb-0">
+                                <i class="ti ti-bolt me-2"></i>
+                                Quick Actions
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-6 col-md-3">
+                                    <button type="button" class="action-card" @onclick="ExtendRental">
+                                        <i class="ti ti-calendar-plus text-primary"></i>
+                                        <span>Extend</span>
+                                    </button>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <button type="button" class="action-card" @onclick="ViewContract">
+                                        <i class="ti ti-file-text text-info"></i>
+                                        <span>Contract</span>
+                                    </button>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <button type="button" class="action-card" @onclick="ReportAccident">
+                                        <i class="ti ti-alert-triangle text-warning"></i>
+                                        <span>Report Issue</span>
+                                    </button>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <button type="button" class="action-card emergency" @onclick="ShowEmergencyCard">
+                                        <i class="ti ti-first-aid-kit text-danger"></i>
+                                        <span>Emergency</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                @* Important Reminders *@
+                <div class="card mb-4 border-warning">
+                    <div class="card-header bg-warning-lt">
+                        <h3 class="card-title mb-0 text-warning">
+                            <i class="ti ti-alert-circle me-2"></i>
+                            Important Reminders
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <ul class="mb-0 ps-3">
+                            <li class="mb-2">Always wear a helmet while riding</li>
+                            <li class="mb-2">Return the vehicle with the same fuel level</li>
+                            <li class="mb-2">Report any damage or issues immediately</li>
+                            <li class="mb-2">Keep this page bookmarked for quick access</li>
+                            @if (m_rental.Status == "Active")
+                            {
+                                <li class="mb-0">
+                                    <strong>Return by @FormatDateTime(m_rental.ExpectedEndDate)</strong> to avoid late fees
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            @* Sidebar Column *@
+            <div class="col-12 col-lg-4">
+                @* Shop Contact Card *@
+                @if (m_shopContactInfo != null)
+                {
+                    <ShopContactCard ContactInfo="@m_shopContactInfo" Class="mb-4" />
+                }
+
+                @* Download for Offline Use *@
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <div class="d-flex align-items-start gap-3">
+                            <div class="offline-icon @(m_isDownloaded ? "downloaded" : "")">
+                                <i class="ti @(m_isDownloaded ? "ti-cloud-check" : "ti-cloud-download")"></i>
+                            </div>
+                            <div class="flex-fill">
+                                <h5 class="mb-1">@(m_isDownloaded ? "Saved Offline" : "Save for Offline")</h5>
+                                @if (m_isDownloaded)
+                                {
+                                    <p class="text-success small mb-2">
+                                        <i class="ti ti-check me-1"></i>
+                                        Available offline
+                                    </p>
+                                    <small class="text-secondary d-block mb-3">
+                                        Last synced: @FormatLastSync()
+                                    </small>
+                                    <button type="button" class="btn btn-outline-primary btn-sm w-100" @onclick="RefreshOfflineData" disabled="@m_downloading">
+                                        @if (m_downloading)
+                                        {
+                                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                            <span>Syncing...</span>
+                                        }
+                                        else
+                                        {
+                                            <i class="ti ti-refresh me-1"></i>
+                                            <span>Sync Latest</span>
+                                        }
+                                    </button>
+                                }
+                                else
+                                {
+                                    <p class="text-secondary small mb-3">
+                                        Download this rental info to access it even without internet.
+                                    </p>
+                                    <button type="button" class="btn btn-primary btn-sm w-100" @onclick="DownloadForOffline" disabled="@m_downloading">
+                                        @if (m_downloading)
+                                        {
+                                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                            <span>Downloading...</span>
+                                        }
+                                        else
+                                        {
+                                            <i class="ti ti-download me-1"></i>
+                                            <span>Download Now</span>
+                                        }
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                @* QR Code for Staff *@
+                @if (m_rental.Status is "Active" or "Reserved")
+                {
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <p class="text-secondary small mb-3">Show this to staff at pickup/return</p>
+                            <div class="qr-code-container mb-2">
+                                <img src="@GetQRCodeUrl()" alt="QR Code" class="qr-code-image" />
+                            </div>
+                            <small class="text-secondary">Rental #@m_rental.RentalId</small>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    @* Floating Shop Contact Button *@
+    @if (m_shopContactInfo != null)
+    {
+        <ShopContactFAB ContactInfo="@m_shopContactInfo" />
+    }
+}
+
+<style>
+    .status-icon-circle {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        flex-shrink: 0;
+    }
+
+    .status-icon-circle.active {
+        background: rgba(47, 179, 68, 0.15);
+        color: #2fb344;
+    }
+
+    .status-icon-circle.reserved {
+        background: rgba(66, 153, 225, 0.15);
+        color: #4299e1;
+    }
+
+    .status-icon-circle.completed {
+        background: rgba(134, 142, 150, 0.15);
+        color: #868e96;
+    }
+
+    .bg-success-subtle { background: rgba(47, 179, 68, 0.1); }
+    .bg-info-subtle { background: rgba(66, 153, 225, 0.1); }
+    .bg-secondary-subtle { background: rgba(134, 142, 150, 0.1); }
+
+    .vehicle-image-container {
+        background: var(--tblr-bg-surface-secondary);
+        border-radius: 12px;
+        overflow: hidden;
+        aspect-ratio: 4/3;
+    }
+
+    .vehicle-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .license-plate {
+        display: inline-block;
+        background: #1e293b;
+        color: white;
+        padding: 6px 16px;
+        border-radius: 6px;
+        font-family: monospace;
+        font-size: 1.1rem;
+        font-weight: 600;
+        letter-spacing: 1px;
+    }
+
+    .info-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .info-row i {
+        width: 20px;
+        flex-shrink: 0;
+    }
+
+    .info-row .label {
+        color: var(--tblr-secondary);
+        min-width: 100px;
+    }
+
+    .info-row .value {
+        font-weight: 500;
+    }
+
+    .pricing-breakdown {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .pricing-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .pricing-row.total {
+        font-size: 1.1rem;
+        color: var(--tenant-primary, #00897B);
+    }
+
+    .action-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 20px 12px;
+        border-radius: 12px;
+        border: 1px solid var(--tblr-border-color);
+        background: white;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        width: 100%;
+    }
+
+    .action-card:hover {
+        border-color: var(--tenant-primary, #00897B);
+        background: var(--tblr-bg-surface-secondary);
+        transform: translateY(-2px);
+    }
+
+    .action-card i {
+        font-size: 1.5rem;
+    }
+
+    .action-card span {
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+
+    .action-card.emergency {
+        border-color: #dc354533;
+        background: #dc354508;
+    }
+
+    .action-card.emergency:hover {
+        border-color: #dc3545;
+        background: #dc354515;
+    }
+
+    .offline-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        background: var(--tenant-primary, #00897B);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        flex-shrink: 0;
+        transition: background-color 0.3s ease;
+    }
+
+    .offline-icon.downloaded {
+        background: #2fb344;
+    }
+
+    .qr-code-container {
+        background: white;
+        padding: 16px;
+        border-radius: 12px;
+        display: inline-block;
+    }
+
+    .qr-code-image {
+        width: 160px;
+        height: 160px;
+    }
+
+    /* Responsive adjustments */
+    @@media (max-width: 992px) {
+        .col-lg-4 {
+            order: -1; /* Shop contact first on mobile */
+        }
+    }
+</style>
+
+@code {
+    [Parameter] public new string AccountNo { get; set; } = "";
+    [Parameter] public string RentalWebId { get; set; } = "";
+
+    private bool m_loading = true;
+    private bool m_downloading;
+    private bool m_isDownloaded;
+    private DateTimeOffset? m_lastSyncAt;
+    private Rental? m_rental;
+    private Shop? m_shop;
+    private ShopContactInfo? m_shopContactInfo;
+    private string? m_vehicleLicensePlate;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadRentalAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Check if rental is already saved offline
+            await CheckOfflineStatusAsync();
+        }
+    }
+
+    private async Task CheckOfflineStatusAsync()
+    {
+        try
+        {
+            await OfflineDb.InitializeAsync();
+            var offlineRental = await OfflineDb.GetRentalByWebIdAsync(RentalWebId);
+            if (offlineRental != null)
+            {
+                m_isDownloaded = true;
+                if (DateTimeOffset.TryParse(offlineRental.LastSyncAt, out var lastSync))
+                {
+                    m_lastSyncAt = lastSync;
+                }
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[MyRental] Error checking offline status: {ex.Message}");
+        }
+    }
+
+    private async Task LoadRentalAsync()
+    {
+        m_loading = true;
+        StateHasChanged();
+
+        try
+        {
+            // First try to load by WebId (string)
+            m_rental = await RentalService.GetRentalByWebIdAsync(RentalWebId);
+
+            // If not found by WebId, try as RentalId
+            if (m_rental == null && int.TryParse(RentalWebId, out var rentalId))
+            {
+                m_rental = await RentalService.GetRentalAsync(rentalId);
+            }
+
+            if (m_rental != null)
+            {
+                // Load shop info for contact card
+                m_shop = await ShopService.GetShopByIdAsync(m_rental.RentedFromShopId);
+                if (m_shop != null)
+                {
+                    m_shopContactInfo = ShopContactInfo.FromShop(
+                        m_shop,
+                        renterName: m_rental.RenterName,
+                        rentalReference: m_rental.RentalId.ToString(),
+                        vehicleInfo: $"{m_rental.VehicleName} ({m_vehicleLicensePlate})"
+                    );
+                }
+
+                // Load vehicle license plate
+                var vehicle = await RentalService.GetVehicleForRentalAsync(m_rental.VehicleId);
+                if (vehicle != null)
+                {
+                    m_vehicleLicensePlate = vehicle.LicensePlate;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error loading rental: {ex.Message}");
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private string GetStatusCardClass() => m_rental?.Status switch
+    {
+        "Active" => "bg-success-subtle",
+        "Reserved" => "bg-info-subtle",
+        "Completed" => "bg-secondary-subtle",
+        _ => ""
+    };
+
+    private string GetStatusIconClass() => m_rental?.Status switch
+    {
+        "Active" => "active",
+        "Reserved" => "reserved",
+        "Completed" => "completed",
+        _ => ""
+    };
+
+    private string GetStatusIcon() => m_rental?.Status switch
+    {
+        "Active" => "ti-steering-wheel",
+        "Reserved" => "ti-calendar-check",
+        "Completed" => "ti-circle-check",
+        "Cancelled" => "ti-x",
+        _ => "ti-info-circle"
+    };
+
+    private string GetStatusTitle() => m_rental?.Status switch
+    {
+        "Active" => "Rental Active",
+        "Reserved" => "Reservation Confirmed",
+        "Completed" => "Rental Completed",
+        "Cancelled" => "Rental Cancelled",
+        _ => "Unknown Status"
+    };
+
+    private string GetStatusDescription() => m_rental?.Status switch
+    {
+        "Active" => $"Enjoy your ride! Return by {FormatDateTime(m_rental!.ExpectedEndDate)}",
+        "Reserved" => $"Pick up on {FormatDateTime(m_rental!.StartDate)}",
+        "Completed" => "Thank you for renting with us!",
+        "Cancelled" => "This rental has been cancelled.",
+        _ => ""
+    };
+
+    private string GetStatusBadgeClass() => m_rental?.Status switch
+    {
+        "Active" => "bg-success",
+        "Reserved" => "bg-info",
+        "Completed" => "bg-secondary",
+        "Cancelled" => "bg-danger",
+        _ => "bg-secondary"
+    };
+
+    private string GetVehicleImageUrl()
+    {
+        // Return placeholder based on vehicle type
+        return "https://placehold.co/400x300/00897B/white?text=Your+Vehicle";
+    }
+
+    private string FormatDateTime(DateTimeOffset date)
+    {
+        return date.ToString("ddd, MMM d 'at' h:mm tt");
+    }
+
+    private string GetDurationText()
+    {
+        if (m_rental == null) return "";
+
+        var days = (m_rental.ExpectedEndDate - m_rental.StartDate).Days;
+        if (days == 0) days = 1;
+
+        return m_rental.DurationType == RentalDurationType.Daily
+            ? $"{days} day{(days > 1 ? "s" : "")}"
+            : $"{m_rental.IntervalMinutes} minutes";
+    }
+
+    private string GetRateLabel()
+    {
+        return m_rental?.DurationType == RentalDurationType.Daily
+            ? "Daily Rate"
+            : $"{m_rental?.IntervalMinutes}-min Rate";
+    }
+
+    private string GetQRCodeUrl()
+    {
+        var qrData = $"MOTORENT-{m_rental?.RentalId}-{m_rental?.WebId}";
+        return $"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={Uri.EscapeDataString(qrData)}";
+    }
+
+    private async Task ExtendRental()
+    {
+        if (m_shopContactInfo != null && !string.IsNullOrEmpty(m_shopContactInfo.WhatsAppUrl))
+        {
+            await JS.InvokeVoidAsync("open", m_shopContactInfo.WhatsAppUrl, "_blank");
+        }
+        else if (m_shopContactInfo != null && !string.IsNullOrEmpty(m_shopContactInfo.PhoneUrl))
+        {
+            await JS.InvokeVoidAsync("open", m_shopContactInfo.PhoneUrl, "_self");
+        }
+        else
+        {
+            ShowInfo("Please contact the shop to extend your rental.");
+        }
+    }
+
+    private void ViewContract()
+    {
+        if (m_rental != null)
+        {
+            NavigateToTenant($"my-rental/{RentalWebId}/contract");
+        }
+    }
+
+    private void ReportAccident()
+    {
+        if (m_rental != null)
+        {
+            NavigateToTenant($"my-rental/{RentalWebId}/accident-report");
+        }
+    }
+
+    private async Task ShowEmergencyCard()
+    {
+        // For now, show a simple dialog with emergency contacts
+        var message = "Emergency Contacts:\n\n" +
+                      "Tourist Police: 1155\n" +
+                      "Ambulance: 1669\n" +
+                      "Police: 191\n\n";
+
+        if (m_shop != null)
+        {
+            message += $"Shop: {m_shop.Phone}";
+        }
+
+        await DialogService.ShowMessageAsync(message, "Emergency Contacts");
+    }
+
+    private async Task DownloadForOffline()
+    {
+        if (m_rental == null) return;
+
+        m_downloading = true;
+        StateHasChanged();
+
+        try
+        {
+            await OfflineDb.InitializeAsync();
+
+            // Create the offline rental package
+            var offlinePackage = new OfflineRentalPackage
+            {
+                RentalId = m_rental.RentalId,
+                WebId = m_rental.WebId.ToString(),
+                AccountNo = TenantAccountNo ?? "",
+                Status = m_rental.Status,
+                StartDate = m_rental.StartDate,
+                ExpectedEndDate = m_rental.ExpectedEndDate,
+                RentalRate = m_rental.RentalRate,
+                TotalAmount = m_rental.TotalAmount,
+                Vehicle = new OfflineVehicleInfo
+                {
+                    VehicleId = m_rental.VehicleId,
+                    Brand = m_rental.VehicleName?.Split(' ').FirstOrDefault() ?? "",
+                    Model = m_rental.VehicleName ?? "",
+                    LicensePlate = m_vehicleLicensePlate ?? "",
+                    ImageUrl = GetVehicleImageUrl()
+                },
+                Renter = new OfflineRenterInfo
+                {
+                    RenterId = m_rental.RenterId,
+                    FullName = m_rental.RenterName ?? ""
+                }
+            };
+
+            // Add shop info if available
+            if (m_shop != null && m_shopContactInfo != null)
+            {
+                offlinePackage.Shop = new OfflineShopInfo
+                {
+                    ShopId = m_shop.ShopId,
+                    Name = m_shop.Name,
+                    Phone = m_shop.Phone,
+                    Address = m_shop.Address,
+                    Latitude = m_shop.GpsLocation?.Lat ?? 0,
+                    Longitude = m_shop.GpsLocation?.Lng ?? 0,
+                    WhatsAppUrl = m_shopContactInfo.WhatsAppUrl,
+                    LineUrl = m_shopContactInfo.LineUrl,
+                    GoogleMapsUrl = m_shopContactInfo.GoogleMapsUrl,
+                    Hours = m_shopContactInfo.Hours,
+                    IsCurrentlyOpen = m_shopContactInfo.IsCurrentlyOpen
+                };
+            }
+
+            // Add emergency contacts
+            offlinePackage.EmergencyContacts.Add(new OfflineEmergencyContact
+            {
+                Id = "tourist-police",
+                Type = "police",
+                Name = "Tourist Police",
+                Phone = "1155",
+                Priority = 1
+            });
+            offlinePackage.EmergencyContacts.Add(new OfflineEmergencyContact
+            {
+                Id = "ambulance",
+                Type = "medical",
+                Name = "Ambulance",
+                Phone = "1669",
+                Priority = 2
+            });
+            offlinePackage.EmergencyContacts.Add(new OfflineEmergencyContact
+            {
+                Id = "police",
+                Type = "police",
+                Name = "Police",
+                Phone = "191",
+                Priority = 3
+            });
+            if (m_shop != null && !string.IsNullOrEmpty(m_shop.Phone))
+            {
+                offlinePackage.EmergencyContacts.Add(new OfflineEmergencyContact
+                {
+                    Id = "shop",
+                    Type = "shop",
+                    Name = m_shop.Name,
+                    Phone = m_shop.Phone,
+                    Priority = 4
+                });
+            }
+
+            // Save to IndexedDB
+            await OfflineDb.SaveRentalPackageAsync(offlinePackage);
+
+            m_isDownloaded = true;
+            m_lastSyncAt = DateTimeOffset.Now;
+            ShowSuccess("Rental saved for offline use!");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[MyRental] Error downloading for offline: {ex.Message}");
+            ShowError("Failed to save for offline. Please try again.");
+        }
+        finally
+        {
+            m_downloading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RefreshOfflineData()
+    {
+        await DownloadForOffline();
+    }
+
+    private string FormatLastSync()
+    {
+        if (!m_lastSyncAt.HasValue) return "Unknown";
+
+        var diff = DateTimeOffset.Now - m_lastSyncAt.Value;
+
+        if (diff.TotalMinutes < 1) return "Just now";
+        if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes} min ago";
+        if (diff.TotalHours < 24) return $"{(int)diff.TotalHours} hours ago";
+
+        return m_lastSyncAt.Value.ToString("MMM d, h:mm tt");
+    }
+}

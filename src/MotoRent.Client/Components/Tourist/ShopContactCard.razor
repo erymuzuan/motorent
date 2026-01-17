@@ -1,0 +1,365 @@
+@* Shop contact card for rental dashboard - prominent contact info *@
+@using MotoRent.Domain.Tourist
+
+@if (ContactInfo != null)
+{
+    <div class="card shop-contact-card @Class">
+        <div class="card-body">
+            @* Header with logo and status *@
+            <div class="d-flex align-items-center gap-3 mb-3">
+                @if (!string.IsNullOrEmpty(ContactInfo.LogoUrl))
+                {
+                    <img src="@ContactInfo.LogoUrl" alt="@ContactInfo.Name" class="shop-card-logo" />
+                }
+                else
+                {
+                    <div class="shop-card-logo-placeholder">
+                        <i class="ti ti-building-store"></i>
+                    </div>
+                }
+                <div class="flex-fill">
+                    <h5 class="mb-0">@ContactInfo.Name</h5>
+                    <div class="d-flex align-items-center gap-2 mt-1">
+                        <span class="status-badge @(ContactInfo.IsCurrentlyOpen ? "open" : "closed")">
+                            <span class="status-indicator"></span>
+                            @if (ContactInfo.IsOpen24Hours)
+                            {
+                                <span>Open 24 Hours</span>
+                            }
+                            else if (ContactInfo.IsCurrentlyOpen)
+                            {
+                                <span>Open Now</span>
+                            }
+                            else
+                            {
+                                <span>Closed</span>
+                            }
+                        </span>
+                        @if (!string.IsNullOrEmpty(ContactInfo.NextStatusChange) && !ContactInfo.IsOpen24Hours)
+                        {
+                            <small class="text-secondary">@ContactInfo.NextStatusChange</small>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            @* Quick Action Buttons *@
+            <div class="quick-actions">
+                @* Primary: Call button *@
+                @if (!string.IsNullOrEmpty(ContactInfo.PhoneUrl))
+                {
+                    <a href="@ContactInfo.PhoneUrl" class="quick-action-btn primary">
+                        <i class="ti ti-phone"></i>
+                        <span>Call</span>
+                    </a>
+                }
+
+                @* WhatsApp *@
+                @if (!string.IsNullOrEmpty(ContactInfo.WhatsAppUrl))
+                {
+                    <a href="@ContactInfo.WhatsAppUrl" target="_blank" rel="noopener" class="quick-action-btn whatsapp">
+                        <i class="ti ti-brand-whatsapp"></i>
+                        <span>WhatsApp</span>
+                    </a>
+                }
+
+                @* LINE *@
+                @if (!string.IsNullOrEmpty(ContactInfo.LineUrl))
+                {
+                    <a href="@ContactInfo.LineUrl" target="_blank" rel="noopener" class="quick-action-btn line">
+                        <svg class="line-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.627-.63h2.386c.349 0 .63.285.63.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.627-.63.349 0 .631.285.631.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/>
+                        </svg>
+                        <span>LINE</span>
+                    </a>
+                }
+
+                @* Navigate *@
+                @if (!string.IsNullOrEmpty(ContactInfo.GoogleMapsUrl))
+                {
+                    <a href="@ContactInfo.GoogleMapsUrl" target="_blank" rel="noopener" class="quick-action-btn navigate">
+                        <i class="ti ti-navigation"></i>
+                        <span>Navigate</span>
+                    </a>
+                }
+            </div>
+
+            @* Address and details *@
+            @if (ShowDetails)
+            {
+                <div class="shop-details mt-3 pt-3 border-top">
+                    @if (!string.IsNullOrEmpty(ContactInfo.Address))
+                    {
+                        <div class="detail-row">
+                            <i class="ti ti-map-pin text-muted"></i>
+                            <span>@ContactInfo.Address</span>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(ContactInfo.Phone))
+                    {
+                        <div class="detail-row">
+                            <i class="ti ti-phone text-muted"></i>
+                            <a href="@ContactInfo.PhoneUrl">@ContactInfo.Phone</a>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(ContactInfo.Email))
+                    {
+                        <div class="detail-row">
+                            <i class="ti ti-mail text-muted"></i>
+                            <a href="@ContactInfo.EmailUrl">@ContactInfo.Email</a>
+                        </div>
+                    }
+
+                    @* Operating Hours Toggle *@
+                    @if (ContactInfo.Hours.Count > 0 && !ContactInfo.IsOpen24Hours)
+                    {
+                        <button type="button" class="hours-toggle" @onclick="ToggleHours">
+                            <i class="ti ti-clock text-muted"></i>
+                            <span>Operating Hours</span>
+                            <i class="ti ti-chevron-@(m_showHours ? "up" : "down") ms-auto"></i>
+                        </button>
+
+                        @if (m_showHours)
+                        {
+                            <div class="hours-list">
+                                @foreach (var day in ContactInfo.Hours)
+                                {
+                                    var isToday = day.Key == DateTime.Now.DayOfWeek.ToString();
+                                    <div class="hours-row @(isToday ? "today" : "")">
+                                        <span class="day-name">@day.Key</span>
+                                        <span class="hours-value">@day.Value</span>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    }
+                </div>
+            }
+        </div>
+    </div>
+}
+
+<style>
+    .shop-contact-card {
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .shop-card-logo,
+    .shop-card-logo-placeholder {
+        width: 56px;
+        height: 56px;
+        border-radius: 10px;
+        object-fit: contain;
+        background: var(--tblr-bg-surface-secondary);
+        flex-shrink: 0;
+    }
+
+    .shop-card-logo-placeholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        color: var(--tenant-primary, #00897B);
+    }
+
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 3px 10px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .status-badge.open {
+        background: rgba(47, 179, 68, 0.1);
+        color: #2fb344;
+    }
+
+    .status-badge.closed {
+        background: rgba(214, 57, 57, 0.1);
+        color: #d63939;
+    }
+
+    .status-indicator {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: currentColor;
+    }
+
+    .quick-actions {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+        gap: 8px;
+    }
+
+    .quick-action-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        padding: 12px 8px;
+        border-radius: 10px;
+        text-decoration: none;
+        font-size: 0.75rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        background: var(--tblr-bg-surface-secondary);
+        color: var(--tblr-body-color);
+    }
+
+    .quick-action-btn:hover {
+        transform: translateY(-2px);
+        text-decoration: none;
+    }
+
+    .quick-action-btn i,
+    .quick-action-btn svg {
+        font-size: 1.25rem;
+    }
+
+    .quick-action-btn.primary {
+        background: var(--tenant-primary, #00897B);
+        color: white;
+    }
+
+    .quick-action-btn.primary:hover {
+        background: var(--tenant-secondary, #004D40);
+        color: white;
+    }
+
+    .quick-action-btn.whatsapp {
+        background: rgba(37, 211, 102, 0.1);
+        color: #25D366;
+    }
+
+    .quick-action-btn.whatsapp:hover {
+        background: #25D366;
+        color: white;
+    }
+
+    .quick-action-btn.line {
+        background: rgba(0, 185, 0, 0.1);
+        color: #00B900;
+    }
+
+    .quick-action-btn.line:hover {
+        background: #00B900;
+        color: white;
+    }
+
+    .line-icon {
+        width: 20px;
+        height: 20px;
+    }
+
+    .quick-action-btn.navigate {
+        background: rgba(66, 133, 244, 0.1);
+        color: #4285F4;
+    }
+
+    .quick-action-btn.navigate:hover {
+        background: #4285F4;
+        color: white;
+    }
+
+    .shop-details {
+        font-size: 0.875rem;
+    }
+
+    .detail-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 6px 0;
+    }
+
+    .detail-row i {
+        margin-top: 2px;
+        flex-shrink: 0;
+    }
+
+    .detail-row a {
+        color: var(--tblr-body-color);
+        text-decoration: none;
+    }
+
+    .detail-row a:hover {
+        color: var(--tenant-primary, #00897B);
+    }
+
+    .hours-toggle {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        padding: 6px 0;
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--tblr-body-color);
+        font-size: 0.875rem;
+    }
+
+    .hours-toggle:hover {
+        color: var(--tenant-primary, #00897B);
+    }
+
+    .hours-list {
+        margin-top: 8px;
+        padding-left: 26px;
+    }
+
+    .hours-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 4px 0;
+        font-size: 0.8rem;
+    }
+
+    .hours-row.today {
+        font-weight: 600;
+        color: var(--tenant-primary, #00897B);
+    }
+
+    .day-name {
+        color: var(--tblr-secondary);
+    }
+
+    .hours-row.today .day-name {
+        color: inherit;
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// Shop contact information with pre-generated URLs.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public ShopContactInfo? ContactInfo { get; set; }
+
+    /// <summary>
+    /// Additional CSS class for the card.
+    /// </summary>
+    [Parameter]
+    public string? Class { get; set; }
+
+    /// <summary>
+    /// Whether to show detailed information (address, phone, hours).
+    /// </summary>
+    [Parameter]
+    public bool ShowDetails { get; set; } = true;
+
+    private bool m_showHours;
+
+    private void ToggleHours()
+    {
+        m_showHours = !m_showHours;
+    }
+}

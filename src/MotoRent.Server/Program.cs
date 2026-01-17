@@ -147,6 +147,10 @@ if (rabbitMqEnabled)
 builder.Services.AddScoped<FileUploadJsInterop>();
 builder.Services.AddScoped<GoogleMapJsInterop>();
 
+// Add Offline services (Tourist PWA)
+builder.Services.AddScoped<MotoRent.Client.Services.Offline.IndexedDbService>();
+builder.Services.AddScoped<MotoRent.Client.Services.Offline.NetworkStateService>();
+
 // Add UI services (Modal, Toast, Dialog)
 builder.Services.AddScoped<IModalService, ModalService>();
 builder.Services.AddScoped<ToastService>();

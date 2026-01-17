@@ -48,6 +48,29 @@ public class RentalService(RentalDataContext context, VehiclePoolService? poolSe
         return await this.Context.LoadOneAsync<Rental>(r => r.RentalId == rentalId);
     }
 
+    /// <summary>
+    /// Get a rental by its WebId for tourist app access via QR code.
+    /// </summary>
+    public async Task<Rental?> GetRentalByWebIdAsync(string webId)
+    {
+        if (string.IsNullOrEmpty(webId)) return null;
+        return await this.Context.LoadOneAsync<Rental>(r => r.WebId == webId);
+    }
+
+    /// <summary>
+    /// Alias for GetRentalByIdAsync used by tourist pages.
+    /// </summary>
+    public Task<Rental?> GetRentalAsync(int rentalId) => GetRentalByIdAsync(rentalId);
+
+    /// <summary>
+    /// Get vehicle info for a rental (for displaying license plate, etc.)
+    /// </summary>
+    public async Task<Vehicle?> GetVehicleForRentalAsync(int vehicleId)
+    {
+        if (vehicleId <= 0) return null;
+        return await this.Context.LoadOneAsync<Vehicle>(v => v.VehicleId == vehicleId);
+    }
+
     public async Task<SubmitOperation> CreateRentalAsync(Rental rental, string username)
     {
         using var session = this.Context.OpenSession(username);

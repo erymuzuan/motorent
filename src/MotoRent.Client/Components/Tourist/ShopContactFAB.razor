@@ -1,0 +1,372 @@
+@* Floating Action Button for quick shop contact *@
+@using MotoRent.Domain.Tourist
+
+@if (ContactInfo != null)
+{
+    <div class="shop-contact-fab-container">
+        @* FAB Button *@
+        <button type="button"
+                class="shop-contact-fab @(m_isExpanded ? "expanded" : "")"
+                @onclick="ToggleExpanded">
+            @if (m_isExpanded)
+            {
+                <i class="ti ti-x"></i>
+            }
+            else
+            {
+                <i class="ti ti-headset"></i>
+            }
+        </button>
+
+        @* Contact Options (expanded) *@
+        @if (m_isExpanded)
+        {
+            <div class="shop-contact-options">
+                @* Header with shop info *@
+                <div class="shop-contact-header">
+                    @if (!string.IsNullOrEmpty(ContactInfo.LogoUrl))
+                    {
+                        <img src="@ContactInfo.LogoUrl" alt="@ContactInfo.Name" class="shop-logo" />
+                    }
+                    else
+                    {
+                        <div class="shop-logo-placeholder">
+                            <i class="ti ti-building-store"></i>
+                        </div>
+                    }
+                    <div class="shop-info">
+                        <div class="shop-name">@ContactInfo.Name</div>
+                        <div class="shop-status @(ContactInfo.IsCurrentlyOpen ? "open" : "closed")">
+                            <span class="status-dot"></span>
+                            @if (ContactInfo.IsOpen24Hours)
+                            {
+                                <span>Open 24 Hours</span>
+                            }
+                            else if (ContactInfo.IsCurrentlyOpen)
+                            {
+                                <span>Open</span>
+                                @if (!string.IsNullOrEmpty(ContactInfo.NextStatusChange))
+                                {
+                                    <span class="status-detail">@ContactInfo.NextStatusChange</span>
+                                }
+                            }
+                            else
+                            {
+                                <span>Closed</span>
+                                @if (!string.IsNullOrEmpty(ContactInfo.NextStatusChange))
+                                {
+                                    <span class="status-detail">@ContactInfo.NextStatusChange</span>
+                                }
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                @* Contact Actions *@
+                <div class="contact-actions">
+                    @* Phone Call - Primary action *@
+                    @if (!string.IsNullOrEmpty(ContactInfo.PhoneUrl))
+                    {
+                        <a href="@ContactInfo.PhoneUrl" class="contact-action primary">
+                            <i class="ti ti-phone"></i>
+                            <span>Call Now</span>
+                        </a>
+                    }
+
+                    @* WhatsApp *@
+                    @if (!string.IsNullOrEmpty(ContactInfo.WhatsAppUrl))
+                    {
+                        <a href="@ContactInfo.WhatsAppUrl" target="_blank" rel="noopener" class="contact-action whatsapp">
+                            <i class="ti ti-brand-whatsapp"></i>
+                            <span>WhatsApp</span>
+                        </a>
+                    }
+
+                    @* LINE *@
+                    @if (!string.IsNullOrEmpty(ContactInfo.LineUrl))
+                    {
+                        <a href="@ContactInfo.LineUrl" target="_blank" rel="noopener" class="contact-action line">
+                            <svg class="line-icon" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.627-.63h2.386c.349 0 .63.285.63.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.627-.63.349 0 .631.285.631.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/>
+                            </svg>
+                            <span>LINE</span>
+                        </a>
+                    }
+
+                    @* Navigate to Shop *@
+                    @if (!string.IsNullOrEmpty(ContactInfo.GoogleMapsUrl))
+                    {
+                        <a href="@ContactInfo.GoogleMapsUrl" target="_blank" rel="noopener" class="contact-action navigate">
+                            <i class="ti ti-map-pin"></i>
+                            <span>Navigate</span>
+                        </a>
+                    }
+
+                    @* Email *@
+                    @if (!string.IsNullOrEmpty(ContactInfo.EmailUrl))
+                    {
+                        <a href="@ContactInfo.EmailUrl" class="contact-action email">
+                            <i class="ti ti-mail"></i>
+                            <span>Email</span>
+                        </a>
+                    }
+                </div>
+            </div>
+
+            @* Backdrop *@
+            <div class="shop-contact-backdrop" @onclick="CloseOptions"></div>
+        }
+    </div>
+}
+
+<style>
+    .shop-contact-fab-container {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        z-index: 1000;
+    }
+
+    .shop-contact-fab {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        border: none;
+        background: var(--tenant-primary, #00897B);
+        color: white;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        position: relative;
+        z-index: 1002;
+    }
+
+    .shop-contact-fab:hover {
+        transform: scale(1.05);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+    }
+
+    .shop-contact-fab.expanded {
+        background: #dc3545;
+    }
+
+    .shop-contact-options {
+        position: absolute;
+        bottom: 70px;
+        right: 0;
+        width: 280px;
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        overflow: hidden;
+        z-index: 1001;
+        animation: slideUp 0.2s ease;
+    }
+
+    @@keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .shop-contact-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 16px;
+        background: var(--tblr-bg-surface-secondary, #f8f9fa);
+        border-bottom: 1px solid var(--tblr-border-color, #e6e7e9);
+    }
+
+    .shop-logo,
+    .shop-logo-placeholder {
+        width: 48px;
+        height: 48px;
+        border-radius: 8px;
+        object-fit: contain;
+        background: white;
+        flex-shrink: 0;
+    }
+
+    .shop-logo-placeholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        color: var(--tenant-primary, #00897B);
+    }
+
+    .shop-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .shop-name {
+        font-weight: 600;
+        font-size: 0.95rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .shop-status {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.8rem;
+        margin-top: 2px;
+    }
+
+    .shop-status.open {
+        color: #2fb344;
+    }
+
+    .shop-status.closed {
+        color: #d63939;
+    }
+
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: currentColor;
+    }
+
+    .status-detail {
+        color: var(--tblr-secondary);
+        font-size: 0.75rem;
+    }
+
+    .contact-actions {
+        padding: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .contact-action {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        border-radius: 8px;
+        text-decoration: none;
+        color: var(--tblr-body-color);
+        transition: background 0.2s ease;
+        font-weight: 500;
+    }
+
+    .contact-action:hover {
+        background: var(--tblr-bg-surface-secondary, #f8f9fa);
+        text-decoration: none;
+    }
+
+    .contact-action i,
+    .contact-action svg {
+        font-size: 1.25rem;
+        width: 24px;
+        flex-shrink: 0;
+    }
+
+    .contact-action.primary {
+        background: var(--tenant-primary, #00897B);
+        color: white;
+    }
+
+    .contact-action.primary:hover {
+        background: var(--tenant-secondary, #004D40);
+    }
+
+    .contact-action.whatsapp i {
+        color: #25D366;
+    }
+
+    .contact-action.line svg {
+        color: #00B900;
+    }
+
+    .line-icon {
+        width: 20px;
+        height: 20px;
+    }
+
+    .contact-action.navigate i {
+        color: #4285F4;
+    }
+
+    .contact-action.email i {
+        color: #EA4335;
+    }
+
+    .shop-contact-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.3);
+        z-index: 999;
+    }
+
+    /* Dark mode support */
+    @@media (prefers-color-scheme: dark) {
+        .shop-contact-options {
+            background: var(--tblr-bg-surface, #1e2633);
+        }
+
+        .shop-contact-header {
+            background: var(--tblr-bg-surface-secondary, #243049);
+        }
+
+        .shop-logo-placeholder {
+            background: var(--tblr-bg-surface-secondary, #243049);
+        }
+
+        .contact-action:hover {
+            background: var(--tblr-bg-surface-secondary, #243049);
+        }
+    }
+
+    /* Mobile adjustments */
+    @@media (max-width: 576px) {
+        .shop-contact-fab-container {
+            bottom: 16px;
+            right: 16px;
+        }
+
+        .shop-contact-options {
+            right: -8px;
+            width: calc(100vw - 32px);
+            max-width: 320px;
+        }
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// Shop contact information with pre-generated URLs.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public ShopContactInfo? ContactInfo { get; set; }
+
+    private bool m_isExpanded;
+
+    private void ToggleExpanded()
+    {
+        m_isExpanded = !m_isExpanded;
+    }
+
+    private void CloseOptions()
+    {
+        m_isExpanded = false;
+    }
+}
