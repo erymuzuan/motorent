@@ -100,7 +100,7 @@
                 <div class="mb-0">
                     <label class="mr-form-label">@Localizer["Status"] <span class="required">*</span></label>
                     <select class="mr-form-control" @bind="Entity.Status" required>
-                        @foreach (VehicleStatus status in Enum.GetValues<VehicleStatus>())
+                        @foreach (var status in VehicleStatus.AllStatuses)
                         {
                             <option value="@status">@GetStatusLabel(status)</option>
                         }
@@ -635,14 +635,14 @@
         _ => segment.ToString()
     };
 
-    private string GetStatusLabel(VehicleStatus status) => status switch
+    private string GetStatusLabel(string status) => status switch
     {
         VehicleStatus.Available => Localizer["Available"],
         VehicleStatus.Rented => Localizer["Rented"],
         VehicleStatus.Maintenance => Localizer["Maintenance"],
         VehicleStatus.Reserved => Localizer["Reserved"],
         VehicleStatus.Retired => Localizer["Retired"],
-        _ => status.ToString()
+        _ => status
     };
 
     private List<string> GetBrandSuggestions()

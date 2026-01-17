@@ -21,7 +21,7 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
     public async Task<LoadOperation<Vehicle>> GetVehiclesAsync(
         int shopId,
         VehicleType? vehicleType = null,
-        VehicleStatus? status = null,
+        string? status = null,
         string? searchTerm = null,
         bool includePooled = false,
         int page = 1,
@@ -35,9 +35,9 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
             query = query.Where(v => v.VehicleType == vehicleType.Value);
         }
 
-        if (status.HasValue)
+        if (!string.IsNullOrEmpty(status))
         {
-            query = query.Where(v => v.Status == status.Value);
+            query = query.Where(v => v.Status == status);
         }
 
         query = query.OrderByDescending(v => v.VehicleId);
@@ -181,7 +181,7 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
     /// <summary>
     /// Gets status counts for vehicles (organization-wide).
     /// </summary>
-    public async Task<Dictionary<VehicleStatus, int>> GetStatusCountsAsync(int shopId, VehicleType? vehicleType = null)
+    public async Task<Dictionary<string, int>> GetStatusCountsAsync(int shopId, VehicleType? vehicleType = null)
     {
         // shopId parameter kept for backwards compatibility but ignored
         var query = this.Context.CreateQuery<Vehicle>();
@@ -219,7 +219,7 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
     public async Task<List<VehicleGroup>> GetVehicleGroupsAsync(
         int shopId,
         VehicleType? vehicleType = null,
-        VehicleStatus? status = null,
+        string? status = null,
         string? searchTerm = null,
         bool includePooled = true)
     {
@@ -228,9 +228,9 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
 
         // Filter by status if specified (since GetVehiclesAsync may not filter correctly in all cases)
         var vehicles = result.ItemCollection;
-        if (status.HasValue)
+        if (!string.IsNullOrEmpty(status))
         {
-            vehicles = vehicles.Where(v => v.Status == status.Value).ToList();
+            vehicles = vehicles.Where(v => v.Status == status).ToList();
         }
 
         // Group by Brand, Model, Year, VehicleType, and Engine (CC or Liters)
@@ -366,7 +366,7 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
     /// <summary>
     /// Updates vehicle status.
     /// </summary>
-    public async Task<SubmitOperation> UpdateStatusAsync(int vehicleId, VehicleStatus status, string username)
+    public async Task<SubmitOperation> UpdateStatusAsync(int vehicleId, string status, string username)
     {
         var vehicle = await GetVehicleByIdAsync(vehicleId);
         if (vehicle == null)
