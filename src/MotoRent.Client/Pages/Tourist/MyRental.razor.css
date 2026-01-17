@@ -1,178 +1,777 @@
-/* MyRental.razor.css - CSS isolation for MyRental component */
+/* MyRental.razor.css - Mobile-first design for tourist rental page */
 
-.status-icon-circle {
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
+/* ===== CSS Variables ===== */
+:root {
+    --mr-primary: var(--tenant-primary, #00897B);
+    --mr-primary-dark: #00695C;
+    --mr-success: #2fb344;
+    --mr-warning: #f59f00;
+    --mr-danger: #d63939;
+    --mr-info: #4299e1;
+    --mr-gray-100: #f8f9fa;
+    --mr-gray-200: #e9ecef;
+    --mr-gray-500: #6c757d;
+    --mr-gray-700: #495057;
+    --mr-gray-900: #212529;
+    --mr-radius: 16px;
+    --mr-radius-sm: 12px;
+    --mr-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    --mr-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+/* ===== Loading Screen ===== */
+.mr-loading-screen {
+    min-height: 80vh;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.5rem;
+    padding: 20px;
+}
+
+.mr-loading-content {
+    text-align: center;
+}
+
+.mr-loading-spinner {
+    width: 48px;
+    height: 48px;
+    border: 3px solid var(--mr-gray-200);
+    border-top-color: var(--mr-primary);
+    border-radius: 50%;
+    animation: mr-spin 0.8s linear infinite;
+    margin: 0 auto 16px;
+}
+
+@keyframes mr-spin {
+    to { transform: rotate(360deg); }
+}
+
+.mr-loading-text {
+    color: var(--mr-gray-500);
+    font-size: 15px;
+    margin: 0;
+}
+
+/* ===== Error State ===== */
+.mr-error-container {
+    min-height: 70vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.mr-error-card {
+    background: white;
+    border-radius: var(--mr-radius);
+    padding: 40px 24px;
+    text-align: center;
+    max-width: 360px;
+    box-shadow: var(--mr-shadow);
+}
+
+.mr-error-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: rgba(214, 57, 57, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+}
+
+.mr-error-icon i {
+    font-size: 40px;
+    color: var(--mr-danger);
+}
+
+.mr-error-card h2 {
+    font-size: 22px;
+    font-weight: 600;
+    margin: 0 0 12px;
+    color: var(--mr-gray-900);
+}
+
+.mr-error-card p {
+    font-size: 15px;
+    color: var(--mr-gray-500);
+    margin: 0 0 24px;
+    line-height: 1.5;
+}
+
+.mr-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border-radius: var(--mr-radius-sm);
+    font-size: 15px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s;
+    border: none;
+    cursor: pointer;
+}
+
+.mr-btn-primary {
+    background: var(--mr-primary);
+    color: white;
+}
+
+.mr-btn-primary:hover {
+    background: var(--mr-primary-dark);
+    color: white;
+}
+
+/* ===== Main Page Layout ===== */
+.mr-rental-page {
+    padding-bottom: 100px;
+    background: var(--mr-gray-100);
+    min-height: 100vh;
+}
+
+/* ===== Sync Bar ===== */
+.mr-sync-bar {
+    background: white;
+    border-bottom: 1px solid var(--mr-gray-200);
+    padding: 12px 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.mr-sync-bar.synced {
+    background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+    border-bottom-color: #a5d6a7;
+}
+
+.mr-sync-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.mr-sync-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--mr-gray-700);
+}
+
+.mr-sync-status i {
+    font-size: 18px;
+}
+
+.mr-sync-bar.synced .mr-sync-status i {
+    color: var(--mr-success);
+}
+
+.mr-sync-status small {
+    color: var(--mr-gray-500);
+    font-size: 12px;
+}
+
+.mr-sync-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid var(--mr-gray-200);
+    background: white;
+    color: var(--mr-gray-700);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.mr-sync-btn:hover {
+    border-color: var(--mr-primary);
+    color: var(--mr-primary);
+}
+
+.mr-sync-btn.primary {
+    background: var(--mr-primary);
+    color: white;
+    border-color: var(--mr-primary);
+}
+
+.mr-sync-btn.primary:hover {
+    background: var(--mr-primary-dark);
+}
+
+.mr-spinner-sm {
+    width: 14px;
+    height: 14px;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: mr-spin 0.6s linear infinite;
+    display: inline-block;
+}
+
+/* ===== Status Hero ===== */
+.mr-status-hero {
+    padding: 24px 16px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px;
+    background: linear-gradient(135deg, #e0f2f1 0%, #b2dfdb 100%);
+}
+
+.mr-status-hero.status-active {
+    background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+}
+
+.mr-status-hero.status-reserved {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+}
+
+.mr-status-hero.status-completed {
+    background: linear-gradient(135deg, #eceff1 0%, #cfd8dc 100%);
+}
+
+.mr-status-hero.status-cancelled {
+    background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+}
+
+.mr-status-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--mr-shadow);
     flex-shrink: 0;
 }
 
-.status-icon-circle.active {
-    background: rgba(47, 179, 68, 0.15);
-    color: #2fb344;
+.mr-status-icon i {
+    font-size: 28px;
+    color: var(--mr-primary);
 }
 
-.status-icon-circle.reserved {
-    background: rgba(66, 153, 225, 0.15);
-    color: #4299e1;
+.mr-status-hero.status-active .mr-status-icon i { color: var(--mr-success); }
+.mr-status-hero.status-reserved .mr-status-icon i { color: var(--mr-info); }
+.mr-status-hero.status-completed .mr-status-icon i { color: var(--mr-gray-500); }
+.mr-status-hero.status-cancelled .mr-status-icon i { color: var(--mr-danger); }
+
+.mr-status-info {
+    flex: 1;
+    min-width: 200px;
 }
 
-.status-icon-circle.completed {
-    background: rgba(134, 142, 150, 0.15);
-    color: #868e96;
+.mr-status-badge-row {
+    margin-bottom: 4px;
 }
 
-.bg-success-subtle {
-    background: rgba(47, 179, 68, 0.1);
+.mr-status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
-.bg-info-subtle {
-    background: rgba(66, 153, 225, 0.1);
+.mr-status-badge.badge-active {
+    background: var(--mr-success);
+    color: white;
 }
 
-.bg-secondary-subtle {
-    background: rgba(134, 142, 150, 0.1);
+.mr-status-badge.badge-reserved {
+    background: var(--mr-info);
+    color: white;
 }
 
-.vehicle-image-container {
-    background: var(--tblr-bg-surface-secondary);
-    border-radius: 12px;
+.mr-status-badge.badge-completed {
+    background: var(--mr-gray-500);
+    color: white;
+}
+
+.mr-status-badge.badge-cancelled {
+    background: var(--mr-danger);
+    color: white;
+}
+
+.mr-status-title {
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0 0 4px;
+    color: var(--mr-gray-900);
+}
+
+.mr-status-desc {
+    font-size: 14px;
+    color: var(--mr-gray-700);
+    margin: 0;
+}
+
+.mr-countdown {
+    background: white;
+    border-radius: var(--mr-radius-sm);
+    padding: 12px 20px;
+    text-align: center;
+    box-shadow: var(--mr-shadow);
+    min-width: 90px;
+}
+
+.mr-countdown-label {
+    font-size: 11px;
+    color: var(--mr-gray-500);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.mr-countdown-value {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--mr-primary);
+    line-height: 1.1;
+}
+
+.mr-countdown-unit {
+    font-size: 13px;
+    color: var(--mr-gray-700);
+}
+
+/* ===== QR Code Section ===== */
+.mr-qr-section {
+    padding: 20px 16px;
+    display: flex;
+    justify-content: center;
+}
+
+.mr-qr-card {
+    background: white;
+    border-radius: var(--mr-radius);
+    padding: 20px;
+    text-align: center;
+    box-shadow: var(--mr-shadow);
+    max-width: 220px;
+}
+
+.mr-qr-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--mr-gray-700);
+    margin-bottom: 12px;
+}
+
+.mr-qr-header i {
+    font-size: 18px;
+    color: var(--mr-primary);
+}
+
+.mr-qr-code {
+    background: var(--mr-gray-100);
+    border-radius: var(--mr-radius-sm);
+    padding: 16px;
+    display: inline-block;
+}
+
+.mr-qr-code img {
+    width: 140px;
+    height: 140px;
+    display: block;
+}
+
+.mr-qr-ref {
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--mr-gray-500);
+}
+
+/* ===== Sections ===== */
+.mr-section {
+    padding: 0 16px 20px;
+}
+
+.mr-section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--mr-gray-900);
+    margin: 0 0 12px;
+}
+
+.mr-section-title i {
+    font-size: 20px;
+    color: var(--mr-primary);
+}
+
+/* ===== Cards ===== */
+.mr-card {
+    background: white;
+    border-radius: var(--mr-radius);
+    box-shadow: var(--mr-shadow);
     overflow: hidden;
-    aspect-ratio: 4/3;
 }
 
-.vehicle-image {
+/* ===== Vehicle Card ===== */
+.mr-vehicle-card {
+    overflow: hidden;
+}
+
+.mr-vehicle-image {
+    position: relative;
+    aspect-ratio: 16/10;
+    background: var(--mr-primary);
+}
+
+.mr-vehicle-image img {
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
 
-.license-plate {
-    display: inline-block;
-    background: var(--tblr-body-color, #1e293b);
-    color: white;
-    padding: 6px 16px;
-    border-radius: 6px;
-    font-family: monospace;
-    font-size: 1.1rem;
+.mr-vehicle-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 40px 16px 16px;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
+}
+
+.mr-vehicle-name {
+    font-size: 20px;
     font-weight: 600;
-    letter-spacing: 1px;
+    color: white;
 }
 
-.info-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+.mr-vehicle-details {
+    padding: 16px;
 }
 
-.info-row i {
-    width: 20px;
-    flex-shrink: 0;
+.mr-license-plate {
+    display: inline-block;
+    margin-bottom: 16px;
 }
 
-.info-row .label {
-    color: var(--tblr-secondary-color, #64748b);
-    min-width: 100px;
+.mr-plate-text {
+    display: inline-block;
+    background: var(--mr-gray-900);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-family: 'Courier New', monospace;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 2px;
 }
 
-.info-row .value {
-    font-weight: 500;
-}
-
-.pricing-breakdown {
-    display: flex;
-    flex-direction: column;
+.mr-vehicle-info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: 12px;
 }
 
-.pricing-row {
+.mr-info-item {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px;
+    background: var(--mr-gray-100);
+    border-radius: var(--mr-radius-sm);
 }
 
-.pricing-row.total {
-    font-size: 1.1rem;
-    color: var(--tenant-primary, #00897B);
+.mr-info-item.full-width {
+    grid-column: 1 / -1;
 }
 
-.action-card {
+.mr-info-item i {
+    font-size: 20px;
+    color: var(--mr-primary);
+    margin-top: 2px;
+}
+
+.mr-info-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.mr-info-label {
+    font-size: 12px;
+    color: var(--mr-gray-500);
+}
+
+.mr-info-value {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--mr-gray-900);
+}
+
+/* ===== Quick Actions ===== */
+.mr-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.mr-action-btn {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    gap: 8px;
+    gap: 10px;
     padding: 20px 12px;
-    border-radius: 12px;
-    border: 1px solid var(--tblr-border-color);
-    background: var(--tblr-bg-surface, white);
+    background: white;
+    border: 1px solid var(--mr-gray-200);
+    border-radius: var(--mr-radius);
     cursor: pointer;
-    transition: all 0.2s ease;
-    width: 100%;
+    transition: all 0.2s;
+    min-height: 100px;
 }
 
-.action-card:hover {
-    border-color: var(--tenant-primary, #00897B);
-    background: var(--tblr-bg-surface-secondary);
+.mr-action-btn:hover {
+    border-color: var(--mr-primary);
     transform: translateY(-2px);
+    box-shadow: var(--mr-shadow);
 }
 
-.action-card i {
-    font-size: 1.5rem;
+.mr-action-btn:active {
+    transform: translateY(0);
 }
 
-.action-card span {
-    font-size: 0.85rem;
-    font-weight: 500;
-}
-
-.action-card.emergency {
-    border-color: rgba(220, 53, 69, 0.2);
-    background: rgba(220, 53, 69, 0.03);
-}
-
-.action-card.emergency:hover {
-    border-color: #dc3545;
-    background: rgba(220, 53, 69, 0.08);
-}
-
-.offline-icon {
+.mr-action-icon {
     width: 48px;
     height: 48px;
-    border-radius: 12px;
-    background: var(--tenant-primary, #00897B);
-    color: white;
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.5rem;
-    flex-shrink: 0;
-    transition: background-color 0.3s ease;
 }
 
-.offline-icon.downloaded {
-    background: #2fb344;
+.mr-action-icon i {
+    font-size: 22px;
 }
 
-.qr-code-container {
-    background: white;
+.mr-action-icon.extend {
+    background: rgba(0, 137, 123, 0.1);
+    color: var(--mr-primary);
+}
+
+.mr-action-icon.contract {
+    background: rgba(66, 153, 225, 0.1);
+    color: var(--mr-info);
+}
+
+.mr-action-icon.report {
+    background: rgba(245, 159, 0, 0.1);
+    color: var(--mr-warning);
+}
+
+.mr-action-icon.emergency {
+    background: rgba(214, 57, 57, 0.1);
+    color: var(--mr-danger);
+}
+
+.mr-action-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--mr-gray-700);
+    text-align: center;
+}
+
+.mr-action-btn.emergency {
+    border-color: rgba(214, 57, 57, 0.3);
+    background: rgba(214, 57, 57, 0.02);
+}
+
+.mr-action-btn.emergency:hover {
+    border-color: var(--mr-danger);
+    background: rgba(214, 57, 57, 0.05);
+}
+
+/* ===== Rental Details ===== */
+.mr-details-card {
     padding: 16px;
-    border-radius: 12px;
-    display: inline-block;
 }
 
-.qr-code-image {
-    width: 160px;
-    height: 160px;
+.mr-detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
 }
 
-/* Responsive adjustments */
-@media (max-width: 992px) {
-    ::deep .col-lg-4 {
-        order: -1; /* Shop contact first on mobile */
+.mr-detail-row:not(:last-child) {
+    border-bottom: 1px solid var(--mr-gray-100);
+}
+
+.mr-detail-label {
+    font-size: 14px;
+    color: var(--mr-gray-500);
+}
+
+.mr-detail-value {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--mr-gray-900);
+}
+
+.mr-detail-divider {
+    height: 1px;
+    background: var(--mr-gray-200);
+    margin: 8px 0;
+}
+
+.mr-detail-row.total {
+    padding-top: 16px;
+}
+
+.mr-detail-row.total .mr-detail-label {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--mr-gray-900);
+}
+
+.mr-detail-row.total .mr-detail-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--mr-primary);
+}
+
+.mr-notes {
+    margin-top: 16px;
+    padding: 12px;
+    background: var(--mr-gray-100);
+    border-radius: var(--mr-radius-sm);
+    display: flex;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--mr-gray-700);
+}
+
+.mr-notes i {
+    color: var(--mr-gray-500);
+    flex-shrink: 0;
+}
+
+/* ===== Reminder Card ===== */
+.mr-reminder-card {
+    background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
+    border-radius: var(--mr-radius);
+    overflow: hidden;
+    box-shadow: var(--mr-shadow);
+}
+
+.mr-reminder-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    background: rgba(245, 159, 0, 0.2);
+    font-size: 14px;
+    font-weight: 600;
+    color: #b57800;
+}
+
+.mr-reminder-header i {
+    font-size: 18px;
+}
+
+.mr-reminder-list {
+    list-style: none;
+    padding: 16px;
+    margin: 0;
+}
+
+.mr-reminder-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 0;
+    font-size: 14px;
+    color: var(--mr-gray-700);
+}
+
+.mr-reminder-list li i {
+    font-size: 18px;
+    color: var(--mr-warning);
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.mr-reminder-list li.highlight {
+    background: rgba(245, 159, 0, 0.15);
+    margin: 8px -16px -16px;
+    padding: 12px 16px;
+    border-radius: 0 0 var(--mr-radius) var(--mr-radius);
+}
+
+.mr-reminder-list li.highlight strong {
+    color: #b57800;
+}
+
+/* ===== Shop Card Override ===== */
+::deep .mr-shop-card {
+    border-radius: var(--mr-radius) !important;
+    box-shadow: var(--mr-shadow) !important;
+}
+
+/* ===== Desktop Styles ===== */
+@media (min-width: 768px) {
+    .mr-rental-page {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+        padding-bottom: 100px;
+    }
+
+    .mr-sync-bar {
+        border-radius: var(--mr-radius);
+        margin-bottom: 20px;
+        position: relative;
+    }
+
+    .mr-status-hero {
+        border-radius: var(--mr-radius);
+        margin-bottom: 20px;
+    }
+
+    .mr-qr-section {
+        padding: 0 0 20px;
+    }
+
+    .mr-section {
+        padding: 0 0 20px;
+    }
+
+    .mr-actions-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+
+    .mr-action-btn {
+        min-height: 120px;
+    }
+
+    .mr-vehicle-info-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .mr-info-item.full-width {
+        grid-column: auto;
+    }
+}
+
+/* ===== Safe Area for Fixed FAB ===== */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+    .mr-rental-page {
+        padding-bottom: calc(100px + env(safe-area-inset-bottom));
     }
 }
