@@ -355,63 +355,63 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        m_vehicleId = DecodeId(VehicleId);
-        await LoadVehicleAsync();
+        this.m_vehicleId = this.DecodeId(this.VehicleId);
+        await this.LoadVehicleAsync();
     }
 
     private async Task LoadVehicleAsync()
     {
-        m_loading = true;
+        this.m_loading = true;
         try
         {
-            m_vehicle = await MotorbikeService.GetMotorbikeByIdAsync(m_vehicleId);
+            this.m_vehicle = await this.MotorbikeService.GetMotorbikeByIdAsync(this.m_vehicleId);
 
-            if (m_vehicle != null)
+            if (this.m_vehicle != null)
             {
                 // Load images and convert to URLs
-                var images = await VehicleImageService.GetImagesForVehicleAsync(m_vehicleId);
-                m_imageUrls = images
+                var images = await this.VehicleImageService.GetImagesForVehicleAsync(this.m_vehicleId);
+                this.m_imageUrls = images
                     .Where(img => !string.IsNullOrEmpty(img.StoreId))
-                    .Select(img => BinaryStore.GetImageUrl(img.StoreId))
+                    .Select(img => this.BinaryStore.GetImageUrl(img.StoreId))
                     .ToList();
 
                 // Set selected image
-                m_selectedImageUrl = m_vehicle.ImagePath ?? m_imageUrls.FirstOrDefault();
+                this.m_selectedImageUrl = this.m_vehicle.ImagePath ?? this.m_imageUrls.FirstOrDefault();
 
                 // Load similar bikes (same engine class)
-                var allBikes = await MotorbikeService.GetAvailableMotorbikesAsync();
-                m_similarBikes = allBikes
-                    .Where(b => b.MotorbikeId != m_vehicleId)
-                    .Where(b => Math.Abs(b.EngineCC - m_vehicle.EngineCC) <= 25) // Similar engine size
+                var allBikes = await this.MotorbikeService.GetAvailableMotorbikesAsync();
+                this.m_similarBikes = allBikes
+                    .Where(b => b.MotorbikeId != this.m_vehicleId)
+                    .Where(b => Math.Abs(b.EngineCC - this.m_vehicle.EngineCC) <= 25) // Similar engine size
                     .Take(4)
                     .ToList();
             }
         }
         catch (Exception ex)
         {
-            ShowError($"Error loading vehicle: {ex.Message}");
+            this.ShowError($"Error loading vehicle: {ex.Message}");
         }
         finally
         {
-            m_loading = false;
+            this.m_loading = false;
         }
     }
 
     private async Task StartReservation()
     {
-        if (m_vehicle == null) return;
+        if (this.m_vehicle == null) return;
 
-        var result = await DialogService
+        var result = await this.DialogService
             .Create<ReservationDialog>("Make a Reservation")
-            .WithParameter(x => x.Motorbike, m_vehicle)
-            .WithParameter(x => x.DateRange, new ReservationDialog.DateRangeSelection(m_startDate, m_endDate))
+            .WithParameter(x => x.Motorbike, this.m_vehicle)
+            .WithParameter(x => x.DateRange, new ReservationDialog.DateRangeSelection(this.m_startDate, this.m_endDate))
             .Medium()
             .ShowAndGetDataAsync<int?>();
 
         if (result.HasValue)
         {
-            ShowSuccess("Reservation submitted successfully! We'll contact you shortly.");
-            NavigateToTenant("my-rentals");
+            this.ShowSuccess("Reservation submitted successfully! We'll contact you shortly.");
+            this.NavigateToTenant("my-rentals");
         }
     }
 

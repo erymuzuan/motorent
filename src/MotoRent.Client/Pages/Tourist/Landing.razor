@@ -356,45 +356,45 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadDataAsync();
+        await this.LoadDataAsync();
     }
 
     private async Task LoadDataAsync()
     {
-        m_loading = true;
+        this.m_loading = true;
         try
         {
             // Load shops
-            m_shops = await ShopService.GetActiveShopsAsync();
+            this.m_shops = await this.ShopService.GetActiveShopsAsync();
 
             // Load available bikes count and featured bikes
-            var availableBikes = await MotorbikeService.GetAvailableMotorbikesAsync();
+            var availableBikes = await this.MotorbikeService.GetAvailableMotorbikesAsync();
             var bikesList = availableBikes.ToList();
-            m_availableBikesCount = bikesList.Count;
+            this.m_availableBikesCount = bikesList.Count;
 
             // Get featured bikes (top 4 by daily rate - assuming higher price = featured)
-            m_featuredBikes = bikesList
+            this.m_featuredBikes = bikesList
                 .OrderByDescending(b => b.DailyRate)
                 .Take(4)
                 .ToList();
         }
         catch (Exception ex)
         {
-            ShowError($"Error loading data: {ex.Message}");
+            this.ShowError($"Error loading data: {ex.Message}");
         }
         finally
         {
-            m_loading = false;
+            this.m_loading = false;
         }
     }
 
     private string GetHeroStyle()
     {
-        var style = $"background: linear-gradient(135deg, {TenantBranding.PrimaryColor} 0%, {TenantBranding.SecondaryColor} 100%); color: {TenantBranding.TextOnPrimary};";
+        var style = $"background: linear-gradient(135deg, {this.TenantBranding.PrimaryColor} 0%, {this.TenantBranding.SecondaryColor} 100%); color: {this.TenantBranding.TextOnPrimary};";
 
-        if (!string.IsNullOrEmpty(TenantBranding.HeroImageUrl))
+        if (!string.IsNullOrEmpty(this.TenantBranding.HeroImageUrl))
         {
-            style = $"background: linear-gradient(135deg, {TenantBranding.PrimaryColor}dd 0%, {TenantBranding.SecondaryColor}dd 100%), url('{TenantBranding.HeroImageUrl}'); background-size: cover; background-position: center; color: {TenantBranding.TextOnPrimary};";
+            style = $"background: linear-gradient(135deg, {this.TenantBranding.PrimaryColor}dd 0%, {this.TenantBranding.SecondaryColor}dd 100%), url('{this.TenantBranding.HeroImageUrl}'); background-size: cover; background-position: center; color: {this.TenantBranding.TextOnPrimary};";
         }
 
         return style;

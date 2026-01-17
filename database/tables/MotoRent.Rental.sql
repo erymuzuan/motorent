@@ -14,6 +14,7 @@ CREATE TABLE [<schema>].[Rental]
     [IntervalMinutes] AS CAST(JSON_VALUE([Json], '$.IntervalMinutes') AS INT),
     -- Status and Dates
     [Status] AS CAST(JSON_VALUE([Json], '$.Status') AS NVARCHAR(20)),
+    [WebId] AS CAST(JSON_VALUE([Json], '$.WebId') AS NVARCHAR(50)),
     [StartDate] DATE NULL,
     [ExpectedEndDate] DATE NULL,
     -- Driver/Guide
