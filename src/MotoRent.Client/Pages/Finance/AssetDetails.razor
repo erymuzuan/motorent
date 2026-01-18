@@ -5,19 +5,19 @@
 @inherits LocalizedComponentBase<AssetDetails>
 @inject AssetService AssetService
 
-<MotoRentPageTitle>@(m_asset?.VehicleName ?? "Asset Details")</MotoRentPageTitle>
+<MotoRentPageTitle>@(m_asset?.VehicleName ?? this.Localizer["AssetDetails"])</MotoRentPageTitle>
 
 <!-- Page Header -->
 <div class="mr-page-header">
     <div class="container-xl">
         <nav class="mr-breadcrumb">
-            <span class="mr-breadcrumb-item"><a href="/">Home</a></span>
+            <span class="mr-breadcrumb-item"><a href="/">@this.CommonLocalizer["Home"]</a></span>
             <i class="ti ti-chevron-right mr-breadcrumb-separator"></i>
-            <span class="mr-breadcrumb-item"><a href="/finance">Finance</a></span>
+            <span class="mr-breadcrumb-item"><a href="/finance">@this.Localizer["Finance"]</a></span>
             <i class="ti ti-chevron-right mr-breadcrumb-separator"></i>
-            <span class="mr-breadcrumb-item"><a href="/finance/asset-dashboard">Asset Dashboard</a></span>
+            <span class="mr-breadcrumb-item"><a href="/finance/asset-dashboard">@this.Localizer["AssetDashboard"]</a></span>
             <i class="ti ti-chevron-right mr-breadcrumb-separator"></i>
-            <span class="mr-breadcrumb-item active">@(m_asset?.VehicleName ?? "Details")</span>
+            <span class="mr-breadcrumb-item active">@(m_asset?.VehicleName ?? this.Localizer["Details"])</span>
         </nav>
         <div class="d-flex justify-content-between align-items-center pb-3">
             <div class="d-flex align-items-center gap-3">
@@ -25,14 +25,14 @@
                     <i class="ti ti-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="mr-page-title">@(m_asset?.VehicleName ?? "Asset Details")</h1>
-                    <p class="mr-page-subtitle mb-0">@m_asset?.LicensePlate - Depreciation & Performance</p>
+                    <h1 class="mr-page-title">@(m_asset?.VehicleName ?? this.Localizer["AssetDetails"])</h1>
+                    <p class="mr-page-subtitle mb-0">@m_asset?.LicensePlate - @this.Localizer["DepreciationPerformance"]</p>
                 </div>
             </div>
             <div class="btn-list">
                 <a href="/finance/assets/@AssetId" class="btn btn-outline-primary">
                     <i class="ti ti-edit me-1"></i>
-                    Edit Asset
+                    @this.Localizer["EditAsset"]
                 </a>
             </div>
         </div>
@@ -44,7 +44,7 @@
     {
         <div class="text-center py-5">
             <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
+                <span class="visually-hidden">@this.CommonLocalizer["Loading"]</span>
             </div>
         </div>
     }
@@ -52,7 +52,7 @@
     {
         <div class="alert alert-warning">
             <i class="ti ti-alert-triangle me-2"></i>
-            Asset not found.
+            @this.Localizer["AssetNotFound"]
         </div>
     }
     else
@@ -63,9 +63,9 @@
                 <div class="card">
                     <div class="card-body">
                         <div class="d-flex align-items-center">
-                            <div class="subheader">Acquisition Cost</div>
+                            <div class="subheader">@this.Localizer["AcquisitionCost"]</div>
                         </div>
-                        <div class="h1 mb-0">@m_asset.AcquisitionCost.ToString("N0") <small class="text-muted">THB</small></div>
+                        <div class="h1 mb-0">@m_asset.AcquisitionCost.ToString("N0") <small class="text-muted">@this.Localizer["CurrencyTHB"]</small></div>
                         <div class="text-muted">@m_asset.AcquisitionDate.ToString("dd MMM yyyy")</div>
                     </div>
                 </div>
@@ -74,10 +74,10 @@
                 <div class="card">
                     <div class="card-body">
                         <div class="d-flex align-items-center">
-                            <div class="subheader">Current Book Value</div>
+                            <div class="subheader">@this.Localizer["CurrentBookValue"]</div>
                         </div>
-                        <div class="h1 mb-0 text-primary">@m_asset.CurrentBookValue.ToString("N0") <small class="text-muted">THB</small></div>
-                        <div class="text-muted">@((m_asset.CurrentBookValue / m_asset.AcquisitionCost * 100).ToString("N1"))% of original</div>
+                        <div class="h1 mb-0 text-primary">@m_asset.CurrentBookValue.ToString("N0") <small class="text-muted">@this.Localizer["CurrencyTHB"]</small></div>
+                        <div class="text-muted">@this.Localizer["PercentOfOriginal", (m_asset.CurrentBookValue / m_asset.AcquisitionCost * 100).ToString("N1")]</div>
                     </div>
                 </div>
             </div>
@@ -85,10 +85,10 @@
                 <div class="card">
                     <div class="card-body">
                         <div class="d-flex align-items-center">
-                            <div class="subheader">Accumulated Depreciation</div>
+                            <div class="subheader">@this.Localizer["AccumulatedDepreciation"]</div>
                         </div>
-                        <div class="h1 mb-0 text-warning">@m_asset.AccumulatedDepreciation.ToString("N0") <small class="text-muted">THB</small></div>
-                        <div class="text-muted">@m_asset.RemainingUsefulLifeMonths months remaining</div>
+                        <div class="h1 mb-0 text-warning">@m_asset.AccumulatedDepreciation.ToString("N0") <small class="text-muted">@this.Localizer["CurrencyTHB"]</small></div>
+                        <div class="text-muted">@this.Localizer["MonthsRemaining", m_asset.RemainingUsefulLifeMonths]</div>
                     </div>
                 </div>
             </div>
@@ -96,12 +96,12 @@
                 <div class="card">
                     <div class="card-body">
                         <div class="d-flex align-items-center">
-                            <div class="subheader">ROI</div>
+                            <div class="subheader">@this.Localizer["ROI"]</div>
                         </div>
                         <div class="h1 mb-0 @(m_asset.ROIPercent >= 0 ? "text-success" : "text-danger")">
                             @(m_asset.ROIPercent >= 0 ? "+" : "")@m_asset.ROIPercent.ToString("N1")%
                         </div>
-                        <div class="text-muted">Net P/L: @m_asset.NetProfitLoss.ToString("N0") THB</div>
+                        <div class="text-muted">@this.Localizer["NetPLLabel", m_asset.NetProfitLoss.ToString("N0")]</div>
                     </div>
                 </div>
             </div>
@@ -114,17 +114,17 @@
                     <div class="card-header">
                         <h3 class="card-title">
                             <i class="ti ti-chart-area me-2"></i>
-                            Asset Value Over Time
+                            @this.Localizer["AssetValueOverTime"]
                         </h3>
                         <div class="card-actions">
                             <div class="btn-group">
                                 <button class="btn btn-sm @(m_chartView == "history" ? "btn-primary" : "btn-outline-secondary")"
                                         @onclick="@(() => SetChartView("history"))">
-                                    History
+                                    @this.Localizer["History"]
                                 </button>
                                 <button class="btn btn-sm @(m_chartView == "projection" ? "btn-primary" : "btn-outline-secondary")"
                                         @onclick="@(() => SetChartView("projection"))">
-                                    Projection
+                                    @this.Localizer["Projection"]
                                 </button>
                             </div>
                         </div>
@@ -189,7 +189,7 @@
 
                                     @* Current value marker *@
                                     <line x1="50" y1="50" x2="50" y2="250" stroke="#ef4444" stroke-width="2" stroke-dasharray="3,3" />
-                                    @((MarkupString)"<text x=\"55\" y=\"45\" font-size=\"10\" fill=\"#ef4444\">Today</text>")
+                                    @((MarkupString)$"<text x=\"55\" y=\"45\" font-size=\"10\" fill=\"#ef4444\">{this.Localizer["Today"]}</text>")
 
                                     <defs>
                                         <linearGradient id="projGradient" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -208,7 +208,7 @@
                         {
                             <div class="text-center text-muted py-5">
                                 <i class="ti ti-chart-line" style="font-size: 3rem;"></i>
-                                <p class="mt-2">No depreciation data available yet</p>
+                                <p class="mt-2">@this.Localizer["NoDepreciationData"]</p>
                             </div>
                         }
                     </div>
@@ -221,34 +221,34 @@
                     <div class="card-header">
                         <h3 class="card-title">
                             <i class="ti ti-info-circle me-2"></i>
-                            Depreciation Settings
+                            @this.Localizer["DepreciationSettings"]
                         </h3>
                     </div>
                     <div class="card-body">
                         <dl class="row mb-0">
-                            <dt class="col-5">Method:</dt>
+                            <dt class="col-5">@this.Localizer["MethodLabel"]:</dt>
                             <dd class="col-7">
                                 <span class="badge bg-blue-lt">@m_asset.DepreciationMethod.ToString()</span>
                             </dd>
-                            <dt class="col-5">Useful Life:</dt>
-                            <dd class="col-7">@m_asset.UsefulLifeMonths months (@((m_asset.UsefulLifeMonths / 12.0).ToString("N1")) years)</dd>
-                            <dt class="col-5">Residual Value:</dt>
-                            <dd class="col-7">@m_asset.ResidualValue.ToString("N0") THB</dd>
-                            <dt class="col-5">Monthly Depr:</dt>
-                            <dd class="col-7">@m_asset.MonthlyDepreciationStraightLine.ToString("N0") THB</dd>
+                            <dt class="col-5">@this.Localizer["UsefulLifeLabel"]:</dt>
+                            <dd class="col-7">@this.Localizer["UsefulLifeMonthsValue", m_asset.UsefulLifeMonths, (m_asset.UsefulLifeMonths / 12.0).ToString("N1")]</dd>
+                            <dt class="col-5">@this.Localizer["ResidualValueLabel"]:</dt>
+                            <dd class="col-7">@m_asset.ResidualValue.ToString("N0") @this.Localizer["CurrencyTHB"]</dd>
+                            <dt class="col-5">@this.Localizer["MonthlyDeprLabel"]:</dt>
+                            <dd class="col-7">@m_asset.MonthlyDepreciationStraightLine.ToString("N0") @this.Localizer["CurrencyTHB"]</dd>
                             @if (m_asset.DayOutOfDoorPercent.HasValue)
                             {
-                                <dt class="col-5">Day Out %:</dt>
+                                <dt class="col-5">@this.Localizer["DayOutPercentLabel"]:</dt>
                                 <dd class="col-7">@((m_asset.DayOutOfDoorPercent.Value * 100).ToString("N0"))%</dd>
                             }
                             @if (m_asset.FirstRentalDate.HasValue)
                             {
-                                <dt class="col-5">First Rental:</dt>
+                                <dt class="col-5">@this.Localizer["FirstRentalLabel"]:</dt>
                                 <dd class="col-7">@m_asset.FirstRentalDate.Value.ToString("dd MMM yyyy")</dd>
                             }
-                            <dt class="col-5">Last Depr:</dt>
-                            <dd class="col-7">@(m_asset.LastDepreciationDate?.ToString("dd MMM yyyy") ?? "Never")</dd>
-                            <dt class="col-5">Status:</dt>
+                            <dt class="col-5">@this.Localizer["LastDeprLabel"]:</dt>
+                            <dd class="col-7">@(m_asset.LastDepreciationDate?.ToString("dd MMM yyyy") ?? this.Localizer["Never"])</dd>
+                            <dt class="col-5">@this.Localizer["StatusLabel"]:</dt>
                             <dd class="col-7">
                                 <span class="badge @GetStatusBadgeClass(m_asset.Status)">@m_asset.Status</span>
                             </dd>
@@ -263,22 +263,22 @@
             <div class="card-header">
                 <h3 class="card-title">
                     <i class="ti ti-history me-2"></i>
-                    Depreciation History
+                    @this.Localizer["DepreciationHistory"]
                 </h3>
                 <div class="card-actions">
-                    <span class="badge bg-blue">@m_depreciationEntries.Count entries</span>
+                    <span class="badge bg-blue">@this.Localizer["EntriesCount", m_depreciationEntries.Count]</span>
                 </div>
             </div>
             <div class="table-responsive">
                 <table class="table table-vcenter card-table">
                     <thead>
                         <tr>
-                            <th>Period</th>
-                            <th>Method</th>
-                            <th class="text-end">Book Value Start</th>
-                            <th class="text-end">Depreciation</th>
-                            <th class="text-end">Book Value End</th>
-                            <th>Type</th>
+                            <th>@this.Localizer["Period"]</th>
+                            <th>@this.Localizer["Method"]</th>
+                            <th class="text-end">@this.Localizer["BookValueStart"]</th>
+                            <th class="text-end">@this.Localizer["Depreciation"]</th>
+                            <th class="text-end">@this.Localizer["BookValueEnd"]</th>
+                            <th>@this.Localizer["Type"]</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -301,13 +301,13 @@
                                         @if (entry.IsManualOverride)
                                         {
                                             <span class="badge bg-yellow-lt" title="@entry.OverrideReason">
-                                                <i class="ti ti-edit me-1"></i>Manual
+                                                <i class="ti ti-edit me-1"></i>@this.Localizer["Manual"]
                                             </span>
                                         }
                                         else
                                         {
                                             <span class="badge bg-green-lt">
-                                                <i class="ti ti-robot me-1"></i>System
+                                                <i class="ti ti-robot me-1"></i>@this.Localizer["System"]
                                             </span>
                                         }
                                     </td>
@@ -319,7 +319,7 @@
                             <tr>
                                 <td colspan="6" class="text-center text-muted py-4">
                                     <i class="ti ti-calendar-off" style="font-size: 2rem;"></i>
-                                    <p class="mb-0 mt-2">No depreciation entries recorded yet</p>
+                                    <p class="mb-0 mt-2">@this.Localizer["NoDepreciationEntries"]</p>
                                 </td>
                             </tr>
                         }

@@ -1,0 +1,407 @@
+@page "/finance/agent-commissions"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Policy = "RequireTenantManager")]
+@inherits LocalizedComponentBase<AgentCommissions>
+@inject AgentCommissionService CommissionService
+@inject AgentService AgentService
+
+<MotoRentPageTitle>@this.Localizer["AgentCommissions"]</MotoRentPageTitle>
+
+<TablerHeader Title="@this.Localizer["AgentCommissions"]" PreTitle="@this.Localizer["ManagePayouts"]">
+    @if (this.SelectedCommissions.Count > 0)
+    {
+        <div class="btn-list">
+            @if (this.SelectedCommissions.All(c => c.Status == AgentCommissionStatus.Pending && c.RentalId.HasValue))
+            {
+                <button type="button" class="btn btn-info" @onclick="this.ApproveSelectedAsync">
+                    <i class="ti ti-check me-1"></i>
+                    @this.Localizer["ApproveSelected"] (@this.SelectedCommissions.Count)
+                </button>
+            }
+            @if (this.SelectedCommissions.All(c => c.Status == AgentCommissionStatus.Approved))
+            {
+                <button type="button" class="btn btn-success" @onclick="this.OpenPayDialogAsync">
+                    <i class="ti ti-cash me-1"></i>
+                    @this.Localizer["PaySelected"] (@this.SelectedCommissions.Count)
+                </button>
+            }
+        </div>
+    }
+</TablerHeader>
+
+<div class="row">
+    @* Filters Column *@
+    <div class="col-md-3">
+        <div class="card mb-3">
+            <div class="card-header">
+                <h3 class="card-title">@this.Localizer["Filters"]</h3>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">@this.Localizer["Agent"]</label>
+                    <select class="form-select" @bind="this.AgentFilter" @bind:after="this.LoadDataAsync">
+                        <option value="">@this.Localizer["AllAgents"]</option>
+                        @foreach (var agent in this.Agents)
+                        {
+                            <option value="@agent.AgentId">@agent.Name (@agent.AgentCode)</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">@this.CommonLocalizer["Status"]</label>
+                    <select class="form-select" @bind="this.StatusFilter" @bind:after="this.LoadDataAsync">
+                        <option value="">@this.Localizer["AllStatuses"]</option>
+                        @foreach (var status in AgentCommissionStatus.All)
+                        {
+                            <option value="@status">@this.Localizer[status]</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">@this.Localizer["DateRange"]</label>
+                    <div class="input-group mb-2">
+                        <span class="input-group-text">@this.Localizer["From"]</span>
+                        <input type="date" class="form-control" @bind="this.FromDate" @bind:after="this.LoadDataAsync" />
+                    </div>
+                    <div class="input-group">
+                        <span class="input-group-text">@this.Localizer["To"]</span>
+                        <input type="date" class="form-control" @bind="this.ToDate" @bind:after="this.LoadDataAsync" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* Summary Card *@
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">@this.Localizer["Summary"]</h3>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    <div class="list-group-item d-flex justify-content-between">
+                        <span class="text-warning">@this.CommonLocalizer["Pending"]</span>
+                        <div class="text-end">
+                            <div class="fw-bold">@this.Summary.PendingCount</div>
+                            <small class="text-secondary">@this.Localizer["CurrencyTHB"]@this.Summary.PendingAmount.ToString("N0")</small>
+                        </div>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between">
+                        <span class="text-info">@this.Localizer["Approved"]</span>
+                        <div class="text-end">
+                            <div class="fw-bold">@this.Summary.ApprovedCount</div>
+                            <small class="text-secondary">@this.Localizer["CurrencyTHB"]@this.Summary.ApprovedAmount.ToString("N0")</small>
+                        </div>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between">
+                        <span class="text-success">@this.CommonLocalizer["Paid"]</span>
+                        <div class="text-end">
+                            <div class="fw-bold">@this.Summary.PaidCount</div>
+                            <small class="text-secondary">@this.Localizer["CurrencyTHB"]@this.Summary.PaidAmount.ToString("N0")</small>
+                        </div>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between bg-light">
+                        <span class="fw-bold">@this.Localizer["TotalOutstanding"]</span>
+                        <span class="fw-bold text-danger">@this.Localizer["CurrencyTHB"]@this.Summary.TotalOutstanding.ToString("N0")</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Commissions Table Column *@
+    <div class="col-md-9">
+        <LoadingSkeleton Loading="@this.Loading" Mode="LoadingSkeleton.PlaceholderMode.Table">
+            <div class="card">
+                <div class="table-responsive">
+                    <table class="table table-vcenter card-table">
+                        <thead>
+                            <tr>
+                                <th class="w-1">
+                                    <input type="checkbox" class="form-check-input"
+                                           @bind="this.SelectAll" @bind:after="this.ToggleSelectAll" />
+                                </th>
+                                <th>@this.Localizer["Agent"]</th>
+                                <th>@this.Localizer["BookingRef"]</th>
+                                <th>@this.Localizer["Customer"]</th>
+                                <th class="text-end">@this.Localizer["BookingTotal"]</th>
+                                <th class="text-end">@this.Localizer["Commission"]</th>
+                                <th>@this.CommonLocalizer["Status"]</th>
+                                <th>@this.CommonLocalizer["Date"]</th>
+                                <th class="w-1"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var commission in this.Commissions)
+                            {
+                                <tr class="@(this.SelectedCommissions.Contains(commission) ? "table-active" : "")">
+                                    <td>
+                                        <input type="checkbox" class="form-check-input"
+                                               checked="@this.SelectedCommissions.Contains(commission)"
+                                               @onchange="@(() => this.ToggleSelection(commission))" />
+                                    </td>
+                                    <td>
+                                        <a href="/agents/@commission.AgentId" class="text-decoration-none">
+                                            <strong>@commission.AgentCode</strong>
+                                        </a>
+                                        <div class="small text-secondary">@commission.AgentName</div>
+                                    </td>
+                                    <td>
+                                        <a href="/bookings/@commission.BookingRef">@commission.BookingRef</a>
+                                    </td>
+                                    <td>@commission.CustomerName</td>
+                                    <td class="text-end">@this.Localizer["CurrencyTHB"]@commission.BookingTotal.ToString("N0")</td>
+                                    <td class="text-end fw-bold">@this.Localizer["CurrencyTHB"]@commission.CommissionAmount.ToString("N0")</td>
+                                    <td>
+                                        <span class="badge @GetStatusBadgeClass(commission.Status)">
+                                            @this.Localizer[commission.Status]
+                                        </span>
+                                        @if (commission.Status == AgentCommissionStatus.Pending && !commission.RentalId.HasValue)
+                                        {
+                                            <br /><small class="text-warning">@this.Localizer["RentalNotCompleted"]</small>
+                                        }
+                                    </td>
+                                    <td>
+                                        <div>@commission.CreatedTimestamp.ToString("dd MMM")</div>
+                                        @if (commission.PaidDate.HasValue)
+                                        {
+                                            <small class="text-success">@this.Localizer["PaidOn", commission.PaidDate.Value.ToString("dd MMM")]</small>
+                                        }
+                                    </td>
+                                    <td>
+                                        <div class="dropdown">
+                                            <button type="button" class="btn btn-sm btn-ghost-secondary dropdown-toggle"
+                                                    data-bs-toggle="dropdown">
+                                                <i class="ti ti-dots-vertical"></i>
+                                            </button>
+                                            <div class="dropdown-menu dropdown-menu-end">
+                                                @if (commission.Status == AgentCommissionStatus.Pending && commission.RentalId.HasValue)
+                                                {
+                                                    <button type="button" class="dropdown-item"
+                                                            @onclick="@(() => this.ApproveCommissionAsync(commission))">
+                                                        <i class="ti ti-check me-2"></i>
+                                                        @this.Localizer["Approve"]
+                                                    </button>
+                                                }
+                                                @if (commission.Status == AgentCommissionStatus.Approved)
+                                                {
+                                                    <button type="button" class="dropdown-item"
+                                                            @onclick="@(() => this.PayCommissionAsync(commission))">
+                                                        <i class="ti ti-cash me-2"></i>
+                                                        @this.Localizer["Pay"]
+                                                    </button>
+                                                }
+                                                @if (commission.Status != AgentCommissionStatus.Paid && commission.Status != AgentCommissionStatus.Voided)
+                                                {
+                                                    <button type="button" class="dropdown-item text-danger"
+                                                            @onclick="@(() => this.VoidCommissionAsync(commission))">
+                                                        <i class="ti ti-x me-2"></i>
+                                                        @this.Localizer["Void"]
+                                                    </button>
+                                                }
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </LoadingSkeleton>
+
+        @if (!this.Loading && this.Commissions.Count == 0)
+        {
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="ti ti-percentage mb-3" style="font-size: 3rem; color: var(--tblr-secondary);"></i>
+                    <h3 class="text-secondary">@this.Localizer["NoCommissionsFound"]</h3>
+                    <p class="text-secondary">@this.Localizer["AdjustFilters"]</p>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<AgentCommission> Commissions { get; } = [];
+    private List<Agent> Agents { get; } = [];
+    private HashSet<AgentCommission> SelectedCommissions { get; } = [];
+    private CommissionSummary Summary { get; set; } = new();
+    private bool Loading { get; set; }
+    private bool SelectAll { get; set; }
+    private int? AgentFilter { get; set; }
+    private string? StatusFilter { get; set; }
+    private DateTime? FromDate { get; set; }
+    private DateTime? ToDate { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Load agents for filter dropdown
+        var agentsResult = await this.AgentService.GetActiveAgentsAsync();
+        this.Agents.Clear();
+        this.Agents.AddRange(agentsResult);
+
+        await this.LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        if (this.Loading) return;
+        this.Loading = true;
+        this.SelectedCommissions.Clear();
+        this.SelectAll = false;
+
+        try
+        {
+            var fromDate = this.FromDate.HasValue ? new DateTimeOffset(this.FromDate.Value) : (DateTimeOffset?)null;
+            var toDate = this.ToDate.HasValue ? new DateTimeOffset(this.ToDate.Value.AddDays(1)) : (DateTimeOffset?)null;
+
+            var result = await this.CommissionService.GetCommissionsAsync(
+                agentId: this.AgentFilter,
+                status: this.StatusFilter,
+                fromDate: fromDate,
+                toDate: toDate,
+                page: 1,
+                pageSize: 100);
+
+            this.Commissions.Clear();
+            this.Commissions.AddRange(result.ItemCollection);
+
+            // Load summary
+            this.Summary = await this.CommissionService.GetCommissionSummaryAsync(
+                agentId: this.AgentFilter,
+                fromDate: fromDate,
+                toDate: toDate);
+        }
+        catch (Exception ex)
+        {
+            this.ShowError(this.Localizer["ErrorLoadingCommissions", ex.Message]);
+        }
+        finally
+        {
+            this.Loading = false;
+        }
+    }
+
+    private void ToggleSelection(AgentCommission commission)
+    {
+        if (this.SelectedCommissions.Contains(commission))
+            this.SelectedCommissions.Remove(commission);
+        else
+            this.SelectedCommissions.Add(commission);
+    }
+
+    private void ToggleSelectAll()
+    {
+        if (this.SelectAll)
+        {
+            foreach (var c in this.Commissions.Where(c => c.Status != AgentCommissionStatus.Paid && c.Status != AgentCommissionStatus.Voided))
+            {
+                this.SelectedCommissions.Add(c);
+            }
+        }
+        else
+        {
+            this.SelectedCommissions.Clear();
+        }
+    }
+
+    private async Task ApproveCommissionAsync(AgentCommission commission)
+    {
+        var result = await this.CommissionService.ApproveCommissionAsync(commission.AgentCommissionId, this.UserName);
+        if (result.Success)
+        {
+            this.ShowSuccess(this.Localizer["CommissionApproved"]);
+            await this.LoadDataAsync();
+        }
+        else
+        {
+            this.ShowError(result.Message ?? this.Localizer["ApprovalFailed"]);
+        }
+    }
+
+    private async Task ApproveSelectedAsync()
+    {
+        var ids = this.SelectedCommissions.Select(c => c.AgentCommissionId).ToArray();
+        var result = await this.CommissionService.ApproveCommissionsAsync(ids, this.UserName);
+
+        if (result.AllSucceeded)
+        {
+            this.ShowSuccess(this.Localizer["CommissionsApproved", result.SuccessCount]);
+        }
+        else
+        {
+            this.ShowWarning(this.Localizer["PartialApproval", result.SuccessCount, result.FailedCount]);
+        }
+
+        await this.LoadDataAsync();
+    }
+
+    private async Task PayCommissionAsync(AgentCommission commission)
+    {
+        var result = await this.DialogService
+            .Create<PayCommissionDialog>(this.Localizer["PayCommission"])
+            .WithParameter(x => x.Commission, commission)
+            .WithParameter(x => x.IsBulk, false)
+            .WithSize(ModalSize.Medium)
+            .ShowDialogAsync();
+
+        if (!result.Cancelled)
+        {
+            this.ShowSuccess(this.Localizer["CommissionPaid"]);
+            await this.LoadDataAsync();
+        }
+    }
+
+    private async Task OpenPayDialogAsync()
+    {
+        // Use the first selected commission for display, but pass all IDs
+        var firstCommission = this.SelectedCommissions.FirstOrDefault() ?? new AgentCommission();
+        var ids = this.SelectedCommissions.Select(c => c.AgentCommissionId).ToArray();
+
+        var result = await this.DialogService
+            .Create<PayCommissionDialog>(this.Localizer["PayCommissions"])
+            .WithParameter(x => x.Commission, firstCommission)
+            .WithParameter(x => x.IsBulk, true)
+            .WithParameter(x => x.CommissionIds, ids)
+            .WithSize(ModalSize.Medium)
+            .ShowDialogAsync();
+
+        if (!result.Cancelled)
+        {
+            this.ShowSuccess(this.Localizer["CommissionsPaid", ids.Length]);
+            await this.LoadDataAsync();
+        }
+    }
+
+    private async Task VoidCommissionAsync(AgentCommission commission)
+    {
+        var reason = await this.DialogService.PromptAsync(
+            this.Localizer["VoidReason"],
+            this.Localizer["EnterReasonRequired"]);
+
+        if (string.IsNullOrWhiteSpace(reason)) return;
+
+        var result = await this.CommissionService.VoidCommissionAsync(commission.AgentCommissionId, reason, this.UserName);
+        if (result.Success)
+        {
+            this.ShowSuccess(this.Localizer["CommissionVoided"]);
+            await this.LoadDataAsync();
+        }
+        else
+        {
+            this.ShowError(result.Message ?? this.Localizer["VoidFailed"]);
+        }
+    }
+
+    private static string GetStatusBadgeClass(string status) => status switch
+    {
+        AgentCommissionStatus.Pending => "bg-warning",
+        AgentCommissionStatus.Approved => "bg-info",
+        AgentCommissionStatus.Paid => "bg-success",
+        AgentCommissionStatus.Voided => "bg-secondary",
+        _ => "bg-secondary"
+    };
+}

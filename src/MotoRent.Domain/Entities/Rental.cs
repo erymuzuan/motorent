@@ -250,6 +250,12 @@ public partial class Rental : Entity
     public int? InsuranceId { get; set; }
     public int? DepositId { get; set; }
 
+    /// <summary>
+    /// Links this rental to a booking (if created from a booking).
+    /// Used for agent commission eligibility tracking.
+    /// </summary>
+    public int? BookingId { get; set; }
+
     // Pick-up/Drop-off Locations
 
     /// <summary>

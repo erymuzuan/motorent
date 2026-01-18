@@ -191,6 +191,38 @@ public class BookingService
     }
 
     /// <summary>
+    /// Gets bookings for a tourist by email or phone (for rental history page).
+    /// Only returns bookings that haven't been checked in yet (Pending, Confirmed).
+    /// </summary>
+    public async Task<List<Booking>> GetBookingsForTouristAsync(string? email, string? phone)
+    {
+        if (string.IsNullOrWhiteSpace(email) && string.IsNullOrWhiteSpace(phone))
+            return [];
+
+        var query = m_context.CreateQuery<Booking>()
+            .Where(b => b.Status == BookingStatus.Pending || b.Status == BookingStatus.Confirmed);
+
+        // Filter by email or phone
+        if (!string.IsNullOrWhiteSpace(email) && !string.IsNullOrWhiteSpace(phone))
+        {
+            query = query.Where(b => b.CustomerEmail == email || b.CustomerPhone == phone);
+        }
+        else if (!string.IsNullOrWhiteSpace(email))
+        {
+            query = query.Where(b => b.CustomerEmail == email);
+        }
+        else
+        {
+            query = query.Where(b => b.CustomerPhone == phone);
+        }
+
+        query = query.OrderByDescending(b => b.StartDate);
+
+        var result = await m_context.LoadAsync(query, 1, 50, includeTotalRows: false);
+        return result.ItemCollection.ToList();
+    }
+
+    /// <summary>
     /// Generates a unique 6-character booking reference.
     /// </summary>
     public async Task<string> GenerateBookingRefAsync()
@@ -900,6 +932,200 @@ public class BookingService
         }
 
         return CheckInItemResult.CreateFailure(result.Message ?? "Failed to check in item");
+    }
+
+    #endregion
+
+    #region Agent Booking Methods
+
+    /// <summary>
+    /// Applies an agent to an existing booking.
+    /// </summary>
+    public async Task<SubmitOperation> ApplyAgentToBookingAsync(
+        int bookingId,
+        int agentId,
+        string agentCode,
+        string agentName,
+        decimal commission,
+        decimal surcharge,
+        bool surchargeHidden,
+        string paymentFlow,
+        string username)
+    {
+        var booking = await GetBookingByIdAsync(bookingId);
+        if (booking == null)
+        {
+            return SubmitOperation.CreateFailure("Booking not found");
+        }
+
+        booking.AgentId = agentId;
+        booking.AgentCode = agentCode;
+        booking.AgentName = agentName;
+        booking.IsAgentBooking = true;
+        booking.AgentCommission = commission;
+        booking.AgentSurcharge = surcharge;
+        booking.SurchargeHidden = surchargeHidden;
+        booking.AgentPaymentFlow = paymentFlow;
+
+        // Calculate customer visible total and shop receivable
+        booking.CustomerVisibleTotal = surchargeHidden
+            ? booking.TotalAmount + surcharge
+            : booking.TotalAmount;
+        booking.ShopReceivableAmount = booking.TotalAmount - commission;
+
+        // Update booking source
+        booking.BookingSource = "Agent";
+
+        booking.ChangeHistory.Add(new BookingChange
+        {
+            ChangedAt = DateTimeOffset.UtcNow,
+            ChangedBy = username,
+            ChangeType = BookingChangeType.AgentAssigned,
+            Description = $"Agent assigned: {agentName} ({agentCode}). Commission: {commission:C}, Surcharge: {surcharge:C}"
+        });
+
+        using var session = m_context.OpenSession(username);
+        session.Attach(booking);
+        return await session.SubmitChanges("ApplyAgent");
+    }
+
+    /// <summary>
+    /// Removes agent from a booking.
+    /// </summary>
+    public async Task<SubmitOperation> RemoveAgentFromBookingAsync(int bookingId, string username)
+    {
+        var booking = await GetBookingByIdAsync(bookingId);
+        if (booking == null)
+        {
+            return SubmitOperation.CreateFailure("Booking not found");
+        }
+
+        if (!booking.IsAgentBooking)
+        {
+            return SubmitOperation.CreateFailure("Booking is not an agent booking");
+        }
+
+        var oldAgent = booking.AgentName;
+
+        booking.AgentId = null;
+        booking.AgentCode = null;
+        booking.AgentName = null;
+        booking.IsAgentBooking = false;
+        booking.AgentCommission = 0;
+        booking.AgentSurcharge = 0;
+        booking.SurchargeHidden = false;
+        booking.AgentPaymentFlow = PaymentFlow.CustomerPaysShop;
+        booking.CustomerVisibleTotal = 0;
+        booking.ShopReceivableAmount = 0;
+        booking.BookingSource = "Staff";
+
+        booking.ChangeHistory.Add(new BookingChange
+        {
+            ChangedAt = DateTimeOffset.UtcNow,
+            ChangedBy = username,
+            ChangeType = BookingChangeType.AgentRemoved,
+            Description = $"Agent removed: {oldAgent}"
+        });
+
+        using var session = m_context.OpenSession(username);
+        session.Attach(booking);
+        return await session.SubmitChanges("RemoveAgent");
+    }
+
+    /// <summary>
+    /// Gets bookings for a specific agent.
+    /// </summary>
+    public async Task<LoadOperation<Booking>> GetAgentBookingsAsync(
+        int agentId,
+        string? status = null,
+        DateTimeOffset? fromDate = null,
+        DateTimeOffset? toDate = null,
+        int page = 1,
+        int pageSize = 20)
+    {
+        var query = m_context.CreateQuery<Booking>()
+            .Where(b => b.AgentId == agentId);
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            query = query.Where(b => b.Status == status);
+        }
+
+        if (fromDate.HasValue)
+        {
+            query = query.Where(b => b.StartDate >= fromDate.Value);
+        }
+
+        if (toDate.HasValue)
+        {
+            query = query.Where(b => b.StartDate <= toDate.Value);
+        }
+
+        query = query.OrderByDescending(b => b.BookingId);
+
+        return await m_context.LoadAsync(query, page, pageSize, includeTotalRows: true);
+    }
+
+    /// <summary>
+    /// Updates agent financial details on booking.
+    /// </summary>
+    public async Task<SubmitOperation> UpdateAgentFinancialsAsync(
+        int bookingId,
+        decimal commission,
+        decimal surcharge,
+        bool surchargeHidden,
+        string username)
+    {
+        var booking = await GetBookingByIdAsync(bookingId);
+        if (booking == null)
+        {
+            return SubmitOperation.CreateFailure("Booking not found");
+        }
+
+        if (!booking.IsAgentBooking)
+        {
+            return SubmitOperation.CreateFailure("Booking is not an agent booking");
+        }
+
+        var changes = new List<string>();
+        if (booking.AgentCommission != commission)
+        {
+            changes.Add($"Commission: {booking.AgentCommission:C} → {commission:C}");
+            booking.AgentCommission = commission;
+        }
+
+        if (booking.AgentSurcharge != surcharge)
+        {
+            changes.Add($"Surcharge: {booking.AgentSurcharge:C} → {surcharge:C}");
+            booking.AgentSurcharge = surcharge;
+        }
+
+        if (booking.SurchargeHidden != surchargeHidden)
+        {
+            changes.Add($"Surcharge hidden: {booking.SurchargeHidden} → {surchargeHidden}");
+            booking.SurchargeHidden = surchargeHidden;
+        }
+
+        // Recalculate derived amounts
+        booking.CustomerVisibleTotal = surchargeHidden
+            ? booking.TotalAmount + surcharge
+            : booking.TotalAmount;
+        booking.ShopReceivableAmount = booking.TotalAmount - commission;
+
+        if (changes.Count > 0)
+        {
+            booking.ChangeHistory.Add(new BookingChange
+            {
+                ChangedAt = DateTimeOffset.UtcNow,
+                ChangedBy = username,
+                ChangeType = BookingChangeType.AgentFinancialsUpdated,
+                Description = $"Agent financials updated: {string.Join(", ", changes)}"
+            });
+        }
+
+        using var session = m_context.OpenSession(username);
+        session.Attach(booking);
+        return await session.SubmitChanges("UpdateAgentFinancials");
     }
 
     #endregion

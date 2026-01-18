@@ -182,9 +182,63 @@ public class Booking : Entity
     // Source tracking
 
     /// <summary>
-    /// Where booking originated: "TouristPortal" or "Staff".
+    /// Where booking originated: "TouristPortal", "Staff", or "Agent".
     /// </summary>
     public string BookingSource { get; set; } = "Staff";
+
+    // Agent Booking
+
+    /// <summary>
+    /// Agent who made this booking (if agent booking).
+    /// </summary>
+    public int? AgentId { get; set; }
+
+    /// <summary>
+    /// Agent code for display (denormalized).
+    /// </summary>
+    public string? AgentCode { get; set; }
+
+    /// <summary>
+    /// Agent name for display (denormalized).
+    /// </summary>
+    public string? AgentName { get; set; }
+
+    /// <summary>
+    /// Whether this is an agent booking.
+    /// </summary>
+    public bool IsAgentBooking { get; set; }
+
+    // Agent Financials
+
+    /// <summary>
+    /// Calculated commission amount for agent.
+    /// </summary>
+    public decimal AgentCommission { get; set; }
+
+    /// <summary>
+    /// Surcharge amount added by agent.
+    /// </summary>
+    public decimal AgentSurcharge { get; set; }
+
+    /// <summary>
+    /// Whether surcharge is hidden from customer (shows unified total).
+    /// </summary>
+    public bool SurchargeHidden { get; set; }
+
+    /// <summary>
+    /// Payment flow: CustomerPaysShop or CustomerPaysAgent.
+    /// </summary>
+    public string AgentPaymentFlow { get; set; } = PaymentFlow.CustomerPaysShop;
+
+    /// <summary>
+    /// Total shown to customer (may include hidden surcharge).
+    /// </summary>
+    public decimal CustomerVisibleTotal { get; set; }
+
+    /// <summary>
+    /// What shop receives after commission (TotalAmount - AgentCommission).
+    /// </summary>
+    public decimal ShopReceivableAmount { get; set; }
 
     // Change History (for staff audit trail)
 

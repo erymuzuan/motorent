@@ -31,7 +31,7 @@
                     </div>
                     <div class="col-md-6 text-end">
                         <div class="text-secondary">@Localizer["LossAmount"]</div>
-                        <div class="h2 mb-0 text-danger">-@Asset.CurrentBookValue.ToString("N0") THB</div>
+                        <div class="h2 mb-0 text-danger">-@Asset.CurrentBookValue.ToString("N0") @Localizer["CurrencyTHB"]</div>
                     </div>
                 </div>
             </div>
@@ -111,19 +111,19 @@
     {
         if (string.IsNullOrEmpty(m_reasonType))
         {
-            ShowError("Please select a reason for write-off");
+            ShowError(Localizer["SelectReasonRequired"]);
             return;
         }
 
         if (string.IsNullOrWhiteSpace(m_reasonDetails))
         {
-            ShowError("Please provide details about the write-off");
+            ShowError(Localizer["ReasonDetailsRequired"]);
             return;
         }
 
         if (!m_confirmed)
         {
-            ShowError("Please confirm the write-off action");
+            ShowError(Localizer["ConfirmWriteOffRequired"]);
             return;
         }
 
@@ -145,12 +145,12 @@
             }
             else
             {
-                ShowError($"Failed to write off asset: {result.Message}");
+                ShowError(Localizer["WriteOffAssetFailed", result.Message ?? ""]);
             }
         }
         catch (Exception ex)
         {
-            ShowError($"Error: {ex.Message}");
+            ShowError($"{Localizer["Error"]}: {ex.Message}");
         }
         finally
         {
