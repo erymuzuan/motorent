@@ -1,0 +1,325 @@
+@page "/settings/exchange-rates"
+@using Microsoft.AspNetCore.Authorization
+@using MotoRent.Domain.Entities
+@using MotoRent.Services
+@attribute [Authorize(Roles = "OrgAdmin,ShopManager")]
+@inherits LocalizedComponentBase<ExchangeRateSettings>
+@inject ExchangeRateService ExchangeRateService
+
+<MotoRentPageTitle>@Localizer["ExchangeRates"]</MotoRentPageTitle>
+
+<TablerHeader Title="@Localizer["ExchangeRates"]" PreTitle="@Localizer["ManageExchangeRates"]">
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-primary" @onclick="RefreshFromApiAsync" disabled="@m_refreshingApi">
+            @if (m_refreshingApi)
+            {
+                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                @Localizer["RefreshingRates"]
+            }
+            else
+            {
+                <i class="ti ti-refresh me-1"></i>
+                @Localizer["RefreshFromApi"]
+            }
+        </button>
+    </div>
+</TablerHeader>
+
+<LoadingSkeleton Loading="@m_loading" Mode="LoadingSkeleton.PlaceholderMode.Card">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i class="ti ti-currency-dollar me-2"></i>@Localizer["ExchangeRates"]
+            </h3>
+            <p class="card-subtitle">@Localizer["RateHelpText"]</p>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-vcenter card-table">
+                    <thead>
+                        <tr>
+                            <th>@Localizer["Currency"]</th>
+                            <th>@Localizer["BuyRate"]</th>
+                            <th>@Localizer["Source"]</th>
+                            <th>@Localizer["LastUpdated"]</th>
+                            <th class="w-1">@Localizer["Actions"]</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @* THB - Base Currency (not editable) *@
+                        <tr class="bg-light">
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <span class="me-2" style="font-size: 1.25rem;">@GetCurrencyFlag("THB")</span>
+                                    <div>
+                                        <strong>THB</strong>
+                                        <div class="text-secondary small">@Localizer["ThailandBaseCurrency"]</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary">@Localizer["BaseCurrency"]</span>
+                            </td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                        </tr>
+
+                        @* Foreign Currencies *@
+                        @foreach (var currency in m_foreignCurrencies)
+                        {
+                            var rate = m_rates.FirstOrDefault(r => r.Currency == currency);
+                            var isEditing = m_editingCurrency == currency;
+
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <span class="me-2" style="font-size: 1.25rem;">@GetCurrencyFlag(currency)</span>
+                                        <div>
+                                            <strong>@currency</strong>
+                                            <div class="text-secondary small">@GetCurrencyName(currency)</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    @if (isEditing)
+                                    {
+                                        <div class="input-group" style="max-width: 200px;">
+                                            <input type="number"
+                                                   class="form-control"
+                                                   @bind="m_editRate"
+                                                   @bind:event="oninput"
+                                                   step="0.0001"
+                                                   min="0" />
+                                            <button class="btn btn-success" @onclick="SaveRateAsync" disabled="@m_saving">
+                                                @if (m_saving)
+                                                {
+                                                    <span class="spinner-border spinner-border-sm" role="status"></span>
+                                                }
+                                                else
+                                                {
+                                                    <i class="ti ti-check"></i>
+                                                }
+                                            </button>
+                                            <button class="btn btn-outline-secondary" @onclick="CancelEdit">
+                                                <i class="ti ti-x"></i>
+                                            </button>
+                                        </div>
+                                    }
+                                    else if (rate != null)
+                                    {
+                                        <span class="fw-bold">@rate.BuyRate.ToString("N4")</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-secondary fst-italic">@Localizer["NotConfigured"]</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (rate != null)
+                                    {
+                                        @GetSourceBadge(rate.Source)
+                                    }
+                                    else
+                                    {
+                                        <span>-</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (rate != null)
+                                    {
+                                        <span>@FormatDateTime(rate.EffectiveDate)</span>
+                                    }
+                                    else
+                                    {
+                                        <span>-</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (!isEditing)
+                                    {
+                                        <button class="btn btn-sm btn-outline-primary" @onclick="() => StartEdit(currency, rate?.BuyRate ?? 0m)">
+                                            <i class="ti ti-edit me-1"></i>
+                                            @(rate != null ? Localizer["Edit"] : Localizer["Add"])
+                                        </button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</LoadingSkeleton>
+
+@code {
+    private bool m_loading = true;
+    private bool m_saving;
+    private bool m_refreshingApi;
+
+    private List<ExchangeRate> m_rates = [];
+    private string? m_editingCurrency;
+    private decimal m_editRate;
+
+    /// <summary>
+    /// Foreign currencies that can have exchange rates configured.
+    /// THB is the base currency and is excluded from this list.
+    /// </summary>
+    private readonly string[] m_foreignCurrencies = [
+        SupportedCurrencies.USD,
+        SupportedCurrencies.EUR,
+        SupportedCurrencies.GBP,
+        SupportedCurrencies.CNY,
+        SupportedCurrencies.JPY,
+        SupportedCurrencies.AUD,
+        SupportedCurrencies.RUB
+    ];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRatesAsync();
+    }
+
+    private async Task LoadRatesAsync()
+    {
+        m_loading = true;
+        try
+        {
+            m_rates = await ExchangeRateService.GetAllCurrentRatesAsync();
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error loading exchange rates: {ex.Message}");
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private void StartEdit(string currency, decimal currentRate)
+    {
+        m_editingCurrency = currency;
+        m_editRate = currentRate;
+    }
+
+    private void CancelEdit()
+    {
+        m_editingCurrency = null;
+        m_editRate = 0;
+    }
+
+    private async Task SaveRateAsync()
+    {
+        if (string.IsNullOrEmpty(m_editingCurrency))
+            return;
+
+        if (m_editRate <= 0)
+        {
+            ShowError(Localizer["InvalidRate"]);
+            return;
+        }
+
+        m_saving = true;
+        try
+        {
+            var result = await ExchangeRateService.SetRateAsync(
+                m_editingCurrency,
+                m_editRate,
+                ExchangeRateSources.Manual,
+                UserName);
+
+            if (result.Success)
+            {
+                ShowSuccess(Localizer["RateSaved"]);
+                m_editingCurrency = null;
+                m_editRate = 0;
+                await LoadRatesAsync();
+            }
+            else
+            {
+                ShowError(result.Message ?? "Failed to save rate");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error saving rate: {ex.Message}");
+        }
+        finally
+        {
+            m_saving = false;
+        }
+    }
+
+    private async Task RefreshFromApiAsync()
+    {
+        m_refreshingApi = true;
+        try
+        {
+            var result = await ExchangeRateService.FetchRatesFromApiAsync(UserName);
+
+            if (result.Success)
+            {
+                ShowSuccess(Localizer["ApiRefreshResult", result.RatesUpdated.ToString()]);
+                await LoadRatesAsync();
+            }
+            else
+            {
+                // Show as info, not error - API not configured is expected for now
+                ShowInfo(result.Message);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error refreshing rates: {ex.Message}");
+        }
+        finally
+        {
+            m_refreshingApi = false;
+        }
+    }
+
+    #region Helper Methods
+
+    private string GetCurrencyName(string currency) => currency switch
+    {
+        "THB" => "Thai Baht",
+        "USD" => Localizer["USDollar"],
+        "EUR" => Localizer["Euro"],
+        "GBP" => Localizer["BritishPound"],
+        "CNY" => Localizer["ChineseYuan"],
+        "JPY" => Localizer["JapaneseYen"],
+        "AUD" => Localizer["AustralianDollar"],
+        "RUB" => Localizer["RussianRuble"],
+        _ => currency
+    };
+
+    private string GetCurrencyFlag(string currency) => currency switch
+    {
+        "THB" => "\U0001F1F9\U0001F1ED", // Thailand flag
+        "USD" => "\U0001F1FA\U0001F1F8", // US flag
+        "EUR" => "\U0001F1EA\U0001F1FA", // EU flag
+        "GBP" => "\U0001F1EC\U0001F1E7", // UK flag
+        "CNY" => "\U0001F1E8\U0001F1F3", // China flag
+        "JPY" => "\U0001F1EF\U0001F1F5", // Japan flag
+        "AUD" => "\U0001F1E6\U0001F1FA", // Australia flag
+        "RUB" => "\U0001F1F7\U0001F1FA", // Russia flag
+        _ => "\U0001F4B0" // Money bag
+    };
+
+    private RenderFragment GetSourceBadge(string source) => __builder =>
+    {
+        var (badgeClass, text) = source switch
+        {
+            ExchangeRateSources.Manual => ("bg-blue", Localizer["Manual"]),
+            ExchangeRateSources.API => ("bg-green", Localizer["API"]),
+            ExchangeRateSources.Adjusted => ("bg-yellow", Localizer["Adjusted"]),
+            _ => ("bg-secondary", source)
+        };
+
+        <span class="badge @badgeClass">@text</span>
+    };
+
+    #endregion
+}
