@@ -20,6 +20,13 @@ Transform MotoRent's existing single-currency till system into a full multi-curr
 
 **Dependencies:** None (foundation phase)
 
+**Plans:** 3 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Entity, service, SQL table foundation
+- [ ] 01-02-PLAN.md — Manager settings page for rate management
+- [ ] 01-03-PLAN.md — Staff exchange rate panel with calculator
+
 **Requirements:**
 - RATE-01: System fetches exchange rates from Forex POS API as default
 - RATE-02: Manager can override exchange rate per currency (custom rate takes precedence)
@@ -153,7 +160,7 @@ Transform MotoRent's existing single-currency till system into a full multi-curr
 
 | Phase | Name | Requirements | Status | Completion |
 |-------|------|--------------|--------|------------|
-| 1 | Exchange Rate Foundation | RATE-01, RATE-02, RATE-03, RATE-04, RATE-05 | Not Started | 0% |
+| 1 | Exchange Rate Foundation | RATE-01, RATE-02, RATE-03, RATE-04, RATE-05 | Planned | 0% |
 | 2 | Multi-Currency Till Operations | TILL-01, TILL-02, TILL-03, TILL-04, TILL-05 | Not Started | 0% |
 | 3 | Denomination Counting | DENOM-01, DENOM-02, DENOM-03 | Not Started | 0% |
 | 4 | Till Closing and Reconciliation | TILL-06, TILL-07 | Not Started | 0% |
@@ -181,4 +188,4 @@ Transform MotoRent's existing single-currency till system into a full multi-curr
 
 ---
 
-*Last updated: 2026-01-19 - Initial roadmap creation*
+*Last updated: 2026-01-20 - Phase 1 planned (3 plans)*
