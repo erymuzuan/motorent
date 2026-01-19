@@ -87,38 +87,38 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TILL-01 | TBD | Pending |
-| TILL-02 | TBD | Pending |
-| TILL-03 | TBD | Pending |
-| TILL-04 | TBD | Pending |
-| TILL-05 | TBD | Pending |
-| TILL-06 | TBD | Pending |
-| TILL-07 | TBD | Pending |
-| DENOM-01 | TBD | Pending |
-| DENOM-02 | TBD | Pending |
-| DENOM-03 | TBD | Pending |
-| RATE-01 | TBD | Pending |
-| RATE-02 | TBD | Pending |
-| RATE-03 | TBD | Pending |
-| RATE-04 | TBD | Pending |
-| RATE-05 | TBD | Pending |
-| MGR-01 | TBD | Pending |
-| MGR-02 | TBD | Pending |
-| MGR-03 | TBD | Pending |
-| MGR-04 | TBD | Pending |
-| EOD-01 | TBD | Pending |
-| EOD-02 | TBD | Pending |
-| EOD-03 | TBD | Pending |
-| EOD-04 | TBD | Pending |
-| RCPT-01 | TBD | Pending |
-| RCPT-02 | TBD | Pending |
-| RCPT-03 | TBD | Pending |
+| RATE-01 | Phase 1 | Pending |
+| RATE-02 | Phase 1 | Pending |
+| RATE-03 | Phase 1 | Pending |
+| RATE-04 | Phase 1 | Pending |
+| RATE-05 | Phase 1 | Pending |
+| TILL-01 | Phase 2 | Pending |
+| TILL-02 | Phase 2 | Pending |
+| TILL-03 | Phase 2 | Pending |
+| TILL-04 | Phase 2 | Pending |
+| TILL-05 | Phase 2 | Pending |
+| DENOM-01 | Phase 3 | Pending |
+| DENOM-02 | Phase 3 | Pending |
+| DENOM-03 | Phase 3 | Pending |
+| TILL-06 | Phase 4 | Pending |
+| TILL-07 | Phase 4 | Pending |
+| MGR-01 | Phase 5 | Pending |
+| MGR-02 | Phase 5 | Pending |
+| MGR-03 | Phase 5 | Pending |
+| MGR-04 | Phase 5 | Pending |
+| EOD-01 | Phase 6 | Pending |
+| EOD-02 | Phase 6 | Pending |
+| EOD-03 | Phase 6 | Pending |
+| EOD-04 | Phase 6 | Pending |
+| RCPT-01 | Phase 6 | Pending |
+| RCPT-02 | Phase 6 | Pending |
+| RCPT-03 | Phase 6 | Pending |
 
 **Coverage:**
 - v1 requirements: 26 total
-- Mapped to phases: 0
-- Unmapped: 26 ⚠️
+- Mapped to phases: 26
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-01-19*
-*Last updated: 2026-01-19 after initial definition*
+*Last updated: 2026-01-19 after roadmap creation*
