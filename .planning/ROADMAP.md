@@ -20,12 +20,13 @@ Transform MotoRent's existing single-currency till system into a full multi-curr
 
 **Dependencies:** None (foundation phase)
 
-**Plans:** 3 plans
+**Plans:** 4 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Entity, service, SQL table foundation
-- [ ] 01-02-PLAN.md — Manager settings page for rate management
-- [ ] 01-03-PLAN.md — Staff exchange rate panel with calculator
+- [x] 01-01-PLAN.md — Entity, service, SQL table foundation
+- [x] 01-02-PLAN.md — Manager settings page for rate management
+- [x] 01-03-PLAN.md — Staff exchange rate panel with calculator
+- [ ] 01-04-PLAN.md — Gap closure: Wire panel to Till, add nav link
 
 **Requirements:**
 - RATE-01: System fetches exchange rates from Forex POS API as default
@@ -160,7 +161,7 @@ Plans:
 
 | Phase | Name | Requirements | Status | Completion |
 |-------|------|--------------|--------|------------|
-| 1 | Exchange Rate Foundation | RATE-01, RATE-02, RATE-03, RATE-04, RATE-05 | Planned | 0% |
+| 1 | Exchange Rate Foundation | RATE-01, RATE-02, RATE-03, RATE-04, RATE-05 | Gap Closure | 80% |
 | 2 | Multi-Currency Till Operations | TILL-01, TILL-02, TILL-03, TILL-04, TILL-05 | Not Started | 0% |
 | 3 | Denomination Counting | DENOM-01, DENOM-02, DENOM-03 | Not Started | 0% |
 | 4 | Till Closing and Reconciliation | TILL-06, TILL-07 | Not Started | 0% |
@@ -188,4 +189,4 @@ Plans:
 
 ---
 
-*Last updated: 2026-01-20 - Phase 1 planned (3 plans)*
+*Last updated: 2026-01-20 - Phase 1 gap closure plan added (01-04)*
