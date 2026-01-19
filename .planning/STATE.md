@@ -21,16 +21,18 @@
 
 ## Current Position
 
-**Phase:** 1 - Exchange Rate Foundation
-**Plan:** Not started
-**Status:** Awaiting planning
+**Phase:** 1 of 6 (Exchange Rate Foundation)
+**Plan:** 1 of 3 complete
+**Status:** In progress
 
 ```
-Milestone Progress: [..........] 0%
-Phase 1 Progress:   [..........] 0%
+Milestone Progress: [#.........] 4%
+Phase 1 Progress:   [###.......] 33%
 ```
 
-**Next Action:** Run `/gsd:plan-phase 1` to create implementation plans for Exchange Rate Foundation.
+**Last Activity:** 2026-01-19 - Completed 01-01-PLAN.md (ExchangeRate entity and service)
+
+**Next Action:** Run `/gsd:execute-phase` to continue with 01-02-PLAN.md (Manager settings page).
 
 ---
 
@@ -38,9 +40,9 @@ Phase 1 Progress:   [..........] 0%
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Plans completed | 0 | - |
-| Requirements done | 0/26 | - |
-| Phases done | 0/6 | - |
+| Plans completed | 1 | 01-01-PLAN.md (4 min) |
+| Requirements done | 2/26 | RATE-01 (stub), RATE-04 (audit fields) |
+| Phases done | 0/6 | Phase 1 in progress |
 | Blockers hit | 0 | - |
 
 ---
@@ -56,22 +58,26 @@ Phase 1 Progress:   [..........] 0%
 | Per-currency till tracking | Matches forex expertise, enables accurate reconciliation | 2026-01-19 |
 | Shortage logged not enforced | Policy decision left to manager, system provides visibility | 2026-01-19 |
 | Extend existing entities | TillSession/TillTransaction already exist; add currency fields | 2026-01-19 |
-| New ExchangeRate entity | Organization-scoped with BuyRate/SellRate and effective dates | 2026-01-19 |
+| New ExchangeRate entity | Organization-scoped with BuyRate and effective dates | 2026-01-19 |
+| BuyRate only (no SellRate) | Rental business only receives foreign currency from customers | 2026-01-19 |
+| decimal(18,4) for rates | Handles currencies needing precision like CNY (5.1234 THB per CNY) | 2026-01-19 |
+| FetchRatesFromApiAsync stub | Forex POS API undocumented - manual entry first, API later | 2026-01-19 |
+| ExchangeConversionResult record | Bundles audit info (ThbAmount, RateUsed, RateSource, ExchangeRateId) | 2026-01-19 |
 
 ### Architecture Notes
 
 **Existing Entities to Extend:**
 - `TillSession` - Add per-currency balance tracking (CurrencyBalances, OpeningFloatByCurrency, ActualCashByCurrency)
 - `TillTransaction` - Add Currency, ExchangeRate, AmountInBaseCurrency fields
-- `ReceiptPayment` - Already supports multi-currency (Currency, ExchangeRate, AmountInBaseCurrency)
+- `ReceiptPayment` - Extended with ExchangeRateSource, ExchangeRateId for audit trail
 
-**New Entities:**
-- `ExchangeRate` - Organization-scoped with BuyRate, SellRate, Source, EffectiveDate
-- `CurrencyBalance` - Embedded class for per-currency tracking
+**New Entities Created:**
+- `ExchangeRate` - Organization-scoped with BuyRate, Source, EffectiveDate, IsActive
+- `ExchangeConversionResult` - Record type for conversion with audit info
+- `FetchRatesResult` - Record type for API fetch results
 
-**Services to Extend:**
-- `TillService` - Multi-currency transaction recording, per-currency reconciliation
-- New `ExchangeRateService` - Rate management (get current buy/sell, set new rates, history)
+**Services Created:**
+- `ExchangeRateService` - Rate management (get current, set new, convert, history, API stub)
 
 ### TODOs
 
@@ -88,19 +94,19 @@ None currently.
 
 ## Session Continuity
 
-**Last Session:** 2026-01-19 - Initial roadmap creation
+**Last Session:** 2026-01-19 - Completed 01-01-PLAN.md execution
 
 **Context for Next Session:**
-- Roadmap created with 6 phases covering all 26 requirements
-- Phase 1 focuses on exchange rate foundation (RATE-01 through RATE-05)
-- Existing codebase has TillSession, TillTransaction, ReceiptPayment entities
-- ReceiptPayment already has multi-currency fields; TillSession needs extension
-- Research summary suggests ExchangeRate entity with BuyRate/SellRate per currency
+- Phase 1 Plan 1 complete: ExchangeRate entity, service, and SQL table created
+- ReceiptPayment has audit fields (ExchangeRateSource, ExchangeRateId)
+- ExchangeRateService registered in DI with all CRUD operations
+- FetchRatesFromApiAsync is a stub - full API integration pending forex system docs
+- Ready for 01-02-PLAN.md: Manager settings page for rate management
 
 **Files to Review:**
-- `.planning/ROADMAP.md` - Phase structure and success criteria
-- `.planning/REQUIREMENTS.md` - Requirement details and traceability
-- `.planning/research/SUMMARY.md` - Technical research findings
+- `.planning/phases/01-exchange-rate-foundation/01-01-SUMMARY.md` - Completed plan summary
+- `src/MotoRent.Domain/Entities/ExchangeRate.cs` - New entity
+- `src/MotoRent.Services/ExchangeRateService.cs` - New service
 
 ---
 
