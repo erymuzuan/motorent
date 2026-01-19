@@ -95,6 +95,7 @@ builder.Services.AddScoped<AssetLoanService>();
 // Cashier till services
 builder.Services.AddScoped<TillService>();
 builder.Services.AddScoped<ReceiptService>();
+builder.Services.AddScoped<ExchangeRateService>();
 
 // Error logging services
 builder.Services.AddScoped<MotoRent.Domain.Core.ILogger, SqlLogger>();
