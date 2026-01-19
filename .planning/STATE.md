@@ -22,17 +22,17 @@
 ## Current Position
 
 **Phase:** 1 of 6 (Exchange Rate Foundation)
-**Plan:** 1 of 3 complete
+**Plan:** 2 of 3 complete
 **Status:** In progress
 
 ```
-Milestone Progress: [#.........] 4%
-Phase 1 Progress:   [###.......] 33%
+Milestone Progress: [##........] 8%
+Phase 1 Progress:   [######....] 67%
 ```
 
-**Last Activity:** 2026-01-19 - Completed 01-01-PLAN.md (ExchangeRate entity and service)
+**Last Activity:** 2026-01-20 - Completed 01-02-PLAN.md (Manager settings page)
 
-**Next Action:** Run `/gsd:execute-phase` to continue with 01-02-PLAN.md (Manager settings page).
+**Next Action:** Run `/gsd:execute-phase` to continue with 01-03-PLAN.md (Till multi-currency integration).
 
 ---
 
@@ -40,8 +40,8 @@ Phase 1 Progress:   [###.......] 33%
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Plans completed | 1 | 01-01-PLAN.md (4 min) |
-| Requirements done | 2/26 | RATE-01 (stub), RATE-04 (audit fields) |
+| Plans completed | 2 | 01-01 (4 min), 01-02 (3 min) |
+| Requirements done | 5/26 | RATE-01 (UI path), RATE-02, RATE-03, RATE-04, RATE-05 (partial) |
 | Phases done | 0/6 | Phase 1 in progress |
 | Blockers hit | 0 | - |
 
@@ -63,6 +63,9 @@ Phase 1 Progress:   [###.......] 33%
 | decimal(18,4) for rates | Handles currencies needing precision like CNY (5.1234 THB per CNY) | 2026-01-19 |
 | FetchRatesFromApiAsync stub | Forex POS API undocumented - manual entry first, API later | 2026-01-19 |
 | ExchangeConversionResult record | Bundles audit info (ThbAmount, RateUsed, RateSource, ExchangeRateId) | 2026-01-19 |
+| Inline editing for rates | Simpler than dialog-based editing, faster for quick updates | 2026-01-20 |
+| Show all currencies unconfigured | Even unconfigured currencies appear with "Add" button | 2026-01-20 |
+| Info toast for API stub | Expected state when API not configured, not an error | 2026-01-20 |
 
 ### Architecture Notes
 
@@ -79,6 +82,9 @@ Phase 1 Progress:   [###.......] 33%
 **Services Created:**
 - `ExchangeRateService` - Rate management (get current, set new, convert, history, API stub)
 
+**UI Pages Created:**
+- `/settings/exchange-rates` - Manager settings page for rate configuration
+
 ### TODOs
 
 - [ ] Confirm with user: Is offline/PWA support critical for MVP?
@@ -94,20 +100,21 @@ None currently.
 
 ## Session Continuity
 
-**Last Session:** 2026-01-19 - Completed 01-01-PLAN.md execution
+**Last Session:** 2026-01-20 - Completed 01-02-PLAN.md execution
 
 **Context for Next Session:**
-- Phase 1 Plan 1 complete: ExchangeRate entity, service, and SQL table created
-- ReceiptPayment has audit fields (ExchangeRateSource, ExchangeRateId)
-- ExchangeRateService registered in DI with all CRUD operations
-- FetchRatesFromApiAsync is a stub - full API integration pending forex system docs
-- Ready for 01-02-PLAN.md: Manager settings page for rate management
+- Phase 1 Plans 1-2 complete: ExchangeRate entity, service, and manager UI ready
+- Manager can now configure rates at /settings/exchange-rates
+- Inline editing with source badges (Manual/API/Adjusted)
+- API refresh button shows info message when not configured
+- Localization complete for en, th, ms
+- Ready for 01-03-PLAN.md: Till multi-currency integration
 
 **Files to Review:**
-- `.planning/phases/01-exchange-rate-foundation/01-01-SUMMARY.md` - Completed plan summary
-- `src/MotoRent.Domain/Entities/ExchangeRate.cs` - New entity
-- `src/MotoRent.Services/ExchangeRateService.cs` - New service
+- `.planning/phases/01-exchange-rate-foundation/01-02-SUMMARY.md` - Completed plan summary
+- `src/MotoRent.Client/Pages/Settings/ExchangeRateSettings.razor` - Manager settings page
+- `src/MotoRent.Client/Resources/Pages/Settings/ExchangeRateSettings.*.resx` - Localization files
 
 ---
 
-*Last updated: 2026-01-19*
+*Last updated: 2026-01-20*
