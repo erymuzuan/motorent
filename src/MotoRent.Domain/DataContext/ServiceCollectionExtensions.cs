@@ -64,6 +64,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IRepository<TillSession>, Repository<TillSession>>();
         services.AddSingleton<IRepository<TillTransaction>, Repository<TillTransaction>>();
         services.AddSingleton<IRepository<Receipt>, Repository<Receipt>>();
+        // Exchange rate entities
+        services.AddSingleton<IRepository<ExchangeRate>, Repository<ExchangeRate>>();
 
         // Register repositories for Core entities (uses [Core] schema)
         services.AddSingleton<IRepository<Organization>, CoreRepository<Organization>>();

@@ -38,6 +38,18 @@ public class ReceiptPayment
     public decimal AmountInBaseCurrency { get; set; }
 
     /// <summary>
+    /// Source of the exchange rate used (Manual, API, Adjusted, or "Base" for THB)
+    /// Captured at transaction time for RATE-04 audit trail requirement.
+    /// </summary>
+    public string ExchangeRateSource { get; set; } = "Base";
+
+    /// <summary>
+    /// Reference to the ExchangeRate entity used (null for THB base currency)
+    /// Enables linking back to the exact rate record for audit purposes.
+    /// </summary>
+    public int? ExchangeRateId { get; set; }
+
+    /// <summary>
     /// Transaction reference (card authorization code, PromptPay reference, etc.)
     /// </summary>
     public string? Reference { get; set; }
