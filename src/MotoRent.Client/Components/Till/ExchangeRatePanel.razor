@@ -1,0 +1,272 @@
+@inherits LocalizedComponentBase<ExchangeRatePanel>
+@using MotoRent.Domain.Entities
+@inject ExchangeRateService ExchangeRateService
+
+@* Floating Action Button *@
+@if (ShowButton)
+{
+    <button type="button"
+            class="mr-rate-fab"
+            @onclick="TogglePanel"
+            aria-label="@Localizer["ExchangeRates"]"
+            title="@Localizer["ExchangeRates"]">
+        <i class="ti ti-arrows-exchange"></i>
+        @if (m_rates.Count > 0)
+        {
+            <span class="mr-rate-badge">@m_rates.Count</span>
+        }
+    </button>
+}
+
+@* Backdrop and Panel *@
+@if (PanelOpen)
+{
+    <div class="mr-rate-backdrop" @onclick="ClosePanel" aria-hidden="true"></div>
+
+    <div class="mr-rate-panel" role="dialog" aria-labelledby="rate-panel-title" aria-modal="true">
+        @* Panel Header *@
+        <div class="mr-rate-panel-header">
+            <h4 id="rate-panel-title">@Localizer["ExchangeRates"]</h4>
+            <button type="button"
+                    class="btn-close"
+                    @onclick="ClosePanel"
+                    aria-label="@Localizer["Close"]"></button>
+        </div>
+
+        @* Panel Body *@
+        <div class="mr-rate-panel-body">
+            @if (m_loading)
+            {
+                <div class="d-flex justify-content-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            }
+            else if (m_rates.Count == 0)
+            {
+                @* No rates configured message *@
+                <div class="text-center py-4 text-muted">
+                    <i class="ti ti-currency-off mb-2" style="font-size: 3rem;"></i>
+                    <p class="mb-1">@Localizer["NoRatesConfigured"]</p>
+                    <small>@Localizer["ContactManager"]</small>
+                </div>
+            }
+            else
+            {
+                @* Rate List *@
+                <ul class="mr-rate-list">
+                    @foreach (var rate in m_rates)
+                    {
+                        <li class="mr-rate-item">
+                            <div>
+                                <span class="mr-rate-currency">@rate.Currency</span>
+                                <span class="mr-rate-currency-name">@GetCurrencyName(rate.Currency)</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="mr-rate-value">@rate.BuyRate.ToString("N2") THB</span>
+                                @if (rate.Source == ExchangeRateSources.API)
+                                {
+                                    <span class="badge bg-info-lt" title="API Rate">
+                                        <i class="ti ti-cloud-download"></i>
+                                    </span>
+                                }
+                                else if (rate.Source == ExchangeRateSources.Adjusted)
+                                {
+                                    <span class="badge bg-warning-lt" title="Adjusted Rate">
+                                        <i class="ti ti-pencil"></i>
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary-lt" title="Manual Rate">
+                                        <i class="ti ti-keyboard"></i>
+                                    </span>
+                                }
+                            </div>
+                        </li>
+                    }
+                </ul>
+
+                @* Quick Calculator *@
+                <div class="mr-calc-section">
+                    <h5>@Localizer["QuickCalculator"]</h5>
+
+                    <div class="mb-2">
+                        <label class="form-label small">@Localizer["SelectCurrency"]</label>
+                        <select class="form-select form-select-sm" @bind="m_calcCurrency">
+                            @foreach (var rate in m_rates)
+                            {
+                                <option value="@rate.Currency">@rate.Currency - @GetCurrencyName(rate.Currency)</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label small">@Localizer["Amount"]</label>
+                        <div class="input-group input-group-sm">
+                            <input type="number"
+                                   class="form-control"
+                                   @bind="m_calcAmount"
+                                   @bind:event="oninput"
+                                   @bind:after="CalculateAsync"
+                                   placeholder="@Localizer["EnterAmount"]"
+                                   min="0"
+                                   step="any" />
+                            <span class="input-group-text">@m_calcCurrency</span>
+                        </div>
+                    </div>
+
+                    @if (m_calcAmount > 0 && m_calcResult > 0)
+                    {
+                        <div class="mr-calc-result">
+                            <div class="mr-calc-result-label">@Localizer["ResultLabel"]</div>
+                            <div class="mr-calc-result-amount">
+                                @m_calcAmount.ToString("N2") @m_calcCurrency = @m_calcResult.ToString("N2") THB
+                            </div>
+                            <div class="mr-calc-rate small text-muted mt-1">
+                                @@ @GetRate(m_calcCurrency).ToString("N4") THB per @m_calcCurrency
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    /// <summary>
+    /// Whether to show the floating action button. Set to false when embedding in another component.
+    /// </summary>
+    [Parameter] public bool ShowButton { get; set; } = true;
+
+    /// <summary>
+    /// External control of panel visibility (two-way binding).
+    /// </summary>
+    [Parameter] public bool IsOpen { get; set; }
+
+    /// <summary>
+    /// Callback when panel open state changes.
+    /// </summary>
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+
+    /// <summary>
+    /// Callback when a conversion is calculated. Useful for parent components that want to use the result.
+    /// </summary>
+    [Parameter] public EventCallback<(string Currency, decimal Amount, decimal ThbAmount)> OnConversion { get; set; }
+
+    private bool m_panelOpen;
+    private List<ExchangeRate> m_rates = [];
+    private bool m_loading;
+
+    // Calculator state
+    private string m_calcCurrency = SupportedCurrencies.USD;
+    private decimal m_calcAmount;
+    private decimal m_calcResult;
+
+    /// <summary>
+    /// Combined panel open state from internal toggle and external IsOpen parameter.
+    /// </summary>
+    private bool PanelOpen
+    {
+        get => IsOpen || m_panelOpen;
+        set
+        {
+            m_panelOpen = value;
+            _ = IsOpenChanged.InvokeAsync(value);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRatesAsync();
+
+        // Set initial calculator currency to first available rate
+        if (m_rates.Count > 0)
+        {
+            m_calcCurrency = m_rates[0].Currency;
+        }
+    }
+
+    /// <summary>
+    /// Loads all current exchange rates from the service.
+    /// </summary>
+    private async Task LoadRatesAsync()
+    {
+        m_loading = true;
+        try
+        {
+            m_rates = await ExchangeRateService.GetAllCurrentRatesAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load exchange rates");
+            m_rates = [];
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    /// <summary>
+    /// Refreshes the rates. Can be called by parent components.
+    /// </summary>
+    public async Task RefreshRatesAsync()
+    {
+        await LoadRatesAsync();
+        StateHasChanged();
+    }
+
+    private void TogglePanel() => PanelOpen = !PanelOpen;
+
+    private void ClosePanel() => PanelOpen = false;
+
+    /// <summary>
+    /// Calculates THB equivalent for the entered foreign currency amount.
+    /// </summary>
+    private async Task CalculateAsync()
+    {
+        if (m_calcAmount <= 0 || string.IsNullOrEmpty(m_calcCurrency))
+        {
+            m_calcResult = 0;
+            return;
+        }
+
+        var result = await ExchangeRateService.ConvertToThbAsync(m_calcCurrency, m_calcAmount);
+        if (result != null)
+        {
+            m_calcResult = result.ThbAmount;
+            await OnConversion.InvokeAsync((m_calcCurrency, m_calcAmount, m_calcResult));
+        }
+        else
+        {
+            m_calcResult = 0;
+        }
+    }
+
+    /// <summary>
+    /// Gets the buy rate for a specific currency.
+    /// </summary>
+    private decimal GetRate(string currency)
+    {
+        return m_rates.FirstOrDefault(r => r.Currency == currency)?.BuyRate ?? 0;
+    }
+
+    /// <summary>
+    /// Gets a human-readable name for a currency code.
+    /// </summary>
+    private static string GetCurrencyName(string currency) => currency switch
+    {
+        SupportedCurrencies.USD => "US Dollar",
+        SupportedCurrencies.EUR => "Euro",
+        SupportedCurrencies.GBP => "British Pound",
+        SupportedCurrencies.CNY => "Chinese Yuan",
+        SupportedCurrencies.JPY => "Japanese Yen",
+        SupportedCurrencies.AUD => "Australian Dollar",
+        SupportedCurrencies.RUB => "Russian Ruble",
+        SupportedCurrencies.THB => "Thai Baht",
+        _ => currency
+    };
+}
