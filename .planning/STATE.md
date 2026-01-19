@@ -22,17 +22,17 @@
 ## Current Position
 
 **Phase:** 1 of 6 (Exchange Rate Foundation)
-**Plan:** 2 of 3 complete
-**Status:** In progress
+**Plan:** 3 of 3 complete
+**Status:** Phase complete
 
 ```
-Milestone Progress: [##........] 8%
-Phase 1 Progress:   [######....] 67%
+Milestone Progress: [##........] 12%
+Phase 1 Progress:   [##########] 100%
 ```
 
-**Last Activity:** 2026-01-20 - Completed 01-02-PLAN.md (Manager settings page)
+**Last Activity:** 2026-01-20 - Completed 01-03-PLAN.md (Staff exchange rate panel)
 
-**Next Action:** Run `/gsd:execute-phase` to continue with 01-03-PLAN.md (Till multi-currency integration).
+**Next Action:** Run `/gsd:execute-phase` to start Phase 2 (Multi-Currency Till Session).
 
 ---
 
@@ -40,9 +40,9 @@ Phase 1 Progress:   [######....] 67%
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Plans completed | 2 | 01-01 (4 min), 01-02 (3 min) |
-| Requirements done | 5/26 | RATE-01 (UI path), RATE-02, RATE-03, RATE-04, RATE-05 (partial) |
-| Phases done | 0/6 | Phase 1 in progress |
+| Plans completed | 3 | 01-01 (4 min), 01-02 (3 min), 01-03 (3 min) |
+| Requirements done | 6/26 | RATE-01, RATE-02, RATE-03, RATE-04, RATE-05 (complete) |
+| Phases done | 1/6 | Phase 1 complete |
 | Blockers hit | 0 | - |
 
 ---
@@ -66,6 +66,8 @@ Phase 1 Progress:   [######....] 67%
 | Inline editing for rates | Simpler than dialog-based editing, faster for quick updates | 2026-01-20 |
 | Show all currencies unconfigured | Even unconfigured currencies appear with "Add" button | 2026-01-20 |
 | Info toast for API stub | Expected state when API not configured, not an error | 2026-01-20 |
+| FAB pattern for staff panel | Quick access without cluttering till UI | 2026-01-20 |
+| Auto-calculate on input | No separate calculate button needed for fast workflow | 2026-01-20 |
 
 ### Architecture Notes
 
@@ -85,6 +87,9 @@ Phase 1 Progress:   [######....] 67%
 **UI Pages Created:**
 - `/settings/exchange-rates` - Manager settings page for rate configuration
 
+**UI Components Created:**
+- `ExchangeRatePanel` - Staff-facing panel with FAB, rate list, and calculator
+
 ### TODOs
 
 - [ ] Confirm with user: Is offline/PWA support critical for MVP?
@@ -100,20 +105,20 @@ None currently.
 
 ## Session Continuity
 
-**Last Session:** 2026-01-20 - Completed 01-02-PLAN.md execution
+**Last Session:** 2026-01-20 - Completed 01-03-PLAN.md execution (Phase 1 complete)
 
 **Context for Next Session:**
-- Phase 1 Plans 1-2 complete: ExchangeRate entity, service, and manager UI ready
-- Manager can now configure rates at /settings/exchange-rates
-- Inline editing with source badges (Manual/API/Adjusted)
-- API refresh button shows info message when not configured
-- Localization complete for en, th, ms
-- Ready for 01-03-PLAN.md: Till multi-currency integration
+- Phase 1 complete: ExchangeRate entity, service, manager UI, and staff panel all ready
+- Manager can configure rates at /settings/exchange-rates
+- Staff can view rates via floating button on any till page
+- Quick calculator helps staff convert foreign amounts to THB
+- Localization complete for en, th, ms across all Phase 1 artifacts
+- Ready for Phase 2: Multi-Currency Till Session
 
 **Files to Review:**
-- `.planning/phases/01-exchange-rate-foundation/01-02-SUMMARY.md` - Completed plan summary
-- `src/MotoRent.Client/Pages/Settings/ExchangeRateSettings.razor` - Manager settings page
-- `src/MotoRent.Client/Resources/Pages/Settings/ExchangeRateSettings.*.resx` - Localization files
+- `.planning/phases/01-exchange-rate-foundation/01-03-SUMMARY.md` - Completed plan summary
+- `src/MotoRent.Client/Components/Till/ExchangeRatePanel.razor` - Staff panel component
+- `src/MotoRent.Client/Components/Till/ExchangeRatePanel.razor.css` - CSS isolation
 
 ---
 
