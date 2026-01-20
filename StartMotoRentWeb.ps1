@@ -1,3 +1,5 @@
+& .\env.motorent.ps1
+
 $launchSettingsPath = Join-Path $PSScriptRoot "src\MotoRent.Server\Properties\launchSettings.json"
 $launchSettings = Get-Content $launchSettingsPath -Raw | ConvertFrom-Json
 $applicationUrl = $launchSettings.profiles.https.applicationUrl
