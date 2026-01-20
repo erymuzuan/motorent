@@ -9,7 +9,7 @@
 
 **Core Value:** Business visibility and cash control - owners can see if their assets are profitable, where cash is leaking, and whether staff are handling money correctly.
 
-**Current Focus:** Payment terminal with multi-currency support. Phase 4 in progress - building the payment terminal UI for split payments across methods and currencies.
+**Current Focus:** Payment terminal with multi-currency support. Phase 4 in progress - all payment input methods implemented.
 
 **Key Constraints:**
 - Tech stack: Blazor Server + WASM, .NET 10, SQL Server
@@ -22,17 +22,17 @@
 ## Current Position
 
 **Phase:** 4 of 9 (Payment Terminal)
-**Plan:** 1 of 4 complete
+**Plan:** 2 of 4 complete
 **Status:** Phase 4 in progress
 
 ```
-Milestone Progress: [######....] 40%
-Phase 4 Progress:   [###.......] 25%
+Milestone Progress: [#######...] 45%
+Phase 4 Progress:   [#####.....] 50%
 ```
 
-**Last Activity:** 2026-01-20 - Completed 04-01-PLAN.md (Payment Terminal Layout)
+**Last Activity:** 2026-01-20 - Completed 04-02-PLAN.md (THB Keypad & Payment Input)
 
-**Next Action:** Run `/gsd:execute-phase 04-02` to execute Phase 4 Plan 2 (THB Keypad).
+**Next Action:** Run `/gsd:execute-phase 04-03` to execute Phase 4 Plan 3 (Complete Payment Flow).
 
 ---
 
@@ -53,6 +53,24 @@ Phase 4 Progress:   [###.......] 25%
 - Payment entry list with remove capability
 - Summary section (Total Received, Change, Remaining)
 - Complete Payment button with disabled logic
+
+### Plan 04-02: THB Keypad & Payment Input - COMPLETE
+
+| Task | Status | Commit |
+|------|--------|--------|
+| Task 1: Create ThbKeypadPanel component | Done | 15a7075 |
+| Task 2: Integrate THB keypad and DenominationEntryPanel | Done | 6bc8064 |
+| Task 3: Add non-cash payment panels (Card, PromptPay, AliPay) | Done | b073784 |
+
+**Key Deliverables:**
+- `ThbKeypadPanel.razor` - Numeric keypad with quick amounts (144 lines)
+- THB cash input via keypad with 100/500/1000/Remaining buttons
+- Foreign currency input via DenominationEntryPanel with exchange rate
+- Credit Card panel with amount and optional authorization code
+- PromptPay panel with amount and optional reference
+- AliPay panel with amount and required confirmation number
+- Pre-fill remaining balance on method switch
+- 22 new localization keys (EN/TH)
 
 ---
 
@@ -93,8 +111,8 @@ Phase 4 Progress:   [###.......] 25%
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Plans completed | 10 | Phase 1: 4; Phase 2: 3; Phase 3: 2; Phase 4: 1 |
-| Requirements done | 13/40 | RATE-01-05, TILL-01-05, SRCH-01-02, PAY-01 |
+| Plans completed | 11 | Phase 1: 4; Phase 2: 3; Phase 3: 2; Phase 4: 2 |
+| Requirements done | 15/40 | RATE-01-05, TILL-01-05, SRCH-01-02, PAY-01-03 |
 | Phases done | 3/9 | Phases 1-3 complete, Phase 4 in progress |
 | Blockers hit | 0 | - |
 
@@ -123,8 +141,18 @@ Phase 4 Progress:   [###.......] 25%
 | TransactionLineItem as working model | (03-02) Separate from ReceiptItem for rich editing before persistence | 2026-01-20 |
 | PaymentEntry as internal class | (04-01) Separate from ReceiptPayment for working state during collection | 2026-01-20 |
 | GBP tab visible but disabled | (04-01) Per CONTEXT.md, GBP support deferred but shown for completeness | 2026-01-20 |
+| Component composition for THB keypad | (04-02) ThbKeypadPanel as separate component for reusability | 2026-01-20 |
+| Pre-fill remaining on method switch | (04-02) Faster workflow, staff often want exact remaining | 2026-01-20 |
+| Required reference for AliPay only | (04-02) Card/PromptPay verifiable via terminal/app | 2026-01-20 |
 
 ### Architecture Notes
+
+**Phase 4 Additions (04-02):**
+- `ThbKeypadPanel` - Numeric keypad component for THB cash entry
+- THB input via keypad, foreign currency via DenominationEntryPanel
+- ExchangeRateService integration for real-time conversion
+- Non-cash payment panels for Card, PromptPay, AliPay
+- Payment entries capture exchange rate audit trail
 
 **Phase 4 Additions (04-01):**
 - `PaymentTerminalPanel` - Two-column payment terminal component
@@ -187,19 +215,20 @@ None currently.
 
 ## Session Continuity
 
-**Last Session:** 2026-01-20 - Completed Phase 4 Plan 1 (Payment Terminal Layout)
+**Last Session:** 2026-01-20 - Completed Phase 4 Plan 2 (THB Keypad & Payment Input)
 
 **Context for Next Session:**
-- Phase 4 Plan 1 complete with 2 commits
-- `PaymentTerminalPanel` component created with full layout structure
-- Payment method and currency tabs working
-- Content area has placeholders ready for input components
-- Ready to execute Phase 4 Plan 2 (THB Keypad)
+- Phase 4 Plan 2 complete with 3 commits
+- `ThbKeypadPanel` component created for THB cash entry
+- `PaymentTerminalPanel` now has all payment input methods working
+- All payment types can be added to the entry list
+- Ready to execute Phase 4 Plan 3 (Complete Payment Flow)
 
 **Files to Review:**
-- `.planning/phases/04-payment-terminal/04-01-SUMMARY.md` - Just completed
-- `.planning/phases/04-payment-terminal/04-02-PLAN.md` - Next plan
-- `src/MotoRent.Client/Components/Till/PaymentTerminalPanel.razor` - New component
+- `.planning/phases/04-payment-terminal/04-02-SUMMARY.md` - Just completed
+- `.planning/phases/04-payment-terminal/04-03-PLAN.md` - Next plan
+- `src/MotoRent.Client/Components/Till/ThbKeypadPanel.razor` - New component
+- `src/MotoRent.Client/Components/Till/PaymentTerminalPanel.razor` - Updated component
 
 ---
 
