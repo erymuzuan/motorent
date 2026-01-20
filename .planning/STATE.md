@@ -9,7 +9,7 @@
 
 **Core Value:** Business visibility and cash control - owners can see if their assets are profitable, where cash is leaking, and whether staff are handling money correctly.
 
-**Current Focus:** Phase 5 in progress. Domain entities extended with void metadata, refund transaction types, and manager PIN fields. Ready for service layer implementation.
+**Current Focus:** Phase 5 in progress. Service layer complete with ManagerPinService and TillService void/refund operations. Ready for void dialog UI implementation.
 
 **Key Constraints:**
 - Tech stack: Blazor Server + WASM, .NET 10, SQL Server
@@ -22,17 +22,17 @@
 ## Current Position
 
 **Phase:** 5 of 9 (Refunds & Corrections)
-**Plan:** 1 of 5 complete
+**Plan:** 2 of 5 complete
 **Status:** In progress
 
 ```
-Milestone Progress: [######....] 65%
-Phase 5 Progress:   [##........] 20%
+Milestone Progress: [######....] 68%
+Phase 5 Progress:   [####......] 40%
 ```
 
-**Last Activity:** 2026-01-20 - Completed 05-01-PLAN.md (Domain Entity Extensions)
+**Last Activity:** 2026-01-20 - Completed 05-02-PLAN.md (Manager PIN Service)
 
-**Next Action:** Execute 05-02-PLAN.md (Manager PIN Service)
+**Next Action:** Execute 05-03-PLAN.md (Void Dialog & Workflow)
 
 ---
 
@@ -50,6 +50,19 @@ Phase 5 Progress:   [##........] 20%
 - TillTransaction: IsVoided, VoidedAt, VoidedByUserName, VoidReason, VoidApprovedByUserName, OriginalTransactionId, RelatedTransactionId
 - TillTransactionType: OverpaymentRefund, VoidReversal
 - User: ManagerPinHash, ManagerPinSalt, CanApproveVoids
+
+### Plan 05-02: Manager PIN Service - COMPLETE
+
+| Task | Status | Commit |
+|------|--------|--------|
+| Task 1: Create ManagerPinService | Done | 322f675 |
+| Task 2: Extend TillService with void/refund operations | Done | c74323d |
+| Task 3: Register ManagerPinService in DI | Done | d2a26cf |
+
+**Key Deliverables:**
+- ManagerPinService: PBKDF2 hashing, 3-attempt lockout, SetPinAsync, VerifyPin, IsLockedOut
+- TillService: VoidTransactionAsync with compensating entries, RecordOverpaymentRefundAsync
+- Self-approval prevention, bidirectional void linking
 
 ---
 
@@ -103,8 +116,8 @@ Phase 5 Progress:   [##........] 20%
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Plans completed | 13 | Phase 1: 4; Phase 2: 3; Phase 3: 2; Phase 4: 3; Phase 5: 1 |
-| Requirements done | 26/40 | +VOID-03 (voided transactions preserved) |
+| Plans completed | 14 | Phase 1: 4; Phase 2: 3; Phase 3: 2; Phase 4: 3; Phase 5: 2 |
+| Requirements done | 28/40 | +VOID-01 (manager PIN), +VOID-02 (void workflow) |
 | Phases done | 4/9 | Phase 5 in progress |
 | Blockers hit | 0 | - |
 
@@ -137,6 +150,9 @@ Phase 5 Progress:   [##........] 20%
 | Void soft-delete pattern | (05-01) IsVoided flag preserves transactions for audit trail | 2026-01-20 |
 | Bidirectional void linking | (05-01) OriginalTransactionId <-> RelatedTransactionId for navigation | 2026-01-20 |
 | Separate PIN from password | (05-01) OAuth users can still have manager approval PIN | 2026-01-20 |
+| PBKDF2 static method | (05-02) .NET 10 deprecates constructor; use static Pbkdf2() | 2026-01-20 |
+| In-memory lockout tracking | (05-02) Acceptable for MVP; can migrate to Redis/SQL later | 2026-01-20 |
+| Bidirectional linking after save | (05-02) Compensating entry needs ID before linking | 2026-01-20 |
 
 ### Architecture Notes
 
@@ -144,6 +160,9 @@ Phase 5 Progress:   [##........] 20%
 - TillTransaction extended with void metadata (7 fields)
 - TillTransactionType with OverpaymentRefund, VoidReversal
 - User with ManagerPinHash, ManagerPinSalt, CanApproveVoids
+- ManagerPinService (202 lines) - PBKDF2 hashing, lockout logic
+- TillService.VoidTransactionAsync - Compensating entry pattern
+- TillService.RecordOverpaymentRefundAsync - THB cash refunds
 
 **Phase 4 Components:**
 - `PaymentTerminalPanel.razor` (928 lines) - Two-column payment terminal with all input modes
@@ -191,19 +210,19 @@ None currently.
 
 ## Session Continuity
 
-**Last Session:** 2026-01-20 - Completed 05-01-PLAN.md (Domain Entity Extensions)
+**Last Session:** 2026-01-20 - Completed 05-02-PLAN.md (Manager PIN Service)
 
 **Context for Next Session:**
-- Phase 5 Plan 1 complete: domain entities extended
-- TillTransaction has void metadata for audit trail
-- User has manager PIN fields for void approval
-- Ready for Plan 05-02: ManagerPinService implementation
+- Phase 5 Plans 1-2 complete: domain + service layer done
+- ManagerPinService ready for void approval dialogs
+- TillService.VoidTransactionAsync ready for UI integration
+- Ready for Plan 05-03: Void Dialog & Workflow
 
 **Files to Review:**
-- `.planning/phases/05-refunds-corrections/05-01-SUMMARY.md` - Just completed
-- `.planning/phases/05-refunds-corrections/05-02-PLAN.md` - Next plan
-- `src/MotoRent.Domain/Entities/TillTransaction.cs` - Extended with void fields
-- `src/MotoRent.Domain/Core/User.cs` - Extended with PIN fields
+- `.planning/phases/05-refunds-corrections/05-02-SUMMARY.md` - Just completed
+- `.planning/phases/05-refunds-corrections/05-03-PLAN.md` - Next plan
+- `src/MotoRent.Services/ManagerPinService.cs` - PIN service
+- `src/MotoRent.Services/TillService.cs` - Void/refund operations
 
 ---
 
