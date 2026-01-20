@@ -29,6 +29,18 @@ public class TillSession : Entity
     public decimal TotalBankTransfers { get; set; }
     public decimal TotalPromptPay { get; set; }
 
+    /// <summary>
+    /// Tracks actual foreign currency amounts in the drawer.
+    /// Key is currency code (THB, USD, EUR, CNY), value is amount in that currency.
+    /// THB balance is the total THB in drawer; foreign currency balances track
+    /// un-converted foreign currency received during the session.
+    /// Initialized with THB = OpeningFloat on session open; foreign currencies start at 0.
+    /// </summary>
+    public Dictionary<string, decimal> CurrencyBalances { get; set; } = new()
+    {
+        [SupportedCurrencies.THB] = 0
+    };
+
     // Closing
     public decimal ActualCash { get; set; }
     public decimal Variance { get; set; }
@@ -50,6 +62,17 @@ public class TillSession : Entity
     /// Total non-cash payments received during the session.
     /// </summary>
     public decimal TotalNonCashPayments => TotalCardPayments + TotalBankTransfers + TotalPromptPay;
+
+    /// <summary>
+    /// Gets the balance for a specific currency in the drawer.
+    /// Returns 0 if the currency is not tracked in this session.
+    /// </summary>
+    /// <param name="currency">Currency code (THB, USD, EUR, CNY)</param>
+    /// <returns>Amount in the specified currency, or 0 if not tracked</returns>
+    public decimal GetCurrencyBalance(string currency)
+    {
+        return CurrencyBalances.TryGetValue(currency, out var balance) ? balance : 0;
+    }
 
     public override int GetId() => TillSessionId;
     public override void SetId(int value) => TillSessionId = value;

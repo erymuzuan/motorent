@@ -17,6 +17,38 @@ public class TillTransaction : Entity
     public string? SubCategory { get; set; }
     public string? Description { get; set; }
 
+    /// <summary>
+    /// Currency code for this transaction (THB, USD, EUR, CNY).
+    /// Default is THB to maintain backward compatibility with existing transactions.
+    /// </summary>
+    public string Currency { get; set; } = SupportedCurrencies.THB;
+
+    /// <summary>
+    /// Exchange rate used to convert to THB base currency.
+    /// Default is 1.0 for THB transactions (no conversion needed).
+    /// For foreign currency, this is THB per 1 unit of foreign currency.
+    /// </summary>
+    public decimal ExchangeRate { get; set; } = 1.0m;
+
+    /// <summary>
+    /// Amount converted to THB base currency.
+    /// For THB transactions, equals Amount.
+    /// For foreign currency, this is Amount * ExchangeRate.
+    /// </summary>
+    public decimal AmountInBaseCurrency { get; set; }
+
+    /// <summary>
+    /// Source of the exchange rate used (Manual, API, Adjusted, or "Base" for THB).
+    /// Captured at transaction time for audit trail.
+    /// </summary>
+    public string? ExchangeRateSource { get; set; }
+
+    /// <summary>
+    /// Reference to the ExchangeRate entity used (null for THB base currency).
+    /// Enables linking back to the exact rate record for audit purposes.
+    /// </summary>
+    public int? ExchangeRateId { get; set; }
+
     // References to related entities
     public int? PaymentId { get; set; }
     public int? DepositId { get; set; }
