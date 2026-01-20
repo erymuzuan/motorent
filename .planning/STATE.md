@@ -9,7 +9,7 @@
 
 **Core Value:** Business visibility and cash control - owners can see if their assets are profitable, where cash is leaking, and whether staff are handling money correctly.
 
-**Current Focus:** Phase 6 in progress. Denomination counting data layer complete. Building UI components for opening float and closing count workflows.
+**Current Focus:** Phase 6 in progress. Denomination counting data layer complete. Closing count panel complete. Building opening float panel and history views.
 
 **Key Constraints:**
 - Tech stack: Blazor Server + WASM, .NET 10, SQL Server
@@ -22,17 +22,17 @@
 ## Current Position
 
 **Phase:** 6 of 9 (Denomination Counting) - IN PROGRESS
-**Plan:** 1 of 4 complete
+**Plan:** 2 of 4 complete (06-01 and 06-03)
 **Status:** In progress
 
 ```
-Milestone Progress: [########..] 80%
-Phase 6 Progress:   [##........] 25%
+Milestone Progress: [########..] 82%
+Phase 6 Progress:   [#####.....] 50%
 ```
 
-**Last Activity:** 2026-01-20 - Completed 06-01-PLAN.md (Domain Entity for Denomination Counts)
+**Last Activity:** 2026-01-20 - Completed 06-03-PLAN.md (Closing Count Panel)
 
-**Next Action:** Execute 06-02-PLAN.md (Opening Float Dialog)
+**Next Action:** Execute 06-02-PLAN.md (Opening Float Dialog) or 06-04-PLAN.md (History/Detail Views)
 
 ---
 
@@ -53,6 +53,24 @@ Phase 6 Progress:   [##........] 25%
 - SQL table with computed columns and indexes
 - TillService: SaveDenominationCountAsync, GetDenominationCountAsync, GetDenominationCountsAsync
 - Draft vs final count support
+
+### Plan 06-03: Closing Count Panel - COMPLETE
+
+| Task | Status | Commit |
+|------|--------|--------|
+| Task 1: Create ClosingCountPanel component | Done | ffe419e |
+| Task 2: Update TillCloseSessionDialog to use panel | Done | b65655c |
+| Task 3: Create localization resources | Done | 3ea3987 |
+
+**Key Deliverables:**
+- `ClosingCountPanel.razor` (315 lines) - Denomination entry with variance display
+- Per-currency sections with expected balance badge
+- Inline variance: Expected, Actual, Variance with color coding (green/red/blue)
+- Sticky footer with overall variance and grand total in THB
+- THB always shown; foreign currencies only if expected balance > 0
+- TillCloseSessionDialog updated to use ClosingCountPanel
+- Saves denomination breakdown via SaveDenominationCountAsync
+- Localization: English, Thai, Malay (16 keys)
 
 ---
 
@@ -189,9 +207,9 @@ Phase 6 Progress:   [##........] 25%
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Plans completed | 18 | Phase 1: 4; Phase 2: 3; Phase 3: 2; Phase 4: 3; Phase 5: 5; Phase 6: 1 |
-| Requirements done | 31/40 | +DENOM-01 (denomination count entity) |
-| Phases done | 5/9 | Phase 5 complete, Phase 6 in progress |
+| Plans completed | 19 | Phase 1: 4; Phase 2: 3; Phase 3: 2; Phase 4: 3; Phase 5: 5; Phase 6: 2 |
+| Requirements done | 32/40 | +DENOM-02 (closing count panel) |
+| Phases done | 5/9 | Phase 5 complete, Phase 6 in progress (50%) |
 | Blockers hit | 0 | - |
 
 ---
@@ -238,6 +256,10 @@ Phase 6 Progress:   [##........] 25%
 | Denomination dictionary storage | (06-01) Dictionary<decimal, int> for flexible denomination values | 2026-01-20 |
 | Computed Total from denominations | (06-01) Always accurate, no sync issues | 2026-01-20 |
 | Draft vs final counts | (06-01) Draft can be overwritten, final is immutable | 2026-01-20 |
+| Inline variance per section | (06-03) Immediate feedback shows staff where discrepancies exist | 2026-01-20 |
+| Expected from CurrencyBalances | (06-03) Tracked balances reflect actual cash movements during session | 2026-01-20 |
+| Green/Red/Blue variance colors | (06-03) Standard indicators; blue distinguishes over from error | 2026-01-20 |
+| Sticky footer always visible | (06-03) Summary accessible while scrolling denominations | 2026-01-20 |
 
 ### Architecture Notes
 
@@ -246,6 +268,7 @@ Phase 6 Progress:   [##........] 25%
 - CurrencyDenominationBreakdown with computed Total and Variance
 - DenominationCountType enum (Opening, Closing)
 - TillService denomination count methods (Save, Get, GetAll)
+- ClosingCountPanel.razor (315 lines) - Closing count with variance display
 
 **Phase 5 Components (Complete):**
 - TillTransaction extended with void metadata (7 fields)
@@ -305,18 +328,18 @@ None currently.
 
 ## Session Continuity
 
-**Last Session:** 2026-01-20 - Completed 06-01-PLAN.md (Domain Entity for Denomination Counts)
+**Last Session:** 2026-01-20 - Completed 06-03-PLAN.md (Closing Count Panel)
 
 **Context for Next Session:**
-- Phase 6 plan 01 complete: TillDenominationCount entity and service methods ready
-- Denomination dictionary pattern: Dictionary<decimal, int> for denomination counts
-- Draft vs final support: Drafts can be overwritten, finals are immutable
-- Ready for 06-02: Opening Float Dialog UI component
+- Phase 6 plan 03 complete: ClosingCountPanel with variance display
+- Closing count now saves denomination breakdown via SaveDenominationCountAsync
+- TillCloseSessionDialog uses ClosingCountPanel instead of simple input
+- Still need: 06-02 (OpeningFloatPanel) and 06-04 (History/Detail Views)
 
 **Files to Review:**
-- `.planning/phases/06-denomination-counting/06-01-SUMMARY.md` - Just completed
-- `src/MotoRent.Domain/Entities/TillDenominationCount.cs` - New entity
-- `src/MotoRent.Services/TillService.cs` - New denomination count methods
+- `.planning/phases/06-denomination-counting/06-03-SUMMARY.md` - Just completed
+- `src/MotoRent.Client/Components/Till/ClosingCountPanel.razor` - New component
+- `src/MotoRent.Client/Pages/Staff/TillCloseSessionDialog.razor` - Updated dialog
 
 ---
 
