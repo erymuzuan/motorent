@@ -1,0 +1,284 @@
+@inherits LocalizedDialogBase<object, ManagerPinDialog>
+@inject ManagerPinService PinService
+@inject CoreDataContext CoreDataContext
+@implements IDisposable
+
+<div class="manager-pin-dialog">
+    <div class="pin-header text-center mb-4">
+        <div class="avatar avatar-lg bg-warning-lt mb-2">
+            <i class="ti ti-lock fs-2"></i>
+        </div>
+        <h4>@Localizer["ManagerApprovalRequired"]</h4>
+        <p class="text-muted">@Localizer["EnterPinToApprove"]</p>
+    </div>
+
+    @if (m_isLockedOut)
+    {
+        <div class="lockout-message text-center mb-4">
+            <div class="alert alert-danger">
+                <i class="ti ti-lock me-2"></i>
+                @Localizer["TooManyAttempts"]
+                <div class="lockout-countdown mt-2">
+                    <span class="badge bg-danger fs-5">@m_lockoutSecondsRemaining</span>
+                    <span class="text-muted ms-2">@Localizer["SecondsRemaining"]</span>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        @* PIN Dots Display *@
+        <div class="pin-display d-flex justify-content-center gap-3 mb-3">
+            @for (int i = 0; i < 4; i++)
+            {
+                var index = i;
+                <div class="pin-dot @(m_pin.Length > index ? "filled" : "")"></div>
+            }
+        </div>
+
+        @* Error Message *@
+        @if (!string.IsNullOrEmpty(m_error))
+        {
+            <div class="text-danger text-center mb-3">
+                <i class="ti ti-alert-circle me-1"></i>
+                @m_error
+            </div>
+        }
+
+        @* Numeric Keypad *@
+        <div class="keypad-grid">
+            <button type="button" class="keypad-btn" @onclick="@(() => OnDigit('1'))" disabled="@m_verifying">1</button>
+            <button type="button" class="keypad-btn" @onclick="@(() => OnDigit('2'))" disabled="@m_verifying">2</button>
+            <button type="button" class="keypad-btn" @onclick="@(() => OnDigit('3'))" disabled="@m_verifying">3</button>
+            <button type="button" class="keypad-btn" @onclick="@(() => OnDigit('4'))" disabled="@m_verifying">4</button>
+            <button type="button" class="keypad-btn" @onclick="@(() => OnDigit('5'))" disabled="@m_verifying">5</button>
+            <button type="button" class="keypad-btn" @onclick="@(() => OnDigit('6'))" disabled="@m_verifying">6</button>
+            <button type="button" class="keypad-btn" @onclick="@(() => OnDigit('7'))" disabled="@m_verifying">7</button>
+            <button type="button" class="keypad-btn" @onclick="@(() => OnDigit('8'))" disabled="@m_verifying">8</button>
+            <button type="button" class="keypad-btn" @onclick="@(() => OnDigit('9'))" disabled="@m_verifying">9</button>
+            <div class="keypad-spacer"></div>
+            <button type="button" class="keypad-btn" @onclick="@(() => OnDigit('0'))" disabled="@m_verifying">0</button>
+            <button type="button" class="keypad-btn keypad-btn-action" @onclick="OnClear" disabled="@m_verifying">
+                <i class="ti ti-backspace"></i>
+            </button>
+        </div>
+
+        @* Manager Selection (if multiple managers available) *@
+        @if (m_availableManagers.Count > 1)
+        {
+            <div class="manager-select mt-3">
+                <label class="form-label">@Localizer["SelectManager"]</label>
+                <select class="form-select" @bind="m_selectedManagerUserName" @bind:after="OnManagerChanged" disabled="@m_verifying">
+                    @foreach (var manager in m_availableManagers)
+                    {
+                        <option value="@manager.UserName">@manager.FullName</option>
+                    }
+                </select>
+            </div>
+        }
+        else if (m_availableManagers.Count == 1)
+        {
+            <div class="text-center text-muted mt-3">
+                <small>@Localizer["ApprovingAs"]: <strong>@m_availableManagers[0].FullName</strong></small>
+            </div>
+        }
+        else if (m_loadingManagers)
+        {
+            <div class="text-center text-muted mt-3">
+                <span class="spinner-border spinner-border-sm me-2"></span>
+                @Localizer["LoadingManagers"]
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-warning mt-3">
+                <i class="ti ti-alert-triangle me-2"></i>
+                @Localizer["NoManagersWithPin"]
+            </div>
+        }
+    }
+
+    @* Action Buttons *@
+    <div class="d-flex justify-content-center gap-2 mt-4">
+        <button type="button" class="btn btn-ghost-secondary" @onclick="OnCancel" disabled="@m_verifying">
+            @Localizer["Cancel"]
+        </button>
+    </div>
+</div>
+
+@code {
+    // State
+    private string m_pin = "";
+    private string? m_error;
+    private bool m_verifying;
+    private bool m_isLockedOut;
+    private int m_lockoutSecondsRemaining;
+    private System.Timers.Timer? m_lockoutTimer;
+    private List<User> m_availableManagers = [];
+    private string? m_selectedManagerUserName;
+    private User? m_selectedManager;
+    private bool m_loadingManagers = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAvailableManagersAsync();
+        CheckLockout();
+    }
+
+    private async Task LoadAvailableManagersAsync()
+    {
+        m_loadingManagers = true;
+        StateHasChanged();
+
+        try
+        {
+            // Get current organization's AccountNo
+            var accountNo = RequestContext.GetAccountNo();
+
+            // Load all users, then filter for managers with PIN configured
+            // Query users who:
+            // 1. Have an account in this organization
+            // 2. Have ManagementRoles (OrgAdmin or ShopManager)
+            // 3. Have ManagerPinHash set (CanApproveVoids = true)
+            var usersResult = await CoreDataContext.LoadAsync(
+                CoreDataContext.CreateQuery<User>()
+                    .Where(u => u.ManagerPinHash != null && u.ManagerPinHash != ""),
+                page: 1,
+                size: 50,
+                includeTotalRows: false);
+
+            // Filter to users who have ManagementRoles in current organization
+            m_availableManagers = usersResult.ItemCollection
+                .Where(u => u.AccountCollection.Any(a =>
+                    a.AccountNo == accountNo &&
+                    a.Roles.Any(r => UserAccount.ManagementRoles.Contains(r))))
+                .ToList();
+
+            if (m_availableManagers.Count > 0)
+            {
+                m_selectedManagerUserName = m_availableManagers[0].UserName;
+                m_selectedManager = m_availableManagers[0];
+            }
+        }
+        catch (Exception ex)
+        {
+            m_error = $"Failed to load managers: {ex.Message}";
+        }
+        finally
+        {
+            m_loadingManagers = false;
+            StateHasChanged();
+        }
+    }
+
+    private void OnManagerChanged()
+    {
+        m_selectedManager = m_availableManagers.FirstOrDefault(m => m.UserName == m_selectedManagerUserName);
+        m_pin = "";
+        m_error = null;
+        CheckLockout();
+    }
+
+    private void CheckLockout()
+    {
+        if (string.IsNullOrEmpty(m_selectedManagerUserName)) return;
+
+        m_lockoutSecondsRemaining = PinService.GetLockoutSecondsRemaining(m_selectedManagerUserName);
+        m_isLockedOut = m_lockoutSecondsRemaining > 0;
+
+        if (m_isLockedOut)
+        {
+            StartLockoutTimer();
+        }
+    }
+
+    private void StartLockoutTimer()
+    {
+        m_lockoutTimer?.Dispose();
+        m_lockoutTimer = new System.Timers.Timer(1000);
+        m_lockoutTimer.Elapsed += async (_, _) =>
+        {
+            m_lockoutSecondsRemaining--;
+            if (m_lockoutSecondsRemaining <= 0)
+            {
+                m_isLockedOut = false;
+                m_lockoutTimer?.Stop();
+            }
+            await InvokeAsync(StateHasChanged);
+        };
+        m_lockoutTimer.Start();
+    }
+
+    private void OnDigit(char digit)
+    {
+        if (m_pin.Length >= 4) return;
+        if (m_selectedManager == null) return;
+
+        m_pin += digit;
+        m_error = null;
+
+        if (m_pin.Length == 4)
+        {
+            _ = VerifyPinAsync();
+        }
+    }
+
+    private void OnClear()
+    {
+        if (m_pin.Length > 0)
+        {
+            m_pin = m_pin[..^1];
+        }
+        m_error = null;
+    }
+
+    private async Task VerifyPinAsync()
+    {
+        if (m_selectedManager == null)
+        {
+            m_error = Localizer["NoManagerSelected"];
+            m_pin = "";
+            return;
+        }
+
+        m_verifying = true;
+        StateHasChanged();
+
+        try
+        {
+            // Allow a brief moment for UI feedback before verification
+            await Task.Delay(100);
+
+            // Direct verification using the loaded manager and injected service
+            var result = PinService.VerifyPin(m_selectedManager, m_pin);
+            if (result.IsValid)
+            {
+                // Return manager username as the dialog result
+                ModalService.Close(ModalResult.Ok(m_selectedManagerUserName));
+                return;
+            }
+
+            m_error = result.Error;
+            if (result.RemainingAttempts == 0)
+            {
+                CheckLockout();
+            }
+        }
+        finally
+        {
+            m_verifying = false;
+            m_pin = "";
+            StateHasChanged();
+        }
+    }
+
+    private void OnCancel()
+    {
+        ModalService.Close(ModalResult.Cancel());
+    }
+
+    public void Dispose()
+    {
+        m_lockoutTimer?.Dispose();
+    }
+}
