@@ -9,7 +9,7 @@
 
 **Core Value:** Business visibility and cash control - owners can see if their assets are profitable, where cash is leaking, and whether staff are handling money correctly.
 
-**Current Focus:** Phase 5 complete. Staff can now process voids with manager PIN approval and overpayment refunds. Ready for Phase 6 (Denomination Counting).
+**Current Focus:** Phase 6 in progress. Denomination counting data layer complete. Building UI components for opening float and closing count workflows.
 
 **Key Constraints:**
 - Tech stack: Blazor Server + WASM, .NET 10, SQL Server
@@ -21,18 +21,38 @@
 
 ## Current Position
 
-**Phase:** 5 of 9 (Refunds & Corrections) - COMPLETE
-**Plan:** 5 of 5 complete
-**Status:** Phase complete
+**Phase:** 6 of 9 (Denomination Counting) - IN PROGRESS
+**Plan:** 1 of 4 complete
+**Status:** In progress
 
 ```
-Milestone Progress: [########..] 75%
-Phase 5 Progress:   [##########] 100%
+Milestone Progress: [########..] 80%
+Phase 6 Progress:   [##........] 25%
 ```
 
-**Last Activity:** 2026-01-20 - Completed 05-05-PLAN.md (Void/Refund Integration)
+**Last Activity:** 2026-01-20 - Completed 06-01-PLAN.md (Domain Entity for Denomination Counts)
 
-**Next Action:** Run `/gsd:discuss-phase 6` to gather context for Denomination Counting phase.
+**Next Action:** Execute 06-02-PLAN.md (Opening Float Dialog)
+
+---
+
+## Phase 6 Progress - IN PROGRESS
+
+### Plan 06-01: Domain Entity for Denomination Counts - COMPLETE
+
+| Task | Status | Commit |
+|------|--------|--------|
+| Task 1: Create TillDenominationCount entity | Done | 5dd180a |
+| Task 2: Create SQL table script | Done | e37c5ab |
+| Task 3: Extend TillService with denomination methods | Done | d5451a4 |
+
+**Key Deliverables:**
+- TillDenominationCount entity with DenominationCountType enum
+- CurrencyDenominationBreakdown class with denomination Dictionary
+- Computed Total, ExpectedBalance, and Variance properties
+- SQL table with computed columns and indexes
+- TillService: SaveDenominationCountAsync, GetDenominationCountAsync, GetDenominationCountsAsync
+- Draft vs final count support
 
 ---
 
@@ -169,9 +189,9 @@ Phase 5 Progress:   [##########] 100%
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Plans completed | 17 | Phase 1: 4; Phase 2: 3; Phase 3: 2; Phase 4: 3; Phase 5: 5 |
-| Requirements done | 30/40 | +REFUND-01, REFUND-02, VOID-01, VOID-02, VOID-03 |
-| Phases done | 5/9 | Phase 5 complete |
+| Plans completed | 18 | Phase 1: 4; Phase 2: 3; Phase 3: 2; Phase 4: 3; Phase 5: 5; Phase 6: 1 |
+| Requirements done | 31/40 | +DENOM-01 (denomination count entity) |
+| Phases done | 5/9 | Phase 5 complete, Phase 6 in progress |
 | Blockers hit | 0 | - |
 
 ---
@@ -215,8 +235,17 @@ Phase 5 Progress:   [##########] 100%
 | Void button on non-voided only | (05-05) Prevent invalid void attempts, only when session open | 2026-01-20 |
 | Refund button on IN payments only | (05-05) Only inbound payments can have overpayment scenarios | 2026-01-20 |
 | VOID badge + strikethrough | (05-05) Clear visual indicator without removing from list | 2026-01-20 |
+| Denomination dictionary storage | (06-01) Dictionary<decimal, int> for flexible denomination values | 2026-01-20 |
+| Computed Total from denominations | (06-01) Always accurate, no sync issues | 2026-01-20 |
+| Draft vs final counts | (06-01) Draft can be overwritten, final is immutable | 2026-01-20 |
 
 ### Architecture Notes
+
+**Phase 6 Components (In Progress):**
+- TillDenominationCount entity with denomination breakdowns
+- CurrencyDenominationBreakdown with computed Total and Variance
+- DenominationCountType enum (Opening, Closing)
+- TillService denomination count methods (Save, Get, GetAll)
 
 **Phase 5 Components (Complete):**
 - TillTransaction extended with void metadata (7 fields)
@@ -276,18 +305,18 @@ None currently.
 
 ## Session Continuity
 
-**Last Session:** 2026-01-20 - Completed 05-05-PLAN.md (Void/Refund Integration)
+**Last Session:** 2026-01-20 - Completed 06-01-PLAN.md (Domain Entity for Denomination Counts)
 
 **Context for Next Session:**
-- Phase 5 complete: All void and refund workflows implemented
-- Till.razor has void button, voided styling, complete void/refund workflows
-- ManagerPinDialog, VoidTransactionDialog, OverpaymentRefundDialog all ready
-- Ready for Phase 6: End of Day Reconciliation
+- Phase 6 plan 01 complete: TillDenominationCount entity and service methods ready
+- Denomination dictionary pattern: Dictionary<decimal, int> for denomination counts
+- Draft vs final support: Drafts can be overwritten, finals are immutable
+- Ready for 06-02: Opening Float Dialog UI component
 
 **Files to Review:**
-- `.planning/phases/05-refunds-corrections/05-05-SUMMARY.md` - Just completed
-- `.planning/ROADMAP.md` - Phase 6 planning
-- `src/MotoRent.Client/Pages/Staff/Till.razor` - Updated with void/refund workflows
+- `.planning/phases/06-denomination-counting/06-01-SUMMARY.md` - Just completed
+- `src/MotoRent.Domain/Entities/TillDenominationCount.cs` - New entity
+- `src/MotoRent.Services/TillService.cs` - New denomination count methods
 
 ---
 
