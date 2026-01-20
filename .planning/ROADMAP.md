@@ -83,6 +83,12 @@ Plans:
 
 **Dependencies:** Phase 2 (till session must be open for transaction entry)
 
+**Plans:** 2 plans
+
+Plans:
+- [ ] 03-01-PLAN.md — Transaction search dialog with booking/rental search and auto-detect
+- [ ] 03-02-PLAN.md — Fullscreen item confirmation with accessory/insurance/discount editing
+
 **Requirements:**
 - TXSEARCH-01: Staff can search for bookings or rentals by reference, customer name, or phone
 - TXSEARCH-02: System auto-detects transaction type from entity status (booking deposit, check-in, check-out)
@@ -248,7 +254,7 @@ Plans:
 |-------|------|--------------|--------|------------|
 | 1 | Exchange Rate Foundation | RATE-01 to RATE-05 | Complete | 100% |
 | 2 | Multi-Currency Till Operations | TILL-01 to TILL-05 | Complete | 100% |
-| 3 | Transaction Search & Item Confirmation | TXSEARCH-01, TXSEARCH-02, ITEMS-01 to ITEMS-05 | Not Started | 0% |
+| 3 | Transaction Search & Item Confirmation | TXSEARCH-01, TXSEARCH-02, ITEMS-01 to ITEMS-05 | Planned | 0% |
 | 4 | Payment Terminal Redesign | PAY-01 to PAY-08 | Not Started | 0% |
 | 5 | Refunds & Corrections | REFUND-01, REFUND-02, VOID-01 to VOID-03 | Not Started | 0% |
 | 6 | Denomination Counting | DENOM-01 to DENOM-03 | Not Started | 0% |
@@ -291,4 +297,4 @@ Plans:
 
 ---
 
-*Last updated: 2026-01-20 — Phases 3, 4, 5 inserted for till redesign; original phases 3-6 renumbered to 6-9*
+*Last updated: 2026-01-20 — Phase 3 planned with 2 plans in 2 waves*
