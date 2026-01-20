@@ -25,11 +25,11 @@ Requirements for the Cashier Till milestone. Each maps to roadmap phases.
 
 ### Exchange Rate Management
 
-- [ ] **RATE-01**: System fetches exchange rates from Forex POS API as default
-- [ ] **RATE-02**: Manager can override exchange rate per currency (custom rate takes precedence)
-- [ ] **RATE-03**: Exchange rate source (API vs manual) is tracked for audit
-- [ ] **RATE-04**: Exchange rate is stored on each transaction for audit trail
-- [ ] **RATE-05**: Staff can view current exchange rates during payment acceptance
+- [x] **RATE-01**: System fetches exchange rates from Forex POS API as default
+- [x] **RATE-02**: Manager can override exchange rate per currency (custom rate takes precedence)
+- [x] **RATE-03**: Exchange rate source (API vs manual) is tracked for audit
+- [x] **RATE-04**: Exchange rate is stored on each transaction for audit trail
+- [x] **RATE-05**: Staff can view current exchange rates during payment acceptance
 
 ### Manager Oversight
 
@@ -87,11 +87,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| RATE-01 | Phase 1 | Pending |
-| RATE-02 | Phase 1 | Pending |
-| RATE-03 | Phase 1 | Pending |
-| RATE-04 | Phase 1 | Pending |
-| RATE-05 | Phase 1 | Pending |
+| RATE-01 | Phase 1 | Complete |
+| RATE-02 | Phase 1 | Complete |
+| RATE-03 | Phase 1 | Complete |
+| RATE-04 | Phase 1 | Complete |
+| RATE-05 | Phase 1 | Complete |
 | TILL-01 | Phase 2 | Pending |
 | TILL-02 | Phase 2 | Pending |
 | TILL-03 | Phase 2 | Pending |
@@ -121,4 +121,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-01-19*
-*Last updated: 2026-01-19 after roadmap creation*
+*Last updated: 2026-01-20 — Phase 1 requirements marked complete*

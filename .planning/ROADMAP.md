@@ -26,7 +26,7 @@ Plans:
 - [x] 01-01-PLAN.md — Entity, service, SQL table foundation
 - [x] 01-02-PLAN.md — Manager settings page for rate management
 - [x] 01-03-PLAN.md — Staff exchange rate panel with calculator
-- [ ] 01-04-PLAN.md — Gap closure: Wire panel to Till, add nav link
+- [x] 01-04-PLAN.md — Gap closure: Wire panel to Till, add nav link
 
 **Requirements:**
 - RATE-01: System fetches exchange rates from Forex POS API as default
@@ -161,14 +161,14 @@ Plans:
 
 | Phase | Name | Requirements | Status | Completion |
 |-------|------|--------------|--------|------------|
-| 1 | Exchange Rate Foundation | RATE-01, RATE-02, RATE-03, RATE-04, RATE-05 | Gap Closure | 80% |
+| 1 | Exchange Rate Foundation | RATE-01, RATE-02, RATE-03, RATE-04, RATE-05 | Complete | 100% |
 | 2 | Multi-Currency Till Operations | TILL-01, TILL-02, TILL-03, TILL-04, TILL-05 | Not Started | 0% |
 | 3 | Denomination Counting | DENOM-01, DENOM-02, DENOM-03 | Not Started | 0% |
 | 4 | Till Closing and Reconciliation | TILL-06, TILL-07 | Not Started | 0% |
 | 5 | Manager Oversight | MGR-01, MGR-02, MGR-03, MGR-04 | Not Started | 0% |
 | 6 | End of Day Operations | EOD-01, EOD-02, EOD-03, EOD-04, RCPT-01, RCPT-02, RCPT-03 | Not Started | 0% |
 
-**Overall Progress:** 0/26 requirements complete (0%)
+**Overall Progress:** 5/26 requirements complete (19%)
 
 ---
 
@@ -189,4 +189,4 @@ Plans:
 
 ---
 
-*Last updated: 2026-01-20 - Phase 1 gap closure plan added (01-04)*
+*Last updated: 2026-01-20 — Phase 1 complete, all requirements verified*
