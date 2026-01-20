@@ -115,6 +115,13 @@ Plans:
 
 **Dependencies:** Phase 3 (item confirmation must provide total amount due)
 
+**Plans:** 3 plans
+
+Plans:
+- [ ] 04-01-PLAN.md — Payment terminal panel UI foundation with layout and tabs
+- [ ] 04-02-PLAN.md — THB keypad and foreign currency denomination input
+- [ ] 04-03-PLAN.md — Payment completion flow with till recording
+
 **Requirements:**
 - PAY-01: Payment terminal shows amount due in THB prominently
 - PAY-02: THB input uses numeric keypad with quick amounts (฿100, ฿500, ฿1,000, exact amount)
@@ -255,7 +262,7 @@ Plans:
 | 1 | Exchange Rate Foundation | RATE-01 to RATE-05 | Complete | 100% |
 | 2 | Multi-Currency Till Operations | TILL-01 to TILL-05 | Complete | 100% |
 | 3 | Transaction Search & Item Confirmation | TXSEARCH-01, TXSEARCH-02, ITEMS-01 to ITEMS-05 | Complete | 100% |
-| 4 | Payment Terminal Redesign | PAY-01 to PAY-08 | Not Started | 0% |
+| 4 | Payment Terminal Redesign | PAY-01 to PAY-08 | Planned | 0% |
 | 5 | Refunds & Corrections | REFUND-01, REFUND-02, VOID-01 to VOID-03 | Not Started | 0% |
 | 6 | Denomination Counting | DENOM-01 to DENOM-03 | Not Started | 0% |
 | 7 | Till Closing and Reconciliation | TILL-06, TILL-07 | Not Started | 0% |
@@ -297,4 +304,4 @@ Plans:
 
 ---
 
-*Last updated: 2026-01-20 — Phase 3 complete*
+*Last updated: 2026-01-20 — Phase 4 planned*
