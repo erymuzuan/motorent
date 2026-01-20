@@ -1,13 +1,14 @@
 @using MotoRent.Domain.Entities
+@using MotoRent.Client.Components.Till
 @inherits LocalizedDialogBase<TillSession, TillCloseSessionDialog>
 @inject TillService TillService
 
 <form id="closeSessionForm" @onsubmit="this.SaveAsync" @onsubmit:preventDefault>
-    <div class="modal-body">
-        @* Session Summary *@
-        <div class="card bg-muted-lt mb-4">
-            <div class="card-body py-3">
-                <div class="row text-center">
+    <div class="modal-body" style="max-height: calc(100vh - 200px); overflow-y: auto;">
+        @* Session Summary (compact) *@
+        <div class="card bg-muted-lt mb-3">
+            <div class="card-body py-2">
+                <div class="row text-center small">
                     <div class="col-4 border-end">
                         <small class="text-secondary d-block">@Localizer["Opening"]</small>
                         <span class="fw-semibold">@this.FormatCurrency(this.Entity.OpeningFloat)</span>
@@ -24,57 +25,16 @@
             </div>
         </div>
 
-        @* Expected vs Actual *@
-        <div class="row g-3 mb-4">
-            <div class="col-6">
-                <label class="form-label">@Localizer["ExpectedCash"]</label>
-                <div class="form-control-plaintext h3 mb-0">
-                    @this.FormatCurrency(this.Entity.ExpectedCash)
-                </div>
-            </div>
-            <div class="col-6">
-                <label class="form-label required">@Localizer["ActualCashCount"]</label>
-                <div class="input-group input-group-lg">
-                    <span class="input-group-text">฿</span>
-                    <input type="number" class="form-control text-end" @bind="this.ActualCash"
-                           @bind:event="oninput" required min="0" step="100" autofocus />
-                </div>
-            </div>
-        </div>
-
-        @* Variance Display *@
-        @if (this.ActualCash > 0 || this.HasEnteredAmount)
-        {
-            var variance = this.ActualCash - this.Entity.ExpectedCash;
-            var varianceClass = variance == 0 ? "bg-success-lt text-success" :
-                               variance > 0 ? "bg-info-lt text-info" :
-                               "bg-danger-lt text-danger";
-            var varianceIcon = variance == 0 ? "ti-check" :
-                              variance > 0 ? "ti-trending-up" :
-                              "ti-trending-down";
-            var varianceText = variance == 0 ? Localizer["Balanced"].Value :
-                              variance > 0 ? Localizer["Over"].Value : Localizer["Short"].Value;
-
-            <div class="alert @varianceClass mb-4">
-                <div class="d-flex align-items-center">
-                    <i class="ti @varianceIcon me-2" style="font-size: 1.5rem;"></i>
-                    <div>
-                        <div class="fw-semibold">@varianceText: @this.FormatCurrency(Math.Abs(variance))</div>
-                        @if (variance != 0)
-                        {
-                            <small>
-                                @(variance > 0 ? Localizer["OverMessage"].Value : Localizer["ShortMessage"].Value)
-                            </small>
-                        }
-                    </div>
-                </div>
-            </div>
-        }
+        @* Denomination Count Panel *@
+        <ClosingCountPanel
+            ExpectedBalances="@GetExpectedBalances()"
+            OnBreakdownsChanged="@OnBreakdownsChanged"
+            Disabled="@Saving" />
 
         @* Variance Acknowledgment *@
         @if (this.HasVariance)
         {
-            <div class="mb-3">
+            <div class="mb-3 mt-3">
                 <label class="form-check">
                     <input type="checkbox" class="form-check-input" @bind="this.AcknowledgeVariance" />
                     <span class="form-check-label">
@@ -84,7 +44,7 @@
             </div>
         }
 
-        <div class="mb-0">
+        <div class="mb-0 mt-3">
             <label class="form-label">@Localizer["ClosingNotes"]</label>
             <textarea class="form-control" @bind="this.Notes" rows="2"
                       placeholder="@Localizer["ClosingNotesPlaceholder"]"></textarea>
@@ -112,15 +72,52 @@
     private string? Notes { get; set; }
     private bool AcknowledgeVariance { get; set; }
     private bool Saving { get; set; }
+    private List<CurrencyDenominationBreakdown> m_currencyBreakdowns = [];
 
-    private bool HasEnteredAmount => this.ActualCash > 0;
-    private bool HasVariance => this.HasEnteredAmount && this.ActualCash != this.Entity.ExpectedCash;
+    private bool HasEnteredAmount => this.ActualCash > 0 ||
+        m_currencyBreakdowns.Any(b => b.Currency == SupportedCurrencies.THB && b.Total > 0);
+
+    private bool HasVariance => m_currencyBreakdowns.Any(b => b.Variance.HasValue && b.Variance.Value != 0);
+
     private bool CanClose => !this.Saving && this.HasEnteredAmount && (!this.HasVariance || this.AcknowledgeVariance);
 
     protected override void OnParametersSet()
     {
-        // Pre-fill with expected amount
-        this.ActualCash = this.Entity.ExpectedCash;
+        // Initialize with expected balances (no pre-fill for closing count)
+        this.ActualCash = 0;
+    }
+
+    /// <summary>
+    /// Gets expected balances from TillSession.CurrencyBalances.
+    /// If CurrencyBalances is null, falls back to ExpectedCash for THB only.
+    /// </summary>
+    private Dictionary<string, decimal> GetExpectedBalances()
+    {
+        if (this.Entity.CurrencyBalances != null && this.Entity.CurrencyBalances.Count > 0)
+        {
+            return this.Entity.CurrencyBalances;
+        }
+
+        // Fallback for backward compatibility
+        return new Dictionary<string, decimal>
+        {
+            [SupportedCurrencies.THB] = this.Entity.ExpectedCash
+        };
+    }
+
+    /// <summary>
+    /// Callback when denomination breakdowns change.
+    /// Updates ActualCash for backward compatibility with CloseSessionAsync.
+    /// </summary>
+    private void OnBreakdownsChanged(List<CurrencyDenominationBreakdown> breakdowns)
+    {
+        m_currencyBreakdowns = breakdowns;
+
+        // Update ActualCash from THB breakdown for backward compatibility
+        var thbBreakdown = breakdowns.FirstOrDefault(b => b.Currency == SupportedCurrencies.THB);
+        this.ActualCash = thbBreakdown?.Total ?? 0;
+
+        StateHasChanged();
     }
 
     private void Cancel()
@@ -136,20 +133,39 @@
         {
             this.Saving = true;
 
+            // First, close the session with THB actual (for backward compatibility)
             var result = await this.TillService.CloseSessionAsync(
                 this.Entity.TillSessionId,
                 this.ActualCash,
                 this.Notes,
                 this.UserName);
 
-            if (result.Success)
-            {
-                this.ModalService.Close(ModalResult.Ok(result));
-            }
-            else
+            if (!result.Success)
             {
                 this.ShowError(result.Message ?? "Failed to close session");
+                return;
             }
+
+            // Save denomination count with full breakdowns
+            if (m_currencyBreakdowns.Count > 0)
+            {
+                var denominationResult = await this.TillService.SaveDenominationCountAsync(
+                    this.Entity.TillSessionId,
+                    DenominationCountType.Closing,
+                    m_currencyBreakdowns,
+                    this.UserName,
+                    isFinal: true,
+                    notes: this.Notes);
+
+                if (!denominationResult.Success)
+                {
+                    // Log but don't fail the close - denomination count is supplementary
+                    this.Logger.LogWarning("Failed to save closing denomination count: {Message}",
+                        denominationResult.Message);
+                }
+            }
+
+            this.ModalService.Close(ModalResult.Ok(result));
         }
         catch (Exception ex)
         {
