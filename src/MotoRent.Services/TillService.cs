@@ -3,9 +3,10 @@ using MotoRent.Domain.Entities;
 
 namespace MotoRent.Services;
 
-public class TillService(RentalDataContext context)
+public class TillService(RentalDataContext context, ExchangeRateService exchangeRateService)
 {
     private RentalDataContext Context { get; } = context;
+    private ExchangeRateService m_exchangeRateService { get; } = exchangeRateService;
 
     #region Session Management
 
@@ -32,7 +33,15 @@ public class TillService(RentalDataContext context)
             Status = TillSessionStatus.Open,
             OpeningFloat = openingFloat,
             OpenedAt = DateTimeOffset.Now,
-            OpeningNotes = notes
+            OpeningNotes = notes,
+            // Initialize currency balances - THB starts with opening float, foreign currencies start at 0
+            CurrencyBalances = new Dictionary<string, decimal>
+            {
+                [SupportedCurrencies.THB] = openingFloat,
+                [SupportedCurrencies.USD] = 0,
+                [SupportedCurrencies.EUR] = 0,
+                [SupportedCurrencies.CNY] = 0
+            }
         };
 
         using var persistenceSession = Context.OpenSession(staffUserName);
@@ -213,6 +222,10 @@ public class TillService(RentalDataContext context)
             TransactionType = type,
             Direction = TillTransactionDirection.In,
             Amount = amount,
+            Currency = SupportedCurrencies.THB,
+            ExchangeRate = 1.0m,
+            AmountInBaseCurrency = amount, // THB transaction, so same as Amount
+            ExchangeRateSource = "Base",
             Description = description,
             PaymentId = paymentId,
             DepositId = depositId,
@@ -224,7 +237,11 @@ public class TillService(RentalDataContext context)
 
         // Update session totals based on transaction type
         if (transaction.AffectsCash)
+        {
             session.TotalCashIn += amount;
+            // Also update CurrencyBalances for consistency
+            session.CurrencyBalances[SupportedCurrencies.THB] = session.GetCurrencyBalance(SupportedCurrencies.THB) + amount;
+        }
 
         if (type == TillTransactionType.TopUp)
             session.TotalToppedUp += amount;
@@ -361,6 +378,187 @@ public class TillService(RentalDataContext context)
                 .OrderByDescending(t => t.TransactionTime),
             page: 1, size: count, includeTotalRows: false);
         return result.ItemCollection.ToList();
+    }
+
+    #endregion
+
+    #region Multi-Currency Operations
+
+    /// <summary>
+    /// Records a foreign currency payment to the till.
+    /// Converts to THB using current exchange rate and tracks both foreign and THB amounts.
+    /// </summary>
+    /// <param name="sessionId">Till session ID</param>
+    /// <param name="type">Transaction type (e.g., RentalPayment, SecurityDeposit)</param>
+    /// <param name="currency">Currency code (THB, USD, EUR, CNY)</param>
+    /// <param name="foreignAmount">Amount in foreign currency</param>
+    /// <param name="description">Transaction description</param>
+    /// <param name="username">User recording the transaction</param>
+    /// <param name="paymentId">Optional linked payment ID</param>
+    /// <param name="depositId">Optional linked deposit ID</param>
+    /// <param name="rentalId">Optional linked rental ID</param>
+    /// <param name="notes">Optional notes</param>
+    /// <returns>Submit operation result</returns>
+    public async Task<SubmitOperation> RecordForeignCurrencyPaymentAsync(
+        int sessionId,
+        TillTransactionType type,
+        string currency,
+        decimal foreignAmount,
+        string description,
+        string username,
+        int? paymentId = null,
+        int? depositId = null,
+        int? rentalId = null,
+        string? notes = null)
+    {
+        // For THB, delegate to existing RecordCashInAsync
+        if (currency == SupportedCurrencies.THB)
+        {
+            return await RecordCashInAsync(sessionId, type, foreignAmount, description, username,
+                paymentId, depositId, rentalId, notes);
+        }
+
+        var session = await GetSessionByIdAsync(sessionId);
+        if (session == null)
+            return SubmitOperation.CreateFailure("Session not found");
+
+        if (session.Status != TillSessionStatus.Open)
+            return SubmitOperation.CreateFailure("Session is not open");
+
+        // Convert to THB using current exchange rate
+        var conversion = await m_exchangeRateService.ConvertToThbAsync(currency, foreignAmount);
+        if (conversion == null)
+            return SubmitOperation.CreateFailure($"No exchange rate configured for {currency}");
+
+        var transaction = new TillTransaction
+        {
+            TillSessionId = sessionId,
+            TransactionType = type,
+            Direction = TillTransactionDirection.In,
+            Amount = foreignAmount,
+            Currency = currency,
+            ExchangeRate = conversion.RateUsed,
+            AmountInBaseCurrency = conversion.ThbAmount,
+            ExchangeRateSource = conversion.RateSource,
+            ExchangeRateId = conversion.ExchangeRateId,
+            Description = description,
+            PaymentId = paymentId,
+            DepositId = depositId,
+            RentalId = rentalId,
+            TransactionTime = DateTimeOffset.Now,
+            RecordedByUserName = username,
+            Notes = notes
+        };
+
+        // Update session totals - always use THB equivalent for reconciliation
+        if (transaction.AffectsCash)
+            session.TotalCashIn += conversion.ThbAmount;
+
+        // Track actual foreign currency amount in CurrencyBalances
+        // Initialize currency key if not exists
+        if (!session.CurrencyBalances.ContainsKey(currency))
+            session.CurrencyBalances[currency] = 0;
+        session.CurrencyBalances[currency] += foreignAmount;
+
+        if (type == TillTransactionType.CardPayment)
+            session.TotalCardPayments += conversion.ThbAmount;
+        else if (type == TillTransactionType.BankTransfer)
+            session.TotalBankTransfers += conversion.ThbAmount;
+        else if (type == TillTransactionType.PromptPay)
+            session.TotalPromptPay += conversion.ThbAmount;
+
+        using var persistenceSession = Context.OpenSession(username);
+        persistenceSession.Attach(transaction);
+        persistenceSession.Attach(session);
+        return await persistenceSession.SubmitChanges("RecordForeignCurrencyPayment");
+    }
+
+    /// <summary>
+    /// Records a multi-currency cash drop to the safe.
+    /// Can drop multiple currencies in a single operation.
+    /// </summary>
+    /// <param name="sessionId">Till session ID</param>
+    /// <param name="drops">List of currency amounts to drop</param>
+    /// <param name="username">User recording the drop</param>
+    /// <param name="notes">Optional notes</param>
+    /// <returns>Submit operation result</returns>
+    public async Task<SubmitOperation> RecordMultiCurrencyDropAsync(
+        int sessionId,
+        List<CurrencyDropAmount> drops,
+        string username,
+        string? notes = null)
+    {
+        var session = await GetSessionByIdAsync(sessionId);
+        if (session == null)
+            return SubmitOperation.CreateFailure("Session not found");
+
+        if (session.Status != TillSessionStatus.Open)
+            return SubmitOperation.CreateFailure("Session is not open");
+
+        var transactions = new List<TillTransaction>();
+        decimal totalThbDropped = 0;
+
+        foreach (var drop in drops.Where(d => d.Amount > 0))
+        {
+            // Validate sufficient balance
+            var currentBalance = session.GetCurrencyBalance(drop.Currency);
+            if (drop.Amount > currentBalance)
+                return SubmitOperation.CreateFailure($"Insufficient {drop.Currency} balance. Available: {currentBalance:N2}, Requested: {drop.Amount:N2}");
+
+            // Get THB equivalent for non-THB currencies
+            decimal thbEquivalent;
+            decimal exchangeRate = 1.0m;
+            string rateSource = "Base";
+            int? exchangeRateId = null;
+
+            if (drop.Currency == SupportedCurrencies.THB)
+            {
+                thbEquivalent = drop.Amount;
+            }
+            else
+            {
+                var conversion = await m_exchangeRateService.ConvertToThbAsync(drop.Currency, drop.Amount);
+                if (conversion == null)
+                    return SubmitOperation.CreateFailure($"No exchange rate configured for {drop.Currency}");
+
+                thbEquivalent = conversion.ThbAmount;
+                exchangeRate = conversion.RateUsed;
+                rateSource = conversion.RateSource;
+                exchangeRateId = conversion.ExchangeRateId;
+            }
+
+            var transaction = new TillTransaction
+            {
+                TillSessionId = sessionId,
+                TransactionType = TillTransactionType.Drop,
+                Direction = TillTransactionDirection.Out,
+                Amount = drop.Amount,
+                Currency = drop.Currency,
+                ExchangeRate = exchangeRate,
+                AmountInBaseCurrency = thbEquivalent,
+                ExchangeRateSource = rateSource,
+                ExchangeRateId = exchangeRateId,
+                Description = $"Cash drop to safe ({drop.Currency})",
+                TransactionTime = DateTimeOffset.Now,
+                RecordedByUserName = username,
+                Notes = notes
+            };
+
+            transactions.Add(transaction);
+
+            // Update currency balance
+            session.CurrencyBalances[drop.Currency] -= drop.Amount;
+            totalThbDropped += thbEquivalent;
+        }
+
+        // Update session total dropped (always in THB equivalent)
+        session.TotalDropped += totalThbDropped;
+
+        using var persistenceSession = Context.OpenSession(username);
+        foreach (var transaction in transactions)
+            persistenceSession.Attach(transaction);
+        persistenceSession.Attach(session);
+        return await persistenceSession.SubmitChanges("RecordMultiCurrencyDrop");
     }
 
     #endregion
@@ -760,6 +958,22 @@ public class DailyTillSummary
     /// Net cash movement (in - out - dropped).
     /// </summary>
     public decimal NetCashMovement => TotalCashIn - TotalCashOut - TotalDropped;
+}
+
+/// <summary>
+/// Represents a currency amount for a multi-currency drop operation.
+/// </summary>
+public class CurrencyDropAmount
+{
+    /// <summary>
+    /// Currency code (THB, USD, EUR, CNY)
+    /// </summary>
+    public string Currency { get; set; } = SupportedCurrencies.THB;
+
+    /// <summary>
+    /// Amount to drop in this currency
+    /// </summary>
+    public decimal Amount { get; set; }
 }
 
 #endregion
