@@ -4,6 +4,8 @@ description: C# coding conventions, naming patterns, and file organization stand
 ---
 # Code Standards
 
+These guidelines direct the GitHub Copilot CLI agent when analyzing or modifying C# files in MotoRent so every automated change matches human expectations.
+
 ## C# Coding Standards
 - **Framework**: .NET 10
 - **Language Version**: C# 14 or latest
