@@ -3,14 +3,16 @@
 **Created:** 2026-01-19
 **Milestone:** Cashier Till & End of Day Reconciliation
 **Depth:** Standard
-**Total Phases:** 6
-**Total Requirements:** 26
+**Total Phases:** 9
+**Total Requirements:** 40
 
 ---
 
 ## Overview
 
 Transform MotoRent's existing single-currency till system into a full multi-currency cash management solution for Thailand's tourist rental market. The roadmap progresses from foundational exchange rate infrastructure through operational workflows, manager oversight, and end-of-day reconciliation. Each phase delivers a complete, verifiable capability.
+
+**Till Workflow Vision:** Staff use a unified transaction flow where they search for a booking/rental, review and edit items in a fullscreen confirmation screen, then process multi-currency split payments through a dedicated payment terminal.
 
 ---
 
@@ -75,11 +77,87 @@ Plans:
 
 ---
 
-## Phase 3: Denomination Counting
+## Phase 3: Transaction Search & Item Confirmation
+
+**Goal:** Staff can start a transaction by searching for a booking/rental and reviewing/editing items before payment.
+
+**Dependencies:** Phase 2 (till session must be open for transaction entry)
+
+**Requirements:**
+- TXSEARCH-01: Staff can search for bookings or rentals by reference, customer name, or phone
+- TXSEARCH-02: System auto-detects transaction type from entity status (booking deposit, check-in, check-out)
+- ITEMS-01: Staff sees full summary (customer, vehicle, dates, line items) in fullscreen dialog
+- ITEMS-02: Staff can add/remove accessories from the transaction
+- ITEMS-03: Staff can change insurance package
+- ITEMS-04: Staff can apply percentage or fixed discounts with reason
+- ITEMS-05: Item confirmation uses responsive layout (two columns tablet/PC, stacked mobile)
+
+**Success Criteria:**
+1. Staff clicks "New Transaction", searches "John", finds his Reserved booking
+2. System shows check-in items (rental charges, security deposit, optional accessories)
+3. Staff adds a helmet (฿50/day x 3 days = ฿150) to the line items
+4. Staff applies 10% discount with reason "Returning customer"
+5. Total updates and staff can proceed to payment
+
+**Research Flag:** May need UX research for search result presentation
+
+---
+
+## Phase 4: Payment Terminal Redesign
+
+**Goal:** Staff can receive multi-currency split payments through a unified payment terminal.
+
+**Dependencies:** Phase 3 (item confirmation must provide total amount due)
+
+**Requirements:**
+- PAY-01: Payment terminal shows amount due in THB prominently
+- PAY-02: THB input uses numeric keypad with quick amounts (฿100, ฿500, ฿1,000, exact amount)
+- PAY-03: Foreign currency input (USD, EUR, CNY) uses denomination counting
+- PAY-04: Staff can mix cash payments across multiple currencies in same transaction
+- PAY-05: Staff can mix cash + non-cash (card, PromptPay, bank transfer) in same transaction
+- PAY-06: Running total shows all payment entries with THB equivalents
+- PAY-07: Change calculation always in THB
+- PAY-08: Green indicators show which currencies/methods have entries
+
+**Success Criteria:**
+1. Customer owes ฿4,550 for rental
+2. Staff accepts: ฿1,000 THB cash + $50 USD (rate 35.5 = ฿1,775) + €50 EUR (rate 38.0 = ฿1,900)
+3. System shows: Total received ฿4,675, Change ฿125 (THB)
+4. Staff completes payment, receipt is generated
+
+**Research Flag:** None - builds on existing denomination counting components
+
+---
+
+## Phase 5: Refunds & Corrections
+
+**Goal:** Staff can process refunds and void transactions with appropriate authorization.
+
+**Dependencies:** Phase 4 (payment terminal must support receiving payments first)
+
+**Requirements:**
+- REFUND-01: Security deposit refunds at check-out (existing, enhance if needed)
+- REFUND-02: Overpayment refunds when customer pays too much
+- VOID-01: Transaction reversals require manager approval
+- VOID-02: Manager can approve void via PIN entry or session authentication
+- VOID-03: Voided transactions are marked but preserved for audit trail
+
+**Success Criteria:**
+1. Staff realizes they recorded wrong payment, clicks "Void"
+2. System prompts for manager approval
+3. Manager enters PIN or authenticates
+4. Transaction is marked void, compensating entry created
+5. Till balance reflects the correction
+
+**Research Flag:** May need security pattern research for manager approval workflow
+
+---
+
+## Phase 6: Denomination Counting
 
 **Goal:** Staff can count cash by denomination for accurate float verification and closing counts.
 
-**Dependencies:** Phase 2 (till session must support per-currency tracking)
+**Dependencies:** Phase 4 (payment terminal already uses denomination counting; this phase adds opening/closing counts)
 
 **Requirements:**
 - DENOM-01: Staff enters opening float by denomination (bills and coins per currency)
@@ -92,15 +170,15 @@ Plans:
 3. At close, staff enters denomination count and system shows calculated total vs expected balance
 4. Denomination breakdown is stored and visible in session history
 
-**Research Flag:** None - UI component pattern
+**Research Flag:** None - UI component pattern exists from Phase 4
 
 ---
 
-## Phase 4: Till Closing and Reconciliation
+## Phase 7: Till Closing and Reconciliation
 
 **Goal:** Staff can close their till with per-currency variance tracking for accountability.
 
-**Dependencies:** Phase 2, Phase 3 (till operations and denomination counting)
+**Dependencies:** Phase 6 (denomination counting for accurate close)
 
 **Requirements:**
 - TILL-06: Staff can close till with counted amount per currency
@@ -116,11 +194,11 @@ Plans:
 
 ---
 
-## Phase 5: Manager Oversight
+## Phase 8: Manager Oversight
 
 **Goal:** Managers have visibility into all till sessions and can verify reconciliation.
 
-**Dependencies:** Phase 4 (till sessions must be closable with variance)
+**Dependencies:** Phase 7 (till sessions must be closable with variance)
 
 **Requirements:**
 - MGR-01: Manager can view dashboard of all open and closed till sessions
@@ -138,11 +216,11 @@ Plans:
 
 ---
 
-## Phase 6: End of Day Operations
+## Phase 9: End of Day Operations
 
 **Goal:** Managers can perform daily close with full audit trail and cash verification.
 
-**Dependencies:** Phase 5 (manager oversight tools must exist)
+**Dependencies:** Phase 8 (manager oversight tools must exist)
 
 **Requirements:**
 - EOD-01: Manager can verify cash drops from all tills against safe contents
@@ -168,14 +246,17 @@ Plans:
 
 | Phase | Name | Requirements | Status | Completion |
 |-------|------|--------------|--------|------------|
-| 1 | Exchange Rate Foundation | RATE-01, RATE-02, RATE-03, RATE-04, RATE-05 | Complete | 100% |
-| 2 | Multi-Currency Till Operations | TILL-01, TILL-02, TILL-03, TILL-04, TILL-05 | Complete | 100% |
-| 3 | Denomination Counting | DENOM-01, DENOM-02, DENOM-03 | Not Started | 0% |
-| 4 | Till Closing and Reconciliation | TILL-06, TILL-07 | Not Started | 0% |
-| 5 | Manager Oversight | MGR-01, MGR-02, MGR-03, MGR-04 | Not Started | 0% |
-| 6 | End of Day Operations | EOD-01, EOD-02, EOD-03, EOD-04, RCPT-01, RCPT-02, RCPT-03 | Not Started | 0% |
+| 1 | Exchange Rate Foundation | RATE-01 to RATE-05 | Complete | 100% |
+| 2 | Multi-Currency Till Operations | TILL-01 to TILL-05 | Complete | 100% |
+| 3 | Transaction Search & Item Confirmation | TXSEARCH-01, TXSEARCH-02, ITEMS-01 to ITEMS-05 | Not Started | 0% |
+| 4 | Payment Terminal Redesign | PAY-01 to PAY-08 | Not Started | 0% |
+| 5 | Refunds & Corrections | REFUND-01, REFUND-02, VOID-01 to VOID-03 | Not Started | 0% |
+| 6 | Denomination Counting | DENOM-01 to DENOM-03 | Not Started | 0% |
+| 7 | Till Closing and Reconciliation | TILL-06, TILL-07 | Not Started | 0% |
+| 8 | Manager Oversight | MGR-01 to MGR-04 | Not Started | 0% |
+| 9 | End of Day Operations | EOD-01 to EOD-04, RCPT-01 to RCPT-03 | Not Started | 0% |
 
-**Overall Progress:** 10/26 requirements complete (38%)
+**Overall Progress:** 10/40 requirements complete (25%)
 
 ---
 
@@ -185,15 +266,29 @@ Plans:
 |----------|--------------|-------|-------|
 | RATE | RATE-01, RATE-02, RATE-03, RATE-04, RATE-05 | Phase 1 | 5 |
 | TILL (Operations) | TILL-01, TILL-02, TILL-03, TILL-04, TILL-05 | Phase 2 | 5 |
-| DENOM | DENOM-01, DENOM-02, DENOM-03 | Phase 3 | 3 |
-| TILL (Closing) | TILL-06, TILL-07 | Phase 4 | 2 |
-| MGR | MGR-01, MGR-02, MGR-03, MGR-04 | Phase 5 | 4 |
-| EOD | EOD-01, EOD-02, EOD-03, EOD-04 | Phase 6 | 4 |
-| RCPT | RCPT-01, RCPT-02, RCPT-03 | Phase 6 | 3 |
+| TXSEARCH | TXSEARCH-01, TXSEARCH-02 | Phase 3 | 2 |
+| ITEMS | ITEMS-01, ITEMS-02, ITEMS-03, ITEMS-04, ITEMS-05 | Phase 3 | 5 |
+| PAY | PAY-01 to PAY-08 | Phase 4 | 8 |
+| REFUND | REFUND-01, REFUND-02 | Phase 5 | 2 |
+| VOID | VOID-01, VOID-02, VOID-03 | Phase 5 | 3 |
+| DENOM | DENOM-01, DENOM-02, DENOM-03 | Phase 6 | 3 |
+| TILL (Closing) | TILL-06, TILL-07 | Phase 7 | 2 |
+| MGR | MGR-01, MGR-02, MGR-03, MGR-04 | Phase 8 | 4 |
+| EOD | EOD-01, EOD-02, EOD-03, EOD-04 | Phase 9 | 4 |
+| RCPT | RCPT-01, RCPT-02, RCPT-03 | Phase 9 | 3 |
 
-**Total Mapped:** 26/26
+**Total Mapped:** 40/40
 **Orphaned:** 0
 
 ---
 
-*Last updated: 2026-01-20 — Phase 2 complete, 3 plans executed*
+## Deferred Ideas (Future TODO)
+
+- Receipt designer (A4 layout customization)
+- Walk-in sales mode (general POS without booking/rental)
+- Configurable currencies per organization
+- GBP and JPY currency support
+
+---
+
+*Last updated: 2026-01-20 — Phases 3, 4, 5 inserted for till redesign; original phases 3-6 renumbered to 6-9*

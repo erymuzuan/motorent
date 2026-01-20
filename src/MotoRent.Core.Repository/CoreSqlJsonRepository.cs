@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Linq.Expressions;
 using System.Text;
 using Microsoft.Data.SqlClient;
@@ -13,8 +12,7 @@ public partial class CoreSqlJsonRepository<T>(
     IRequestContext context,
     ICorePagingTranslator translator,
     ICacheService cacheService,
-    CoreSqlQueryProvider queryProvider,
-    CoreRepositoryOptions options)
+    CoreSqlQueryProvider queryProvider)
     : IRepository<T>
     where T : Entity, new()
 {
@@ -22,7 +20,7 @@ public partial class CoreSqlJsonRepository<T>(
     private ICorePagingTranslator Translator { get; } = translator;
     private ICacheService CacheService { get; } = cacheService;
     private CoreSqlQueryProvider QueryProvider { get; } = queryProvider;
-    private readonly string m_connectionString = options.ConnectionString;
+    private readonly string m_connectionString = MotoConfig.SqlConnectionString;
 
     /// <summary>
     /// Creates a queryable for the Core entity type.

@@ -9,7 +9,7 @@
 
 **Core Value:** Business visibility and cash control - owners can see if their assets are profitable, where cash is leaking, and whether staff are handling money correctly.
 
-**Current Focus:** Multi-currency cash management for Thailand's tourist rental market. Extend existing till system to support per-currency balance tracking, exchange rate management, and end-of-day reconciliation.
+**Current Focus:** Unified transaction workflow with item confirmation and multi-currency payment terminal. Staff search for bookings/rentals, review items in fullscreen dialog, then process split payments.
 
 **Key Constraints:**
 - Tech stack: Blazor Server + WASM, .NET 10, SQL Server
@@ -21,18 +21,40 @@
 
 ## Current Position
 
-**Phase:** 2 of 6 (Multi-Currency Till Operations)
-**Plan:** 3 of 3 complete
-**Status:** Phase verified and complete
+**Phase:** 2 of 9 (Multi-Currency Till Operations) - COMPLETE
+**Next Phase:** 3 of 9 (Transaction Search & Item Confirmation)
+**Status:** Ready for Phase 3 planning
 
 ```
-Milestone Progress: [####......] 38%
+Milestone Progress: [###.......] 25%
 Phase 2 Progress:   [##########] 100%
+Phase 3 Progress:   [..........] 0%
 ```
 
-**Last Activity:** 2026-01-20 - Phase 2 verified, all requirements complete (TILL-01 through TILL-05)
+**Last Activity:** 2026-01-20 - Roadmap restructured with 3 new phases for till redesign
 
-**Next Action:** Run `/gsd:discuss-phase 3` to gather context for Phase 3 (Denomination Counting).
+**Next Action:** Run `/gsd:discuss-phase 3` to gather context for Phase 3 (Transaction Search & Item Confirmation).
+
+---
+
+## Roadmap Update Summary
+
+### Phases Inserted (2026-01-20)
+
+| Phase | Name | Goal |
+|-------|------|------|
+| 3 | Transaction Search & Item Confirmation | Staff search for booking/rental, edit items in fullscreen dialog |
+| 4 | Payment Terminal Redesign | Multi-currency split payments with THB keypad and denomination counting |
+| 5 | Refunds & Corrections | Deposit refunds, overpayment refunds, voids with manager approval |
+
+### Renumbered Phases
+
+| Old | New | Name |
+|-----|-----|------|
+| 3 | 6 | Denomination Counting |
+| 4 | 7 | Till Closing and Reconciliation |
+| 5 | 8 | Manager Oversight |
+| 6 | 9 | End of Day Operations |
 
 ---
 
@@ -41,8 +63,8 @@ Phase 2 Progress:   [##########] 100%
 | Metric | Value | Notes |
 |--------|-------|-------|
 | Plans completed | 7 | Phase 1: 4 plans; Phase 2: 3 plans |
-| Requirements done | 10/26 | RATE-01-05, TILL-01-05 |
-| Phases done | 2/6 | Phases 1-2 verified complete |
+| Requirements done | 10/40 | RATE-01-05, TILL-01-05 |
+| Phases done | 2/9 | Phases 1-2 verified complete |
 | Blockers hit | 0 | - |
 
 ---
@@ -56,23 +78,14 @@ Phase 2 Progress:   [##########] 100%
 | Base currency THB | Thailand market, rental rates always in THB | 2026-01-19 |
 | Change always in THB | Simplifies till reconciliation, matches tourist expectations | 2026-01-19 |
 | Per-currency till tracking | Matches forex expertise, enables accurate reconciliation | 2026-01-19 |
-| Shortage logged not enforced | Policy decision left to manager, system provides visibility | 2026-01-19 |
-| Extend existing entities | TillSession/TillTransaction already exist; add currency fields | 2026-01-19 |
-| New ExchangeRate entity | Organization-scoped with BuyRate and effective dates | 2026-01-19 |
-| BuyRate only (no SellRate) | Rental business only receives foreign currency from customers | 2026-01-19 |
-| decimal(18,4) for rates | Handles currencies needing precision like CNY (5.1234 THB per CNY) | 2026-01-19 |
-| FetchRatesFromApiAsync stub | Forex POS API undocumented - manual entry first, API later | 2026-01-19 |
-| ExchangeConversionResult record | Bundles audit info (ThbAmount, RateUsed, RateSource, ExchangeRateId) | 2026-01-19 |
-| Inline editing for rates | Simpler than dialog-based editing, faster for quick updates | 2026-01-20 |
-| Show all currencies unconfigured | Even unconfigured currencies appear with "Add" button | 2026-01-20 |
-| Info toast for API stub | Expected state when API not configured, not an error | 2026-01-20 |
-| FAB pattern for staff panel | Quick access without cluttering till UI | 2026-01-20 |
-| Auto-calculate on input | No separate calculate button needed for fast workflow | 2026-01-20 |
-| FAB only in active session | No need to show rates when till is closed | 2026-01-20 |
-| Dictionary<string,decimal> for CurrencyBalances | Flexible, allows any currency; initialized on session open | 2026-01-20 |
-| Defaults ensure backward compatibility | Existing THB-only transactions work with Currency="THB", ExchangeRate=1.0 | 2026-01-20 |
-| Collapsible balance panel default | Collapsed shows THB total, mobile-first design | 2026-01-20 |
-| GetCurrencyBalances fallback | Backward compatibility for sessions without CurrencyBalances | 2026-01-20 |
+| Scoped cart (1 booking/rental per receipt) | Not general POS, focused on rental workflow | 2026-01-20 |
+| Single "New Transaction" entry point | Staff search for booking/rental rather than manual item entry | 2026-01-20 |
+| Auto-detect transaction type | System determines booking deposit, check-in, or check-out from entity status | 2026-01-20 |
+| Fullscreen item confirmation | Dedicated focus, reduces errors, shows all details before payment | 2026-01-20 |
+| THB keypad, foreign denomination counting | Speed for THB, accuracy for foreign currency | 2026-01-20 |
+| Split payments across methods/currencies | Tourists often mix cash, card, and currencies | 2026-01-20 |
+| Manager PIN for void approval | Quick authorization without full login swap | 2026-01-20 |
+| Voids preserved for audit trail | Accountability and reconciliation | 2026-01-20 |
 
 ### Architecture Notes
 
@@ -97,6 +110,13 @@ Phase 2 Progress:   [##########] 100%
 - `/settings/exchange-rates` - Manager settings page for rate configuration
 - `ExchangeRatePanel` - Staff-facing panel with FAB, rate list, and calculator
 
+### Deferred Ideas (Future TODO)
+
+- Receipt designer (A4 layout customization)
+- Walk-in sales mode (general POS without booking/rental)
+- Configurable currencies per organization
+- GBP and JPY currency support
+
 ### TODOs
 
 - [ ] Confirm with user: Is offline/PWA support critical for MVP?
@@ -111,29 +131,24 @@ None currently.
 
 ## Session Continuity
 
-**Last Session:** 2026-01-20 - Phase 2 fully executed and verified
+**Last Session:** 2026-01-20 - Roadmap restructured with 3 new phases for till redesign
 
 **Context for Next Session:**
-- Phase 2 verified complete: All 5 TILL-01-05 requirements satisfied
-- TillSession tracks per-currency balances (CurrencyBalances dictionary)
-- TillTransaction captures currency, exchange rate, THB equivalent for audit
-- CurrencyDenominations provides denomination arrays for THB/USD/EUR/CNY
-- TillService has RecordForeignCurrencyPaymentAsync and RecordMultiCurrencyDropAsync
-- DenominationEntryPanel reusable component for denomination input
-- CurrencyBalancePanel shows collapsible per-currency balance display
-- TillReceivePaymentDialog has currency selection, denomination entry, change calculation
-- TillCashDropDialog has currency tabs with denomination entry and validation
-- Localization complete for en, th across all Phase 2 artifacts
-- Ready for Phase 3: Denomination Counting
+- Roadmap updated: 9 phases total (was 6)
+- Phases 3, 4, 5 inserted for till workflow redesign:
+  - Phase 3: Transaction Search & Item Confirmation
+  - Phase 4: Payment Terminal Redesign
+  - Phase 5: Refunds & Corrections
+- Original phases 3-6 renumbered to 6-9
+- Context files created for each new phase in `.planning/phases/`
+- Phase 2 infrastructure (multi-currency tracking, denomination counting) ready to support new phases
+- Ready to begin Phase 3 planning
 
 **Files to Review:**
-- `.planning/phases/02-multi-currency-till-operations/02-VERIFICATION.md` - Phase verification report
-- `src/MotoRent.Domain/Entities/TillSession.cs` - CurrencyBalances tracking
-- `src/MotoRent.Services/TillService.cs` - Multi-currency methods
-- `src/MotoRent.Client/Components/Till/DenominationEntryPanel.razor` - Reusable component
-- `src/MotoRent.Client/Components/Till/CurrencyBalancePanel.razor` - Balance display
-- `src/MotoRent.Client/Pages/Staff/TillReceivePaymentDialog.razor` - Payment acceptance
-- `src/MotoRent.Client/Pages/Staff/TillCashDropDialog.razor` - Multi-currency drops
+- `.planning/ROADMAP.md` - Updated roadmap with 9 phases
+- `.planning/phases/03-transaction-search-items/03-CONTEXT.md` - Phase 3 context
+- `.planning/phases/04-payment-terminal/04-CONTEXT.md` - Phase 4 context
+- `.planning/phases/05-refunds-corrections/05-CONTEXT.md` - Phase 5 context
 
 ---
 

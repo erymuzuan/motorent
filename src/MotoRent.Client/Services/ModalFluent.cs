@@ -80,7 +80,7 @@ public class ModalFluent<T> where T : IComponent
     /// <summary>
     /// Sets the modal to fullscreen.
     /// </summary>
-    public ModalFluent<T> Fullscreen()
+    public ModalFluent<T> WithFullscreen()
     {
         this.m_options.Size = ModalSize.Fullscreen;
         return this;
