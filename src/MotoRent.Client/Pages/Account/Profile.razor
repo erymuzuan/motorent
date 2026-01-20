@@ -6,21 +6,29 @@
 
 <PageTitle>My Profile - MotoRent</PageTitle>
 
-<div class="container-xl mt-4">
-    <div class="page-header mb-4">
-        <div class="row align-items-center">
-            <div class="col-auto">
-                <h2 class="page-title">
+<div class="mr-page-header">
+    <div class="container-xl">
+        <nav class="mr-breadcrumb">
+            <span class="mr-breadcrumb-item"><a href="/"><i class="ti ti-home"></i></a></span>
+            <span class="mr-breadcrumb-separator"><i class="ti ti-chevron-right"></i></span>
+            <span class="mr-breadcrumb-item active">My Profile</span>
+        </nav>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h1 class="mr-page-title">
                     <i class="ti ti-user me-2"></i>
                     My Profile
-                </h2>
+                </h1>
+                <p class="mr-page-subtitle">Manage your personal information and account settings</p>
             </div>
         </div>
     </div>
+</div>
 
+<div class="container-xl mt-4">
     @if (m_loading)
     {
-        <div class="card">
+        <div class="mr-card">
             <div class="card-body">
                 <div class="progress progress-sm">
                     <div class="progress-bar progress-bar-indeterminate"></div>
@@ -30,7 +38,7 @@
     }
     else if (m_user is null)
     {
-        <div class="card">
+        <div class="mr-card">
             <div class="card-body">
                 <div class="empty">
                     <div class="empty-icon">
@@ -49,7 +57,7 @@
         <div class="row row-cards">
             <!-- Profile Photo Card -->
             <div class="col-12 col-md-4">
-                <div class="card">
+                <div class="mr-card">
                     <div class="card-body text-center">
                         <div class="mb-3">
                             @if (!string.IsNullOrWhiteSpace(m_user.PhotoStoreId))
@@ -74,7 +82,7 @@
                         <div class="mb-3">
                             @if (m_user.CredentialProvider == User.GOOGLE)
                             {
-                                <span class="badge bg-white border">
+                                <span class="badge bg-white border rounded-pill px-2 py-1">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 48 48" class="me-1">
                                         <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/>
                                         <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/>
@@ -86,7 +94,7 @@
                             }
                             else if (m_user.CredentialProvider == User.MICROSOFT)
                             {
-                                <span class="badge bg-white border">
+                                <span class="badge bg-white border rounded-pill px-2 py-1">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 21 21" class="me-1">
                                         <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
                                         <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
@@ -98,12 +106,12 @@
                             }
                             else
                             {
-                                <span class="badge bg-secondary">@m_user.CredentialProvider</span>
+                                <span class="badge bg-secondary-lt text-secondary rounded-pill px-2 py-1">@m_user.CredentialProvider</span>
                             }
                         </div>
                     </div>
 
-                    <div class="card-footer">
+                    <div class="card-footer bg-transparent">
                         <ImageUpload StoreId="@m_user.PhotoStoreId"
                                      StoreIdChanged="OnPhotoChanged"
                                      Title="Profile Photo"
@@ -115,7 +123,7 @@
                 <!-- Organizations Card -->
                 @if (m_user.AccountCollection.Count > 0)
                 {
-                    <div class="card mt-3">
+                    <div class="mr-card mt-3">
                         <div class="card-header">
                             <h3 class="card-title">
                                 <i class="ti ti-building me-2"></i>
@@ -125,7 +133,7 @@
                         <div class="list-group list-group-flush">
                             @foreach (var account in m_user.AccountCollection)
                             {
-                                <div class="list-group-item">
+                                <div class="list-group-item bg-transparent">
                                     <div class="row align-items-center">
                                         <div class="col-auto">
                                             <span class="avatar bg-primary-lt text-primary">
@@ -148,14 +156,12 @@
 
             <!-- Profile Details Card -->
             <div class="col-12 col-md-8">
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">
-                            <i class="ti ti-edit me-2"></i>
-                            Profile Details
-                        </h3>
+                <div class="mr-form-panel mr-card">
+                    <div class="mr-form-panel-header">
+                        <div class="mr-form-panel-header-icon"><i class="ti ti-edit"></i></div>
+                        <h3 class="mr-form-panel-title">Profile Details</h3>
                     </div>
-                    <div class="card-body">
+                    <div class="mr-form-panel-body">
                         <div class="row g-3">
                             <div class="col-12 col-md-6">
                                 <label class="form-label">Email</label>
@@ -190,12 +196,12 @@
                             </div>
                         </div>
                     </div>
-                    <div class="card-footer d-flex justify-content-end gap-2">
-                        <a href="/" class="btn btn-ghost-secondary">
+                    <div class="mr-form-panel-footer d-flex justify-content-end gap-2">
+                        <a href="/" class="mr-btn-cancel">
                             <i class="ti ti-x me-1"></i>
                             Cancel
                         </a>
-                        <button class="btn btn-primary" @onclick="SaveProfileAsync" disabled="@m_saving">
+                        <button class="mr-btn-submit" @onclick="SaveProfileAsync" disabled="@m_saving">
                             @if (m_saving)
                             {
                                 <span class="spinner-border spinner-border-sm me-2" role="status"></span>
@@ -210,7 +216,7 @@
                 </div>
 
                 <!-- Account Info Card -->
-                <div class="card mt-3">
+                <div class="mr-card mt-3">
                     <div class="card-header">
                         <h3 class="card-title">
                             <i class="ti ti-info-circle me-2"></i>
@@ -232,17 +238,23 @@
                                 <div class="datagrid-content">
                                     @if (m_user.IsLockedOut)
                                     {
-                                        <span class="badge bg-danger">Locked</span>
+                                        <span class="mr-status-badge mr-status-badge-danger">
+                                            <i class="ti ti-lock me-1"></i>
+                                            Locked
+                                        </span>
                                     }
                                     else
                                     {
-                                        <span class="badge bg-success">Active</span>
+                                        <span class="mr-status-badge mr-status-badge-success">
+                                            <i class="ti ti-check me-1"></i>
+                                            Active
+                                        </span>
                                     }
                                 </div>
                             </div>
                             <div class="datagrid-item">
                                 <div class="datagrid-title">User ID</div>
-                                <div class="datagrid-content text-secondary">@m_user.UserId</div>
+                                <div class="datagrid-content text-secondary mr-mono small">@m_user.UserId</div>
                             </div>
                         </div>
                     </div>
