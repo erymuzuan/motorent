@@ -26,6 +26,17 @@ public class TransactionSearchResult
     /// Auto-detected transaction type based on entity status.
     /// </summary>
     public TillTransactionType TransactionType { get; set; }
+
+    /// <summary>
+    /// Line items confirmed for this transaction.
+    /// Populated when user proceeds to payment from item confirmation.
+    /// </summary>
+    public List<TransactionLineItem> LineItems { get; set; } = [];
+
+    /// <summary>
+    /// Calculated grand total after discounts and deductions.
+    /// </summary>
+    public decimal GrandTotal { get; set; }
 }
 
 /// <summary>
