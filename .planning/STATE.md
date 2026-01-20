@@ -9,7 +9,7 @@
 
 **Core Value:** Business visibility and cash control - owners can see if their assets are profitable, where cash is leaking, and whether staff are handling money correctly.
 
-**Current Focus:** Payment terminal with multi-currency support. Phase 4 in progress - all payment input methods implemented.
+**Current Focus:** Payment terminal complete with till recording. Phase 4 nearly complete - only receipt generation remaining.
 
 **Key Constraints:**
 - Tech stack: Blazor Server + WASM, .NET 10, SQL Server
@@ -22,17 +22,17 @@
 ## Current Position
 
 **Phase:** 4 of 9 (Payment Terminal)
-**Plan:** 2 of 4 complete
+**Plan:** 3 of 4 complete
 **Status:** Phase 4 in progress
 
 ```
-Milestone Progress: [#######...] 45%
-Phase 4 Progress:   [#####.....] 50%
+Milestone Progress: [########..] 50%
+Phase 4 Progress:   [########..] 75%
 ```
 
-**Last Activity:** 2026-01-20 - Completed 04-02-PLAN.md (THB Keypad & Payment Input)
+**Last Activity:** 2026-01-20 - Completed 04-03-PLAN.md (Complete Payment Flow)
 
-**Next Action:** Run `/gsd:execute-phase 04-03` to execute Phase 4 Plan 3 (Complete Payment Flow).
+**Next Action:** Run `/gsd:execute-phase 04-04` to execute Phase 4 Plan 4 (Receipt Generation).
 
 ---
 
@@ -71,6 +71,22 @@ Phase 4 Progress:   [#####.....] 50%
 - AliPay panel with amount and required confirmation number
 - Pre-fill remaining balance on method switch
 - 22 new localization keys (EN/TH)
+
+### Plan 04-03: Complete Payment Flow - COMPLETE
+
+| Task | Status | Commit |
+|------|--------|--------|
+| Task 1: Add Step 3 (Payment Terminal) to TillTransactionDialog | Done | b880d97 |
+| Task 2: Implement Complete Payment flow with till recording | Done | 72657d6 |
+| Task 3: Wire payment completion in TillTransactionDialog | Done | 96954d5 |
+
+**Key Deliverables:**
+- Three-step dialog flow (Search -> Items -> Payment)
+- PaymentTerminalPanel integration with session context
+- Till recording for all payment methods via TillService
+- Foreign currency payments use RecordForeignCurrencyPaymentAsync
+- TransactionSearchResult extended with Payments and Change
+- Completion spinner and change display on button
 
 ---
 
@@ -111,9 +127,9 @@ Phase 4 Progress:   [#####.....] 50%
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Plans completed | 11 | Phase 1: 4; Phase 2: 3; Phase 3: 2; Phase 4: 2 |
-| Requirements done | 15/40 | RATE-01-05, TILL-01-05, SRCH-01-02, PAY-01-03 |
-| Phases done | 3/9 | Phases 1-3 complete, Phase 4 in progress |
+| Plans completed | 12 | Phase 1: 4; Phase 2: 3; Phase 3: 2; Phase 4: 3 |
+| Requirements done | 18/40 | RATE-01-05, TILL-01-05, SRCH-01-02, PAY-01-06 |
+| Phases done | 3/9 | Phases 1-3 complete, Phase 4 at 75% |
 | Blockers hit | 0 | - |
 
 ---
@@ -144,8 +160,16 @@ Phase 4 Progress:   [#####.....] 50%
 | Component composition for THB keypad | (04-02) ThbKeypadPanel as separate component for reusability | 2026-01-20 |
 | Pre-fill remaining on method switch | (04-02) Faster workflow, staff often want exact remaining | 2026-01-20 |
 | Required reference for AliPay only | (04-02) Card/PromptPay verifiable via terminal/app | 2026-01-20 |
+| Step tracking via m_currentStep | (04-03) Simple state machine for 3-step dialog flow | 2026-01-20 |
+| Record payments before callback | (04-03) Ensure till is updated before dialog closes | 2026-01-20 |
 
 ### Architecture Notes
+
+**Phase 4 Additions (04-03):**
+- TillTransactionDialog Step 3 - PaymentTerminalPanel integration
+- TransactionSearchResult extended with Payments and Change
+- TillService integration for payment recording in PaymentTerminalPanel
+- Payment method to TillTransactionType mapping
 
 **Phase 4 Additions (04-02):**
 - `ThbKeypadPanel` - Numeric keypad component for THB cash entry
@@ -215,20 +239,20 @@ None currently.
 
 ## Session Continuity
 
-**Last Session:** 2026-01-20 - Completed Phase 4 Plan 2 (THB Keypad & Payment Input)
+**Last Session:** 2026-01-20 - Completed Phase 4 Plan 3 (Complete Payment Flow)
 
 **Context for Next Session:**
-- Phase 4 Plan 2 complete with 3 commits
-- `ThbKeypadPanel` component created for THB cash entry
-- `PaymentTerminalPanel` now has all payment input methods working
-- All payment types can be added to the entry list
-- Ready to execute Phase 4 Plan 3 (Complete Payment Flow)
+- Phase 4 Plan 3 complete with 3 commits
+- TillTransactionDialog now has 3-step flow with payment terminal
+- Payments recorded to till on completion
+- TransactionSearchResult includes Payments and Change
+- Ready to execute Phase 4 Plan 4 (Receipt Generation)
 
 **Files to Review:**
-- `.planning/phases/04-payment-terminal/04-02-SUMMARY.md` - Just completed
-- `.planning/phases/04-payment-terminal/04-03-PLAN.md` - Next plan
-- `src/MotoRent.Client/Components/Till/ThbKeypadPanel.razor` - New component
-- `src/MotoRent.Client/Components/Till/PaymentTerminalPanel.razor` - Updated component
+- `.planning/phases/04-payment-terminal/04-03-SUMMARY.md` - Just completed
+- `.planning/phases/04-payment-terminal/04-04-PLAN.md` - Next plan
+- `src/MotoRent.Client/Pages/Staff/TillTransactionDialog.razor` - 3-step dialog
+- `src/MotoRent.Client/Components/Till/PaymentTerminalPanel.razor` - Updated with till recording
 
 ---
 
