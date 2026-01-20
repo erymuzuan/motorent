@@ -63,6 +63,7 @@ public static class ServiceCollectionExtensions
         // Cashier Till entities
         services.AddSingleton<IRepository<TillSession>, Repository<TillSession>>();
         services.AddSingleton<IRepository<TillTransaction>, Repository<TillTransaction>>();
+        services.AddSingleton<IRepository<TillDenominationCount>, Repository<TillDenominationCount>>();
         services.AddSingleton<IRepository<Receipt>, Repository<Receipt>>();
         // Exchange rate entities
         services.AddSingleton<IRepository<ExchangeRate>, Repository<ExchangeRate>>();
