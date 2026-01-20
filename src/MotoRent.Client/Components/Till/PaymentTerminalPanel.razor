@@ -274,29 +274,146 @@
                     }
                     else if (m_selectedMethod == PaymentMethods.Card)
                     {
-                        @* Card content placeholder *@
-                        <div class="text-center text-muted py-5">
-                            <i class="ti ti-credit-card mb-3" style="font-size: 4rem;"></i>
-                            <h4>@Localizer["CreditCard"]</h4>
-                            <p class="mb-0">@Localizer["EnterAmount"]</p>
+                        @* Credit Card Payment Panel *@
+                        <div class="non-cash-payment-panel">
+                            <div class="text-center mb-4">
+                                <i class="ti ti-credit-card text-primary" style="font-size: 3rem;"></i>
+                                <h5 class="mt-2">@Localizer["EnterCardAmount"]</h5>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">@Localizer["Amount"]</label>
+                                <div class="input-group input-group-lg">
+                                    <span class="input-group-text">฿</span>
+                                    <input type="number"
+                                           class="form-control"
+                                           min="0"
+                                           step="1"
+                                           @bind="m_nonCashAmount"
+                                           @bind:event="oninput" />
+                                </div>
+                                @if (m_remaining > 0)
+                                {
+                                    <div class="form-text">
+                                        <a href="javascript:void(0)" @onclick="FillRemaining" class="text-primary">
+                                            @Localizer["PayRemaining"]: @FormatThb(m_remaining)
+                                        </a>
+                                    </div>
+                                }
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">@Localizer["CardReference"]</label>
+                                <input type="text"
+                                       class="form-control"
+                                       placeholder="@Localizer["Optional"]"
+                                       @bind="m_nonCashReference" />
+                            </div>
+
+                            <button type="button"
+                                    class="btn btn-success btn-lg w-100"
+                                    disabled="@(m_nonCashAmount <= 0)"
+                                    @onclick="AddCardPayment">
+                                <i class="ti ti-plus me-2"></i>
+                                @Localizer["AddCardPayment"] @FormatThb(m_nonCashAmount)
+                            </button>
                         </div>
                     }
                     else if (m_selectedMethod == PaymentMethods.PromptPay)
                     {
-                        @* PromptPay content placeholder *@
-                        <div class="text-center text-muted py-5">
-                            <i class="ti ti-qrcode mb-3" style="font-size: 4rem;"></i>
-                            <h4>@Localizer["PromptPay"]</h4>
-                            <p class="mb-0">@Localizer["EnterAmount"]</p>
+                        @* PromptPay Payment Panel *@
+                        <div class="non-cash-payment-panel">
+                            <div class="text-center mb-4">
+                                <i class="ti ti-qrcode text-primary" style="font-size: 3rem;"></i>
+                                <h5 class="mt-2">@Localizer["PromptPayInstruction"]</h5>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">@Localizer["Amount"]</label>
+                                <div class="input-group input-group-lg">
+                                    <span class="input-group-text">฿</span>
+                                    <input type="number"
+                                           class="form-control"
+                                           min="0"
+                                           step="1"
+                                           @bind="m_nonCashAmount"
+                                           @bind:event="oninput" />
+                                </div>
+                                @if (m_remaining > 0)
+                                {
+                                    <div class="form-text">
+                                        <a href="javascript:void(0)" @onclick="FillRemaining" class="text-primary">
+                                            @Localizer["PayRemaining"]: @FormatThb(m_remaining)
+                                        </a>
+                                    </div>
+                                }
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">@Localizer["PromptPayReference"]</label>
+                                <input type="text"
+                                       class="form-control"
+                                       placeholder="@Localizer["Optional"]"
+                                       @bind="m_nonCashReference" />
+                            </div>
+
+                            <button type="button"
+                                    class="btn btn-success btn-lg w-100"
+                                    disabled="@(m_nonCashAmount <= 0)"
+                                    @onclick="AddPromptPayPayment">
+                                <i class="ti ti-plus me-2"></i>
+                                @Localizer["AddPromptPayPayment"] @FormatThb(m_nonCashAmount)
+                            </button>
                         </div>
                     }
                     else if (m_selectedMethod == c_aliPay)
                     {
-                        @* AliPay content placeholder *@
-                        <div class="text-center text-muted py-5">
-                            <i class="ti ti-brand-alipay mb-3" style="font-size: 4rem;"></i>
-                            <h4>@Localizer["AliPay"]</h4>
-                            <p class="mb-0">@Localizer["EnterAmount"] + @Localizer["Reference"]</p>
+                        @* AliPay Payment Panel *@
+                        <div class="non-cash-payment-panel">
+                            <div class="text-center mb-4">
+                                <i class="ti ti-brand-alipay text-primary" style="font-size: 3rem;"></i>
+                                <h5 class="mt-2">@Localizer["AliPayInstruction"]</h5>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">@Localizer["Amount"]</label>
+                                <div class="input-group input-group-lg">
+                                    <span class="input-group-text">฿</span>
+                                    <input type="number"
+                                           class="form-control"
+                                           min="0"
+                                           step="1"
+                                           @bind="m_nonCashAmount"
+                                           @bind:event="oninput" />
+                                </div>
+                                @if (m_remaining > 0)
+                                {
+                                    <div class="form-text">
+                                        <a href="javascript:void(0)" @onclick="FillRemaining" class="text-primary">
+                                            @Localizer["PayRemaining"]: @FormatThb(m_remaining)
+                                        </a>
+                                    </div>
+                                }
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">@Localizer["AliPayReference"] <span class="text-danger">*</span></label>
+                                <input type="text"
+                                       class="form-control"
+                                       placeholder="@Localizer["Required"]"
+                                       @bind="m_nonCashReference" />
+                                <div class="form-text text-muted">
+                                    @Localizer["AliPayReferenceHelp"]
+                                </div>
+                            </div>
+
+                            <button type="button"
+                                    class="btn btn-success btn-lg w-100"
+                                    disabled="@(m_nonCashAmount <= 0 || string.IsNullOrWhiteSpace(m_nonCashReference))"
+                                    @onclick="AddAliPayPayment">
+                                <i class="ti ti-plus me-2"></i>
+                                @Localizer["AddAliPayPayment"] @FormatThb(m_nonCashAmount)
+                            </button>
                         </div>
                     }
                 </div>
@@ -336,6 +453,10 @@
     private ExchangeRate? m_currentExchangeRate;
     private ExchangeConversionResult? m_conversionResult;
     private bool m_loadingRate;
+
+    // Non-cash payment state
+    private decimal m_nonCashAmount;
+    private string m_nonCashReference = "";
 
     // Computed properties
     private decimal m_totalReceived => m_paymentEntries.Sum(p => p.AmountInBaseCurrency);
@@ -440,6 +561,97 @@
         m_currentDenominations = [];
         m_conversionResult = null;
         m_currentExchangeRate = null;
+        // Reset and pre-fill non-cash input
+        ResetNonCashInput();
+        // Pre-fill remaining for non-cash methods
+        if (method != PaymentMethods.Cash && m_remaining > 0)
+        {
+            m_nonCashAmount = m_remaining;
+        }
+    }
+
+    /// <summary>
+    /// Fills the non-cash amount with remaining balance.
+    /// </summary>
+    private void FillRemaining()
+    {
+        m_nonCashAmount = m_remaining > 0 ? m_remaining : 0;
+    }
+
+    /// <summary>
+    /// Resets non-cash input fields.
+    /// </summary>
+    private void ResetNonCashInput()
+    {
+        m_nonCashAmount = 0;
+        m_nonCashReference = "";
+    }
+
+    /// <summary>
+    /// Adds a credit card payment entry.
+    /// </summary>
+    private void AddCardPayment()
+    {
+        if (m_nonCashAmount <= 0) return;
+
+        m_paymentEntries.Add(new PaymentEntry
+        {
+            Method = PaymentMethods.Card,
+            Currency = SupportedCurrencies.THB,
+            Amount = m_nonCashAmount,
+            AmountInBaseCurrency = m_nonCashAmount,
+            ExchangeRate = 1.0m,
+            ExchangeRateSource = "Base",
+            Reference = string.IsNullOrWhiteSpace(m_nonCashReference) ? null : m_nonCashReference
+        });
+
+        ResetNonCashInput();
+        RecalculateTotals();
+    }
+
+    /// <summary>
+    /// Adds a PromptPay payment entry.
+    /// </summary>
+    private void AddPromptPayPayment()
+    {
+        if (m_nonCashAmount <= 0) return;
+
+        m_paymentEntries.Add(new PaymentEntry
+        {
+            Method = PaymentMethods.PromptPay,
+            Currency = SupportedCurrencies.THB,
+            Amount = m_nonCashAmount,
+            AmountInBaseCurrency = m_nonCashAmount,
+            ExchangeRate = 1.0m,
+            ExchangeRateSource = "Base",
+            Reference = string.IsNullOrWhiteSpace(m_nonCashReference) ? null : m_nonCashReference
+        });
+
+        ResetNonCashInput();
+        RecalculateTotals();
+    }
+
+    /// <summary>
+    /// Adds an AliPay payment entry.
+    /// </summary>
+    private void AddAliPayPayment()
+    {
+        if (m_nonCashAmount <= 0) return;
+        if (string.IsNullOrWhiteSpace(m_nonCashReference)) return;
+
+        m_paymentEntries.Add(new PaymentEntry
+        {
+            Method = c_aliPay,
+            Currency = SupportedCurrencies.THB,
+            Amount = m_nonCashAmount,
+            AmountInBaseCurrency = m_nonCashAmount,
+            ExchangeRate = 1.0m,
+            ExchangeRateSource = "Base",
+            Reference = m_nonCashReference.Trim()
+        });
+
+        ResetNonCashInput();
+        RecalculateTotals();
     }
 
     /// <summary>
