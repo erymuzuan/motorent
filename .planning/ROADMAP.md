@@ -184,9 +184,9 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 06-01-PLAN.md — Domain entity and TillService extension for denomination counts
-- [ ] 06-02-PLAN.md — Opening float denomination panel and dialog integration
-- [ ] 06-03-PLAN.md — Closing count denomination panel with variance display
+- [x] 06-01-PLAN.md — Domain entity and TillService extension for denomination counts
+- [x] 06-02-PLAN.md — Opening float denomination panel and dialog integration
+- [x] 06-03-PLAN.md — Closing count denomination panel with variance display
 
 **Requirements:**
 - DENOM-01: Staff enters opening float by denomination (bills and coins per currency)
@@ -280,12 +280,12 @@ Plans:
 | 3 | Transaction Search & Item Confirmation | TXSEARCH-01, TXSEARCH-02, ITEMS-01 to ITEMS-05 | Complete | 100% |
 | 4 | Payment Terminal Redesign | PAY-01 to PAY-08 | Complete | 100% |
 | 5 | Refunds & Corrections | REFUND-01, REFUND-02, VOID-01 to VOID-03 | Complete | 100% |
-| 6 | Denomination Counting | DENOM-01 to DENOM-03 | Planned | 0% |
+| 6 | Denomination Counting | DENOM-01 to DENOM-03 | Complete | 100% |
 | 7 | Till Closing and Reconciliation | TILL-06, TILL-07 | Not Started | 0% |
 | 8 | Manager Oversight | MGR-01 to MGR-04 | Not Started | 0% |
 | 9 | End of Day Operations | EOD-01 to EOD-04, RCPT-01 to RCPT-03 | Not Started | 0% |
 
-**Overall Progress:** 30/40 requirements complete (75%)
+**Overall Progress:** 33/40 requirements complete (82%)
 
 ---
 
@@ -320,4 +320,4 @@ Plans:
 
 ---
 
-*Last updated: 2026-01-20 — Phase 6 planned (3 plans in 2 waves)*
+*Last updated: 2026-01-20 — Phase 6 complete (Denomination Counting)*
