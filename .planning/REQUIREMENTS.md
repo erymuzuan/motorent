@@ -46,22 +46,22 @@ Requirements for the Cashier Till milestone. Each maps to roadmap phases.
 
 ### Payment Terminal
 
-- [ ] **PAY-01**: Payment terminal shows amount due in THB prominently
-- [ ] **PAY-02**: THB input uses numeric keypad with quick amounts
-- [ ] **PAY-03**: Foreign currency input uses denomination counting
-- [ ] **PAY-04**: Staff can mix cash payments across multiple currencies in same transaction
-- [ ] **PAY-05**: Staff can mix cash + non-cash (card, PromptPay, bank transfer) in same transaction
-- [ ] **PAY-06**: Running total shows all payment entries with THB equivalents
-- [ ] **PAY-07**: Change calculation always in THB
-- [ ] **PAY-08**: Green indicators show which currencies/methods have entries
+- [x] **PAY-01**: Payment terminal shows amount due in THB prominently
+- [x] **PAY-02**: THB input uses numeric keypad with quick amounts
+- [x] **PAY-03**: Foreign currency input uses denomination counting
+- [x] **PAY-04**: Staff can mix cash payments across multiple currencies in same transaction
+- [x] **PAY-05**: Staff can mix cash + non-cash (card, PromptPay, bank transfer) in same transaction
+- [x] **PAY-06**: Running total shows all payment entries with THB equivalents
+- [x] **PAY-07**: Change calculation always in THB
+- [x] **PAY-08**: Green indicators show which currencies/methods have entries
 
 ### Refunds & Corrections
 
-- [ ] **REFUND-01**: Security deposit refunds at check-out
-- [ ] **REFUND-02**: Overpayment refunds when customer pays too much
-- [ ] **VOID-01**: Transaction reversals require manager approval
-- [ ] **VOID-02**: Manager can approve void via PIN entry or session authentication
-- [ ] **VOID-03**: Voided transactions are marked but preserved for audit trail
+- [x] **REFUND-01**: Security deposit refunds at check-out
+- [x] **REFUND-02**: Overpayment refunds when customer pays too much
+- [x] **VOID-01**: Transaction reversals require manager approval
+- [x] **VOID-02**: Manager can approve void via PIN entry or session authentication
+- [x] **VOID-03**: Voided transactions are marked but preserved for audit trail
 
 ### Manager Oversight
 

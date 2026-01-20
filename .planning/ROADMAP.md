@@ -151,11 +151,11 @@ Plans:
 **Plans:** 5 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — Domain entity extensions (TillTransaction void fields, User PIN fields)
-- [ ] 05-02-PLAN.md — ManagerPinService and TillService void/refund methods
-- [ ] 05-03-PLAN.md — ManagerPinDialog component for PIN entry
-- [ ] 05-04-PLAN.md — VoidTransactionDialog for void initiation
-- [ ] 05-05-PLAN.md — Till.razor void workflow integration
+- [x] 05-01-PLAN.md — Domain entity extensions (TillTransaction void fields, User PIN fields)
+- [x] 05-02-PLAN.md — ManagerPinService and TillService void/refund methods
+- [x] 05-03-PLAN.md — ManagerPinDialog component for PIN entry
+- [x] 05-04-PLAN.md — VoidTransactionDialog for void initiation
+- [x] 05-05-PLAN.md — Till.razor void workflow integration
 
 **Requirements:**
 - REFUND-01: Security deposit refunds at check-out (existing, enhance if needed)
@@ -272,13 +272,13 @@ Plans:
 | 2 | Multi-Currency Till Operations | TILL-01 to TILL-05 | Complete | 100% |
 | 3 | Transaction Search & Item Confirmation | TXSEARCH-01, TXSEARCH-02, ITEMS-01 to ITEMS-05 | Complete | 100% |
 | 4 | Payment Terminal Redesign | PAY-01 to PAY-08 | Complete | 100% |
-| 5 | Refunds & Corrections | REFUND-01, REFUND-02, VOID-01 to VOID-03 | Planned | 0% |
+| 5 | Refunds & Corrections | REFUND-01, REFUND-02, VOID-01 to VOID-03 | Complete | 100% |
 | 6 | Denomination Counting | DENOM-01 to DENOM-03 | Not Started | 0% |
 | 7 | Till Closing and Reconciliation | TILL-06, TILL-07 | Not Started | 0% |
 | 8 | Manager Oversight | MGR-01 to MGR-04 | Not Started | 0% |
 | 9 | End of Day Operations | EOD-01 to EOD-04, RCPT-01 to RCPT-03 | Not Started | 0% |
 
-**Overall Progress:** 25/40 requirements complete (62%)
+**Overall Progress:** 30/40 requirements complete (75%)
 
 ---
 
@@ -313,4 +313,4 @@ Plans:
 
 ---
 
-*Last updated: 2026-01-20 — Phase 5 planned*
+*Last updated: 2026-01-20 — Phase 5 complete*

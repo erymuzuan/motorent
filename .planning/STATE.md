@@ -9,7 +9,7 @@
 
 **Core Value:** Business visibility and cash control - owners can see if their assets are profitable, where cash is leaking, and whether staff are handling money correctly.
 
-**Current Focus:** Phase 5 complete. Ready for Phase 6 (End of Day Reconciliation).
+**Current Focus:** Phase 5 complete. Staff can now process voids with manager PIN approval and overpayment refunds. Ready for Phase 6 (Denomination Counting).
 
 **Key Constraints:**
 - Tech stack: Blazor Server + WASM, .NET 10, SQL Server
@@ -26,13 +26,13 @@
 **Status:** Phase complete
 
 ```
-Milestone Progress: [########..] 78%
+Milestone Progress: [########..] 75%
 Phase 5 Progress:   [##########] 100%
 ```
 
 **Last Activity:** 2026-01-20 - Completed 05-05-PLAN.md (Void/Refund Integration)
 
-**Next Action:** Execute Phase 6 (End of Day Reconciliation)
+**Next Action:** Run `/gsd:discuss-phase 6` to gather context for Denomination Counting phase.
 
 ---
 
@@ -170,7 +170,7 @@ Phase 5 Progress:   [##########] 100%
 | Metric | Value | Notes |
 |--------|-------|-------|
 | Plans completed | 17 | Phase 1: 4; Phase 2: 3; Phase 3: 2; Phase 4: 3; Phase 5: 5 |
-| Requirements done | 32/40 | +VOID-05, REFUND-02 |
+| Requirements done | 30/40 | +REFUND-01, REFUND-02, VOID-01, VOID-02, VOID-03 |
 | Phases done | 5/9 | Phase 5 complete |
 | Blockers hit | 0 | - |
 
