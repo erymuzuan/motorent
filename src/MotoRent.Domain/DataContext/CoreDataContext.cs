@@ -2,45 +2,47 @@ using System.Linq.Expressions;
 using MotoRent.Domain.Core;
 using MotoRent.Domain.Entities;
 using MotoRent.Domain.Helps;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace MotoRent.Domain.DataContext;
 
 /// <summary>
 /// Data context for Core schema entities (shared across all tenants).
 /// Manages Organization, User, Setting, AccessToken, RegistrationInvite, and LogEntry entities.
+/// Uses DI-injected IRepository&lt;T&gt; implementations for database operations.
 /// </summary>
 public class CoreDataContext
 {
-    public Query<Organization> Organizations { get; }
-    public Query<User> Users { get; }
-    public Query<Setting> Settings { get; }
-    public Query<AccessToken> AccessTokens { get; }
-    public Query<RegistrationInvite> RegistrationInvites { get; }
-    public Query<LogEntry> LogEntries { get; }
-    public Query<SupportRequest> SupportRequests { get; }
-    public Query<VehicleModel> VehicleModels { get; }
+    private readonly IServiceProvider m_serviceProvider;
 
-    private QueryProvider QueryProvider { get; }
-
-    public CoreDataContext() : this(ObjectBuilder.GetObject<QueryProvider>()) { }
-
-    public CoreDataContext(QueryProvider provider)
+    public CoreDataContext(IServiceProvider serviceProvider)
     {
-        QueryProvider = provider;
-        Organizations = new Query<Organization>(provider);
-        Users = new Query<User>(provider);
-        Settings = new Query<Setting>(provider);
-        AccessTokens = new Query<AccessToken>(provider);
-        RegistrationInvites = new Query<RegistrationInvite>(provider);
-        LogEntries = new Query<LogEntry>(provider);
-        SupportRequests = new Query<SupportRequest>(provider);
-        VehicleModels = new Query<VehicleModel>(provider);
+        m_serviceProvider = serviceProvider;
+    }
+
+    // Convenience properties for backward compatibility
+    public IQueryable<Organization> Organizations => CreateQuery<Organization>();
+    public IQueryable<User> Users => CreateQuery<User>();
+    public IQueryable<Setting> Settings => CreateQuery<Setting>();
+    public IQueryable<AccessToken> AccessTokens => CreateQuery<AccessToken>();
+    public IQueryable<RegistrationInvite> RegistrationInvites => CreateQuery<RegistrationInvite>();
+    public IQueryable<LogEntry> LogEntries => CreateQuery<LogEntry>();
+    public IQueryable<SupportRequest> SupportRequests => CreateQuery<SupportRequest>();
+    public IQueryable<VehicleModel> VehicleModels => CreateQuery<VehicleModel>();
+
+    /// <summary>
+    /// Creates a queryable for the specified Core entity type.
+    /// </summary>
+    public IQueryable<T> CreateQuery<T>() where T : Entity, new()
+    {
+        var repos = GetRepository<T>();
+        return repos.CreateQuery();
     }
 
     /// <summary>
     /// Loads a single entity matching the predicate.
     /// </summary>
-    public async Task<T?> LoadOneAsync<T>(Expression<Func<T, bool>> predicate) where T : Entity
+    public async Task<T?> LoadOneAsync<T>(Expression<Func<T, bool>> predicate) where T : Entity, new()
     {
         var repos = GetRepository<T>();
         return await repos.LoadOneAsync(predicate);
@@ -50,7 +52,7 @@ public class CoreDataContext
     /// Loads entities matching the query with pagination.
     /// </summary>
     public async Task<LoadOperation<T>> LoadAsync<T>(IQueryable<T> query,
-        int page = 1, int size = 40, bool includeTotalRows = false) where T : Entity
+        int page = 1, int size = 40, bool includeTotalRows = false) where T : Entity, new()
     {
         var repos = GetRepository<T>();
         return await repos.LoadAsync(query, page, size, includeTotalRows);
@@ -67,7 +69,7 @@ public class CoreDataContext
     /// <summary>
     /// Gets the count of entities matching the query.
     /// </summary>
-    public async Task<int> GetCountAsync<T>(IQueryable<T> query) where T : Entity
+    public async Task<int> GetCountAsync<T>(IQueryable<T> query) where T : Entity, new()
     {
         var repos = GetRepository<T>();
         return await repos.GetCountAsync(query);
@@ -76,18 +78,18 @@ public class CoreDataContext
     /// <summary>
     /// Checks if any entity matches the query.
     /// </summary>
-    public async Task<bool> ExistAsync<T>(IQueryable<T> query) where T : Entity
+    public async Task<bool> ExistAsync<T>(IQueryable<T> query) where T : Entity, new()
     {
         var repos = GetRepository<T>();
         return await repos.ExistAsync(query);
     }
 
     /// <summary>
-    /// Gets or creates a CoreRepository for the specified entity type.
+    /// Resolves the IRepository&lt;T&gt; from DI container.
     /// </summary>
-    private CoreRepository<T> GetRepository<T>() where T : Entity
+    private IRepository<T> GetRepository<T>() where T : Entity, new()
     {
-        return new CoreRepository<T>(QueryProvider);
+        return m_serviceProvider.GetRequiredService<IRepository<T>>();
     }
 
     internal async Task<SubmitOperation> SubmitChangesAsync(CorePersistenceSession session, string operation, string username)
@@ -134,7 +136,7 @@ public class CoreDataContext
         await (Task)genericMethod.Invoke(this, [entity, username])!;
     }
 
-    private async Task InsertTypedAsync<T>(T entity, string username) where T : Entity
+    private async Task InsertTypedAsync<T>(T entity, string username) where T : Entity, new()
     {
         var repos = GetRepository<T>();
         await repos.InsertAsync(entity, username);
@@ -148,7 +150,7 @@ public class CoreDataContext
         await (Task)genericMethod.Invoke(this, [entity, username])!;
     }
 
-    private async Task UpdateTypedAsync<T>(T entity, string username) where T : Entity
+    private async Task UpdateTypedAsync<T>(T entity, string username) where T : Entity, new()
     {
         var repos = GetRepository<T>();
         await repos.UpdateAsync(entity, username);
@@ -162,7 +164,7 @@ public class CoreDataContext
         await (Task)genericMethod.Invoke(this, [entity])!;
     }
 
-    private async Task DeleteTypedAsync<T>(T entity) where T : Entity
+    private async Task DeleteTypedAsync<T>(T entity) where T : Entity, new()
     {
         var repos = GetRepository<T>();
         await repos.DeleteAsync(entity);

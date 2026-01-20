@@ -61,17 +61,11 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IRepository<AssetLoan>, Repository<AssetLoan>>();
         services.AddSingleton<IRepository<AssetLoanPayment>, Repository<AssetLoanPayment>>();
 
-        // Register repositories for Core entities (uses [Core] schema)
-        services.AddSingleton<IRepository<Organization>, CoreRepository<Organization>>();
-        services.AddSingleton<IRepository<User>, CoreRepository<User>>();
-        services.AddSingleton<IRepository<Setting>, CoreRepository<Setting>>();
-        services.AddSingleton<IRepository<AccessToken>, CoreRepository<AccessToken>>();
-        services.AddSingleton<IRepository<RegistrationInvite>, CoreRepository<RegistrationInvite>>();
-        services.AddSingleton<IRepository<LogEntry>, CoreRepository<LogEntry>>();
+        // Note: Core entity repositories (Organization, User, Setting, etc.) are registered
+        // via AddCoreRepository() from MotoRent.Core.Repository project
 
-        // Register DataContexts
+        // Register RentalDataContext (for tenant-specific entities)
         services.AddScoped<RentalDataContext>();
-        services.AddScoped<CoreDataContext>();
 
         return services;
     }

@@ -5,6 +5,11 @@ namespace MotoRent.Domain.DataContext;
 
 public interface IRepository<T> where T : Entity
 {
+    /// <summary>
+    /// Creates a queryable for the entity type.
+    /// </summary>
+    IQueryable<T> CreateQuery();
+
     Task<T?> LoadOneAsync(IQueryable<T> query);
     Task<T?> LoadOneAsync(Expression<Func<T, bool>> predicate);
     Task<LoadOperation<T>> LoadAsync(IQueryable<T> query, int page = 1, int size = 40, bool includeTotalRows = false);

@@ -24,6 +24,14 @@ public partial class CoreSqlJsonRepository<T>(
     private CoreSqlQueryProvider QueryProvider { get; } = queryProvider;
     private readonly string m_connectionString = options.ConnectionString;
 
+    /// <summary>
+    /// Creates a queryable for the Core entity type.
+    /// </summary>
+    public IQueryable<T> CreateQuery()
+    {
+        return new CoreQuery<T>(QueryProvider);
+    }
+
     public async Task<T?> LoadOneAsync(IQueryable<T> query)
     {
         var elementType = typeof(T);
