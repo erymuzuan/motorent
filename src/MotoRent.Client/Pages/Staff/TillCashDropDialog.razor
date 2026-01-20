@@ -1,14 +1,15 @@
 @using MotoRent.Domain.Entities
+@using MotoRent.Client.Components.Till
 @inherits LocalizedDialogBase<TillTransaction, TillCashDropDialog>
 @inject TillService TillService
 
 <form id="cashDropForm" @onsubmit="this.SaveAsync" @onsubmit:preventDefault>
     <div class="modal-body">
-        <div class="text-center mb-4">
-            <span class="avatar avatar-xl @(this.IsDrop ? "bg-danger-lt" : "bg-success-lt") mb-3">
-                <i class="@(this.IsDrop ? "ti ti-archive" : "ti ti-cash")" style="font-size: 2rem;"></i>
+        <div class="text-center mb-3">
+            <span class="avatar avatar-lg @(this.IsDrop ? "bg-danger-lt" : "bg-success-lt") mb-2">
+                <i class="@(this.IsDrop ? "ti ti-archive" : "ti ti-cash")" style="font-size: 1.5rem;"></i>
             </span>
-            <p class="text-secondary">
+            <p class="text-secondary small mb-0">
                 @if (this.IsDrop)
                 {
                     @Localizer["CashDropDescription"]
@@ -20,25 +21,99 @@
             </p>
         </div>
 
-        <div class="mb-3">
-            <label class="form-label required">@Localizer["Amount"]</label>
-            <div class="input-group input-group-lg">
-                <span class="input-group-text">฿</span>
-                <input type="number" class="form-control text-end" @bind="this.Amount"
-                       required min="1" step="any" max="@(this.IsDrop ? this.AvailableCash : decimal.MaxValue)"
-                       placeholder="0" autofocus />
+        @if (this.IsDrop && this.m_availableCurrencies.Count > 0)
+        {
+            @* ========== CURRENCY TABS ========== *@
+            <ul class="nav nav-tabs mb-3">
+                @foreach (var currency in this.m_availableCurrencies)
+                {
+                    var isActive = currency == this.m_currentCurrency;
+                    var balance = GetAvailableBalance(currency);
+                    var symbol = CurrencyDenominations.GetCurrencySymbol(currency);
+                    <li class="nav-item">
+                        <button type="button"
+                                class="nav-link @(isActive ? "active" : "")"
+                                @onclick="@(() => SelectCurrency(currency))">
+                            @currency
+                            <span class="badge bg-secondary-lt ms-1">@symbol@balance.ToString("N0")</span>
+                        </button>
+                    </li>
+                }
+            </ul>
+
+            @* ========== DENOMINATION ENTRY ========== *@
+            <div class="mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <label class="form-label mb-0">@Localizer["Available"]:</label>
+                    <strong>
+                        @CurrencyDenominations.GetCurrencySymbol(m_currentCurrency)@GetAvailableBalance(m_currentCurrency).ToString("N2")
+                    </strong>
+                </div>
+
+                <DenominationEntryPanel
+                    Currency="@this.m_currentCurrency"
+                    DenominationCounts="@GetDenominationCounts(m_currentCurrency)"
+                    DenominationCountsChanged="@(counts => OnDenominationCountsChanged(m_currentCurrency, counts))"
+                    ShowTotal="true" />
+
+                @if (GetDropTotal(m_currentCurrency) > GetAvailableBalance(m_currentCurrency))
+                {
+                    <div class="alert alert-danger mt-2 py-2 small">
+                        <i class="ti ti-alert-circle me-1"></i>
+                        @Localizer["CannotDropMoreThanAvailable"]
+                    </div>
+                }
             </div>
-            @if (this.IsDrop && this.AvailableCash > 0)
+
+            @* ========== DROP SUMMARY ========== *@
+            @if (GetTotalDropAmount() > 0)
             {
-                <div class="form-hint mt-1">
-                    @Localizer["AvailableCash"]: <strong>฿@this.AvailableCash.ToString("N0")</strong>
+                <div class="card bg-light mb-3">
+                    <div class="card-body py-2">
+                        <div class="small text-secondary mb-1">@Localizer["DropSummary"]</div>
+                        <div class="d-flex flex-wrap gap-3">
+                            @foreach (var currency in m_availableCurrencies)
+                            {
+                                var dropAmount = GetDropTotal(currency);
+                                if (dropAmount > 0)
+                                {
+                                    var symbol = CurrencyDenominations.GetCurrencySymbol(currency);
+                                    <div>
+                                        <span class="fw-semibold">@currency:</span>
+                                        <span>@symbol@dropAmount.ToString("N0")</span>
+                                    </div>
+                                }
+                            }
+                        </div>
+                    </div>
                 </div>
             }
-        </div>
+        }
+        else if (!this.IsDrop)
+        {
+            @* ========== TOP UP - Simple amount entry (THB only) ========== *@
+            <div class="mb-3">
+                <label class="form-label required">@Localizer["Amount"]</label>
+                <div class="input-group input-group-lg">
+                    <span class="input-group-text">@CurrencyDenominations.GetCurrencySymbol(SupportedCurrencies.THB)</span>
+                    <input type="number" class="form-control text-end" @bind="this.m_topUpAmount"
+                           required min="1" step="any"
+                           placeholder="0" autofocus />
+                </div>
+            </div>
+        }
+        else
+        {
+            @* No currencies with balance available *@
+            <div class="alert alert-info">
+                <i class="ti ti-info-circle me-2"></i>
+                @Localizer["NoCurrenciesToDrop"]
+            </div>
+        }
 
         <div class="mb-0">
             <label class="form-label">@Localizer["Notes"]</label>
-            <textarea class="form-control" @bind="this.Notes" rows="2"
+            <textarea class="form-control" @bind="this.m_notes" rows="2"
                       placeholder="@Localizer["NotesPlaceholder"]"></textarea>
         </div>
     </div>
@@ -49,8 +124,8 @@
         @Localizer["Cancel"]
     </button>
     <button type="submit" form="cashDropForm" class="btn @(this.IsDrop ? "btn-danger" : "btn-success")"
-            disabled="@this.Saving">
-        @if (this.Saving)
+            disabled="@(this.m_saving || !CanSave())">
+        @if (this.m_saving)
         {
             <span class="spinner-border spinner-border-sm me-2" role="status"></span>
         }
@@ -74,12 +149,133 @@
     [Parameter]
     public bool IsDrop { get; set; } = true;
 
+    /// <summary>
+    /// Legacy parameter - kept for backward compatibility.
+    /// Use CurrencyBalances instead for multi-currency support.
+    /// </summary>
     [Parameter]
     public decimal AvailableCash { get; set; }
 
-    private decimal Amount { get; set; }
-    private string? Notes { get; set; }
-    private bool Saving { get; set; }
+    /// <summary>
+    /// Currency balances from the session. Key is currency code, value is balance.
+    /// </summary>
+    [Parameter]
+    public Dictionary<string, decimal> CurrencyBalances { get; set; } = [];
+
+    // State
+    private string m_currentCurrency = SupportedCurrencies.THB;
+    private List<string> m_availableCurrencies = [];
+    private Dictionary<string, Dictionary<decimal, int>> m_dropAmounts = [];
+    private decimal m_topUpAmount;
+    private string? m_notes;
+    private bool m_saving;
+
+    protected override void OnInitialized()
+    {
+        InitializeCurrencies();
+    }
+
+    protected override void OnParametersSet()
+    {
+        InitializeCurrencies();
+    }
+
+    private void InitializeCurrencies()
+    {
+        // Get currencies with non-zero balance
+        m_availableCurrencies = CurrencyBalances
+            .Where(kvp => kvp.Value > 0)
+            .Select(kvp => kvp.Key)
+            .OrderBy(c => c == SupportedCurrencies.THB ? 0 : 1) // THB first
+            .ThenBy(c => c)
+            .ToList();
+
+        // Fallback to legacy AvailableCash for backward compatibility
+        if (m_availableCurrencies.Count == 0 && AvailableCash > 0)
+        {
+            m_availableCurrencies.Add(SupportedCurrencies.THB);
+            CurrencyBalances = new Dictionary<string, decimal>
+            {
+                [SupportedCurrencies.THB] = AvailableCash
+            };
+        }
+
+        // Set default currency if not set or not available
+        if (!m_availableCurrencies.Contains(m_currentCurrency) && m_availableCurrencies.Count > 0)
+        {
+            m_currentCurrency = m_availableCurrencies[0];
+        }
+
+        // Initialize drop amounts dictionary for each currency
+        foreach (var currency in m_availableCurrencies)
+        {
+            if (!m_dropAmounts.ContainsKey(currency))
+            {
+                m_dropAmounts[currency] = new Dictionary<decimal, int>();
+            }
+        }
+    }
+
+    private void SelectCurrency(string currency)
+    {
+        m_currentCurrency = currency;
+    }
+
+    private decimal GetAvailableBalance(string currency)
+    {
+        return CurrencyBalances.TryGetValue(currency, out var balance) ? balance : 0;
+    }
+
+    private Dictionary<decimal, int> GetDenominationCounts(string currency)
+    {
+        if (!m_dropAmounts.TryGetValue(currency, out var counts))
+        {
+            counts = new Dictionary<decimal, int>();
+            m_dropAmounts[currency] = counts;
+        }
+        return counts;
+    }
+
+    private void OnDenominationCountsChanged(string currency, Dictionary<decimal, int> counts)
+    {
+        m_dropAmounts[currency] = counts;
+        StateHasChanged();
+    }
+
+    private decimal GetDropTotal(string currency)
+    {
+        if (!m_dropAmounts.TryGetValue(currency, out var counts))
+            return 0;
+        return counts.Sum(kvp => kvp.Key * kvp.Value);
+    }
+
+    private decimal GetTotalDropAmount()
+    {
+        return m_dropAmounts.Values.Sum(counts => counts.Sum(kvp => kvp.Key * kvp.Value));
+    }
+
+    private bool CanSave()
+    {
+        if (IsDrop)
+        {
+            // At least one currency must have a drop amount > 0
+            var hasDropAmount = GetTotalDropAmount() > 0;
+            if (!hasDropAmount) return false;
+
+            // No currency can exceed its balance
+            foreach (var currency in m_availableCurrencies)
+            {
+                if (GetDropTotal(currency) > GetAvailableBalance(currency))
+                    return false;
+            }
+            return true;
+        }
+        else
+        {
+            // Top up needs amount > 0
+            return m_topUpAmount > 0;
+        }
+    }
 
     private void Cancel()
     {
@@ -88,40 +284,67 @@
 
     private async Task SaveAsync()
     {
-        if (this.Saving || this.Amount <= 0) return;
-
-        // Validate drop amount doesn't exceed available cash
-        if (this.IsDrop && this.Amount > this.AvailableCash)
-        {
-            this.ShowError(Localizer["CannotDropMoreThanAvailable"]);
-            return;
-        }
+        if (this.m_saving || !CanSave()) return;
 
         try
         {
-            this.Saving = true;
+            this.m_saving = true;
 
-            var result = this.IsDrop
-                ? await this.TillService.RecordDropAsync(this.SessionId, this.Amount, this.UserName, this.Notes)
-                : await this.TillService.RecordTopUpAsync(this.SessionId, this.Amount, this.UserName, this.Notes);
-
-            if (result.Success)
+            if (this.IsDrop)
             {
-                this.ModalService.Close(ModalResult.Ok(result));
+                // Build list of currency drop amounts
+                var drops = new List<CurrencyDropAmount>();
+                foreach (var (currency, denomCounts) in m_dropAmounts)
+                {
+                    var total = denomCounts.Sum(kvp => kvp.Key * kvp.Value);
+                    if (total > 0)
+                    {
+                        drops.Add(new CurrencyDropAmount { Currency = currency, Amount = total });
+                    }
+                }
+
+                if (drops.Count == 0)
+                {
+                    this.ShowError(Localizer["EnterDropAmount"]);
+                    return;
+                }
+
+                var result = await this.TillService.RecordMultiCurrencyDropAsync(
+                    this.SessionId, drops, this.UserName, this.m_notes);
+
+                if (result.Success)
+                {
+                    this.ModalService.Close(ModalResult.Ok(result));
+                }
+                else
+                {
+                    this.ShowError(result.Message ?? Localizer["FailedToRecordTransaction"]);
+                }
             }
             else
             {
-                this.ShowError(result.Message ?? "Failed to record transaction");
+                // Top up is THB only
+                var result = await this.TillService.RecordTopUpAsync(
+                    this.SessionId, this.m_topUpAmount, this.UserName, this.m_notes);
+
+                if (result.Success)
+                {
+                    this.ModalService.Close(ModalResult.Ok(result));
+                }
+                else
+                {
+                    this.ShowError(result.Message ?? Localizer["FailedToRecordTransaction"]);
+                }
             }
         }
         catch (Exception ex)
         {
             this.Logger.LogError(ex, "Error recording cash drop/top up");
-            this.ShowError("Failed to record transaction");
+            this.ShowError(Localizer["FailedToRecordTransaction"]);
         }
         finally
         {
-            this.Saving = false;
+            this.m_saving = false;
         }
     }
 }

@@ -1,7 +1,9 @@
 @using MotoRent.Domain.Entities
+@using MotoRent.Client.Components.Till
 @inherits LocalizedDialogBase<Payment, TillReceivePaymentDialog>
 @inject TillService TillService
 @inject RentalService RentalService
+@inject ExchangeRateService ExchangeRateService
 
 <form id="receivePaymentForm" @onsubmit="this.SaveAsync" @onsubmit:preventDefault>
     <div class="modal-body">
@@ -45,7 +47,7 @@
                                 </div>
                             </div>
                             <div class="text-end">
-                                <div class="fw-semibold">฿@rental.TotalAmount.ToString("N0")</div>
+                                <div class="fw-semibold">@CurrencyDenominations.GetCurrencySymbol(SupportedCurrencies.THB)@rental.TotalAmount.ToString("N0")</div>
                                 <div class="small text-muted">@rental.Status</div>
                             </div>
                         </div>
@@ -72,26 +74,92 @@
                 </button>
             </div>
 
-            @* Payment Details *@
-            <div class="row g-3">
-                <div class="col-6">
+            @* Payment Method Selection *@
+            <div class="mb-3">
+                <label class="form-label required">@Localizer["PaymentMethod"]</label>
+                <select class="form-select" @bind="m_paymentMethod" @bind:after="OnPaymentMethodChanged">
+                    <option value="Cash">@Localizer["Cash"]</option>
+                    <option value="Card">@Localizer["Card"]</option>
+                    <option value="PromptPay">@Localizer["PromptPay"]</option>
+                    <option value="BankTransfer">@Localizer["BankTransfer"]</option>
+                </select>
+            </div>
+
+            @if (m_paymentMethod == "Cash")
+            {
+                @* Currency Selection for Cash Payments *@
+                <div class="mb-3">
+                    <label class="form-label">@Localizer["PaymentCurrency"]</label>
+                    <div class="d-flex gap-2 flex-wrap">
+                        @foreach (var currency in CurrencyDenominations.CurrenciesWithDenominations)
+                        {
+                            <button type="button"
+                                    class="btn @(m_selectedCurrency == currency ? "btn-primary" : "btn-outline-secondary")"
+                                    style="min-width: 70px;"
+                                    @onclick="@(() => SelectCurrencyAsync(currency))">
+                                @currency
+                            </button>
+                        }
+                    </div>
+                </div>
+
+                @* Denomination Entry Panel *@
+                <div class="mb-3">
+                    <label class="form-label">@Localizer["EnterDenominations"]</label>
+                    <DenominationEntryPanel
+                        Currency="@m_selectedCurrency"
+                        DenominationCounts="@m_denominationCounts"
+                        DenominationCountsChanged="@OnDenominationCountsChangedAsync" />
+                </div>
+
+                @* Change Calculation Display for Foreign Currency *@
+                @if (m_selectedCurrency != SupportedCurrencies.THB && m_receivedAmount > 0)
+                {
+                    @if (m_conversionError is not null)
+                    {
+                        <div class="alert alert-warning">
+                            <i class="ti ti-alert-triangle me-2"></i>
+                            @Localizer["NoRateConfigured", m_selectedCurrency]
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="mr-change-breakdown mt-3 p-3 bg-light rounded">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>@Localizer["AmountReceived"]</span>
+                                <span>@m_receivedAmount.ToString("N2") @m_selectedCurrency</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2 text-muted small">
+                                <span>@Localizer["ExchangeRate"]</span>
+                                <span>1 @m_selectedCurrency = @m_conversionRate.ToString("N2") THB</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>@Localizer["ThbEquivalent"]</span>
+                                <span>@m_thbEquivalent.ToString("N0") THB</span>
+                            </div>
+                            <hr class="my-2" />
+                            <div class="d-flex justify-content-between fw-bold fs-5">
+                                <span>@Localizer["ChangeToGive"]</span>
+                                <span class="@(m_changeAmount >= 0 ? "text-success" : "text-danger")">
+                                    @m_changeAmount.ToString("N0") THB
+                                </span>
+                            </div>
+                        </div>
+                    }
+                }
+            }
+            else
+            {
+                @* Simple Amount Input for Non-Cash Payments (always THB) *@
+                <div class="mb-3">
                     <label class="form-label required">@Localizer["Amount"]</label>
                     <div class="input-group">
-                        <span class="input-group-text">฿</span>
+                        <span class="input-group-text">@CurrencyDenominations.GetCurrencySymbol(SupportedCurrencies.THB)</span>
                         <input type="number" class="form-control text-end" @bind="m_amount"
                                required min="1" step="any" placeholder="0" />
                     </div>
                 </div>
-                <div class="col-6">
-                    <label class="form-label required">@Localizer["PaymentMethod"]</label>
-                    <select class="form-select" @bind="m_paymentMethod">
-                        <option value="Cash">@Localizer["Cash"]</option>
-                        <option value="Card">@Localizer["Card"]</option>
-                        <option value="PromptPay">@Localizer["PromptPay"]</option>
-                        <option value="BankTransfer">@Localizer["BankTransfer"]</option>
-                    </select>
-                </div>
-            </div>
+            }
 
             <div class="mt-3">
                 <label class="form-label">@Localizer["Notes"]</label>
@@ -116,7 +184,7 @@
         @Localizer["Cancel"]
     </button>
     <button type="submit" form="receivePaymentForm" class="btn btn-success"
-            disabled="@(m_selectedRental is null || m_amount <= 0 || m_saving)">
+            disabled="@(!CanSave || m_saving)">
         @if (m_saving)
         {
             <span class="spinner-border spinner-border-sm me-2" role="status"></span>
@@ -133,15 +201,70 @@
     [Parameter]
     public int ShopId { get; set; }
 
+    // Search state
     private string m_searchTerm = "";
     private List<Rental> m_searchResults = [];
     private Rental? m_selectedRental;
-    private decimal m_amount;
-    private string m_paymentMethod = "Cash";
-    private string? m_notes;
     private bool m_searching;
     private bool m_searched;
     private bool m_saving;
+
+    // Payment state
+    private string m_paymentMethod = "Cash";
+    private string? m_notes;
+
+    // Non-cash payment amount (always THB)
+    private decimal m_amount;
+
+    // Multi-currency cash payment state
+    private string m_selectedCurrency = SupportedCurrencies.THB;
+    private Dictionary<decimal, int> m_denominationCounts = [];
+    private decimal m_receivedAmount;
+    private decimal m_conversionRate;
+    private decimal m_thbEquivalent;
+    private decimal m_changeAmount;
+    private string? m_conversionError;
+
+    /// <summary>
+    /// Determines if the save button should be enabled.
+    /// </summary>
+    private bool CanSave
+    {
+        get
+        {
+            if (m_selectedRental is null) return false;
+
+            if (m_paymentMethod == "Cash")
+            {
+                // For cash payments, need denomination entry with amount > 0
+                // For foreign currency, also need valid conversion (no error)
+                if (m_receivedAmount <= 0) return false;
+                if (m_selectedCurrency != SupportedCurrencies.THB && m_conversionError is not null) return false;
+                return true;
+            }
+            else
+            {
+                // For non-cash, need simple amount > 0
+                return m_amount > 0;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Initializes denomination counts for the selected currency.
+    /// </summary>
+    private void InitializeDenominationCounts()
+    {
+        m_denominationCounts.Clear();
+        foreach (var denom in CurrencyDenominations.GetDenominations(m_selectedCurrency))
+        {
+            m_denominationCounts[denom] = 0;
+        }
+        m_receivedAmount = 0;
+        m_thbEquivalent = 0;
+        m_changeAmount = 0;
+        m_conversionError = null;
+    }
 
     private async Task OnSearchKeyDown(KeyboardEventArgs e)
     {
@@ -193,6 +316,7 @@
     {
         m_selectedRental = rental;
         m_searchResults.Clear();
+        InitializeDenominationCounts();
     }
 
     private void ClearSelection()
@@ -200,6 +324,66 @@
         m_selectedRental = null;
         m_searchTerm = "";
         m_searched = false;
+        m_amount = 0;
+        InitializeDenominationCounts();
+    }
+
+    private void OnPaymentMethodChanged()
+    {
+        // Reset currency to THB when switching payment methods
+        m_selectedCurrency = SupportedCurrencies.THB;
+        InitializeDenominationCounts();
+        m_amount = 0;
+    }
+
+    private async Task SelectCurrencyAsync(string currency)
+    {
+        m_selectedCurrency = currency;
+        InitializeDenominationCounts();
+        await UpdateConversionPreviewAsync();
+    }
+
+    private async Task OnDenominationCountsChangedAsync(Dictionary<decimal, int> counts)
+    {
+        m_denominationCounts = counts;
+        m_receivedAmount = counts.Sum(kvp => kvp.Key * kvp.Value);
+        await UpdateConversionPreviewAsync();
+    }
+
+    private async Task UpdateConversionPreviewAsync()
+    {
+        m_conversionError = null;
+
+        if (m_receivedAmount <= 0)
+        {
+            m_thbEquivalent = 0;
+            m_changeAmount = 0;
+            return;
+        }
+
+        if (m_selectedCurrency == SupportedCurrencies.THB)
+        {
+            m_conversionRate = 1.0m;
+            m_thbEquivalent = m_receivedAmount;
+        }
+        else
+        {
+            var conversion = await ExchangeRateService.ConvertToThbAsync(m_selectedCurrency, m_receivedAmount);
+            if (conversion is null)
+            {
+                m_conversionError = $"No exchange rate configured for {m_selectedCurrency}";
+                m_thbEquivalent = 0;
+                m_changeAmount = 0;
+                return;
+            }
+
+            m_conversionRate = conversion.RateUsed;
+            m_thbEquivalent = conversion.ThbAmount;
+        }
+
+        // Calculate change (THB equivalent - amount due)
+        var amountDue = m_selectedRental?.TotalAmount ?? 0;
+        m_changeAmount = m_thbEquivalent - amountDue;
     }
 
     private void Cancel()
@@ -209,7 +393,8 @@
 
     private async Task SaveAsync()
     {
-        if (m_saving || m_selectedRental is null || m_amount <= 0) return;
+        if (m_saving || m_selectedRental is null) return;
+        if (!CanSave) return;
 
         try
         {
@@ -226,14 +411,33 @@
 
             var description = $"Rental payment #{m_selectedRental.RentalId} - {m_selectedRental.VehicleName}";
 
-            var result = await TillService.RecordCashInAsync(
-                SessionId,
-                type,
-                m_amount,
-                description,
-                this.UserName,
-                rentalId: m_selectedRental.RentalId,
-                notes: m_notes);
+            SubmitOperation result;
+
+            if (m_paymentMethod == "Cash")
+            {
+                // Use RecordForeignCurrencyPaymentAsync for cash (handles both THB and foreign currencies)
+                result = await TillService.RecordForeignCurrencyPaymentAsync(
+                    SessionId,
+                    type,
+                    m_selectedCurrency,
+                    m_receivedAmount,
+                    description,
+                    this.UserName,
+                    rentalId: m_selectedRental.RentalId,
+                    notes: m_notes);
+            }
+            else
+            {
+                // Non-cash payments always in THB
+                result = await TillService.RecordCashInAsync(
+                    SessionId,
+                    type,
+                    m_amount,
+                    description,
+                    this.UserName,
+                    rentalId: m_selectedRental.RentalId,
+                    notes: m_notes);
+            }
 
             if (result.Success)
             {
