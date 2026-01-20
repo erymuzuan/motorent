@@ -9,7 +9,7 @@
 
 **Core Value:** Business visibility and cash control - owners can see if their assets are profitable, where cash is leaking, and whether staff are handling money correctly.
 
-**Current Focus:** Payment terminal complete with till recording. Phase 4 nearly complete - only receipt generation remaining.
+**Current Focus:** Phase 4 complete. Staff can now search for bookings/rentals, confirm items, and process multi-currency split payments through a unified payment terminal.
 
 **Key Constraints:**
 - Tech stack: Blazor Server + WASM, .NET 10, SQL Server
@@ -21,22 +21,22 @@
 
 ## Current Position
 
-**Phase:** 4 of 9 (Payment Terminal)
-**Plan:** 3 of 4 complete
-**Status:** Phase 4 in progress
+**Phase:** 4 of 9 (Payment Terminal Redesign) - COMPLETE
+**Plan:** 3 of 3 complete
+**Status:** Phase 4 verified, ready for Phase 5
 
 ```
-Milestone Progress: [########..] 50%
-Phase 4 Progress:   [########..] 75%
+Milestone Progress: [######....] 62%
+Phase 4 Progress:   [##########] 100%
 ```
 
-**Last Activity:** 2026-01-20 - Completed 04-03-PLAN.md (Complete Payment Flow)
+**Last Activity:** 2026-01-20 - Completed Phase 4 (Payment Terminal Redesign)
 
-**Next Action:** Run `/gsd:execute-phase 04-04` to execute Phase 4 Plan 4 (Receipt Generation).
+**Next Action:** Run `/gsd:discuss-phase 5` to gather context for Refunds & Corrections phase.
 
 ---
 
-## Phase 4 Progress
+## Phase 4 Progress - COMPLETE
 
 ### Plan 04-01: Payment Terminal Layout - COMPLETE
 
@@ -44,7 +44,6 @@ Phase 4 Progress:   [########..] 75%
 |------|--------|--------|
 | Task 1: Create PaymentTerminalPanel with two-column layout | Done | a0141d9 |
 | Task 2: Add localization resources | Done | 8dfb476 |
-| Task 3: Payment entry list and summary (merged into Task 1) | Done | a0141d9 |
 
 **Key Deliverables:**
 - `PaymentTerminalPanel.razor` - Two-column layout component (415 lines)
@@ -52,7 +51,6 @@ Phase 4 Progress:   [########..] 75%
 - Cash currency tabs (THB, USD, GBP disabled, EUR, CNY)
 - Payment entry list with remove capability
 - Summary section (Total Received, Change, Remaining)
-- Complete Payment button with disabled logic
 
 ### Plan 04-02: THB Keypad & Payment Input - COMPLETE
 
@@ -66,11 +64,7 @@ Phase 4 Progress:   [########..] 75%
 - `ThbKeypadPanel.razor` - Numeric keypad with quick amounts (144 lines)
 - THB cash input via keypad with 100/500/1000/Remaining buttons
 - Foreign currency input via DenominationEntryPanel with exchange rate
-- Credit Card panel with amount and optional authorization code
-- PromptPay panel with amount and optional reference
-- AliPay panel with amount and required confirmation number
-- Pre-fill remaining balance on method switch
-- 22 new localization keys (EN/TH)
+- Credit Card, PromptPay, AliPay panels with reference fields
 
 ### Plan 04-03: Complete Payment Flow - COMPLETE
 
@@ -84,42 +78,7 @@ Phase 4 Progress:   [########..] 75%
 - Three-step dialog flow (Search -> Items -> Payment)
 - PaymentTerminalPanel integration with session context
 - Till recording for all payment methods via TillService
-- Foreign currency payments use RecordForeignCurrencyPaymentAsync
 - TransactionSearchResult extended with Payments and Change
-- Completion spinner and change display on button
-
----
-
-## Phase 3 Progress - COMPLETE
-
-### Plan 03-01: Transaction Search UI Foundation - COMPLETE
-
-| Task | Status | Commit |
-|------|--------|--------|
-| Task 1: Create TillTransactionDialog | Done | f1a2d6e |
-| Task 2: Extend RentalService and TillTransactionType | Done | 2f2bc6b |
-| Task 3: Wire dialog to Till page | Done | 4b96ee3 |
-| Task 4: Add CheckIn transaction type mapping | Done | 6c64209 |
-
-**Key Deliverables:**
-- `TillTransactionDialog.razor` - Search-then-select fullscreen dialog
-- `TransactionSearchResult.cs` - Result model with entity and transaction type
-- `SearchActiveRentalsAsync` - New service method
-- `TillTransactionType.CheckIn` - New enum value
-
-### Plan 03-02: Item Confirmation Panel - COMPLETE
-
-| Task | Status | Commit |
-|------|--------|--------|
-| Task 1: Create TransactionLineItem model | Done | 626e3c6 |
-| Task 2+3: Add item confirmation UI with editing | Done | 9a00ad9 |
-
-**Key Deliverables:**
-- `TransactionLineItem.cs` - Working model for editable line items
-- Two-column responsive layout for item confirmation
-- Inline accessory/insurance/discount editing
-- Running totals with Subtotal, Discount, Grand Total
-- Extended `TransactionSearchResult` with LineItems and GrandTotal
 
 ---
 
@@ -128,8 +87,8 @@ Phase 4 Progress:   [########..] 75%
 | Metric | Value | Notes |
 |--------|-------|-------|
 | Plans completed | 12 | Phase 1: 4; Phase 2: 3; Phase 3: 2; Phase 4: 3 |
-| Requirements done | 18/40 | RATE-01-05, TILL-01-05, SRCH-01-02, PAY-01-06 |
-| Phases done | 3/9 | Phases 1-3 complete, Phase 4 at 75% |
+| Requirements done | 25/40 | RATE-01-05, TILL-01-05, TXSEARCH-01-02, ITEMS-01-05, PAY-01-08 |
+| Phases done | 4/9 | Phases 1-4 verified complete |
 | Blockers hit | 0 | - |
 
 ---
@@ -151,10 +110,6 @@ Phase 4 Progress:   [########..] 75%
 | Split payments across methods/currencies | Tourists often mix cash, card, and currencies | 2026-01-20 |
 | Manager PIN for void approval | Quick authorization without full login swap | 2026-01-20 |
 | Voids preserved for audit trail | Accountability and reconciliation | 2026-01-20 |
-| Search-then-select with grouped results | (03-01) Clearer UX, matches mental model of transaction types | 2026-01-20 |
-| Two-column responsive item confirmation | (03-02) Left for summary, right for line items; stacks on mobile | 2026-01-20 |
-| Inline editing panels | (03-02) Faster workflow than modal dialogs, one panel at a time | 2026-01-20 |
-| TransactionLineItem as working model | (03-02) Separate from ReceiptItem for rich editing before persistence | 2026-01-20 |
 | PaymentEntry as internal class | (04-01) Separate from ReceiptPayment for working state during collection | 2026-01-20 |
 | GBP tab visible but disabled | (04-01) Per CONTEXT.md, GBP support deferred but shown for completeness | 2026-01-20 |
 | Component composition for THB keypad | (04-02) ThbKeypadPanel as separate component for reusability | 2026-01-20 |
@@ -165,58 +120,28 @@ Phase 4 Progress:   [########..] 75%
 
 ### Architecture Notes
 
-**Phase 4 Additions (04-03):**
-- TillTransactionDialog Step 3 - PaymentTerminalPanel integration
-- TransactionSearchResult extended with Payments and Change
-- TillService integration for payment recording in PaymentTerminalPanel
-- Payment method to TillTransactionType mapping
+**Phase 4 Components:**
+- `PaymentTerminalPanel.razor` (928 lines) - Two-column payment terminal with all input modes
+- `ThbKeypadPanel.razor` (144 lines) - Touch-friendly numeric keypad for THB entry
+- `PaymentEntry` internal class - Working model for payment entries during collection
+- Integration with TillService for payment recording
+- Integration with ExchangeRateService for foreign currency conversion
 
-**Phase 4 Additions (04-02):**
-- `ThbKeypadPanel` - Numeric keypad component for THB cash entry
-- THB input via keypad, foreign currency via DenominationEntryPanel
-- ExchangeRateService integration for real-time conversion
-- Non-cash payment panels for Card, PromptPay, AliPay
-- Payment entries capture exchange rate audit trail
+**Phase 3 Components:**
+- `TillTransactionDialog.razor` (1198 lines) - 3-step fullscreen dialog
+- `TransactionLineItem.cs` - Working model for editable line items
+- `TransactionSearchResult.cs` - Extended DTO with LineItems, Payments, Change
 
-**Phase 4 Additions (04-01):**
-- `PaymentTerminalPanel` - Two-column payment terminal component
-- `PaymentEntry` internal class - Working model for payment entries
-- Payment method tabs with entry indicators
-- Cash currency tabs with GBP disabled
-
-**Phase 3 Additions (03-02):**
-- `TransactionLineItem` - Working model for editable line items with AccessoryId, InsuranceId, CanRemove
-- `TransactionSearchResult` extended with LineItems and GrandTotal
-- `ReceiptItemCategory.LateFee` - New constant added
-- TillTransactionDialog Step 2 - Two-column item confirmation with inline editing
-
-**Phase 3 Additions (03-01):**
-- `TillTransactionDialog` - Fullscreen search dialog for bookings/rentals
-- `TransactionSearchResult` - DTO with EntityType, Booking, Rental, TransactionType
-- `TransactionEntityType` enum - Booking, Rental
-- `TillTransactionType.CheckIn` - New enum value for check-in transactions
-- `RentalService.SearchActiveRentalsAsync` - Search active rentals by renter name
-
-**Entities Extended (Phase 2):**
-- `TillSession` - Added CurrencyBalances dictionary, GetCurrencyBalance helper
-- `TillTransaction` - Added Currency, ExchangeRate, AmountInBaseCurrency, ExchangeRateSource, ExchangeRateId
-
-**New Classes Created (Phase 2):**
-- `CurrencyDenominations` - Static helper with denomination arrays for THB, USD, EUR, CNY
-- `CurrencyDropAmount` - DTO for multi-currency drop operations
-
-**New Components Created (Phase 2):**
+**Phase 2 Components:**
 - `DenominationEntryPanel` - Reusable denomination counting panel
-- `CurrencyBalancePanel` - Collapsible per-currency balance display with THB equivalents
+- `CurrencyBalancePanel` - Per-currency balance display
+- `TillSession` extended with CurrencyBalances
+- `TillService` extended with multi-currency methods
 
-**Services Extended (Phase 2):**
-- `TillService` - Added RecordForeignCurrencyPaymentAsync, RecordMultiCurrencyDropAsync; injected ExchangeRateService
-
-**Existing from Phase 1:**
-- `ExchangeRate` - Organization-scoped with BuyRate, Source, EffectiveDate, IsActive
-- `ExchangeRateService` - Rate management (get current, set new, convert, history, API stub)
-- `/settings/exchange-rates` - Manager settings page for rate configuration
-- `ExchangeRatePanel` - Staff-facing panel with FAB, rate list, and calculator
+**Phase 1 Components:**
+- `ExchangeRate` entity with BuyRate, Source, EffectiveDate
+- `ExchangeRateService` - Rate management and conversion
+- `ExchangeRatePanel` - Staff-facing rate display
 
 ### Deferred Ideas (Future TODO)
 
@@ -239,20 +164,20 @@ None currently.
 
 ## Session Continuity
 
-**Last Session:** 2026-01-20 - Completed Phase 4 Plan 3 (Complete Payment Flow)
+**Last Session:** 2026-01-20 - Completed Phase 4 (Payment Terminal Redesign)
 
 **Context for Next Session:**
-- Phase 4 Plan 3 complete with 3 commits
-- TillTransactionDialog now has 3-step flow with payment terminal
-- Payments recorded to till on completion
-- TransactionSearchResult includes Payments and Change
-- Ready to execute Phase 4 Plan 4 (Receipt Generation)
+- Phase 4 complete with 3 plans, all verified
+- TillTransactionDialog has 3-step flow: Search → Items → Payment
+- PaymentTerminalPanel records all payment methods to till
+- TransactionSearchResult carries payments and change after completion
+- Ready for Phase 5 (Refunds & Corrections)
 
 **Files to Review:**
-- `.planning/phases/04-payment-terminal/04-03-SUMMARY.md` - Just completed
-- `.planning/phases/04-payment-terminal/04-04-PLAN.md` - Next plan
-- `src/MotoRent.Client/Pages/Staff/TillTransactionDialog.razor` - 3-step dialog
-- `src/MotoRent.Client/Components/Till/PaymentTerminalPanel.razor` - Updated with till recording
+- `.planning/phases/04-payment-terminal/04-VERIFICATION.md` - Phase verification report
+- `.planning/phases/05-refunds-corrections/` - Next phase directory
+- `src/MotoRent.Client/Components/Till/PaymentTerminalPanel.razor` - Main payment component
+- `src/MotoRent.Client/Pages/Staff/TillTransactionDialog.razor` - Full transaction dialog
 
 ---
 
