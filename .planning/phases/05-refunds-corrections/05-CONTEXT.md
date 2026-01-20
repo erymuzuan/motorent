@@ -38,7 +38,7 @@ Staff can process security deposit refunds at check-out, overpayment refunds, an
 - Refunds use exchange rate from original payment (rate already stored on payment record)
 - Split payments (e.g., THB + USD): sum all to THB equivalent, refund total in THB
 - Voiding foreign currency payment: reverse exact currencies from till (if $50 USD received, void removes $50 USD)
-- Staff sees original payment breakdown in refund dialog: "Original: ฿1,000 + $50 (=฿1,775) → Refund: ฿2,775 THB"
+- Staff sees original payment breakdown in refund dialog: "Original: 1,000 + $50 (=1,775) → Refund: 2,775 THB"
 
 ### Claude's Discretion
 - PIN keypad visual design (number layout, size)
@@ -69,13 +69,28 @@ Staff can process security deposit refunds at check-out, overpayment refunds, an
 
 ## Requirements Reference
 
-| ID | Requirement |
-|----|-------------|
-| REFUND-01 | Security deposit refunds at check-out |
-| REFUND-02 | Overpayment refunds when customer pays too much |
-| VOID-01 | Transaction reversals require manager approval |
-| VOID-02 | Manager can approve via PIN entry or session authentication |
-| VOID-03 | Voided transactions preserved for audit trail |
+| ID | Requirement | Coverage |
+|----|-------------|----------|
+| REFUND-01 | Security deposit refunds at check-out | EXISTING - CheckOutDialog.razor already implements this via RecordDepositRefundToTillAsync |
+| REFUND-02 | Overpayment refunds when customer pays too much | Plan 05-05: OverpaymentRefundDialog + TillService.RecordOverpaymentRefundAsync |
+| VOID-01 | Transaction reversals require manager approval | Plans 05-03 to 05-05: ManagerPinDialog + VoidTransactionDialog |
+| VOID-02 | Manager can approve via PIN entry or session authentication | Plan 05-02: ManagerPinService, Plan 05-03: ManagerPinDialog |
+| VOID-03 | Voided transactions preserved for audit trail | Plan 05-01: TillTransaction.IsVoided and void metadata fields |
+
+---
+
+## Existing Implementation Notes
+
+### REFUND-01: Security Deposit Refunds (Already Implemented)
+
+Per research, `CheckOutDialog.razor` already implements security deposit refunds during the check-out flow:
+- Calls `TillService.RecordDepositRefundToTillAsync`
+- Integrated into the check-out workflow
+- No additional work required for this requirement
+
+This phase focuses on:
+1. Overpayment refunds (REFUND-02) - NEW
+2. Transaction voids with manager approval (VOID-01, VOID-02, VOID-03) - NEW
 
 ---
 
