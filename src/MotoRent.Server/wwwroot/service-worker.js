@@ -5,15 +5,17 @@ const OFFLINE_URL = '/offline.html';
 // Assets to cache on install
 const STATIC_ASSETS = [
     '/',
-    '/browse',
-    '/my-rentals',
     '/offline.html',
     '/manifest.json',
     '/app.css',
-    '/favicon.png',
-    '/_content/MudBlazor/MudBlazor.min.css',
-    '/_content/MudBlazor/MudBlazor.min.js',
-    'https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap'
+    '/css/site.css',
+    '/lib/tabler-1.4.0/css/tabler.min.css',
+    '/lib/tabler-1.4.0/css/tabler-flags.min.css',
+    '/lib/tabler-icons/tabler-icons.min.css',
+    '/lib/tabler-1.4.0/js/tabler.min.js',
+    '/MotoRent.Server.styles.css',
+    'https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap',
+    'https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap'
 ];
 
 // Install event - cache static assets

@@ -61,9 +61,44 @@
                         </div>
                     </div>
                 </div>
-                @* Till Status Button (replaces shop selector) *@
+                @* Till Status Button (replaces shop selector) - hidden for SuperAdmin without impersonation *@
                 <AuthorizeView Policy="RequireTenantStaff">
                     <Authorized>
+                        @if (m_shops.Count > 0 && !m_isSuperAdminOnly)
+                        {
+                            <div class="nav-item d-none d-md-flex me-3">
+                                <div class="dropdown">
+                                    <a href="#" class="nav-link px-0 d-flex align-items-center" data-bs-toggle="dropdown"
+                                       aria-label="@Localizer["SelectShop"]" @onclick:preventDefault>
+                                        <i class="ti ti-building-store me-1"></i>
+                                        <span class="d-none d-lg-inline">@m_currentShopName</span>
+                                        <i class="ti ti-chevron-down ms-1 small"></i>
+                                    </a>
+                                    <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
+                                        <span class="dropdown-header">@Localizer["WorkingShop"]</span>
+                                        <a href="/account/switch-shop/0?returnUrl=@Uri.EscapeDataString(CurrentPathAndQuery)"
+                                           class="dropdown-item @(m_shopId == 0 ? "active" : "")">
+                                            <i class="ti ti-world me-2"></i>@Localizer["AllShops"]
+                                        </a>
+                                        @if (m_shops.Count > 0)
+                                        {
+                                            <div class="dropdown-divider"></div>
+                                        }
+                                        @foreach (var shop in m_shops)
+                                        {
+                                            <a href="/account/switch-shop/@shop.ShopId?returnUrl=@Uri.EscapeDataString(CurrentPathAndQuery)"
+                                               class="dropdown-item @(m_shopId == shop.ShopId ? "active" : "")">
+                                                <i class="ti ti-building-store me-2"></i>@shop.Name
+                                                @if (!string.IsNullOrEmpty(shop.Location))
+                                                {
+                                                    <span class="text-secondary ms-1 small">(@shop.Location)</span>
+                                                }
+                                            </a>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
                         <TillStatusButton />
                     </Authorized>
                 </AuthorizeView>
@@ -87,7 +122,7 @@
                         }
                         <div class="d-none d-xl-block ps-2">
                             <div>@(RequestContext.GetUserName() ?? "User")</div>
-                            <div class="mt-1 small text-secondary">@(RequestContext.GetAccountNo() ?? "Not signed in")</div>
+                            <div class="mt-1 small text-secondary">@(m_isSuperAdminOnly ? Localizer["SuperAdminRole"] : RequestContext.GetAccountNo() ?? Localizer["NotSignedIn"])</div>
                         </div>
                     </a>
                     <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
@@ -217,6 +252,7 @@
     private string m_homeUrl = "/";
     private string m_orgName = "MotoRent";
 
+    private bool m_isSuperAdminOnly;
 
     private string CurrentPathAndQuery =>
         new Uri(this.Navigation.Uri).GetComponents(UriComponents.PathAndQuery, UriFormat.Unescaped);
@@ -260,7 +296,8 @@
                 var hasTenantRole = UserAccount.AllRoles.Any(role => user.IsInRole(role));
 
                 // SuperAdmin without tenant access (not impersonating) should go to super admin page
-                if (isSuperAdmin && !hasTenantRole)
+                m_isSuperAdminOnly = isSuperAdmin && !hasTenantRole;
+                if (m_isSuperAdminOnly)
                 {
                     m_homeUrl = "/super-admin/start-page";
                 }

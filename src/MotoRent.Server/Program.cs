@@ -16,6 +16,7 @@ using MotoRent.Services.Storage;
 using MotoRent.Services.Tourist;
 using MotoRent.Domain.Search;
 using MotoRent.Server.Middleware;
+using MotoRent.Core.Repository;
 using HashidsNet;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -130,6 +131,10 @@ if (!string.IsNullOrEmpty(openSearchHost))
 
     builder.Services.AddScoped<ISearchService, OpenSearchService>();
 }
+
+// Add Core Repository (LINQ expression tree translation + caching)
+builder.Services.AddHybridCache();
+builder.Services.AddCoreRepository(builder.Configuration);
 
 // Add Core services
 builder.Services.AddScoped<IDirectoryService, SqlDirectoryService>();

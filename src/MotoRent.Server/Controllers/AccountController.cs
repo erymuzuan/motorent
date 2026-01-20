@@ -57,6 +57,13 @@ public class AccountController(
     [HttpGet("access-denied")]
     public IActionResult AccessDenied() => this.View();
 
+    /// <summary>
+    /// Page shown when user is not registered in the system.
+    /// </summary>
+    [AllowAnonymous]
+    [HttpGet("not-registered")]
+    public IActionResult NotRegistered() => this.View();
+
     // OAuth Login
 
     /// <summary>
@@ -127,52 +134,53 @@ public class AccountController(
         var displayName = externalUser.FindFirst(ClaimTypes.Name)?.Value
             ?? externalUser.FindFirst("name")?.Value;
 
-        // For LINE users, email may be null - use nameIdentifier for lookup
+        // For LINE users, email may be null - use nameIdentifier as username
         CoreUser? user = null;
 
-        // Strategy 1: Try lookup by NameIdentifier + Provider first (for LINE users without email)
-        if (!string.IsNullOrWhiteSpace(nameIdentifier))
+        // Determine username based on provider
+        // LINE users: username = LINE userId (nameIdentifier)
+        // Google/Microsoft: username = email
+        var userName = provider == CoreUser.LINE
+            ? nameIdentifier
+            : email?.ToLowerInvariant();
+
+        if (string.IsNullOrWhiteSpace(userName))
         {
-            user = await this.DirectoryService.GetUserByProviderIdAsync(provider, nameIdentifier);
+            return this.RedirectToAction(nameof(this.Login));
         }
 
-        // Strategy 2: If not found and email exists, try email lookup
-        if (user == null && !string.IsNullOrWhiteSpace(email))
+        // Primary lookup: by username
+        user = await this.DirectoryService.GetUserAsync(userName);
+
+        // Fallback: by NameIdentifier (for existing LINE users with line_ prefix)
+        if (user == null && !string.IsNullOrWhiteSpace(userName))
         {
-            user = await this.DirectoryService.GetUserAsync(email.ToLowerInvariant());
+            user = await this.DirectoryService.GetUserByProviderIdAsync(provider, userName);
         }
 
-        // Create new user if not found
+        // User must be pre-registered, EXCEPT SuperAdmins (identified by env var only)
         if (user == null)
         {
-            // Determine username based on available information
-            string userName;
-            if (!string.IsNullOrWhiteSpace(email))
+            // Check if this user is a configured SuperAdmin
+            if (MotoConfig.SuperAdmins.Contains(userName, StringComparer.OrdinalIgnoreCase))
             {
-                userName = email.ToLowerInvariant();
-            }
-            else if (provider == CoreUser.LINE && !string.IsNullOrWhiteSpace(nameIdentifier))
-            {
-                // LINE users without email use their LINE ID as username
-                userName = $"line_{nameIdentifier}";
+                // SuperAdmin can self-register (they exist only in env var, not database)
+                user = new CoreUser
+                {
+                    UserName = userName,
+                    Email = email ?? "",
+                    FullName = displayName ?? userName,
+                    CredentialProvider = provider,
+                    NameIdentifier = nameIdentifier
+                };
+                await this.DirectoryService.SaveUserProfileAsync(user);
             }
             else
             {
-                // No email and no LINE ID - cannot create user
-                return this.RedirectToAction(nameof(this.Login));
+                // Not a SuperAdmin and not pre-registered - redirect to not-registered page
+                await this.HttpContext.SignOutAsync("ExternalAuth");
+                return this.RedirectToAction(nameof(this.NotRegistered));
             }
-
-            user = new CoreUser
-            {
-                UserName = userName,
-                Email = email ?? "",
-                FullName = displayName ?? userName,
-                CredentialProvider = provider,
-                NameIdentifier = nameIdentifier
-            };
-
-            // Save the new user
-            await this.DirectoryService.SaveUserProfileAsync(user);
         }
         else
         {

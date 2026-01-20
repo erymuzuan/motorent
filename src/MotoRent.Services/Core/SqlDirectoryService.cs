@@ -22,14 +22,12 @@ public class SqlDirectoryService(CoreDataContext context) : IDirectoryService
         return await this.Context.LoadOneAsync<User>(u => u.UserName == userName);
     }
 
-    public async Task<User?> GetUserByProviderIdAsync(string provider, string nameIdentifier)
+    public async Task<User?> GetUserByProviderIdAsync(string provider, string userName)
     {
-        // Query users by credential provider, then filter by NameIdentifier in memory
-        // NameIdentifier is stored in JSON and not indexed
-        var query = this.Context.Users.Where(u => u.CredentialProvider == provider);
-        var result = await this.Context.LoadAsync(query, page: 1, size: 100, includeTotalRows: false);
+        var result = await this.Context
+            .LoadOneAsync<User>(x => x.CredentialProvider == provider && x.UserName == userName);
 
-        return result.ItemCollection.FirstOrDefault(u => u.NameIdentifier == nameIdentifier);
+        return result;
     }
 
     public async Task<IEnumerable<User>> GetUsersAsync(string accountNo)

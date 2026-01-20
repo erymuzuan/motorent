@@ -38,6 +38,14 @@ public class Repository<T> : IRepository<T> where T : Entity
         return requestContext?.GetSchema() ?? "MotoRent";
     }
 
+    /// <summary>
+    /// Creates a queryable for the entity type.
+    /// </summary>
+    public IQueryable<T> CreateQuery()
+    {
+        return new Query<T>(m_provider);
+    }
+
     public async Task<T?> LoadOneAsync(IQueryable<T> query)
     {
         var result = await LoadAsync(query, page: 1, size: 1, includeTotalRows: false);
