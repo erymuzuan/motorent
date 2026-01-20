@@ -989,26 +989,59 @@ public class Repository<T> : IRepository<T> where T : Entity
             }
 
             // Handle binary expressions and other cases
-            var binaryValue = GetPredicateValue(predicates[i]);
+            var (binaryValue, propertyType) = GetPredicateValueWithType(predicates[i]);
             if (binaryValue != null)
             {
                 // Convert enum values to string for NVARCHAR comparison in SQL
-                var paramValue = binaryValue.GetType().IsEnum ? binaryValue.ToString() : binaryValue;
+                // Check both the value type and the property type (enum constants may be stored as int)
+                var isEnum = binaryValue.GetType().IsEnum ||
+                             (propertyType?.IsEnum == true);
+                var paramValue = isEnum ? ConvertEnumToString(binaryValue, propertyType) : binaryValue;
                 cmd.Parameters.AddWithValue($"@p{i}", paramValue);
             }
         }
     }
 
+    /// <summary>
+    /// Converts an enum value (or int representing enum) to its string name.
+    /// </summary>
+    private static object ConvertEnumToString(object value, Type? enumType)
+    {
+        if (value.GetType().IsEnum)
+            return value.ToString()!;
+
+        // Value is int but property is enum - convert int to enum name
+        if (enumType?.IsEnum == true)
+            return Enum.GetName(enumType, value) ?? value.ToString()!;
+
+        return value.ToString()!;
+    }
+
     private object? GetPredicateValue(Expression<Func<T, bool>> predicate)
+    {
+        return GetPredicateValueWithType(predicate).Value;
+    }
+
+    private (object? Value, Type? PropertyType) GetPredicateValueWithType(Expression<Func<T, bool>> predicate)
     {
         if (predicate.Body is BinaryExpression binary)
         {
-            return GetValue(binary.Right);
+            var propertyType = GetPropertyType(binary.Left);
+            return (GetValue(binary.Right), propertyType);
         }
         if (predicate.Body is MethodCallExpression methodCall && methodCall.Arguments.Count > 0)
         {
-            return GetValue(methodCall.Arguments[0]);
+            return (GetValue(methodCall.Arguments[0]), null);
         }
+        return (null, null);
+    }
+
+    private static Type? GetPropertyType(Expression expression)
+    {
+        if (expression is MemberExpression member)
+            return (member.Member as System.Reflection.PropertyInfo)?.PropertyType;
+        if (expression is UnaryExpression unary)
+            return GetPropertyType(unary.Operand);
         return null;
     }
 

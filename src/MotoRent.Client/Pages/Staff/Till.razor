@@ -1,6 +1,4 @@
 @page "/staff/till"
-@using MotoRent.Domain.Entities
-@using MotoRent.Services
 @using MotoRent.Client.Components.Receipts
 @using MotoRent.Client.Components.Till
 @using Microsoft.AspNetCore.Authorization
@@ -71,17 +69,23 @@ else
         <div class="container-xl">
             <div class="d-flex justify-content-between align-items-center py-2">
                 <div class="d-flex align-items-center gap-3">
+                    <span class="mr-till-session-id">
+                        <i class="ti ti-cash-register me-1"></i>
+                        @Localizer["Till"] #@this.m_session!.TillSessionId
+                    </span>
                     <span class="mr-status-badge mr-status-badge-success">
                         <span class="mr-status-dot"></span>
                         @Localizer["SessionActive"]
                     </span>
-                    <span class="text-white-50 d-none d-sm-inline">
-                        <i class="ti ti-user me-1"></i>@this.m_session!.StaffDisplayName
-                    </span>
                 </div>
-                <div class="d-flex align-items-center gap-2 text-white-50">
-                    <i class="ti ti-clock"></i>
-                    <span>@Localizer["Started"] @this.FormatTime(this.m_session.OpenedAt)</span>
+                <div class="d-flex align-items-center gap-3">
+                    <span class="text-white-50 d-none d-sm-inline">
+                        <i class="ti ti-user me-1"></i>@this.m_session.StaffDisplayName
+                    </span>
+                    <span class="text-white-50 d-none d-md-flex align-items-center gap-2">
+                        <i class="ti ti-clock"></i>
+                        <span>@Localizer["Started"] @this.FormatTime(this.m_session.OpenedAt)</span>
+                    </span>
                 </div>
             </div>
         </div>
@@ -393,20 +397,38 @@ else
         {
             this.m_loading = true;
 
-            // Get current shop
-            var shops = await this.ShopService.GetShopsAsync(page: 1, pageSize: 1);
-            if (shops.ItemCollection.Any())
+            // First, check if user has any active session (across all shops)
+            this.m_session = await this.TillService.GetActiveSessionForUserAsync(this.UserName);
+
+            // Safety check: ensure session belongs to current user
+            if (this.m_session is not null &&
+                !string.Equals(this.m_session.StaffUserName, this.UserName, StringComparison.OrdinalIgnoreCase))
             {
-                this.m_shopId = shops.ItemCollection.First().ShopId;
+                // Session doesn't belong to current user - shouldn't happen, but prevent access
+                this.Logger.LogWarning(
+                    "Till session {SessionId} belongs to {SessionUser} but {CurrentUser} tried to access it",
+                    this.m_session.TillSessionId,
+                    this.m_session.StaffUserName,
+                    this.UserName);
+                this.m_session = null;
+            }
 
-                // Get active session
-                this.m_session = await this.TillService.GetActiveSessionAsync(this.m_shopId, this.UserName);
+            // Get shop info - use session's shop if active, otherwise get default shop
+            if (this.m_session is not null)
+            {
+                this.m_shopId = this.m_session.ShopId;
 
-                // Load recent transactions and receipts if session exists
-                if (this.m_session is not null)
+                // Load recent transactions and receipts
+                this.m_recentTransactions = await this.TillService.GetRecentTransactionsAsync(this.m_session.TillSessionId, 10);
+                this.m_sessionReceipts = await this.ReceiptService.GetReceiptsByTillSessionAsync(this.m_session.TillSessionId);
+            }
+            else
+            {
+                // No active session - get default shop for opening new session
+                var shops = await this.ShopService.GetShopsAsync(page: 1, pageSize: 1);
+                if (shops.ItemCollection.Any())
                 {
-                    this.m_recentTransactions = await this.TillService.GetRecentTransactionsAsync(this.m_session.TillSessionId, 10);
-                    this.m_sessionReceipts = await this.ReceiptService.GetReceiptsByTillSessionAsync(this.m_session.TillSessionId);
+                    this.m_shopId = shops.ItemCollection.First().ShopId;
                 }
             }
         }

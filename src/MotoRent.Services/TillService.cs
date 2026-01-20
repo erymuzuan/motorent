@@ -51,29 +51,34 @@ public class TillService(RentalDataContext context, ExchangeRateService exchange
 
     /// <summary>
     /// Gets the active (open) session for a staff member at a shop.
+    /// Note: Uses chained Where calls because Repository only supports simple predicates.
     /// </summary>
     public async Task<TillSession?> GetActiveSessionAsync(int shopId, string staffUserName)
     {
-        return await Context.LoadOneAsync<TillSession>(s =>
-            s.ShopId == shopId &&
-            s.StaffUserName == staffUserName &&
-            s.Status == TillSessionStatus.Open);
+        var query = Context.CreateQuery<TillSession>()
+            .Where(s => s.ShopId == shopId)
+            .Where(s => s.StaffUserName == staffUserName)
+            .Where(s => s.Status == TillSessionStatus.Open);
+        return await Context.LoadOneAsync(query);
     }
 
     /// <summary>
     /// Gets any active (open) session for a staff member across all shops.
     /// Used by header button to display till status.
+    /// Note: Uses chained Where calls because Repository only supports simple predicates.
     /// </summary>
     public async Task<TillSession?> GetActiveSessionForUserAsync(string staffUserName)
     {
-        return await Context.LoadOneAsync<TillSession>(s =>
-            s.StaffUserName == staffUserName &&
-            s.Status == TillSessionStatus.Open);
+        var query = Context.CreateQuery<TillSession>()
+            .Where(s => s.StaffUserName == staffUserName)
+            .Where(s => s.Status == TillSessionStatus.Open);
+        return await Context.LoadOneAsync(query);
     }
 
     /// <summary>
     /// Checks if a staff member can open a new session at a shop.
     /// Enforces one-till-per-staff-per-shop-per-day constraint.
+    /// Note: Uses chained Where calls because Repository only supports simple predicates.
     /// </summary>
     public async Task<(bool CanOpen, string? Reason)> CanOpenSessionAsync(int shopId, string staffUserName)
     {
@@ -89,11 +94,12 @@ public class TillService(RentalDataContext context, ExchangeRateService exchange
         var todayStart = new DateTimeOffset(today, TimeSpan.Zero);
         var todayEnd = todayStart.AddDays(1);
 
-        var existingToday = await Context.LoadOneAsync<TillSession>(s =>
-            s.ShopId == shopId &&
-            s.StaffUserName == staffUserName &&
-            s.OpenedAt >= todayStart &&
-            s.OpenedAt < todayEnd);
+        var sameDayQuery = Context.CreateQuery<TillSession>()
+            .Where(s => s.ShopId == shopId)
+            .Where(s => s.StaffUserName == staffUserName)
+            .Where(s => s.OpenedAt >= todayStart)
+            .Where(s => s.OpenedAt < todayEnd);
+        var existingToday = await Context.LoadOneAsync(sameDayQuery);
 
         if (existingToday != null)
         {
@@ -105,12 +111,14 @@ public class TillService(RentalDataContext context, ExchangeRateService exchange
 
     /// <summary>
     /// Gets all active sessions at a shop.
+    /// Note: Uses chained Where calls because Repository only supports simple predicates.
     /// </summary>
     public async Task<List<TillSession>> GetActiveSessionsAsync(int shopId)
     {
         var result = await Context.LoadAsync(
             Context.CreateQuery<TillSession>()
-                .Where(s => s.ShopId == shopId && s.Status == TillSessionStatus.Open)
+                .Where(s => s.ShopId == shopId)
+                .Where(s => s.Status == TillSessionStatus.Open)
                 .OrderByDescending(s => s.OpenedAt),
             page: 1, size: 100, includeTotalRows: false);
         return result.ItemCollection.ToList();
@@ -688,6 +696,7 @@ public class TillService(RentalDataContext context, ExchangeRateService exchange
 
     /// <summary>
     /// Gets all sessions for a specific date for manager verification.
+    /// Note: Uses chained Where calls because Repository only supports simple predicates.
     /// </summary>
     public async Task<List<TillSession>> GetSessionsForVerificationAsync(int shopId, DateTime date)
     {
@@ -697,7 +706,8 @@ public class TillService(RentalDataContext context, ExchangeRateService exchange
         var result = await Context.LoadAsync(
             Context.CreateQuery<TillSession>()
                 .Where(s => s.ShopId == shopId)
-                .Where(s => s.OpenedAt >= startOfDay && s.OpenedAt < endOfDay)
+                .Where(s => s.OpenedAt >= startOfDay)
+                .Where(s => s.OpenedAt < endOfDay)
                 .OrderBy(s => s.OpenedAt),
             page: 1, size: 100, includeTotalRows: false);
         return result.ItemCollection.ToList();

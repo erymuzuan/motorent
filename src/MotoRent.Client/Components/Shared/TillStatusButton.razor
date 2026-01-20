@@ -24,11 +24,12 @@
     else if (m_activeSession != null)
     {
         @* Has open till - show status with link *@
-        <a href="/staff/till" class="mr-till-btn mr-till-btn-active">
+        <a href="/staff/till" class="mr-till-btn mr-till-btn-active" title="@m_activeSession.StaffDisplayName">
             <span class="mr-till-btn-indicator"></span>
             <i class="ti ti-cash-register"></i>
             <span class="mr-till-btn-label">
                 @Localizer["Till"] #@m_activeSession.TillSessionId
+                <span class="mr-till-btn-staff d-none d-lg-inline">@GetShortName(m_activeSession.StaffDisplayName)</span>
             </span>
         </a>
     }
@@ -45,6 +46,7 @@
 @code {
     private bool m_loading = true;
     private TillSession? m_activeSession;
+    private string m_userName = string.Empty;
 
     /// <summary>
     /// Event callback when a till session is opened.
@@ -63,11 +65,19 @@
         m_loading = true;
         try
         {
-            var userName = RequestContext.GetUserName();
-            if (string.IsNullOrEmpty(userName)) return;
+            m_userName = RequestContext.GetUserName() ?? string.Empty;
+            if (string.IsNullOrEmpty(m_userName)) return;
 
-            // Get active till session for this user
-            m_activeSession = await TillService.GetActiveSessionForUserAsync(userName);
+            // Get active till session for this user only
+            m_activeSession = await TillService.GetActiveSessionForUserAsync(m_userName);
+
+            // Safety check: verify the session belongs to current user
+            if (m_activeSession is not null &&
+                !string.Equals(m_activeSession.StaffUserName, m_userName, StringComparison.OrdinalIgnoreCase))
+            {
+                // This shouldn't happen, but if it does, don't show someone else's till
+                m_activeSession = null;
+            }
         }
         catch
         {
@@ -83,5 +93,27 @@
     {
         // Navigate to till page which has the open dialog
         Navigation.NavigateTo("/staff/till");
+    }
+
+    /// <summary>
+    /// Gets a shortened version of the staff name for display in the button.
+    /// Returns first name only, or first 10 chars if single word.
+    /// </summary>
+    private static string GetShortName(string fullName)
+    {
+        if (string.IsNullOrWhiteSpace(fullName)) return string.Empty;
+
+        // If contains space, get first name
+        var spaceIdx = fullName.IndexOf(' ');
+        if (spaceIdx > 0)
+            return fullName[..spaceIdx];
+
+        // If contains @, get part before @
+        var atIdx = fullName.IndexOf('@');
+        if (atIdx > 0)
+            return fullName[..atIdx];
+
+        // Otherwise truncate if too long
+        return fullName.Length > 10 ? fullName[..10] : fullName;
     }
 }

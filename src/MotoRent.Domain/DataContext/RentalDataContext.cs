@@ -34,6 +34,16 @@ public partial class RentalDataContext
         return await repos.LoadOneAsync(predicate);
     }
 
+    /// <summary>
+    /// Loads a single entity matching the query.
+    /// Preferred for complex queries with chained Where calls.
+    /// </summary>
+    public async Task<T?> LoadOneAsync<T>(IQueryable<T> query) where T : Entity
+    {
+        var repos = ObjectBuilder.GetObject<IRepository<T>>();
+        return await repos.LoadOneAsync(query);
+    }
+
     public async Task<LoadOperation<T>> LoadAsync<T>(IQueryable<T> query,
         int page = 1, int size = 40, bool includeTotalRows = false) where T : Entity
     {
