@@ -181,6 +181,33 @@ public class RentalService(
         return await GetActiveRentalsForVehicleAsync(motorbikeId);
     }
 
+    /// <summary>
+    /// Searches active rentals by renter name or rental ID.
+    /// Used by the transaction search dialog to find rentals for check-out.
+    /// </summary>
+    /// <param name="searchTerm">Search term to match against renter name</param>
+    /// <param name="shopId">Optional shop ID to filter by</param>
+    /// <returns>List of matching active rentals</returns>
+    public async Task<List<Rental>> SearchActiveRentalsAsync(string searchTerm, int? shopId = null)
+    {
+        var query = this.Context.CreateQuery<Rental>()
+            .Where(r => r.Status == "Active");
+
+        if (shopId.HasValue)
+        {
+            query = query.Where(r => r.RentedFromShopId == shopId.Value);
+        }
+
+        var result = await this.Context.LoadAsync(query, 1, 50, includeTotalRows: false);
+
+        // Filter by renter name in memory (case-insensitive contains)
+        var term = searchTerm.ToLowerInvariant();
+        return result.ItemCollection
+            .Where(r => (r.RenterName?.ToLowerInvariant().Contains(term) ?? false) ||
+                        r.RentalId.ToString() == searchTerm)
+            .ToList();
+    }
+
     #endregion
 
     #region Workflow Operations

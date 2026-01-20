@@ -53,6 +53,11 @@ public enum TillTransactionType
     BookingDeposit,
 
     /// <summary>
+    /// Check-in payment (rental charges, security deposit, accessories, insurance).
+    /// </summary>
+    CheckIn,
+
+    /// <summary>
     /// Security deposit collected.
     /// </summary>
     SecurityDeposit,
