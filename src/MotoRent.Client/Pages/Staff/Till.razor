@@ -88,28 +88,26 @@ else
     </div>
 
     <div class="container-xl py-3">
-        @* ========== CASH BALANCE HERO ========== *@
-        <div class="mr-till-hero mb-4">
-            <div class="mr-till-hero-content">
-                <div class="mr-till-hero-label">@Localizer["ExpectedCashInTill"]</div>
-                <div class="mr-till-hero-amount">
-                    <span class="mr-till-currency">฿</span>
-                    <span class="mr-till-value">@this.m_session.ExpectedCash.ToString("N0")</span>
-                </div>
-                @if (this.m_session.TotalDropped > 0)
-                {
-                    <div class="mr-till-hero-subtitle">
-                        <i class="ti ti-archive me-1"></i>
-                        @Localizer["DroppedToSafe", $"{this.m_session.TotalDropped:N0}"]
-                    </div>
-                }
+        @* ========== CURRENCY BALANCE PANEL ========== *@
+        <div class="mb-4">
+            <CurrencyBalancePanel
+                CurrencyBalances="@this.GetCurrencyBalances()"
+                OnRefresh="@this.LoadDataAsync" />
+        </div>
+
+        @* ========== SESSION META ========== *@
+        <div class="d-flex justify-content-between align-items-center mb-4 px-1">
+            <div class="small text-secondary">
+                <i class="ti ti-wallet me-1"></i>
+                @Localizer["OpeningFloat"]: <strong>฿@this.m_session.OpeningFloat.ToString("N0")</strong>
             </div>
-            <div class="mr-till-hero-meta">
-                <div class="mr-till-meta-item">
-                    <span class="mr-till-meta-label">@Localizer["OpeningFloat"]</span>
-                    <span class="mr-till-meta-value">฿@this.m_session.OpeningFloat.ToString("N0")</span>
+            @if (this.m_session.TotalDropped > 0)
+            {
+                <div class="small text-secondary">
+                    <i class="ti ti-archive me-1"></i>
+                    @Localizer["DroppedToSafe", $"{this.m_session.TotalDropped:N0}"]
                 </div>
-            </div>
+            }
         </div>
 
         @* ========== CASH FLOW CARDS ========== *@
@@ -480,8 +478,8 @@ else
         var result = await this.DialogService.Create<TillCashDropDialog>("Cash Drop")
             .WithParameter(x => x.SessionId, this.m_session.TillSessionId)
             .WithParameter(x => x.IsDrop, true)
-            .WithParameter(x => x.AvailableCash, this.m_session.ExpectedCash)
-            .WithSize(ModalSize.Small)
+            .WithParameter(x => x.CurrencyBalances, this.GetCurrencyBalances())
+            .WithSize(ModalSize.Medium)
             .ShowDialogAsync();
 
         if (result is { Cancelled: false })
@@ -615,6 +613,28 @@ else
     private static string GetAmountColorClass(TillTransaction txn)
     {
         return txn.Direction == TillTransactionDirection.In ? "mr-amount-in" : "mr-amount-out";
+    }
+
+    /// <summary>
+    /// Gets the currency balances from the session.
+    /// For backward compatibility with existing sessions that don't have CurrencyBalances,
+    /// initializes with THB = ExpectedCash if null or empty.
+    /// </summary>
+    private Dictionary<string, decimal> GetCurrencyBalances()
+    {
+        if (this.m_session is null) return new Dictionary<string, decimal>();
+
+        // If CurrencyBalances exists and has values, use it
+        if (this.m_session.CurrencyBalances is { Count: > 0 })
+        {
+            return this.m_session.CurrencyBalances;
+        }
+
+        // Backward compatibility: return THB balance based on ExpectedCash
+        return new Dictionary<string, decimal>
+        {
+            [SupportedCurrencies.THB] = this.m_session.ExpectedCash
+        };
     }
 
     private async Task ReceiveRentalPaymentDialog()
