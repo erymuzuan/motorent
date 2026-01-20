@@ -1,0 +1,121 @@
+@inherits LocalizedComponentBase<DenominationEntryPanel>
+@using MotoRent.Domain.Entities
+
+<div class="mr-denomination-panel">
+    @foreach (var denomination in GetDenominations())
+    {
+        var count = GetCount(denomination);
+        var subtotal = denomination * count;
+        var hasValue = count > 0;
+
+        <div class="mr-denomination-row @(hasValue ? "has-value" : "")">
+            <span class="mr-denomination-value">@FormatDenomination(denomination)</span>
+            <input type="number"
+                   class="form-control form-control-sm mr-denomination-input"
+                   min="0"
+                   step="1"
+                   value="@count"
+                   disabled="@Disabled"
+                   @oninput="@(e => OnCountChanged(denomination, e))" />
+            <span class="mr-denomination-subtotal">
+                @if (hasValue)
+                {
+                    @FormatAmount(subtotal)
+                }
+            </span>
+        </div>
+    }
+
+    @if (ShowTotal)
+    {
+        <div class="mr-denomination-total">
+            <span>@Localizer["Total"]</span>
+            <span>@FormatAmount(Total)</span>
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// Currency code (THB, USD, EUR, CNY) - determines which denominations to show.
+    /// </summary>
+    [Parameter]
+    public string Currency { get; set; } = SupportedCurrencies.THB;
+
+    /// <summary>
+    /// Dictionary of denomination counts. Key is the denomination value, value is the count.
+    /// </summary>
+    [Parameter]
+    public Dictionary<decimal, int> DenominationCounts { get; set; } = [];
+
+    /// <summary>
+    /// Callback when denomination counts change.
+    /// </summary>
+    [Parameter]
+    public EventCallback<Dictionary<decimal, int>> DenominationCountsChanged { get; set; }
+
+    /// <summary>
+    /// Whether to disable all inputs.
+    /// </summary>
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    /// <summary>
+    /// Whether to show the total row.
+    /// </summary>
+    [Parameter]
+    public bool ShowTotal { get; set; } = true;
+
+    /// <summary>
+    /// Calculated total from denomination counts.
+    /// </summary>
+    public decimal Total => DenominationCounts.Sum(kvp => kvp.Key * kvp.Value);
+
+    /// <summary>
+    /// Gets the denominations for the current currency.
+    /// </summary>
+    private decimal[] GetDenominations() => CurrencyDenominations.GetDenominations(Currency);
+
+    /// <summary>
+    /// Gets the count for a specific denomination.
+    /// </summary>
+    private int GetCount(decimal denomination)
+    {
+        return DenominationCounts.TryGetValue(denomination, out var count) ? count : 0;
+    }
+
+    /// <summary>
+    /// Formats a denomination value with currency symbol.
+    /// </summary>
+    private string FormatDenomination(decimal denomination)
+    {
+        var symbol = CurrencyDenominations.GetCurrencySymbol(Currency);
+        return $"{symbol}{denomination:N0}";
+    }
+
+    /// <summary>
+    /// Formats an amount with currency symbol.
+    /// </summary>
+    private string FormatAmount(decimal amount)
+    {
+        var symbol = CurrencyDenominations.GetCurrencySymbol(Currency);
+        return $"{symbol}{amount:N0}";
+    }
+
+    /// <summary>
+    /// Handles count change for a denomination.
+    /// </summary>
+    private async Task OnCountChanged(decimal denomination, ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var count) && count >= 0)
+        {
+            DenominationCounts[denomination] = count;
+        }
+        else
+        {
+            DenominationCounts[denomination] = 0;
+        }
+
+        await DenominationCountsChanged.InvokeAsync(DenominationCounts);
+    }
+}
