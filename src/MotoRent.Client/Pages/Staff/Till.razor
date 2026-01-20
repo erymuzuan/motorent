@@ -1,6 +1,7 @@
 @page "/staff/till"
 @using MotoRent.Client.Components.Receipts
 @using MotoRent.Client.Components.Till
+@using MotoRent.Domain.Models
 @using Microsoft.AspNetCore.Authorization
 @inherits LocalizedComponentBase<Till>
 @attribute [Authorize(Policy = "RequireTenantStaff")]
@@ -727,13 +728,13 @@ else
         var result = await this.DialogService.Create<TillTransactionDialog>(Localizer["NewTransaction"])
             .WithParameter(x => x.SessionId, this.m_session.TillSessionId)
             .WithParameter(x => x.ShopId, this.m_shopId)
+            .WithParameter(x => x.UserName, this.UserName)
             .WithFullscreen()
             .ShowDialogAsync();
 
-        if (result is { Cancelled: false, Data: not null })
+        if (result is { Cancelled: false, Data: TransactionSearchResult transaction })
         {
-            // Result contains the selected entity and transaction type
-            // For now, just reload data - Phase 3 Plan 2 will handle item confirmation
+            // Transaction completed with payments - reload data to reflect till changes
             await this.LoadDataAsync();
         }
     }
