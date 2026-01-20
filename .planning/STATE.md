@@ -9,7 +9,7 @@
 
 **Core Value:** Business visibility and cash control - owners can see if their assets are profitable, where cash is leaking, and whether staff are handling money correctly.
 
-**Current Focus:** Phase 5 in progress. Service layer complete with ManagerPinService and TillService void/refund operations. Ready for void dialog UI implementation.
+**Current Focus:** Phase 5 in progress. Manager PIN dialog component complete. Ready for void transaction dialog integration.
 
 **Key Constraints:**
 - Tech stack: Blazor Server + WASM, .NET 10, SQL Server
@@ -22,17 +22,17 @@
 ## Current Position
 
 **Phase:** 5 of 9 (Refunds & Corrections)
-**Plan:** 2 of 5 complete
+**Plan:** 3 of 5 complete
 **Status:** In progress
 
 ```
-Milestone Progress: [######....] 68%
-Phase 5 Progress:   [####......] 40%
+Milestone Progress: [######....] 71%
+Phase 5 Progress:   [######....] 60%
 ```
 
-**Last Activity:** 2026-01-20 - Completed 05-02-PLAN.md (Manager PIN Service)
+**Last Activity:** 2026-01-20 - Completed 05-03-PLAN.md (Manager PIN Dialog)
 
-**Next Action:** Execute 05-03-PLAN.md (Void Dialog & Workflow)
+**Next Action:** Execute 05-04-PLAN.md (Void Dialog & Workflow)
 
 ---
 
@@ -63,6 +63,22 @@ Phase 5 Progress:   [####......] 40%
 - ManagerPinService: PBKDF2 hashing, 3-attempt lockout, SetPinAsync, VerifyPin, IsLockedOut
 - TillService: VoidTransactionAsync with compensating entries, RecordOverpaymentRefundAsync
 - Self-approval prevention, bidirectional void linking
+
+### Plan 05-03: Manager PIN Dialog - COMPLETE
+
+| Task | Status | Commit |
+|------|--------|--------|
+| Task 1: Create ManagerPinDialog component | Done | c4e84c0 |
+| Task 2: Create ManagerPinDialog CSS | Done | 1bad2fc |
+| Task 3: Create localization resources | Done | 5f20ed7 |
+
+**Key Deliverables:**
+- `ManagerPinDialog.razor` (284 lines) - Touch-friendly PIN entry dialog
+- 4 PIN dots display with filled/empty states
+- Numeric keypad (3x4 grid) matching ThbKeypadPanel style
+- Manager selection dropdown (if multiple managers)
+- Lockout countdown timer display
+- Localization: English and Thai
 
 ---
 
@@ -116,8 +132,8 @@ Phase 5 Progress:   [####......] 40%
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Plans completed | 14 | Phase 1: 4; Phase 2: 3; Phase 3: 2; Phase 4: 3; Phase 5: 2 |
-| Requirements done | 28/40 | +VOID-01 (manager PIN), +VOID-02 (void workflow) |
+| Plans completed | 15 | Phase 1: 4; Phase 2: 3; Phase 3: 2; Phase 4: 3; Phase 5: 3 |
+| Requirements done | 29/40 | +VOID-03 (manager PIN dialog) |
 | Phases done | 4/9 | Phase 5 in progress |
 | Blockers hit | 0 | - |
 
@@ -153,6 +169,9 @@ Phase 5 Progress:   [####......] 40%
 | PBKDF2 static method | (05-02) .NET 10 deprecates constructor; use static Pbkdf2() | 2026-01-20 |
 | In-memory lockout tracking | (05-02) Acceptable for MVP; can migrate to Redis/SQL later | 2026-01-20 |
 | Bidirectional linking after save | (05-02) Compensating entry needs ID before linking | 2026-01-20 |
+| LocalizedDialogBase with object | (05-03) string doesn't satisfy new() constraint for TEntity | 2026-01-20 |
+| Inherit RequestContext from base | (05-03) MotoRentComponentBase already provides it | 2026-01-20 |
+| System.Timers.Timer for lockout | (05-03) Reliable 1-second intervals for countdown UI | 2026-01-20 |
 
 ### Architecture Notes
 
@@ -163,6 +182,7 @@ Phase 5 Progress:   [####......] 40%
 - ManagerPinService (202 lines) - PBKDF2 hashing, lockout logic
 - TillService.VoidTransactionAsync - Compensating entry pattern
 - TillService.RecordOverpaymentRefundAsync - THB cash refunds
+- ManagerPinDialog.razor (284 lines) - Touch-friendly PIN entry with lockout
 
 **Phase 4 Components:**
 - `PaymentTerminalPanel.razor` (928 lines) - Two-column payment terminal with all input modes
@@ -210,18 +230,18 @@ None currently.
 
 ## Session Continuity
 
-**Last Session:** 2026-01-20 - Completed 05-02-PLAN.md (Manager PIN Service)
+**Last Session:** 2026-01-20 - Completed 05-03-PLAN.md (Manager PIN Dialog)
 
 **Context for Next Session:**
-- Phase 5 Plans 1-2 complete: domain + service layer done
-- ManagerPinService ready for void approval dialogs
+- Phase 5 Plans 1-3 complete: domain, service, PIN dialog done
+- ManagerPinDialog ready for integration in void workflow
 - TillService.VoidTransactionAsync ready for UI integration
-- Ready for Plan 05-03: Void Dialog & Workflow
+- Ready for Plan 05-04: Void Dialog & Workflow
 
 **Files to Review:**
-- `.planning/phases/05-refunds-corrections/05-02-SUMMARY.md` - Just completed
-- `.planning/phases/05-refunds-corrections/05-03-PLAN.md` - Next plan
-- `src/MotoRent.Services/ManagerPinService.cs` - PIN service
+- `.planning/phases/05-refunds-corrections/05-03-SUMMARY.md` - Just completed
+- `.planning/phases/05-refunds-corrections/05-04-PLAN.md` - Next plan
+- `src/MotoRent.Client/Components/Auth/ManagerPinDialog.razor` - PIN dialog
 - `src/MotoRent.Services/TillService.cs` - Void/refund operations
 
 ---
