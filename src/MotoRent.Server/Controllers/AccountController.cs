@@ -127,41 +127,36 @@ public class AccountController(
         var displayName = externalUser.FindFirst(ClaimTypes.Name)?.Value
             ?? externalUser.FindFirst("name")?.Value;
 
-        // For LINE users, email may be null - use nameIdentifier for lookup
+        // For LINE users, email may be null - use nameIdentifier as username
         CoreUser? user = null;
 
-        // Strategy 1: Try lookup by NameIdentifier + Provider first (for LINE users without email)
-        if (!string.IsNullOrWhiteSpace(nameIdentifier))
+        // Determine username based on provider
+        // LINE users: username = LINE userId (nameIdentifier)
+        // Google/Microsoft: username = email
+        var userName = provider == CoreUser.LINE
+            ? nameIdentifier
+            : email?.ToLowerInvariant();
+
+        if (string.IsNullOrWhiteSpace(userName))
+        {
+            return this.RedirectToAction(nameof(this.Login));
+        }
+
+        // Primary lookup: by username
+        user = await this.DirectoryService.GetUserAsync(userName);
+
+        // Fallback: by NameIdentifier (for existing LINE users with line_ prefix)
+        if (user == null && !string.IsNullOrWhiteSpace(nameIdentifier))
         {
             user = await this.DirectoryService.GetUserByProviderIdAsync(provider, nameIdentifier);
         }
 
-        // Strategy 2: If not found and email exists, try email lookup
-        if (user == null && !string.IsNullOrWhiteSpace(email))
-        {
-            user = await this.DirectoryService.GetUserAsync(email.ToLowerInvariant());
-        }
-
         // Create new user if not found
+        // userName was already determined above:
+        // - LINE users: username = LINE userId (nameIdentifier)
+        // - Google/Microsoft: username = email
         if (user == null)
         {
-            // Determine username based on available information
-            string userName;
-            if (!string.IsNullOrWhiteSpace(email))
-            {
-                userName = email.ToLowerInvariant();
-            }
-            else if (provider == CoreUser.LINE && !string.IsNullOrWhiteSpace(nameIdentifier))
-            {
-                // LINE users without email use their LINE ID as username
-                userName = $"line_{nameIdentifier}";
-            }
-            else
-            {
-                // No email and no LINE ID - cannot create user
-                return this.RedirectToAction(nameof(this.Login));
-            }
-
             user = new CoreUser
             {
                 UserName = userName,
