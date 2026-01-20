@@ -1,0 +1,135 @@
+@inherits LocalizedComponentBase<CurrencyBalancePanel>
+@using MotoRent.Domain.Entities
+@inject ExchangeRateService ExchangeRateService
+
+<div class="mr-balance-panel @(m_expanded ? "expanded" : "collapsed")" @onclick="ToggleExpanded">
+    <div class="mr-balance-header">
+        <div class="mr-balance-header-content">
+            <span class="mr-balance-label">@Localizer["TillBalance"]</span>
+            @if (!m_expanded)
+            {
+                <span class="mr-balance-total-collapsed">
+                    @CurrencyDenominations.GetCurrencySymbol(SupportedCurrencies.THB)@TotalThbEquivalent.ToString("N0")
+                </span>
+            }
+        </div>
+        <i class="ti @(m_expanded ? "ti-chevron-up" : "ti-chevron-down") mr-balance-toggle"></i>
+    </div>
+
+    @if (m_expanded)
+    {
+        <div class="mr-balance-details" @onclick:stopPropagation="true">
+            @foreach (var (currency, balance) in GetNonZeroBalances())
+            {
+                var symbol = CurrencyDenominations.GetCurrencySymbol(currency);
+                <div class="mr-balance-row">
+                    <span class="mr-balance-currency">@currency</span>
+                    <span class="mr-balance-amount">@symbol@balance.ToString("N2")</span>
+                    @if (currency != SupportedCurrencies.THB)
+                    {
+                        var thbEquiv = m_thbEquivalents.GetValueOrDefault(currency, 0);
+                        <span class="mr-balance-equiv">(~@CurrencyDenominations.GetCurrencySymbol(SupportedCurrencies.THB)@thbEquiv.ToString("N0"))</span>
+                    }
+                </div>
+            }
+
+            <div class="mr-balance-total">
+                <span>@Localizer["TotalThbEquivalent"]:</span>
+                <span class="mr-balance-total-value">
+                    @CurrencyDenominations.GetCurrencySymbol(SupportedCurrencies.THB)@TotalThbEquivalent.ToString("N0")
+                </span>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// Balance per currency from TillSession.
+    /// Key is currency code (THB, USD, EUR, CNY), value is amount in that currency.
+    /// </summary>
+    [Parameter]
+    public Dictionary<string, decimal> CurrencyBalances { get; set; } = new();
+
+    /// <summary>
+    /// Optional callback to refresh data from parent.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnRefresh { get; set; }
+
+    private bool m_expanded;
+    private Dictionary<string, decimal> m_thbEquivalents = new();
+
+    /// <summary>
+    /// Total THB equivalent of all currency balances.
+    /// </summary>
+    private decimal TotalThbEquivalent
+    {
+        get
+        {
+            var thbBalance = CurrencyBalances.GetValueOrDefault(SupportedCurrencies.THB, 0);
+            var foreignThbTotal = m_thbEquivalents.Values.Sum();
+            return thbBalance + foreignThbTotal;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CalculateThbEquivalentsAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await CalculateThbEquivalentsAsync();
+    }
+
+    private async Task ToggleExpanded()
+    {
+        m_expanded = !m_expanded;
+
+        // Lazy-load equivalents when expanding if not yet calculated
+        if (m_expanded && m_thbEquivalents.Count == 0)
+        {
+            await CalculateThbEquivalentsAsync();
+        }
+    }
+
+    /// <summary>
+    /// Calculates THB equivalents for all foreign currency balances.
+    /// </summary>
+    private async Task CalculateThbEquivalentsAsync()
+    {
+        m_thbEquivalents.Clear();
+
+        foreach (var (currency, balance) in CurrencyBalances)
+        {
+            if (currency == SupportedCurrencies.THB || balance <= 0)
+                continue;
+
+            var conversion = await ExchangeRateService.ConvertToThbAsync(currency, balance);
+            if (conversion != null)
+            {
+                m_thbEquivalents[currency] = conversion.ThbAmount;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gets balances for currencies with non-zero amounts.
+    /// </summary>
+    private IEnumerable<(string Currency, decimal Balance)> GetNonZeroBalances()
+    {
+        // THB first, then foreign currencies
+        if (CurrencyBalances.TryGetValue(SupportedCurrencies.THB, out var thbBalance) && thbBalance > 0)
+        {
+            yield return (SupportedCurrencies.THB, thbBalance);
+        }
+
+        foreach (var (currency, balance) in CurrencyBalances
+            .Where(kvp => kvp.Key != SupportedCurrencies.THB && kvp.Value > 0)
+            .OrderBy(kvp => kvp.Key))
+        {
+            yield return (currency, balance);
+        }
+    }
+}
