@@ -21,40 +21,41 @@
 
 ## Current Position
 
-**Phase:** 2 of 9 (Multi-Currency Till Operations) - COMPLETE
-**Next Phase:** 3 of 9 (Transaction Search & Item Confirmation)
-**Status:** Ready for Phase 3 planning
+**Phase:** 3 of 9 (Transaction Search & Item Confirmation)
+**Plan:** 1 of 2 complete
+**Status:** Plan 03-01 complete, ready for Plan 03-02
 
 ```
-Milestone Progress: [###.......] 25%
-Phase 2 Progress:   [##########] 100%
-Phase 3 Progress:   [..........] 0%
+Milestone Progress: [####......] 30%
+Phase 3 Progress:   [#####.....] 50%
 ```
 
-**Last Activity:** 2026-01-20 - Roadmap restructured with 3 new phases for till redesign
+**Last Activity:** 2026-01-20 - Completed 03-01-PLAN.md (Transaction Search UI Foundation)
 
-**Next Action:** Run `/gsd:discuss-phase 3` to gather context for Phase 3 (Transaction Search & Item Confirmation).
+**Next Action:** Run `/gsd:execute-phase 03-02` to execute Plan 2 (Item Confirmation Panel).
 
 ---
 
-## Roadmap Update Summary
+## Phase 3 Progress
 
-### Phases Inserted (2026-01-20)
+### Plan 03-01: Transaction Search UI Foundation - COMPLETE
 
-| Phase | Name | Goal |
-|-------|------|------|
-| 3 | Transaction Search & Item Confirmation | Staff search for booking/rental, edit items in fullscreen dialog |
-| 4 | Payment Terminal Redesign | Multi-currency split payments with THB keypad and denomination counting |
-| 5 | Refunds & Corrections | Deposit refunds, overpayment refunds, voids with manager approval |
+| Task | Status | Commit |
+|------|--------|--------|
+| Task 1: Create TillTransactionDialog | Done | f1a2d6e |
+| Task 2: Extend RentalService and TillTransactionType | Done | 2f2bc6b |
+| Task 3: Wire dialog to Till page | Done | 4b96ee3 |
+| Task 4: Add CheckIn transaction type mapping | Done | 6c64209 |
 
-### Renumbered Phases
+**Key Deliverables:**
+- `TillTransactionDialog.razor` - Search-then-select fullscreen dialog
+- `TransactionSearchResult.cs` - Result model with entity and transaction type
+- `SearchActiveRentalsAsync` - New service method
+- `TillTransactionType.CheckIn` - New enum value
 
-| Old | New | Name |
-|-----|-----|------|
-| 3 | 6 | Denomination Counting |
-| 4 | 7 | Till Closing and Reconciliation |
-| 5 | 8 | Manager Oversight |
-| 6 | 9 | End of Day Operations |
+### Plan 03-02: Item Confirmation Panel - PENDING
+
+**Depends on:** 03-01 (complete)
 
 ---
 
@@ -62,7 +63,7 @@ Phase 3 Progress:   [..........] 0%
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Plans completed | 7 | Phase 1: 4 plans; Phase 2: 3 plans |
+| Plans completed | 8 | Phase 1: 4; Phase 2: 3; Phase 3: 1 |
 | Requirements done | 10/40 | RATE-01-05, TILL-01-05 |
 | Phases done | 2/9 | Phases 1-2 verified complete |
 | Blockers hit | 0 | - |
@@ -86,8 +87,16 @@ Phase 3 Progress:   [..........] 0%
 | Split payments across methods/currencies | Tourists often mix cash, card, and currencies | 2026-01-20 |
 | Manager PIN for void approval | Quick authorization without full login swap | 2026-01-20 |
 | Voids preserved for audit trail | Accountability and reconciliation | 2026-01-20 |
+| Search-then-select with grouped results | (03-01) Clearer UX, matches mental model of transaction types | 2026-01-20 |
 
 ### Architecture Notes
+
+**Phase 3 Additions:**
+- `TillTransactionDialog` - Fullscreen search dialog for bookings/rentals
+- `TransactionSearchResult` - DTO with EntityType, Booking, Rental, TransactionType
+- `TransactionEntityType` enum - Booking, Rental
+- `TillTransactionType.CheckIn` - New enum value for check-in transactions
+- `RentalService.SearchActiveRentalsAsync` - Search active rentals by renter name
 
 **Entities Extended (Phase 2):**
 - `TillSession` - Added CurrencyBalances dictionary, GetCurrencyBalance helper
@@ -131,24 +140,18 @@ None currently.
 
 ## Session Continuity
 
-**Last Session:** 2026-01-20 - Roadmap restructured with 3 new phases for till redesign
+**Last Session:** 2026-01-20 - Completed Plan 03-01 (Transaction Search UI Foundation)
 
 **Context for Next Session:**
-- Roadmap updated: 9 phases total (was 6)
-- Phases 3, 4, 5 inserted for till workflow redesign:
-  - Phase 3: Transaction Search & Item Confirmation
-  - Phase 4: Payment Terminal Redesign
-  - Phase 5: Refunds & Corrections
-- Original phases 3-6 renumbered to 6-9
-- Context files created for each new phase in `.planning/phases/`
-- Phase 2 infrastructure (multi-currency tracking, denomination counting) ready to support new phases
-- Ready to begin Phase 3 planning
+- Plan 03-01 complete with 4 commits
+- `TillTransactionDialog` provides search-then-select UI
+- `TransactionSearchResult` ready to pass to item confirmation panel
+- Ready to execute Plan 03-02 (Item Confirmation Panel)
 
 **Files to Review:**
-- `.planning/ROADMAP.md` - Updated roadmap with 9 phases
-- `.planning/phases/03-transaction-search-items/03-CONTEXT.md` - Phase 3 context
-- `.planning/phases/04-payment-terminal/04-CONTEXT.md` - Phase 4 context
-- `.planning/phases/05-refunds-corrections/05-CONTEXT.md` - Phase 5 context
+- `.planning/phases/03-transaction-search-items/03-01-SUMMARY.md` - Just completed
+- `.planning/phases/03-transaction-search-items/03-02-PLAN.md` - Next plan
+- `src/MotoRent.Client/Pages/Staff/TillTransactionDialog.razor` - Search dialog
 
 ---
 
