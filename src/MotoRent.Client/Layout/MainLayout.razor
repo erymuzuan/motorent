@@ -63,10 +63,10 @@
                         </div>
                     </div>
                 </div>
-                @* Shop Selector *@
+                @* Shop Selector - hidden for SuperAdmin without impersonation *@
                 <AuthorizeView>
                     <Authorized>
-                        @if (m_shops.Count > 0)
+                        @if (m_shops.Count > 0 && !m_isSuperAdminOnly)
                         {
                             <div class="nav-item d-none d-md-flex me-3">
                                 <div class="dropdown">
@@ -123,7 +123,7 @@
                         }
                         <div class="d-none d-xl-block ps-2">
                             <div>@(RequestContext.GetUserName() ?? "User")</div>
-                            <div class="mt-1 small text-secondary">@(RequestContext.GetAccountNo() ?? "Not signed in")</div>
+                            <div class="mt-1 small text-secondary">@(m_isSuperAdminOnly ? Localizer["SuperAdminRole"] : RequestContext.GetAccountNo() ?? Localizer["NotSignedIn"])</div>
                         </div>
                     </a>
                     <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
@@ -257,6 +257,7 @@
     private List<Shop> m_shops = [];
     private int m_shopId;
     private string m_currentShopName = "";
+    private bool m_isSuperAdminOnly;
 
     private string CurrentPathAndQuery =>
         new Uri(this.Navigation.Uri).GetComponents(UriComponents.PathAndQuery, UriFormat.Unescaped);
@@ -325,7 +326,8 @@
                 var hasTenantRole = UserAccount.AllRoles.Any(role => user.IsInRole(role));
 
                 // SuperAdmin without tenant access (not impersonating) should go to super admin page
-                if (isSuperAdmin && !hasTenantRole)
+                m_isSuperAdminOnly = isSuperAdmin && !hasTenantRole;
+                if (m_isSuperAdminOnly)
                 {
                     m_homeUrl = "/super-admin/start-page";
                 }
