@@ -51,6 +51,13 @@ Plans:
 
 **Dependencies:** Phase 1 (exchange rates must exist)
 
+**Plans:** 3 plans
+
+Plans:
+- [ ] 02-01-PLAN.md — Entity extensions and TillService multi-currency methods
+- [ ] 02-02-PLAN.md — Payment dialog with currency selection and denomination entry
+- [ ] 02-03-PLAN.md — Currency balance panel and multi-currency cash drop
+
 **Requirements:**
 - TILL-01: Staff can open till with starting float per currency (THB, USD, EUR, CNY)
 - TILL-02: Staff can receive payment in any supported currency with exchange rate applied
@@ -162,7 +169,7 @@ Plans:
 | Phase | Name | Requirements | Status | Completion |
 |-------|------|--------------|--------|------------|
 | 1 | Exchange Rate Foundation | RATE-01, RATE-02, RATE-03, RATE-04, RATE-05 | Complete | 100% |
-| 2 | Multi-Currency Till Operations | TILL-01, TILL-02, TILL-03, TILL-04, TILL-05 | Not Started | 0% |
+| 2 | Multi-Currency Till Operations | TILL-01, TILL-02, TILL-03, TILL-04, TILL-05 | Planned | 0% |
 | 3 | Denomination Counting | DENOM-01, DENOM-02, DENOM-03 | Not Started | 0% |
 | 4 | Till Closing and Reconciliation | TILL-06, TILL-07 | Not Started | 0% |
 | 5 | Manager Oversight | MGR-01, MGR-02, MGR-03, MGR-04 | Not Started | 0% |
@@ -189,4 +196,4 @@ Plans:
 
 ---
 
-*Last updated: 2026-01-20 — Phase 1 complete, all requirements verified*
+*Last updated: 2026-01-20 — Phase 2 planned, 3 plans in 2 waves*
