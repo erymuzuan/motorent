@@ -9,7 +9,7 @@
 
 **Core Value:** Business visibility and cash control - owners can see if their assets are profitable, where cash is leaking, and whether staff are handling money correctly.
 
-**Current Focus:** Payment terminal with multi-currency support. Phase 3 complete - staff can now search for bookings/rentals and confirm line items before payment.
+**Current Focus:** Payment terminal with multi-currency support. Phase 4 in progress - building the payment terminal UI for split payments across methods and currencies.
 
 **Key Constraints:**
 - Tech stack: Blazor Server + WASM, .NET 10, SQL Server
@@ -21,18 +21,38 @@
 
 ## Current Position
 
-**Phase:** 3 of 9 (Transaction Search & Item Confirmation) - COMPLETE
-**Plan:** 2 of 2 complete
-**Status:** Phase 3 complete, ready for Phase 4
+**Phase:** 4 of 9 (Payment Terminal)
+**Plan:** 1 of 4 complete
+**Status:** Phase 4 in progress
 
 ```
-Milestone Progress: [#####.....] 35%
-Phase 3 Progress:   [##########] 100%
+Milestone Progress: [######....] 40%
+Phase 4 Progress:   [###.......] 25%
 ```
 
-**Last Activity:** 2026-01-20 - Completed 03-02-PLAN.md (Item Confirmation Panel)
+**Last Activity:** 2026-01-20 - Completed 04-01-PLAN.md (Payment Terminal Layout)
 
-**Next Action:** Run `/gsd:execute-phase 04-01` to execute Phase 4 Plan 1 (Payment Terminal).
+**Next Action:** Run `/gsd:execute-phase 04-02` to execute Phase 4 Plan 2 (THB Keypad).
+
+---
+
+## Phase 4 Progress
+
+### Plan 04-01: Payment Terminal Layout - COMPLETE
+
+| Task | Status | Commit |
+|------|--------|--------|
+| Task 1: Create PaymentTerminalPanel with two-column layout | Done | a0141d9 |
+| Task 2: Add localization resources | Done | 8dfb476 |
+| Task 3: Payment entry list and summary (merged into Task 1) | Done | a0141d9 |
+
+**Key Deliverables:**
+- `PaymentTerminalPanel.razor` - Two-column layout component (415 lines)
+- Payment method tabs (Cash, Card, PromptPay, AliPay)
+- Cash currency tabs (THB, USD, GBP disabled, EUR, CNY)
+- Payment entry list with remove capability
+- Summary section (Total Received, Change, Remaining)
+- Complete Payment button with disabled logic
 
 ---
 
@@ -73,9 +93,9 @@ Phase 3 Progress:   [##########] 100%
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Plans completed | 9 | Phase 1: 4; Phase 2: 3; Phase 3: 2 |
-| Requirements done | 12/40 | RATE-01-05, TILL-01-05, SRCH-01-02 |
-| Phases done | 3/9 | Phases 1-3 verified complete |
+| Plans completed | 10 | Phase 1: 4; Phase 2: 3; Phase 3: 2; Phase 4: 1 |
+| Requirements done | 13/40 | RATE-01-05, TILL-01-05, SRCH-01-02, PAY-01 |
+| Phases done | 3/9 | Phases 1-3 complete, Phase 4 in progress |
 | Blockers hit | 0 | - |
 
 ---
@@ -101,8 +121,16 @@ Phase 3 Progress:   [##########] 100%
 | Two-column responsive item confirmation | (03-02) Left for summary, right for line items; stacks on mobile | 2026-01-20 |
 | Inline editing panels | (03-02) Faster workflow than modal dialogs, one panel at a time | 2026-01-20 |
 | TransactionLineItem as working model | (03-02) Separate from ReceiptItem for rich editing before persistence | 2026-01-20 |
+| PaymentEntry as internal class | (04-01) Separate from ReceiptPayment for working state during collection | 2026-01-20 |
+| GBP tab visible but disabled | (04-01) Per CONTEXT.md, GBP support deferred but shown for completeness | 2026-01-20 |
 
 ### Architecture Notes
+
+**Phase 4 Additions (04-01):**
+- `PaymentTerminalPanel` - Two-column payment terminal component
+- `PaymentEntry` internal class - Working model for payment entries
+- Payment method tabs with entry indicators
+- Cash currency tabs with GBP disabled
 
 **Phase 3 Additions (03-02):**
 - `TransactionLineItem` - Working model for editable line items with AccessoryId, InsuranceId, CanRemove
@@ -159,18 +187,19 @@ None currently.
 
 ## Session Continuity
 
-**Last Session:** 2026-01-20 - Completed Phase 3 (Transaction Search & Item Confirmation)
+**Last Session:** 2026-01-20 - Completed Phase 4 Plan 1 (Payment Terminal Layout)
 
 **Context for Next Session:**
-- Phase 3 complete with 2 plans, 6 commits total
-- `TillTransactionDialog` now has full search and item confirmation workflow
-- `TransactionSearchResult` carries confirmed line items and grand total
-- Ready to execute Phase 4 (Payment Terminal)
+- Phase 4 Plan 1 complete with 2 commits
+- `PaymentTerminalPanel` component created with full layout structure
+- Payment method and currency tabs working
+- Content area has placeholders ready for input components
+- Ready to execute Phase 4 Plan 2 (THB Keypad)
 
 **Files to Review:**
-- `.planning/phases/03-transaction-search-items/03-02-SUMMARY.md` - Just completed
-- `.planning/phases/04-payment-terminal/` - Next phase
-- `src/MotoRent.Client/Pages/Staff/TillTransactionDialog.razor` - Full dialog with search + confirmation
+- `.planning/phases/04-payment-terminal/04-01-SUMMARY.md` - Just completed
+- `.planning/phases/04-payment-terminal/04-02-PLAN.md` - Next plan
+- `src/MotoRent.Client/Components/Till/PaymentTerminalPanel.razor` - New component
 
 ---
 
