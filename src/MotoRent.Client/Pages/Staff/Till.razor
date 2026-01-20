@@ -227,6 +227,14 @@ else
             </div>
         }
 
+        @* ========== NEW TRANSACTION BUTTON ========== *@
+        <div class="mb-4">
+            <button type="button" class="mr-btn-primary-action w-100 py-3" @onclick="this.NewTransactionDialog">
+                <i class="ti ti-receipt-2 me-2"></i>
+                @Localizer["NewTransaction"]
+            </button>
+        </div>
+
         @* ========== QUICK PAYMENTS (Cash In) ========== *@
         <div class="mb-4">
             <h4 class="mr-section-title mb-3">
@@ -706,6 +714,24 @@ else
         if (result is { Cancelled: false })
         {
             this.ShowSuccess(Localizer["PaymentRecorded"]);
+            await this.LoadDataAsync();
+        }
+    }
+
+    private async Task NewTransactionDialog()
+    {
+        if (this.m_session is null) return;
+
+        var result = await this.DialogService.Create<TillTransactionDialog>(Localizer["NewTransaction"])
+            .WithParameter(x => x.SessionId, this.m_session.TillSessionId)
+            .WithParameter(x => x.ShopId, this.m_shopId)
+            .WithFullscreen()
+            .ShowDialogAsync();
+
+        if (result is { Cancelled: false, Data: not null })
+        {
+            // Result contains the selected entity and transaction type
+            // For now, just reload data - Phase 3 Plan 2 will handle item confirmation
             await this.LoadDataAsync();
         }
     }
