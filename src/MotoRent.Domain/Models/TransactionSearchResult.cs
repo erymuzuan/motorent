@@ -37,6 +37,18 @@ public class TransactionSearchResult
     /// Calculated grand total after discounts and deductions.
     /// </summary>
     public decimal GrandTotal { get; set; }
+
+    /// <summary>
+    /// Payment entries collected during the transaction.
+    /// Populated when payment is complete.
+    /// </summary>
+    public List<ReceiptPayment> Payments { get; set; } = [];
+
+    /// <summary>
+    /// Change amount in THB (if overpaid).
+    /// Calculated as sum of payments minus grand total.
+    /// </summary>
+    public decimal Change { get; set; }
 }
 
 /// <summary>

@@ -1,4 +1,5 @@
 @using MotoRent.Domain.Models
+@using MotoRent.Client.Components.Till
 @inherits LocalizedDialogBase<object, TillTransactionDialog>
 @inject BookingService BookingService
 @inject RentalService RentalService
@@ -7,7 +8,7 @@
 
 <div class="modal-body" style="padding-bottom: 100px; min-height: 400px;">
     @* === STEP 1: Search & Select === *@
-    @if (m_selectedBooking is null && m_selectedRental is null)
+    @if (m_currentStep == 1)
     {
         @* === Search Input === *@
         <div class="mb-3">
@@ -172,7 +173,7 @@
             }
         }
     }
-    else
+    else if (m_currentStep == 2)
     {
         @* === STEP 2: Item Confirmation === *@
         <div class="row">
@@ -433,11 +434,31 @@
             </div>
         </div>
     }
+    else if (m_currentStep == 3)
+    {
+        @* === STEP 3: Payment Terminal === *@
+        <PaymentTerminalPanel
+            AmountDue="@m_grandTotal"
+            SessionId="@SessionId"
+            RentalId="@(m_selectedRental?.RentalId)"
+            BookingId="@(m_selectedBooking?.BookingId)"
+            TransactionType="@m_transactionType"
+            UserName="@UserName"
+            OnPaymentComplete="@OnPaymentComplete"
+            OnCancel="@GoBackToItemConfirmation" />
+    }
 </div>
 
 @* === Footer === *@
 <div class="modal-footer sticky-bottom bg-white border-top" style="z-index: 10;">
-    @if (m_selectedBooking is not null || m_selectedRental is not null)
+    @if (m_currentStep == 1)
+    {
+        @* Step 1 footer *@
+        <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
+            @Localizer["Cancel"]
+        </button>
+    }
+    else if (m_currentStep == 2)
     {
         @* Step 2 footer *@
         <button type="button" class="btn btn-ghost-secondary" @onclick="ClearSelection">
@@ -449,11 +470,11 @@
             @Localizer["ProceedToPayment"] - @FormatAmount(m_grandTotal)
         </button>
     }
-    else
+    else if (m_currentStep == 3)
     {
-        @* Step 1 footer *@
-        <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
-            @Localizer["Cancel"]
+        @* Step 3 footer - Back button only; PaymentTerminalPanel has its own Complete button *@
+        <button type="button" class="btn btn-ghost-secondary" @onclick="GoBackToItemConfirmation">
+            <i class="ti ti-arrow-left"></i> @Localizer["BackToItems"]
         </button>
     }
 </div>
@@ -461,6 +482,10 @@
 @code {
     [Parameter] public int SessionId { get; set; }
     [Parameter] public int ShopId { get; set; }
+    [Parameter] public string UserName { get; set; } = "";
+
+    // Step tracking: 1 = Search, 2 = Item Confirmation, 3 = Payment
+    private int m_currentStep = 1;
 
     // Search state (Step 1)
     private string m_searchTerm = "";
@@ -637,6 +662,7 @@
         m_selectedRental = null;
         m_transactionType = DetectTransactionType(booking);
         BuildLineItemsFromBooking(booking);
+        m_currentStep = 2;
 
         // Load available options in parallel
         await Task.WhenAll(
@@ -651,6 +677,7 @@
         m_selectedBooking = null;
         m_transactionType = TillTransactionType.RentalPayment;
         BuildLineItemsFromRental(rental);
+        m_currentStep = 2;
 
         // Load available options in parallel
         await Task.WhenAll(
@@ -986,10 +1013,30 @@
         m_showAccessorySelector = false;
         m_showInsuranceSelector = false;
         m_showDiscountForm = false;
+        m_currentStep = 1;
     }
 
     private void ProceedToPayment()
     {
+        // Transition to Step 3 (Payment Terminal)
+        m_currentStep = 3;
+    }
+
+    /// <summary>
+    /// Returns to the item confirmation step from payment.
+    /// </summary>
+    private void GoBackToItemConfirmation()
+    {
+        m_currentStep = 2;
+    }
+
+    /// <summary>
+    /// Handles payment completion from PaymentTerminalPanel.
+    /// Builds the final TransactionSearchResult and closes the dialog.
+    /// </summary>
+    private void OnPaymentComplete(List<ReceiptPayment> payments)
+    {
+        // Build the final transaction result
         var result = new TransactionSearchResult
         {
             EntityType = m_selectedBooking is not null ? TransactionEntityType.Booking : TransactionEntityType.Rental,
@@ -997,7 +1044,9 @@
             Rental = m_selectedRental,
             TransactionType = m_transactionType,
             LineItems = m_lineItems.ToList(),
-            GrandTotal = m_grandTotal
+            GrandTotal = m_grandTotal,
+            Payments = payments,
+            Change = payments.Sum(p => p.AmountInBaseCurrency) - m_grandTotal
         };
 
         this.ModalService.Close(ModalResult.Ok(result));
