@@ -31,6 +31,38 @@ Requirements for the Cashier Till milestone. Each maps to roadmap phases.
 - [x] **RATE-04**: Exchange rate is stored on each transaction for audit trail
 - [x] **RATE-05**: Staff can view current exchange rates during payment acceptance
 
+### Transaction Search
+
+- [x] **TXSEARCH-01**: Staff can search for bookings or rentals by reference, customer name, or phone
+- [x] **TXSEARCH-02**: System auto-detects transaction type from entity status (booking deposit, check-in, check-out)
+
+### Item Confirmation
+
+- [x] **ITEMS-01**: Staff sees full summary (customer, vehicle, dates, line items) in fullscreen dialog
+- [x] **ITEMS-02**: Staff can add/remove accessories from the transaction
+- [x] **ITEMS-03**: Staff can change insurance package
+- [x] **ITEMS-04**: Staff can apply percentage or fixed discounts with reason
+- [x] **ITEMS-05**: Item confirmation uses responsive layout (two columns tablet/PC, stacked mobile)
+
+### Payment Terminal
+
+- [ ] **PAY-01**: Payment terminal shows amount due in THB prominently
+- [ ] **PAY-02**: THB input uses numeric keypad with quick amounts
+- [ ] **PAY-03**: Foreign currency input uses denomination counting
+- [ ] **PAY-04**: Staff can mix cash payments across multiple currencies in same transaction
+- [ ] **PAY-05**: Staff can mix cash + non-cash (card, PromptPay, bank transfer) in same transaction
+- [ ] **PAY-06**: Running total shows all payment entries with THB equivalents
+- [ ] **PAY-07**: Change calculation always in THB
+- [ ] **PAY-08**: Green indicators show which currencies/methods have entries
+
+### Refunds & Corrections
+
+- [ ] **REFUND-01**: Security deposit refunds at check-out
+- [ ] **REFUND-02**: Overpayment refunds when customer pays too much
+- [ ] **VOID-01**: Transaction reversals require manager approval
+- [ ] **VOID-02**: Manager can approve void via PIN entry or session authentication
+- [ ] **VOID-03**: Voided transactions are marked but preserved for audit trail
+
 ### Manager Oversight
 
 - [ ] **MGR-01**: Manager can view dashboard of all open and closed till sessions
@@ -97,28 +129,48 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TILL-03 | Phase 2 | Complete |
 | TILL-04 | Phase 2 | Complete |
 | TILL-05 | Phase 2 | Complete |
-| DENOM-01 | Phase 3 | Pending |
-| DENOM-02 | Phase 3 | Pending |
-| DENOM-03 | Phase 3 | Pending |
-| TILL-06 | Phase 4 | Pending |
-| TILL-07 | Phase 4 | Pending |
-| MGR-01 | Phase 5 | Pending |
-| MGR-02 | Phase 5 | Pending |
-| MGR-03 | Phase 5 | Pending |
-| MGR-04 | Phase 5 | Pending |
-| EOD-01 | Phase 6 | Pending |
-| EOD-02 | Phase 6 | Pending |
-| EOD-03 | Phase 6 | Pending |
-| EOD-04 | Phase 6 | Pending |
-| RCPT-01 | Phase 6 | Pending |
-| RCPT-02 | Phase 6 | Pending |
-| RCPT-03 | Phase 6 | Pending |
+| TXSEARCH-01 | Phase 3 | Complete |
+| TXSEARCH-02 | Phase 3 | Complete |
+| ITEMS-01 | Phase 3 | Complete |
+| ITEMS-02 | Phase 3 | Complete |
+| ITEMS-03 | Phase 3 | Complete |
+| ITEMS-04 | Phase 3 | Complete |
+| ITEMS-05 | Phase 3 | Complete |
+| PAY-01 | Phase 4 | Pending |
+| PAY-02 | Phase 4 | Pending |
+| PAY-03 | Phase 4 | Pending |
+| PAY-04 | Phase 4 | Pending |
+| PAY-05 | Phase 4 | Pending |
+| PAY-06 | Phase 4 | Pending |
+| PAY-07 | Phase 4 | Pending |
+| PAY-08 | Phase 4 | Pending |
+| REFUND-01 | Phase 5 | Pending |
+| REFUND-02 | Phase 5 | Pending |
+| VOID-01 | Phase 5 | Pending |
+| VOID-02 | Phase 5 | Pending |
+| VOID-03 | Phase 5 | Pending |
+| DENOM-01 | Phase 6 | Pending |
+| DENOM-02 | Phase 6 | Pending |
+| DENOM-03 | Phase 6 | Pending |
+| TILL-06 | Phase 7 | Pending |
+| TILL-07 | Phase 7 | Pending |
+| MGR-01 | Phase 8 | Pending |
+| MGR-02 | Phase 8 | Pending |
+| MGR-03 | Phase 8 | Pending |
+| MGR-04 | Phase 8 | Pending |
+| EOD-01 | Phase 9 | Pending |
+| EOD-02 | Phase 9 | Pending |
+| EOD-03 | Phase 9 | Pending |
+| EOD-04 | Phase 9 | Pending |
+| RCPT-01 | Phase 9 | Pending |
+| RCPT-02 | Phase 9 | Pending |
+| RCPT-03 | Phase 9 | Pending |
 
 **Coverage:**
-- v1 requirements: 26 total
-- Mapped to phases: 26
+- v1 requirements: 40 total
+- Mapped to phases: 40
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-01-19*
-*Last updated: 2026-01-20 — Phase 2 requirements marked complete*
+*Last updated: 2026-01-20 — Phase 3 requirements marked complete*
