@@ -1,5 +1,7 @@
 @inherits LocalizedComponentBase<PaymentTerminalPanel>
 @using MotoRent.Domain.Entities
+@using MotoRent.Services
+@inject ExchangeRateService ExchangeRateService
 
 <div class="payment-terminal-panel">
     <div class="row g-4">
@@ -104,7 +106,7 @@
                 <div class="payment-method-tabs mb-3">
                     <button type="button"
                             class="payment-method-tab @(m_selectedMethod == PaymentMethods.Cash ? "tab-active" : "")"
-                            @onclick="@(() => SelectMethod(PaymentMethods.Cash))">
+                            @onclick="@(() => OnMethodChanged(PaymentMethods.Cash))">
                         <i class="ti ti-cash"></i>
                         <span>@Localizer["Cash"]</span>
                         @if (HasEntriesFor(PaymentMethods.Cash))
@@ -114,7 +116,7 @@
                     </button>
                     <button type="button"
                             class="payment-method-tab @(m_selectedMethod == PaymentMethods.Card ? "tab-active" : "")"
-                            @onclick="@(() => SelectMethod(PaymentMethods.Card))">
+                            @onclick="@(() => OnMethodChanged(PaymentMethods.Card))">
                         <i class="ti ti-credit-card"></i>
                         <span>@Localizer["CreditCard"]</span>
                         @if (HasEntriesFor(PaymentMethods.Card))
@@ -124,7 +126,7 @@
                     </button>
                     <button type="button"
                             class="payment-method-tab @(m_selectedMethod == PaymentMethods.PromptPay ? "tab-active" : "")"
-                            @onclick="@(() => SelectMethod(PaymentMethods.PromptPay))">
+                            @onclick="@(() => OnMethodChanged(PaymentMethods.PromptPay))">
                         <i class="ti ti-qrcode"></i>
                         <span>@Localizer["PromptPay"]</span>
                         @if (HasEntriesFor(PaymentMethods.PromptPay))
@@ -134,7 +136,7 @@
                     </button>
                     <button type="button"
                             class="payment-method-tab @(m_selectedMethod == c_aliPay ? "tab-active" : "")"
-                            @onclick="@(() => SelectMethod(c_aliPay))">
+                            @onclick="@(() => OnMethodChanged(c_aliPay))">
                         <i class="ti ti-brand-alipay"></i>
                         <span>@Localizer["AliPay"]</span>
                         @if (HasEntriesFor(c_aliPay))
@@ -150,7 +152,7 @@
                     <div class="currency-tabs mb-3">
                         <button type="button"
                                 class="currency-tab @(m_selectedCurrency == SupportedCurrencies.THB ? "tab-active" : "")"
-                                @onclick="@(() => SelectCurrency(SupportedCurrencies.THB))">
+                                @onclick="@(() => OnCurrencyChanged(SupportedCurrencies.THB))">
                             <span class="currency-flag">TH</span>
                             <span>THB</span>
                             @if (HasEntriesFor(PaymentMethods.Cash, SupportedCurrencies.THB))
@@ -160,7 +162,7 @@
                         </button>
                         <button type="button"
                                 class="currency-tab @(m_selectedCurrency == SupportedCurrencies.USD ? "tab-active" : "")"
-                                @onclick="@(() => SelectCurrency(SupportedCurrencies.USD))">
+                                @onclick="@(() => OnCurrencyChanged(SupportedCurrencies.USD))">
                             <span class="currency-flag">US</span>
                             <span>USD</span>
                             @if (HasEntriesFor(PaymentMethods.Cash, SupportedCurrencies.USD))
@@ -177,7 +179,7 @@
                         </button>
                         <button type="button"
                                 class="currency-tab @(m_selectedCurrency == SupportedCurrencies.EUR ? "tab-active" : "")"
-                                @onclick="@(() => SelectCurrency(SupportedCurrencies.EUR))">
+                                @onclick="@(() => OnCurrencyChanged(SupportedCurrencies.EUR))">
                             <span class="currency-flag">EU</span>
                             <span>EUR</span>
                             @if (HasEntriesFor(PaymentMethods.Cash, SupportedCurrencies.EUR))
@@ -187,7 +189,7 @@
                         </button>
                         <button type="button"
                                 class="currency-tab @(m_selectedCurrency == SupportedCurrencies.CNY ? "tab-active" : "")"
-                                @onclick="@(() => SelectCurrency(SupportedCurrencies.CNY))">
+                                @onclick="@(() => OnCurrencyChanged(SupportedCurrencies.CNY))">
                             <span class="currency-flag">CN</span>
                             <span>CNY</span>
                             @if (HasEntriesFor(PaymentMethods.Cash, SupportedCurrencies.CNY))
@@ -202,12 +204,73 @@
                 <div class="payment-content-area">
                     @if (m_selectedMethod == PaymentMethods.Cash)
                     {
-                        @* Cash content placeholder - will be implemented in future plans *@
-                        <div class="text-center text-muted py-5">
-                            <i class="ti ti-cash mb-3" style="font-size: 4rem;"></i>
-                            <h4>@Localizer["EnterAmount"]</h4>
-                            <p class="mb-0">@m_selectedCurrency @Localizer["Cash"]</p>
-                        </div>
+                        @if (m_selectedCurrency == SupportedCurrencies.THB)
+                        {
+                            @* THB Keypad *@
+                            <ThbKeypadPanel
+                                RemainingAmount="@m_remaining"
+                                OnAmountSubmit="@OnThbAmountSubmit" />
+                        }
+                        else
+                        {
+                            @* Foreign Currency Denomination Counting *@
+                            <div class="foreign-currency-input">
+                                <h5 class="mb-3">
+                                    <i class="ti ti-cash me-2"></i>
+                                    @Localizer["CountNotes", GetCurrencyName(m_selectedCurrency)]
+                                </h5>
+
+                                @* Exchange Rate Display *@
+                                @if (m_currentExchangeRate != null)
+                                {
+                                    <div class="alert alert-info py-2 mb-3">
+                                        <i class="ti ti-arrows-exchange me-2"></i>
+                                        @Localizer["Rate"]: @FormatCurrencyAmount(1, m_selectedCurrency) = @FormatThb(m_currentExchangeRate.BuyRate)
+                                    </div>
+                                }
+                                else if (m_loadingRate)
+                                {
+                                    <div class="alert alert-secondary py-2 mb-3">
+                                        <i class="ti ti-loader ti-spin me-2"></i>
+                                        @Localizer["LoadingRate"]
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="alert alert-warning py-2 mb-3">
+                                        <i class="ti ti-alert-triangle me-2"></i>
+                                        @Localizer["NoRateConfigured", GetCurrencyName(m_selectedCurrency)]
+                                    </div>
+                                }
+
+                                @* Denomination Panel *@
+                                <DenominationEntryPanel
+                                    Currency="@m_selectedCurrency"
+                                    DenominationCounts="@m_currentDenominations"
+                                    DenominationCountsChanged="@OnDenominationCountsChanged"
+                                    ShowTotal="true" />
+
+                                @* THB Equivalent Display *@
+                                @if (m_conversionResult != null && m_foreignCurrencyTotal > 0)
+                                {
+                                    <div class="thb-equivalent mt-3 p-3 bg-success-lt rounded text-center">
+                                        <span class="text-muted">@Localizer["ThbEquivalent"]:</span>
+                                        <span class="fs-3 fw-bold ms-2 text-success">@FormatThb(m_conversionResult.ThbAmount)</span>
+                                    </div>
+                                }
+
+                                @* Add Foreign Currency Payment Button *@
+                                <div class="mt-3">
+                                    <button type="button"
+                                            class="btn btn-success btn-lg w-100"
+                                            disabled="@(m_foreignCurrencyTotal <= 0 || m_currentExchangeRate == null)"
+                                            @onclick="AddForeignCurrencyPayment">
+                                        <i class="ti ti-plus me-2"></i>
+                                        @Localizer["AddPayment"] @FormatCurrencyAmount(m_foreignCurrencyTotal, m_selectedCurrency)
+                                    </button>
+                                </div>
+                            </div>
+                        }
                     }
                     else if (m_selectedMethod == PaymentMethods.Card)
                     {
@@ -268,10 +331,17 @@
     private string m_selectedCurrency = SupportedCurrencies.THB;
     private readonly List<PaymentEntry> m_paymentEntries = [];
 
+    // Foreign currency state
+    private Dictionary<decimal, int> m_currentDenominations = [];
+    private ExchangeRate? m_currentExchangeRate;
+    private ExchangeConversionResult? m_conversionResult;
+    private bool m_loadingRate;
+
     // Computed properties
     private decimal m_totalReceived => m_paymentEntries.Sum(p => p.AmountInBaseCurrency);
     private decimal m_remaining => Math.Max(0, AmountDue - m_totalReceived);
     private decimal m_change => m_totalReceived > AmountDue ? m_totalReceived - AmountDue : 0;
+    private decimal m_foreignCurrencyTotal => m_currentDenominations.Sum(kvp => kvp.Key * kvp.Value);
 
     /// <summary>
     /// Internal working model for payment entries during input.
@@ -291,9 +361,74 @@
     }
 
     /// <summary>
-    /// Selects a payment method.
+    /// Handles THB amount submission from keypad.
     /// </summary>
-    private void SelectMethod(string method)
+    private void OnThbAmountSubmit(decimal amount)
+    {
+        if (amount <= 0) return;
+
+        m_paymentEntries.Add(new PaymentEntry
+        {
+            Method = PaymentMethods.Cash,
+            Currency = SupportedCurrencies.THB,
+            Amount = amount,
+            AmountInBaseCurrency = amount,
+            ExchangeRate = 1.0m,
+            ExchangeRateSource = "Base"
+        });
+
+        RecalculateTotals();
+    }
+
+    /// <summary>
+    /// Handles denomination count changes for foreign currency.
+    /// </summary>
+    private async Task OnDenominationCountsChanged(Dictionary<decimal, int> counts)
+    {
+        m_currentDenominations = counts;
+        var total = counts.Sum(kvp => kvp.Key * kvp.Value);
+
+        if (total > 0 && m_selectedCurrency != SupportedCurrencies.THB)
+        {
+            m_conversionResult = await ExchangeRateService.ConvertToThbAsync(m_selectedCurrency, total);
+        }
+        else
+        {
+            m_conversionResult = null;
+        }
+    }
+
+    /// <summary>
+    /// Adds a foreign currency payment entry.
+    /// </summary>
+    private void AddForeignCurrencyPayment()
+    {
+        if (m_conversionResult == null) return;
+
+        var total = m_currentDenominations.Sum(kvp => kvp.Key * kvp.Value);
+        if (total <= 0) return;
+
+        m_paymentEntries.Add(new PaymentEntry
+        {
+            Method = PaymentMethods.Cash,
+            Currency = m_selectedCurrency,
+            Amount = total,
+            AmountInBaseCurrency = m_conversionResult.ThbAmount,
+            ExchangeRate = m_conversionResult.RateUsed,
+            ExchangeRateSource = m_conversionResult.RateSource,
+            ExchangeRateId = m_conversionResult.ExchangeRateId
+        });
+
+        // Clear denomination counts after adding
+        m_currentDenominations = [];
+        m_conversionResult = null;
+        RecalculateTotals();
+    }
+
+    /// <summary>
+    /// Handles payment method change.
+    /// </summary>
+    private void OnMethodChanged(string method)
     {
         m_selectedMethod = method;
         // Reset currency to THB when switching to Cash
@@ -301,14 +436,47 @@
         {
             m_selectedCurrency = SupportedCurrencies.THB;
         }
+        // Reset foreign currency state
+        m_currentDenominations = [];
+        m_conversionResult = null;
+        m_currentExchangeRate = null;
     }
 
     /// <summary>
-    /// Selects a cash currency.
+    /// Handles currency change for cash payments.
     /// </summary>
-    private void SelectCurrency(string currency)
+    private async Task OnCurrencyChanged(string currency)
     {
         m_selectedCurrency = currency;
+        m_currentDenominations = [];
+        m_conversionResult = null;
+
+        // Pre-load exchange rate for display
+        if (currency != SupportedCurrencies.THB)
+        {
+            m_loadingRate = true;
+            try
+            {
+                m_currentExchangeRate = await ExchangeRateService.GetCurrentRateAsync(currency);
+            }
+            finally
+            {
+                m_loadingRate = false;
+            }
+        }
+        else
+        {
+            m_currentExchangeRate = null;
+        }
+    }
+
+    /// <summary>
+    /// Recalculates totals (triggers UI update).
+    /// </summary>
+    private void RecalculateTotals()
+    {
+        // Computed properties auto-recalculate, but StateHasChanged ensures UI updates
+        StateHasChanged();
     }
 
     /// <summary>
@@ -353,6 +521,17 @@
         PaymentMethods.PromptPay => Localizer["PromptPay"],
         c_aliPay => Localizer["AliPay"],
         _ => method
+    };
+
+    /// <summary>
+    /// Gets the display name for a currency.
+    /// </summary>
+    private static string GetCurrencyName(string currency) => currency switch
+    {
+        SupportedCurrencies.USD => "USD",
+        SupportedCurrencies.EUR => "EUR",
+        SupportedCurrencies.CNY => "CNY",
+        _ => currency
     };
 
     /// <summary>
