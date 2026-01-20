@@ -21,18 +21,18 @@
 
 ## Current Position
 
-**Phase:** 1 of 6 (Exchange Rate Foundation)
-**Plan:** 4 of 4 complete (including gap closure)
-**Status:** Phase verified and complete
+**Phase:** 2 of 6 (Multi-Currency Till Operations)
+**Plan:** 1 of 4 complete
+**Status:** In progress
 
 ```
-Milestone Progress: [##........] 19%
-Phase 1 Progress:   [##########] 100%
+Milestone Progress: [###.......] 24%
+Phase 2 Progress:   [##........] 25%
 ```
 
-**Last Activity:** 2026-01-20 - Phase 1 verified, all requirements complete (RATE-01 through RATE-05)
+**Last Activity:** 2026-01-20 - Completed 02-01 (Domain Extensions for Multi-Currency Till)
 
-**Next Action:** Run `/gsd:discuss-phase 2` to gather context for Phase 2 (Multi-Currency Till Operations).
+**Next Action:** Execute 02-02 (Balance Display & Summary Panel)
 
 ---
 
@@ -40,8 +40,8 @@ Phase 1 Progress:   [##########] 100%
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Plans completed | 4 | 01-01 (4 min), 01-02 (3 min), 01-03 (3 min), 01-04 (3 min) |
-| Requirements done | 5/26 | RATE-01, RATE-02, RATE-03, RATE-04, RATE-05 |
+| Plans completed | 5 | 01-01 to 01-04, 02-01 (~4 min) |
+| Requirements done | 5/26 | RATE-01 through RATE-05 complete |
 | Phases done | 1/6 | Phase 1 verified complete |
 | Blockers hit | 0 | - |
 
@@ -69,30 +69,27 @@ Phase 1 Progress:   [##########] 100%
 | FAB pattern for staff panel | Quick access without cluttering till UI | 2026-01-20 |
 | Auto-calculate on input | No separate calculate button needed for fast workflow | 2026-01-20 |
 | FAB only in active session | No need to show rates when till is closed | 2026-01-20 |
+| Dictionary<string,decimal> for CurrencyBalances | Flexible, allows any currency; initialized on session open | 2026-01-20 |
+| Defaults ensure backward compatibility | Existing THB-only transactions work with Currency="THB", ExchangeRate=1.0 | 2026-01-20 |
 
 ### Architecture Notes
 
-**Existing Entities to Extend:**
-- `TillSession` - Add per-currency balance tracking (CurrencyBalances, OpeningFloatByCurrency, ActualCashByCurrency)
-- `TillTransaction` - Add Currency, ExchangeRate, AmountInBaseCurrency fields
-- `ReceiptPayment` - Extended with ExchangeRateSource, ExchangeRateId for audit trail
+**Entities Extended (Phase 2):**
+- `TillSession` - Added CurrencyBalances dictionary, GetCurrencyBalance helper
+- `TillTransaction` - Added Currency, ExchangeRate, AmountInBaseCurrency, ExchangeRateSource, ExchangeRateId
 
-**New Entities Created:**
+**New Classes Created (Phase 2):**
+- `CurrencyDenominations` - Static helper with denomination arrays for THB, USD, EUR, CNY
+- `CurrencyDropAmount` - DTO for multi-currency drop operations
+
+**Services Extended (Phase 2):**
+- `TillService` - Added RecordForeignCurrencyPaymentAsync, RecordMultiCurrencyDropAsync; injected ExchangeRateService
+
+**Existing from Phase 1:**
 - `ExchangeRate` - Organization-scoped with BuyRate, Source, EffectiveDate, IsActive
-- `ExchangeConversionResult` - Record type for conversion with audit info
-- `FetchRatesResult` - Record type for API fetch results
-
-**Services Created:**
 - `ExchangeRateService` - Rate management (get current, set new, convert, history, API stub)
-
-**UI Pages Created:**
 - `/settings/exchange-rates` - Manager settings page for rate configuration
-
-**UI Components Created:**
-- `ExchangeRatePanel` - Staff-facing panel with FAB, rate list, and calculator (wired to Till.razor)
-
-**Navigation Links Added:**
-- Settings dropdown -> Exchange Rates (/settings/exchange-rates)
+- `ExchangeRatePanel` - Staff-facing panel with FAB, rate list, and calculator
 
 ### TODOs
 
@@ -109,22 +106,23 @@ None currently.
 
 ## Session Continuity
 
-**Last Session:** 2026-01-20 - Phase 1 fully executed and verified
+**Last Session:** 2026-01-20 - Completed 02-01 Domain Extensions
 
 **Context for Next Session:**
-- Phase 1 verified complete: All 5 RATE requirements satisfied
-- ExchangeRate entity, service, manager UI, and staff panel all wired and accessible
-- Manager can configure rates at /settings/exchange-rates (nav link in Settings dropdown)
-- Staff can view rates via FAB on Till page when session is active
-- Quick calculator helps staff convert foreign amounts to THB
-- Localization complete for en, th across all Phase 1 artifacts
-- Ready for Phase 2: Multi-Currency Till Operations
+- Phase 2 Plan 1 complete: Domain layer extended for multi-currency tracking
+- TillSession now tracks CurrencyBalances dictionary (THB, USD, EUR, CNY)
+- TillTransaction now captures currency, exchange rate, and THB equivalent
+- TillService has RecordForeignCurrencyPaymentAsync and RecordMultiCurrencyDropAsync
+- CurrencyDenominations helper ready for denomination counting UI
+- All builds pass, DI registration verified
+- Ready for 02-02: Balance Display & Summary Panel
 
 **Files to Review:**
-- `.planning/phases/01-exchange-rate-foundation/01-VERIFICATION.md` - Phase verification report
-- `.planning/phases/01-exchange-rate-foundation/01-04-SUMMARY.md` - Gap closure summary
-- `src/MotoRent.Client/Pages/Staff/Till.razor` - Now includes ExchangeRatePanel
-- `src/MotoRent.Client/Layout/NavMenu.razor` - Now has Exchange Rates link
+- `.planning/phases/02-multi-currency-till-operations/02-01-SUMMARY.md` - Plan 1 summary
+- `src/MotoRent.Domain/Entities/TillSession.cs` - CurrencyBalances added
+- `src/MotoRent.Domain/Entities/TillTransaction.cs` - Currency fields added
+- `src/MotoRent.Domain/Entities/CurrencyDenominations.cs` - New helper class
+- `src/MotoRent.Services/TillService.cs` - Multi-currency methods added
 
 ---
 
