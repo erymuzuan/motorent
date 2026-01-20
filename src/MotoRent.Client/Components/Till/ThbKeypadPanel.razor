@@ -1,0 +1,144 @@
+@inherits LocalizedComponentBase<ThbKeypadPanel>
+@using MotoRent.Domain.Entities
+
+<div class="thb-keypad-panel">
+    @* Display Area *@
+    <div class="keypad-display">
+        <span class="currency-symbol">฿</span>
+        <span class="amount-value">@(EnteredAmount > 0 ? EnteredAmount.ToString("N0") : "0")</span>
+    </div>
+
+    @* Numeric Keypad *@
+    <div class="keypad-grid">
+        <button type="button" class="keypad-btn" @onclick="@(() => OnKeyPress('1'))">1</button>
+        <button type="button" class="keypad-btn" @onclick="@(() => OnKeyPress('2'))">2</button>
+        <button type="button" class="keypad-btn" @onclick="@(() => OnKeyPress('3'))">3</button>
+        <button type="button" class="keypad-btn" @onclick="@(() => OnKeyPress('4'))">4</button>
+        <button type="button" class="keypad-btn" @onclick="@(() => OnKeyPress('5'))">5</button>
+        <button type="button" class="keypad-btn" @onclick="@(() => OnKeyPress('6'))">6</button>
+        <button type="button" class="keypad-btn" @onclick="@(() => OnKeyPress('7'))">7</button>
+        <button type="button" class="keypad-btn" @onclick="@(() => OnKeyPress('8'))">8</button>
+        <button type="button" class="keypad-btn" @onclick="@(() => OnKeyPress('9'))">9</button>
+        <button type="button" class="keypad-btn keypad-btn-action" @onclick="OnClear">C</button>
+        <button type="button" class="keypad-btn" @onclick="@(() => OnKeyPress('0'))">0</button>
+        <button type="button" class="keypad-btn keypad-btn-action" @onclick="OnBackspace">
+            <i class="ti ti-backspace"></i>
+        </button>
+    </div>
+
+    @* Quick Amount Buttons *@
+    <div class="quick-amounts">
+        <button type="button" class="btn btn-outline-secondary quick-amount-btn" @onclick="@(() => OnQuickAmount(100m))">
+            ฿100
+        </button>
+        <button type="button" class="btn btn-outline-secondary quick-amount-btn" @onclick="@(() => OnQuickAmount(500m))">
+            ฿500
+        </button>
+        <button type="button" class="btn btn-outline-secondary quick-amount-btn" @onclick="@(() => OnQuickAmount(1000m))">
+            ฿1,000
+        </button>
+        <button type="button"
+                class="btn btn-outline-primary quick-amount-btn"
+                disabled="@(RemainingAmount <= 0)"
+                @onclick="@(() => OnQuickAmount(RemainingAmount))">
+            @Localizer["Remaining"]: @FormatThb(RemainingAmount)
+        </button>
+    </div>
+
+    @* Add Button *@
+    <div class="add-btn-container">
+        <button type="button"
+                class="btn btn-success btn-lg w-100 add-btn"
+                disabled="@(EnteredAmount <= 0)"
+                @onclick="OnAddPayment">
+            <i class="ti ti-plus me-2"></i>
+            @Localizer["AddPayment"] @FormatThb(EnteredAmount)
+        </button>
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// Amount still due (for Remaining quick fill button).
+    /// </summary>
+    [Parameter]
+    public decimal RemainingAmount { get; set; }
+
+    /// <summary>
+    /// Callback when an amount is submitted.
+    /// </summary>
+    [Parameter]
+    public EventCallback<decimal> OnAmountSubmit { get; set; }
+
+    // State
+    private string m_input = "";
+
+    /// <summary>
+    /// Current entered amount parsed from input string.
+    /// </summary>
+    private decimal EnteredAmount => decimal.TryParse(m_input, out var amount) ? amount : 0;
+
+    /// <summary>
+    /// Handles digit key press.
+    /// </summary>
+    private void OnKeyPress(char key)
+    {
+        // Prevent leading zeros
+        if (m_input == "0" && key == '0') return;
+        if (m_input == "0" && key != '0') m_input = "";
+
+        // Limit to reasonable amount (max 10 digits)
+        if (m_input.Length >= 10) return;
+
+        m_input += key;
+    }
+
+    /// <summary>
+    /// Clears all input.
+    /// </summary>
+    private void OnClear()
+    {
+        m_input = "";
+    }
+
+    /// <summary>
+    /// Removes the last character.
+    /// </summary>
+    private void OnBackspace()
+    {
+        if (m_input.Length > 0)
+        {
+            m_input = m_input[..^1];
+        }
+    }
+
+    /// <summary>
+    /// Sets amount to quick value and auto-submits.
+    /// </summary>
+    private async Task OnQuickAmount(decimal amount)
+    {
+        if (amount <= 0) return;
+
+        await OnAmountSubmit.InvokeAsync(amount);
+        m_input = "";
+    }
+
+    /// <summary>
+    /// Submits the current entered amount.
+    /// </summary>
+    private async Task OnAddPayment()
+    {
+        if (EnteredAmount <= 0) return;
+
+        await OnAmountSubmit.InvokeAsync(EnteredAmount);
+        m_input = "";
+    }
+
+    /// <summary>
+    /// Formats an amount as Thai Baht.
+    /// </summary>
+    private static string FormatThb(decimal amount)
+    {
+        return $"\u0e3f{amount:N0}";
+    }
+}
