@@ -9,7 +9,7 @@
 
 **Core Value:** Business visibility and cash control - owners can see if their assets are profitable, where cash is leaking, and whether staff are handling money correctly.
 
-**Current Focus:** Phase 6 in progress. Denomination counting data layer complete. Closing count panel complete. Building opening float panel and history views.
+**Current Focus:** Phase 6 in progress. Opening float and closing count panels complete. Ready for history/detail views.
 
 **Key Constraints:**
 - Tech stack: Blazor Server + WASM, .NET 10, SQL Server
@@ -22,17 +22,17 @@
 ## Current Position
 
 **Phase:** 6 of 9 (Denomination Counting) - IN PROGRESS
-**Plan:** 2 of 4 complete (06-01 and 06-03)
+**Plan:** 3 of 4 complete (06-01, 06-02, and 06-03)
 **Status:** In progress
 
 ```
-Milestone Progress: [########..] 82%
-Phase 6 Progress:   [#####.....] 50%
+Milestone Progress: [########..] 85%
+Phase 6 Progress:   [#######...] 75%
 ```
 
-**Last Activity:** 2026-01-20 - Completed 06-03-PLAN.md (Closing Count Panel)
+**Last Activity:** 2026-01-20 - Completed 06-02-PLAN.md (Opening Float Dialog)
 
-**Next Action:** Execute 06-02-PLAN.md (Opening Float Dialog) or 06-04-PLAN.md (History/Detail Views)
+**Next Action:** Execute 06-04-PLAN.md (History/Detail Views)
 
 ---
 
@@ -53,6 +53,23 @@ Phase 6 Progress:   [#####.....] 50%
 - SQL table with computed columns and indexes
 - TillService: SaveDenominationCountAsync, GetDenominationCountAsync, GetDenominationCountsAsync
 - Draft vs final count support
+
+### Plan 06-02: Opening Float Dialog - COMPLETE
+
+| Task | Status | Commit |
+|------|--------|--------|
+| Task 1: Create OpeningFloatPanel component | Done | b4294f8 |
+| Task 2: Update TillOpenSessionDialog to use panel | Done | bb0aac3 |
+| Task 3: Create localization resources | Done | 6e63adf |
+
+**Key Deliverables:**
+- `OpeningFloatPanel.razor` (317 lines) - Vertical denomination entry panel
+- THB always visible, foreign currencies added on demand (USD, EUR, CNY)
+- Increment/decrement buttons with 44px touch targets
+- Sticky footer with grand total and THB equivalents
+- `TillOpenSessionDialog.razor` updated to use OpeningFloatPanel
+- Denomination count saved on session creation
+- Localization: English, Thai, Malay
 
 ### Plan 06-03: Closing Count Panel - COMPLETE
 
@@ -207,9 +224,9 @@ Phase 6 Progress:   [#####.....] 50%
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Plans completed | 19 | Phase 1: 4; Phase 2: 3; Phase 3: 2; Phase 4: 3; Phase 5: 5; Phase 6: 2 |
-| Requirements done | 32/40 | +DENOM-02 (closing count panel) |
-| Phases done | 5/9 | Phase 5 complete, Phase 6 in progress (50%) |
+| Plans completed | 20 | Phase 1: 4; Phase 2: 3; Phase 3: 2; Phase 4: 3; Phase 5: 5; Phase 6: 3 |
+| Requirements done | 33/40 | +DENOM-02 (opening float), +DENOM-03 (closing count) |
+| Phases done | 5/9 | Phase 5 complete, Phase 6 at 75% |
 | Blockers hit | 0 | - |
 
 ---
@@ -256,6 +273,11 @@ Phase 6 Progress:   [#####.....] 50%
 | Denomination dictionary storage | (06-01) Dictionary<decimal, int> for flexible denomination values | 2026-01-20 |
 | Computed Total from denominations | (06-01) Always accurate, no sync issues | 2026-01-20 |
 | Draft vs final counts | (06-01) Draft can be overwritten, final is immutable | 2026-01-20 |
+| Vertical list layout for opening float | (06-02) Sequential counting workflow, larger touch targets | 2026-01-20 |
+| THB always visible, foreign on demand | (06-02) THB is base currency, most sessions only count THB | 2026-01-20 |
+| Sticky footer grand total | (06-02) Always visible running total during counting | 2026-01-20 |
+| Increment/decrement + manual input | (06-02) Fast tap counting plus precise keyboard entry | 2026-01-20 |
+| EventCallback for breakdowns | (06-02) Parent controls saving, panel is reusable | 2026-01-20 |
 | Inline variance per section | (06-03) Immediate feedback shows staff where discrepancies exist | 2026-01-20 |
 | Expected from CurrencyBalances | (06-03) Tracked balances reflect actual cash movements during session | 2026-01-20 |
 | Green/Red/Blue variance colors | (06-03) Standard indicators; blue distinguishes over from error | 2026-01-20 |
@@ -268,7 +290,10 @@ Phase 6 Progress:   [#####.....] 50%
 - CurrencyDenominationBreakdown with computed Total and Variance
 - DenominationCountType enum (Opening, Closing)
 - TillService denomination count methods (Save, Get, GetAll)
+- OpeningFloatPanel.razor (317 lines) - Vertical denomination entry with sticky footer
 - ClosingCountPanel.razor (315 lines) - Closing count with variance display
+- TillOpenSessionDialog updated with denomination breakdown saving
+- TillCloseSessionDialog updated with variance calculation and saving
 
 **Phase 5 Components (Complete):**
 - TillTransaction extended with void metadata (7 fields)
@@ -328,18 +353,18 @@ None currently.
 
 ## Session Continuity
 
-**Last Session:** 2026-01-20 - Completed 06-03-PLAN.md (Closing Count Panel)
+**Last Session:** 2026-01-20 - Completed 06-02-PLAN.md (Opening Float Dialog)
 
 **Context for Next Session:**
-- Phase 6 plan 03 complete: ClosingCountPanel with variance display
-- Closing count now saves denomination breakdown via SaveDenominationCountAsync
-- TillCloseSessionDialog uses ClosingCountPanel instead of simple input
-- Still need: 06-02 (OpeningFloatPanel) and 06-04 (History/Detail Views)
+- Phase 6 plans 01-03 complete: Data layer, opening float, and closing count UI
+- OpeningFloatPanel for session open, ClosingCountPanel for session close
+- Denomination counts saved via SaveDenominationCountAsync
+- Ready for 06-04: History/Detail Views for denomination count audit
 
 **Files to Review:**
-- `.planning/phases/06-denomination-counting/06-03-SUMMARY.md` - Just completed
-- `src/MotoRent.Client/Components/Till/ClosingCountPanel.razor` - New component
-- `src/MotoRent.Client/Pages/Staff/TillCloseSessionDialog.razor` - Updated dialog
+- `.planning/phases/06-denomination-counting/06-02-SUMMARY.md` - Just completed
+- `src/MotoRent.Client/Components/Till/OpeningFloatPanel.razor` - New component
+- `src/MotoRent.Client/Pages/Staff/TillOpenSessionDialog.razor` - Updated dialog
 
 ---
 
