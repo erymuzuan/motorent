@@ -9,7 +9,7 @@
 
 **Core Value:** Business visibility and cash control - owners can see if their assets are profitable, where cash is leaking, and whether staff are handling money correctly.
 
-**Current Focus:** Phase 5 in progress. Void transaction dialog complete. Ready for overpayment refund dialog integration.
+**Current Focus:** Phase 5 complete. Ready for Phase 6 (End of Day Reconciliation).
 
 **Key Constraints:**
 - Tech stack: Blazor Server + WASM, .NET 10, SQL Server
@@ -21,22 +21,22 @@
 
 ## Current Position
 
-**Phase:** 5 of 9 (Refunds & Corrections)
-**Plan:** 4 of 5 complete
-**Status:** In progress
+**Phase:** 5 of 9 (Refunds & Corrections) - COMPLETE
+**Plan:** 5 of 5 complete
+**Status:** Phase complete
 
 ```
-Milestone Progress: [#######...] 74%
-Phase 5 Progress:   [########..] 80%
+Milestone Progress: [########..] 78%
+Phase 5 Progress:   [##########] 100%
 ```
 
-**Last Activity:** 2026-01-20 - Completed 05-04-PLAN.md (Void Transaction Dialog)
+**Last Activity:** 2026-01-20 - Completed 05-05-PLAN.md (Void/Refund Integration)
 
-**Next Action:** Execute 05-05-PLAN.md (Overpayment Refund Dialog)
+**Next Action:** Execute Phase 6 (End of Day Reconciliation)
 
 ---
 
-## Phase 5 Progress - In Progress
+## Phase 5 Progress - COMPLETE
 
 ### Plan 05-01: Domain Entity Extensions - COMPLETE
 
@@ -98,6 +98,25 @@ Phase 5 Progress:   [########..] 80%
 - VoidTransactionResult class for parent workflow
 - Localization: English and Thai
 
+### Plan 05-05: Void/Refund Integration - COMPLETE
+
+| Task | Status | Commit |
+|------|--------|--------|
+| Task 1+2: Add void button and workflow to Till.razor | Done | 185ad1e |
+| Task 3: Create OverpaymentRefundDialog | Done | e6bdddb |
+| Task 5: Add localization for void/refund | Done | b144334 |
+
+**Key Deliverables:**
+- Till.razor updated with void button, voided styling, and complete workflows
+- `OverpaymentRefundDialog.razor` (174 lines) - Refund initiation dialog
+- Payment breakdown display with currency conversion
+- Overpayment amount and THB cash refund target
+- Reason entry with 5-char minimum validation
+- Till balance warning when low
+- Complete void workflow: initiate -> reason -> PIN -> execute
+- Complete refund workflow: initiate -> amount -> execute
+- Localization: English and Thai
+
 ---
 
 ## Phase 4 Progress - COMPLETE
@@ -150,9 +169,9 @@ Phase 5 Progress:   [########..] 80%
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Plans completed | 16 | Phase 1: 4; Phase 2: 3; Phase 3: 2; Phase 4: 3; Phase 5: 4 |
-| Requirements done | 30/40 | +VOID-04 (void transaction dialog) |
-| Phases done | 4/9 | Phase 5 in progress |
+| Plans completed | 17 | Phase 1: 4; Phase 2: 3; Phase 3: 2; Phase 4: 3; Phase 5: 5 |
+| Requirements done | 32/40 | +VOID-05, REFUND-02 |
+| Phases done | 5/9 | Phase 5 complete |
 | Blockers hit | 0 | - |
 
 ---
@@ -193,10 +212,13 @@ Phase 5 Progress:   [########..] 80%
 | Code-behind for result class | (05-04) VoidTransactionResult needs to be visible at compile time for generic base | 2026-01-20 |
 | Effect preview before void | (05-04) Staff must understand balance impact before confirmation | 2026-01-20 |
 | 5-char minimum reason | (05-04) Prevent meaningless reasons while not overly restrictive | 2026-01-20 |
+| Void button on non-voided only | (05-05) Prevent invalid void attempts, only when session open | 2026-01-20 |
+| Refund button on IN payments only | (05-05) Only inbound payments can have overpayment scenarios | 2026-01-20 |
+| VOID badge + strikethrough | (05-05) Clear visual indicator without removing from list | 2026-01-20 |
 
 ### Architecture Notes
 
-**Phase 5 Components (In Progress):**
+**Phase 5 Components (Complete):**
 - TillTransaction extended with void metadata (7 fields)
 - TillTransactionType with OverpaymentRefund, VoidReversal
 - User with ManagerPinHash, ManagerPinSalt, CanApproveVoids
@@ -205,6 +227,8 @@ Phase 5 Progress:   [########..] 80%
 - TillService.RecordOverpaymentRefundAsync - THB cash refunds
 - ManagerPinDialog.razor (284 lines) - Touch-friendly PIN entry with lockout
 - VoidTransactionDialog.razor (210 lines) - Void initiation with reason and effect preview
+- OverpaymentRefundDialog.razor (174 lines) - Refund with payment breakdown
+- Till.razor void/refund integration - Complete workflows
 
 **Phase 4 Components:**
 - `PaymentTerminalPanel.razor` (928 lines) - Two-column payment terminal with all input modes
@@ -252,19 +276,18 @@ None currently.
 
 ## Session Continuity
 
-**Last Session:** 2026-01-20 - Completed 05-04-PLAN.md (Void Transaction Dialog)
+**Last Session:** 2026-01-20 - Completed 05-05-PLAN.md (Void/Refund Integration)
 
 **Context for Next Session:**
-- Phase 5 Plans 1-4 complete: domain, service, PIN dialog, void dialog done
-- VoidTransactionDialog ready for integration in void workflow
-- ManagerPinDialog ready for manager approval
-- Ready for Plan 05-05: Overpayment Refund Dialog
+- Phase 5 complete: All void and refund workflows implemented
+- Till.razor has void button, voided styling, complete void/refund workflows
+- ManagerPinDialog, VoidTransactionDialog, OverpaymentRefundDialog all ready
+- Ready for Phase 6: End of Day Reconciliation
 
 **Files to Review:**
-- `.planning/phases/05-refunds-corrections/05-04-SUMMARY.md` - Just completed
-- `.planning/phases/05-refunds-corrections/05-05-PLAN.md` - Next plan
-- `src/MotoRent.Client/Components/Till/VoidTransactionDialog.razor` - Void dialog
-- `src/MotoRent.Client/Components/Auth/ManagerPinDialog.razor` - PIN dialog
+- `.planning/phases/05-refunds-corrections/05-05-SUMMARY.md` - Just completed
+- `.planning/ROADMAP.md` - Phase 6 planning
+- `src/MotoRent.Client/Pages/Staff/Till.razor` - Updated with void/refund workflows
 
 ---
 
