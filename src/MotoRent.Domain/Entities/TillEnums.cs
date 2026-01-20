@@ -131,7 +131,19 @@ public enum TillTransactionType
     /// <summary>
     /// Cash shortage recorded at close.
     /// </summary>
-    CashShortage
+    CashShortage,
+
+    /// <summary>
+    /// Refund for customer overpayment.
+    /// Distinct from DepositRefund which returns security deposit.
+    /// </summary>
+    OverpaymentRefund,
+
+    /// <summary>
+    /// Compensating entry created when a transaction is voided.
+    /// Reverses the original transaction's effect on till balance.
+    /// </summary>
+    VoidReversal
 }
 
 /// <summary>
