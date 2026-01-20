@@ -9,7 +9,7 @@
 
 **Core Value:** Business visibility and cash control - owners can see if their assets are profitable, where cash is leaking, and whether staff are handling money correctly.
 
-**Current Focus:** Phase 4 complete. Staff can now search for bookings/rentals, confirm items, and process multi-currency split payments through a unified payment terminal.
+**Current Focus:** Phase 5 in progress. Domain entities extended with void metadata, refund transaction types, and manager PIN fields. Ready for service layer implementation.
 
 **Key Constraints:**
 - Tech stack: Blazor Server + WASM, .NET 10, SQL Server
@@ -21,18 +21,35 @@
 
 ## Current Position
 
-**Phase:** 4 of 9 (Payment Terminal Redesign) - COMPLETE
-**Plan:** 3 of 3 complete
-**Status:** Phase 4 verified, ready for Phase 5
+**Phase:** 5 of 9 (Refunds & Corrections)
+**Plan:** 1 of 5 complete
+**Status:** In progress
 
 ```
-Milestone Progress: [######....] 62%
-Phase 4 Progress:   [##########] 100%
+Milestone Progress: [######....] 65%
+Phase 5 Progress:   [##........] 20%
 ```
 
-**Last Activity:** 2026-01-20 - Completed Phase 4 (Payment Terminal Redesign)
+**Last Activity:** 2026-01-20 - Completed 05-01-PLAN.md (Domain Entity Extensions)
 
-**Next Action:** Run `/gsd:discuss-phase 5` to gather context for Refunds & Corrections phase.
+**Next Action:** Execute 05-02-PLAN.md (Manager PIN Service)
+
+---
+
+## Phase 5 Progress - In Progress
+
+### Plan 05-01: Domain Entity Extensions - COMPLETE
+
+| Task | Status | Commit |
+|------|--------|--------|
+| Task 1: Extend TillTransaction with void metadata | Done | f0d55cf |
+| Task 2: Add refund and void transaction types | Done | 4585a41 |
+| Task 3: Extend User with manager PIN fields | Done | 2269c5b |
+
+**Key Deliverables:**
+- TillTransaction: IsVoided, VoidedAt, VoidedByUserName, VoidReason, VoidApprovedByUserName, OriginalTransactionId, RelatedTransactionId
+- TillTransactionType: OverpaymentRefund, VoidReversal
+- User: ManagerPinHash, ManagerPinSalt, CanApproveVoids
 
 ---
 
@@ -86,9 +103,9 @@ Phase 4 Progress:   [##########] 100%
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Plans completed | 12 | Phase 1: 4; Phase 2: 3; Phase 3: 2; Phase 4: 3 |
-| Requirements done | 25/40 | RATE-01-05, TILL-01-05, TXSEARCH-01-02, ITEMS-01-05, PAY-01-08 |
-| Phases done | 4/9 | Phases 1-4 verified complete |
+| Plans completed | 13 | Phase 1: 4; Phase 2: 3; Phase 3: 2; Phase 4: 3; Phase 5: 1 |
+| Requirements done | 26/40 | +VOID-03 (voided transactions preserved) |
+| Phases done | 4/9 | Phase 5 in progress |
 | Blockers hit | 0 | - |
 
 ---
@@ -117,8 +134,16 @@ Phase 4 Progress:   [##########] 100%
 | Required reference for AliPay only | (04-02) Card/PromptPay verifiable via terminal/app | 2026-01-20 |
 | Step tracking via m_currentStep | (04-03) Simple state machine for 3-step dialog flow | 2026-01-20 |
 | Record payments before callback | (04-03) Ensure till is updated before dialog closes | 2026-01-20 |
+| Void soft-delete pattern | (05-01) IsVoided flag preserves transactions for audit trail | 2026-01-20 |
+| Bidirectional void linking | (05-01) OriginalTransactionId <-> RelatedTransactionId for navigation | 2026-01-20 |
+| Separate PIN from password | (05-01) OAuth users can still have manager approval PIN | 2026-01-20 |
 
 ### Architecture Notes
+
+**Phase 5 Components (In Progress):**
+- TillTransaction extended with void metadata (7 fields)
+- TillTransactionType with OverpaymentRefund, VoidReversal
+- User with ManagerPinHash, ManagerPinSalt, CanApproveVoids
 
 **Phase 4 Components:**
 - `PaymentTerminalPanel.razor` (928 lines) - Two-column payment terminal with all input modes
@@ -149,6 +174,8 @@ Phase 4 Progress:   [##########] 100%
 - Walk-in sales mode (general POS without booking/rental)
 - Configurable currencies per organization
 - GBP and JPY currency support
+- Card refund to original card (all refunds are THB cash for now)
+- Threshold-based manager approval for large refunds
 
 ### TODOs
 
@@ -164,20 +191,19 @@ None currently.
 
 ## Session Continuity
 
-**Last Session:** 2026-01-20 - Completed Phase 4 (Payment Terminal Redesign)
+**Last Session:** 2026-01-20 - Completed 05-01-PLAN.md (Domain Entity Extensions)
 
 **Context for Next Session:**
-- Phase 4 complete with 3 plans, all verified
-- TillTransactionDialog has 3-step flow: Search → Items → Payment
-- PaymentTerminalPanel records all payment methods to till
-- TransactionSearchResult carries payments and change after completion
-- Ready for Phase 5 (Refunds & Corrections)
+- Phase 5 Plan 1 complete: domain entities extended
+- TillTransaction has void metadata for audit trail
+- User has manager PIN fields for void approval
+- Ready for Plan 05-02: ManagerPinService implementation
 
 **Files to Review:**
-- `.planning/phases/04-payment-terminal/04-VERIFICATION.md` - Phase verification report
-- `.planning/phases/05-refunds-corrections/` - Next phase directory
-- `src/MotoRent.Client/Components/Till/PaymentTerminalPanel.razor` - Main payment component
-- `src/MotoRent.Client/Pages/Staff/TillTransactionDialog.razor` - Full transaction dialog
+- `.planning/phases/05-refunds-corrections/05-01-SUMMARY.md` - Just completed
+- `.planning/phases/05-refunds-corrections/05-02-PLAN.md` - Next plan
+- `src/MotoRent.Domain/Entities/TillTransaction.cs` - Extended with void fields
+- `src/MotoRent.Domain/Core/User.cs` - Extended with PIN fields
 
 ---
 
