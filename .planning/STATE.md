@@ -9,7 +9,7 @@
 
 **Core Value:** Business visibility and cash control - owners can see if their assets are profitable, where cash is leaking, and whether staff are handling money correctly.
 
-**Current Focus:** Unified transaction workflow with item confirmation and multi-currency payment terminal. Staff search for bookings/rentals, review items in fullscreen dialog, then process split payments.
+**Current Focus:** Payment terminal with multi-currency support. Phase 3 complete - staff can now search for bookings/rentals and confirm line items before payment.
 
 **Key Constraints:**
 - Tech stack: Blazor Server + WASM, .NET 10, SQL Server
@@ -21,22 +21,22 @@
 
 ## Current Position
 
-**Phase:** 3 of 9 (Transaction Search & Item Confirmation)
-**Plan:** 1 of 2 complete
-**Status:** Plan 03-01 complete, ready for Plan 03-02
+**Phase:** 3 of 9 (Transaction Search & Item Confirmation) - COMPLETE
+**Plan:** 2 of 2 complete
+**Status:** Phase 3 complete, ready for Phase 4
 
 ```
-Milestone Progress: [####......] 30%
-Phase 3 Progress:   [#####.....] 50%
+Milestone Progress: [#####.....] 35%
+Phase 3 Progress:   [##########] 100%
 ```
 
-**Last Activity:** 2026-01-20 - Completed 03-01-PLAN.md (Transaction Search UI Foundation)
+**Last Activity:** 2026-01-20 - Completed 03-02-PLAN.md (Item Confirmation Panel)
 
-**Next Action:** Run `/gsd:execute-phase 03-02` to execute Plan 2 (Item Confirmation Panel).
+**Next Action:** Run `/gsd:execute-phase 04-01` to execute Phase 4 Plan 1 (Payment Terminal).
 
 ---
 
-## Phase 3 Progress
+## Phase 3 Progress - COMPLETE
 
 ### Plan 03-01: Transaction Search UI Foundation - COMPLETE
 
@@ -53,9 +53,19 @@ Phase 3 Progress:   [#####.....] 50%
 - `SearchActiveRentalsAsync` - New service method
 - `TillTransactionType.CheckIn` - New enum value
 
-### Plan 03-02: Item Confirmation Panel - PENDING
+### Plan 03-02: Item Confirmation Panel - COMPLETE
 
-**Depends on:** 03-01 (complete)
+| Task | Status | Commit |
+|------|--------|--------|
+| Task 1: Create TransactionLineItem model | Done | 626e3c6 |
+| Task 2+3: Add item confirmation UI with editing | Done | 9a00ad9 |
+
+**Key Deliverables:**
+- `TransactionLineItem.cs` - Working model for editable line items
+- Two-column responsive layout for item confirmation
+- Inline accessory/insurance/discount editing
+- Running totals with Subtotal, Discount, Grand Total
+- Extended `TransactionSearchResult` with LineItems and GrandTotal
 
 ---
 
@@ -63,9 +73,9 @@ Phase 3 Progress:   [#####.....] 50%
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Plans completed | 8 | Phase 1: 4; Phase 2: 3; Phase 3: 1 |
-| Requirements done | 10/40 | RATE-01-05, TILL-01-05 |
-| Phases done | 2/9 | Phases 1-2 verified complete |
+| Plans completed | 9 | Phase 1: 4; Phase 2: 3; Phase 3: 2 |
+| Requirements done | 12/40 | RATE-01-05, TILL-01-05, SRCH-01-02 |
+| Phases done | 3/9 | Phases 1-3 verified complete |
 | Blockers hit | 0 | - |
 
 ---
@@ -88,10 +98,19 @@ Phase 3 Progress:   [#####.....] 50%
 | Manager PIN for void approval | Quick authorization without full login swap | 2026-01-20 |
 | Voids preserved for audit trail | Accountability and reconciliation | 2026-01-20 |
 | Search-then-select with grouped results | (03-01) Clearer UX, matches mental model of transaction types | 2026-01-20 |
+| Two-column responsive item confirmation | (03-02) Left for summary, right for line items; stacks on mobile | 2026-01-20 |
+| Inline editing panels | (03-02) Faster workflow than modal dialogs, one panel at a time | 2026-01-20 |
+| TransactionLineItem as working model | (03-02) Separate from ReceiptItem for rich editing before persistence | 2026-01-20 |
 
 ### Architecture Notes
 
-**Phase 3 Additions:**
+**Phase 3 Additions (03-02):**
+- `TransactionLineItem` - Working model for editable line items with AccessoryId, InsuranceId, CanRemove
+- `TransactionSearchResult` extended with LineItems and GrandTotal
+- `ReceiptItemCategory.LateFee` - New constant added
+- TillTransactionDialog Step 2 - Two-column item confirmation with inline editing
+
+**Phase 3 Additions (03-01):**
 - `TillTransactionDialog` - Fullscreen search dialog for bookings/rentals
 - `TransactionSearchResult` - DTO with EntityType, Booking, Rental, TransactionType
 - `TransactionEntityType` enum - Booking, Rental
@@ -140,18 +159,18 @@ None currently.
 
 ## Session Continuity
 
-**Last Session:** 2026-01-20 - Completed Plan 03-01 (Transaction Search UI Foundation)
+**Last Session:** 2026-01-20 - Completed Phase 3 (Transaction Search & Item Confirmation)
 
 **Context for Next Session:**
-- Plan 03-01 complete with 4 commits
-- `TillTransactionDialog` provides search-then-select UI
-- `TransactionSearchResult` ready to pass to item confirmation panel
-- Ready to execute Plan 03-02 (Item Confirmation Panel)
+- Phase 3 complete with 2 plans, 6 commits total
+- `TillTransactionDialog` now has full search and item confirmation workflow
+- `TransactionSearchResult` carries confirmed line items and grand total
+- Ready to execute Phase 4 (Payment Terminal)
 
 **Files to Review:**
-- `.planning/phases/03-transaction-search-items/03-01-SUMMARY.md` - Just completed
-- `.planning/phases/03-transaction-search-items/03-02-PLAN.md` - Next plan
-- `src/MotoRent.Client/Pages/Staff/TillTransactionDialog.razor` - Search dialog
+- `.planning/phases/03-transaction-search-items/03-02-SUMMARY.md` - Just completed
+- `.planning/phases/04-payment-terminal/` - Next phase
+- `src/MotoRent.Client/Pages/Staff/TillTransactionDialog.razor` - Full dialog with search + confirmation
 
 ---
 
