@@ -1,4 +1,5 @@
 @page "/staff/till"
+@using MotoRent.Client.Components.Auth
 @using MotoRent.Client.Components.Receipts
 @using MotoRent.Client.Components.Till
 @using MotoRent.Domain.Models
@@ -8,6 +9,8 @@
 @inject TillService TillService
 @inject ShopService ShopService
 @inject ReceiptService ReceiptService
+@inject ManagerPinService ManagerPinService
+@inject CoreDataContext CoreDataContext
 
 <MotoRentPageTitle>@Localizer["CashierTill"]</MotoRentPageTitle>
 
@@ -363,19 +366,56 @@ else
                 {
                     @foreach (var txn in this.m_recentTransactions)
                     {
-                        <div class="mr-transaction-item">
+                        <div class="mr-transaction-item @(txn.IsVoided ? "mr-transaction-voided" : "")">
                             <div class="mr-transaction-icon @GetTransactionIconClass(txn)">
                                 <i class="@GetTransactionIcon(txn)"></i>
                             </div>
                             <div class="mr-transaction-details">
-                                <div class="mr-transaction-type">@GetTransactionTypeName(txn.TransactionType)</div>
-                                <div class="mr-transaction-desc">@txn.Description</div>
+                                <div class="mr-transaction-type">
+                                    @if (txn.IsVoided)
+                                    {
+                                        <span class="badge bg-danger me-2 mr-void-badge">VOID</span>
+                                    }
+                                    <span class="@(txn.IsVoided ? "text-decoration-line-through text-muted" : "")">
+                                        @GetTransactionTypeName(txn.TransactionType)
+                                    </span>
+                                </div>
+                                <div class="mr-transaction-desc @(txn.IsVoided ? "text-decoration-line-through text-muted" : "")">@txn.Description</div>
                             </div>
-                            <div class="mr-transaction-amount @GetAmountColorClass(txn)">
+                            <div class="mr-transaction-amount @(txn.IsVoided ? "text-decoration-line-through text-muted" : GetAmountColorClass(txn))">
                                 @(txn.Direction == TillTransactionDirection.In ? "+" : "−")฿@txn.Amount.ToString("N0")
                             </div>
                             <div class="mr-transaction-time">
                                 @this.FormatTime(txn.TransactionTime)
+                            </div>
+                            <div class="mr-transaction-actions">
+                                @if (!txn.IsVoided && CanVoidTransaction(txn) && IsSessionOpen)
+                                {
+                                    <button type="button"
+                                            class="btn btn-sm btn-icon btn-ghost-danger"
+                                            @onclick="@(() => this.InitiateVoidAsync(txn))"
+                                            title="@Localizer["VoidTransaction"]">
+                                        <i class="ti ti-x"></i>
+                                    </button>
+                                }
+                                @if (CanInitiateRefund(txn) && IsSessionOpen)
+                                {
+                                    <button type="button"
+                                            class="btn btn-sm btn-icon btn-ghost-success"
+                                            @onclick="@(() => this.InitiateOverpaymentRefundAsync(txn))"
+                                            title="@Localizer["OverpaymentRefund"]">
+                                        <i class="ti ti-cash-off"></i>
+                                    </button>
+                                }
+                                @if (txn.IsVoided)
+                                {
+                                    <button type="button"
+                                            class="btn btn-sm btn-icon btn-ghost-secondary"
+                                            @onclick="@(() => this.ShowVoidDetailsAsync(txn))"
+                                            title="@Localizer["ViewVoidDetails"]">
+                                        <i class="ti ti-info-circle"></i>
+                                    </button>
+                                }
                             </div>
                         </div>
                     }
@@ -611,6 +651,8 @@ else
         TillTransactionType.PettyCash => Localizer["TxnPettyCash"],
         TillTransactionType.Drop => Localizer["TxnCashDrop"],
         TillTransactionType.CashShortage => Localizer["TxnCashShortage"],
+        TillTransactionType.OverpaymentRefund => Localizer["TxnOverpaymentRefund"],
+        TillTransactionType.VoidReversal => Localizer["TxnVoidReversal"],
         _ => type.ToString()
     };
 
@@ -631,6 +673,8 @@ else
         TillTransactionType.AgentCommission => "ti ti-users",
         TillTransactionType.PettyCash => "ti ti-wallet",
         TillTransactionType.Drop => "ti ti-archive",
+        TillTransactionType.OverpaymentRefund => "ti ti-cash-off",
+        TillTransactionType.VoidReversal => "ti ti-x",
         _ => "ti ti-receipt"
     };
 
@@ -738,4 +782,218 @@ else
             await this.LoadDataAsync();
         }
     }
+
+    #region Void and Refund Workflow
+
+    /// <summary>
+    /// Helper for checking if session is open.
+    /// </summary>
+    private bool IsSessionOpen => this.m_session?.Status == TillSessionStatus.Open;
+
+    /// <summary>
+    /// Checks if a transaction can be voided.
+    /// </summary>
+    private static bool CanVoidTransaction(TillTransaction txn)
+    {
+        if (txn.IsVoided) return false;
+        if (txn.TransactionType == TillTransactionType.VoidReversal) return false;
+        return true;
+    }
+
+    /// <summary>
+    /// Checks if a refund can be initiated for this transaction.
+    /// Typically RentalPayment or similar IN transactions.
+    /// </summary>
+    private static bool CanInitiateRefund(TillTransaction txn)
+    {
+        if (txn.IsVoided) return false;
+        if (txn.Direction != TillTransactionDirection.In) return false;
+        // Only allow refund on payment-type transactions
+        return txn.TransactionType is TillTransactionType.RentalPayment
+                                   or TillTransactionType.BookingDeposit
+                                   or TillTransactionType.SecurityDeposit;
+    }
+
+    /// <summary>
+    /// Initiates the void workflow - shows void dialog then manager PIN.
+    /// Uses DialogService.Create pattern matching existing codebase conventions.
+    /// </summary>
+    private async Task InitiateVoidAsync(TillTransaction txn)
+    {
+        // Step 1: Show void confirmation dialog with reason entry
+        var voidResult = await this.DialogService.Create<VoidTransactionDialog>(Localizer["VoidTransaction"])
+            .WithParameter(x => x.Transaction, txn)
+            .WithSize(ModalSize.Medium)
+            .ShowDialogAsync();
+
+        if (voidResult is null or { Cancelled: true }) return;
+
+        var voidData = voidResult.Data as VoidTransactionResult;
+        if (voidData == null) return;
+
+        // Step 2: Show manager PIN dialog
+        var pinResult = await ShowManagerPinDialogAsync();
+        if (pinResult == null) return;
+
+        // Step 3: Execute the void
+        await ExecuteVoidAsync(txn.TillTransactionId, voidData.Reason, pinResult);
+    }
+
+    /// <summary>
+    /// Shows manager PIN dialog using DialogService.Create pattern.
+    /// ManagerPinDialog handles manager loading and PIN verification internally.
+    /// Returns manager username on success, null on cancel/failure.
+    /// </summary>
+    private async Task<string?> ShowManagerPinDialogAsync()
+    {
+        var result = await this.DialogService.Create<ManagerPinDialog>(Localizer["ManagerApproval"])
+            .WithSize(ModalSize.Medium)
+            .ShowDialogAsync();
+
+        if (result is null or { Cancelled: true }) return null;
+        return result.Data as string;
+    }
+
+    /// <summary>
+    /// Executes the void operation after confirmation and PIN approval.
+    /// </summary>
+    private async Task ExecuteVoidAsync(int transactionId, string reason, string managerUserName)
+    {
+        this.m_loading = true;
+        this.StateHasChanged();
+
+        try
+        {
+            var result = await this.TillService.VoidTransactionAsync(
+                transactionId,
+                this.UserName,
+                managerUserName,
+                reason);
+
+            if (result.Success)
+            {
+                this.ShowSuccess(Localizer["TransactionVoided"]);
+                await this.LoadDataAsync();
+            }
+            else
+            {
+                this.ShowError(result.Errors.FirstOrDefault()?.Message ?? Localizer["VoidFailed"]);
+            }
+        }
+        finally
+        {
+            this.m_loading = false;
+            this.StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Shows void details for a voided transaction.
+    /// </summary>
+    private void ShowVoidDetailsAsync(TillTransaction txn)
+    {
+        var message = $"{Localizer["VoidedBy"]}: {txn.VoidedByUserName}\n" +
+                      $"{Localizer["ApprovedBy"]}: {txn.VoidApprovedByUserName}\n" +
+                      $"{Localizer["Reason"]}: {txn.VoidReason}\n" +
+                      $"{Localizer["VoidedAt"]}: {txn.VoidedAt?.ToString("yyyy-MM-dd HH:mm")}";
+
+        this.ShowInfo(message);
+    }
+
+    /// <summary>
+    /// Initiates overpayment refund workflow.
+    /// Called when staff identifies an overpayment on a transaction.
+    /// </summary>
+    private async Task InitiateOverpaymentRefundAsync(TillTransaction txn)
+    {
+        if (this.m_session == null || this.m_session.Status != TillSessionStatus.Open)
+        {
+            this.ShowError(Localizer["SessionNotOpen"]);
+            return;
+        }
+
+        // Get payment details for the transaction
+        var totalPaid = txn.AmountInBaseCurrency;
+        var amountDue = 0m;
+
+        // Build payment info from the transaction
+        var payments = new List<ReceiptPayment>
+        {
+            new()
+            {
+                Method = GetPaymentMethodFromType(txn.TransactionType),
+                Amount = txn.Amount,
+                Currency = txn.Currency,
+                ExchangeRate = txn.ExchangeRate,
+                AmountInBaseCurrency = txn.AmountInBaseCurrency
+            }
+        };
+
+        // Use GetCurrencyBalance method which exists on TillSession
+        var thbBalance = this.m_session.GetCurrencyBalance(SupportedCurrencies.THB);
+
+        var refundResult = await this.DialogService.Create<OverpaymentRefundDialog>(Localizer["OverpaymentRefund"])
+            .WithParameter(x => x.OriginalPayments, payments)
+            .WithParameter(x => x.TotalPaidThb, totalPaid)
+            .WithParameter(x => x.AmountDueThb, amountDue)
+            .WithParameter(x => x.RentalId, txn.RentalId)
+            .WithParameter(x => x.TillThbBalance, thbBalance)
+            .WithSize(ModalSize.Medium)
+            .ShowDialogAsync();
+
+        if (refundResult is null or { Cancelled: true }) return;
+
+        var refundData = refundResult.Data as OverpaymentRefundResult;
+        if (refundData == null || refundData.RefundAmountThb <= 0) return;
+
+        await ExecuteOverpaymentRefundAsync(refundData);
+    }
+
+    /// <summary>
+    /// Executes the overpayment refund.
+    /// </summary>
+    private async Task ExecuteOverpaymentRefundAsync(OverpaymentRefundResult refundData)
+    {
+        this.m_loading = true;
+        this.StateHasChanged();
+
+        try
+        {
+            var result = await this.TillService.RecordOverpaymentRefundAsync(
+                this.m_session!.TillSessionId,
+                refundData.RefundAmountThb,
+                refundData.Reason,
+                refundData.OriginalPaymentIds,
+                refundData.RentalId,
+                this.UserName);
+
+            if (result.Success)
+            {
+                this.ShowSuccess(Localizer["RefundRecorded", FormatThb(refundData.RefundAmountThb)]);
+                await this.LoadDataAsync();
+            }
+            else
+            {
+                this.ShowError(result.Errors.FirstOrDefault()?.Message ?? Localizer["RefundFailed"]);
+            }
+        }
+        finally
+        {
+            this.m_loading = false;
+            this.StateHasChanged();
+        }
+    }
+
+    private static string GetPaymentMethodFromType(TillTransactionType type) => type switch
+    {
+        TillTransactionType.RentalPayment => PaymentMethods.Cash,
+        TillTransactionType.CardPayment => PaymentMethods.Card,
+        TillTransactionType.PromptPay => PaymentMethods.PromptPay,
+        TillTransactionType.BankTransfer => PaymentMethods.BankTransfer,
+        _ => PaymentMethods.Cash
+    };
+
+    private static string FormatThb(decimal amount) => $"\u0e3f{amount:N0}";
+
+    #endregion
 }
