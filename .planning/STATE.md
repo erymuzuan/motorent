@@ -9,7 +9,7 @@
 
 **Core Value:** Business visibility and cash control - owners can see if their assets are profitable, where cash is leaking, and whether staff are handling money correctly.
 
-**Current Focus:** Phase 5 in progress. Manager PIN dialog component complete. Ready for void transaction dialog integration.
+**Current Focus:** Phase 5 in progress. Void transaction dialog complete. Ready for overpayment refund dialog integration.
 
 **Key Constraints:**
 - Tech stack: Blazor Server + WASM, .NET 10, SQL Server
@@ -22,17 +22,17 @@
 ## Current Position
 
 **Phase:** 5 of 9 (Refunds & Corrections)
-**Plan:** 3 of 5 complete
+**Plan:** 4 of 5 complete
 **Status:** In progress
 
 ```
-Milestone Progress: [######....] 71%
-Phase 5 Progress:   [######....] 60%
+Milestone Progress: [#######...] 74%
+Phase 5 Progress:   [########..] 80%
 ```
 
-**Last Activity:** 2026-01-20 - Completed 05-03-PLAN.md (Manager PIN Dialog)
+**Last Activity:** 2026-01-20 - Completed 05-04-PLAN.md (Void Transaction Dialog)
 
-**Next Action:** Execute 05-04-PLAN.md (Void Dialog & Workflow)
+**Next Action:** Execute 05-05-PLAN.md (Overpayment Refund Dialog)
 
 ---
 
@@ -78,6 +78,24 @@ Phase 5 Progress:   [######....] 60%
 - Numeric keypad (3x4 grid) matching ThbKeypadPanel style
 - Manager selection dropdown (if multiple managers)
 - Lockout countdown timer display
+- Localization: English and Thai
+
+### Plan 05-04: Void Transaction Dialog - COMPLETE
+
+| Task | Status | Commit |
+|------|--------|--------|
+| Task 1: Create VoidTransactionDialog component | Done | 1326924 |
+| Task 2: Create VoidTransactionDialog CSS | Done | ad2de44 |
+| Task 3: Create localization resources | Done | 8131245 |
+
+**Key Deliverables:**
+- `VoidTransactionDialog.razor` (210 lines) - Void initiation dialog
+- Original transaction display (type, direction, amount, time)
+- Foreign currency shows both original and THB equivalent
+- Warning about manager approval requirement
+- Reason entry with validation (required, min 5 chars)
+- Effect summary showing balance impact
+- VoidTransactionResult class for parent workflow
 - Localization: English and Thai
 
 ---
@@ -132,8 +150,8 @@ Phase 5 Progress:   [######....] 60%
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Plans completed | 15 | Phase 1: 4; Phase 2: 3; Phase 3: 2; Phase 4: 3; Phase 5: 3 |
-| Requirements done | 29/40 | +VOID-03 (manager PIN dialog) |
+| Plans completed | 16 | Phase 1: 4; Phase 2: 3; Phase 3: 2; Phase 4: 3; Phase 5: 4 |
+| Requirements done | 30/40 | +VOID-04 (void transaction dialog) |
 | Phases done | 4/9 | Phase 5 in progress |
 | Blockers hit | 0 | - |
 
@@ -172,6 +190,9 @@ Phase 5 Progress:   [######....] 60%
 | LocalizedDialogBase with object | (05-03) string doesn't satisfy new() constraint for TEntity | 2026-01-20 |
 | Inherit RequestContext from base | (05-03) MotoRentComponentBase already provides it | 2026-01-20 |
 | System.Timers.Timer for lockout | (05-03) Reliable 1-second intervals for countdown UI | 2026-01-20 |
+| Code-behind for result class | (05-04) VoidTransactionResult needs to be visible at compile time for generic base | 2026-01-20 |
+| Effect preview before void | (05-04) Staff must understand balance impact before confirmation | 2026-01-20 |
+| 5-char minimum reason | (05-04) Prevent meaningless reasons while not overly restrictive | 2026-01-20 |
 
 ### Architecture Notes
 
@@ -183,6 +204,7 @@ Phase 5 Progress:   [######....] 60%
 - TillService.VoidTransactionAsync - Compensating entry pattern
 - TillService.RecordOverpaymentRefundAsync - THB cash refunds
 - ManagerPinDialog.razor (284 lines) - Touch-friendly PIN entry with lockout
+- VoidTransactionDialog.razor (210 lines) - Void initiation with reason and effect preview
 
 **Phase 4 Components:**
 - `PaymentTerminalPanel.razor` (928 lines) - Two-column payment terminal with all input modes
@@ -230,19 +252,19 @@ None currently.
 
 ## Session Continuity
 
-**Last Session:** 2026-01-20 - Completed 05-03-PLAN.md (Manager PIN Dialog)
+**Last Session:** 2026-01-20 - Completed 05-04-PLAN.md (Void Transaction Dialog)
 
 **Context for Next Session:**
-- Phase 5 Plans 1-3 complete: domain, service, PIN dialog done
-- ManagerPinDialog ready for integration in void workflow
-- TillService.VoidTransactionAsync ready for UI integration
-- Ready for Plan 05-04: Void Dialog & Workflow
+- Phase 5 Plans 1-4 complete: domain, service, PIN dialog, void dialog done
+- VoidTransactionDialog ready for integration in void workflow
+- ManagerPinDialog ready for manager approval
+- Ready for Plan 05-05: Overpayment Refund Dialog
 
 **Files to Review:**
-- `.planning/phases/05-refunds-corrections/05-03-SUMMARY.md` - Just completed
-- `.planning/phases/05-refunds-corrections/05-04-PLAN.md` - Next plan
+- `.planning/phases/05-refunds-corrections/05-04-SUMMARY.md` - Just completed
+- `.planning/phases/05-refunds-corrections/05-05-PLAN.md` - Next plan
+- `src/MotoRent.Client/Components/Till/VoidTransactionDialog.razor` - Void dialog
 - `src/MotoRent.Client/Components/Auth/ManagerPinDialog.razor` - PIN dialog
-- `src/MotoRent.Services/TillService.cs` - Void/refund operations
 
 ---
 
