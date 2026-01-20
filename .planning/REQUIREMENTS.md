@@ -9,11 +9,11 @@ Requirements for the Cashier Till milestone. Each maps to roadmap phases.
 
 ### Multi-Currency Till Operations
 
-- [ ] **TILL-01**: Staff can open till with starting float per currency (THB, USD, EUR, CNY)
-- [ ] **TILL-02**: Staff can receive payment in any supported currency with exchange rate applied
-- [ ] **TILL-03**: System displays THB change amount when customer pays with foreign currency
-- [ ] **TILL-04**: Staff can view current till balance per currency during shift
-- [ ] **TILL-05**: Staff can perform cash drop per currency with amount recorded
+- [x] **TILL-01**: Staff can open till with starting float per currency (THB, USD, EUR, CNY)
+- [x] **TILL-02**: Staff can receive payment in any supported currency with exchange rate applied
+- [x] **TILL-03**: System displays THB change amount when customer pays with foreign currency
+- [x] **TILL-04**: Staff can view current till balance per currency during shift
+- [x] **TILL-05**: Staff can perform cash drop per currency with amount recorded
 - [ ] **TILL-06**: Staff can close till with counted amount per currency
 - [ ] **TILL-07**: System calculates variance (expected vs actual) per currency at close
 
@@ -92,11 +92,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RATE-03 | Phase 1 | Complete |
 | RATE-04 | Phase 1 | Complete |
 | RATE-05 | Phase 1 | Complete |
-| TILL-01 | Phase 2 | Pending |
-| TILL-02 | Phase 2 | Pending |
-| TILL-03 | Phase 2 | Pending |
-| TILL-04 | Phase 2 | Pending |
-| TILL-05 | Phase 2 | Pending |
+| TILL-01 | Phase 2 | Complete |
+| TILL-02 | Phase 2 | Complete |
+| TILL-03 | Phase 2 | Complete |
+| TILL-04 | Phase 2 | Complete |
+| TILL-05 | Phase 2 | Complete |
 | DENOM-01 | Phase 3 | Pending |
 | DENOM-02 | Phase 3 | Pending |
 | DENOM-03 | Phase 3 | Pending |
@@ -121,4 +121,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-01-19*
-*Last updated: 2026-01-20 — Phase 1 requirements marked complete*
+*Last updated: 2026-01-20 — Phase 2 requirements marked complete*
