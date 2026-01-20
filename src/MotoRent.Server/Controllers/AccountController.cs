@@ -57,6 +57,13 @@ public class AccountController(
     [HttpGet("access-denied")]
     public IActionResult AccessDenied() => this.View();
 
+    /// <summary>
+    /// Page shown when user is not registered in the system.
+    /// </summary>
+    [AllowAnonymous]
+    [HttpGet("not-registered")]
+    public IActionResult NotRegistered() => this.View();
+
     // OAuth Login
 
     /// <summary>
@@ -146,28 +153,34 @@ public class AccountController(
         user = await this.DirectoryService.GetUserAsync(userName);
 
         // Fallback: by NameIdentifier (for existing LINE users with line_ prefix)
-        if (user == null && !string.IsNullOrWhiteSpace(nameIdentifier))
+        if (user == null && !string.IsNullOrWhiteSpace(userName))
         {
-            user = await this.DirectoryService.GetUserByProviderIdAsync(provider, nameIdentifier);
+            user = await this.DirectoryService.GetUserByProviderIdAsync(provider, userName);
         }
 
-        // Create new user if not found
-        // userName was already determined above:
-        // - LINE users: username = LINE userId (nameIdentifier)
-        // - Google/Microsoft: username = email
+        // User must be pre-registered, EXCEPT SuperAdmins (identified by env var only)
         if (user == null)
         {
-            user = new CoreUser
+            // Check if this user is a configured SuperAdmin
+            if (MotoConfig.SuperAdmins.Contains(userName, StringComparer.OrdinalIgnoreCase))
             {
-                UserName = userName,
-                Email = email ?? "",
-                FullName = displayName ?? userName,
-                CredentialProvider = provider,
-                NameIdentifier = nameIdentifier
-            };
-
-            // Save the new user
-            await this.DirectoryService.SaveUserProfileAsync(user);
+                // SuperAdmin can self-register (they exist only in env var, not database)
+                user = new CoreUser
+                {
+                    UserName = userName,
+                    Email = email ?? "",
+                    FullName = displayName ?? userName,
+                    CredentialProvider = provider,
+                    NameIdentifier = nameIdentifier
+                };
+                await this.DirectoryService.SaveUserProfileAsync(user);
+            }
+            else
+            {
+                // Not a SuperAdmin and not pre-registered - redirect to not-registered page
+                await this.HttpContext.SignOutAsync("ExternalAuth");
+                return this.RedirectToAction(nameof(this.NotRegistered));
+            }
         }
         else
         {
