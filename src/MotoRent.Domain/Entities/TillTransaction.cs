@@ -68,6 +68,46 @@ public class TillTransaction : Entity
     public string? VerifiedByUserName { get; set; }
     public DateTimeOffset? VerifiedAt { get; set; }
 
+    // Void tracking
+    /// <summary>
+    /// Whether this transaction has been voided.
+    /// Voided transactions are preserved for audit trail but don't affect balances.
+    /// </summary>
+    public bool IsVoided { get; set; }
+
+    /// <summary>
+    /// When the transaction was voided.
+    /// </summary>
+    public DateTimeOffset? VoidedAt { get; set; }
+
+    /// <summary>
+    /// Username of staff who initiated the void.
+    /// </summary>
+    public string? VoidedByUserName { get; set; }
+
+    /// <summary>
+    /// Reason for voiding the transaction.
+    /// </summary>
+    public string? VoidReason { get; set; }
+
+    /// <summary>
+    /// Username of manager who approved the void.
+    /// Must be different from VoidedByUserName (no self-approval).
+    /// </summary>
+    public string? VoidApprovedByUserName { get; set; }
+
+    /// <summary>
+    /// ID of the original transaction this void/reversal relates to.
+    /// Used for compensating entries to link back to what was voided.
+    /// </summary>
+    public int? OriginalTransactionId { get; set; }
+
+    /// <summary>
+    /// ID of the compensating transaction created when this was voided.
+    /// Links original to its reversal for bidirectional navigation.
+    /// </summary>
+    public int? RelatedTransactionId { get; set; }
+
     /// <summary>
     /// Attachments such as receipts, photos, or other supporting documents
     /// </summary>
