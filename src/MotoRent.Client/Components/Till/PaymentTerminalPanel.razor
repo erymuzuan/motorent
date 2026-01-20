@@ -2,6 +2,8 @@
 @using MotoRent.Domain.Entities
 @using MotoRent.Services
 @inject ExchangeRateService ExchangeRateService
+@inject TillService TillService
+@inject ILogger<PaymentTerminalPanel> Logger
 
 <div class="payment-terminal-panel">
     <div class="row g-4">
@@ -87,12 +89,23 @@
                 <div class="d-grid gap-2 mt-3">
                     <button type="button"
                             class="btn @(m_remaining <= 0 ? "btn-success" : "btn-secondary") btn-lg"
-                            disabled="@(m_remaining > 0)"
+                            disabled="@(m_remaining > 0 || m_completing)"
                             @onclick="CompletePaymentAsync">
-                        <i class="ti ti-check me-2"></i>
+                        @if (m_completing)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                        }
+                        else
+                        {
+                            <i class="ti ti-check me-2"></i>
+                        }
                         @Localizer["CompletePayment"]
+                        @if (m_change > 0)
+                        {
+                            <span class="ms-2">(@Localizer["Change"]: @FormatThb(m_change))</span>
+                        }
                     </button>
-                    <button type="button" class="btn btn-ghost-secondary" @onclick="CancelPayment">
+                    <button type="button" class="btn btn-ghost-secondary" @onclick="CancelPayment" disabled="@m_completing">
                         @Localizer["Cancel"]
                     </button>
                 </div>
@@ -443,7 +456,38 @@
     [Parameter]
     public EventCallback OnCancel { get; set; }
 
+    /// <summary>
+    /// Till session ID for recording payments.
+    /// </summary>
+    [Parameter]
+    public int SessionId { get; set; }
+
+    /// <summary>
+    /// Optional rental ID for linking payments.
+    /// </summary>
+    [Parameter]
+    public int? RentalId { get; set; }
+
+    /// <summary>
+    /// Optional booking ID for linking payments.
+    /// </summary>
+    [Parameter]
+    public int? BookingId { get; set; }
+
+    /// <summary>
+    /// Transaction type (BookingDeposit, CheckIn, RentalPayment).
+    /// </summary>
+    [Parameter]
+    public TillTransactionType TransactionType { get; set; }
+
+    /// <summary>
+    /// Username for recording transactions.
+    /// </summary>
+    [Parameter]
+    public string UserName { get; set; } = "";
+
     // State variables
+    private bool m_completing;
     private string m_selectedMethod = PaymentMethods.Cash;
     private string m_selectedCurrency = SupportedCurrencies.THB;
     private readonly List<PaymentEntry> m_paymentEntries = [];
@@ -774,27 +818,105 @@
     }
 
     /// <summary>
-    /// Completes the payment and invokes the callback with converted ReceiptPayment entries.
+    /// Completes the payment by recording to till and invoking the callback.
     /// </summary>
     private async Task CompletePaymentAsync()
     {
         if (m_remaining > 0) return;
+        if (m_completing) return;
 
-        var payments = m_paymentEntries.Select(e => new ReceiptPayment
+        m_completing = true;
+        try
         {
-            Method = e.Method,
-            Amount = e.Amount,
-            Currency = e.Currency,
-            ExchangeRate = e.ExchangeRate,
-            AmountInBaseCurrency = e.AmountInBaseCurrency,
-            ExchangeRateSource = e.ExchangeRateSource,
-            ExchangeRateId = e.ExchangeRateId,
-            Reference = e.Reference,
-            PaidAt = DateTimeOffset.Now
-        }).ToList();
+            // Record each payment entry to the till
+            foreach (var entry in m_paymentEntries)
+            {
+                var description = GetPaymentDescription(entry);
+                SubmitOperation result;
 
-        await OnPaymentComplete.InvokeAsync(payments);
+                if (entry.Currency == SupportedCurrencies.THB || entry.Method != PaymentMethods.Cash)
+                {
+                    // THB cash or non-cash payments use standard RecordCashInAsync
+                    var type = MapMethodToTransactionType(entry.Method);
+                    result = await TillService.RecordCashInAsync(
+                        SessionId,
+                        type,
+                        entry.AmountInBaseCurrency,
+                        description,
+                        UserName,
+                        rentalId: RentalId,
+                        notes: entry.Reference);
+                }
+                else
+                {
+                    // Foreign currency cash uses RecordForeignCurrencyPaymentAsync
+                    result = await TillService.RecordForeignCurrencyPaymentAsync(
+                        SessionId,
+                        TransactionType,
+                        entry.Currency,
+                        entry.Amount,
+                        description,
+                        UserName,
+                        rentalId: RentalId,
+                        notes: entry.Reference);
+                }
+
+                if (!result.Success)
+                {
+                    Logger.LogError("Failed to record payment: {Error}", result.Message);
+                    // Continue with other payments - for MVP we don't block
+                }
+            }
+
+            // Convert PaymentEntry list to ReceiptPayment list
+            var payments = m_paymentEntries.Select(e => new ReceiptPayment
+            {
+                Method = e.Method,
+                Amount = e.Amount,
+                Currency = e.Currency,
+                ExchangeRate = e.ExchangeRate,
+                AmountInBaseCurrency = e.AmountInBaseCurrency,
+                ExchangeRateSource = e.ExchangeRateSource,
+                ExchangeRateId = e.ExchangeRateId,
+                Reference = e.Reference,
+                PaidAt = DateTimeOffset.Now
+            }).ToList();
+
+            await OnPaymentComplete.InvokeAsync(payments);
+        }
+        finally
+        {
+            m_completing = false;
+        }
     }
+
+    /// <summary>
+    /// Generates a description for the payment entry.
+    /// </summary>
+    private string GetPaymentDescription(PaymentEntry entry)
+    {
+        var methodLabel = entry.Method switch
+        {
+            PaymentMethods.Cash => $"Cash ({entry.Currency})",
+            PaymentMethods.Card => "Card payment",
+            PaymentMethods.PromptPay => "PromptPay",
+            c_aliPay => "AliPay",
+            _ => entry.Method
+        };
+
+        return $"{TransactionType}: {methodLabel}";
+    }
+
+    /// <summary>
+    /// Maps payment method to till transaction type.
+    /// </summary>
+    private TillTransactionType MapMethodToTransactionType(string method) => method switch
+    {
+        PaymentMethods.Card => TillTransactionType.CardPayment,
+        PaymentMethods.PromptPay => TillTransactionType.PromptPay,
+        PaymentMethods.BankTransfer => TillTransactionType.BankTransfer,
+        _ => TransactionType // Use passed transaction type for cash
+    };
 
     /// <summary>
     /// Cancels the payment and invokes the cancel callback.
