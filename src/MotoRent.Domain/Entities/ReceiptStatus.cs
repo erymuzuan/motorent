@@ -31,6 +31,7 @@ public static class ReceiptItemCategory
     public const string DepositRefund = "DepositRefund";
     public const string Damage = "Damage";
     public const string ExtraDays = "ExtraDays";
+    public const string LateFee = "LateFee";
     public const string LocationFee = "LocationFee";
     public const string DriverFee = "DriverFee";
     public const string GuideFee = "GuideFee";
