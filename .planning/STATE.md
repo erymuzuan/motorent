@@ -22,17 +22,17 @@
 ## Current Position
 
 **Phase:** 2 of 6 (Multi-Currency Till Operations)
-**Plan:** 1 of 4 complete
+**Plan:** 3 of 4 complete
 **Status:** In progress
 
 ```
-Milestone Progress: [###.......] 24%
-Phase 2 Progress:   [##........] 25%
+Milestone Progress: [#####.....] 50%
+Phase 2 Progress:   [########..] 75%
 ```
 
-**Last Activity:** 2026-01-20 - Completed 02-01 (Domain Extensions for Multi-Currency Till)
+**Last Activity:** 2026-01-20 - Completed 02-03 (Balance Display & Cash Drop Dialog)
 
-**Next Action:** Execute 02-02 (Balance Display & Summary Panel)
+**Next Action:** Execute 02-04 (End of Day Reconciliation)
 
 ---
 
@@ -40,9 +40,9 @@ Phase 2 Progress:   [##........] 25%
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Plans completed | 5 | 01-01 to 01-04, 02-01 (~4 min) |
-| Requirements done | 5/26 | RATE-01 through RATE-05 complete |
-| Phases done | 1/6 | Phase 1 verified complete |
+| Plans completed | 7 | 01-01 to 01-04, 02-01 to 02-03 |
+| Requirements done | 7/26 | RATE-01 to RATE-05, TILL-04, TILL-05 complete |
+| Phases done | 1/6 | Phase 1 complete, Phase 2 in progress |
 | Blockers hit | 0 | - |
 
 ---
@@ -71,6 +71,8 @@ Phase 2 Progress:   [##........] 25%
 | FAB only in active session | No need to show rates when till is closed | 2026-01-20 |
 | Dictionary<string,decimal> for CurrencyBalances | Flexible, allows any currency; initialized on session open | 2026-01-20 |
 | Defaults ensure backward compatibility | Existing THB-only transactions work with Currency="THB", ExchangeRate=1.0 | 2026-01-20 |
+| Collapsible balance panel default | Collapsed shows THB total, mobile-first design | 2026-01-20 |
+| GetCurrencyBalances fallback | Backward compatibility for sessions without CurrencyBalances | 2026-01-20 |
 
 ### Architecture Notes
 
@@ -81,6 +83,10 @@ Phase 2 Progress:   [##........] 25%
 **New Classes Created (Phase 2):**
 - `CurrencyDenominations` - Static helper with denomination arrays for THB, USD, EUR, CNY
 - `CurrencyDropAmount` - DTO for multi-currency drop operations
+
+**New Components Created (Phase 2):**
+- `DenominationEntryPanel` - Reusable denomination counting panel
+- `CurrencyBalancePanel` - Collapsible per-currency balance display with THB equivalents
 
 **Services Extended (Phase 2):**
 - `TillService` - Added RecordForeignCurrencyPaymentAsync, RecordMultiCurrencyDropAsync; injected ExchangeRateService
@@ -95,7 +101,6 @@ Phase 2 Progress:   [##........] 25%
 
 - [ ] Confirm with user: Is offline/PWA support critical for MVP?
 - [ ] Confirm with user: What is the variance tolerance for auto-acceptance?
-- [ ] Confirm with user: Do shops need full denomination tracking or per-currency total?
 - [ ] Confirm with user: Should exchange rates expire automatically?
 
 ### Blockers
@@ -106,23 +111,22 @@ None currently.
 
 ## Session Continuity
 
-**Last Session:** 2026-01-20 - Completed 02-01 Domain Extensions
+**Last Session:** 2026-01-20 - Completed 02-03 Balance Display & Cash Drop Dialog
 
 **Context for Next Session:**
-- Phase 2 Plan 1 complete: Domain layer extended for multi-currency tracking
-- TillSession now tracks CurrencyBalances dictionary (THB, USD, EUR, CNY)
-- TillTransaction now captures currency, exchange rate, and THB equivalent
-- TillService has RecordForeignCurrencyPaymentAsync and RecordMultiCurrencyDropAsync
-- CurrencyDenominations helper ready for denomination counting UI
-- All builds pass, DI registration verified
-- Ready for 02-02: Balance Display & Summary Panel
+- Phase 2 Plan 3 complete: Balance display and multi-currency cash drop
+- CurrencyBalancePanel shows per-currency balances on Till.razor
+- TillCashDropDialog supports multi-currency drops with denomination entry
+- Validation prevents dropping more than available per currency
+- RecordMultiCurrencyDropAsync creates individual transactions per currency
+- All builds pass, 0 warnings, 0 errors
+- Ready for 02-04: End of Day Reconciliation
 
 **Files to Review:**
-- `.planning/phases/02-multi-currency-till-operations/02-01-SUMMARY.md` - Plan 1 summary
-- `src/MotoRent.Domain/Entities/TillSession.cs` - CurrencyBalances added
-- `src/MotoRent.Domain/Entities/TillTransaction.cs` - Currency fields added
-- `src/MotoRent.Domain/Entities/CurrencyDenominations.cs` - New helper class
-- `src/MotoRent.Services/TillService.cs` - Multi-currency methods added
+- `.planning/phases/02-multi-currency-till-operations/02-03-SUMMARY.md` - Plan 3 summary
+- `src/MotoRent.Client/Components/Till/CurrencyBalancePanel.razor` - New balance panel
+- `src/MotoRent.Client/Pages/Staff/Till.razor` - Updated with CurrencyBalancePanel
+- `src/MotoRent.Client/Pages/Staff/TillCashDropDialog.razor` - Multi-currency drop dialog
 
 ---
 
