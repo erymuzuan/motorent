@@ -67,6 +67,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IRepository<Receipt>, Repository<Receipt>>();
         // Exchange rate entities
         services.AddSingleton<IRepository<ExchangeRate>, Repository<ExchangeRate>>();
+        // End of day entities
+        services.AddSingleton<IRepository<DailyClose>, Repository<DailyClose>>();
+        services.AddSingleton<IRepository<ShortageLog>, Repository<ShortageLog>>();
 
         // Note: Core entity repositories (Organization, User, Setting, etc.) are registered
         // via AddCoreRepository() from MotoRent.Core.Repository project
