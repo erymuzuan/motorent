@@ -253,4 +253,48 @@ public partial class TillService
 
         return await this.Context.LoadAsync(query, page, pageSize, includeTotalRows: true);
     }
+
+    /// <summary>
+    /// Force closes a till session with manager approval.
+    /// Sets actual = expected (zero variance) and closes immediately.
+    /// </summary>
+    /// <param name="sessionId">Session to close</param>
+    /// <param name="approvedByUserName">Manager who approved the force close</param>
+    /// <param name="notes">Optional notes</param>
+    /// <param name="closedByUserName">Staff requesting the close</param>
+    /// <returns>Submit operation result</returns>
+    public async Task<SubmitOperation> ForceCloseSessionAsync(
+        int sessionId,
+        string approvedByUserName,
+        string? notes,
+        string closedByUserName)
+    {
+        var session = await this.GetSessionByIdAsync(sessionId);
+        if (session is null)
+            return SubmitOperation.CreateFailure("Session not found");
+
+        if (session.Status != TillSessionStatus.Open)
+            return SubmitOperation.CreateFailure("Session is not open");
+
+        // Force close sets actual = expected (zero variance)
+        session.ActualCash = session.ExpectedCash;
+        session.Variance = 0;
+        session.ClosedAt = DateTimeOffset.Now;
+        session.ClosedByUserName = closedByUserName;
+        session.ClosingNotes = notes;
+        session.IsForceClose = true;
+        session.ForceCloseApprovedBy = approvedByUserName;
+        session.Status = TillSessionStatus.Closed;
+
+        // Set per-currency actuals = expected (no variance)
+        session.ActualBalances = new Dictionary<string, decimal>(session.CurrencyBalances);
+        session.ClosingVariances = session.CurrencyBalances.ToDictionary(
+            kvp => kvp.Key,
+            kvp => 0m
+        );
+
+        using var persistenceSession = this.Context.OpenSession(closedByUserName);
+        persistenceSession.Attach(session);
+        return await persistenceSession.SubmitChanges("ForceCloseTillSession");
+    }
 }
