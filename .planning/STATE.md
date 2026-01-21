@@ -9,7 +9,7 @@
 
 **Core Value:** Business visibility and cash control - owners can see if their assets are profitable, where cash is leaking, and whether staff are handling money correctly.
 
-**Current Focus:** Phase 6 complete. Staff can now count cash by denomination for opening float and closing counts with variance display. Ready for Phase 7 (Till Closing and Reconciliation).
+**Current Focus:** Phase 7 in progress. Session close metadata and multi-currency variance tracking implemented. Next: Close dialog UI integration.
 
 **Key Constraints:**
 - Tech stack: Blazor Server + WASM, .NET 10, SQL Server
@@ -21,18 +21,38 @@
 
 ## Current Position
 
-**Phase:** 6 of 9 (Denomination Counting) - COMPLETE
-**Plan:** 3 of 3 complete
-**Status:** Phase complete
+**Phase:** 7 of 9 (Till Closing and Reconciliation)
+**Plan:** 1 of 3 complete
+**Status:** In progress
 
 ```
-Milestone Progress: [########..] 82%
-Phase 6 Progress:   [##########] 100%
+Milestone Progress: [########..] 84%
+Phase 7 Progress:   [###.......] 33%
 ```
 
-**Last Activity:** 2026-01-20 - Completed Phase 6 (Denomination Counting)
+**Last Activity:** 2026-01-21 - Completed 07-01-PLAN.md (Session Close Metadata)
 
-**Next Action:** Run `/gsd:discuss-phase 7` to gather context for Till Closing and Reconciliation phase.
+**Next Action:** Execute 07-02-PLAN.md (Close Dialog UI Integration)
+
+---
+
+## Phase 7 Progress
+
+### Plan 07-01: Session Close Metadata - COMPLETE
+
+| Task | Status | Commit |
+|------|--------|--------|
+| Task 1: Extend TillSession entity with close metadata | Done | 202edfc |
+| Task 2: Add SQL computed columns for close metadata | Done | df45b84 |
+| Task 3: Add CloseSessionAsync overload with multi-currency | Done | 35419c1 |
+| Task 4: Implement ForceCloseSessionAsync | Done | b505e45 |
+
+**Key Deliverables:**
+- TillSession extended with ClosedByUserName, IsForceClose, ForceCloseApprovedBy
+- TillSession extended with ActualBalances, ClosingVariances dictionaries
+- SQL table with ClosedByUserName and IsForceClose computed columns
+- CloseSessionAsync overload accepting List<CurrencyDenominationBreakdown>
+- ForceCloseSessionAsync for manager-approved emergency close
 
 ---
 
@@ -224,9 +244,9 @@ Phase 6 Progress:   [##########] 100%
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Plans completed | 20 | Phase 1: 4; Phase 2: 3; Phase 3: 2; Phase 4: 3; Phase 5: 5; Phase 6: 3 |
-| Requirements done | 33/40 | +DENOM-01, DENOM-02, DENOM-03 |
-| Phases done | 6/9 | Phase 6 complete |
+| Plans completed | 21 | Phase 1: 4; Phase 2: 3; Phase 3: 2; Phase 4: 3; Phase 5: 5; Phase 6: 3; Phase 7: 1 |
+| Requirements done | 33/40 | Phase 7 in progress |
+| Phases done | 6/9 | Phase 7 in progress |
 | Blockers hit | 0 | - |
 
 ---
@@ -282,8 +302,17 @@ Phase 6 Progress:   [##########] 100%
 | Expected from CurrencyBalances | (06-03) Tracked balances reflect actual cash movements during session | 2026-01-20 |
 | Green/Red/Blue variance colors | (06-03) Standard indicators; blue distinguishes over from error | 2026-01-20 |
 | Sticky footer always visible | (06-03) Summary accessible while scrolling denominations | 2026-01-20 |
+| Per-currency variance dictionaries | (07-01) Dictionary<string, decimal> matches CurrencyBalances pattern | 2026-01-21 |
+| Force close zero variance | (07-01) Manager approved bypass should not create phantom variances | 2026-01-21 |
+| Backward-compatible close overload | (07-01) Existing code continues to work, new code uses richer API | 2026-01-21 |
 
 ### Architecture Notes
+
+**Phase 7 Components (In Progress):**
+- TillSession extended with close metadata (5 new fields)
+- SQL table with ClosedByUserName, IsForceClose computed columns
+- CloseSessionAsync overload for multi-currency reconciliation
+- ForceCloseSessionAsync for manager-approved emergency close
 
 **Phase 6 Components (Complete):**
 - TillDenominationCount entity with denomination breakdowns
@@ -353,18 +382,19 @@ None currently.
 
 ## Session Continuity
 
-**Last Session:** 2026-01-20 - Completed Phase 6 (Denomination Counting)
+**Last Session:** 2026-01-21 - Completed 07-01-PLAN.md
 
 **Context for Next Session:**
-- Phase 6 complete: Domain layer, opening float panel, closing count panel with variance
-- All 3 requirements satisfied (DENOM-01, DENOM-02, DENOM-03)
-- Ready for Phase 7: Till Closing and Reconciliation
+- Phase 7 plan 1 complete: Session close metadata and service methods
+- TillSession has ActualBalances and ClosingVariances dictionaries
+- CloseSessionAsync overload ready for breakdowns from ClosingCountPanel
+- ForceCloseSessionAsync ready for manager PIN integration
 
 **Files to Review:**
-- `.planning/phases/06-denomination-counting/06-VERIFICATION.md` - Phase verification
-- `.planning/ROADMAP.md` - Phase 7 overview
-- `src/MotoRent.Client/Components/Till/ClosingCountPanel.razor` - Variance display component
+- `.planning/phases/07-till-closing-reconciliation/07-01-SUMMARY.md` - Plan summary
+- `.planning/phases/07-till-closing-reconciliation/07-02-PLAN.md` - Next plan
+- `src/MotoRent.Services/TillService.Session.cs` - New close methods
 
 ---
 
-*Last updated: 2026-01-20*
+*Last updated: 2026-01-21*
