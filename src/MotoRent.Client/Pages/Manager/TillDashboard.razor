@@ -1,0 +1,336 @@
+@page "/manager/till-dashboard"
+@using MotoRent.Domain.Entities
+@using MotoRent.Domain.Settings
+@using MotoRent.Services
+@using MotoRent.Client.Components.Till
+@using Microsoft.AspNetCore.Authorization
+@inherits LocalizedComponentBase<TillDashboard>
+@attribute [Authorize(Policy = "RequireTenantManager")]
+@inject TillService TillService
+@inject ShopService ShopService
+@inject ExchangeRateService ExchangeRateService
+
+<PageTitle>@Localizer["PageTitle"]</PageTitle>
+
+<div class="container-xl py-4">
+    <div class="page-header mb-4">
+        <div class="row align-items-center">
+            <div class="col">
+                <h2 class="page-title">
+                    <i class="ti ti-layout-dashboard me-2"></i>
+                    @Localizer["TillDashboard"]
+                </h2>
+                <small class="text-secondary">@Localizer["DashboardSubtitle"]</small>
+            </div>
+            <div class="col-auto">
+                <button type="button" class="btn btn-ghost-primary" @onclick="RefreshAsync">
+                    <i class="ti ti-refresh me-1"></i>
+                    @Localizer["Refresh"]
+                </button>
+            </div>
+        </div>
+    </div>
+
+    @if (m_loading)
+    {
+        <div class="progress progress-sm mb-3">
+            <div class="progress-bar progress-bar-indeterminate"></div>
+        </div>
+    }
+    else
+    {
+        @* Section 1: Active Sessions Cards *@
+        <div class="mb-4">
+            <h3 class="mb-3">
+                @Localizer["ActiveSessions"]
+                <span class="badge bg-primary ms-2">@m_activeSessions.Count</span>
+            </h3>
+
+            @if (m_activeSessions.Count == 0)
+            {
+                <div class="alert alert-info">
+                    <i class="ti ti-info-circle me-2"></i>
+                    @Localizer["NoActiveSessions"]
+                </div>
+            }
+            else
+            {
+                <div class="row g-3">
+                    @foreach (var session in m_activeSessions)
+                    {
+                        <div class="col-md-4 col-lg-3">
+                            <ActiveSessionCard Session="@session"
+                                HasVarianceAlert="@(false)"
+                                OnView="@(() => ViewSessionDetails(session))" />
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        @* Section 2: Closed Sessions Table *@
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="card-title mb-0">
+                    @Localizer["RecentClosedSessions"]
+                    <span class="badge bg-secondary ms-2">@m_closedSessions.Count</span>
+                </h4>
+                <div class="d-flex gap-2 align-items-center">
+                    <select class="form-select form-select-sm" style="width: auto;" @bind="m_daysFilter" @bind:after="RefreshAsync">
+                        <option value="1">@Localizer["Today"]</option>
+                        <option value="3">@Localizer["Last3Days"]</option>
+                        <option value="7">@Localizer["Last7Days"]</option>
+                    </select>
+                    @if (m_closedSessions.Any(s => s.Status is TillSessionStatus.Closed or TillSessionStatus.ClosedWithVariance))
+                    {
+                        <button type="button" class="btn btn-sm btn-primary" @onclick="VerifyAllPendingAsync">
+                            <i class="ti ti-check-all me-1"></i>
+                            @Localizer["VerifyAll"]
+                        </button>
+                    }
+                </div>
+            </div>
+
+            @if (m_closedSessions.Count == 0)
+            {
+                <div class="card-body">
+                    <div class="text-center text-secondary py-4">
+                        <i class="ti ti-clipboard-off fs-1 mb-2 d-block"></i>
+                        @Localizer["NoClosedSessions"]
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-vcenter card-table">
+                        <thead>
+                            <tr>
+                                <th>@Localizer["Staff"]</th>
+                                <th>@Localizer["ClosedAt"]</th>
+                                <th>@Localizer["Duration"]</th>
+                                <th class="text-end">@Localizer["TotalVariance"]</th>
+                                <th>@Localizer["Status"]</th>
+                                <th class="w-1"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var session in m_closedSessions)
+                            {
+                                var varianceThb = m_sessionVariances.TryGetValue(session.TillSessionId, out var v) ? v : session.Variance;
+                                var hasAlert = Math.Abs(varianceThb) > m_threshold;
+
+                                <tr class="@(hasAlert ? "table-warning" : "")">
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <span class="avatar avatar-sm bg-secondary-lt me-2">
+                                                <i class="ti ti-user"></i>
+                                            </span>
+                                            @session.StaffDisplayName
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <small>@session.ClosedAt?.ToString("dd MMM HH:mm")</small>
+                                    </td>
+                                    <td>
+                                        <small>@FormatDuration(session.OpenedAt, session.ClosedAt)</small>
+                                    </td>
+                                    <td class="text-end">
+                                        <span class="@GetVarianceClass(varianceThb)">
+                                            @(varianceThb >= 0 ? "+" : "")@varianceThb.ToString("N0") THB
+                                        </span>
+                                        @if (hasAlert)
+                                        {
+                                            <i class="ti ti-alert-triangle text-warning ms-1"></i>
+                                        }
+                                    </td>
+                                    <td>
+                                        <span class="badge @GetStatusBadgeClass(session.Status)">
+                                            @GetStatusText(session.Status)
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group">
+                                            <button type="button" class="btn btn-sm btn-ghost-secondary"
+                                                    title="@Localizer["ViewDetails"]"
+                                                    @onclick="@(() => ViewSessionDetails(session))">
+                                                <i class="ti ti-eye"></i>
+                                            </button>
+                                            @if (session.Status is TillSessionStatus.Closed or TillSessionStatus.ClosedWithVariance)
+                                            {
+                                                <button type="button" class="btn btn-sm btn-ghost-success"
+                                                        title="@Localizer["Verify"]"
+                                                        @onclick="@(() => VerifySessionAsync(session))">
+                                                    <i class="ti ti-check"></i>
+                                                </button>
+                                            }
+                                            <button type="button" class="btn btn-sm btn-ghost-primary"
+                                                    title="@Localizer["HandoverReport"]"
+                                                    @onclick="@(() => ShowHandoverReportAsync(session))">
+                                                <i class="ti ti-file-text"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private bool m_loading = true;
+    private int m_shopId;
+    private int m_daysFilter = 1;
+    private decimal m_threshold = 100m;
+
+    private List<TillSession> m_activeSessions = [];
+    private List<TillSession> m_closedSessions = [];
+    private Dictionary<int, decimal> m_sessionVariances = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Get current shop
+        var shops = await ShopService.GetShopsAsync(page: 1, pageSize: 1);
+        if (shops.ItemCollection.Any())
+        {
+            m_shopId = shops.ItemCollection.First().ShopId;
+        }
+
+        // Get threshold from settings
+        m_threshold = await SettingConfig.GetDecimalAsync(SettingKeys.Till_VarianceAlertThreshold, defaultValue: 100m);
+
+        await RefreshAsync();
+    }
+
+    private async Task RefreshAsync()
+    {
+        if (m_shopId == 0) return;
+
+        try
+        {
+            m_loading = true;
+            StateHasChanged();
+
+            m_activeSessions = await TillService.GetAllActiveSessionsAsync(m_shopId);
+            m_closedSessions = await TillService.GetRecentClosedSessionsAsync(m_shopId, m_daysFilter);
+
+            // Pre-calculate THB variances for closed sessions
+            m_sessionVariances.Clear();
+            foreach (var session in m_closedSessions)
+            {
+                var varianceThb = await TillService.GetTotalVarianceInThbAsync(session);
+                m_sessionVariances[session.TillSessionId] = varianceThb;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading till dashboard data");
+            ShowError(Localizer["LoadFailed"]);
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private async Task ViewSessionDetails(TillSession session)
+    {
+        await DialogService.Create<EodSessionDetailDialog>(Localizer["SessionDetails"])
+            .WithParameter(x => x.SessionId, session.TillSessionId)
+            .WithSize(ModalSize.Large)
+            .ShowDialogAsync();
+    }
+
+    private async Task VerifySessionAsync(TillSession session)
+    {
+        var confirmed = await DialogService.ConfirmYesNoAsync(
+            string.Format(Localizer["VerifyConfirmation"], session.StaffDisplayName),
+            Localizer["VerifySession"]);
+
+        if (!confirmed) return;
+
+        var result = await TillService.VerifySessionAsync(session.TillSessionId, UserName);
+        if (result.Success)
+        {
+            ShowSuccess(Localizer["SessionVerified"]);
+            await RefreshAsync();
+        }
+        else
+        {
+            ShowError(result.Message ?? Localizer["VerifyFailed"]);
+        }
+    }
+
+    private async Task VerifyAllPendingAsync()
+    {
+        var pending = m_closedSessions
+            .Where(s => s.Status is TillSessionStatus.Closed or TillSessionStatus.ClosedWithVariance)
+            .Where(s => !string.Equals(s.StaffUserName, UserName, StringComparison.OrdinalIgnoreCase)) // Exclude own sessions
+            .ToList();
+
+        if (pending.Count == 0)
+        {
+            ShowInfo(Localizer["NoSessionsToVerify"]);
+            return;
+        }
+
+        var confirmed = await DialogService.ConfirmYesNoAsync(
+            string.Format(Localizer["VerifyAllConfirmation"], pending.Count),
+            Localizer["VerifyAll"]);
+
+        if (!confirmed) return;
+
+        int verified = 0;
+        foreach (var session in pending)
+        {
+            var result = await TillService.VerifySessionAsync(session.TillSessionId, UserName);
+            if (result.Success) verified++;
+        }
+
+        ShowSuccess(string.Format(Localizer["VerifiedCount"], verified));
+        await RefreshAsync();
+    }
+
+    private async Task ShowHandoverReportAsync(TillSession session)
+    {
+        await DialogService.Create<HandoverReportDialog>(Localizer["HandoverReport"])
+            .WithParameter(x => x.SessionId, session.TillSessionId)
+            .WithSize(ModalSize.Large)
+            .ShowDialogAsync();
+    }
+
+    private string FormatDuration(DateTimeOffset start, DateTimeOffset? end)
+    {
+        var duration = (end ?? DateTimeOffset.Now) - start;
+        if (duration.TotalHours >= 1)
+            return $"{(int)duration.TotalHours}h {duration.Minutes}m";
+        return $"{(int)duration.TotalMinutes}m";
+    }
+
+    private static string GetVarianceClass(decimal variance)
+    {
+        if (variance == 0) return "text-success";
+        if (variance > 0) return "text-info";
+        return "text-danger fw-bold";
+    }
+
+    private static string GetStatusBadgeClass(TillSessionStatus status) => status switch
+    {
+        TillSessionStatus.Closed => "bg-success-lt text-success",
+        TillSessionStatus.ClosedWithVariance => "bg-warning-lt text-warning",
+        TillSessionStatus.Verified => "bg-success",
+        _ => "bg-secondary"
+    };
+
+    private string GetStatusText(TillSessionStatus status) => status switch
+    {
+        TillSessionStatus.Closed => Localizer["StatusClosed"],
+        TillSessionStatus.ClosedWithVariance => Localizer["StatusVariance"],
+        TillSessionStatus.Verified => Localizer["StatusVerified"],
+        _ => status.ToString()
+    };
+}
