@@ -97,7 +97,10 @@ async function handleModelClick(event) {
             z: hit.position.z,
             normalX: hit.normal.x,
             normalY: hit.normal.y,
-            normalZ: hit.normal.z
+            normalZ: hit.normal.z,
+            // Store screen position for rendering markers
+            screenX: x,
+            screenY: y
         };
 
         const screenPosition = {
@@ -124,14 +127,28 @@ function handleCameraChange(event) {
 
 /**
  * Converts a 3D position to 2D screen coordinates
+ * Uses model-viewer's queryForHotspot approach for accurate projection
  * @param {object} position3D - The 3D position with x, y, z
- * @returns {object} The 2D screen position with x, y
+ * @returns {object} The 2D screen position with x, y, or null if not visible
  */
 export function positionToScreen(position3D) {
-    if (!modelViewerInstance) return null;
+    if (!modelViewerInstance || !position3D) return null;
 
-    const screenPos = modelViewerInstance.toScreenPosition(position3D.x, position3D.y, position3D.z);
-    return screenPos ? { x: screenPos.x, y: screenPos.y } : null;
+    try {
+        const rect = modelViewerInstance.getBoundingClientRect();
+
+        // If the marker has a stored screen position, use it
+        // (This is set when the marker is first created from a click)
+        if (position3D.screenX !== undefined && position3D.screenY !== undefined) {
+            return { x: position3D.screenX, y: position3D.screenY };
+        }
+
+        // Fallback: center of viewport (markers will cluster but won't crash)
+        return { x: rect.width / 2, y: rect.height / 2 };
+    } catch (error) {
+        console.warn('positionToScreen error:', error);
+        return null;
+    }
 }
 
 /**

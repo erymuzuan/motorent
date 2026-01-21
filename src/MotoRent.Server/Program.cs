@@ -286,7 +286,15 @@ builder.Services.AddSignalR();
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
+    .AddInteractiveServerComponents()
+    .AddCircuitOptions(options =>
+    {
+        // Enable detailed errors in development for debugging JS interop issues
+        if (builder.Environment.IsDevelopment())
+        {
+            options.DetailedErrors = true;
+        }
+    });
 
 var app = builder.Build();
 
@@ -311,7 +319,11 @@ else
 
 app.UseHttpsRedirection();
 
-app.UseStaticFiles();
+// Configure static files with custom MIME types for 3D models
+var contentTypeProvider = new Microsoft.AspNetCore.StaticFiles.FileExtensionContentTypeProvider();
+contentTypeProvider.Mappings[".glb"] = "model/gltf-binary";
+contentTypeProvider.Mappings[".gltf"] = "model/gltf+json";
+app.UseStaticFiles(new StaticFileOptions { ContentTypeProvider = contentTypeProvider });
 
 // Tenant domain resolution middleware (for custom domains and subdomains)
 // Must be before authentication so tourist pages work for anonymous users

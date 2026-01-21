@@ -17,6 +17,7 @@ description: C# coding conventions, naming patterns, and file organization stand
   - Prefix for private instance members is `m_`
   - Prefix for static fields is `m_`
   - Prefix for constants UPPERCASE_WITH_UNDERSCORES
+- **XML comment** DO NOT insert ///<summary>, all methods, it's args and properties name should be descriptive
 
 
 ## Service Injection Pattern
