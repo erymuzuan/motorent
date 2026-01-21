@@ -70,6 +70,9 @@ namespace MotoRent.Domain.Entities;
 [JsonDerivedType(typeof(Receipt), nameof(Receipt))]
 // Exchange rate entities
 [JsonDerivedType(typeof(ExchangeRate), nameof(ExchangeRate))]
+// End of day entities
+[JsonDerivedType(typeof(DailyClose), nameof(DailyClose))]
+[JsonDerivedType(typeof(ShortageLog), nameof(ShortageLog))]
 public abstract class Entity
 {
     public string? WebId { get; set; }
