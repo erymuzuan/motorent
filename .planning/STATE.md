@@ -9,7 +9,7 @@
 
 **Core Value:** Business visibility and cash control - owners can see if their assets are profitable, where cash is leaking, and whether staff are handling money correctly.
 
-**Current Focus:** Phase 7 complete. Staff can close till with per-currency variance tracking. Ready for Phase 8 (Manager Oversight).
+**Current Focus:** Phase 8 in progress. Manager dashboard query methods complete. Next: Manager Dashboard UI.
 
 **Key Constraints:**
 - Tech stack: Blazor Server + WASM, .NET 10, SQL Server
@@ -21,18 +21,37 @@
 
 ## Current Position
 
-**Phase:** 7 of 9 (Till Closing and Reconciliation) - COMPLETE
-**Plan:** 2 of 2 complete
-**Status:** Phase complete
+**Phase:** 8 of 9 (Manager Oversight) - IN PROGRESS
+**Plan:** 1 of 3 complete
+**Status:** In progress
 
 ```
-Milestone Progress: [########..] 87%
-Phase 7 Progress:   [##########] 100%
+Milestone Progress: [########..] 89%
+Phase 8 Progress:   [###.......] 33%
 ```
 
-**Last Activity:** 2026-01-21 - Completed Phase 7 (Till Closing and Reconciliation)
+**Last Activity:** 2026-01-21 - Completed 08-01-PLAN.md (Manager Dashboard Query Methods)
 
-**Next Action:** Run `/gsd:discuss-phase 8` to gather context for Manager Oversight phase.
+**Next Action:** Execute Plan 08-02 (Manager Dashboard UI).
+
+---
+
+## Phase 8 Progress - IN PROGRESS
+
+### Plan 08-01: Manager Dashboard Query Methods - COMPLETE
+
+| Task | Status | Commit |
+|------|--------|--------|
+| Task 1: Add Till settings keys to SettingKeys.cs | Done | 5e2010b |
+| Task 2: Add manager dashboard query methods to TillService | Done | 683ee80 |
+
+**Key Deliverables:**
+- Till_VarianceAlertThreshold and Till_DefaultOpeningFloat settings keys
+- GetAllActiveSessionsAsync for real-time session monitoring
+- GetRecentClosedSessionsAsync for verification review
+- GetTotalVarianceInThbAsync for multi-currency variance calculation
+- GetVarianceAlertCountAsync for threshold-based alerts
+- Self-verification prevention in VerifySessionAsync
 
 ---
 
@@ -259,9 +278,9 @@ Phase 7 Progress:   [##########] 100%
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Plans completed | 22 | Phase 1: 4; Phase 2: 3; Phase 3: 2; Phase 4: 3; Phase 5: 5; Phase 6: 3; Phase 7: 2 |
-| Requirements done | 35/40 | +TILL-06, TILL-07 |
-| Phases done | 7/9 | Phase 7 complete |
+| Plans completed | 23 | Phase 1: 4; Phase 2: 3; Phase 3: 2; Phase 4: 3; Phase 5: 5; Phase 6: 3; Phase 7: 2; Phase 8: 1 |
+| Requirements done | 35/40 | Phase 8 query methods |
+| Phases done | 7/9 | Phase 8 in progress |
 | Blockers hit | 0 | - |
 
 ---
@@ -323,8 +342,21 @@ Phase 7 Progress:   [##########] 100%
 | Two-step close workflow | (07-02) State toggle for step navigation, no complex wizard framework | 2026-01-21 |
 | Variance colors in summary | (07-02) text-success (0), text-info (over), text-danger (short) | 2026-01-21 |
 | Overall variance in THB | (07-02) Sum per-currency variances with exchange rate conversion | 2026-01-21 |
+| Fallback to single-currency variance | (08-01) GetTotalVarianceInThbAsync falls back to legacy Variance when ClosingVariances empty | 2026-01-21 |
+| Current rates for variance conversion | (08-01) Use current exchange rates for variance calculation, not historical | 2026-01-21 |
+| Case-insensitive self-verification check | (08-01) OrdinalIgnoreCase for username comparison (OAuth providers) | 2026-01-21 |
+| Alert window of 1 day | (08-01) GetVarianceAlertCountAsync checks last 24 hours for alerts | 2026-01-21 |
 
 ### Architecture Notes
+
+**Phase 8 Components (In Progress):**
+- Till_VarianceAlertThreshold settings key (100 THB default)
+- Till_DefaultOpeningFloat settings key
+- TillService.GetAllActiveSessionsAsync - Real-time session monitoring
+- TillService.GetRecentClosedSessionsAsync - Verification review (7-day window)
+- TillService.GetTotalVarianceInThbAsync - Multi-currency variance calculation
+- TillService.GetVarianceAlertCountAsync - Threshold-based alerts
+- Self-verification prevention in VerifySessionAsync
 
 **Phase 7 Components (Complete):**
 - TillSession extended with close metadata (5 new fields)
@@ -402,17 +434,18 @@ None currently.
 
 ## Session Continuity
 
-**Last Session:** 2026-01-21 - Completed Phase 7 (Till Closing and Reconciliation)
+**Last Session:** 2026-01-21 - Completed Plan 08-01 (Manager Dashboard Query Methods)
 
 **Context for Next Session:**
-- Phase 7 complete: Domain layer and UI for till closing with variance
-- All 2 requirements satisfied (TILL-06, TILL-07)
-- Ready for Phase 8: Manager Oversight
+- Phase 8 in progress: Query methods complete, ready for UI
+- TillService has 4 new manager dashboard methods
+- Self-verification prevention in place
+- Settings keys ready for organization-level configuration
 
 **Files to Review:**
-- `.planning/phases/07-till-closing-reconciliation/07-VERIFICATION.md` - Phase verification
-- `.planning/ROADMAP.md` - Phase 8 overview
-- `src/MotoRent.Client/Pages/Staff/TillCloseSessionDialog.razor` - Close workflow
+- `.planning/phases/08-manager-oversight/08-01-SUMMARY.md` - Plan summary
+- `src/MotoRent.Services/TillService.manager.cs` - Manager methods
+- `src/MotoRent.Domain/Settings/SettingKeys.cs` - Till settings
 
 ---
 
