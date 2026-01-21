@@ -9,7 +9,7 @@
 
 **Core Value:** Business visibility and cash control - owners can see if their assets are profitable, where cash is leaking, and whether staff are handling money correctly.
 
-**Current Focus:** Phase 8 in progress. Handover report dialog complete. 2 of 3 plans done.
+**Current Focus:** Phase 8 complete. Manager dashboard, handover report, and query methods all done.
 
 **Key Constraints:**
 - Tech stack: Blazor Server + WASM, .NET 10, SQL Server
@@ -21,22 +21,22 @@
 
 ## Current Position
 
-**Phase:** 8 of 9 (Manager Oversight) - IN PROGRESS
-**Plan:** 2 of 3 complete
-**Status:** In progress
+**Phase:** 8 of 9 (Manager Oversight) - COMPLETE
+**Plan:** 3 of 3 complete
+**Status:** Phase complete
 
 ```
-Milestone Progress: [#########.] 92%
-Phase 8 Progress:   [######....] 67%
+Milestone Progress: [##########] 95%
+Phase 8 Progress:   [##########] 100%
 ```
 
-**Last Activity:** 2026-01-21 - Completed 08-03-PLAN.md (Handover Report Dialog)
+**Last Activity:** 2026-01-21 - Completed 08-02-PLAN.md (Manager Dashboard UI)
 
-**Next Action:** Execute Plan 08-02 (Manager Dashboard UI) if not complete.
+**Next Action:** Execute Phase 9 (End of Day operations).
 
 ---
 
-## Phase 8 Progress - IN PROGRESS
+## Phase 8 Progress - COMPLETE
 
 ### Plan 08-01: Manager Dashboard Query Methods - COMPLETE
 
@@ -52,6 +52,25 @@ Phase 8 Progress:   [######....] 67%
 - GetTotalVarianceInThbAsync for multi-currency variance calculation
 - GetVarianceAlertCountAsync for threshold-based alerts
 - Self-verification prevention in VerifySessionAsync
+
+### Plan 08-02: Manager Dashboard UI - COMPLETE
+
+| Task | Status | Commit |
+|------|--------|--------|
+| Task 1: Create ActiveSessionCard component | Done | a99a2b7 |
+| Task 2: Create VarianceAlertBadge component | Done | d4a7ae8 |
+| Task 3: Create TillDashboard page | Done | 9480b83 |
+
+**Key Deliverables:**
+- `ActiveSessionCard.razor` (84 lines) - Staff session card with duration, balances
+- `VarianceAlertBadge.razor` (39 lines) - Bell icon with alert count badge
+- `TillDashboard.razor` (336 lines) - Manager till oversight dashboard
+- Two-section layout: Active session cards + Closed sessions table
+- Verify single session or Verify All pending (excludes self)
+- Date filter (Today/3 days/7 days)
+- Variance threshold alerts from organization settings
+- Authorization: RequireTenantManager policy
+- Localization: English, Thai, Malay (38 keys total)
 
 ### Plan 08-03: Handover Report Dialog - COMPLETE
 
@@ -295,9 +314,9 @@ Phase 8 Progress:   [######....] 67%
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Plans completed | 24 | Phase 1: 4; Phase 2: 3; Phase 3: 2; Phase 4: 3; Phase 5: 5; Phase 6: 3; Phase 7: 2; Phase 8: 2 |
-| Requirements done | 37/40 | Phase 8 handover report |
-| Phases done | 7/9 | Phase 8 in progress |
+| Plans completed | 25 | Phase 1: 4; Phase 2: 3; Phase 3: 2; Phase 4: 3; Phase 5: 5; Phase 6: 3; Phase 7: 2; Phase 8: 3 |
+| Requirements done | 38/40 | Phase 8 complete |
+| Phases done | 8/9 | Phase 9 pending |
 | Blockers hit | 0 | - |
 
 ---
@@ -366,10 +385,13 @@ Phase 8 Progress:   [######....] 67%
 | Transactions ordered chronologically for report | (08-03) GetTransactionsForSessionAsync orders ascending for ledger display | 2026-01-21 |
 | Cash types aggregated per currency | (08-03) RentalPayment, BookingDeposit, etc. grouped under "Cash Payment" | 2026-01-21 |
 | Browser print for PDF | (08-03) No external library; browser handles PDF generation via print() | 2026-01-21 |
+| ActiveSessionCard composition | (08-02) Separate component for session cards - reusable display pattern | 2026-01-21 |
+| VarianceAlertBadge simple | (08-02) MotoRentComponentBase inheritance, no localization (icon+number only) | 2026-01-21 |
+| Settings GetDecimalAsync API | (08-02) ISettingConfig provides typed getters, not GetSettingAsync | 2026-01-21 |
 
 ### Architecture Notes
 
-**Phase 8 Components (In Progress):**
+**Phase 8 Components (Complete):**
 - Till_VarianceAlertThreshold settings key (100 THB default)
 - Till_DefaultOpeningFloat settings key
 - TillService.GetAllActiveSessionsAsync - Real-time session monitoring
@@ -378,6 +400,9 @@ Phase 8 Progress:   [######....] 67%
 - TillService.GetVarianceAlertCountAsync - Threshold-based alerts
 - TillService.GetTransactionsForSessionAsync - Handover report data
 - Self-verification prevention in VerifySessionAsync
+- ActiveSessionCard.razor (84 lines) - Session card with staff, duration, balances
+- VarianceAlertBadge.razor (39 lines) - Bell icon with alert count
+- TillDashboard.razor (336 lines) - Manager till oversight dashboard
 - HandoverReportDialog.razor (474 lines) - Sales clearing journal format
 
 **Phase 7 Components (Complete):**
@@ -456,18 +481,21 @@ None currently.
 
 ## Session Continuity
 
-**Last Session:** 2026-01-21 - Completed Plan 08-03 (Handover Report Dialog)
+**Last Session:** 2026-01-21 - Completed Plan 08-02 (Manager Dashboard UI)
 
 **Context for Next Session:**
-- Phase 8 in progress: 2 of 3 plans complete
-- HandoverReportDialog ready for integration with manager dashboard
-- TillService has GetTransactionsForSessionAsync for report data
-- Localization complete for English, Thai, Malay
+- Phase 8 complete: All 3 plans done
+- Manager dashboard at /manager/till-dashboard
+- Active sessions cards + closed sessions table
+- Verify workflow functional with self-prevention
+- Handover report accessible via button
+- Ready for Phase 9 (End of Day operations)
 
 **Files to Review:**
-- `.planning/phases/08-manager-oversight/08-03-SUMMARY.md` - Plan summary
-- `src/MotoRent.Client/Pages/Manager/HandoverReportDialog.razor` - Report dialog
-- `src/MotoRent.Services/TillService.transaction.cs` - Transaction methods
+- `.planning/phases/08-manager-oversight/08-02-SUMMARY.md` - Plan summary
+- `src/MotoRent.Client/Pages/Manager/TillDashboard.razor` - Dashboard page
+- `src/MotoRent.Client/Components/Till/ActiveSessionCard.razor` - Session card
+- `src/MotoRent.Client/Components/Till/VarianceAlertBadge.razor` - Alert badge
 
 ---
 
