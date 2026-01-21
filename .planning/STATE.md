@@ -9,7 +9,7 @@
 
 **Core Value:** Business visibility and cash control - owners can see if their assets are profitable, where cash is leaking, and whether staff are handling money correctly.
 
-**Current Focus:** Phase 9 in progress. EOD entities and service methods complete (09-01).
+**Current Focus:** Phase 9 in progress. EOD entities (09-01) and staff receipt search (09-04) complete.
 
 **Key Constraints:**
 - Tech stack: Blazor Server + WASM, .NET 10, SQL Server
@@ -22,15 +22,15 @@
 ## Current Position
 
 **Phase:** 9 of 9 (End of Day Operations) - IN PROGRESS
-**Plan:** 1 of 4 complete
+**Plan:** 2 of 4 complete
 **Status:** In progress
 
 ```
 Milestone Progress: [#########.] 98%
-Phase 9 Progress:   [##........] 25%
+Phase 9 Progress:   [#####.....] 50%
 ```
 
-**Last Activity:** 2026-01-21 - Completed 09-01-PLAN.md (Domain Entities & Service Methods)
+**Last Activity:** 2026-01-21 - Completed 09-04-PLAN.md (Staff Receipt Search)
 
 **Next Action:** Execute 09-02-PLAN.md (Daily Close UI).
 
@@ -56,6 +56,24 @@ Phase 9 Progress:   [##........] 25%
   - LogShortageAsync, GetShortageLogsAsync, GetShortageLogsByStaffAsync
   - GetDropTotalsByCurrencyAsync, GetDropTransactionsAsync
 - Repository registrations for DailyClose and ShortageLog
+
+### Plan 09-04: Staff Receipt Search and Reprint - COMPLETE
+
+| Task | Status | Commit |
+|------|--------|--------|
+| Task 1: Create TillTransactionSearch page | Done | f1a85d0 |
+| Task 2: Add navigation and localization | Done | a6aa5ab |
+
+**Key Deliverables:**
+- `TillTransactionSearch.razor` (235 lines) - Staff receipt search page
+- Date range filter with quick buttons (Today/7 Days/This Month)
+- Receipt type filter (Check-In/Settlement/Booking Deposit)
+- Search term filter (customer name/phone/receipt number) with 300ms debounce
+- Amount range filter (min/max)
+- Pagination with 20 items per page
+- View/Print action via ReceiptPrintDialog (no void for staff)
+- Navigation link in StaffLayout More drawer (Operations section)
+- Localization: English, Thai, Malay (24 keys)
 
 ---
 
@@ -337,8 +355,8 @@ Phase 9 Progress:   [##........] 25%
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Plans completed | 26 | Phase 1: 4; Phase 2: 3; Phase 3: 2; Phase 4: 3; Phase 5: 5; Phase 6: 3; Phase 7: 2; Phase 8: 3; Phase 9: 1 |
-| Requirements done | 39/40 | Phase 9 in progress |
+| Plans completed | 27 | Phase 1: 4; Phase 2: 3; Phase 3: 2; Phase 4: 3; Phase 5: 5; Phase 6: 3; Phase 7: 2; Phase 8: 3; Phase 9: 2 |
+| Requirements done | 40/40 | RCPT-02, RCPT-03 complete |
 | Phases done | 8/9 | Phase 9 in progress |
 | Blockers hit | 0 | - |
 
@@ -414,6 +432,9 @@ Phase 9 Progress:   [##........] 25%
 | Date-only daily close | (09-01) One DailyClose per shop per calendar day, time ignored | 2026-01-21 |
 | Shortage always positive | (09-01) Math.Abs(amount) for consistent representation | 2026-01-21 |
 | Repository in domain extensions | (09-01) Repository<T> in ServiceCollectionExtensions.cs for tenant entities | 2026-01-21 |
+| Staff no void action | (09-04) Staff can view/reprint but not void receipts | 2026-01-21 |
+| Search debounce 300ms | (09-04) Reduce API calls while typing in search box | 2026-01-21 |
+| Operations section for receipt search | (09-04) Groups with Deposits and Reports in staff More drawer | 2026-01-21 |
 
 ### Architecture Notes
 
@@ -423,6 +444,9 @@ Phase 9 Progress:   [##........] 25%
 - MotoRent.DailyClose.sql - SQL table with unique index on ShopId+Date
 - MotoRent.ShortageLog.sql - SQL table with staff accountability indexes
 - TillService.eod.cs (290 lines) - EOD methods for daily close and shortage logging
+- TillTransactionSearch.razor (235 lines) - Staff receipt search with filters
+- TillTransactionSearch.razor.cs (190 lines) - Code-behind with debounce and pagination
+- Navigation link in StaffLayout Operations section
 
 **Phase 8 Components (Complete):**
 - Till_VarianceAlertThreshold settings key (100 THB default)
@@ -514,20 +538,21 @@ None currently.
 
 ## Session Continuity
 
-**Last Session:** 2026-01-21 - Completed 09-01-PLAN.md (Domain Entities & Service Methods)
+**Last Session:** 2026-01-21 - Completed 09-04-PLAN.md (Staff Receipt Search and Reprint)
 
 **Context for Next Session:**
-- Phase 9 plan 01 complete: EOD entities and service methods ready
-- DailyClose entity provides day-level close state tracking
-- ShortageLog entity enables variance accountability
-- TillService.eod.cs has all EOD methods for daily close workflow
-- Ready for 09-02 (Daily Close UI)
+- Phase 9 plans 01 and 04 complete
+- Staff receipt search page accessible at /staff/till-transactions
+- Navigation link added to StaffLayout More drawer
+- Localization complete for English, Thai, Malay
+- Plans 09-02 and 09-03 pending (may have incomplete prior work)
 
 **Files to Review:**
-- `.planning/phases/09-end-of-day-operations/09-01-SUMMARY.md` - Plan summary
-- `src/MotoRent.Domain/Entities/DailyClose.cs` - Daily close entity
-- `src/MotoRent.Domain/Entities/ShortageLog.cs` - Shortage log entity
-- `src/MotoRent.Services/TillService.eod.cs` - EOD service methods
+- `.planning/phases/09-end-of-day-operations/09-04-SUMMARY.md` - Plan summary
+- `src/MotoRent.Client/Pages/Staff/TillTransactionSearch.razor` - Receipt search page
+- `src/MotoRent.Client/Layout/StaffLayout.razor` - Updated navigation
+
+**Note:** Pre-existing files DailyClose.razor and CashDropVerificationDialog.razor have compilation errors and appear incomplete from prior development.
 
 ---
 

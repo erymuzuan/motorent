@@ -170,10 +170,16 @@ public partial class DailyClose : LocalizedComponentBase<DailyClose>
             .ShowDialogAsync();
     }
 
-    private Task OpenSummaryReportAsync()
+    private async Task OpenSummaryReportAsync()
     {
-        // DailySummaryReportDialog will be implemented in Task 2
-        return Task.CompletedTask;
+        if (m_summary == null) return;
+
+        await DialogService.Create<DailySummaryReportDialog>(Localizer["DailySummaryReport"])
+            .WithParameter(x => x.ShopId, m_shopId)
+            .WithParameter(x => x.Date, m_selectedDate)
+            .WithParameter(x => x.Summary, m_summary)
+            .WithSize(ModalSize.Large)
+            .ShowDialogAsync();
     }
 
     #region Helper Methods
