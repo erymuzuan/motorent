@@ -10,6 +10,8 @@ CREATE TABLE [<schema>].[TillSession]
     [ClosedAt] AS CONVERT(DATETIMEOFFSET, JSON_VALUE([Json], '$.ClosedAt'), 127) PERSISTED,
     [VerifiedByUserName] AS CAST(JSON_VALUE([Json], '$.VerifiedByUserName') AS NVARCHAR(100)),
     [VerifiedAt] AS CONVERT(DATETIMEOFFSET, JSON_VALUE([Json], '$.VerifiedAt'), 127) PERSISTED,
+    [ClosedByUserName] AS CAST(JSON_VALUE([Json], '$.ClosedByUserName') AS NVARCHAR(100)),
+    [IsForceClose] AS CAST(JSON_VALUE([Json], '$.IsForceClose') AS BIT),
     -- JSON storage
     [Json] NVARCHAR(MAX) NOT NULL,
     -- Audit columns
