@@ -8,9 +8,9 @@ CREATE TABLE [<schema>].[DailyClose]
     [ClosedByUserName] AS CAST(JSON_VALUE([Json], '$.ClosedByUserName') AS NVARCHAR(100)),
     [TotalVariance] AS CAST(JSON_VALUE([Json], '$.TotalVariance') AS DECIMAL(18,2)),
     [WasReopened] AS CAST(JSON_VALUE([Json], '$.WasReopened') AS BIT),
-    -- Persistent columns for DATE/DATETIMEOFFSET (not computed from JSON)
-    [Date] DATE NOT NULL,
-    [ClosedAt] DATETIMEOFFSET NULL,
+    -- Computed columns for DATE/DATETIMEOFFSET (non-persisted, cannot be indexed)
+    [Date] AS CAST(JSON_VALUE([Json], '$.Date') AS DATE),
+    [ClosedAt] AS TRY_CONVERT(DATETIMEOFFSET, JSON_VALUE([Json], '$.ClosedAt'), 127),
     -- JSON storage
     [Json] NVARCHAR(MAX) NOT NULL,
     -- Audit columns

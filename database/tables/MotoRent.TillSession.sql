@@ -10,11 +10,11 @@ CREATE TABLE [<schema>].[TillSession]
     [ClosedByUserName] AS CAST(JSON_VALUE([Json], '$.ClosedByUserName') AS NVARCHAR(100)),
     [IsForceClose] AS CAST(JSON_VALUE([Json], '$.IsForceClose') AS BIT),
     [IsLateClose] AS CAST(JSON_VALUE([Json], '$.IsLateClose') AS BIT),
-    -- Persistent columns for DATE/DATETIMEOFFSET (not computed from JSON)
-    [OpenedAt] DATETIMEOFFSET NOT NULL,
-    [ClosedAt] DATETIMEOFFSET NULL,
-    [VerifiedAt] DATETIMEOFFSET NULL,
-    [ExpectedCloseDate] DATE NULL,
+    -- Computed columns for DATE/DATETIMEOFFSET (non-persisted, cannot be indexed)
+    [OpenedAt] AS TRY_CONVERT(DATETIMEOFFSET, JSON_VALUE([Json], '$.OpenedAt'), 127),
+    [ClosedAt] AS TRY_CONVERT(DATETIMEOFFSET, JSON_VALUE([Json], '$.ClosedAt'), 127),
+    [VerifiedAt] AS TRY_CONVERT(DATETIMEOFFSET, JSON_VALUE([Json], '$.VerifiedAt'), 127),
+    [ExpectedCloseDate] AS CAST(JSON_VALUE([Json], '$.ExpectedCloseDate') AS DATE),
     -- JSON storage
     [Json] NVARCHAR(MAX) NOT NULL,
     -- Audit columns
@@ -26,5 +26,4 @@ CREATE TABLE [<schema>].[TillSession]
 
 CREATE INDEX IX_TillSession_ShopId_Status ON [<schema>].[TillSession]([ShopId], [Status])
 CREATE INDEX IX_TillSession_StaffUserName ON [<schema>].[TillSession]([StaffUserName])
-CREATE INDEX IX_TillSession_OpenedAt ON [<schema>].[TillSession]([OpenedAt])
-CREATE INDEX IX_TillSession_ClosedAt ON [<schema>].[TillSession]([ClosedAt])
+-- Note: OpenedAt/ClosedAt are non-persisted computed columns and cannot be indexed
