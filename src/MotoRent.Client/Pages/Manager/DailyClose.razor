@@ -1,0 +1,353 @@
+@page "/manager/daily-close"
+@using MotoRent.Domain.Entities
+@using MotoRent.Services
+@using Microsoft.AspNetCore.Authorization
+@inherits LocalizedComponentBase<DailyClose>
+@attribute [Authorize(Policy = "RequireTenantManager")]
+@inject TillService TillService
+@inject ShopService ShopService
+
+<PageTitle>@Localizer["PageTitle"]</PageTitle>
+
+<div class="container-xl py-4">
+    <div class="page-header mb-4">
+        <div class="row align-items-center">
+            <div class="col">
+                <h2 class="page-title">
+                    <i class="ti ti-calendar-check me-2"></i>
+                    @Localizer["DailyCloseManagement"]
+                </h2>
+            </div>
+            <div class="col-auto">
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="ti ti-calendar"></i>
+                    </span>
+                    <input type="date" class="form-control" @bind="m_selectedDate" @bind:event="onchange"
+                           @bind:after="LoadDataAsync" max="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (m_loading)
+    {
+        <div class="progress progress-sm mb-3">
+            <div class="progress-bar progress-bar-indeterminate"></div>
+        </div>
+        <div class="row g-3">
+            @for (int i = 0; i < 4; i++)
+            {
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-body placeholder-glow">
+                            <span class="placeholder col-6"></span>
+                            <span class="placeholder col-4 ms-2"></span>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        @* Day Status Card *@
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-auto">
+                        <span class="avatar avatar-lg @GetStatusAvatarClass(m_dailyClose?.Status ?? DailyCloseStatus.Open)">
+                            <i class="@GetStatusIcon(m_dailyClose?.Status ?? DailyCloseStatus.Open)"></i>
+                        </span>
+                    </div>
+                    <div class="col">
+                        <h3 class="mb-0">
+                            @Localizer["DayStatus"]:
+                            <span class="badge @GetStatusBadgeClass(m_dailyClose?.Status ?? DailyCloseStatus.Open)">
+                                @GetStatusText(m_dailyClose?.Status ?? DailyCloseStatus.Open)
+                            </span>
+                        </h3>
+                        @if (m_dailyClose?.Status == DailyCloseStatus.Closed || m_dailyClose?.Status == DailyCloseStatus.Reconciled)
+                        {
+                            <p class="text-secondary mb-0">
+                                @Localizer["ClosedBy", m_dailyClose.ClosedByUserName ?? ""]
+                                <span class="mx-1">|</span>
+                                @Localizer["ClosedAt", FormatDateTime(m_dailyClose.ClosedAt)]
+                            </p>
+                        }
+                        @if (m_dailyClose?.WasReopened == true)
+                        {
+                            <div class="mt-2">
+                                <span class="badge bg-warning-lt text-warning">
+                                    <i class="ti ti-refresh me-1"></i>
+                                    @Localizer["ReopenedIndicator"]
+                                </span>
+                                <small class="text-secondary ms-2">@Localizer["ReopenReason", m_dailyClose.ReopenReason ?? ""]</small>
+                            </div>
+                        }
+                    </div>
+                    <div class="col-auto">
+                        @if (m_dailyClose?.Status == DailyCloseStatus.Open || m_dailyClose is null)
+                        {
+                            <button type="button" class="btn btn-primary" @onclick="CloseDayAsync" disabled="@m_processing">
+                                <i class="ti ti-lock me-1"></i>
+                                @Localizer["CloseDay"]
+                            </button>
+                        }
+                        else
+                        {
+                            <button type="button" class="btn btn-warning" @onclick="OpenReopenDialogAsync" disabled="@m_processing">
+                                <i class="ti ti-lock-open me-1"></i>
+                                @Localizer["ReopenDay"]
+                            </button>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if (m_summary != null)
+        {
+            @* Summary Statistics Cards *@
+            <div class="row g-3 mb-4">
+                <div class="col-md-3 col-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <span class="avatar bg-success-lt me-3">
+                                    <i class="ti ti-cash"></i>
+                                </span>
+                                <div>
+                                    <small class="text-secondary">@Localizer["TotalCashIn"]</small>
+                                    <div class="h3 mb-0 text-success">@FormatCurrency(m_summary.TotalCashIn)</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <span class="avatar bg-danger-lt me-3">
+                                    <i class="ti ti-cash-off"></i>
+                                </span>
+                                <div>
+                                    <small class="text-secondary">@Localizer["TotalCashOut"]</small>
+                                    <div class="h3 mb-0 text-danger">@FormatCurrency(m_summary.TotalCashOut)</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <span class="avatar bg-info-lt me-3">
+                                    <i class="ti ti-credit-card"></i>
+                                </span>
+                                <div>
+                                    <small class="text-secondary">@Localizer["ElectronicPayments"]</small>
+                                    <div class="h3 mb-0 text-info">@FormatCurrency(m_summary.TotalElectronicPayments)</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <span class="avatar bg-purple-lt me-3">
+                                    <i class="ti ti-archive"></i>
+                                </span>
+                                <div>
+                                    <small class="text-secondary">@Localizer["DroppedToSafe"]</small>
+                                    <div class="h3 mb-0 text-purple">@FormatCurrency(m_summary.TotalDropped)</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* Second Row Summary *@
+            <div class="row g-3 mb-4">
+                <div class="col-md-3 col-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <span class="avatar bg-primary-lt me-3">
+                                    <i class="ti ti-users"></i>
+                                </span>
+                                <div>
+                                    <small class="text-secondary">@Localizer["TotalSessions"]</small>
+                                    <div class="h3 mb-0">@m_summary.TotalSessions</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <span class="avatar bg-success-lt me-3">
+                                    <i class="ti ti-circle-check"></i>
+                                </span>
+                                <div>
+                                    <small class="text-secondary">@Localizer["VerifiedSessions"]</small>
+                                    <div class="h3 mb-0">@m_summary.VerifiedSessions / @m_summary.TotalSessions</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <span class="avatar @(m_summary.SessionsWithVariance > 0 ? "bg-warning-lt" : "bg-success-lt") me-3">
+                                    <i class="ti @(m_summary.SessionsWithVariance > 0 ? "ti-alert-triangle" : "ti-check")"></i>
+                                </span>
+                                <div>
+                                    <small class="text-secondary">@Localizer["SessionsWithVariance"]</small>
+                                    <div class="h3 mb-0">@m_summary.SessionsWithVariance</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="card @(m_summary.TotalVariance != 0 ? "border-warning" : "")">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <span class="avatar @GetVarianceAvatarClass(m_summary.TotalVariance) me-3">
+                                    <i class="ti @(m_summary.TotalVariance == 0 ? "ti-check" : "ti-alert-circle")"></i>
+                                </span>
+                                <div>
+                                    <small class="text-secondary">@Localizer["TotalVariance"]</small>
+                                    <div class="h3 mb-0 @GetVarianceTextClass(m_summary.TotalVariance)">
+                                        @(m_summary.TotalVariance >= 0 ? "+" : "")@FormatCurrency(m_summary.TotalVariance)
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* Sessions with Unresolved Variance *@
+            @if (UnresolvedSessions.Any())
+            {
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h4 class="card-title mb-0">
+                            <i class="ti ti-alert-triangle text-warning me-2"></i>
+                            @Localizer["UnresolvedVariances"]
+                            <span class="badge bg-warning ms-2">@UnresolvedSessions.Count</span>
+                        </h4>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-vcenter card-table">
+                            <thead>
+                                <tr>
+                                    <th>@Localizer["Staff"]</th>
+                                    <th>@Localizer["ClosedAt"]</th>
+                                    <th class="text-end">@Localizer["Variance"]</th>
+                                    <th class="w-1"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var session in UnresolvedSessions)
+                                {
+                                    <tr>
+                                        <td>@session.StaffDisplayName</td>
+                                        <td>@FormatDateTime(session.ClosedAt)</td>
+                                        <td class="text-end">
+                                            <span class="@GetVarianceTextClass(session.Variance)">
+                                                @(session.Variance >= 0 ? "+" : "")@FormatCurrency(session.Variance)
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group">
+                                                <button type="button" class="btn btn-sm btn-warning"
+                                                        @onclick="@(() => OpenShortageDialogAsync(session))" title="@Localizer["PostToShortage"]">
+                                                    <i class="ti ti-file-alert me-1"></i>
+                                                    @Localizer["PostToShortage"]
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-ghost-secondary"
+                                                        @onclick="@(() => ViewSessionDetailsAsync(session))" title="@Localizer["ViewDetails"]">
+                                                    <i class="ti ti-eye"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+            else if (m_summary.TotalSessions > 0)
+            {
+                <div class="alert alert-success mb-4">
+                    <i class="ti ti-check me-2"></i>
+                    @Localizer["NoUnresolvedVariances"]
+                </div>
+            }
+        }
+
+        @* Staff Shortages Table *@
+        @if (m_shortages.Any())
+        {
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h4 class="card-title mb-0">
+                        <i class="ti ti-receipt me-2"></i>
+                        @Localizer["StaffShortages"]
+                        <span class="badge bg-secondary ms-2">@m_shortages.Count</span>
+                    </h4>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-vcenter card-table">
+                        <thead>
+                            <tr>
+                                <th>@Localizer["Staff"]</th>
+                                <th>@Localizer["Currency"]</th>
+                                <th class="text-end">@Localizer["Amount"]</th>
+                                <th class="text-end">@Localizer["AmountInThb"]</th>
+                                <th>@Localizer["Reason"]</th>
+                                <th>@Localizer["LoggedBy"]</th>
+                                <th>@Localizer["LoggedAt"]</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var shortage in m_shortages)
+                            {
+                                <tr>
+                                    <td>@shortage.StaffDisplayName</td>
+                                    <td>@shortage.Currency</td>
+                                    <td class="text-end text-danger">@shortage.Amount.ToString("N2")</td>
+                                    <td class="text-end text-danger">@FormatCurrency(shortage.AmountInThb)</td>
+                                    <td>@shortage.Reason</td>
+                                    <td>@shortage.LoggedByUserName</td>
+                                    <td>@FormatDateTime(shortage.LoggedAt)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+
+        @* Action Buttons *@
+        <div class="d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-primary" @onclick="OpenSummaryReportAsync" disabled="@(m_summary == null || m_summary.TotalSessions == 0)">
+                <i class="ti ti-file-report me-1"></i>
+                @Localizer["GenerateSummaryReport"]
+            </button>
+        </div>
+    }
+</div>
