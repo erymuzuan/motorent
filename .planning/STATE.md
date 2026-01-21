@@ -9,7 +9,7 @@
 
 **Core Value:** Business visibility and cash control - owners can see if their assets are profitable, where cash is leaking, and whether staff are handling money correctly.
 
-**Current Focus:** Phase 9 in progress. EOD entities (09-01) and staff receipt search (09-04) complete.
+**Current Focus:** Phase 9 in progress. EOD entities (09-01), cash drop verification (09-02), and staff receipt search (09-04) complete.
 
 **Key Constraints:**
 - Tech stack: Blazor Server + WASM, .NET 10, SQL Server
@@ -22,17 +22,17 @@
 ## Current Position
 
 **Phase:** 9 of 9 (End of Day Operations) - IN PROGRESS
-**Plan:** 2 of 4 complete
+**Plan:** 3 of 4 complete
 **Status:** In progress
 
 ```
-Milestone Progress: [#########.] 98%
-Phase 9 Progress:   [#####.....] 50%
+Milestone Progress: [#########.] 99%
+Phase 9 Progress:   [########..] 75%
 ```
 
-**Last Activity:** 2026-01-21 - Completed 09-04-PLAN.md (Staff Receipt Search)
+**Last Activity:** 2026-01-21 - Completed 09-02-PLAN.md (Cash Drop Verification Dialog)
 
-**Next Action:** Execute 09-02-PLAN.md (Daily Close UI).
+**Next Action:** Execute 09-03-PLAN.md (Daily Close UI).
 
 ---
 
@@ -56,6 +56,26 @@ Phase 9 Progress:   [#####.....] 50%
   - LogShortageAsync, GetShortageLogsAsync, GetShortageLogsByStaffAsync
   - GetDropTotalsByCurrencyAsync, GetDropTransactionsAsync
 - Repository registrations for DailyClose and ShortageLog
+
+### Plan 09-02: Cash Drop Verification Dialog - COMPLETE
+
+| Task | Status | Commit |
+|------|--------|--------|
+| Task 1: Create CashDropVerificationDialog component | Done | 9ada3a9 |
+| Task 2: Create localization resources | Done | e9b52b5 |
+| Task 3: Integrate verification dialog into EndOfDay page | Done | 989dbb5 |
+| Task 4: Add TillService methods for drop data | N/A | Already in 09-01 |
+
+**Key Deliverables:**
+- `CashDropVerificationDialog.razor` (228 lines) - Per-session drop verification dialog
+- Session header showing staff name and total dropped amount
+- Drop transactions timeline table with time, currency, amount columns
+- Per-currency verification with Matches/Different toggle
+- Actual count input and reason field when Different selected
+- Variance calculation with color coding (Over/Short/Balanced)
+- `EndOfDay.razor` updated with "Verify Drops" button per session with drops
+- Daily Cash Drops summary card showing aggregate drops by currency
+- Localization: English, Thai, Malay (32 + 46 keys)
 
 ### Plan 09-04: Staff Receipt Search and Reprint - COMPLETE
 
@@ -355,8 +375,8 @@ Phase 9 Progress:   [#####.....] 50%
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Plans completed | 27 | Phase 1: 4; Phase 2: 3; Phase 3: 2; Phase 4: 3; Phase 5: 5; Phase 6: 3; Phase 7: 2; Phase 8: 3; Phase 9: 2 |
-| Requirements done | 40/40 | RCPT-02, RCPT-03 complete |
+| Plans completed | 28 | Phase 1: 4; Phase 2: 3; Phase 3: 2; Phase 4: 3; Phase 5: 5; Phase 6: 3; Phase 7: 2; Phase 8: 3; Phase 9: 3 |
+| Requirements done | 40/40 | RCPT-02, RCPT-03, EOD-01 complete |
 | Phases done | 8/9 | Phase 9 in progress |
 | Blockers hit | 0 | - |
 
@@ -435,6 +455,9 @@ Phase 9 Progress:   [#####.....] 50%
 | Staff no void action | (09-04) Staff can view/reprint but not void receipts | 2026-01-21 |
 | Search debounce 300ms | (09-04) Reduce API calls while typing in search box | 2026-01-21 |
 | Operations section for receipt search | (09-04) Groups with Deposits and Reports in staff More drawer | 2026-01-21 |
+| Per-currency verification | (09-02) Independent verification for each currency in safe | 2026-01-21 |
+| Internal DropVerification class | (09-02) Encapsulates verification state per currency | 2026-01-21 |
+| Aggregate drops on load | (09-02) Load and aggregate drop totals by currency on page init | 2026-01-21 |
 
 ### Architecture Notes
 
@@ -447,6 +470,10 @@ Phase 9 Progress:   [#####.....] 50%
 - TillTransactionSearch.razor (235 lines) - Staff receipt search with filters
 - TillTransactionSearch.razor.cs (190 lines) - Code-behind with debounce and pagination
 - Navigation link in StaffLayout Operations section
+- CashDropVerificationDialog.razor (228 lines) - Per-session drop verification dialog
+- CashDropVerificationDialog.razor.cs (193 lines) - Verification state management
+- EndOfDay.razor updated with "Verify Drops" button and Daily Cash Drops card
+- EndOfDay.resx localization files (46 keys, English/Thai/Malay)
 
 **Phase 8 Components (Complete):**
 - Till_VarianceAlertThreshold settings key (100 THB default)
@@ -538,22 +565,20 @@ None currently.
 
 ## Session Continuity
 
-**Last Session:** 2026-01-21 - Completed 09-04-PLAN.md (Staff Receipt Search and Reprint)
+**Last Session:** 2026-01-21 - Completed 09-02-PLAN.md (Cash Drop Verification Dialog)
 
 **Context for Next Session:**
-- Phase 9 plans 01 and 04 complete
-- Staff receipt search page accessible at /staff/till-transactions
-- Navigation link added to StaffLayout More drawer
-- Localization complete for English, Thai, Malay
-- Plans 09-02 and 09-03 pending (may have incomplete prior work)
+- Phase 9 plans 01, 02, and 04 complete
+- CashDropVerificationDialog enables manager verification of safe contents
+- EndOfDay.razor has "Verify Drops" button and Daily Cash Drops summary card
+- Localization complete for all new components
+- Plan 09-03 pending (Daily Close UI)
 
 **Files to Review:**
-- `.planning/phases/09-end-of-day-operations/09-04-SUMMARY.md` - Plan summary
-- `src/MotoRent.Client/Pages/Staff/TillTransactionSearch.razor` - Receipt search page
-- `src/MotoRent.Client/Layout/StaffLayout.razor` - Updated navigation
-
-**Note:** Pre-existing files DailyClose.razor and CashDropVerificationDialog.razor have compilation errors and appear incomplete from prior development.
+- `.planning/phases/09-end-of-day-operations/09-02-SUMMARY.md` - Plan summary
+- `src/MotoRent.Client/Pages/Manager/CashDropVerificationDialog.razor` - Drop verification dialog
+- `src/MotoRent.Client/Pages/Manager/EndOfDay.razor` - Updated EOD page
 
 ---
 
-*Last updated: 2026-01-21*
+*Last updated: 2026-01-21 (after 09-02 completion)*
