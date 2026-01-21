@@ -264,6 +264,14 @@ Plans:
 
 **Dependencies:** Phase 8 (manager oversight tools must exist)
 
+**Plans:** 4 plans
+
+Plans:
+- [ ] 09-01-PLAN.md — Domain entities (DailyClose, ShortageLog) and EOD service methods
+- [ ] 09-02-PLAN.md — Cash drop verification dialog and EOD page integration
+- [ ] 09-03-PLAN.md — Daily close page with shortage logging and summary report
+- [ ] 09-04-PLAN.md — Staff receipt search and reprint page
+
 **Requirements:**
 - EOD-01: Manager can verify cash drops from all tills against safe contents
 - EOD-02: Manager can perform daily sales close (lock the day)
@@ -296,7 +304,7 @@ Plans:
 | 6 | Denomination Counting | DENOM-01 to DENOM-03 | Complete | 100% |
 | 7 | Till Closing and Reconciliation | TILL-06, TILL-07 | Complete | 100% |
 | 8 | Manager Oversight | MGR-01 to MGR-04 | Complete | 100% |
-| 9 | End of Day Operations | EOD-01 to EOD-04, RCPT-01 to RCPT-03 | Not Started | 0% |
+| 9 | End of Day Operations | EOD-01 to EOD-04, RCPT-01 to RCPT-03 | Planned | 0% |
 
 **Overall Progress:** 39/40 requirements complete (97%)
 
@@ -333,4 +341,4 @@ Plans:
 
 ---
 
-*Last updated: 2026-01-21 — Phase 8 complete (Manager Oversight)*
+*Last updated: 2026-01-21 — Phase 9 planned (End of Day Operations)*
