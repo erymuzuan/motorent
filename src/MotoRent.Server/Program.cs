@@ -73,6 +73,7 @@ builder.Services.AddScoped<AlertService>();
 builder.Services.AddScoped<DynamicPricingService>();
 builder.Services.AddScoped<RegionalPresetService>();
 builder.Services.AddScoped<DamageReportService>();
+builder.Services.AddScoped<VehicleInspectionService>();
 // Third-party owner services
 builder.Services.AddScoped<VehicleOwnerService>();
 builder.Services.AddScoped<OwnerPaymentService>();
@@ -161,6 +162,7 @@ if (rabbitMqEnabled)
 // Add JS Interop services
 builder.Services.AddScoped<FileUploadJsInterop>();
 builder.Services.AddScoped<GoogleMapJsInterop>();
+builder.Services.AddScoped<VehicleInspectorJsInterop>();
 
 // Add UI services (Modal, Toast, Dialog)
 builder.Services.AddScoped<IModalService, ModalService>();

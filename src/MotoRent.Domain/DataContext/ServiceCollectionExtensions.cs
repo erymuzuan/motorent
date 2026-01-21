@@ -60,6 +60,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IRepository<AssetExpense>, Repository<AssetExpense>>();
         services.AddSingleton<IRepository<AssetLoan>, Repository<AssetLoan>>();
         services.AddSingleton<IRepository<AssetLoanPayment>, Repository<AssetLoanPayment>>();
+        // Vehicle inspection entities
+        services.AddSingleton<IRepository<VehicleInspection>, Repository<VehicleInspection>>();
 
         // Note: Core entity repositories (Organization, User, Setting, etc.) are registered
         // via AddCoreRepository() from MotoRent.Core.Repository project

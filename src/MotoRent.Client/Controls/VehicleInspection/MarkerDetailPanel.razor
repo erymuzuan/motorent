@@ -1,0 +1,202 @@
+@using MotoRent.Domain.Models.VehicleInspection
+
+<div class="marker-detail-panel card @CssClass" style="@Style">
+    @if (Marker is null)
+    {
+        <div class="card-body text-center text-muted py-4">
+            <i class="ti ti-click fs-1 mb-2"></i>
+            <div>Select a marker or tap on the 3D model to add damage</div>
+        </div>
+    }
+    else
+    {
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span class="fw-medium">
+                <i class="ti ti-alert-circle me-1"></i>
+                Damage Details
+            </span>
+            <span class="badge @GetSeverityBadgeClass(Marker.Severity)">@Marker.Severity</span>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                @* Damage Type *@
+                <div class="col-6">
+                    <label class="form-label small">Damage Type</label>
+                    <select class="form-select form-select-sm" value="@Marker.DamageType" @onchange="OnDamageTypeChanged">
+                        <option value="Scratch">Scratch</option>
+                        <option value="Dent">Dent</option>
+                        <option value="Crack">Crack</option>
+                        <option value="Scuff">Scuff</option>
+                        <option value="MissingPart">Missing Part</option>
+                        <option value="Paint">Paint Damage</option>
+                        <option value="Rust">Rust</option>
+                        <option value="Mechanical">Mechanical</option>
+                        <option value="Broken">Broken</option>
+                        <option value="Wear">Wear</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                @* Severity *@
+                <div class="col-6">
+                    <label class="form-label small">Severity</label>
+                    <select class="form-select form-select-sm" value="@Marker.Severity" @onchange="OnSeverityChanged">
+                        <option value="Minor">Minor</option>
+                        <option value="Moderate">Moderate</option>
+                        <option value="Major">Major</option>
+                    </select>
+                </div>
+
+                @* Location Description *@
+                <div class="col-12">
+                    <label class="form-label small">Location</label>
+                    <input type="text" class="form-control form-control-sm"
+                           placeholder="e.g., Front left fairing"
+                           value="@Marker.LocationDescription"
+                           @onchange="OnLocationChanged" />
+                </div>
+
+                @* Description *@
+                <div class="col-12">
+                    <label class="form-label small">Description</label>
+                    <textarea class="form-control form-control-sm"
+                              rows="2"
+                              placeholder="Describe the damage..."
+                              @onchange="OnDescriptionChanged">@Marker.Description</textarea>
+                </div>
+
+                @* Estimated Cost *@
+                <div class="col-6">
+                    <label class="form-label small">Est. Cost (THB)</label>
+                    <input type="number" class="form-control form-control-sm"
+                           min="0" step="100"
+                           value="@Marker.EstimatedCost"
+                           @onchange="OnEstimatedCostChanged" />
+                </div>
+
+                @* Pre-existing Checkbox *@
+                <div class="col-6 d-flex align-items-end">
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input"
+                               id="preExistingCheck"
+                               checked="@Marker.IsPreExisting"
+                               @onchange="OnPreExistingChanged" />
+                        <label class="form-check-label small" for="preExistingCheck">
+                            Pre-existing
+                        </label>
+                    </div>
+                </div>
+
+                @* Photos section *@
+                @if (ShowPhotos)
+                {
+                    <div class="col-12">
+                        <label class="form-label small">Photos</label>
+                        <div class="d-flex flex-wrap gap-2">
+                            @if (Marker.PhotoStoreIds.Count > 0)
+                            {
+                                @foreach (var storeId in Marker.PhotoStoreIds)
+                                {
+                                    <div class="position-relative" style="width: 60px; height: 60px;">
+                                        <img src="/api/stores/@storeId" alt="Damage photo"
+                                             class="img-thumbnail w-100 h-100" style="object-fit: cover;" />
+                                        <button type="button" class="btn btn-danger btn-sm position-absolute"
+                                                style="top: -8px; right: -8px; padding: 0 4px; line-height: 1.2;"
+                                                @onclick="() => RemovePhoto(storeId)">
+                                            <i class="ti ti-x" style="font-size: 10px;"></i>
+                                        </button>
+                                    </div>
+                                }
+                            }
+                            <button type="button" class="btn btn-outline-secondary d-flex align-items-center justify-content-center"
+                                    style="width: 60px; height: 60px;"
+                                    @onclick="OnAddPhotoClicked">
+                                <i class="ti ti-camera-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public DamageMarker? Marker { get; set; }
+    [Parameter] public EventCallback<DamageMarker> MarkerChanged { get; set; }
+    [Parameter] public EventCallback OnAddPhoto { get; set; }
+    [Parameter] public EventCallback<string> OnRemovePhoto { get; set; }
+    [Parameter] public string? CssClass { get; set; }
+    [Parameter] public string? Style { get; set; }
+    [Parameter] public bool ShowPhotos { get; set; } = true;
+
+    private async Task OnDamageTypeChanged(ChangeEventArgs e)
+    {
+        if (this.Marker is null) return;
+        this.Marker.DamageType = e.Value?.ToString() ?? "Scratch";
+        await this.MarkerChanged.InvokeAsync(this.Marker);
+    }
+
+    private async Task OnSeverityChanged(ChangeEventArgs e)
+    {
+        if (this.Marker is null) return;
+        this.Marker.Severity = e.Value?.ToString() ?? "Minor";
+        await this.MarkerChanged.InvokeAsync(this.Marker);
+    }
+
+    private async Task OnLocationChanged(ChangeEventArgs e)
+    {
+        if (this.Marker is null) return;
+        this.Marker.LocationDescription = e.Value?.ToString();
+        await this.MarkerChanged.InvokeAsync(this.Marker);
+    }
+
+    private async Task OnDescriptionChanged(ChangeEventArgs e)
+    {
+        if (this.Marker is null) return;
+        this.Marker.Description = e.Value?.ToString();
+        await this.MarkerChanged.InvokeAsync(this.Marker);
+    }
+
+    private async Task OnEstimatedCostChanged(ChangeEventArgs e)
+    {
+        if (this.Marker is null) return;
+        if (decimal.TryParse(e.Value?.ToString(), out var cost))
+        {
+            this.Marker.EstimatedCost = cost;
+        }
+        else
+        {
+            this.Marker.EstimatedCost = null;
+        }
+        await this.MarkerChanged.InvokeAsync(this.Marker);
+    }
+
+    private async Task OnPreExistingChanged(ChangeEventArgs e)
+    {
+        if (this.Marker is null) return;
+        this.Marker.IsPreExisting = (bool)(e.Value ?? false);
+        await this.MarkerChanged.InvokeAsync(this.Marker);
+    }
+
+    private async Task OnAddPhotoClicked()
+    {
+        await this.OnAddPhoto.InvokeAsync();
+    }
+
+    private async Task RemovePhoto(string storeId)
+    {
+        if (this.Marker is null) return;
+        this.Marker.PhotoStoreIds.Remove(storeId);
+        await this.MarkerChanged.InvokeAsync(this.Marker);
+        await this.OnRemovePhoto.InvokeAsync(storeId);
+    }
+
+    private static string GetSeverityBadgeClass(string severity) => severity switch
+    {
+        "Minor" => "bg-success",
+        "Moderate" => "bg-warning text-dark",
+        "Major" => "bg-danger",
+        _ => "bg-secondary"
+    };
+}

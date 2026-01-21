@@ -1,7 +1,9 @@
 @using MotoRent.Domain.Entities
 @using MotoRent.Domain.Models
+@using MotoRent.Domain.Models.VehicleInspection
 @using MotoRent.Client.Components.Shared
 @using MotoRent.Client.Controls
+@using MotoRent.Client.Controls.VehicleInspection
 @inherits LocalizedDialogBase<Rental, CheckOutDialog>
 @inject RentalService RentalService
 @inject RenterService RenterService
@@ -12,6 +14,7 @@
 @inject ServiceLocationService LocationService
 @inject OperatingHoursService HoursService
 @inject RentalPricingService PricingService
+@inject VehicleInspectionService VehicleInspectionService
 
 <div class="checkout-dialog">
     @if (m_loading)
@@ -287,7 +290,102 @@
                 @Localizer["VehicleCondition"]
             </h5>
 
-            <div class="damage-options">
+            @* Inspection Mode Toggle *@
+            <div class="inspection-mode-toggle mb-3">
+                <div class="btn-group w-100" role="group">
+                    <button type="button" class="btn @(m_use3DInspection ? "btn-outline-primary" : "btn-primary")"
+                            @onclick="@(() => m_use3DInspection = false)">
+                        <i class="ti ti-list-check me-1"></i>
+                        @Localizer["StandardInspection"]
+                    </button>
+                    <button type="button" class="btn @(m_use3DInspection ? "btn-primary" : "btn-outline-primary")"
+                            @onclick="@(() => m_use3DInspection = true)">
+                        <i class="ti ti-3d-cube-sphere me-1"></i>
+                        @Localizer["3DInspection"]
+                    </button>
+                </div>
+            </div>
+
+            @if (m_use3DInspection)
+            {
+                @* 3D Vehicle Inspection Mode *@
+                <div class="inspection-3d-container">
+                    <div class="row">
+                        <div class="col-lg-8">
+                            <VehicleInspector @ref="m_vehicleInspector"
+                                              ModelPath="@GetVehicleModelPath()"
+                                              Height="350"
+                                              Markers="@m_inspectionMarkers"
+                                              MarkersChanged="OnInspectionMarkersChanged"
+                                              OnMarkerAdded="OnMarkerAdded"
+                                              OnMarkerSelected="OnMarkerSelected"
+                                              ShowMarkersList="false" />
+                        </div>
+                        <div class="col-lg-4">
+                            <MarkerDetailPanel Marker="@m_selectedMarker"
+                                               MarkerChanged="OnMarkerUpdated"
+                                               ShowPhotos="true"
+                                               OnAddPhoto="OnAddMarkerPhoto" />
+
+                            @if (m_inspectionMarkers.Count > 0)
+                            {
+                                <div class="card mt-3">
+                                    <div class="card-header">
+                                        <h5 class="card-title mb-0">
+                                            @Localizer["DamageMarkers"] (@m_inspectionMarkers.Count)
+                                        </h5>
+                                    </div>
+                                    <div class="list-group list-group-flush" style="max-height: 200px; overflow-y: auto;">
+                                        @for (int i = 0; i < m_inspectionMarkers.Count; i++)
+                                        {
+                                            var idx = i;
+                                            var marker = m_inspectionMarkers[i];
+                                            <button type="button"
+                                                    class="list-group-item list-group-item-action d-flex justify-content-between align-items-center @(m_selectedMarker?.MarkerId == marker.MarkerId ? "active" : "")"
+                                                    @onclick="@(() => SelectMarkerByIndex(idx))">
+                                                <span>
+                                                    <span class="badge bg-secondary rounded-pill me-1">@(idx + 1)</span>
+                                                    @marker.DamageType
+                                                </span>
+                                                <span class="badge @GetSeverityBadgeClass(marker.Severity)">
+                                                    @marker.Severity
+                                                </span>
+                                            </button>
+                                        }
+                                    </div>
+                                    <div class="card-footer">
+                                        <div class="d-flex justify-content-between small">
+                                            <span>@Localizer["EstimatedTotal"]:</span>
+                                            <strong class="text-danger">
+                                                @FormatCurrency(m_inspectionMarkers.Sum(m => m.EstimatedCost ?? 0))
+                                            </strong>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    @* Pre-rental comparison if available *@
+                    @if (m_preRentalInspection != null)
+                    {
+                        <div class="alert alert-info mt-3">
+                            <i class="ti ti-info-circle me-1"></i>
+                            @Localizer["PreRentalInspectionFound", m_preRentalInspection.Markers.Count]
+                            @if (m_preRentalInspection.Markers.Count > 0)
+                            {
+                                <span class="ms-2">
+                                    @Localizer["PreExistingDamageMarked"]
+                                </span>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                @* Standard Inspection Mode *@
+                <div class="damage-options">
                 <div class="damage-option @(m_damageLevel == "None" ? "selected" : "") damage-none"
                      @onclick="@(() => m_damageLevel = "None")">
                     <div class="damage-icon">
@@ -400,6 +498,7 @@
                     </div>
                 </div>
             }
+            } @* End of Standard Inspection Mode else block *@
 
             @* Navigation Buttons *@
             <div class="step-nav">
@@ -1278,6 +1377,13 @@
     private DamagePhotoUpload? m_damagePhotoUpload;
     private List<string> m_damagePhotoPaths = [];
 
+    // 3D Inspection
+    private bool m_use3DInspection;
+    private VehicleInspector? m_vehicleInspector;
+    private List<DamageMarker> m_inspectionMarkers = [];
+    private DamageMarker? m_selectedMarker;
+    private VehicleInspection? m_preRentalInspection;
+
     // Settlement
     private string m_refundMethod = "Cash";
     private bool m_refundProcessed;
@@ -1304,7 +1410,10 @@
 
     private decimal m_extraDaysCharge => this.m_extraDays * this.Entity.RentalRate;
     private decimal m_dropoffTotalFees => this.m_dropoffLocationFee + this.m_dropoffOutOfHoursFee;
-    private decimal m_totalAdditional => this.m_extraDaysCharge + (this.m_damageLevel != "None" ? this.m_damageEstimate : 0) + this.m_dropoffTotalFees;
+    private decimal m_3dInspectionDamageEstimate => this.m_inspectionMarkers.Sum(m => m.EstimatedCost ?? 0);
+    private decimal m_totalAdditional => this.m_extraDaysCharge +
+        (this.m_use3DInspection ? this.m_3dInspectionDamageEstimate : (this.m_damageLevel != "None" ? this.m_damageEstimate : 0)) +
+        this.m_dropoffTotalFees;
     private decimal m_refundAmount => Math.Max(0, this.m_depositAmount - this.m_totalAdditional);
 
     private bool CanComplete => (this.m_actualReturnDate.HasValue || this.m_isIntervalRental) &&
@@ -1387,6 +1496,18 @@
                 {
                     this.m_dropoffTime = this.Entity.ScheduledDropoffTime.Value;
                 }
+            }
+
+            // Load pre-rental inspection for 3D comparison (if exists)
+            this.m_preRentalInspection = await this.VehicleInspectionService.GetPreRentalInspectionAsync(this.Entity.RentalId);
+            if (this.m_preRentalInspection != null)
+            {
+                // Pre-populate markers as pre-existing
+                foreach (var marker in this.m_preRentalInspection.Markers)
+                {
+                    marker.IsPreExisting = true;
+                }
+                this.m_inspectionMarkers = [.. this.m_preRentalInspection.Markers];
             }
         }
         catch (Exception ex)
@@ -1523,4 +1644,69 @@
             this.Saving = false;
         }
     }
+
+    #region 3D Inspection Methods
+
+    private string GetVehicleModelPath()
+    {
+        if (this.m_vehicle == null) return "models/vehicles/scooter-generic.glb";
+
+        return VehicleInspectionService.GetModelPath(
+            this.m_vehicle.VehicleType,
+            this.m_vehicle.EngineCC);
+    }
+
+    private void OnInspectionMarkersChanged(List<DamageMarker> markers)
+    {
+        this.m_inspectionMarkers = markers;
+        // Update damage estimate from inspection markers
+        if (this.m_use3DInspection)
+        {
+            this.m_damageEstimate = this.m_3dInspectionDamageEstimate;
+            this.m_damageLevel = markers.Count > 0 ? "Minor" : "None";
+        }
+    }
+
+    private void OnMarkerAdded(DamageMarker marker)
+    {
+        this.m_selectedMarker = marker;
+    }
+
+    private void OnMarkerSelected(DamageMarker marker)
+    {
+        this.m_selectedMarker = marker;
+    }
+
+    private void OnMarkerUpdated(DamageMarker marker)
+    {
+        if (this.m_selectedMarker != null && this.m_vehicleInspector != null)
+        {
+            this.m_vehicleInspector.UpdateMarker(marker);
+            this.m_selectedMarker = marker;
+        }
+    }
+
+    private void SelectMarkerByIndex(int index)
+    {
+        if (index >= 0 && index < this.m_inspectionMarkers.Count)
+        {
+            this.m_selectedMarker = this.m_inspectionMarkers[index];
+        }
+    }
+
+    private async Task OnAddMarkerPhoto()
+    {
+        // TODO: Open photo upload dialog for the selected marker
+        await Task.CompletedTask;
+    }
+
+    private static string GetSeverityBadgeClass(string severity) => severity switch
+    {
+        "Minor" => "bg-success",
+        "Moderate" => "bg-warning text-dark",
+        "Major" => "bg-danger",
+        _ => "bg-secondary"
+    };
+
+    #endregion
 }
