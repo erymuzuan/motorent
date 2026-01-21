@@ -269,4 +269,21 @@ public static class SettingKeys
     public const string Fleet_EnableVan = "Fleet.EnableVan";
 
     #endregion
+
+    #region Till Settings
+
+    /// <summary>
+    /// Variance threshold in THB for manager alerts (decimal).
+    /// Sessions with variance exceeding this absolute amount trigger alerts.
+    /// Default: 100 THB if not configured.
+    /// </summary>
+    public const string Till_VarianceAlertThreshold = "Till.VarianceAlertThreshold";
+
+    /// <summary>
+    /// Default opening float amount in THB (decimal).
+    /// Used as suggestion when opening new till session.
+    /// </summary>
+    public const string Till_DefaultOpeningFloat = "Till.DefaultOpeningFloat";
+
+    #endregion
 }
