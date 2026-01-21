@@ -4,12 +4,13 @@ CREATE TABLE [<schema>].[DailyClose]
     [DailyCloseId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
     -- Computed columns for indexing
     [ShopId] AS CAST(JSON_VALUE([Json], '$.ShopId') AS INT),
-    [Date] AS CAST(JSON_VALUE([Json], '$.Date') AS DATE) PERSISTED,
     [Status] AS CAST(JSON_VALUE([Json], '$.Status') AS NVARCHAR(20)),
     [ClosedByUserName] AS CAST(JSON_VALUE([Json], '$.ClosedByUserName') AS NVARCHAR(100)),
-    [ClosedAt] AS CONVERT(DATETIMEOFFSET, JSON_VALUE([Json], '$.ClosedAt'), 127) PERSISTED,
     [TotalVariance] AS CAST(JSON_VALUE([Json], '$.TotalVariance') AS DECIMAL(18,2)),
     [WasReopened] AS CAST(JSON_VALUE([Json], '$.WasReopened') AS BIT),
+    -- Persistent columns for DATE/DATETIMEOFFSET (not computed from JSON)
+    [Date] DATE NOT NULL,
+    [ClosedAt] DATETIMEOFFSET NULL,
     -- JSON storage
     [Json] NVARCHAR(MAX) NOT NULL,
     -- Audit columns

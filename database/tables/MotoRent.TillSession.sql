@@ -6,14 +6,15 @@ CREATE TABLE [<schema>].[TillSession]
     [ShopId] AS CAST(JSON_VALUE([Json], '$.ShopId') AS INT),
     [StaffUserName] AS CAST(JSON_VALUE([Json], '$.StaffUserName') AS NVARCHAR(100)),
     [Status] AS CAST(JSON_VALUE([Json], '$.Status') AS NVARCHAR(30)),
-    [OpenedAt] AS CONVERT(DATETIMEOFFSET, JSON_VALUE([Json], '$.OpenedAt'), 127) PERSISTED,
-    [ClosedAt] AS CONVERT(DATETIMEOFFSET, JSON_VALUE([Json], '$.ClosedAt'), 127) PERSISTED,
     [VerifiedByUserName] AS CAST(JSON_VALUE([Json], '$.VerifiedByUserName') AS NVARCHAR(100)),
-    [VerifiedAt] AS CONVERT(DATETIMEOFFSET, JSON_VALUE([Json], '$.VerifiedAt'), 127) PERSISTED,
     [ClosedByUserName] AS CAST(JSON_VALUE([Json], '$.ClosedByUserName') AS NVARCHAR(100)),
     [IsForceClose] AS CAST(JSON_VALUE([Json], '$.IsForceClose') AS BIT),
     [IsLateClose] AS CAST(JSON_VALUE([Json], '$.IsLateClose') AS BIT),
-    [ExpectedCloseDate] AS CONVERT(DATE, JSON_VALUE([Json], '$.ExpectedCloseDate'), 23) PERSISTED,
+    -- Persistent columns for DATE/DATETIMEOFFSET (not computed from JSON)
+    [OpenedAt] DATETIMEOFFSET NOT NULL,
+    [ClosedAt] DATETIMEOFFSET NULL,
+    [VerifiedAt] DATETIMEOFFSET NULL,
+    [ExpectedCloseDate] DATE NULL,
     -- JSON storage
     [Json] NVARCHAR(MAX) NOT NULL,
     -- Audit columns
