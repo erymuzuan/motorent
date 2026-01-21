@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using MotoRent.Domain.Entities;
 using MotoRent.Domain.Messaging;
+using MotoRent.Domain.QueryProviders;
 
 namespace MotoRent.Domain.DataContext;
 
@@ -9,21 +10,24 @@ public partial class RentalDataContext
     private QueryProvider QueryProvider { get; }
     private IMessageBroker? MessageBroker { get; }
     private string? AccountNo { get; }
+    private IPersistence? Persistence { get; }
 
     public RentalDataContext() : this(ObjectBuilder.GetObject<QueryProvider>()) { }
 
-    public RentalDataContext(QueryProvider provider, IMessageBroker? messageBroker = null, string? accountNo = null)
+    public RentalDataContext(QueryProvider provider, IMessageBroker? messageBroker = null,
+        string? accountNo = null, IPersistence? persistence = null)
     {
         this.QueryProvider = provider;
         this.MessageBroker = messageBroker;
         this.AccountNo = accountNo;
+        this.Persistence = persistence;
     }
 
     /// <summary>
     /// Creates a new query for the specified entity type.
     /// Preferred pattern over using Query properties directly.
     /// </summary>
-    public Query<T> CreateQuery<T>() where T : Entity, new()
+    public IQueryable<T> CreateQuery<T>() where T : Entity, new()
     {
         return new Query<T>(this.QueryProvider);
     }
@@ -331,10 +335,37 @@ public partial class RentalDataContext
         return new PersistenceSession(this, username);
     }
 
-    internal async Task<SubmitOperation> SubmitChangesAsync(PersistenceSession session, string operation, string username)
+    internal async Task<SubmitOperation> SubmitChangesAsync(PersistenceSession session)
+    {
+        // Use injected IPersistence if available
+        if (this.Persistence != null)
+        {
+            return await this.Persistence.SubmitChanges(
+                session.AttachedCollection,
+                session.DeletedCollection,
+                session);
+        }
+
+        // Fallback to ObjectBuilder for backward compatibility
+        var persistence = ObjectBuilder.GetObjectOrDefault<IPersistence>();
+        if (persistence != null)
+        {
+            return await persistence.SubmitChanges(
+                session.AttachedCollection,
+                session.DeletedCollection,
+                session);
+        }
+
+        // Legacy fallback: reflection-based individual calls
+        return await this.LegacySubmitChangesAsync(session);
+    }
+
+    private async Task<SubmitOperation> LegacySubmitChangesAsync(PersistenceSession session)
     {
         int inserted = 0, updated = 0, deleted = 0;
         var processedEntities = new List<(Entity Entity, CrudOperation Crud)>();
+        var username = session.Username;
+        var operation = session.Operation ?? "";
 
         try
         {
