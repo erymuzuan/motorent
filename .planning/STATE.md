@@ -9,7 +9,7 @@
 
 **Core Value:** Business visibility and cash control - owners can see if their assets are profitable, where cash is leaking, and whether staff are handling money correctly.
 
-**Current Focus:** Phase 7 in progress. Session close metadata and multi-currency variance tracking implemented. Next: Close dialog UI integration.
+**Current Focus:** Phase 7 in progress. Close dialog with summary step complete. Next: Session close summary view.
 
 **Key Constraints:**
 - Tech stack: Blazor Server + WASM, .NET 10, SQL Server
@@ -22,17 +22,17 @@
 ## Current Position
 
 **Phase:** 7 of 9 (Till Closing and Reconciliation)
-**Plan:** 1 of 3 complete
+**Plan:** 2 of 3 complete
 **Status:** In progress
 
 ```
-Milestone Progress: [########..] 84%
-Phase 7 Progress:   [###.......] 33%
+Milestone Progress: [########..] 88%
+Phase 7 Progress:   [######....] 67%
 ```
 
-**Last Activity:** 2026-01-21 - Completed 07-01-PLAN.md (Session Close Metadata)
+**Last Activity:** 2026-01-21 - Completed 07-02-PLAN.md (Close Dialog UI Integration)
 
-**Next Action:** Execute 07-02-PLAN.md (Close Dialog UI Integration)
+**Next Action:** Execute 07-03-PLAN.md (Session Close Summary View)
 
 ---
 
@@ -53,6 +53,21 @@ Phase 7 Progress:   [###.......] 33%
 - SQL table with ClosedByUserName and IsForceClose computed columns
 - CloseSessionAsync overload accepting List<CurrencyDenominationBreakdown>
 - ForceCloseSessionAsync for manager-approved emergency close
+
+### Plan 07-02: Close Dialog UI Integration - COMPLETE
+
+| Task | Status | Commit |
+|------|--------|--------|
+| Task 1: Add summary step to TillCloseSessionDialog | Done | f0a6289 |
+| Task 2: Add localization resources | Done | ab83950 |
+
+**Key Deliverables:**
+- Two-step close workflow: Count -> Summary -> Confirm
+- Per-currency variance table with color coding (green/blue/red)
+- Overall variance in THB with alert styling
+- Back button to return to denomination entry
+- Uses new CloseSessionAsync overload with breakdowns
+- Localization: English, Thai, Malay (8 new keys + new ms.resx file)
 
 ---
 
@@ -244,8 +259,8 @@ Phase 7 Progress:   [###.......] 33%
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Plans completed | 21 | Phase 1: 4; Phase 2: 3; Phase 3: 2; Phase 4: 3; Phase 5: 5; Phase 6: 3; Phase 7: 1 |
-| Requirements done | 33/40 | Phase 7 in progress |
+| Plans completed | 22 | Phase 1: 4; Phase 2: 3; Phase 3: 2; Phase 4: 3; Phase 5: 5; Phase 6: 3; Phase 7: 2 |
+| Requirements done | 34/40 | Phase 7 in progress |
 | Phases done | 6/9 | Phase 7 in progress |
 | Blockers hit | 0 | - |
 
@@ -305,6 +320,9 @@ Phase 7 Progress:   [###.......] 33%
 | Per-currency variance dictionaries | (07-01) Dictionary<string, decimal> matches CurrencyBalances pattern | 2026-01-21 |
 | Force close zero variance | (07-01) Manager approved bypass should not create phantom variances | 2026-01-21 |
 | Backward-compatible close overload | (07-01) Existing code continues to work, new code uses richer API | 2026-01-21 |
+| Two-step close workflow | (07-02) State toggle for step navigation, no complex wizard framework | 2026-01-21 |
+| Variance colors in summary | (07-02) text-success (0), text-info (over), text-danger (short) | 2026-01-21 |
+| Overall variance in THB | (07-02) Sum per-currency variances with exchange rate conversion | 2026-01-21 |
 
 ### Architecture Notes
 
@@ -313,6 +331,8 @@ Phase 7 Progress:   [###.......] 33%
 - SQL table with ClosedByUserName, IsForceClose computed columns
 - CloseSessionAsync overload for multi-currency reconciliation
 - ForceCloseSessionAsync for manager-approved emergency close
+- TillCloseSessionDialog with two-step workflow and summary view
+- Per-currency variance table with color-coded display
 
 **Phase 6 Components (Complete):**
 - TillDenominationCount entity with denomination breakdowns
@@ -382,18 +402,18 @@ None currently.
 
 ## Session Continuity
 
-**Last Session:** 2026-01-21 - Completed 07-01-PLAN.md
+**Last Session:** 2026-01-21 - Completed 07-02-PLAN.md
 
 **Context for Next Session:**
-- Phase 7 plan 1 complete: Session close metadata and service methods
-- TillSession has ActualBalances and ClosingVariances dictionaries
-- CloseSessionAsync overload ready for breakdowns from ClosingCountPanel
-- ForceCloseSessionAsync ready for manager PIN integration
+- Phase 7 plans 1-2 complete: Service methods and close dialog UI
+- TillCloseSessionDialog now has two-step workflow with summary
+- Dialog uses new CloseSessionAsync overload with breakdowns
+- All variance data stored in TillSession for history display
 
 **Files to Review:**
-- `.planning/phases/07-till-closing-reconciliation/07-01-SUMMARY.md` - Plan summary
-- `.planning/phases/07-till-closing-reconciliation/07-02-PLAN.md` - Next plan
-- `src/MotoRent.Services/TillService.Session.cs` - New close methods
+- `.planning/phases/07-till-closing-reconciliation/07-02-SUMMARY.md` - Plan summary
+- `.planning/phases/07-till-closing-reconciliation/07-03-PLAN.md` - Next plan
+- `src/MotoRent.Client/Pages/Staff/TillCloseSessionDialog.razor` - Updated dialog
 
 ---
 
