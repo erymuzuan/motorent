@@ -9,7 +9,7 @@
 
 **Core Value:** Business visibility and cash control - owners can see if their assets are profitable, where cash is leaking, and whether staff are handling money correctly.
 
-**Current Focus:** Phase 8 complete. Manager dashboard, handover report, and query methods all done.
+**Current Focus:** Phase 9 in progress. EOD entities and service methods complete (09-01).
 
 **Key Constraints:**
 - Tech stack: Blazor Server + WASM, .NET 10, SQL Server
@@ -21,18 +21,41 @@
 
 ## Current Position
 
-**Phase:** 8 of 9 (Manager Oversight) - COMPLETE
-**Plan:** 3 of 3 complete
-**Status:** Phase complete
+**Phase:** 9 of 9 (End of Day Operations) - IN PROGRESS
+**Plan:** 1 of 4 complete
+**Status:** In progress
 
 ```
-Milestone Progress: [#########.] 97%
-Phase 8 Progress:   [##########] 100%
+Milestone Progress: [#########.] 98%
+Phase 9 Progress:   [##........] 25%
 ```
 
-**Last Activity:** 2026-01-21 - Completed 08-02-PLAN.md (Manager Dashboard UI)
+**Last Activity:** 2026-01-21 - Completed 09-01-PLAN.md (Domain Entities & Service Methods)
 
-**Next Action:** Execute Phase 9 (End of Day operations).
+**Next Action:** Execute 09-02-PLAN.md (Daily Close UI).
+
+---
+
+## Phase 9 Progress - IN PROGRESS
+
+### Plan 09-01: Domain Entities & Service Methods - COMPLETE
+
+| Task | Status | Commit |
+|------|--------|--------|
+| Task 1: Create DailyClose and ShortageLog entities | Done | bbf92d2 |
+| Task 2: Create SQL table scripts | Done | d8a866b |
+| Task 3: Create TillService.eod.cs with EOD methods | Done | d1c5900 |
+
+**Key Deliverables:**
+- DailyClose entity with status enum (Open, Closed, Reconciled)
+- ShortageLog entity for variance accountability records
+- SQL tables with computed columns and indexes
+- TillService.eod.cs with 10 EOD methods:
+  - GetOrCreateDailyCloseAsync, GetDailyCloseAsync
+  - PerformDailyCloseAsync, IsDayClosedAsync, ReopenDayAsync
+  - LogShortageAsync, GetShortageLogsAsync, GetShortageLogsByStaffAsync
+  - GetDropTotalsByCurrencyAsync, GetDropTransactionsAsync
+- Repository registrations for DailyClose and ShortageLog
 
 ---
 
@@ -314,9 +337,9 @@ Phase 8 Progress:   [##########] 100%
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Plans completed | 25 | Phase 1: 4; Phase 2: 3; Phase 3: 2; Phase 4: 3; Phase 5: 5; Phase 6: 3; Phase 7: 2; Phase 8: 3 |
-| Requirements done | 39/40 | Phase 8 complete (MGR-01 to MGR-04) |
-| Phases done | 8/9 | Phase 9 pending |
+| Plans completed | 26 | Phase 1: 4; Phase 2: 3; Phase 3: 2; Phase 4: 3; Phase 5: 5; Phase 6: 3; Phase 7: 2; Phase 8: 3; Phase 9: 1 |
+| Requirements done | 39/40 | Phase 9 in progress |
+| Phases done | 8/9 | Phase 9 in progress |
 | Blockers hit | 0 | - |
 
 ---
@@ -388,8 +411,18 @@ Phase 8 Progress:   [##########] 100%
 | ActiveSessionCard composition | (08-02) Separate component for session cards - reusable display pattern | 2026-01-21 |
 | VarianceAlertBadge simple | (08-02) MotoRentComponentBase inheritance, no localization (icon+number only) | 2026-01-21 |
 | Settings GetDecimalAsync API | (08-02) ISettingConfig provides typed getters, not GetSettingAsync | 2026-01-21 |
+| Date-only daily close | (09-01) One DailyClose per shop per calendar day, time ignored | 2026-01-21 |
+| Shortage always positive | (09-01) Math.Abs(amount) for consistent representation | 2026-01-21 |
+| Repository in domain extensions | (09-01) Repository<T> in ServiceCollectionExtensions.cs for tenant entities | 2026-01-21 |
 
 ### Architecture Notes
+
+**Phase 9 Components (In Progress):**
+- DailyClose entity (97 lines) - Day-level close state tracking
+- ShortageLog entity (64 lines) - Variance accountability records
+- MotoRent.DailyClose.sql - SQL table with unique index on ShopId+Date
+- MotoRent.ShortageLog.sql - SQL table with staff accountability indexes
+- TillService.eod.cs (290 lines) - EOD methods for daily close and shortage logging
 
 **Phase 8 Components (Complete):**
 - Till_VarianceAlertThreshold settings key (100 THB default)
@@ -481,22 +514,20 @@ None currently.
 
 ## Session Continuity
 
-**Last Session:** 2026-01-21 - Completed Phase 8 (Manager Oversight)
+**Last Session:** 2026-01-21 - Completed 09-01-PLAN.md (Domain Entities & Service Methods)
 
 **Context for Next Session:**
-- Phase 8 verified and complete: All 4 requirements satisfied
-- Manager dashboard at `/manager/till-dashboard`
-- Active sessions cards with per-currency balances
-- Closed sessions table with verify workflow (self-prevention)
-- Variance alerts with configurable threshold
-- Handover report with sales clearing journal format
-- Ready for Phase 9 (End of Day Operations)
+- Phase 9 plan 01 complete: EOD entities and service methods ready
+- DailyClose entity provides day-level close state tracking
+- ShortageLog entity enables variance accountability
+- TillService.eod.cs has all EOD methods for daily close workflow
+- Ready for 09-02 (Daily Close UI)
 
 **Files to Review:**
-- `.planning/phases/08-manager-oversight/08-VERIFICATION.md` - Phase verification
-- `.planning/ROADMAP.md` - Phase 9 overview
-- `src/MotoRent.Client/Pages/Manager/TillDashboard.razor` - Dashboard page
-- `src/MotoRent.Client/Pages/Manager/HandoverReportDialog.razor` - Report dialog
+- `.planning/phases/09-end-of-day-operations/09-01-SUMMARY.md` - Plan summary
+- `src/MotoRent.Domain/Entities/DailyClose.cs` - Daily close entity
+- `src/MotoRent.Domain/Entities/ShortageLog.cs` - Shortage log entity
+- `src/MotoRent.Services/TillService.eod.cs` - EOD service methods
 
 ---
 
