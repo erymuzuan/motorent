@@ -121,6 +121,41 @@
             </div>
         </div>
 
+        @* Daily Cash Drops Summary *@
+        @if (m_summary.TotalDropped > 0)
+        {
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h4 class="card-title mb-0">
+                        <i class="ti ti-archive me-2 text-purple"></i>
+                        @Localizer["DailyCashDrops"]
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        @foreach (var currency in m_dropTotalsByCurrency.Keys.OrderBy(c => c == SupportedCurrencies.THB ? 0 : 1))
+                        {
+                            var amount = m_dropTotalsByCurrency[currency];
+                            if (amount > 0)
+                            {
+                                <div class="col-md-3 col-6">
+                                    <div class="d-flex align-items-center">
+                                        <span class="avatar bg-purple-lt me-2">
+                                            <span class="fw-bold">@currency</span>
+                                        </span>
+                                        <div>
+                                            <small class="text-secondary d-block">@currency</small>
+                                            <span class="fw-semibold">@FormatDropAmount(amount, currency)</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
         @* Payment Breakdown *@
         @if (m_summary.TotalElectronicPayments > 0)
         {
@@ -252,6 +287,14 @@
                                                 @onclick="@(() => ViewSessionDetails(session))">
                                             <i class="ti ti-eye"></i>
                                         </button>
+                                        @if (session.TotalDropped > 0 && session.ClosedAt.HasValue)
+                                        {
+                                            <button type="button" class="btn btn-sm btn-ghost-purple"
+                                                    title="@Localizer["VerifyDrops"]"
+                                                    @onclick="@(() => ViewDropVerification(session))">
+                                                <i class="ti ti-archive"></i>
+                                            </button>
+                                        }
                                         @if (session.Status != TillSessionStatus.Open && session.Status != TillSessionStatus.Verified)
                                         {
                                             <button type="button" class="btn btn-sm btn-ghost-primary"
@@ -311,6 +354,7 @@
     private int m_shopId;
     private DateTime m_selectedDate = DateTime.Today;
     private DailyTillSummary? m_summary;
+    private Dictionary<string, decimal> m_dropTotalsByCurrency = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -333,6 +377,30 @@
             if (m_shopId > 0)
             {
                 m_summary = await TillService.GetDailySummaryAsync(m_shopId, m_selectedDate);
+
+                // Load drop totals by currency across all sessions
+                m_dropTotalsByCurrency.Clear();
+                if (m_summary is not null)
+                {
+                    foreach (var session in m_summary.Sessions)
+                    {
+                        if (session.TotalDropped > 0)
+                        {
+                            var sessionDrops = await TillService.GetDropTotalsByCurrencyAsync(session.TillSessionId);
+                            foreach (var kvp in sessionDrops)
+                            {
+                                if (m_dropTotalsByCurrency.TryGetValue(kvp.Key, out var existing))
+                                {
+                                    m_dropTotalsByCurrency[kvp.Key] = existing + kvp.Value;
+                                }
+                                else
+                                {
+                                    m_dropTotalsByCurrency[kvp.Key] = kvp.Value;
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
         catch (Exception ex)
@@ -368,6 +436,29 @@
             ShowSuccess(Localizer["SessionVerified"]);
             await LoadDataAsync();
         }
+    }
+
+    private async Task ViewDropVerification(TillSessionSummary session)
+    {
+        var result = await DialogService.Create<CashDropVerificationDialog>(Localizer["VerifyDrops"])
+            .WithParameter(x => x.SessionId, session.TillSessionId)
+            .WithParameter(x => x.StaffName, session.StaffDisplayName)
+            .WithParameter(x => x.TotalDropped, session.TotalDropped)
+            .WithSize(ModalSize.Large)
+            .ShowDialogAsync();
+
+        if (result is { Cancelled: false })
+        {
+            ShowSuccess(Localizer["DropsVerified"]);
+            await LoadDataAsync();
+        }
+    }
+
+    private static string FormatDropAmount(decimal amount, string currency)
+    {
+        return currency == SupportedCurrencies.THB
+            ? $"{amount:N0} {currency}"
+            : $"{amount:N2} {currency}";
     }
 
     private async Task VerifyAllSessions()
