@@ -24,9 +24,11 @@ public class ExchangeRateService(RentalDataContext context)
         var now = DateTimeOffset.Now;
 
         // Query for active rate for this currency
+        // Note: Uses chained Where calls because Repository only supports simple predicates
         var result = await Context.LoadAsync(
             Context.CreateQuery<ExchangeRate>()
-                .Where(r => r.Currency == currency && r.IsActive)
+                .Where(r => r.Currency == currency)
+                .Where(r => r.IsActive)
                 .OrderByDescending(r => r.EffectiveDate),
             page: 1, size: 1, includeTotalRows: false);
 
