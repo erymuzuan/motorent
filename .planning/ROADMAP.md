@@ -235,6 +235,13 @@ Plans:
 
 **Dependencies:** Phase 7 (till sessions must be closable with variance)
 
+**Plans:** 3 plans
+
+Plans:
+- [ ] 08-01-PLAN.md — TillService manager extensions (variance threshold, query methods)
+- [ ] 08-02-PLAN.md — Manager dashboard UI (active sessions, closed sessions table)
+- [ ] 08-03-PLAN.md — Shift handover report (sales clearing journal format)
+
 **Requirements:**
 - MGR-01: Manager can view dashboard of all open and closed till sessions
 - MGR-02: Manager can verify closed till sessions (sign-off workflow)
@@ -247,7 +254,7 @@ Plans:
 3. When staff closes with >100 THB variance, manager sees visual alert on dashboard
 4. Manager can generate PDF/print shift handover report showing all transactions and balances
 
-**Research Flag:** May need UX research for dashboard patterns
+**Research Flag:** None - research completed in 08-RESEARCH.md
 
 ---
 
@@ -288,7 +295,7 @@ Plans:
 | 5 | Refunds & Corrections | REFUND-01, REFUND-02, VOID-01 to VOID-03 | Complete | 100% |
 | 6 | Denomination Counting | DENOM-01 to DENOM-03 | Complete | 100% |
 | 7 | Till Closing and Reconciliation | TILL-06, TILL-07 | Complete | 100% |
-| 8 | Manager Oversight | MGR-01 to MGR-04 | Not Started | 0% |
+| 8 | Manager Oversight | MGR-01 to MGR-04 | Planned | 0% |
 | 9 | End of Day Operations | EOD-01 to EOD-04, RCPT-01 to RCPT-03 | Not Started | 0% |
 
 **Overall Progress:** 35/40 requirements complete (87%)
@@ -326,4 +333,4 @@ Plans:
 
 ---
 
-*Last updated: 2026-01-21 — Phase 7 complete (Till Closing and Reconciliation)*
+*Last updated: 2026-01-21 — Phase 8 planned (Manager Oversight)*
