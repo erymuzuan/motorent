@@ -9,7 +9,7 @@
 
 **Core Value:** Business visibility and cash control - owners can see if their assets are profitable, where cash is leaking, and whether staff are handling money correctly.
 
-**Current Focus:** Phase 8 in progress. Manager dashboard query methods complete. Next: Manager Dashboard UI.
+**Current Focus:** Phase 8 in progress. Handover report dialog complete. 2 of 3 plans done.
 
 **Key Constraints:**
 - Tech stack: Blazor Server + WASM, .NET 10, SQL Server
@@ -22,17 +22,17 @@
 ## Current Position
 
 **Phase:** 8 of 9 (Manager Oversight) - IN PROGRESS
-**Plan:** 1 of 3 complete
+**Plan:** 2 of 3 complete
 **Status:** In progress
 
 ```
-Milestone Progress: [########..] 89%
-Phase 8 Progress:   [###.......] 33%
+Milestone Progress: [#########.] 92%
+Phase 8 Progress:   [######....] 67%
 ```
 
-**Last Activity:** 2026-01-21 - Completed 08-01-PLAN.md (Manager Dashboard Query Methods)
+**Last Activity:** 2026-01-21 - Completed 08-03-PLAN.md (Handover Report Dialog)
 
-**Next Action:** Execute Plan 08-02 (Manager Dashboard UI).
+**Next Action:** Execute Plan 08-02 (Manager Dashboard UI) if not complete.
 
 ---
 
@@ -52,6 +52,23 @@ Phase 8 Progress:   [###.......] 33%
 - GetTotalVarianceInThbAsync for multi-currency variance calculation
 - GetVarianceAlertCountAsync for threshold-based alerts
 - Self-verification prevention in VerifySessionAsync
+
+### Plan 08-03: Handover Report Dialog - COMPLETE
+
+| Task | Status | Commit |
+|------|--------|--------|
+| Task 2: Add GetTransactionsForSessionAsync method | Done | 54bb2a6 |
+| Task 1: Create HandoverReportDialog with sales clearing journal | Done | 38bb568 |
+
+**Key Deliverables:**
+- `HandoverReportDialog.razor` (474 lines) - Sales clearing journal format
+- Credits: Cash payments (per currency), Card, PromptPay, Bank Transfer, Float Top Up
+- Debits: Cash shortages, Customer refunds, Cash drops, Expenses, Change given
+- Session info header with staff name, date, open/close times
+- Expected vs Actual balance with variance display
+- Multi-currency variance breakdown when applicable
+- Print/Download PDF via browser print
+- Localization: English, Thai, Malay (27 keys each)
 
 ---
 
@@ -278,8 +295,8 @@ Phase 8 Progress:   [###.......] 33%
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Plans completed | 23 | Phase 1: 4; Phase 2: 3; Phase 3: 2; Phase 4: 3; Phase 5: 5; Phase 6: 3; Phase 7: 2; Phase 8: 1 |
-| Requirements done | 35/40 | Phase 8 query methods |
+| Plans completed | 24 | Phase 1: 4; Phase 2: 3; Phase 3: 2; Phase 4: 3; Phase 5: 5; Phase 6: 3; Phase 7: 2; Phase 8: 2 |
+| Requirements done | 37/40 | Phase 8 handover report |
 | Phases done | 7/9 | Phase 8 in progress |
 | Blockers hit | 0 | - |
 
@@ -346,6 +363,9 @@ Phase 8 Progress:   [###.......] 33%
 | Current rates for variance conversion | (08-01) Use current exchange rates for variance calculation, not historical | 2026-01-21 |
 | Case-insensitive self-verification check | (08-01) OrdinalIgnoreCase for username comparison (OAuth providers) | 2026-01-21 |
 | Alert window of 1 day | (08-01) GetVarianceAlertCountAsync checks last 24 hours for alerts | 2026-01-21 |
+| Transactions ordered chronologically for report | (08-03) GetTransactionsForSessionAsync orders ascending for ledger display | 2026-01-21 |
+| Cash types aggregated per currency | (08-03) RentalPayment, BookingDeposit, etc. grouped under "Cash Payment" | 2026-01-21 |
+| Browser print for PDF | (08-03) No external library; browser handles PDF generation via print() | 2026-01-21 |
 
 ### Architecture Notes
 
@@ -356,7 +376,9 @@ Phase 8 Progress:   [###.......] 33%
 - TillService.GetRecentClosedSessionsAsync - Verification review (7-day window)
 - TillService.GetTotalVarianceInThbAsync - Multi-currency variance calculation
 - TillService.GetVarianceAlertCountAsync - Threshold-based alerts
+- TillService.GetTransactionsForSessionAsync - Handover report data
 - Self-verification prevention in VerifySessionAsync
+- HandoverReportDialog.razor (474 lines) - Sales clearing journal format
 
 **Phase 7 Components (Complete):**
 - TillSession extended with close metadata (5 new fields)
@@ -434,18 +456,18 @@ None currently.
 
 ## Session Continuity
 
-**Last Session:** 2026-01-21 - Completed Plan 08-01 (Manager Dashboard Query Methods)
+**Last Session:** 2026-01-21 - Completed Plan 08-03 (Handover Report Dialog)
 
 **Context for Next Session:**
-- Phase 8 in progress: Query methods complete, ready for UI
-- TillService has 4 new manager dashboard methods
-- Self-verification prevention in place
-- Settings keys ready for organization-level configuration
+- Phase 8 in progress: 2 of 3 plans complete
+- HandoverReportDialog ready for integration with manager dashboard
+- TillService has GetTransactionsForSessionAsync for report data
+- Localization complete for English, Thai, Malay
 
 **Files to Review:**
-- `.planning/phases/08-manager-oversight/08-01-SUMMARY.md` - Plan summary
-- `src/MotoRent.Services/TillService.manager.cs` - Manager methods
-- `src/MotoRent.Domain/Settings/SettingKeys.cs` - Till settings
+- `.planning/phases/08-manager-oversight/08-03-SUMMARY.md` - Plan summary
+- `src/MotoRent.Client/Pages/Manager/HandoverReportDialog.razor` - Report dialog
+- `src/MotoRent.Services/TillService.transaction.cs` - Transaction methods
 
 ---
 
