@@ -64,6 +64,111 @@ else if (this.m_session is null)
         </div>
     </div>
 }
+else if (this.m_isStaleSession)
+{
+    @* ========== STALE SESSION - MUST CLOSE BEFORE NEW SESSION ========== *@
+    <div class="mr-page-header mr-page-header-warning">
+        <div class="container-xl">
+            <nav class="mr-breadcrumb">
+                <span class="mr-breadcrumb-item"><a href="/"><i class="ti ti-home"></i></a></span>
+                <span class="mr-breadcrumb-separator"><i class="ti ti-chevron-right"></i></span>
+                <span class="mr-breadcrumb-item active">@Localizer["CashierTill"]</span>
+            </nav>
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="mr-page-title text-warning">
+                        <i class="ti ti-alert-triangle"></i>
+                        @Localizer["StaleSessionTitle"]
+                    </h1>
+                    <p class="mr-page-subtitle">@Localizer["StaleSessionClosePrompt"]</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container-xl py-4">
+        @* Warning Banner *@
+        <div class="alert alert-warning mb-4">
+            <div class="d-flex align-items-start">
+                <i class="ti ti-alert-triangle fs-2 me-3 text-warning"></i>
+                <div>
+                    <h4 class="alert-title mb-1">@Localizer["StaleSessionTitle"]</h4>
+                    <p class="mb-2">@Localizer["StaleSessionWarning", this.m_session!.OpenedAt.ToString("dddd, d MMMM yyyy")]</p>
+                    <p class="mb-0 small text-muted">
+                        <i class="ti ti-info-circle me-1"></i>
+                        @Localizer["LateClosureNote"]
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        @* Session Info Card *@
+        <div class="mr-card mb-4">
+            <div class="mr-card-header">
+                <i class="ti ti-cash-register text-warning me-2"></i>
+                <span class="mr-card-title">@Localizer["Till"] #@this.m_session.TillSessionId</span>
+                <span class="badge bg-warning text-dark ms-auto">@Localizer["SessionStale"]</span>
+            </div>
+            <div class="mr-card-body">
+                <div class="row g-3">
+                    <div class="col-6">
+                        <div class="text-secondary small">@Localizer["StaffName"]</div>
+                        <div class="fw-semibold">@this.m_session.StaffDisplayName</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-secondary small">@Localizer["OpenedOn"]</div>
+                        <div class="fw-semibold">@this.m_session.OpenedAt.ToString("d MMM yyyy HH:mm")</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-secondary small">@Localizer["OpeningFloat"]</div>
+                        <div class="fw-semibold">฿@this.m_session.OpeningFloat.ToString("N0")</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-secondary small">@Localizer["ExpectedCashInTill"]</div>
+                        <div class="fw-semibold">฿@this.m_session.ExpectedCash.ToString("N0")</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* Cash Summary *@
+        <div class="row g-3 mb-4">
+            <div class="col-6">
+                <div class="mr-till-stat-card mr-till-stat-in">
+                    <div class="mr-till-stat-icon">
+                        <i class="ti ti-trending-up"></i>
+                    </div>
+                    <div class="mr-till-stat-content">
+                        <div class="mr-till-stat-label">@Localizer["CashIn"]</div>
+                        <div class="mr-till-stat-value">฿@this.m_session.TotalCashIn.ToString("N0")</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="mr-till-stat-card mr-till-stat-out">
+                    <div class="mr-till-stat-icon">
+                        <i class="ti ti-trending-down"></i>
+                    </div>
+                    <div class="mr-till-stat-content">
+                        <div class="mr-till-stat-label">@Localizer["CashOut"]</div>
+                        <div class="mr-till-stat-value">฿@this.m_session.TotalCashOut.ToString("N0")</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* Close Session Button - Prominent *@
+        <div class="d-grid gap-2">
+            <button type="button" class="btn btn-warning btn-lg py-3" @onclick="this.CloseSessionDialog">
+                <i class="ti ti-door-exit me-2"></i>
+                @Localizer["CloseShift"]
+            </button>
+            <p class="text-center text-secondary small mb-0">
+                @Localizer["CloseShiftToStartNew"]
+            </p>
+        </div>
+    </div>
+}
 else
 {
     @* ========== ACTIVE SESSION - TILL DASHBOARD ========== *@
@@ -432,6 +537,7 @@ else
     private bool m_loading = true;
     private int m_shopId;
     private TillSession? m_session;
+    private bool m_isStaleSession;
     private List<TillTransaction> m_recentTransactions = [];
     private List<Receipt> m_sessionReceipts = [];
 
@@ -461,6 +567,9 @@ else
                     this.UserName);
                 this.m_session = null;
             }
+
+            // Check if session is stale (opened before today)
+            this.m_isStaleSession = TillService.IsSessionStale(this.m_session);
 
             // Get shop info - use session's shop if active, otherwise get default shop
             if (this.m_session is not null)

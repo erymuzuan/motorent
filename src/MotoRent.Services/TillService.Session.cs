@@ -18,6 +18,10 @@ public partial class TillService
         decimal openingFloat,
         string? notes = null)
     {
+        // Check if day is closed (EOD-04: closed days cannot have new transactions)
+        if (await this.IsDayClosedAsync(shopId, DateTime.Today))
+            return SubmitOperation.CreateFailure("Cannot open session - this day has been closed");
+
         // Check if staff already has an open session at this shop
         var existingSession = await this.GetActiveSessionAsync(shopId, staffUserName);
         if (existingSession is not null)
@@ -129,6 +133,19 @@ public partial class TillService
         this.Context.LoadOneAsync<TillSession>(s => s.TillSessionId == sessionId);
 
     /// <summary>
+    /// Checks if a session is stale (opened before today and still open).
+    /// Stale sessions must be closed before staff can open a new session.
+    /// </summary>
+    /// <param name="session">The session to check</param>
+    /// <returns>True if the session is stale and needs to be closed</returns>
+    public static bool IsSessionStale(TillSession? session)
+    {
+        if (session is null) return false;
+        if (session.Status != TillSessionStatus.Open) return false;
+        return session.OpenedAt.Date < DateTime.Today;
+    }
+
+    /// <summary>
     /// Closes a till session with reconciliation (single-currency, backward compatible).
     /// </summary>
     public async Task<SubmitOperation> CloseSessionAsync(
@@ -153,6 +170,13 @@ public partial class TillService
         session.ClosingNotes = notes;
         session.ClosedByUserName = username;
         session.IsForceClose = false;
+
+        // Detect late closure (session opened before today)
+        if (session.OpenedAt.Date < DateTimeOffset.Now.Date)
+        {
+            session.IsLateClose = true;
+            session.ExpectedCloseDate = session.OpenedAt.Date;
+        }
 
         // Determine status based on variance
         session.Status = session.Variance == 0
@@ -210,6 +234,13 @@ public partial class TillService
         session.ClosedByUserName = closedByUserName;
         session.ClosingNotes = notes;
         session.IsForceClose = false;
+
+        // Detect late closure (session opened before today)
+        if (session.OpenedAt.Date < DateTimeOffset.Now.Date)
+        {
+            session.IsLateClose = true;
+            session.ExpectedCloseDate = session.OpenedAt.Date;
+        }
 
         // Determine status based on ANY variance
         var hasAnyVariance = closingVariances.Values.Any(v => v != 0);
@@ -285,6 +316,13 @@ public partial class TillService
         session.IsForceClose = true;
         session.ForceCloseApprovedBy = approvedByUserName;
         session.Status = TillSessionStatus.Closed;
+
+        // Detect late closure (session opened before today)
+        if (session.OpenedAt.Date < DateTimeOffset.Now.Date)
+        {
+            session.IsLateClose = true;
+            session.ExpectedCloseDate = session.OpenedAt.Date;
+        }
 
         // Set per-currency actuals = expected (no variance)
         session.ActualBalances = new Dictionary<string, decimal>(session.CurrencyBalances);

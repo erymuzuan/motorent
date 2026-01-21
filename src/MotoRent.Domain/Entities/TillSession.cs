@@ -53,6 +53,18 @@ public class TillSession : Entity
     public string? ForceCloseApprovedBy { get; set; }
 
     /// <summary>
+    /// True if session was closed on a different day than it was opened.
+    /// Flagged for manager review due to date mismatch.
+    /// </summary>
+    public bool IsLateClose { get; set; }
+
+    /// <summary>
+    /// Original date when session should have been closed (OpenedAt.Date).
+    /// Set when IsLateClose is true.
+    /// </summary>
+    public DateTime? ExpectedCloseDate { get; set; }
+
+    /// <summary>
     /// Actual counted balances per currency at close.
     /// Key: currency code (THB, USD, EUR, CNY)
     /// Value: actual counted amount in that currency
