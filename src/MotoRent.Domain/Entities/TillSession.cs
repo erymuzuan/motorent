@@ -47,6 +47,26 @@ public class TillSession : Entity
     public DateTimeOffset? ClosedAt { get; set; }
     public string? ClosingNotes { get; set; }
 
+    // Close metadata (Phase 7)
+    public string? ClosedByUserName { get; set; }
+    public bool IsForceClose { get; set; }
+    public string? ForceCloseApprovedBy { get; set; }
+
+    /// <summary>
+    /// Actual counted balances per currency at close.
+    /// Key: currency code (THB, USD, EUR, CNY)
+    /// Value: actual counted amount in that currency
+    /// </summary>
+    public Dictionary<string, decimal> ActualBalances { get; set; } = new();
+
+    /// <summary>
+    /// Variance per currency at close (Actual - Expected).
+    /// Positive = over, Negative = short, Zero = balanced.
+    /// Key: currency code (THB, USD, EUR, CNY)
+    /// Value: variance in that currency
+    /// </summary>
+    public Dictionary<string, decimal> ClosingVariances { get; set; } = new();
+
     // Manager verification
     public string? VerifiedByUserName { get; set; }
     public DateTimeOffset? VerifiedAt { get; set; }
