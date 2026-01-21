@@ -209,6 +209,12 @@ Plans:
 
 **Dependencies:** Phase 6 (denomination counting for accurate close)
 
+**Plans:** 2 plans
+
+Plans:
+- [ ] 07-01-PLAN.md — Domain layer: TillSession close metadata, TillService close methods
+- [ ] 07-02-PLAN.md — UI layer: Summary review step, localization
+
 **Requirements:**
 - TILL-06: Staff can close till with counted amount per currency
 - TILL-07: System calculates variance (expected vs actual) per currency at close
@@ -281,7 +287,7 @@ Plans:
 | 4 | Payment Terminal Redesign | PAY-01 to PAY-08 | Complete | 100% |
 | 5 | Refunds & Corrections | REFUND-01, REFUND-02, VOID-01 to VOID-03 | Complete | 100% |
 | 6 | Denomination Counting | DENOM-01 to DENOM-03 | Complete | 100% |
-| 7 | Till Closing and Reconciliation | TILL-06, TILL-07 | Not Started | 0% |
+| 7 | Till Closing and Reconciliation | TILL-06, TILL-07 | Planned | 0% |
 | 8 | Manager Oversight | MGR-01 to MGR-04 | Not Started | 0% |
 | 9 | End of Day Operations | EOD-01 to EOD-04, RCPT-01 to RCPT-03 | Not Started | 0% |
 
@@ -320,4 +326,4 @@ Plans:
 
 ---
 
-*Last updated: 2026-01-20 — Phase 6 complete (Denomination Counting)*
+*Last updated: 2026-01-21 — Phase 7 planned (Till Closing and Reconciliation)*
