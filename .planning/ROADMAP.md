@@ -267,10 +267,10 @@ Plans:
 **Plans:** 4 plans
 
 Plans:
-- [ ] 09-01-PLAN.md — Domain entities (DailyClose, ShortageLog) and EOD service methods
-- [ ] 09-02-PLAN.md — Cash drop verification dialog and EOD page integration
-- [ ] 09-03-PLAN.md — Daily close page with shortage logging and summary report
-- [ ] 09-04-PLAN.md — Staff receipt search and reprint page
+- [x] 09-01-PLAN.md — Domain entities (DailyClose, ShortageLog) and EOD service methods
+- [x] 09-02-PLAN.md — Cash drop verification dialog and EOD page integration
+- [x] 09-03-PLAN.md — Daily close page with shortage logging and summary report
+- [x] 09-04-PLAN.md — Staff receipt search and reprint page
 
 **Requirements:**
 - EOD-01: Manager can verify cash drops from all tills against safe contents
@@ -304,9 +304,9 @@ Plans:
 | 6 | Denomination Counting | DENOM-01 to DENOM-03 | Complete | 100% |
 | 7 | Till Closing and Reconciliation | TILL-06, TILL-07 | Complete | 100% |
 | 8 | Manager Oversight | MGR-01 to MGR-04 | Complete | 100% |
-| 9 | End of Day Operations | EOD-01 to EOD-04, RCPT-01 to RCPT-03 | Planned | 0% |
+| 9 | End of Day Operations | EOD-01 to EOD-04, RCPT-01 to RCPT-03 | Complete | 100% |
 
-**Overall Progress:** 39/40 requirements complete (97%)
+**Overall Progress:** 40/40 requirements complete (100%)
 
 ---
 
@@ -341,4 +341,4 @@ Plans:
 
 ---
 
-*Last updated: 2026-01-21 — Phase 9 planned (End of Day Operations)*
+*Last updated: 2026-01-21 — Phase 9 complete (End of Day Operations) — Milestone complete*

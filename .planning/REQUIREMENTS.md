@@ -72,16 +72,16 @@ Requirements for the Cashier Till milestone. Each maps to roadmap phases.
 
 ### End of Day (EOD)
 
-- [ ] **EOD-01**: Manager can verify cash drops from all tills against safe contents
-- [ ] **EOD-02**: Manager can perform daily sales close (lock the day)
-- [ ] **EOD-03**: Daily close generates summary of all sales, deposits, payouts, and variances
-- [ ] **EOD-04**: Closed days cannot have new transactions added
+- [x] **EOD-01**: Manager can verify cash drops from all tills against safe contents
+- [x] **EOD-02**: Manager can perform daily sales close (lock the day)
+- [x] **EOD-03**: Daily close generates summary of all sales, deposits, payouts, and variances
+- [x] **EOD-04**: Closed days cannot have new transactions added
 
 ### Till Receipts
 
-- [ ] **RCPT-01**: System generates receipt for till transactions
-- [ ] **RCPT-02**: Staff can search and view past till transactions
-- [ ] **RCPT-03**: Staff can reprint receipts
+- [x] **RCPT-01**: System generates receipt for till transactions
+- [x] **RCPT-02**: Staff can search and view past till transactions
+- [x] **RCPT-03**: Staff can reprint receipts
 
 ## v2 Requirements
 
@@ -158,13 +158,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MGR-02 | Phase 8 | Complete |
 | MGR-03 | Phase 8 | Complete |
 | MGR-04 | Phase 8 | Complete |
-| EOD-01 | Phase 9 | Pending |
-| EOD-02 | Phase 9 | Pending |
-| EOD-03 | Phase 9 | Pending |
-| EOD-04 | Phase 9 | Pending |
-| RCPT-01 | Phase 9 | Pending |
-| RCPT-02 | Phase 9 | Pending |
-| RCPT-03 | Phase 9 | Pending |
+| EOD-01 | Phase 9 | Complete |
+| EOD-02 | Phase 9 | Complete |
+| EOD-03 | Phase 9 | Complete |
+| EOD-04 | Phase 9 | Complete |
+| RCPT-01 | Phase 9 | Complete |
+| RCPT-02 | Phase 9 | Complete |
+| RCPT-03 | Phase 9 | Complete |
 
 **Coverage:**
 - v1 requirements: 40 total
@@ -173,4 +173,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-01-19*
-*Last updated: 2026-01-21 — Phase 8 requirements marked complete*
+*Last updated: 2026-01-21 — Phase 9 requirements marked complete — Milestone complete*
