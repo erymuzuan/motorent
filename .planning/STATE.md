@@ -9,7 +9,7 @@
 
 **Core Value:** Business visibility and cash control - owners can see if their assets are profitable, where cash is leaking, and whether staff are handling money correctly.
 
-**Current Focus:** Phase 7 in progress. Close dialog with summary step complete. Next: Session close summary view.
+**Current Focus:** Phase 7 complete. Staff can close till with per-currency variance tracking. Ready for Phase 8 (Manager Oversight).
 
 **Key Constraints:**
 - Tech stack: Blazor Server + WASM, .NET 10, SQL Server
@@ -21,22 +21,22 @@
 
 ## Current Position
 
-**Phase:** 7 of 9 (Till Closing and Reconciliation)
-**Plan:** 2 of 3 complete
-**Status:** In progress
+**Phase:** 7 of 9 (Till Closing and Reconciliation) - COMPLETE
+**Plan:** 2 of 2 complete
+**Status:** Phase complete
 
 ```
-Milestone Progress: [########..] 88%
-Phase 7 Progress:   [######....] 67%
+Milestone Progress: [########..] 87%
+Phase 7 Progress:   [##########] 100%
 ```
 
-**Last Activity:** 2026-01-21 - Completed 07-02-PLAN.md (Close Dialog UI Integration)
+**Last Activity:** 2026-01-21 - Completed Phase 7 (Till Closing and Reconciliation)
 
-**Next Action:** Execute 07-03-PLAN.md (Session Close Summary View)
+**Next Action:** Run `/gsd:discuss-phase 8` to gather context for Manager Oversight phase.
 
 ---
 
-## Phase 7 Progress
+## Phase 7 Progress - COMPLETE
 
 ### Plan 07-01: Session Close Metadata - COMPLETE
 
@@ -260,8 +260,8 @@ Phase 7 Progress:   [######....] 67%
 | Metric | Value | Notes |
 |--------|-------|-------|
 | Plans completed | 22 | Phase 1: 4; Phase 2: 3; Phase 3: 2; Phase 4: 3; Phase 5: 5; Phase 6: 3; Phase 7: 2 |
-| Requirements done | 34/40 | Phase 7 in progress |
-| Phases done | 6/9 | Phase 7 in progress |
+| Requirements done | 35/40 | +TILL-06, TILL-07 |
+| Phases done | 7/9 | Phase 7 complete |
 | Blockers hit | 0 | - |
 
 ---
@@ -326,7 +326,7 @@ Phase 7 Progress:   [######....] 67%
 
 ### Architecture Notes
 
-**Phase 7 Components (In Progress):**
+**Phase 7 Components (Complete):**
 - TillSession extended with close metadata (5 new fields)
 - SQL table with ClosedByUserName, IsForceClose computed columns
 - CloseSessionAsync overload for multi-currency reconciliation
@@ -402,18 +402,17 @@ None currently.
 
 ## Session Continuity
 
-**Last Session:** 2026-01-21 - Completed 07-02-PLAN.md
+**Last Session:** 2026-01-21 - Completed Phase 7 (Till Closing and Reconciliation)
 
 **Context for Next Session:**
-- Phase 7 plans 1-2 complete: Service methods and close dialog UI
-- TillCloseSessionDialog now has two-step workflow with summary
-- Dialog uses new CloseSessionAsync overload with breakdowns
-- All variance data stored in TillSession for history display
+- Phase 7 complete: Domain layer and UI for till closing with variance
+- All 2 requirements satisfied (TILL-06, TILL-07)
+- Ready for Phase 8: Manager Oversight
 
 **Files to Review:**
-- `.planning/phases/07-till-closing-reconciliation/07-02-SUMMARY.md` - Plan summary
-- `.planning/phases/07-till-closing-reconciliation/07-03-PLAN.md` - Next plan
-- `src/MotoRent.Client/Pages/Staff/TillCloseSessionDialog.razor` - Updated dialog
+- `.planning/phases/07-till-closing-reconciliation/07-VERIFICATION.md` - Phase verification
+- `.planning/ROADMAP.md` - Phase 8 overview
+- `src/MotoRent.Client/Pages/Staff/TillCloseSessionDialog.razor` - Close workflow
 
 ---
 

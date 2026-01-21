@@ -14,14 +14,14 @@ Requirements for the Cashier Till milestone. Each maps to roadmap phases.
 - [x] **TILL-03**: System displays THB change amount when customer pays with foreign currency
 - [x] **TILL-04**: Staff can view current till balance per currency during shift
 - [x] **TILL-05**: Staff can perform cash drop per currency with amount recorded
-- [ ] **TILL-06**: Staff can close till with counted amount per currency
-- [ ] **TILL-07**: System calculates variance (expected vs actual) per currency at close
+- [x] **TILL-06**: Staff can close till with counted amount per currency
+- [x] **TILL-07**: System calculates variance (expected vs actual) per currency at close
 
 ### Denomination Counting
 
-- [ ] **DENOM-01**: Staff enters opening float by denomination (bills and coins per currency)
-- [ ] **DENOM-02**: Staff enters closing count by denomination (bills and coins per currency)
-- [ ] **DENOM-03**: System auto-calculates total from denomination breakdown
+- [x] **DENOM-01**: Staff enters opening float by denomination (bills and coins per currency)
+- [x] **DENOM-02**: Staff enters closing count by denomination (bills and coins per currency)
+- [x] **DENOM-03**: System auto-calculates total from denomination breakdown
 
 ### Exchange Rate Management
 
@@ -136,24 +136,24 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ITEMS-03 | Phase 3 | Complete |
 | ITEMS-04 | Phase 3 | Complete |
 | ITEMS-05 | Phase 3 | Complete |
-| PAY-01 | Phase 4 | Pending |
-| PAY-02 | Phase 4 | Pending |
-| PAY-03 | Phase 4 | Pending |
-| PAY-04 | Phase 4 | Pending |
-| PAY-05 | Phase 4 | Pending |
-| PAY-06 | Phase 4 | Pending |
-| PAY-07 | Phase 4 | Pending |
-| PAY-08 | Phase 4 | Pending |
-| REFUND-01 | Phase 5 | Pending |
-| REFUND-02 | Phase 5 | Pending |
-| VOID-01 | Phase 5 | Pending |
-| VOID-02 | Phase 5 | Pending |
-| VOID-03 | Phase 5 | Pending |
-| DENOM-01 | Phase 6 | Pending |
-| DENOM-02 | Phase 6 | Pending |
-| DENOM-03 | Phase 6 | Pending |
-| TILL-06 | Phase 7 | Pending |
-| TILL-07 | Phase 7 | Pending |
+| PAY-01 | Phase 4 | Complete |
+| PAY-02 | Phase 4 | Complete |
+| PAY-03 | Phase 4 | Complete |
+| PAY-04 | Phase 4 | Complete |
+| PAY-05 | Phase 4 | Complete |
+| PAY-06 | Phase 4 | Complete |
+| PAY-07 | Phase 4 | Complete |
+| PAY-08 | Phase 4 | Complete |
+| REFUND-01 | Phase 5 | Complete |
+| REFUND-02 | Phase 5 | Complete |
+| VOID-01 | Phase 5 | Complete |
+| VOID-02 | Phase 5 | Complete |
+| VOID-03 | Phase 5 | Complete |
+| DENOM-01 | Phase 6 | Complete |
+| DENOM-02 | Phase 6 | Complete |
+| DENOM-03 | Phase 6 | Complete |
+| TILL-06 | Phase 7 | Complete |
+| TILL-07 | Phase 7 | Complete |
 | MGR-01 | Phase 8 | Pending |
 | MGR-02 | Phase 8 | Pending |
 | MGR-03 | Phase 8 | Pending |
@@ -173,4 +173,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-01-19*
-*Last updated: 2026-01-20 — Phase 3 requirements marked complete*
+*Last updated: 2026-01-21 — Phase 7 requirements marked complete*
