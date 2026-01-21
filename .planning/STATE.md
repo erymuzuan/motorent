@@ -26,7 +26,7 @@
 **Status:** Phase complete
 
 ```
-Milestone Progress: [##########] 95%
+Milestone Progress: [#########.] 97%
 Phase 8 Progress:   [##########] 100%
 ```
 
@@ -315,7 +315,7 @@ Phase 8 Progress:   [##########] 100%
 | Metric | Value | Notes |
 |--------|-------|-------|
 | Plans completed | 25 | Phase 1: 4; Phase 2: 3; Phase 3: 2; Phase 4: 3; Phase 5: 5; Phase 6: 3; Phase 7: 2; Phase 8: 3 |
-| Requirements done | 38/40 | Phase 8 complete |
+| Requirements done | 39/40 | Phase 8 complete (MGR-01 to MGR-04) |
 | Phases done | 8/9 | Phase 9 pending |
 | Blockers hit | 0 | - |
 
@@ -481,21 +481,22 @@ None currently.
 
 ## Session Continuity
 
-**Last Session:** 2026-01-21 - Completed Plan 08-02 (Manager Dashboard UI)
+**Last Session:** 2026-01-21 - Completed Phase 8 (Manager Oversight)
 
 **Context for Next Session:**
-- Phase 8 complete: All 3 plans done
-- Manager dashboard at /manager/till-dashboard
-- Active sessions cards + closed sessions table
-- Verify workflow functional with self-prevention
-- Handover report accessible via button
-- Ready for Phase 9 (End of Day operations)
+- Phase 8 verified and complete: All 4 requirements satisfied
+- Manager dashboard at `/manager/till-dashboard`
+- Active sessions cards with per-currency balances
+- Closed sessions table with verify workflow (self-prevention)
+- Variance alerts with configurable threshold
+- Handover report with sales clearing journal format
+- Ready for Phase 9 (End of Day Operations)
 
 **Files to Review:**
-- `.planning/phases/08-manager-oversight/08-02-SUMMARY.md` - Plan summary
+- `.planning/phases/08-manager-oversight/08-VERIFICATION.md` - Phase verification
+- `.planning/ROADMAP.md` - Phase 9 overview
 - `src/MotoRent.Client/Pages/Manager/TillDashboard.razor` - Dashboard page
-- `src/MotoRent.Client/Components/Till/ActiveSessionCard.razor` - Session card
-- `src/MotoRent.Client/Components/Till/VarianceAlertBadge.razor` - Alert badge
+- `src/MotoRent.Client/Pages/Manager/HandoverReportDialog.razor` - Report dialog
 
 ---
 

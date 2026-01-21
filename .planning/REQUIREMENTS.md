@@ -65,10 +65,10 @@ Requirements for the Cashier Till milestone. Each maps to roadmap phases.
 
 ### Manager Oversight
 
-- [ ] **MGR-01**: Manager can view dashboard of all open and closed till sessions
-- [ ] **MGR-02**: Manager can verify closed till sessions (sign-off workflow)
-- [ ] **MGR-03**: Manager receives alert when till variance exceeds threshold
-- [ ] **MGR-04**: Manager can generate shift handover report
+- [x] **MGR-01**: Manager can view dashboard of all open and closed till sessions
+- [x] **MGR-02**: Manager can verify closed till sessions (sign-off workflow)
+- [x] **MGR-03**: Manager receives alert when till variance exceeds threshold
+- [x] **MGR-04**: Manager can generate shift handover report
 
 ### End of Day (EOD)
 
@@ -154,10 +154,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DENOM-03 | Phase 6 | Complete |
 | TILL-06 | Phase 7 | Complete |
 | TILL-07 | Phase 7 | Complete |
-| MGR-01 | Phase 8 | Pending |
-| MGR-02 | Phase 8 | Pending |
-| MGR-03 | Phase 8 | Pending |
-| MGR-04 | Phase 8 | Pending |
+| MGR-01 | Phase 8 | Complete |
+| MGR-02 | Phase 8 | Complete |
+| MGR-03 | Phase 8 | Complete |
+| MGR-04 | Phase 8 | Complete |
 | EOD-01 | Phase 9 | Pending |
 | EOD-02 | Phase 9 | Pending |
 | EOD-03 | Phase 9 | Pending |
@@ -173,4 +173,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-01-19*
-*Last updated: 2026-01-21 — Phase 7 requirements marked complete*
+*Last updated: 2026-01-21 — Phase 8 requirements marked complete*
