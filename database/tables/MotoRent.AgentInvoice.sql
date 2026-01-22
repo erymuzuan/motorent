@@ -8,7 +8,8 @@ CREATE TABLE [<schema>].[AgentInvoice]
     [BookingId] AS CAST(JSON_VALUE([Json], '$.BookingId') AS INT),
     -- Invoice Details
     [InvoiceNo] AS CAST(JSON_VALUE([Json], '$.InvoiceNo') AS NVARCHAR(50)),
-    [InvoiceDate] AS CAST(JSON_VALUE([Json], '$.InvoiceDate') AS DATETIMEOFFSET),
+    -- DATETIMEOFFSET column (regular column, not computed - per CLAUDE.md rules)
+    [InvoiceDate] DATETIMEOFFSET NULL,
     -- Amounts
     [SubTotal] AS CAST(JSON_VALUE([Json], '$.SubTotal') AS DECIMAL(18,2)),
     [SurchargeAmount] AS CAST(JSON_VALUE([Json], '$.SurchargeAmount') AS DECIMAL(18,2)),
