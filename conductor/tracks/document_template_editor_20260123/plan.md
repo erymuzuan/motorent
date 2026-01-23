@@ -2,22 +2,22 @@
 
 This plan outlines the steps for implementing the visual document template designer, including storage, rendering, and UI integration, following the established repository patterns and coding standards.
 
-## Phase 1: Domain Model & Data Access [checkpoint: pending]
+## Phase 1: Domain Model & Data Access [checkpoint: 5c60313]
 
-### Task 1: Define DocumentTemplate Domain Model (PENDING)
-- [ ] Task: Define the `DocumentTemplate` entity and associated enums.
-    - [ ] Write unit tests for `DocumentTemplate` entity validation and state transitions (Draft/Approved/Default).
-    - [ ] Implement `DocumentTemplate` domain model (including `DocumentType` enum: Booking, Rental, Receipt).
-    - [ ] Ensure compliance with `code-standards` for naming and structure.
-    - [ ] Define the JSON structure for the section-based layout.
+### Task 1: Define DocumentTemplate Domain Model (COMPLETED) 5c60313
+- [x] Task: Define the `DocumentTemplate` entity and associated enums. 5c60313
+    - [x] Write unit tests for `DocumentTemplate` entity validation and state transitions (Draft/Approved/Default).
+    - [x] Implement `DocumentTemplate` domain model (including `DocumentType` enum: Booking, Rental, Receipt).
+    - [x] Ensure compliance with `code-standards` for naming and structure.
+    - [x] Define the JSON structure for the section-based layout.
 
-### Task 2: SQL Metadata & Binary Storage Integration (PENDING)
-- [ ] Task: Configure metadata storage using `SqlJsonRepository` and binary content in `IBinaryStore`.
-    - [ ] Write unit tests for saving/retrieving template metadata using the repository and binary content via `IBinaryStore`.
-    - [ ] Register `DocumentTemplate` with the `DataContext` following the `database-repository` pattern.
-    - [ ] Implement service logic to store/fetch layout JSON from `IBinaryStore` using `StoreId`, while keeping metadata in SQL.
+### Task 2: SQL Metadata & Binary Storage Integration (COMPLETED) 5c60313
+- [x] Task: Configure metadata storage using `SqlJsonRepository` and binary content in `IBinaryStore`. 5c60313
+    - [x] Write unit tests for saving/retrieving template metadata using the repository and binary content via `IBinaryStore`.
+    - [x] Register `DocumentTemplate` with the `DataContext` following the `database-repository` pattern.
+    - [x] Implement service logic to store/fetch layout JSON from `IBinaryStore` using `StoreId`, while keeping metadata in SQL.
 
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Domain Model & Data Access' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Domain Model & Data Access' (Protocol in workflow.md) 5c60313
 
 ## Phase 2: Core Rendering Engine (QuestPDF & HTML) [checkpoint: pending]
 
