@@ -19,24 +19,24 @@ This plan outlines the steps for implementing the visual document template desig
 
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Domain Model & Data Access' (Protocol in workflow.md) 5c60313
 
-## Phase 2: Core Rendering Engine (QuestPDF & HTML) [checkpoint: pending]
+## Phase 2: Core Rendering Engine (QuestPDF & HTML) [checkpoint: ec94caf]
 
-### Task 1: Implement Dynamic Data Resolver (PENDING)
-- [ ] Task: Create a service to map domain entities (Booking, Rental, Receipt) to template tokens.
-    - [ ] Write unit tests for data resolution with various input models.
-    - [ ] Implement `ITemplateDataResolver` to provide shared context (Org/Staff) and entity-specific data.
+### Task 1: Implement Dynamic Data Resolver (COMPLETED) ec94caf
+- [x] Task: Create a service to map domain entities (Booking, Rental, Receipt) to template tokens. ec94caf
+    - [x] Write unit tests for data resolution with various input models.
+    - [x] Implement `ITemplateDataResolver` to provide shared context (Org/Staff) and entity-specific data.
 
-### Task 2: QuestPDF Rendering Logic (PENDING)
-- [ ] Task: Implement the PDF generation engine using QuestPDF.
-    - [ ] Write unit tests for translating section-based JSON to QuestPDF components.
-    - [ ] Implement `IQuestPdfGenerator` that parses layout JSON and renders a PDF stream.
+### Task 2: QuestPDF Rendering Logic (COMPLETED) ec94caf
+- [x] Task: Implement the PDF generation engine using QuestPDF. ec94caf
+    - [x] Write unit tests for translating section-based JSON to QuestPDF components.
+    - [x] Implement `IQuestPdfGenerator` that parses layout JSON and renders a PDF stream.
 
-### Task 3: HTML Rendering Logic (PENDING)
-- [ ] Task: Implement the HTML generation for web views.
-    - [ ] Write unit tests for HTML rendering from layout JSON.
-    - [ ] Implement `IHtmlTemplateRenderer` to produce responsive HTML.
+### Task 3: HTML Rendering Logic (COMPLETED) ec94caf
+- [x] Task: Implement the HTML generation for web views. ec94caf
+    - [x] Write unit tests for HTML rendering from layout JSON.
+    - [x] Implement `IHtmlTemplateRenderer` to produce responsive HTML.
 
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Core Rendering Engine (QuestPDF & HTML)' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Core Rendering Engine (QuestPDF & HTML)' (Protocol in workflow.md) ec94caf
 
 ## Phase 3: Visual Designer UI & Component Library [checkpoint: pending]
 
