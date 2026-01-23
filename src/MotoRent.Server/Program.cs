@@ -14,6 +14,7 @@ using MotoRent.Services.Core;
 using MotoRent.Services.Search;
 using MotoRent.Services.Storage;
 using MotoRent.Services.Tourist;
+using MotoRent.Services.ExchangeRateProviders;
 using MotoRent.Domain.Search;
 using MotoRent.Server.Middleware;
 using MotoRent.Core.Repository;
@@ -102,6 +103,9 @@ builder.Services.AddScoped<AssetLoanService>();
 builder.Services.AddScoped<TillService>();
 builder.Services.AddScoped<ReceiptService>();
 builder.Services.AddScoped<ExchangeRateService>();
+// Exchange rate providers
+builder.Services.AddScoped<IExchangeRateProvider, MamyExchangeProvider>();
+builder.Services.AddScoped<IExchangeRateProvider, SuperRichProvider>();
 builder.Services.AddScoped<ManagerPinService>();
 
 // Error logging services
@@ -112,6 +116,10 @@ builder.Services.AddScoped<LogEntryService>();
 builder.Services.AddHttpClient("Gemini", client => { client.Timeout = TimeSpan.FromSeconds(60); });
 // Add HttpClient for NotificationService (Email + LINE)
 builder.Services.AddHttpClient<NotificationService>(client => { client.Timeout = TimeSpan.FromSeconds(30); });
+
+// Add HttpClients for Exchange Rate Providers
+builder.Services.AddHttpClient<MamyExchangeProvider>(client => { client.Timeout = TimeSpan.FromSeconds(30); });
+builder.Services.AddHttpClient<SuperRichProvider>(client => { client.Timeout = TimeSpan.FromSeconds(30); });
 
 // Add OpenSearch HttpClient (optional, enabled via MOTO_OpenSearchHost env var)
 var openSearchHost = Environment.GetEnvironmentVariable("MOTO_OpenSearchHost");

@@ -75,6 +75,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IRepository<Receipt>, SqlJsonRepository<Receipt>>();
         // Exchange rate entities
         services.AddScoped<IRepository<ExchangeRate>, SqlJsonRepository<ExchangeRate>>();
+        services.AddScoped<IRepository<DenominationGroup>, SqlJsonRepository<DenominationGroup>>();
+        services.AddScoped<IRepository<DenominationRate>, SqlJsonRepository<DenominationRate>>();
+        services.AddScoped<IRepository<RateDelta>, SqlJsonRepository<RateDelta>>();
         // End of day entities
         services.AddScoped<IRepository<DailyClose>, SqlJsonRepository<DailyClose>>();
         services.AddScoped<IRepository<ShortageLog>, SqlJsonRepository<ShortageLog>>();
