@@ -25,4 +25,11 @@ public partial class Rental
     /// </summary>
     [JsonIgnore]
     public bool IsCrossShopReturn => ReturnedToShopId.HasValue && ReturnedToShopId != RentedFromShopId;
+
+    /// <summary>
+    /// Amount due to be paid (Total - payments).
+    /// Placeholder logic: assume some balance for now.
+    /// </summary>
+    [JsonIgnore]
+    public decimal BalanceDue => TotalAmount; // In a real scenario, this would subtract payments
 }
