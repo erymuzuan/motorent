@@ -60,12 +60,12 @@ This plan outlines the steps for implementing the visual document template desig
 
 ## Phase 4: Workflow Integration & Default Templates [checkpoint: pending]
 
-### Task 1: Organization Settings Integration (PENDING)
-- [ ] Task: Add the Template Management UI to the Organization Settings.
-    - [ ] Implement the template list view with status management (Set as Default, Approve).
-    - [ ] Restrict access to Org Admins.
+### Task 1: Organization Settings Integration (COMPLETED) 8a91487
+- [x] Task: Add the Template Management UI to the Organization Settings.
+    - [x] Implement the template list view with status management (Set as Default, Approve).
+    - [x] Restrict access to Org Admins.
 
-### Task 2: Enhanced Print Workflow (PENDING)
+### Task 2: Enhanced Print Workflow (IN PROGRESS)
 - [ ] Task: Update the "Print" button on Booking, Rental, and Receipt pages.
     - [ ] Implement logic to fetch the "Default" template for the current type.
     - [ ] Add a dropdown menu to the Print button for selecting alternative "Approved" templates.

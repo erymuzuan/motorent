@@ -1,0 +1,184 @@
+@using MotoRent.Domain.Models
+
+<div class="card h-100">
+    <div class="card-header">
+        <h3 class="card-title">Block Properties</h3>
+    </div>
+    <div class="card-body">
+        @if (Block == null)
+        {
+            <div class="text-center py-5 text-muted">
+                <i class="ti ti-click size-lg mb-2"></i>
+                <p>Select a block to edit its properties</p>
+            </div>
+        }
+        else
+        {
+            <div class="mb-3">
+                <label class="form-label">Type</label>
+                <div class="form-control-plaintext fw-bold">@Block.GetType().Name.Replace("Block", "")</div>
+            </div>
+
+            @if (Block is HeadingBlock hb)
+            {
+                <div class="mb-3">
+                    <label class="form-label">Content</label>
+                    <input type="text" class="form-control" @bind="hb.Content" @bind:event="oninput" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Heading Level</label>
+                    <select class="form-select" @bind="hb.Level">
+                        <option value="1">Level 1 (H1)</option>
+                        <option value="2">Level 2 (H2)</option>
+                        <option value="3">Level 3 (H3)</option>
+                        <option value="4">Level 4 (H4)</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Alignment</label>
+                    <div class="btn-group w-100">
+                        <button type="button" class="btn btn-sm @(hb.HorizontalAlignment == "Left" ? "btn-primary" : "btn-outline-secondary")" @onclick='() => hb.HorizontalAlignment = "Left"'>
+                            <i class="ti ti-align-left"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm @(hb.HorizontalAlignment == "Center" ? "btn-primary" : "btn-outline-secondary")" @onclick='() => hb.HorizontalAlignment = "Center"'>
+                            <i class="ti ti-align-center"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm @(hb.HorizontalAlignment == "Right" ? "btn-primary" : "btn-outline-secondary")" @onclick='() => hb.HorizontalAlignment = "Right"'>
+                            <i class="ti ti-align-right"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" @bind="hb.IsBold">
+                        <span class="form-check-label">Bold</span>
+                    </label>
+                </div>
+            }
+            else if (Block is TextBlock tb)
+            {
+                <div class="mb-3">
+                    <label class="form-label">Content</label>
+                    <textarea class="form-control" @bind="tb.Content" @bind:event="oninput" rows="5"></textarea>
+                    <div class="form-hint">Use {{Placeholder}} for dynamic data</div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Font Size (px)</label>
+                    <input type="number" class="form-control" @bind="tb.FontSize" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Alignment</label>
+                    <div class="btn-group w-100">
+                        <button type="button" class="btn btn-sm @(tb.HorizontalAlignment == "Left" ? "btn-primary" : "btn-outline-secondary")" @onclick='() => tb.HorizontalAlignment = "Left"'>
+                            <i class="ti ti-align-left"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm @(tb.HorizontalAlignment == "Center" ? "btn-primary" : "btn-outline-secondary")" @onclick='() => tb.HorizontalAlignment = "Center"'>
+                            <i class="ti ti-align-center"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm @(tb.HorizontalAlignment == "Right" ? "btn-primary" : "btn-outline-secondary")" @onclick='() => tb.HorizontalAlignment = "Right"'>
+                            <i class="ti ti-align-right"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" @bind="tb.IsBold">
+                        <span class="form-check-label">Bold</span>
+                    </label>
+                </div>
+            }
+            else if (Block is DividerBlock db)
+            {
+                <div class="mb-3">
+                    <label class="form-label">Thickness (px)</label>
+                    <input type="number" class="form-control" @bind="db.Thickness" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Color</label>
+                    <input type="color" class="form-control form-control-color w-100" @bind="db.Color" />
+                </div>
+            }
+            else if (Block is SpacerBlock sb)
+            {
+                <div class="mb-3">
+                    <label class="form-label">Height (px)</label>
+                    <input type="number" class="form-control" @bind="sb.Height" />
+                </div>
+            }
+            else if (Block is ImageBlock ib)
+            {
+                <div class="mb-3">
+                    <label class="form-label">Image URL</label>
+                    <input type="text" class="form-control" @bind="ib.ImageUrl" placeholder="https://..." />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Data Binding (Optional)</label>
+                    <input type="text" class="form-control" @bind="ib.BindingPath" placeholder="e.g. Organization.Logo" />
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label">Width</label>
+                        <input type="number" class="form-control" @bind="ib.Width" />
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Height</label>
+                        <input type="number" class="form-control" @bind="ib.Height" />
+                    </div>
+                </div>
+            }
+            else if (Block is TableBlock table)
+            {
+                <div class="mb-3">
+                    <label class="form-label">Data Array Path</label>
+                    <input type="text" class="form-control" @bind="table.BindingPath" placeholder="e.g. Booking.Items" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Columns</label>
+                    <div class="space-y-2">
+                        @foreach (var col in table.Columns)
+                        {
+                            <div class="card p-2 bg-light">
+                                <div class="row g-2 mb-2">
+                                    <div class="col">
+                                        <input type="text" class="form-control form-control-sm" @bind="col.Header" placeholder="Header" />
+                                    </div>
+                                    <div class="col-auto">
+                                        <button class="btn btn-sm btn-icon btn-ghost-danger" @onclick="() => table.Columns.Remove(col)">
+                                            <i class="ti ti-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <input type="text" class="form-control form-control-sm" @bind="col.BindingPath" placeholder="Field Path" />
+                            </div>
+                        }
+                    </div>
+                    <button class="btn btn-sm btn-outline-primary w-100 mt-2" @onclick="() => table.Columns.Add(new TableColumn())">
+                        <i class="ti ti-plus me-1"></i> Add Column
+                    </button>
+                </div>
+            }
+            else if (Block is SignatureBlock sig)
+            {
+                <div class="mb-3">
+                    <label class="form-label">Label</label>
+                    <input type="text" class="form-control" @bind="sig.Label" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Data Path (e.g. for pre-saved sig)</label>
+                    <input type="text" class="form-control" @bind="sig.BindingPath" />
+                </div>
+            }
+            
+            <div class="mt-4 pt-3 border-top">
+                <button class="btn btn-outline-danger w-100" @onclick="OnDeleteRequested">
+                    <i class="ti ti-trash me-2"></i> Delete Block
+                </button>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public LayoutBlock? Block { get; set; }
+    [Parameter] public EventCallback OnDeleteRequested { get; set; }
+}

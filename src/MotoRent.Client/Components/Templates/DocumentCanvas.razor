@@ -1,0 +1,95 @@
+@using MotoRent.Domain.Models
+@using MotoRent.Client.Services
+@inject DesignerState DesignerState
+
+<div class="designer-scroll-area">
+    <div class="a4-canvas" 
+         @ondragover="HandleCanvasDragOver" 
+         @ondragover:preventDefault="true"
+         @ondrop="HandleCanvasDrop">
+        
+        @foreach (var layoutSection in Layout.Sections)
+        {
+            <div class="canvas-section mb-4">
+                <div class="section-label small text-muted mb-1 px-3 d-flex justify-content-between align-items-center">
+                    <span>@layoutSection.Name</span>
+                    @if (Layout.Sections.Count > 1)
+                    {
+                        <button class="btn btn-ghost-danger btn-xs" @onclick="() => Layout.Sections.Remove(layoutSection)">
+                            <i class="ti ti-trash"></i>
+                        </button>
+                    }
+                </div>
+
+                @foreach (var block in layoutSection.Blocks)
+                {
+                    <CanvasBlock Block="block" 
+                                IsSelected="@(SelectedBlock == block)"
+                                OnSelect="() => OnBlockSelected.InvokeAsync(block)"
+                                OnDelete="() => layoutSection.Blocks.Remove(block)"
+                                OnMoveUp="() => MoveBlockUp(layoutSection, block)"
+                                OnMoveDown="() => MoveBlockDown(layoutSection, block)" />
+                }
+
+                @if (!layoutSection.Blocks.Any())
+                {
+                    <div class="text-center py-4 border-dashed rounded m-2 text-muted small">
+                        Drop blocks here
+                    </div>
+                }
+            </div>
+        }
+
+        <div class="p-4 text-center">
+            <button class="btn btn-ghost-primary btn-sm" @onclick="AddSection">
+                <i class="ti ti-plus me-1"></i> Add Section
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public DocumentLayout Layout { get; set; } = default!;
+    [Parameter] public LayoutBlock? SelectedBlock { get; set; }
+    [Parameter] public EventCallback<LayoutBlock?> OnBlockSelected { get; set; }
+    [Parameter] public EventCallback<string> OnBlockAdded { get; set; }
+
+    private void AddSection()
+    {
+        Layout.Sections.Add(new LayoutSection { Name = $"Section {Layout.Sections.Count + 1}" });
+    }
+
+    private void MoveBlockUp(LayoutSection section, LayoutBlock block)
+    {
+        var index = section.Blocks.IndexOf(block);
+        if (index > 0)
+        {
+            section.Blocks.RemoveAt(index);
+            section.Blocks.Insert(index - 1, block);
+        }
+    }
+
+    private void MoveBlockDown(LayoutSection section, LayoutBlock block)
+    {
+        var index = section.Blocks.IndexOf(block);
+        if (index < section.Blocks.Count - 1)
+        {
+            section.Blocks.RemoveAt(index);
+            section.Blocks.Insert(index + 1, block);
+        }
+    }
+
+    private void HandleCanvasDragOver(DragEventArgs e)
+    {
+        // Required for drop to work
+    }
+
+    private async Task HandleCanvasDrop(DragEventArgs e)
+    {
+        if (!string.IsNullOrEmpty(DesignerState.DraggingBlockType))
+        {
+            await OnBlockAdded.InvokeAsync(DesignerState.DraggingBlockType);
+            DesignerState.DraggingBlockType = null;
+        }
+    }
+}

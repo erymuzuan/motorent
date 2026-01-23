@@ -1,24 +1,70 @@
 @using MotoRent.Domain.Entities
 @using MotoRent.Client.Components.Receipts
+@using MotoRent.Domain.Models
+@using MotoRent.Services.Core
 @inherits MotoRent.Client.Controls.LocalizedDialogBase<Receipt, ReceiptPrintDialog>
 @inject IJSRuntime JSRuntime
 @inject MotoRent.Services.ReceiptService ReceiptService
+@inject DocumentTemplateService TemplateService
+@inject IHtmlTemplateRenderer HtmlRenderer
+@inject ITemplateDataResolver DataResolver
+@inject OrganizationService OrganizationService
 
 <div class="modal-body p-0" style="max-height: 70vh; overflow-y: auto;">
-    <ReceiptDocument Receipt="@Entity" />
+    @if (m_customHtml != null)
+    {
+        <div class="p-4 bg-white shadow-sm mx-auto my-3" style="max-width: 800px; min-height: 600px;">
+            @((MarkupString)m_customHtml)
+        </div>
+    }
+    else
+    {
+        <ReceiptDocument Receipt="@Entity" />
+    }
 </div>
 
-<div class="modal-footer">
-    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
-        @Localizer["Close"]
-    </button>
-    @if (Entity.Status != ReceiptStatus.Voided)
-    {
-        <button type="button" class="btn btn-primary" @onclick="PrintReceiptAsync">
-            <i class="ti ti-printer me-1"></i>
-            @Localizer["Print"]
+<div class="modal-footer d-flex justify-content-between">
+    <div class="btn-list">
+        @if (m_templates.Count > 0)
+        {
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="ti ti-file-description me-1"></i>
+                    @(m_selectedTemplateName ?? "Standard Layout")
+                </button>
+                <ul class="dropdown-menu shadow">
+                    <li>
+                        <a class="dropdown-item" href="#" @onclick="@(() => SelectTemplate(null))" @onclick:preventDefault>
+                            Standard Layout
+                        </a>
+                    </li>
+                    <li class="dropdown-divider"></li>
+                    @foreach (var template in m_templates)
+                    {
+                        <li>
+                            <a class="dropdown-item" href="#" @onclick="@(() => SelectTemplate(template))" @onclick:preventDefault>
+                                @template.Name
+                                @if (template.IsDefault) { <span class="badge bg-blue-lt ms-2">Default</span> }
+                            </a>
+                        </li>
+                    }
+                </ul>
+            </div>
+        }
+    </div>
+
+    <div class="btn-list">
+        <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
+            @Localizer["Close"]
         </button>
-    }
+        @if (Entity.Status != ReceiptStatus.Voided)
+        {
+            <button type="button" class="btn btn-primary" @onclick="PrintReceiptAsync">
+                <i class="ti ti-printer me-1"></i>
+                @Localizer["Print"]
+            </button>
+        }
+    </div>
 </div>
 
 @code {
@@ -30,6 +76,52 @@
     /// </summary>
     [Parameter]
     public bool IsReprint { get; set; }
+
+    private List<DocumentTemplate> m_templates = new();
+    private int? m_selectedTemplateId;
+    private string? m_selectedTemplateName;
+    private string? m_customHtml;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Load approved receipt templates
+        var result = await TemplateService.GetTemplatesAsync(DocumentType.Receipt);
+        m_templates = result.ItemCollection.Where(t => t.Status == DocumentTemplateStatus.Approved).ToList();
+
+        // Check for default template
+        var defaultTemplate = await TemplateService.GetEffectiveDefaultTemplateAsync(DocumentType.Receipt, Entity.ShopId);
+        if (defaultTemplate != null)
+        {
+            await SelectTemplate(defaultTemplate);
+        }
+    }
+
+    private async Task SelectTemplate(DocumentTemplate? template)
+    {
+        if (template == null)
+        {
+            m_selectedTemplateId = null;
+            m_selectedTemplateName = null;
+            m_customHtml = null;
+            return;
+        }
+
+        m_selectedTemplateId = template.DocumentTemplateId;
+        m_selectedTemplateName = template.Name;
+
+        var layout = await TemplateService.GetTemplateLayoutAsync(template.StoreId);
+        if (layout != null)
+        {
+            var org = await OrganizationService.GetOrganizationByAccountNoAsync(AccountNo);
+            var staff = new User { FullName = UserName, UserName = UserName };
+            
+            // Resolve data for the template
+            // Note: Receipt might not have a full Booking object associated in this context, 
+            // but the resolver should handle what's available.
+            var data = DataResolver.Resolve(Entity, org ?? new Organization(), staff);
+            m_customHtml = HtmlRenderer.RenderHtml(layout, data);
+        }
+    }
 
     private async Task PrintReceiptAsync()
     {

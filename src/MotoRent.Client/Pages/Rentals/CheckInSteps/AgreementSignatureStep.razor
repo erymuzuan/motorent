@@ -1,8 +1,10 @@
 @inherits LocalizedComponentBase<CheckIn>
 @using MotoRent.Domain.Entities
 @using MotoRent.Client.Pages.Rentals
+@using MotoRent.Domain.Models
 @inject IJSRuntime JS
 @inject NavigationManager NavigationManager
+@inject DocumentTemplateService TemplateService
 
 <div class="d-flex flex-column gap-4">
     <div>
@@ -172,10 +174,43 @@
                         @Localizer["PrintAgreementDesc"]
                     </p>
 
-                    <button type="button" class="btn btn-outline-primary btn-lg w-100" @onclick="PrintAgreement">
-                        <i class="ti ti-printer me-2"></i>
-                        @Localizer["PrintAgreement"]
-                    </button>
+                    @if (m_templates.Count > 1)
+                    {
+                        <div class="dropdown w-100">
+                            <div class="btn-group w-100">
+                                <button type="button" class="btn btn-outline-primary btn-lg w-100" @onclick="() => PrintAgreement()">
+                                    <i class="ti ti-printer me-2"></i>
+                                    @Localizer["PrintAgreement"]
+                                </button>
+                                <button type="button" class="btn btn-outline-primary btn-lg dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <span class="visually-hidden">Toggle Dropdown</span>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end shadow">
+                                    <li class="dropdown-header">Select Template</li>
+                                    @foreach (var template in m_templates)
+                                    {
+                                        <li>
+                                            <a class="dropdown-item d-flex align-items-center gap-2" href="#" @onclick="@(() => PrintAgreement(template.DocumentTemplateId))" @onclick:preventDefault>
+                                                <i class="ti ti-file-description text-secondary"></i>
+                                                <span>@template.Name</span>
+                                                @if (template.IsDefault)
+                                                {
+                                                    <span class="badge bg-blue-lt ms-auto">Default</span>
+                                                }
+                                            </a>
+                                        </li>
+                                    }
+                                </ul>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <button type="button" class="btn btn-outline-primary btn-lg w-100" @onclick="() => PrintAgreement()">
+                            <i class="ti ti-printer me-2"></i>
+                            @Localizer["PrintAgreement"]
+                        </button>
+                    }
 
                     @if (m_agreementPrinted)
                     {
@@ -218,12 +253,17 @@
     private string m_agreementText = string.Empty;
     private bool m_termsAccepted;
     private bool m_agreementPrinted;
+    private List<DocumentTemplate> m_templates = new();
 
     private bool CanComplete => m_termsAccepted && m_agreementPrinted;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         m_agreementText = GetAgreementText();
+        
+        // Load approved agreement templates
+        var result = await TemplateService.GetTemplatesAsync(DocumentType.RentalAgreement);
+        m_templates = result.ItemCollection.Where(t => t.Status == DocumentTemplateStatus.Approved).ToList();
     }
 
     private string GetAgreementText()
@@ -245,14 +285,14 @@
         return DepositInfo?.Amount ?? 0;
     }
 
-    private async Task PrintAgreement()
+    private async Task PrintAgreement(int? templateId = null)
     {
-        var url = BuildPrintAgreementUrl();
+        var url = BuildPrintAgreementUrl(templateId);
         await JS.InvokeVoidAsync("window.open", url, "_blank");
         m_agreementPrinted = true;
     }
 
-    private string BuildPrintAgreementUrl()
+    private string BuildPrintAgreementUrl(int? templateId = null)
     {
         var queryParams = new List<string>();
 
@@ -261,6 +301,9 @@
 
         if (Vehicle != null)
             queryParams.Add($"VehicleId={Vehicle.VehicleId}");
+
+        if (templateId.HasValue)
+            queryParams.Add($"TemplateId={templateId.Value}");
 
         if (IsIntervalRental && IntervalConfig != null)
         {

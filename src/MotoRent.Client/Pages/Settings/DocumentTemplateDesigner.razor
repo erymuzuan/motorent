@@ -6,10 +6,14 @@
 @using MotoRent.Domain.Models
 @using MotoRent.Services
 @using MotoRent.Services.Core
+@using MotoRent.Client.Components.Templates
+@using MotoRent.Client.Services
+@implements IDisposable
 @attribute [Authorize(Policy = "RequireTenantOrgAdmin")]
 @inherits MotoRentComponentBase
 @inject DocumentTemplateService TemplateService
 @inject DocumentTemplateAiService AiService
+@inject DesignerState DesignerState
 @inject ITemplateDataResolver DataResolver
 @inject IHtmlTemplateRenderer HtmlRenderer
 @inject OrganizationService OrganizationService
@@ -40,11 +44,11 @@
     </div>
 </TablerHeader>
 
-<div class="container-xl mt-4">
+<div class="container-fluid mt-4">
     <LoadingSkeleton Loading="@m_loading" Mode="LoadingSkeleton.PlaceholderMode.Card">
-        <div class="row">
-            @* Sidebar - Template Info & Block Library *@
-            <div class="@(m_showAiSidebar ? "col-lg-3" : "col-lg-4")">
+        <div class="row g-4">
+            @* Left Sidebar - Template Info & Block Library *@
+            <div class="col-lg-2">
                 <div class="card mb-3">
                     <div class="card-header">
                         <h3 class="card-title">Template Info</h3>
@@ -63,14 +67,6 @@
                                 }
                             </select>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label">Shop (Optional)</label>
-                            <input type="number" class="form-control" @bind="m_template.ShopId" placeholder="All Shops" />
-                        </div>
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" @bind="m_template.IsDefault">
-                            <label class="form-check-label">Set as Default</label>
-                        </div>
                     </div>
                 </div>
 
@@ -80,28 +76,28 @@
                     </div>
                     <div class="card-body p-0">
                         <div class="list-group list-group-flush">
-                            <button class="list-group-item list-group-item-action" @onclick='() => AddBlock("heading")'>
+                            <button class="list-group-item list-group-item-action" @onclick='() => AddBlock("heading")' draggable="true" @ondragstart='() => DesignerState.DraggingBlockType = "heading"'>
                                 <i class="ti ti-heading me-2"></i> Heading
                             </button>
-                            <button class="list-group-item list-group-item-action" @onclick='() => AddBlock("text")'>
+                            <button class="list-group-item list-group-item-action" @onclick='() => AddBlock("text")' draggable="true" @ondragstart='() => DesignerState.DraggingBlockType = "text"'>
                                 <i class="ti ti-type me-2"></i> Text Block
                             </button>
-                            <button class="list-group-item list-group-item-action" @onclick='() => AddBlock("table")'>
+                            <button class="list-group-item list-group-item-action" @onclick='() => AddBlock("table")' draggable="true" @ondragstart='() => DesignerState.DraggingBlockType = "table"'>
                                 <i class="ti ti-table me-2"></i> Data Table
                             </button>
-                            <button class="list-group-item list-group-item-action" @onclick='() => AddBlock("image")'>
+                            <button class="list-group-item list-group-item-action" @onclick='() => AddBlock("image")' draggable="true" @ondragstart='() => DesignerState.DraggingBlockType = "image"'>
                                 <i class="ti ti-photo me-2"></i> Image/Logo
                             </button>
-                            <button class="list-group-item list-group-item-action" @onclick='() => AddBlock("divider")'>
+                            <button class="list-group-item list-group-item-action" @onclick='() => AddBlock("divider")' draggable="true" @ondragstart='() => DesignerState.DraggingBlockType = "divider"'>
                                 <i class="ti ti-minus me-2"></i> Divider Line
                             </button>
-                            <button class="list-group-item list-group-item-action" @onclick='() => AddBlock("signature")'>
+                            <button class="list-group-item list-group-item-action" @onclick='() => AddBlock("signature")' draggable="true" @ondragstart='() => DesignerState.DraggingBlockType = "signature"'>
                                 <i class="ti ti-pencil me-2"></i> Signature
                             </button>
-                            <button class="list-group-item list-group-item-action" @onclick='() => AddBlock("two-columns")'>
+                            <button class="list-group-item list-group-item-action" @onclick='() => AddBlock("two-columns")' draggable="true" @ondragstart='() => DesignerState.DraggingBlockType = "two-columns"'>
                                 <i class="ti ti-columns me-2"></i> Two Columns
                             </button>
-                            <button class="list-group-item list-group-item-action" @onclick='() => AddBlock("spacer")'>
+                            <button class="list-group-item list-group-item-action" @onclick='() => AddBlock("spacer")' draggable="true" @ondragstart='() => DesignerState.DraggingBlockType = "spacer"'>
                                 <i class="ti ti-separator-horizontal me-2"></i> Spacer
                             </button>
                         </div>
@@ -109,229 +105,32 @@
                 </div>
             </div>
 
-            @* Main Editor *@
-            <div class="@(m_showAiSidebar ? "col-lg-6" : "col-lg-8")">
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between">
-                        <h3 class="card-title">Layout Editor</h3>
-                        <button class="btn btn-sm btn-ghost-primary" @onclick="AddSection">
-                            <i class="ti ti-plus me-1"></i> Add Section
-                        </button>
-                    </div>
-                    <div class="card-body bg-light" style="min-height: 600px;">
-                        @if (!m_layout.Sections.Any())
-                        {
-                            <div class="text-center py-5">
-                                <div class="text-secondary mb-3">Your layout is empty</div>
-                                <button class="btn btn-primary" @onclick="AddSection">Get Started by Adding a Section</button>
-                            </div>
-                        }
-
-                        @foreach (var section in m_layout.Sections)
-                        {
-                            <div class="card mb-3 border-primary-subtle shadow-sm">
-                                <div class="card-header py-2 bg-white d-flex justify-content-between align-items-center">
-                                    <div class="d-flex align-items-center">
-                                        <i class="ti ti-grip-vertical text-secondary me-2"></i>
-                                        <input type="text" class="form-control form-control-sm border-0 fw-bold" 
-                                               style="width: 150px;" @bind="section.Name" />
-                                    </div>
-                                    <div class="btn-list">
-                                        <button class="btn btn-sm btn-icon btn-ghost-danger" @onclick="() => m_layout.Sections.Remove(section)">
-                                            <i class="ti ti-trash"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                                <div class="card-body p-3">
-                                    @foreach (var block in section.Blocks)
-                                    {
-                                        <div class="card mb-2 border-dashed bg-white">
-                                            <div class="card-body p-2">
-                                                <div class="d-flex justify-content-between mb-2">
-                                                    <span class="badge bg-blue-lt">@block.GetType().Name.Replace("Block", "")</span>
-                                                    <div class="btn-list flex-nowrap">
-                                                        <button class="btn btn-sm btn-icon btn-ghost-secondary border-0" @onclick="() => MoveBlockUp(section, block)">
-                                                            <i class="ti ti-arrow-up"></i>
-                                                        </button>
-                                                        <button class="btn btn-sm btn-icon btn-ghost-secondary border-0" @onclick="() => MoveBlockDown(section, block)">
-                                                            <i class="ti ti-arrow-down"></i>
-                                                        </button>
-                                                        <button class="btn btn-sm btn-icon btn-ghost-danger border-0" 
-                                                                @onclick="() => section.Blocks.Remove(block)">
-                                                            <i class="ti ti-x"></i>
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                                
-                                                @if (block is HeadingBlock hb)
-                                                {
-                                                    <input type="text" class="form-control form-control-sm mb-2 fw-bold" @bind="hb.Content" placeholder="Heading Text" />
-                                                    <div class="row g-2">
-                                                        <div class="col-auto">
-                                                            <select class="form-select form-select-sm" @bind="hb.Level">
-                                                                <option value="1">H1</option>
-                                                                <option value="2">H2</option>
-                                                                <option value="3">H3</option>
-                                                            </select>
-                                                        </div>
-                                                        <div class="col-auto">
-                                                            <select class="form-select form-select-sm" @bind="hb.HorizontalAlignment">
-                                                                <option value="Left">Left</option>
-                                                                <option value="Center">Center</option>
-                                                                <option value="Right">Right</option>
-                                                            </select>
-                                                        </div>
-                                                    </div>
-                                                }
-                                                else if (block is TextBlock tb)
-                                                {
-                                                    <textarea class="form-control form-control-sm mb-2" @bind="tb.Content" placeholder="Enter text or {{Tokens}}" rows="3"></textarea>
-                                                    <div class="row g-2">
-                                                        <div class="col-auto">
-                                                            <button class="btn btn-sm @(tb.IsBold ? "btn-primary" : "btn-outline-secondary")" @onclick="() => tb.IsBold = !tb.IsBold">
-                                                                <i class="ti ti-bold"></i>
-                                                            </button>
-                                                        </div>
-                                                        <div class="col-auto">
-                                                            <select class="form-select form-select-sm" @bind="tb.HorizontalAlignment">
-                                                                <option value="Left">Left</option>
-                                                                <option value="Center">Center</option>
-                                                                <option value="Right">Right</option>
-                                                            </select>
-                                                        </div>
-                                                    </div>
-                                                }
-                                                else if (block is DividerBlock db)
-                                                {
-                                                    <div class="row g-2 align-items-center">
-                                                        <div class="col-auto">Thickness:</div>
-                                                        <div class="col-auto">
-                                                            <input type="number" class="form-control form-control-sm" @bind="db.Thickness" style="width: 60px;" />
-                                                        </div>
-                                                        <div class="col-auto">Color:</div>
-                                                        <div class="col-auto">
-                                                            <input type="color" class="form-control form-control-color" @bind="db.Color" />
-                                                        </div>
-                                                    </div>
-                                                }
-                                                else if (block is SignatureBlock sig)
-                                                {
-                                                    <div class="row g-2">
-                                                        <div class="col">
-                                                            <input type="text" class="form-control form-control-sm" @bind="sig.Label" placeholder="Signature Label" />
-                                                        </div>
-                                                        <div class="col">
-                                                            <input type="text" class="form-control form-control-sm" @bind="sig.BindingPath" placeholder="Data Path (optional)" />
-                                                        </div>
-                                                    </div>
-                                                }
-                                                else if (block is TwoColumnBlock twoCol)
-                                                {
-                                                    <div class="row g-3">
-                                                        <div class="col-6">
-                                                            <div class="small fw-bold mb-2">Left Column</div>
-                                                            <div class="bg-light p-2 rounded">
-                                                                @foreach (var leftBlock in twoCol.LeftColumn)
-                                                                {
-                                                                    <div class="badge bg-white text-dark border w-100 mb-1 d-flex justify-content-between">
-                                                                        <span>@leftBlock.GetType().Name.Replace("Block", "")</span>
-                                                                        <i class="ti ti-x cursor-pointer" @onclick="() => twoCol.LeftColumn.Remove(leftBlock)"></i>
-                                                                    </div>
-                                                                }
-                                                                <button class="btn btn-xs btn-ghost-primary w-100 mt-1" @onclick='() => AddBlockToColumn(twoCol.LeftColumn)'>+ Add</button>
-                                                            </div>
-                                                        </div>
-                                                        <div class="col-6">
-                                                            <div class="small fw-bold mb-2">Right Column</div>
-                                                            <div class="bg-light p-2 rounded">
-                                                                @foreach (var rightBlock in twoCol.RightColumn)
-                                                                {
-                                                                    <div class="badge bg-white text-dark border w-100 mb-1 d-flex justify-content-between">
-                                                                        <span>@rightBlock.GetType().Name.Replace("Block", "")</span>
-                                                                        <i class="ti ti-x cursor-pointer" @onclick="() => twoCol.RightColumn.Remove(rightBlock)"></i>
-                                                                    </div>
-                                                                }
-                                                                <button class="btn btn-xs btn-ghost-primary w-100 mt-1" @onclick='() => AddBlockToColumn(twoCol.RightColumn)'>+ Add</button>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                }
-                                                else if (block is SpacerBlock sb)
-                                                {
-                                                    <div class="row align-items-center">
-                                                        <div class="col-auto">Height (pt):</div>
-                                                        <div class="col">
-                                                            <input type="number" class="form-control form-control-sm" @bind="sb.Height" />
-                                                        </div>
-                                                    </div>
-                                                }
-                                                else if (block is TableBlock table)
-                                                {
-                                                    <div class="mb-2">
-                                                        <label class="small fw-bold">Data Binding Path (e.g., Booking.Items)</label>
-                                                        <input type="text" class="form-control form-control-sm" @bind="table.BindingPath" />
-                                                    </div>
-                                                    <div class="table-responsive">
-                                                        <table class="table table-sm table-borderless mb-0">
-                                                            <thead>
-                                                                <tr>
-                                                                    <th>Header</th>
-                                                                    <th>Field Path</th>
-                                                                    <th></th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody>
-                                                                @foreach (var col in table.Columns)
-                                                                {
-                                                                    <tr>
-                                                                        <td><input type="text" class="form-control form-control-sm" @bind="col.Header" /></td>
-                                                                        <td><input type="text" class="form-control form-control-sm" @bind="col.BindingPath" /></td>
-                                                                        <td>
-                                                                            <button class="btn btn-sm btn-icon btn-ghost-danger" @onclick="() => table.Columns.Remove(col)">
-                                                                                <i class="ti ti-minus"></i>
-                                                                            </button>
-                                                                        </td>
-                                                                    </tr>
-                                                                }
-                                                            </tbody>
-                                                        </table>
-                                                        <button class="btn btn-sm btn-ghost-primary mt-1" @onclick="() => table.Columns.Add(new TableColumn())">
-                                                            <i class="ti ti-plus me-1"></i> Add Column
-                                                        </button>
-                                                    </div>
-                                                }
-                                            </div>
-                                        </div>
-                                    }
-                                    
-                                    @if (!section.Blocks.Any())
-                                    {
-                                        <div class="text-center p-3 text-secondary border-dashed rounded">
-                                            Click a block in the library to add content here
-                                        </div>
-                                    }
-                                </div>
-                            </div>
-                        }
-                    </div>
-                </div>
+            @* Main Canvas Editor *@
+            <div class="col-lg-7">
+                <DocumentCanvas Layout="m_layout" 
+                                SelectedBlock="DesignerState.SelectedBlock" 
+                                OnBlockSelected="b => DesignerState.SetSelectedBlock(b)"
+                                OnBlockAdded="AddBlock" />
             </div>
 
-            @* AI Sidebar *@
-            @if (m_showAiSidebar)
-            {
-                <div class="col-lg-3">
-                    <div class="card">
+            @* Right Sidebar - Properties & AI *@
+            <div class="col-lg-3">
+                <BlockPropertyEditor Block="DesignerState.SelectedBlock" 
+                                     OnDeleteRequested="DeleteSelectedBlock" />
+
+                @if (m_showAiSidebar)
+                {
+                    <div class="card mt-3">
                         <div class="card-header bg-primary-lt">
                             <h3 class="card-title">
                                 <i class="ti ti-sparkles me-2"></i>
-                                AI Clause Suggester
+                                AI Suggester
                             </h3>
                         </div>
                         <div class="card-body">
                             <div class="mb-3">
                                 <label class="form-label">Context / Keywords</label>
-                                <textarea class="form-control" @bind="m_aiContext" rows="3" placeholder="e.g. insurance, fuel policy, late return fees..."></textarea>
+                                <textarea class="form-control" @bind="m_aiContext" rows="3" placeholder="e.g. insurance, fuel policy..."></textarea>
                             </div>
                             <button class="btn btn-primary w-100 mb-3" @onclick="GetAiSuggestions" disabled="@m_loadingAi">
                                 @if (m_loadingAi)
@@ -341,7 +140,7 @@
                                 Suggest Clauses
                             </button>
 
-                            <div class="list-group list-group-flush border-top">
+                            <div class="list-group list-group-flush border-top overflow-auto" style="max-height: 400px;">
                                 @foreach (var suggestion in m_aiSuggestions)
                                 {
                                     <div class="list-group-item p-3 border-bottom cursor-pointer hover-bg-light"
@@ -350,17 +149,11 @@
                                         <div class="fw-medium text-wrap">@suggestion</div>
                                     </div>
                                 }
-                                @if (!m_aiSuggestions.Any() && !m_loadingAi)
-                                {
-                                    <div class="text-center py-4 text-secondary">
-                                        Describe what clauses you need and click suggest.
-                                    </div>
-                                }
                             </div>
                         </div>
                     </div>
-                </div>
-            }
+                }
+            </div>
         </div>
     </LoadingSkeleton>
 </div>
@@ -406,7 +199,13 @@
 
     protected override async Task OnInitializedAsync()
     {
+        DesignerState.OnStateChanged += StateHasChanged;
         await LoadDataAsync();
+    }
+
+    public void Dispose()
+    {
+        DesignerState.OnStateChanged -= StateHasChanged;
     }
 
     private async Task GetAiSuggestions()
@@ -426,37 +225,14 @@
         }
     }
 
-    private void AddBlockToColumn(List<LayoutBlock> column)
-    {
-        column.Add(new TextBlock { Content = "New Block in Column" });
-    }
-
     private void AddClauseToLayout(string clause)
     {
-        if (!m_layout.Sections.Any()) AddSection();
+        if (!m_layout.Sections.Any()) m_layout.Sections.Add(new LayoutSection { Name = "Main Content" });
         var section = m_layout.Sections.Last();
-        section.Blocks.Add(new TextBlock { Content = clause });
+        var block = new TextBlock { Content = clause };
+        section.Blocks.Add(block);
+        DesignerState.SetSelectedBlock(block);
         ShowSuccess("Clause added to layout");
-    }
-
-    private void MoveBlockUp(LayoutSection section, LayoutBlock block)
-    {
-        var index = section.Blocks.IndexOf(block);
-        if (index > 0)
-        {
-            section.Blocks.RemoveAt(index);
-            section.Blocks.Insert(index - 1, block);
-        }
-    }
-
-    private void MoveBlockDown(LayoutSection section, LayoutBlock block)
-    {
-        var index = section.Blocks.IndexOf(block);
-        if (index < section.Blocks.Count - 1)
-        {
-            section.Blocks.RemoveAt(index);
-            section.Blocks.Insert(index + 1, block);
-        }
     }
 
     private async Task LoadDataAsync()
@@ -484,7 +260,7 @@
                 m_layout = new DocumentLayout
                 {
                     Sections = new List<LayoutSection> { new LayoutSection { Name = "Main Content" } }
-                };
+                } ;
             }
         }
         catch (Exception ex)
@@ -497,30 +273,47 @@
         }
     }
 
-    private void AddSection()
+    private void DeleteSelectedBlock()
     {
-        m_layout.Sections.Add(new LayoutSection { Name = "New Section" });
+        if (DesignerState.SelectedBlock == null) return;
+
+        foreach (var section in m_layout.Sections)
+        {
+            if (section.Blocks.Contains(DesignerState.SelectedBlock))
+            {
+                section.Blocks.Remove(DesignerState.SelectedBlock);
+                DesignerState.SetSelectedBlock(null);
+                return;
+            }
+        }
     }
 
     private void AddBlock(string type)
     {
-        if (!m_layout.Sections.Any()) AddSection();
+        if (!m_layout.Sections.Any()) m_layout.Sections.Add(new LayoutSection { Name = "Main Content" });
         
         var section = m_layout.Sections.Last();
         LayoutBlock block = type switch
         {
-            "heading" => new HeadingBlock { Content = "Heading", Level = 2 },
-            "text" => new TextBlock { Content = "New Text Block" },
-            "image" => new ImageBlock { Width = 100 },
-            "table" => new TableBlock { Columns = new List<TableColumn> { new TableColumn { Header = "Column 1" } } },
+            "heading" => new HeadingBlock { Content = "New Heading", Level = 2, HorizontalAlignment = "Center", IsBold = true },
+            "text" => new TextBlock { Content = "New Text Block", HorizontalAlignment = "Left" },
+            "image" => new ImageBlock { Width = 200 },
+            "table" => new TableBlock { 
+                Columns = new List<TableColumn> { 
+                    new TableColumn { Header = "Item", BindingPath = "Description" },
+                    new TableColumn { Header = "Qty", BindingPath = "Quantity" },
+                    new TableColumn { Header = "Price", BindingPath = "Price" }
+                } 
+            },
             "divider" => new DividerBlock { Thickness = 1, Color = "#eeeeee" },
             "signature" => new SignatureBlock { Label = "Authorized Signature" },
             "two-columns" => new TwoColumnBlock(),
             "spacer" => new SpacerBlock { Height = 20 },
-            _ => throw new ArgumentException("Invalid block type")
+            _ => new TextBlock { Content = "New Block" }
         };
         
         section.Blocks.Add(block);
+        DesignerState.SetSelectedBlock(block);
     }
 
     private async Task TogglePreview()

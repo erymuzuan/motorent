@@ -1,0 +1,171 @@
+@using MotoRent.Domain.Models
+@using MotoRent.Services
+
+<div class="canvas-block @(IsSelected ? "selected" : "")" 
+     @onclick="HandleClick" 
+     @onclick:stopPropagation="true"
+     draggable="true"
+     @ondragstart="HandleDragStart"
+     @ondragover="HandleDragOver"
+     @ondrop="HandleDrop">
+    
+    <div class="block-controls">
+        <button class="btn btn-sm btn-icon btn-white shadow-sm" @onclick="OnMoveUp" @onclick:stopPropagation="true">
+            <i class="ti ti-arrow-up"></i>
+        </button>
+        <button class="btn btn-sm btn-icon btn-white shadow-sm" @onclick="OnMoveDown" @onclick:stopPropagation="true">
+            <i class="ti ti-arrow-down"></i>
+        </button>
+        <button class="btn btn-sm btn-icon btn-danger shadow-sm" @onclick="OnDelete" @onclick:stopPropagation="true">
+            <i class="ti ti-trash"></i>
+        </button>
+    </div>
+
+    <div class="block-content">
+        @if (Block is HeadingBlock hb)
+        {
+            <div style="text-align: @(hb.HorizontalAlignment ?? "left"); font-weight: @(hb.IsBold ? "bold" : "normal"); font-size: @(GetFontSize(hb.Level, hb.FontSize))px;">
+                @if (string.IsNullOrEmpty(hb.Content))
+                {
+                    <span class="text-muted italic">Empty Heading</span>
+                }
+                else
+                {
+                    @((MarkupString)hb.Content)
+                }
+            </div>
+        }
+        else if (Block is TextBlock tb)
+        {
+            <div style="text-align: @(tb.HorizontalAlignment ?? "left"); font-weight: @(tb.IsBold ? "bold" : "normal"); font-size: @(tb.FontSize ?? 14)px; white-space: pre-wrap;">
+                @if (string.IsNullOrEmpty(tb.Content))
+                {
+                    <span class="text-muted italic">Empty Text Block</span>
+                }
+                else
+                {
+                    @((MarkupString)tb.Content)
+                }
+            </div>
+        }
+        else if (Block is DividerBlock db)
+        {
+            <hr style="border-top: @(db.Thickness)px solid @(db.Color); margin: 1rem 0;" />
+        }
+        else if (Block is SpacerBlock sb)
+        {
+            <div style="height: @(sb.Height)px;"></div>
+        }
+        else if (Block is ImageBlock ib)
+        {
+            <div class="text-center p-2">
+                @if (!string.IsNullOrEmpty(ib.ImageUrl))
+                {
+                    <img src="@ib.ImageUrl" style="max-width: 100%; height: @(ib.Height?.ToString() ?? "auto")px; width: @(ib.Width?.ToString() ?? "auto")px;" />
+                }
+                else
+                {
+                    <div class="bg-light p-4 rounded text-muted">
+                        <i class="ti ti-photo size-lg"></i>
+                        <div>Image Placeholder</div>
+                    </div>
+                }
+            </div>
+        }
+        else if (Block is TableBlock table)
+        {
+            <table class="table table-sm table-bordered mb-0">
+                <thead>
+                    <tr>
+                        @foreach (var col in table.Columns)
+                        {
+                            <th>@col.Header</th>
+                        }
+                        @if (!table.Columns.Any())
+                        {
+                            <th>No Columns</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        @foreach (var col in table.Columns)
+                        {
+                            <td class="text-muted small">@col.BindingPath</td>
+                        }
+                        @if (!table.Columns.Any())
+                        {
+                            <td>-</td>
+                        }
+                    </tr>
+                </tbody>
+            </table>
+        }
+        else if (Block is SignatureBlock sig)
+        {
+            <div class="mt-4 pt-2 border-top" style="max-width: 250px;">
+                <div class="text-muted small">@sig.Label</div>
+            </div>
+        }
+        else if (Block is TwoColumnBlock twoCol)
+        {
+            <div class="row g-2">
+                <div class="col-6 border-end">
+                    @foreach (var b in twoCol.LeftColumn)
+                    {
+                        <div class="p-1 mb-1 bg-light-subtle rounded small border border-dashed">@b.GetType().Name</div>
+                    }
+                    <div class="text-center text-muted smaller py-2">Left Column</div>
+                </div>
+                <div class="col-6">
+                    @foreach (var b in twoCol.RightColumn)
+                    {
+                        <div class="p-1 mb-1 bg-light-subtle rounded small border border-dashed">@b.GetType().Name</div>
+                    }
+                    <div class="text-center text-muted smaller py-2">Right Column</div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public LayoutBlock Block { get; set; } = default!;
+    [Parameter] public bool IsSelected { get; set; }
+    [Parameter] public EventCallback OnSelect { get; set; }
+    [Parameter] public EventCallback OnDelete { get; set; }
+    [Parameter] public EventCallback OnMoveUp { get; set; }
+    [Parameter] public EventCallback OnMoveDown { get; set; }
+
+    private void HandleClick() => OnSelect.InvokeAsync();
+
+    private float GetFontSize(int level, float? customSize)
+    {
+        if (customSize.HasValue) return customSize.Value;
+        return level switch
+        {
+            1 => 32,
+            2 => 24,
+            3 => 18,
+            4 => 16,
+            5 => 14,
+            6 => 12,
+            _ => 16
+        };
+    }
+
+    private void HandleDragStart(DragEventArgs e)
+    {
+        // Not implemented yet
+    }
+
+    private void HandleDragOver(DragEventArgs e)
+    {
+        // Not implemented yet
+    }
+
+    private void HandleDrop(DragEventArgs e)
+    {
+        // Not implemented yet
+    }
+}

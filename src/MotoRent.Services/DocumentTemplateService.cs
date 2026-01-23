@@ -94,6 +94,24 @@ public class DocumentTemplateService(RentalDataContext context, IBinaryStore bin
     }
 
     /// <summary>
+    /// Gets the effective default template, falling back to the latest approved if no default is marked.
+    /// </summary>
+    public async Task<DocumentTemplate?> GetEffectiveDefaultTemplateAsync(DocumentType type, int? shopId = null)
+    {
+        var template = await GetDefaultTemplateAsync(type, shopId);
+        if (template != null) return template;
+
+        // Fallback to latest approved
+        var query = this.Context.CreateQuery<DocumentTemplate>()
+            .Where(t => t.Type == type && t.Status == DocumentTemplateStatus.Approved);
+        
+        if (shopId > 0) query = query.Where(t => t.ShopId == null || t.ShopId == 0 || t.ShopId == shopId);
+
+        var result = await this.Context.LoadAsync(query.OrderByDescending(t => t.CreatedTimestamp), page: 1, size: 1);
+        return result.ItemCollection.FirstOrDefault();
+    }
+
+    /// <summary>
     /// Gets all templates for a specific document type and optional shop filter.
     /// </summary>
     public async Task<LoadOperation<DocumentTemplate>> GetTemplatesByTypeAsync(DocumentType type, int? shopId = null, int page = 1, int size = 100)
@@ -109,6 +127,23 @@ public class DocumentTemplateService(RentalDataContext context, IBinaryStore bin
         query = query.OrderByDescending(t => t.IsDefault)
             .ThenByDescending(t => t.ShopId > 0)
             .ThenBy(t => t.Name);
+
+        return await this.Context.LoadAsync(query, page, size, includeTotalRows: true);
+    }
+
+    /// <summary>
+    /// Gets all templates with optional type filter.
+    /// </summary>
+    public async Task<LoadOperation<DocumentTemplate>> GetTemplatesAsync(DocumentType? type = null, int page = 1, int size = 100)
+    {
+        var query = this.Context.CreateQuery<DocumentTemplate>();
+        
+        if (type.HasValue)
+        {
+            query = query.Where(t => t.Type == type.Value);
+        }
+
+        query = query.OrderByDescending(t => t.CreatedTimestamp);
 
         return await this.Context.LoadAsync(query, page, size, includeTotalRows: true);
     }

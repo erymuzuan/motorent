@@ -1,5 +1,7 @@
 @page "/rentals/print-agreement"
 @using Microsoft.AspNetCore.Authorization
+@using MotoRent.Domain.Models
+@using MotoRent.Services.Core
 @attribute [Authorize(Policy = "RequireTenantStaff")]
 @inherits LocalizedComponentBase<PrintAgreement>
 
@@ -7,168 +9,30 @@
 @inject RenterService RenterService
 @inject VehicleService VehicleService
 @inject ShopService ShopService
+@inject DocumentTemplateService TemplateService
+@inject IHtmlTemplateRenderer HtmlRenderer
+@inject ITemplateDataResolver DataResolver
+@inject OrganizationService OrganizationService
 @inject IJSRuntime JS
-<style>
-    @@media print {
-        .no-print { display: none !important; }
-        body { margin: 0; padding: 0; }
-        .print-container { padding: 20px; }
-    }
 
-    .print-container {
-        max-width: 800px;
-        margin: 0 auto;
-        padding: 20px;
-        font-family: Arial, sans-serif;
-        font-size: 12px;
-        line-height: 1.4;
-    }
-
-    .agreement-header {
-        text-align: center;
-        border-bottom: 2px solid #000;
-        padding-bottom: 15px;
-        margin-bottom: 20px;
-    }
-
-    .agreement-header h1 {
-        margin: 0 0 5px 0;
-        font-size: 20px;
-        text-transform: uppercase;
-    }
-
-    .agreement-header p {
-        margin: 0;
-        color: #666;
-    }
-
-    .info-section {
-        margin-bottom: 20px;
-    }
-
-    .info-section h3 {
-        font-size: 14px;
-        margin: 0 0 10px 0;
-        border-bottom: 1px solid #ccc;
-        padding-bottom: 5px;
-    }
-
-    .info-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 10px;
-    }
-
-    .info-item {
-        display: flex;
-        justify-content: space-between;
-        border-bottom: 1px dotted #ddd;
-        padding: 3px 0;
-    }
-
-    .info-label {
-        color: #666;
-    }
-
-    .info-value {
-        font-weight: bold;
-    }
-
-    .terms-section {
-        margin-bottom: 20px;
-        page-break-inside: avoid;
-    }
-
-    .terms-section h3 {
-        font-size: 14px;
-        margin: 0 0 10px 0;
-        border-bottom: 1px solid #ccc;
-        padding-bottom: 5px;
-    }
-
-    .terms-text {
-        font-size: 11px;
-        line-height: 1.5;
-        white-space: pre-line;
-        background-color: #f9f9f9;
-        padding: 15px;
-        border: 1px solid #ddd;
-    }
-
-    .signature-section {
-        margin-top: 30px;
-        page-break-inside: avoid;
-    }
-
-    .signature-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 40px;
-        margin-top: 20px;
-    }
-
-    .signature-box {
-        border: 1px solid #000;
-        padding: 20px;
-        min-height: 100px;
-    }
-
-    .signature-line {
-        border-bottom: 1px solid #000;
-        margin-bottom: 10px;
-        height: 60px;
-    }
-
-    .signature-label {
-        text-align: center;
-        font-size: 11px;
-        color: #666;
-    }
-
-    .date-line {
-        margin-top: 15px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-
-    .date-line span {
-        flex-shrink: 0;
-    }
-
-    .date-line .date-blank {
-        flex-grow: 1;
-        border-bottom: 1px solid #000;
-    }
-
-    .total-amount {
-        font-size: 16px;
-        text-align: right;
-        padding: 10px;
-        background-color: #f0f0f0;
-        margin-top: 15px;
-    }
-
-    .print-button {
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        z-index: 1000;
-    }
-</style>
-
-<div class="no-print print-button">
-    <button class="btn btn-primary" @onclick="Print">
-        <i class="ti ti-printer me-2"></i>
-        @Localizer["PrintAgreement"]
-    </button>
-    <a href="/rentals/checkin" class="btn btn-outline-secondary ms-2">
-        <i class="ti ti-arrow-left me-2"></i>
-        @Localizer["BackToCheckIn"]
-    </a>
-</div>
-
-@if (m_loading)
+@if (m_customHtml != null)
+{
+    @* Render Custom Template *@
+    <div class="no-print print-button fixed-top p-3 d-flex justify-content-end">
+        <button class="btn btn-primary shadow" @onclick="Print">
+            <i class="ti ti-printer me-2"></i>
+            @Localizer["PrintAgreement"]
+        </button>
+        <button class="btn btn-outline-secondary ms-2 shadow" @onclick="GoBack">
+            <i class="ti ti-arrow-left me-2"></i>
+            @Localizer["Back"]
+        </button>
+    </div>
+    <div class="custom-print-container">
+        @((MarkupString)m_customHtml)
+    </div>
+}
+else if (m_loading)
 {
     <div class="d-flex justify-content-center p-5">
         <div class="spinner-border"></div>
@@ -176,6 +40,159 @@
 }
 else
 {
+    @* Fallback to Legacy Layout *@
+    <style>
+        @@media print {
+            .no-print { display: none !important; }
+            body { margin: 0; padding: 0; }
+            .print-container { padding: 20px; }
+        }
+
+        .print-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .agreement-header {
+            text-align: center;
+            border-bottom: 2px solid #000;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+
+        .agreement-header h1 {
+            margin: 0 0 5px 0;
+            font-size: 20px;
+            text-transform: uppercase;
+        }
+
+        .agreement-header p {
+            margin: 0;
+            color: #666;
+        }
+
+        .info-section {
+            margin-bottom: 20px;
+        }
+
+        .info-section h3 {
+            font-size: 14px;
+            margin: 0 0 10px 0;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 5px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px dotted #ddd;
+            padding: 3px 0;
+        }
+
+        .info-label { color: #666; }
+        .info-value { font-weight: bold; }
+
+        .terms-section {
+            margin-bottom: 20px;
+            page-break-inside: avoid;
+        }
+
+        .terms-section h3 {
+            font-size: 14px;
+            margin: 0 0 10px 0;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 5px;
+        }
+
+        .terms-text {
+            font-size: 11px;
+            line-height: 1.5;
+            white-space: pre-line;
+            background-color: #f9f9f9;
+            padding: 15px;
+            border: 1px solid #ddd;
+        }
+
+        .signature-section {
+            margin-top: 30px;
+            page-break-inside: avoid;
+        }
+
+        .signature-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-top: 20px;
+        }
+
+        .signature-box {
+            border: 1px solid #000;
+            padding: 20px;
+            min-height: 100px;
+        }
+
+        .signature-line {
+            border-bottom: 1px solid #000;
+            margin-bottom: 10px;
+            height: 60px;
+        }
+
+        .signature-label {
+            text-align: center;
+            font-size: 11px;
+            color: #666;
+        }
+
+        .date-line {
+            margin-top: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .date-line span { flex-shrink: 0; }
+        .date-line .date-blank {
+            flex-grow: 1;
+            border-bottom: 1px solid #000;
+        }
+
+        .total-amount {
+            font-size: 16px;
+            text-align: right;
+            padding: 10px;
+            background-color: #f0f0f0;
+            margin-top: 15px;
+        }
+
+        .print-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+    </style>
+
+    <div class="no-print print-button">
+        <button class="btn btn-primary" @onclick="Print">
+            <i class="ti ti-printer me-2"></i>
+            @Localizer["PrintAgreement"]
+        </button>
+        <button class="btn btn-outline-secondary ms-2" @onclick="GoBack">
+            <i class="ti ti-arrow-left me-2"></i>
+            @Localizer["Back"]
+        </button>
+    </div>
+
     <div class="print-container">
         <div class="agreement-header">
             <h1>@Localizer["VehicleRentalAgreement"]</h1>
@@ -337,8 +354,10 @@ else
     [SupplyParameterFromQuery] public int? Days { get; set; }
     [SupplyParameterFromQuery] public string? DepositType { get; set; }
     [SupplyParameterFromQuery] public decimal? DepositAmount { get; set; }
+    [SupplyParameterFromQuery] public int? TemplateId { get; set; }
 
     private bool m_loading = true;
+    private string? m_customHtml;
     private Renter? m_renter;
     private Vehicle? m_vehicle;
     private Shop? m_shop;
@@ -353,72 +372,69 @@ else
     private string m_depositType = "-";
     private decimal m_depositAmount;
 
-    private string m_agreementText = @"VEHICLE RENTAL AGREEMENT
-
-I, the undersigned renter, agree to the following terms and conditions:
-
-1. VEHICLE CONDITION: I acknowledge that I have received the vehicle in good working condition and agree to return it in the same condition.
-
-2. LIABILITY: I am fully responsible for any damage, loss, or theft of the vehicle during the rental period, including but not limited to accidents, scratches, dents, and mechanical damage.
-
-3. INSURANCE: Any insurance coverage is subject to the terms of the selected insurance package. I understand the deductible and coverage limits.
-
-4. VALID LICENSE: I confirm that I hold a valid license appropriate for this vehicle type and will carry it at all times while operating the vehicle.
-
-5. TRAFFIC LAWS: I agree to follow all applicable laws and regulations of Thailand. I am responsible for all violations and fines incurred during the rental period.
-
-6. NO SUB-RENTAL: I will not lend, sub-rent, or allow any unauthorized person to operate the vehicle.
-
-7. FUEL: I will return the vehicle with the same fuel level as at pick-up, or pay the refueling charge (if applicable).
-
-8. LATE RETURN: If I fail to return the vehicle by the agreed date/time, I will pay additional rental charges plus any late fees.
-
-9. DEPOSIT: I understand that my deposit may be used to cover any damages, additional charges, or unpaid fees.
-
-10. EMERGENCY: In case of accident or breakdown, I will immediately contact the rental shop at the provided number.
-
-11. SAFETY: I agree to wear appropriate safety equipment as required (helmets, life jackets, etc.) and follow all safety instructions provided.";
-
     protected override async Task OnInitializedAsync()
     {
         try
         {
             m_loading = true;
 
-            // Load renter
-            if (this.RenterId.HasValue)
-            {
-                m_renter = await this.RenterService.GetRenterByIdAsync(this.RenterId.Value);
-            }
-
-            // Load vehicle
-            if (this.VehicleId.HasValue)
-            {
-                m_vehicle = await this.VehicleService.GetVehicleByIdAsync(this.VehicleId.Value);
-            }
-
-            // Load shop
+            // Load data
+            if (this.RenterId.HasValue) m_renter = await this.RenterService.GetRenterByIdAsync(this.RenterId.Value);
+            if (this.VehicleId.HasValue) m_vehicle = await this.VehicleService.GetVehicleByIdAsync(this.VehicleId.Value);
             m_shop = await this.ShopService.GetShopByIdAsync(this.RequestContext.GetShopId());
 
             // Set rental parameters
             m_isIntervalRental = this.Interval.HasValue && this.Interval > 0;
-            if (!string.IsNullOrEmpty(this.StartTime) && DateTimeOffset.TryParse(this.StartTime, out var startTime))
-                m_startTime = startTime;
-            if (!string.IsNullOrEmpty(this.StartDate) && DateTime.TryParse(this.StartDate, out var startDate))
-                m_startDate = startDate;
-            if (!string.IsNullOrEmpty(this.EndDate) && DateTime.TryParse(this.EndDate, out var endDate))
-                m_endDate = endDate;
+            if (!string.IsNullOrEmpty(this.StartTime) && DateTimeOffset.TryParse(this.StartTime, out var startTime)) m_startTime = startTime;
+            if (!string.IsNullOrEmpty(this.StartDate) && DateTime.TryParse(this.StartDate, out var startDate)) m_startDate = startDate;
+            if (!string.IsNullOrEmpty(this.EndDate) && DateTime.TryParse(this.EndDate, out var endDate)) m_endDate = endDate;
             m_days = this.Days ?? 1;
             m_rate = this.Rate ?? 0;
             m_totalAmount = this.Total ?? 0;
             m_depositType = this.DepositType ?? "-";
             m_depositAmount = this.DepositAmount ?? 0;
+
+            // Check for template
+            DocumentTemplate? template = null;
+            if (this.TemplateId > 0)
+            {
+                template = await TemplateService.GetTemplateByIdAsync(this.TemplateId.Value);
+            }
+            else
+            {
+                template = await TemplateService.GetEffectiveDefaultTemplateAsync(DocumentType.RentalAgreement, m_shop?.ShopId);
+            }
+
+            if (template != null)
+            {
+                var layout = await TemplateService.GetTemplateLayoutAsync(template.StoreId);
+                if (layout != null)
+                {
+                    var org = await OrganizationService.GetOrganizationByAccountNoAsync(AccountNo);
+                    var staff = new User { FullName = UserName, UserName = UserName };
+                    
+                    // Create a dummy booking object for resolution
+                    var booking = new Booking
+                    {
+                        RenterId = m_renter?.RenterId ?? 0,
+                        StartDate = m_startTime ?? (m_startDate.HasValue ? new DateTimeOffset(m_startDate.Value) : DateTimeOffset.Now),
+                        EndDate = m_endDate.HasValue ? new DateTimeOffset(m_endDate.Value) : DateTimeOffset.Now.AddDays(m_days),
+                        TotalAmount = m_totalAmount,
+                        DepositRequired = m_depositAmount
+                    };
+
+                    var data = DataResolver.Resolve(booking, org ?? new Organization(), staff);
+                    m_customHtml = HtmlRenderer.RenderHtml(layout, data);
+                }
+            }
         }
         finally
         {
             m_loading = false;
         }
     }
+
+    private void GoBack() => NavigationManager.NavigateTo("/rentals/checkin");
 
     private string GetVehicleTypeLabel()
     {
@@ -446,8 +462,5 @@ I, the undersigned renter, agree to the following terms and conditions:
         };
     }
 
-    private async Task Print()
-    {
-        await this.JS.InvokeVoidAsync("window.print");
-    }
+    private async Task Print() => await this.JS.InvokeVoidAsync("window.print");
 }
