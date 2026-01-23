@@ -1,4 +1,4 @@
---- 
+---
 name: database-repository
 description: Custom repository pattern and DataContext implementation for JSON-based storage with computed columns.
 ---
@@ -44,105 +44,38 @@ CREATE TABLE [MotoRent].[Rental]
 CREATE INDEX IX_Rental_ShopId_Status ON [MotoRent].[Rental]([ShopId], [Status])
 ```
 
-## Data Context Pattern
+## RentalDataContext Structure
 
-```csharp
-// RentalDataContext.cs
-public partial class RentalDataContext
-{
-    private QueryProvider QueryProvider { get; }
+The `RentalDataContext` is split into partial classes by logical function:
 
-    public RentalDataContext() : this(ObjectBuilder.GetObject<QueryProvider>()) { }
-     /// <summary>
-    /// Creates a new query for the specified entity type.
-    /// Preferred pattern over using Query properties directly.
-    /// </summary>
-    public Query<T> CreateQuery<T>() where T : Entity, new()
-    {
-        return new Query<T>(this.QueryProvider);
-    }
+| File | Purpose |
+|------|---------|
+| `RentalDataContext.cs` | Core: constructor, CreateQuery, OpenSession |
+| `RentalDataContext.Load.cs` | Loading: LoadOneAsync, LoadAsync |
+| `RentalDataContext.Aggregate.cs` | Aggregates: Count, Sum, Max, Min, Average, Scalar, Distinct |
+| `RentalDataContext.GroupBy.cs` | Group By: GetGroupByCountAsync, GetGroupBySumAsync |
+| `RentalDataContext.List.cs` | Lists: GetListAsync (tuples, DataMap), GetReaderAsync |
+| `RentalDataContext.Persistence.cs` | Persistence: SubmitChanges, CRUD operations |
 
-    public RentalDataContext(QueryProvider provider)
-    {
-        this.QueryProvider = provider;
-    }
+## Query Method Selection Guide
 
-    // Preferred: Use CreateQuery<T> instead of Query properties
-    public Query<T> CreateQuery<T>() where T : Entity, new()
-    {
-        return new Query<T>(this.QueryProvider);
-    }
+| Method | Use When | SQL Output |
+|--------|----------|------------|
+| `LoadAsync` | Need full entity for editing/saving | `SELECT [Id], [Json] ...` |
+| `LoadOneAsync` | Need single entity with all properties | `SELECT TOP 1 [Id], [Json] ...` |
+| `GetListAsync` (DataMap) | Display list/table, dropdowns (N columns) | `SELECT [Col1], [Col2], ... [ColN]` |
+| `GetListAsync` (Tuple) | Need 2-3 specific columns as tuples | `SELECT [Col1], [Col2]` |
+| `GetCountAsync` | Count matching entities | `SELECT COUNT(*)` |
+| `GetSumAsync` | Sum a column | `SELECT SUM([Column])` |
+| `GetGroupByCountAsync` | Count grouped by key | `SELECT [Key], COUNT(*) GROUP BY [Key]` |
+| `GetGroupBySumAsync` | Sum grouped by key(s) | `SELECT [Key], SUM([Val]) GROUP BY [Key]` |
 
-    public async Task<T?> LoadOneAsync<T>(Expression<Func<T, bool>> predicate) where T : Entity
-    {
-        var query = new Query<T>(this.QueryProvider).Where(predicate);
-        var repos = ObjectBuilder.GetObject<IRepository<T>>();
-        return await repos.LoadOneAsync(query);
-    }
+### Performance Guidelines
 
-    public async Task<LoadOperation<T>> LoadAsync<T>(IQueryable<T> query,
-        int page = 1, int size = 40, bool includeTotalRows = false) where T : Entity
-    {
-        var repos = ObjectBuilder.GetObject<IRepository<T>>();
-        return await repos.LoadAsync(query, page, size, includeTotalRows);
-    }
-
-    // Aggregate methods
-    public async Task<int> GetCountAsync<T>(IQueryable<T> query) where T : Entity;
-    public async Task<bool> ExistAsync<T>(IQueryable<T> query) where T : Entity;
-    public async Task<TResult> GetSumAsync<T, TResult>(IQueryable<T> query, Expression<Func<T, TResult>> selector);
-    public async Task<TResult> GetMaxAsync<T, TResult>(IQueryable<T> query, Expression<Func<T, TResult>> selector);
-    public async Task<TResult> GetMinAsync<T, TResult>(IQueryable<T> query, Expression<Func<T, TResult>> selector);
-    public async Task<decimal> GetAverageAsync<T>(IQueryable<T> query, Expression<Func<T, decimal>> selector);
-    public async Task<TResult?> GetScalarAsync<T, TResult>(IQueryable<T> query, Expression<Func<T, TResult>> selector);
-    public async Task<List<TResult>> GetDistinctAsync<T, TResult>(IQueryable<T> query, Expression<Func<T, TResult>> selector);
-
-    public PersistenceSession OpenSession(string username = "system") => new PersistenceSession(this, username);
-}
-```
-
-## Unit of Work (PersistenceSession)
-
-```csharp
-public sealed class PersistenceSession : IDisposable
-{
-    private RentalDataContext? m_context;
-    internal ObjectCollection<Entity> AttachedCollection { get; } = [];
-    internal ObjectCollection<Entity> DeletedCollection { get; } = [];
-
-    public PersistenceSession(RentalDataContext context) => m_context = context;
-
-    public void Attach<T>(params T[] items) where T : Entity
-    {
-        if (m_context == null)
-            throw new ObjectDisposedException("Session has been completed");
-        foreach (var item in items)
-        {
-            if (string.IsNullOrWhiteSpace(item.WebId))
-                item.WebId = Guid.NewGuid().ToString();
-            this.AttachedCollection.Add(item);
-        }
-    }
-
-    public void Delete(params Entity[] entities)
-    {
-        if (m_context == null)
-            throw new ObjectDisposedException("Session has been completed");
-        this.DeletedCollection.AddRange(entities);
-    }
-
-    public async Task<SubmitOperation> SubmitChanges(string operation = "")
-    {
-        var so = await m_context!.SubmitChangesAsync(this, operation);
-        this.AttachedCollection.Clear();
-        this.DeletedCollection.Clear();
-        m_context = null;
-        return so;
-    }
-
-    public void Dispose() => m_context = null;
-}
-```
+- **AVOID**: Using `LoadAsync` just to display a list of names/IDs
+- **PREFER**: `GetListAsync` with field selectors for read-only displays
+- **PREFER**: `GetGroupByCountAsync` / `GetGroupBySumAsync` for dashboard stats
+- **REASON**: Reduces SQL bytes transferred and eliminates JSON deserialization
 
 ## Usage Examples
 
@@ -156,12 +89,131 @@ var rental = await context.LoadOneAsync<Rental>(r => r.RentalId == id);
 
 // Load with pagination
 var query = context.CreateQuery<Rental>()
-    .Where(r => r.ShopId == shopId && r.Status == "Active")
+    .Where(r => r.ShopId == shopId)
+    .Where(r => r.Status == "Active")
     .OrderByDescending(r => r.StartDate);
 
 var result = await context.LoadAsync(query, page: 1, size: 20, includeTotalRows: true);
 var rentals = result.ItemCollection;
 var totalCount = result.TotalRows;
+```
+
+### Aggregate Methods
+
+Use aggregate methods instead of `LoadAsync` when you only need counts or sums:
+
+```csharp
+var context = new RentalDataContext();
+
+// Count
+var activeRentals = await context.GetCountAsync<Rental>(
+    r => r.ShopId == shopId && r.Status == RentalStatus.Active);
+
+// Exists check
+var query = context.CreateQuery<Rental>()
+    .Where(r => r.ShopId == shopId)
+    .Where(r => r.Status == RentalStatus.Overdue);
+var hasOverdue = await context.ExistAsync(query);
+
+// Sum
+var totalRevenue = await context.GetSumAsync<Payment, decimal>(
+    p => p.ShopId == shopId,
+    p => p.Amount);
+
+// Max/Min
+var latestRentalDate = await context.GetMaxAsync<Rental, DateOnly>(
+    r => r.ShopId == shopId,
+    r => r.StartDate);
+
+// Average
+var avgDailyRate = await context.GetAverageAsync(
+    context.CreateQuery<Rental>().Where(r => r.ShopId == shopId),
+    r => r.DailyRate);
+
+// Distinct values
+var uniqueStatuses = await context.GetDistinctAsync<Rental, RentalStatus>(
+    r => r.ShopId == shopId,
+    r => r.Status);
+```
+
+### Group By Aggregations
+
+Use `GetGroupByCountAsync` and `GetGroupBySumAsync` for dashboard statistics:
+
+```csharp
+var context = new RentalDataContext();
+
+// Count by status (e.g., for dashboard pie chart)
+var rentalsByStatus = await context.GetGroupByCountAsync<Rental, RentalStatus>(
+    r => r.ShopId == shopId,
+    r => r.Status);
+// Returns: [(Active, 15), (Completed, 42), (Cancelled, 3)]
+
+// Sum revenue by payment method
+var revenueByMethod = await context.GetGroupBySumAsync<Payment, PaymentMethod, decimal>(
+    p => p.ShopId == shopId && p.PaymentDate >= startDate,
+    p => p.PaymentMethod,
+    p => p.Amount);
+// Returns: [(Cash, 50000), (Card, 35000), (PromptPay, 12000)]
+
+// Sum revenue by shop and payment method (two keys)
+var query = context.CreateQuery<Payment>()
+    .Where(p => p.PaymentDate >= startDate);
+var revenueByShopAndMethod = await context.GetGroupBySumAsync<Payment, int, PaymentMethod, decimal>(
+    query,
+    p => p.ShopId,
+    p => p.PaymentMethod,
+    p => p.Amount);
+// Returns: [(1, Cash, 25000), (1, Card, 15000), (2, Cash, 25000), ...]
+```
+
+### DataMap Pattern (Performance Optimized)
+
+For read-only displays, use `GetListAsync` with field selectors to get `DataMap<T>[]`:
+
+```csharp
+var context = new RentalDataContext();
+var query = context.CreateQuery<TillSession>()
+    .Where(t => t.Status == TillSessionStatus.Open);
+
+// For read-only list display - only fetches specified columns
+var results = await context.GetListAsync(query,
+    t => t.TillSessionId,
+    t => t.ShopId,
+    t => t.StaffUserName,
+    t => t.OpenedAt);
+
+foreach (var row in results)
+{
+    var id = row.GetValue(t => t.TillSessionId);
+    var shopId = row.GetValue(t => t.ShopId);
+    var staff = row.GetValue(t => t.StaffUserName);
+    var opened = row.GetValue(t => t.OpenedAt);
+}
+
+// For editing - use LoadOneAsync to get full entity
+var session = await context.LoadOneAsync<TillSession>(t => t.TillSessionId == id);
+session.ClosedAt = DateTimeOffset.Now;
+// ... save
+```
+
+### Tuple-based Lists (2-3 Columns)
+
+For simple lookups with 2-3 columns:
+
+```csharp
+// Get (Id, Name) pairs for dropdown
+var shopList = await context.GetListAsync<Shop, int, string>(
+    s => s.IsActive,
+    s => s.ShopId,
+    s => s.Name);
+
+// Get (Id, Name, Status) tuples
+var vehicleList = await context.GetListAsync<Vehicle, int, string, VehicleStatus>(
+    v => v.ShopId == shopId,
+    v => v.VehicleId,
+    v => v.LicensePlate,
+    v => v.Status);
 ```
 
 ### Saving Data
@@ -174,12 +226,12 @@ var rental = new Rental
     RenterId = renterId,
     MotorbikeId = motorbikeId,
     StartDate = DateTimeOffset.Now,
-    Status = "Active"
+    Status = RentalStatus.Active
 };
 
-using var session = context.OpenSession();
+using var session = context.OpenSession("username");
 session.Attach(rental);
-await session.SubmitChanges("CheckIn");  // Publishes: Rental.Changed.CheckIn
+await session.SubmitChanges("CheckIn");
 ```
 
 ### Update Pattern
@@ -187,10 +239,10 @@ await session.SubmitChanges("CheckIn");  // Publishes: Rental.Changed.CheckIn
 ```csharp
 // Load, modify, save
 var rental = await context.LoadOneAsync<Rental>(r => r.RentalId == id);
-rental!.Status = "Completed";
+rental!.Status = RentalStatus.Completed;
 rental.ActualEndDate = DateTimeOffset.Now;
 
-using var session = context.OpenSession();
+using var session = context.OpenSession("username");
 session.Attach(rental);
 await session.SubmitChanges("CheckOut");
 ```
@@ -200,74 +252,17 @@ await session.SubmitChanges("CheckOut");
 ```csharp
 var rental = await context.LoadOneAsync<Rental>(r => r.RentalId == id);
 
-using var session = context.OpenSession();
+using var session = context.OpenSession("username");
 session.Delete(rental!);
 await session.SubmitChanges("Delete");
 ```
 
-### Aggregate Methods
-
-Use aggregate methods instead of `LoadAsync` when you only need counts or sums:
-
-```csharp
-var context = new RentalDataContext();
-
-// Count
-var activeRentals = await context.GetCountAsync(
-    context.Rentals.Where(r => r.ShopId == shopId && r.Status == "Active"));
-
-// Exists check
-var hasOverdue = await context.ExistAsync(
-    context.Rentals.Where(r => r.ShopId == shopId && r.Status == "Overdue"));
-
-// Sum
-var totalRevenue = await context.GetSumAsync(
-    context.Payments.Where(p => p.ShopId == shopId),
-    p => p.Amount);
-
-// Max/Min
-var latestRentalDate = await context.GetMaxAsync(
-    context.Rentals.Where(r => r.ShopId == shopId),
-    r => r.StartDate);
-
-// Average
-var avgDailyRate = await context.GetAverageAsync(
-    context.Rentals.Where(r => r.ShopId == shopId),
-    r => r.DailyRate);
-
-// Distinct values
-var uniqueStatuses = await context.GetDistinctAsync(
-    context.Rentals.Where(r => r.ShopId == shopId),
-    r => r.Status);
-```
-
-### Using CreateQuery<T> (Preferred Pattern)
-
-```csharp
-// Instead of using Query properties:
-var query = context.Rentals
-    .Where(r => r.ShopId == shopId)
-    .OrderByDescending(r => r.StartDate);
-
-// Use CreateQuery<T> for better flexibility:
-var query = context.CreateQuery<Rental>()
-    .Where(r => r.ShopId == shopId)
-    .OrderByDescending(r => r.StartDate);
-
-var result = await context.LoadAsync(query, page: 1, size: 20);
-```
-
 ### WHERE IN Queries (IsInList)
 
-**IMPORTANT**: Due to C# 14 expression tree changes, you cannot use `.Contains()` directly in LINQ Where clauses for SQL IN translation. Use the `IsInList` extension method instead.
+**IMPORTANT**: Use the `IsInList` extension method for SQL IN translation.
 
 ```csharp
 using MotoRent.Domain.Extensions;
-
-// WRONG - Does NOT translate to SQL IN clause:
-var rentalIds = new[] { 1, 2, 3 };
-var query = context.CreateQuery<Payment>()
-    .Where(p => rentalIds.Contains(p.RentalId));  // Does NOT work!
 
 // CORRECT - Use IsInList for SQL IN clause:
 var rentalIds = new[] { 1, 2, 3 };
@@ -275,31 +270,6 @@ var query = context.CreateQuery<Payment>()
     .Where(p => rentalIds.IsInList(p.RentalId));  // Translates to: WHERE [RentalId] IN (1, 2, 3)
 
 var result = await context.LoadAsync(query, page: 1, size: 100);
-```
-
-The `IsInList` extension method is defined in `MotoRent.Domain.Extensions.CollectionExtension`:
-
-```csharp
-namespace MotoRent.Domain.Extensions;
-
-public static class CollectionExtension
-{
-    /// <summary>
-    /// Checks if an item is in a list. This method is recognized by the query provider
-    /// and translated to SQL IN clause. Use this instead of List.Contains() in LINQ Where clauses.
-    /// </summary>
-    public static bool IsInList<T>(this IEnumerable<T> list, T item)
-    {
-        return list.Contains(item);
-    }
-}
-```
-
-**Note**: For in-memory filtering (after data is loaded), you can still use `.Contains()`:
-```csharp
-// In-memory filtering - .Contains() is fine here:
-var result = await context.LoadAsync(query, page: 1, size: 1000);
-var filtered = result.ItemCollection.Where(r => rentalIds.Contains(r.RentalId)).ToList();
 ```
 
 ## Best Practices
@@ -311,8 +281,10 @@ var filtered = result.ItemCollection.Where(r => rentalIds.Contains(r.RentalId)).
 | Clone for dialogs | Always clone entities before passing to edit dialogs |
 | Batch related changes | Attach multiple entities in single session |
 | Use aggregates for stats | Use `GetCountAsync`, `GetSumAsync` instead of loading all entities |
+| Use GroupBy for dashboards | Use `GetGroupByCountAsync`, `GetGroupBySumAsync` for grouped stats |
 | CreateQuery over properties | Prefer `CreateQuery<T>()` over Query properties for flexibility |
 | IsInList for WHERE IN | Use `ids.IsInList(e.Property)` for SQL IN clauses, not `.Contains()` |
+| DataMap for lists | Use `GetListAsync` with field selectors for read-only displays |
 
 ## Source
 - From: `E:\project\work\rx-erp` repository pattern

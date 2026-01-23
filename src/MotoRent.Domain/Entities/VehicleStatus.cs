@@ -1,32 +1,54 @@
 namespace MotoRent.Domain.Entities;
 
 /// <summary>
-/// Status of a vehicle in the rental fleet.
+/// Status constants for vehicles in the rental fleet.
+/// Stored as strings in the database.
 /// </summary>
-public enum VehicleStatus
+public static class VehicleStatus
 {
     /// <summary>
     /// Ready for rental - vehicle is in good condition and can be rented.
     /// </summary>
-    Available,
+    public const string Available = "Available";
 
     /// <summary>
     /// Currently rented out - actively being used by a renter.
     /// </summary>
-    Rented,
+    public const string Rented = "Rented";
 
     /// <summary>
     /// Under repair/service - not available for rental.
     /// </summary>
-    Maintenance,
+    public const string Maintenance = "Maintenance";
 
     /// <summary>
     /// Reserved for an upcoming rental - not yet picked up.
     /// </summary>
-    Reserved,
+    public const string Reserved = "Reserved";
 
     /// <summary>
     /// No longer in active fleet - retired from service.
     /// </summary>
-    Retired
+    public const string Retired = "Retired";
+
+    /// <summary>
+    /// All valid status values.
+    /// </summary>
+    public static readonly string[] AllStatuses =
+    [
+        Available,
+        Rented,
+        Maintenance,
+        Reserved,
+        Retired
+    ];
+
+    /// <summary>
+    /// Statuses where vehicle is rentable.
+    /// </summary>
+    public static readonly string[] RentableStatuses =
+    [
+        Available,
+        Reserved
+    ];
 }

@@ -1,0 +1,210 @@
+@using MotoRent.Client.Components.Till
+@inherits LocalizedDialogBase<VoidTransactionResult, VoidTransactionDialog>
+@using MotoRent.Domain.Entities
+
+<div class="void-transaction-dialog">
+    <div class="dialog-header text-center mb-4">
+        <div class="avatar avatar-lg bg-danger-lt mb-2">
+            <i class="ti ti-x fs-2"></i>
+        </div>
+        <h4>@Localizer["VoidTransaction"]</h4>
+        <p class="text-muted">@Localizer["VoidTransactionDescription"]</p>
+    </div>
+
+    @* Original Transaction Summary *@
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="card-title mb-0">@Localizer["OriginalTransaction"]</h5>
+        </div>
+        <div class="card-body">
+            <div class="row g-2">
+                <div class="col-6">
+                    <div class="text-muted small">@Localizer["Type"]</div>
+                    <div class="fw-medium">@GetTransactionTypeDisplay(Transaction.TransactionType)</div>
+                </div>
+                <div class="col-6">
+                    <div class="text-muted small">@Localizer["Direction"]</div>
+                    <div class="fw-medium">
+                        @if (Transaction.Direction == TillTransactionDirection.In)
+                        {
+                            <span class="badge bg-success-lt">
+                                <i class="ti ti-arrow-down-left me-1"></i>@Localizer["CashIn"]
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-danger-lt">
+                                <i class="ti ti-arrow-up-right me-1"></i>@Localizer["CashOut"]
+                            </span>
+                        }
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="text-muted small">@Localizer["Amount"]</div>
+                    <div class="fw-bold fs-4">
+                        @if (Transaction.Currency == SupportedCurrencies.THB)
+                        {
+                            @FormatThb(Transaction.Amount)
+                        }
+                        else
+                        {
+                            <span>@Transaction.Currency @Transaction.Amount.ToString("N2")</span>
+                            <span class="text-muted fs-6"> (= @FormatThb(Transaction.AmountInBaseCurrency))</span>
+                        }
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="text-muted small">@Localizer["Time"]</div>
+                    <div class="fw-medium">@Transaction.TransactionTime.ToString("HH:mm")</div>
+                </div>
+                @if (!string.IsNullOrEmpty(Transaction.Description))
+                {
+                    <div class="col-12">
+                        <div class="text-muted small">@Localizer["Description"]</div>
+                        <div>@Transaction.Description</div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    @* Warning *@
+    <div class="alert alert-warning mb-4">
+        <div class="d-flex">
+            <i class="ti ti-alert-triangle me-2"></i>
+            <div>
+                <h5 class="alert-title">@Localizer["ManagerApprovalRequired"]</h5>
+                <p class="mb-0">@Localizer["VoidRequiresManagerPin"]</p>
+            </div>
+        </div>
+    </div>
+
+    @* Reason Entry *@
+    <div class="mb-4">
+        <label class="form-label required">@Localizer["VoidReason"]</label>
+        <textarea class="form-control @(m_reasonError != null ? "is-invalid" : "")"
+                  rows="2"
+                  placeholder="@Localizer["EnterVoidReason"]"
+                  @bind="m_reason"
+                  @bind:event="oninput"></textarea>
+        @if (m_reasonError != null)
+        {
+            <div class="invalid-feedback">@m_reasonError</div>
+        }
+    </div>
+
+    @* Effect Summary *@
+    <div class="effect-summary p-3 bg-light rounded mb-4">
+        <div class="text-muted small mb-2">@Localizer["VoidEffect"]</div>
+        @if (Transaction.Direction == TillTransactionDirection.In)
+        {
+            <div class="d-flex align-items-center">
+                <i class="ti ti-arrow-down text-danger me-2"></i>
+                <span>@Localizer["TillBalanceWillDecrease"]</span>
+                <span class="ms-auto fw-bold text-danger">-@FormatCurrency(Transaction.Amount, Transaction.Currency)</span>
+            </div>
+        }
+        else
+        {
+            <div class="d-flex align-items-center">
+                <i class="ti ti-arrow-up text-success me-2"></i>
+                <span>@Localizer["TillBalanceWillIncrease"]</span>
+                <span class="ms-auto fw-bold text-success">+@FormatCurrency(Transaction.Amount, Transaction.Currency)</span>
+            </div>
+        }
+    </div>
+
+    @* Action Buttons *@
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-ghost-secondary flex-fill" @onclick="OnCancel">
+            @Localizer["Cancel"]
+        </button>
+        <button type="button" class="btn btn-danger flex-fill" @onclick="OnConfirmVoid">
+            <i class="ti ti-x me-1"></i>
+            @Localizer["VoidTransaction"]
+        </button>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public TillTransaction Transaction { get; set; } = null!;
+
+    private string m_reason = "";
+    private string? m_reasonError;
+
+    private void OnConfirmVoid()
+    {
+        // Validate reason
+        if (string.IsNullOrWhiteSpace(m_reason))
+        {
+            m_reasonError = Localizer["ReasonRequired"];
+            return;
+        }
+
+        if (m_reason.Length < 5)
+        {
+            m_reasonError = Localizer["ReasonTooShort"];
+            return;
+        }
+
+        m_reasonError = null;
+
+        // Return result with reason - parent handles manager approval
+        var result = new VoidTransactionResult
+        {
+            TransactionId = Transaction.TillTransactionId,
+            Reason = m_reason.Trim()
+        };
+
+        ModalService.Close(ModalResult.Ok(result));
+    }
+
+    private void OnCancel()
+    {
+        ModalService.Close(ModalResult.Cancel());
+    }
+
+    private string GetTransactionTypeDisplay(TillTransactionType type)
+    {
+        return type switch
+        {
+            TillTransactionType.RentalPayment => Localizer["RentalPayment"],
+            TillTransactionType.BookingDeposit => Localizer["BookingDeposit"],
+            TillTransactionType.CheckIn => Localizer["CheckIn"],
+            TillTransactionType.SecurityDeposit => Localizer["SecurityDeposit"],
+            TillTransactionType.DamageCharge => Localizer["DamageCharge"],
+            TillTransactionType.LateFee => Localizer["LateFee"],
+            TillTransactionType.Surcharge => Localizer["Surcharge"],
+            TillTransactionType.MiscellaneousIncome => Localizer["MiscellaneousIncome"],
+            TillTransactionType.TopUp => Localizer["TopUp"],
+            TillTransactionType.CardPayment => Localizer["CardPayment"],
+            TillTransactionType.BankTransfer => Localizer["BankTransfer"],
+            TillTransactionType.PromptPay => Localizer["PromptPay"],
+            TillTransactionType.DepositRefund => Localizer["DepositRefund"],
+            TillTransactionType.FuelReimbursement => Localizer["FuelReimbursement"],
+            TillTransactionType.AgentCommission => Localizer["AgentCommission"],
+            TillTransactionType.PettyCash => Localizer["PettyCash"],
+            TillTransactionType.Drop => Localizer["CashDrop"],
+            TillTransactionType.OverpaymentRefund => Localizer["OverpaymentRefund"],
+            _ => type.ToString()
+        };
+    }
+
+    private static string FormatThb(decimal amount)
+    {
+        return $"\u0e3f{amount:N0}";
+    }
+
+    private static string FormatCurrency(decimal amount, string currency)
+    {
+        return currency switch
+        {
+            SupportedCurrencies.THB => $"\u0e3f{amount:N0}",
+            SupportedCurrencies.USD => $"${amount:N2}",
+            SupportedCurrencies.EUR => $"\u20ac{amount:N2}",
+            SupportedCurrencies.CNY => $"\u00a5{amount:N2}",
+            _ => $"{currency} {amount:N2}"
+        };
+    }
+}

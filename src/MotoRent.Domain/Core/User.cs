@@ -82,6 +82,24 @@ public class User : Entity
     public string? HashedPassword { get; set; }
 
     /// <summary>
+    /// Hashed manager PIN for void approvals (4-6 digits).
+    /// Null if user doesn't have void approval privilege.
+    /// Uses PBKDF2 with salt for secure storage.
+    /// </summary>
+    public string? ManagerPinHash { get; set; }
+
+    /// <summary>
+    /// Salt for manager PIN hash.
+    /// Generated when PIN is set, used with PBKDF2.
+    /// </summary>
+    public string? ManagerPinSalt { get; set; }
+
+    /// <summary>
+    /// Whether this user can approve voids (has ManagementRoles and PIN set).
+    /// </summary>
+    public bool CanApproveVoids => !string.IsNullOrEmpty(ManagerPinHash);
+
+    /// <summary>
     /// Name identifier from OAuth provider.
     /// </summary>
     public string? NameIdentifier { get; set; }

@@ -73,7 +73,7 @@ public partial class Vehicle : Entity
     /// <summary>
     /// Current status of the vehicle.
     /// </summary>
-    public VehicleStatus Status { get; set; } = VehicleStatus.Available;
+    public string Status { get; set; } = VehicleStatus.Available;
 
     /// <summary>
     /// Path or URL to vehicle image.

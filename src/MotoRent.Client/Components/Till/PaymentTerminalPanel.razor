@@ -1,0 +1,928 @@
+@inherits LocalizedComponentBase<PaymentTerminalPanel>
+@using MotoRent.Domain.Entities
+@using MotoRent.Services
+@inject ExchangeRateService ExchangeRateService
+@inject TillService TillService
+@inject ILogger<PaymentTerminalPanel> Logger
+
+<div class="payment-terminal-panel">
+    <div class="row g-4">
+        @* Left Column: Payment Summary *@
+        <div class="col-md-4">
+            <div class="payment-summary-column">
+                @* Amount Due Card *@
+                <div class="card bg-primary-lt mb-3">
+                    <div class="card-body text-center">
+                        <div class="text-muted small mb-1">@Localizer["AmountDue"]</div>
+                        <div class="amount-due-display">@FormatThb(AmountDue)</div>
+                    </div>
+                </div>
+
+                @* Progress Indicator *@
+                <div class="progress-indicator mb-3">
+                    <div class="progress-line">
+                        <div class="progress-dot" style="left: @GetProgressPercent()%;"></div>
+                    </div>
+                </div>
+
+                @* Payment Details Section *@
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h4 class="card-title">@Localizer["PaymentDetails"]</h4>
+                    </div>
+                    <div class="card-body p-0">
+                        @if (m_paymentEntries.Count == 0)
+                        {
+                            <div class="text-center text-muted py-4">
+                                <i class="ti ti-receipt-off mb-2" style="font-size: 2rem;"></i>
+                                <p class="mb-0">@Localizer["NoPaymentsYet"]</p>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="list-group list-group-flush payment-entries-list">
+                                @foreach (var entry in m_paymentEntries)
+                                {
+                                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <i class="ti @GetMethodIcon(entry.Method)"></i>
+                                                <span class="fw-semibold">@GetMethodLabel(entry.Method) (@entry.Currency)</span>
+                                            </div>
+                                            <div class="small text-muted">
+                                                @FormatCurrencyAmount(entry.Amount, entry.Currency)
+                                                @if (entry.Currency != SupportedCurrencies.THB)
+                                                {
+                                                    <span> = @FormatThb(entry.AmountInBaseCurrency)</span>
+                                                }
+                                            </div>
+                                        </div>
+                                        <button type="button" class="btn btn-ghost-danger btn-sm" @onclick="() => RemoveEntry(entry)">
+                                            <i class="ti ti-x"></i>
+                                        </button>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                @* Summary Section *@
+                <div class="card payment-summary">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>@Localizer["TotalReceived"]</span>
+                            <span class="fw-semibold">@FormatThb(m_totalReceived)</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>@Localizer["Change"]</span>
+                            <span class="@(m_change > 0 ? "text-success fw-semibold" : "")">@FormatThb(m_change)</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>@Localizer["Remaining"]</span>
+                            <span class="@(m_remaining > 0 ? "text-danger fw-semibold" : "text-success fw-semibold")">@FormatThb(m_remaining)</span>
+                        </div>
+                    </div>
+                </div>
+
+                @* Action Buttons *@
+                <div class="d-grid gap-2 mt-3">
+                    <button type="button"
+                            class="btn @(m_remaining <= 0 ? "btn-success" : "btn-secondary") btn-lg"
+                            disabled="@(m_remaining > 0 || m_completing)"
+                            @onclick="CompletePaymentAsync">
+                        @if (m_completing)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                        }
+                        else
+                        {
+                            <i class="ti ti-check me-2"></i>
+                        }
+                        @Localizer["CompletePayment"]
+                        @if (m_change > 0)
+                        {
+                            <span class="ms-2">(@Localizer["Change"]: @FormatThb(m_change))</span>
+                        }
+                    </button>
+                    <button type="button" class="btn btn-ghost-secondary" @onclick="CancelPayment" disabled="@m_completing">
+                        @Localizer["Cancel"]
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        @* Right Column: Payment Input Area *@
+        <div class="col-md-8">
+            <div class="payment-input-column">
+                @* Payment Method Tabs *@
+                <div class="payment-method-tabs mb-3">
+                    <button type="button"
+                            class="payment-method-tab @(m_selectedMethod == PaymentMethods.Cash ? "tab-active" : "")"
+                            @onclick="@(() => OnMethodChanged(PaymentMethods.Cash))">
+                        <i class="ti ti-cash"></i>
+                        <span>@Localizer["Cash"]</span>
+                        @if (HasEntriesFor(PaymentMethods.Cash))
+                        {
+                            <span class="entry-indicator"></span>
+                        }
+                    </button>
+                    <button type="button"
+                            class="payment-method-tab @(m_selectedMethod == PaymentMethods.Card ? "tab-active" : "")"
+                            @onclick="@(() => OnMethodChanged(PaymentMethods.Card))">
+                        <i class="ti ti-credit-card"></i>
+                        <span>@Localizer["CreditCard"]</span>
+                        @if (HasEntriesFor(PaymentMethods.Card))
+                        {
+                            <span class="entry-indicator"></span>
+                        }
+                    </button>
+                    <button type="button"
+                            class="payment-method-tab @(m_selectedMethod == PaymentMethods.PromptPay ? "tab-active" : "")"
+                            @onclick="@(() => OnMethodChanged(PaymentMethods.PromptPay))">
+                        <i class="ti ti-qrcode"></i>
+                        <span>@Localizer["PromptPay"]</span>
+                        @if (HasEntriesFor(PaymentMethods.PromptPay))
+                        {
+                            <span class="entry-indicator"></span>
+                        }
+                    </button>
+                    <button type="button"
+                            class="payment-method-tab @(m_selectedMethod == c_aliPay ? "tab-active" : "")"
+                            @onclick="@(() => OnMethodChanged(c_aliPay))">
+                        <i class="ti ti-brand-alipay"></i>
+                        <span>@Localizer["AliPay"]</span>
+                        @if (HasEntriesFor(c_aliPay))
+                        {
+                            <span class="entry-indicator"></span>
+                        }
+                    </button>
+                </div>
+
+                @* Cash Currency Tabs (only shown for Cash method) *@
+                @if (m_selectedMethod == PaymentMethods.Cash)
+                {
+                    <div class="currency-tabs mb-3">
+                        <button type="button"
+                                class="currency-tab @(m_selectedCurrency == SupportedCurrencies.THB ? "tab-active" : "")"
+                                @onclick="@(() => OnCurrencyChanged(SupportedCurrencies.THB))">
+                            <span class="currency-flag">TH</span>
+                            <span>THB</span>
+                            @if (HasEntriesFor(PaymentMethods.Cash, SupportedCurrencies.THB))
+                            {
+                                <span class="entry-indicator"></span>
+                            }
+                        </button>
+                        <button type="button"
+                                class="currency-tab @(m_selectedCurrency == SupportedCurrencies.USD ? "tab-active" : "")"
+                                @onclick="@(() => OnCurrencyChanged(SupportedCurrencies.USD))">
+                            <span class="currency-flag">US</span>
+                            <span>USD</span>
+                            @if (HasEntriesFor(PaymentMethods.Cash, SupportedCurrencies.USD))
+                            {
+                                <span class="entry-indicator"></span>
+                            }
+                        </button>
+                        <button type="button"
+                                class="currency-tab tab-disabled"
+                                disabled>
+                            <span class="currency-flag">GB</span>
+                            <span>GBP</span>
+                            <span class="badge bg-secondary-lt ms-1">@Localizer["ComingSoon"]</span>
+                        </button>
+                        <button type="button"
+                                class="currency-tab @(m_selectedCurrency == SupportedCurrencies.EUR ? "tab-active" : "")"
+                                @onclick="@(() => OnCurrencyChanged(SupportedCurrencies.EUR))">
+                            <span class="currency-flag">EU</span>
+                            <span>EUR</span>
+                            @if (HasEntriesFor(PaymentMethods.Cash, SupportedCurrencies.EUR))
+                            {
+                                <span class="entry-indicator"></span>
+                            }
+                        </button>
+                        <button type="button"
+                                class="currency-tab @(m_selectedCurrency == SupportedCurrencies.CNY ? "tab-active" : "")"
+                                @onclick="@(() => OnCurrencyChanged(SupportedCurrencies.CNY))">
+                            <span class="currency-flag">CN</span>
+                            <span>CNY</span>
+                            @if (HasEntriesFor(PaymentMethods.Cash, SupportedCurrencies.CNY))
+                            {
+                                <span class="entry-indicator"></span>
+                            }
+                        </button>
+                    </div>
+                }
+
+                @* Content Area - Changes based on selected method/currency *@
+                <div class="payment-content-area">
+                    @if (m_selectedMethod == PaymentMethods.Cash)
+                    {
+                        @if (m_selectedCurrency == SupportedCurrencies.THB)
+                        {
+                            @* THB Keypad *@
+                            <ThbKeypadPanel
+                                RemainingAmount="@m_remaining"
+                                OnAmountSubmit="@OnThbAmountSubmit" />
+                        }
+                        else
+                        {
+                            @* Foreign Currency Denomination Counting *@
+                            <div class="foreign-currency-input">
+                                <h5 class="mb-3">
+                                    <i class="ti ti-cash me-2"></i>
+                                    @Localizer["CountNotes", GetCurrencyName(m_selectedCurrency)]
+                                </h5>
+
+                                @* Exchange Rate Display *@
+                                @if (m_currentExchangeRate != null)
+                                {
+                                    <div class="alert alert-info py-2 mb-3">
+                                        <i class="ti ti-arrows-exchange me-2"></i>
+                                        @Localizer["Rate"]: @FormatCurrencyAmount(1, m_selectedCurrency) = @FormatThb(m_currentExchangeRate.BuyRate)
+                                    </div>
+                                }
+                                else if (m_loadingRate)
+                                {
+                                    <div class="alert alert-secondary py-2 mb-3">
+                                        <i class="ti ti-loader ti-spin me-2"></i>
+                                        @Localizer["LoadingRate"]
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="alert alert-warning py-2 mb-3">
+                                        <i class="ti ti-alert-triangle me-2"></i>
+                                        @Localizer["NoRateConfigured", GetCurrencyName(m_selectedCurrency)]
+                                    </div>
+                                }
+
+                                @* Denomination Panel *@
+                                <DenominationEntryPanel
+                                    Currency="@m_selectedCurrency"
+                                    DenominationCounts="@m_currentDenominations"
+                                    DenominationCountsChanged="@OnDenominationCountsChanged"
+                                    ShowTotal="true" />
+
+                                @* THB Equivalent Display *@
+                                @if (m_conversionResult != null && m_foreignCurrencyTotal > 0)
+                                {
+                                    <div class="thb-equivalent mt-3 p-3 bg-success-lt rounded text-center">
+                                        <span class="text-muted">@Localizer["ThbEquivalent"]:</span>
+                                        <span class="fs-3 fw-bold ms-2 text-success">@FormatThb(m_conversionResult.ThbAmount)</span>
+                                    </div>
+                                }
+
+                                @* Add Foreign Currency Payment Button *@
+                                <div class="mt-3">
+                                    <button type="button"
+                                            class="btn btn-success btn-lg w-100"
+                                            disabled="@(m_foreignCurrencyTotal <= 0 || m_currentExchangeRate == null)"
+                                            @onclick="AddForeignCurrencyPayment">
+                                        <i class="ti ti-plus me-2"></i>
+                                        @Localizer["AddPayment"] @FormatCurrencyAmount(m_foreignCurrencyTotal, m_selectedCurrency)
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                    }
+                    else if (m_selectedMethod == PaymentMethods.Card)
+                    {
+                        @* Credit Card Payment Panel *@
+                        <div class="non-cash-payment-panel">
+                            <div class="text-center mb-4">
+                                <i class="ti ti-credit-card text-primary" style="font-size: 3rem;"></i>
+                                <h5 class="mt-2">@Localizer["EnterCardAmount"]</h5>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">@Localizer["Amount"]</label>
+                                <div class="input-group input-group-lg">
+                                    <span class="input-group-text">฿</span>
+                                    <input type="number"
+                                           class="form-control"
+                                           min="0"
+                                           step="1"
+                                           @bind="m_nonCashAmount"
+                                           @bind:event="oninput" />
+                                </div>
+                                @if (m_remaining > 0)
+                                {
+                                    <div class="form-text">
+                                        <a href="javascript:void(0)" @onclick="FillRemaining" class="text-primary">
+                                            @Localizer["PayRemaining"]: @FormatThb(m_remaining)
+                                        </a>
+                                    </div>
+                                }
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">@Localizer["CardReference"]</label>
+                                <input type="text"
+                                       class="form-control"
+                                       placeholder="@Localizer["Optional"]"
+                                       @bind="m_nonCashReference" />
+                            </div>
+
+                            <button type="button"
+                                    class="btn btn-success btn-lg w-100"
+                                    disabled="@(m_nonCashAmount <= 0)"
+                                    @onclick="AddCardPayment">
+                                <i class="ti ti-plus me-2"></i>
+                                @Localizer["AddCardPayment"] @FormatThb(m_nonCashAmount)
+                            </button>
+                        </div>
+                    }
+                    else if (m_selectedMethod == PaymentMethods.PromptPay)
+                    {
+                        @* PromptPay Payment Panel *@
+                        <div class="non-cash-payment-panel">
+                            <div class="text-center mb-4">
+                                <i class="ti ti-qrcode text-primary" style="font-size: 3rem;"></i>
+                                <h5 class="mt-2">@Localizer["PromptPayInstruction"]</h5>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">@Localizer["Amount"]</label>
+                                <div class="input-group input-group-lg">
+                                    <span class="input-group-text">฿</span>
+                                    <input type="number"
+                                           class="form-control"
+                                           min="0"
+                                           step="1"
+                                           @bind="m_nonCashAmount"
+                                           @bind:event="oninput" />
+                                </div>
+                                @if (m_remaining > 0)
+                                {
+                                    <div class="form-text">
+                                        <a href="javascript:void(0)" @onclick="FillRemaining" class="text-primary">
+                                            @Localizer["PayRemaining"]: @FormatThb(m_remaining)
+                                        </a>
+                                    </div>
+                                }
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">@Localizer["PromptPayReference"]</label>
+                                <input type="text"
+                                       class="form-control"
+                                       placeholder="@Localizer["Optional"]"
+                                       @bind="m_nonCashReference" />
+                            </div>
+
+                            <button type="button"
+                                    class="btn btn-success btn-lg w-100"
+                                    disabled="@(m_nonCashAmount <= 0)"
+                                    @onclick="AddPromptPayPayment">
+                                <i class="ti ti-plus me-2"></i>
+                                @Localizer["AddPromptPayPayment"] @FormatThb(m_nonCashAmount)
+                            </button>
+                        </div>
+                    }
+                    else if (m_selectedMethod == c_aliPay)
+                    {
+                        @* AliPay Payment Panel *@
+                        <div class="non-cash-payment-panel">
+                            <div class="text-center mb-4">
+                                <i class="ti ti-brand-alipay text-primary" style="font-size: 3rem;"></i>
+                                <h5 class="mt-2">@Localizer["AliPayInstruction"]</h5>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">@Localizer["Amount"]</label>
+                                <div class="input-group input-group-lg">
+                                    <span class="input-group-text">฿</span>
+                                    <input type="number"
+                                           class="form-control"
+                                           min="0"
+                                           step="1"
+                                           @bind="m_nonCashAmount"
+                                           @bind:event="oninput" />
+                                </div>
+                                @if (m_remaining > 0)
+                                {
+                                    <div class="form-text">
+                                        <a href="javascript:void(0)" @onclick="FillRemaining" class="text-primary">
+                                            @Localizer["PayRemaining"]: @FormatThb(m_remaining)
+                                        </a>
+                                    </div>
+                                }
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">@Localizer["AliPayReference"] <span class="text-danger">*</span></label>
+                                <input type="text"
+                                       class="form-control"
+                                       placeholder="@Localizer["Required"]"
+                                       @bind="m_nonCashReference" />
+                                <div class="form-text text-muted">
+                                    @Localizer["AliPayReferenceHelp"]
+                                </div>
+                            </div>
+
+                            <button type="button"
+                                    class="btn btn-success btn-lg w-100"
+                                    disabled="@(m_nonCashAmount <= 0 || string.IsNullOrWhiteSpace(m_nonCashReference))"
+                                    @onclick="AddAliPayPayment">
+                                <i class="ti ti-plus me-2"></i>
+                                @Localizer["AddAliPayPayment"] @FormatThb(m_nonCashAmount)
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private const string c_aliPay = "AliPay";
+
+    /// <summary>
+    /// Total amount due in THB (base currency).
+    /// </summary>
+    [Parameter]
+    public decimal AmountDue { get; set; }
+
+    /// <summary>
+    /// Callback when payment is complete with all payment entries.
+    /// </summary>
+    [Parameter]
+    public EventCallback<List<ReceiptPayment>> OnPaymentComplete { get; set; }
+
+    /// <summary>
+    /// Callback when user cancels the payment.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    /// <summary>
+    /// Till session ID for recording payments.
+    /// </summary>
+    [Parameter]
+    public int SessionId { get; set; }
+
+    /// <summary>
+    /// Optional rental ID for linking payments.
+    /// </summary>
+    [Parameter]
+    public int? RentalId { get; set; }
+
+    /// <summary>
+    /// Optional booking ID for linking payments.
+    /// </summary>
+    [Parameter]
+    public int? BookingId { get; set; }
+
+    /// <summary>
+    /// Transaction type (BookingDeposit, CheckIn, RentalPayment).
+    /// </summary>
+    [Parameter]
+    public TillTransactionType TransactionType { get; set; }
+
+    /// <summary>
+    /// Username for recording transactions.
+    /// </summary>
+    [Parameter]
+    public string UserName { get; set; } = "";
+
+    // State variables
+    private bool m_completing;
+    private string m_selectedMethod = PaymentMethods.Cash;
+    private string m_selectedCurrency = SupportedCurrencies.THB;
+    private readonly List<PaymentEntry> m_paymentEntries = [];
+
+    // Foreign currency state
+    private Dictionary<decimal, int> m_currentDenominations = [];
+    private ExchangeRate? m_currentExchangeRate;
+    private ExchangeConversionResult? m_conversionResult;
+    private bool m_loadingRate;
+
+    // Non-cash payment state
+    private decimal m_nonCashAmount;
+    private string m_nonCashReference = "";
+
+    // Computed properties
+    private decimal m_totalReceived => m_paymentEntries.Sum(p => p.AmountInBaseCurrency);
+    private decimal m_remaining => Math.Max(0, AmountDue - m_totalReceived);
+    private decimal m_change => m_totalReceived > AmountDue ? m_totalReceived - AmountDue : 0;
+    private decimal m_foreignCurrencyTotal => m_currentDenominations.Sum(kvp => kvp.Key * kvp.Value);
+
+    /// <summary>
+    /// Internal working model for payment entries during input.
+    /// Converted to ReceiptPayment on completion.
+    /// </summary>
+    private class PaymentEntry
+    {
+        public string EntryId { get; set; } = Guid.NewGuid().ToString("N")[..8];
+        public string Method { get; set; } = PaymentMethods.Cash;
+        public string Currency { get; set; } = SupportedCurrencies.THB;
+        public decimal Amount { get; set; }
+        public decimal AmountInBaseCurrency { get; set; }
+        public decimal ExchangeRate { get; set; } = 1.0m;
+        public string ExchangeRateSource { get; set; } = "Base";
+        public int? ExchangeRateId { get; set; }
+        public string? Reference { get; set; }
+    }
+
+    /// <summary>
+    /// Handles THB amount submission from keypad.
+    /// </summary>
+    private void OnThbAmountSubmit(decimal amount)
+    {
+        if (amount <= 0) return;
+
+        m_paymentEntries.Add(new PaymentEntry
+        {
+            Method = PaymentMethods.Cash,
+            Currency = SupportedCurrencies.THB,
+            Amount = amount,
+            AmountInBaseCurrency = amount,
+            ExchangeRate = 1.0m,
+            ExchangeRateSource = "Base"
+        });
+
+        RecalculateTotals();
+    }
+
+    /// <summary>
+    /// Handles denomination count changes for foreign currency.
+    /// </summary>
+    private async Task OnDenominationCountsChanged(Dictionary<decimal, int> counts)
+    {
+        m_currentDenominations = counts;
+        var total = counts.Sum(kvp => kvp.Key * kvp.Value);
+
+        if (total > 0 && m_selectedCurrency != SupportedCurrencies.THB)
+        {
+            m_conversionResult = await ExchangeRateService.ConvertToThbAsync(m_selectedCurrency, total);
+        }
+        else
+        {
+            m_conversionResult = null;
+        }
+    }
+
+    /// <summary>
+    /// Adds a foreign currency payment entry.
+    /// </summary>
+    private void AddForeignCurrencyPayment()
+    {
+        if (m_conversionResult == null) return;
+
+        var total = m_currentDenominations.Sum(kvp => kvp.Key * kvp.Value);
+        if (total <= 0) return;
+
+        m_paymentEntries.Add(new PaymentEntry
+        {
+            Method = PaymentMethods.Cash,
+            Currency = m_selectedCurrency,
+            Amount = total,
+            AmountInBaseCurrency = m_conversionResult.ThbAmount,
+            ExchangeRate = m_conversionResult.RateUsed,
+            ExchangeRateSource = m_conversionResult.RateSource,
+            ExchangeRateId = m_conversionResult.ExchangeRateId
+        });
+
+        // Clear denomination counts after adding
+        m_currentDenominations = [];
+        m_conversionResult = null;
+        RecalculateTotals();
+    }
+
+    /// <summary>
+    /// Handles payment method change.
+    /// </summary>
+    private void OnMethodChanged(string method)
+    {
+        m_selectedMethod = method;
+        // Reset currency to THB when switching to Cash
+        if (method == PaymentMethods.Cash)
+        {
+            m_selectedCurrency = SupportedCurrencies.THB;
+        }
+        // Reset foreign currency state
+        m_currentDenominations = [];
+        m_conversionResult = null;
+        m_currentExchangeRate = null;
+        // Reset and pre-fill non-cash input
+        ResetNonCashInput();
+        // Pre-fill remaining for non-cash methods
+        if (method != PaymentMethods.Cash && m_remaining > 0)
+        {
+            m_nonCashAmount = m_remaining;
+        }
+    }
+
+    /// <summary>
+    /// Fills the non-cash amount with remaining balance.
+    /// </summary>
+    private void FillRemaining()
+    {
+        m_nonCashAmount = m_remaining > 0 ? m_remaining : 0;
+    }
+
+    /// <summary>
+    /// Resets non-cash input fields.
+    /// </summary>
+    private void ResetNonCashInput()
+    {
+        m_nonCashAmount = 0;
+        m_nonCashReference = "";
+    }
+
+    /// <summary>
+    /// Adds a credit card payment entry.
+    /// </summary>
+    private void AddCardPayment()
+    {
+        if (m_nonCashAmount <= 0) return;
+
+        m_paymentEntries.Add(new PaymentEntry
+        {
+            Method = PaymentMethods.Card,
+            Currency = SupportedCurrencies.THB,
+            Amount = m_nonCashAmount,
+            AmountInBaseCurrency = m_nonCashAmount,
+            ExchangeRate = 1.0m,
+            ExchangeRateSource = "Base",
+            Reference = string.IsNullOrWhiteSpace(m_nonCashReference) ? null : m_nonCashReference
+        });
+
+        ResetNonCashInput();
+        RecalculateTotals();
+    }
+
+    /// <summary>
+    /// Adds a PromptPay payment entry.
+    /// </summary>
+    private void AddPromptPayPayment()
+    {
+        if (m_nonCashAmount <= 0) return;
+
+        m_paymentEntries.Add(new PaymentEntry
+        {
+            Method = PaymentMethods.PromptPay,
+            Currency = SupportedCurrencies.THB,
+            Amount = m_nonCashAmount,
+            AmountInBaseCurrency = m_nonCashAmount,
+            ExchangeRate = 1.0m,
+            ExchangeRateSource = "Base",
+            Reference = string.IsNullOrWhiteSpace(m_nonCashReference) ? null : m_nonCashReference
+        });
+
+        ResetNonCashInput();
+        RecalculateTotals();
+    }
+
+    /// <summary>
+    /// Adds an AliPay payment entry.
+    /// </summary>
+    private void AddAliPayPayment()
+    {
+        if (m_nonCashAmount <= 0) return;
+        if (string.IsNullOrWhiteSpace(m_nonCashReference)) return;
+
+        m_paymentEntries.Add(new PaymentEntry
+        {
+            Method = c_aliPay,
+            Currency = SupportedCurrencies.THB,
+            Amount = m_nonCashAmount,
+            AmountInBaseCurrency = m_nonCashAmount,
+            ExchangeRate = 1.0m,
+            ExchangeRateSource = "Base",
+            Reference = m_nonCashReference.Trim()
+        });
+
+        ResetNonCashInput();
+        RecalculateTotals();
+    }
+
+    /// <summary>
+    /// Handles currency change for cash payments.
+    /// </summary>
+    private async Task OnCurrencyChanged(string currency)
+    {
+        m_selectedCurrency = currency;
+        m_currentDenominations = [];
+        m_conversionResult = null;
+
+        // Pre-load exchange rate for display
+        if (currency != SupportedCurrencies.THB)
+        {
+            m_loadingRate = true;
+            try
+            {
+                m_currentExchangeRate = await ExchangeRateService.GetCurrentRateAsync(currency);
+            }
+            finally
+            {
+                m_loadingRate = false;
+            }
+        }
+        else
+        {
+            m_currentExchangeRate = null;
+        }
+    }
+
+    /// <summary>
+    /// Recalculates totals (triggers UI update).
+    /// </summary>
+    private void RecalculateTotals()
+    {
+        // Computed properties auto-recalculate, but StateHasChanged ensures UI updates
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Checks if there are payment entries for a specific method and optionally currency.
+    /// </summary>
+    private bool HasEntriesFor(string method, string? currency = null)
+    {
+        if (currency is null)
+        {
+            return m_paymentEntries.Any(p => p.Method == method);
+        }
+        return m_paymentEntries.Any(p => p.Method == method && p.Currency == currency);
+    }
+
+    /// <summary>
+    /// Removes a payment entry from the list.
+    /// </summary>
+    private void RemoveEntry(PaymentEntry entry)
+    {
+        m_paymentEntries.Remove(entry);
+    }
+
+    /// <summary>
+    /// Gets the Tabler icon class for a payment method.
+    /// </summary>
+    private static string GetMethodIcon(string method) => method switch
+    {
+        PaymentMethods.Cash => "ti-cash",
+        PaymentMethods.Card => "ti-credit-card",
+        PaymentMethods.PromptPay => "ti-qrcode",
+        c_aliPay => "ti-brand-alipay",
+        _ => "ti-wallet"
+    };
+
+    /// <summary>
+    /// Gets the localized label for a payment method.
+    /// </summary>
+    private string GetMethodLabel(string method) => method switch
+    {
+        PaymentMethods.Cash => Localizer["Cash"],
+        PaymentMethods.Card => Localizer["CreditCard"],
+        PaymentMethods.PromptPay => Localizer["PromptPay"],
+        c_aliPay => Localizer["AliPay"],
+        _ => method
+    };
+
+    /// <summary>
+    /// Gets the display name for a currency.
+    /// </summary>
+    private static string GetCurrencyName(string currency) => currency switch
+    {
+        SupportedCurrencies.USD => "USD",
+        SupportedCurrencies.EUR => "EUR",
+        SupportedCurrencies.CNY => "CNY",
+        _ => currency
+    };
+
+    /// <summary>
+    /// Formats an amount with currency symbol.
+    /// </summary>
+    private static string FormatCurrencyAmount(decimal amount, string currency)
+    {
+        var symbol = CurrencyDenominations.GetCurrencySymbol(currency);
+        return $"{symbol}{amount:N0}";
+    }
+
+    /// <summary>
+    /// Formats an amount as Thai Baht.
+    /// </summary>
+    private static string FormatThb(decimal amount)
+    {
+        return $"\u0e3f{amount:N0}";
+    }
+
+    /// <summary>
+    /// Gets the progress percentage for the progress indicator.
+    /// </summary>
+    private int GetProgressPercent()
+    {
+        if (AmountDue <= 0) return 100;
+        var percent = (int)((m_totalReceived / AmountDue) * 100);
+        return Math.Min(100, Math.Max(0, percent));
+    }
+
+    /// <summary>
+    /// Completes the payment by recording to till and invoking the callback.
+    /// </summary>
+    private async Task CompletePaymentAsync()
+    {
+        if (m_remaining > 0) return;
+        if (m_completing) return;
+
+        m_completing = true;
+        try
+        {
+            // Record each payment entry to the till
+            foreach (var entry in m_paymentEntries)
+            {
+                var description = GetPaymentDescription(entry);
+                SubmitOperation result;
+
+                if (entry.Currency == SupportedCurrencies.THB || entry.Method != PaymentMethods.Cash)
+                {
+                    // THB cash or non-cash payments use standard RecordCashInAsync
+                    var type = MapMethodToTransactionType(entry.Method);
+                    result = await TillService.RecordCashInAsync(
+                        SessionId,
+                        type,
+                        entry.AmountInBaseCurrency,
+                        description,
+                        UserName,
+                        rentalId: RentalId,
+                        notes: entry.Reference);
+                }
+                else
+                {
+                    // Foreign currency cash uses RecordForeignCurrencyPaymentAsync
+                    result = await TillService.RecordForeignCurrencyPaymentAsync(
+                        SessionId,
+                        TransactionType,
+                        entry.Currency,
+                        entry.Amount,
+                        description,
+                        UserName,
+                        rentalId: RentalId,
+                        notes: entry.Reference);
+                }
+
+                if (!result.Success)
+                {
+                    Logger.LogError("Failed to record payment: {Error}", result.Message);
+                    // Continue with other payments - for MVP we don't block
+                }
+            }
+
+            // Convert PaymentEntry list to ReceiptPayment list
+            var payments = m_paymentEntries.Select(e => new ReceiptPayment
+            {
+                Method = e.Method,
+                Amount = e.Amount,
+                Currency = e.Currency,
+                ExchangeRate = e.ExchangeRate,
+                AmountInBaseCurrency = e.AmountInBaseCurrency,
+                ExchangeRateSource = e.ExchangeRateSource,
+                ExchangeRateId = e.ExchangeRateId,
+                Reference = e.Reference,
+                PaidAt = DateTimeOffset.Now
+            }).ToList();
+
+            await OnPaymentComplete.InvokeAsync(payments);
+        }
+        finally
+        {
+            m_completing = false;
+        }
+    }
+
+    /// <summary>
+    /// Generates a description for the payment entry.
+    /// </summary>
+    private string GetPaymentDescription(PaymentEntry entry)
+    {
+        var methodLabel = entry.Method switch
+        {
+            PaymentMethods.Cash => $"Cash ({entry.Currency})",
+            PaymentMethods.Card => "Card payment",
+            PaymentMethods.PromptPay => "PromptPay",
+            c_aliPay => "AliPay",
+            _ => entry.Method
+        };
+
+        return $"{TransactionType}: {methodLabel}";
+    }
+
+    /// <summary>
+    /// Maps payment method to till transaction type.
+    /// </summary>
+    private TillTransactionType MapMethodToTransactionType(string method) => method switch
+    {
+        PaymentMethods.Card => TillTransactionType.CardPayment,
+        PaymentMethods.PromptPay => TillTransactionType.PromptPay,
+        PaymentMethods.BankTransfer => TillTransactionType.BankTransfer,
+        _ => TransactionType // Use passed transaction type for cash
+    };
+
+    /// <summary>
+    /// Cancels the payment and invokes the cancel callback.
+    /// </summary>
+    private async Task CancelPayment()
+    {
+        await OnCancel.InvokeAsync();
+    }
+}

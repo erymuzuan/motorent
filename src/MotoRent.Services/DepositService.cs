@@ -16,12 +16,10 @@ public class DepositService(RentalDataContext context)
         int page = 1,
         int pageSize = 20)
     {
-        // Get deposits by joining with rentals to filter by shop
-        var rentals = await this.Context.LoadAsync(
-            this.Context.CreateQuery<Rental>().Where(r => r.ShopId == shopId),
-            page: 1, size: 10000, includeTotalRows: false);
-
-        var rentalIds = rentals.ItemCollection.Select(r => r.RentalId).ToList();
+        // Get rental IDs for this shop
+        var rentalIds = await this.Context.GetDistinctAsync<Rental, int>(
+            r => r.ShopId == shopId,
+            r => r.RentalId);
 
         var query = this.Context.CreateQuery<Deposit>()
             .Where(d => rentalIds.IsInList(d.RentalId));
@@ -58,38 +56,33 @@ public class DepositService(RentalDataContext context)
 
     public async Task<Dictionary<string, int>> GetStatusCountsAsync(int shopId)
     {
-        // Get all rentals for the shop
-        var rentals = await this.Context.LoadAsync(
-            this.Context.CreateQuery<Rental>().Where(r => r.ShopId == shopId),
-            page: 1, size: 10000, includeTotalRows: false);
+        // Get rental IDs for this shop
+        var rentalIds = await this.Context.GetDistinctAsync<Rental, int>(
+            r => r.ShopId == shopId,
+            r => r.RentalId);
 
-        var rentalIds = rentals.ItemCollection.Select(r => r.RentalId).ToList();
+        // Get status counts via SQL GROUP BY
+        var query = this.Context.CreateQuery<Deposit>()
+            .Where(d => rentalIds.IsInList(d.RentalId));
 
-        // Get all deposits for those rentals
-        var deposits = await this.Context.LoadAsync(
-            this.Context.CreateQuery<Deposit>().Where(d => rentalIds.IsInList(d.RentalId)),
-            page: 1, size: 10000, includeTotalRows: false);
+        var groupCounts = await this.Context.GetGroupByCountAsync(query, d => d.Status ?? "Unknown");
 
-        return deposits.ItemCollection
-            .GroupBy(d => d.Status ?? "Unknown")
-            .ToDictionary(g => g.Key, g => g.Count());
+        return groupCounts.ToDictionary(g => g.Key, g => g.Count);
     }
 
     public async Task<decimal> GetTotalHeldDepositsAsync(int shopId)
     {
-        var rentals = await this.Context.LoadAsync(
-            this.Context.CreateQuery<Rental>().Where(r => r.ShopId == shopId),
-            page: 1, size: 10000, includeTotalRows: false);
+        // Get rental IDs for this shop
+        var rentalIds = await this.Context.GetDistinctAsync<Rental, int>(
+            r => r.ShopId == shopId,
+            r => r.RentalId);
 
-        var rentalIds = rentals.ItemCollection.Select(r => r.RentalId).ToList();
+        // Sum held deposits via SQL SUM
+        var query = this.Context.CreateQuery<Deposit>()
+            .Where(d => rentalIds.IsInList(d.RentalId))
+            .Where(d => d.Status == "Held");
 
-        var heldDeposits = await this.Context.LoadAsync(
-            this.Context.CreateQuery<Deposit>()
-                .Where(d => rentalIds.IsInList(d.RentalId))
-                .Where(d => d.Status == "Held"),
-            page: 1, size: 10000, includeTotalRows: false);
-
-        return heldDeposits.ItemCollection.Sum(d => d.Amount);
+        return await this.Context.GetSumAsync(query, d => d.Amount);
     }
 
     public async Task<SubmitOperation> RefundDepositAsync(int depositId, string refundMethod, string username)

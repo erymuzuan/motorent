@@ -1,0 +1,447 @@
+@using MotoRent.Domain.Entities
+@using MotoRent.Client.Components.Till
+@using MotoRent.Client.Components.Auth
+@inherits LocalizedDialogBase<TillSession, TillCloseSessionDialog>
+@inject TillService TillService
+@inject ExchangeRateService ExchangeRateService
+
+<form id="closeSessionForm" @onsubmit="this.SaveAsync" @onsubmit:preventDefault>
+    <div class="modal-body" style="max-height: calc(100vh - 200px); overflow-y: auto;">
+        @if (!m_showSummary)
+        {
+            @* Step 1: Denomination Entry *@
+            @* Session Summary (compact) *@
+            <div class="card bg-muted-lt mb-3">
+                <div class="card-body py-2">
+                    <div class="row text-center small">
+                        <div class="col-4 border-end">
+                            <small class="text-secondary d-block">@Localizer["Opening"]</small>
+                            <span class="fw-semibold">@this.FormatCurrency(this.Entity.OpeningFloat)</span>
+                        </div>
+                        <div class="col-4 border-end">
+                            <small class="text-success d-block">@Localizer["CashIn"]</small>
+                            <span class="fw-semibold text-success">+@this.FormatCurrency(this.Entity.TotalCashIn)</span>
+                        </div>
+                        <div class="col-4">
+                            <small class="text-danger d-block">@Localizer["CashOut"]</small>
+                            <span class="fw-semibold text-danger">-@this.FormatCurrency(this.Entity.TotalCashOut + this.Entity.TotalDropped)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* Denomination Count Panel *@
+            <ClosingCountPanel
+                TillSessionId="@Entity.TillSessionId"
+                ExpectedBalances="@GetExpectedBalances()"
+                OnBreakdownsChanged="@OnBreakdownsChanged"
+                Disabled="@Saving" />
+
+            @* Closing Notes *@
+            <div class="mb-0 mt-3">
+                <label class="form-label">@Localizer["ClosingNotes"]</label>
+                <textarea class="form-control" @bind="this.Notes" rows="2"
+                          placeholder="@Localizer["ClosingNotesPlaceholder"]"></textarea>
+            </div>
+        }
+        else
+        {
+            @* Step 2: Summary Review *@
+            <div class="card border-primary mb-3">
+                <div class="card-header bg-primary text-white">
+                    <i class="ti ti-list-check me-2"></i>
+                    @Localizer["ClosingSummary"]
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm mb-0">
+                        <thead>
+                            <tr>
+                                <th>@Localizer["Currency"]</th>
+                                <th class="text-end">@Localizer["Expected"]</th>
+                                <th class="text-end">@Localizer["Counted"]</th>
+                                <th class="text-end">@Localizer["Variance"]</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var breakdown in m_currencyBreakdowns)
+                            {
+                                var variance = breakdown.Variance ?? 0;
+                                var symbol = GetCurrencySymbol(breakdown.Currency);
+                                <tr>
+                                    <td>@breakdown.Currency</td>
+                                    <td class="text-end">@FormatCurrencyAmount(breakdown.ExpectedBalance ?? 0, breakdown.Currency)</td>
+                                    <td class="text-end">@FormatCurrencyAmount(breakdown.Total, breakdown.Currency)</td>
+                                    <td class="text-end @GetVarianceClass(variance)">
+                                        <strong>@FormatVariance(variance, breakdown.Currency)</strong>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            @* Overall Variance in THB *@
+            <div class="alert @GetOverallVarianceAlertClass() mb-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span>
+                        <i class="ti @GetOverallVarianceIcon() me-2"></i>
+                        @Localizer["OverallVarianceThb"]
+                    </span>
+                    <strong>@FormatVariance(GetOverallVarianceThb(), SupportedCurrencies.THB)</strong>
+                </div>
+            </div>
+
+            @* Variance Acknowledgment *@
+            @if (this.HasVariance)
+            {
+                <div class="mb-3">
+                    <label class="form-check">
+                        <input type="checkbox" class="form-check-input" @bind="this.AcknowledgeVariance" />
+                        <span class="form-check-label">
+                            @Localizer["AcknowledgeVariance"]
+                        </span>
+                    </label>
+                </div>
+            }
+
+            @* Show closing notes if entered *@
+            @if (!string.IsNullOrWhiteSpace(this.Notes))
+            {
+                <div class="card bg-muted-lt">
+                    <div class="card-body py-2">
+                        <small class="text-secondary d-block mb-1">@Localizer["ClosingNotes"]</small>
+                        <span>@this.Notes</span>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</form>
+
+<div class="modal-footer">
+    @if (!m_showSummary)
+    {
+        <button type="button" class="btn btn-ghost-warning me-auto" @onclick="ForceCloseAsync" disabled="@Saving">
+            <i class="ti ti-shield-lock me-1"></i>
+            @Localizer["ManagerForceClose"]
+        </button>
+        <button type="button" class="btn btn-ghost-secondary" @onclick="this.Cancel">
+            @Localizer["Cancel"]
+        </button>
+        <button type="button" class="btn btn-primary" @onclick="ReviewSummary" disabled="@(!CanReviewSummary)">
+            <i class="ti ti-list-check me-1"></i>
+            @Localizer["ReviewSummary"]
+        </button>
+    }
+    else
+    {
+        <button type="button" class="btn btn-ghost-secondary me-auto" @onclick="BackToCount">
+            <i class="ti ti-arrow-left me-1"></i>
+            @Localizer["BackToCount"]
+        </button>
+        <button type="button" class="btn btn-ghost-secondary" @onclick="this.Cancel">
+            @Localizer["Cancel"]
+        </button>
+        <button type="submit" form="closeSessionForm" class="btn btn-primary" disabled="@(!this.CanClose)">
+            @if (this.Saving)
+            {
+                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+            }
+            <i class="ti ti-logout me-1"></i>
+            @Localizer["CloseSession"]
+        </button>
+    }
+</div>
+
+@code {
+    private decimal ActualCash { get; set; }
+    private string? Notes { get; set; }
+    private bool AcknowledgeVariance { get; set; }
+    private bool Saving { get; set; }
+    private List<CurrencyDenominationBreakdown> m_currencyBreakdowns = [];
+    private bool m_showSummary;
+    private Dictionary<string, decimal> m_exchangeRates = new();
+
+    private bool HasEnteredAmount => this.ActualCash > 0 ||
+        m_currencyBreakdowns.Any(b => b.Currency == SupportedCurrencies.THB && b.Total > 0);
+
+    private bool HasVariance => m_currencyBreakdowns.Any(b => b.Variance.HasValue && b.Variance.Value != 0);
+
+    private bool CanReviewSummary => !this.Saving && this.HasEnteredAmount;
+
+    private bool CanClose => !this.Saving && m_showSummary && (!this.HasVariance || this.AcknowledgeVariance);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync();
+        // Initialize with expected balances (no pre-fill for closing count)
+        this.ActualCash = 0;
+        // Load exchange rates for variance calculation
+        await LoadExchangeRatesAsync();
+    }
+
+    private async Task LoadExchangeRatesAsync()
+    {
+        var currencies = new[] { SupportedCurrencies.USD, SupportedCurrencies.EUR, SupportedCurrencies.CNY };
+        foreach (var currency in currencies)
+        {
+            var rate = await ExchangeRateService.GetCurrentRateAsync(currency);
+            if (rate != null)
+            {
+                m_exchangeRates[currency] = rate.BuyRate;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gets expected balances from TillSession.CurrencyBalances.
+    /// If CurrencyBalances is null, falls back to ExpectedCash for THB only.
+    /// </summary>
+    private Dictionary<string, decimal> GetExpectedBalances()
+    {
+        if (this.Entity.CurrencyBalances != null && this.Entity.CurrencyBalances.Count > 0)
+        {
+            return this.Entity.CurrencyBalances;
+        }
+
+        // Fallback for backward compatibility
+        return new Dictionary<string, decimal>
+        {
+            [SupportedCurrencies.THB] = this.Entity.ExpectedCash
+        };
+    }
+
+    /// <summary>
+    /// Callback when denomination breakdowns change.
+    /// Updates ActualCash for backward compatibility with CloseSessionAsync.
+    /// </summary>
+    private void OnBreakdownsChanged(List<CurrencyDenominationBreakdown> breakdowns)
+    {
+        m_currencyBreakdowns = breakdowns;
+
+        // Update ActualCash from THB breakdown for backward compatibility
+        var thbBreakdown = breakdowns.FirstOrDefault(b => b.Currency == SupportedCurrencies.THB);
+        this.ActualCash = thbBreakdown?.Total ?? 0;
+
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Navigate to summary review step.
+    /// </summary>
+    private void ReviewSummary()
+    {
+        if (!HasEnteredAmount) return;
+        m_showSummary = true;
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Navigate back to denomination entry step.
+    /// </summary>
+    private void BackToCount()
+    {
+        m_showSummary = false;
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Gets the CSS class for variance display.
+    /// </summary>
+    private static string GetVarianceClass(decimal variance)
+    {
+        if (variance == 0) return "text-success";
+        if (variance > 0) return "text-info";     // Over
+        return "text-danger";                      // Short
+    }
+
+    /// <summary>
+    /// Gets currency symbol for formatting.
+    /// </summary>
+    private static string GetCurrencySymbol(string currency) => currency switch
+    {
+        SupportedCurrencies.THB => "\u0E3F",
+        SupportedCurrencies.USD => "$",
+        SupportedCurrencies.EUR => "\u20AC",
+        SupportedCurrencies.CNY => "\u00A5",
+        _ => ""
+    };
+
+    /// <summary>
+    /// Formats currency amount with symbol.
+    /// </summary>
+    private static string FormatCurrencyAmount(decimal amount, string currency)
+    {
+        var symbol = GetCurrencySymbol(currency);
+        return $"{symbol}{amount:N0}";
+    }
+
+    /// <summary>
+    /// Formats variance with +/- prefix and currency symbol.
+    /// </summary>
+    private static string FormatVariance(decimal variance, string currency)
+    {
+        var symbol = GetCurrencySymbol(currency);
+        if (variance >= 0)
+        {
+            return $"+{symbol}{variance:N0}";
+        }
+        return $"-{symbol}{Math.Abs(variance):N0}";
+    }
+
+    /// <summary>
+    /// Gets the alert class for overall variance display.
+    /// </summary>
+    private string GetOverallVarianceAlertClass()
+    {
+        var variance = GetOverallVarianceThb();
+        if (variance == 0) return "alert-success";
+        if (variance > 0) return "alert-info";
+        return "alert-danger";
+    }
+
+    /// <summary>
+    /// Gets the icon for overall variance display.
+    /// </summary>
+    private string GetOverallVarianceIcon()
+    {
+        var variance = GetOverallVarianceThb();
+        if (variance == 0) return "ti-check";
+        if (variance > 0) return "ti-trending-up";
+        return "ti-trending-down";
+    }
+
+    /// <summary>
+    /// Calculates overall variance in THB (sum of all currency variances converted to THB).
+    /// </summary>
+    private decimal GetOverallVarianceThb()
+    {
+        decimal totalVariance = 0;
+
+        foreach (var breakdown in m_currencyBreakdowns)
+        {
+            var variance = breakdown.Variance ?? 0;
+
+            if (breakdown.Currency == SupportedCurrencies.THB)
+            {
+                totalVariance += variance;
+            }
+            else if (m_exchangeRates.TryGetValue(breakdown.Currency, out var rate) && rate > 0)
+            {
+                totalVariance += variance * rate;
+            }
+            else
+            {
+                // Fallback: use raw amount if no rate
+                totalVariance += variance;
+            }
+        }
+
+        return totalVariance;
+    }
+
+    private void Cancel()
+    {
+        this.ModalService.Close(ModalResult.Cancel());
+    }
+
+    private async Task SaveAsync()
+    {
+        if (!this.CanClose) return;
+
+        try
+        {
+            this.Saving = true;
+
+            // Use the new CloseSessionAsync overload with full breakdowns
+            var result = await this.TillService.CloseSessionAsync(
+                this.Entity.TillSessionId,
+                m_currencyBreakdowns,
+                this.Notes,
+                this.UserName);
+
+            if (!result.Success)
+            {
+                this.ShowError(result.Message ?? "Failed to close session");
+                return;
+            }
+
+            // Save denomination count with full breakdowns
+            if (m_currencyBreakdowns.Count > 0)
+            {
+                var denominationResult = await this.TillService.SaveDenominationCountAsync(
+                    this.Entity.TillSessionId,
+                    DenominationCountType.Closing,
+                    m_currencyBreakdowns,
+                    this.UserName,
+                    isFinal: true,
+                    notes: this.Notes);
+
+                if (!denominationResult.Success)
+                {
+                    // Log but don't fail the close - denomination count is supplementary
+                    this.Logger.LogWarning("Failed to save closing denomination count: {Message}",
+                        denominationResult.Message);
+                }
+            }
+
+            this.ModalService.Close(ModalResult.Ok(result));
+        }
+        catch (Exception ex)
+        {
+            this.Logger.LogError(ex, "Error closing till session");
+            this.ShowError("Failed to close session");
+        }
+        finally
+        {
+            this.Saving = false;
+        }
+    }
+
+    /// <summary>
+    /// Force closes the session with manager PIN approval.
+    /// Sets ActualCash = ExpectedCash (zero variance) and closes immediately.
+    /// </summary>
+    private async Task ForceCloseAsync()
+    {
+        // Step 1: Show manager PIN dialog
+        var pinResult = await this.DialogService.Create<ManagerPinDialog>(Localizer["ManagerApproval"])
+            .WithSize(ModalSize.Medium)
+            .ShowDialogAsync();
+
+        if (pinResult is null or { Cancelled: true }) return;
+
+        var managerUserName = pinResult.Data as string;
+        if (string.IsNullOrEmpty(managerUserName)) return;
+
+        // Step 2: Execute force close
+        try
+        {
+            this.Saving = true;
+
+            var result = await this.TillService.ForceCloseSessionAsync(
+                this.Entity.TillSessionId,
+                managerUserName,
+                this.Notes,
+                this.UserName);
+
+            if (!result.Success)
+            {
+                this.ShowError(result.Message ?? "Failed to force close session");
+                return;
+            }
+
+            this.ModalService.Close(ModalResult.Ok(result));
+        }
+        catch (Exception ex)
+        {
+            this.Logger.LogError(ex, "Error force closing till session");
+            this.ShowError("Failed to force close session");
+        }
+        finally
+        {
+            this.Saving = false;
+        }
+    }
+}

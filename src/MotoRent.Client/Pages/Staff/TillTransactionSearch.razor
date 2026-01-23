@@ -1,0 +1,224 @@
+@page "/staff/till-transactions"
+@using Microsoft.AspNetCore.Authorization
+@using MotoRent.Domain.Entities
+@using MotoRent.Client.Components.Receipts
+@attribute [Authorize]
+@inherits LocalizedComponentBase<TillTransactionSearch>
+@inject MotoRent.Services.ReceiptService ReceiptService
+
+<MotoRentPageTitle>@Localizer["PageTitle"]</MotoRentPageTitle>
+
+<TablerHeader Title="@Localizer["PageTitle"]" PreTitle="@Localizer["TillOperations"]">
+    <i class="ti ti-search text-primary ms-2" style="font-size: 1.5rem;"></i>
+</TablerHeader>
+
+@* Search Filters Card *@
+<div class="card mb-3">
+    <div class="card-body">
+        @* Row 1: Date Range with Quick Buttons *@
+        <div class="row g-3 mb-3">
+            <div class="col-6 col-md-2">
+                <label class="form-label">@Localizer["FromDate"]</label>
+                <input type="date" class="form-control" @bind="m_fromDate" @bind:after="FilterChanged" />
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label">@Localizer["ToDate"]</label>
+                <input type="date" class="form-control" @bind="m_toDate" @bind:after="FilterChanged" />
+            </div>
+            <div class="col-12 col-md-8">
+                <label class="form-label d-none d-md-block">&nbsp;</label>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-outline-secondary @(IsQuickDateActive("today") ? "active" : "")"
+                            @onclick="@(() => ApplyQuickDate("today"))">
+                        @Localizer["Today"]
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary @(IsQuickDateActive("7days") ? "active" : "")"
+                            @onclick="@(() => ApplyQuickDate("7days"))">
+                        @Localizer["Last7Days"]
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary @(IsQuickDateActive("month") ? "active" : "")"
+                            @onclick="@(() => ApplyQuickDate("month"))">
+                        @Localizer["ThisMonth"]
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        @* Row 2: Receipt Type and Search Term *@
+        <div class="row g-3 mb-3">
+            <div class="col-md-3">
+                <label class="form-label">@Localizer["ReceiptType"]</label>
+                <select class="form-select" @bind="m_receiptType" @bind:after="FilterChanged">
+                    <option value="">@Localizer["AllTypes"]</option>
+                    <option value="@ReceiptTypes.CheckIn">@Localizer["CheckIn"]</option>
+                    <option value="@ReceiptTypes.Settlement">@Localizer["Settlement"]</option>
+                    <option value="@ReceiptTypes.BookingDeposit">@Localizer["BookingDeposit"]</option>
+                </select>
+            </div>
+            <div class="col-md-5">
+                <label class="form-label">@Localizer["Search"]</label>
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="ti ti-search"></i>
+                    </span>
+                    <input type="text" class="form-control" placeholder="@Localizer["SearchPlaceholder"]"
+                           @bind="m_searchTerm" @bind:event="oninput" @bind:after="OnSearchTermChanged" />
+                    @if (!string.IsNullOrEmpty(m_searchTerm))
+                    {
+                        <button type="button" class="btn btn-outline-secondary" @onclick="ClearSearch">
+                            <i class="ti ti-x"></i>
+                        </button>
+                    }
+                </div>
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label">@Localizer["MinAmount"]</label>
+                <input type="number" class="form-control" placeholder="0" step="100"
+                       @bind="m_minAmount" @bind:after="FilterChanged" />
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label">@Localizer["MaxAmount"]</label>
+                <input type="number" class="form-control" placeholder="0" step="100"
+                       @bind="m_maxAmount" @bind:after="FilterChanged" />
+            </div>
+        </div>
+    </div>
+</div>
+
+@* Results Summary *@
+<div class="mb-3 d-flex flex-wrap justify-content-between align-items-center">
+    <div>
+        <span class="text-secondary">@Localizer["FoundReceipts", m_totalCount]</span>
+        @if (m_totalAmount > 0)
+        {
+            <span class="ms-3 badge bg-success-lt">
+                <i class="ti ti-currency-baht me-1"></i>
+                @FormatCurrency(m_totalAmount)
+            </span>
+        }
+    </div>
+</div>
+
+@* Results Table *@
+<LoadingSkeleton Loading="@m_loading" Mode="LoadingSkeleton.PlaceholderMode.Table" Rows="10" Columns="6">
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-vcenter card-table table-striped">
+                <thead>
+                    <tr>
+                        <th>@Localizer["ReceiptNo"]</th>
+                        <th>@Localizer["Type"]</th>
+                        <th>@Localizer["Customer"]</th>
+                        <th>@Localizer["Vehicle"]</th>
+                        <th class="text-end">@Localizer["Amount"]</th>
+                        <th>@Localizer["DateTime"]</th>
+                        <th class="w-1">@Localizer["Actions"]</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (m_receipts.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center text-secondary py-5">
+                                <i class="ti ti-receipt-off mb-2" style="font-size: 3rem;"></i>
+                                <div class="fs-4">@Localizer["NoReceiptsFound"]</div>
+                                <div class="text-muted mt-2">@Localizer["AdjustFilters"]</div>
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var receipt in m_receipts)
+                        {
+                            <tr class="@(receipt.Status == ReceiptStatus.Voided ? "table-danger" : "")">
+                                <td>
+                                    <a href="#" @onclick="@(() => ViewPrintReceiptAsync(receipt))" @onclick:preventDefault
+                                       class="fw-bold text-primary text-decoration-none">
+                                        @receipt.ReceiptNo
+                                    </a>
+                                    @if (receipt.Status == ReceiptStatus.Voided)
+                                    {
+                                        <span class="badge bg-danger ms-1">@Localizer["Voided"]</span>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="badge @GetTypeBadgeClass(receipt.ReceiptType)">
+                                        @GetTypeDisplay(receipt.ReceiptType)
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="fw-medium">@receipt.CustomerName</div>
+                                    @if (!string.IsNullOrEmpty(receipt.CustomerPhone))
+                                    {
+                                        <small class="text-secondary">@receipt.CustomerPhone</small>
+                                    }
+                                </td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(receipt.VehicleName))
+                                    {
+                                        <div>@receipt.VehicleName</div>
+                                    }
+                                    @if (!string.IsNullOrEmpty(receipt.LicensePlate))
+                                    {
+                                        <small class="text-secondary">@receipt.LicensePlate</small>
+                                    }
+                                </td>
+                                <td class="text-end">
+                                    @if (receipt.ReceiptType == ReceiptTypes.Settlement && receipt.RefundAmount > 0)
+                                    {
+                                        <div class="text-success">@FormatCurrency(receipt.RefundAmount)</div>
+                                        <small class="text-secondary">@Localizer["Refund"]</small>
+                                    }
+                                    else
+                                    {
+                                        <span class="fw-bold text-primary">@FormatCurrency(receipt.GrandTotal)</span>
+                                    }
+                                </td>
+                                <td>
+                                    <div>@receipt.IssuedOn.ToString("d MMM yyyy")</div>
+                                    <small class="text-secondary">@receipt.IssuedOn.ToString("HH:mm")</small>
+                                </td>
+                                <td>
+                                    <button type="button" class="btn btn-icon btn-ghost-primary"
+                                            title="@Localizer["ViewPrint"]"
+                                            @onclick="@(() => ViewPrintReceiptAsync(receipt))">
+                                        <i class="ti ti-printer"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @* Pagination *@
+        @if (m_totalPages > 1)
+        {
+            <div class="card-footer d-flex align-items-center">
+                <p class="m-0 text-secondary">
+                    @Localizer["ShowingPage", m_currentPage, m_totalPages, m_totalCount]
+                </p>
+                <ul class="pagination m-0 ms-auto">
+                    <li class="page-item @(m_currentPage <= 1 ? "disabled" : "")">
+                        <button class="page-link" @onclick="() => GoToPageAsync(m_currentPage - 1)" disabled="@(m_currentPage <= 1)">
+                            <i class="ti ti-chevron-left"></i>
+                        </button>
+                    </li>
+                    @for (var i = Math.Max(1, m_currentPage - 2); i <= Math.Min(m_totalPages, m_currentPage + 2); i++)
+                    {
+                        var pageNum = i;
+                        <li class="page-item @(m_currentPage == pageNum ? "active" : "")">
+                            <button class="page-link" @onclick="() => GoToPageAsync(pageNum)">@pageNum</button>
+                        </li>
+                    }
+                    <li class="page-item @(m_currentPage >= m_totalPages ? "disabled" : "")">
+                        <button class="page-link" @onclick="() => GoToPageAsync(m_currentPage + 1)" disabled="@(m_currentPage >= m_totalPages)">
+                            <i class="ti ti-chevron-right"></i>
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        }
+    </div>
+</LoadingSkeleton>

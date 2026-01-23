@@ -1,28 +1,28 @@
 @page "/manager/revenue"
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize(Policy = "RequireTenantManager")]
-@inherits MotoRentComponentBase
+@inherits LocalizedComponentBase<Revenue>
 
-<PageTitle>Revenue Analytics - MotoRent Manager</PageTitle>
+<PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 <div class="container-xl py-4">
     @* Page Header *@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h2 class="page-title mb-0">Revenue Analytics</h2>
-            <p class="text-secondary mb-0">Detailed breakdown of rental income and financial metrics</p>
+            <h2 class="page-title mb-0">@Localizer["RevenueAnalytics"]</h2>
+            <p class="text-secondary mb-0">@Localizer["RevenueAnalyticsSubtitle"]</p>
         </div>
         <div class="d-flex gap-2">
             <div class="d-flex gap-2 align-items-center">
                 <input type="date" class="form-control form-control-sm" style="width: 140px;"
                        @bind="m_startDate" />
-                <span class="text-secondary">to</span>
+                <span class="text-secondary">@Localizer["To"]</span>
                 <input type="date" class="form-control form-control-sm" style="width: 140px;"
                        @bind="m_endDate" />
             </div>
             <button type="button" class="btn btn-outline-primary">
                 <i class="ti ti-download me-1"></i>
-                Export
+                @CommonLocalizer["Export"]
             </button>
         </div>
     </div>
@@ -31,41 +31,41 @@
     <div class="row g-3 mb-4">
         <div class="col-12 col-sm-6 col-md-3">
             <MotoRent.Client.Components.Manager.MetricCard
-                Title="Total Revenue"
+                Title="@Localizer["TotalRevenue"]"
                 Value="@m_totalRevenue.ToString("N0")"
                 Prefix="฿"
                 Icon="ti-building-bank"
                 IconColor="success"
                 ShowTrend="true"
                 TrendPercent="15.2"
-                TrendPeriod="last period" />
+                TrendPeriod="@Localizer["LastPeriod"]" />
         </div>
         <div class="col-12 col-sm-6 col-md-3">
             <MotoRent.Client.Components.Manager.MetricCard
-                Title="Total Rentals"
+                Title="@Localizer["TotalRentals"]"
                 Value="@m_totalRentals.ToString()"
                 Icon="ti-receipt"
                 IconColor="primary"
                 ShowTrend="true"
                 TrendPercent="8.7"
-                TrendPeriod="last period" />
+                TrendPeriod="@Localizer["LastPeriod"]" />
         </div>
         <div class="col-12 col-sm-6 col-md-3">
             <MotoRent.Client.Components.Manager.MetricCard
-                Title="Avg. Daily Rate"
+                Title="@Localizer["AvgDailyRate"]"
                 Value="@m_avgDailyRate.ToString("N0")"
                 Prefix="฿"
                 Icon="ti-trending-up"
                 IconColor="info"
                 ShowTrend="true"
                 TrendPercent="3.2"
-                TrendPeriod="last period" />
+                TrendPeriod="@Localizer["LastPeriod"]" />
         </div>
         <div class="col-12 col-sm-6 col-md-3">
             <MotoRent.Client.Components.Manager.MetricCard
-                Title="Avg. Rental Duration"
+                Title="@Localizer["AvgRentalDuration"]"
                 Value="@m_avgDuration.ToString("N1")"
-                Suffix="days"
+                Suffix="@Localizer["DaysSuffix"]"
                 Icon="ti-clock"
                 IconColor="warning" />
         </div>
@@ -75,12 +75,12 @@
     <div class="card mb-4">
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h4 class="card-title mb-0">Revenue Over Time</h4>
+                <h4 class="card-title mb-0">@Localizer["RevenueOverTime"]</h4>
                 <div class="d-flex gap-2">
                     <select class="form-select form-select-sm" style="width: 120px;" @bind="m_chartGrouping">
-                        <option value="daily">Daily</option>
-                        <option value="weekly">Weekly</option>
-                        <option value="monthly">Monthly</option>
+                        <option value="daily">@Localizer["GroupingDaily"]</option>
+                        <option value="weekly">@Localizer["GroupingWeekly"]</option>
+                        <option value="monthly">@Localizer["GroupingMonthly"]</option>
                     </select>
                     <div class="btn-group btn-group-sm" role="group">
                         <button type="button" class="btn @(m_chartType == "bar" ? "btn-primary" : "btn-outline-primary")"
@@ -97,8 +97,8 @@
             <div class="chart-placeholder d-flex align-items-center justify-content-center" style="height: 350px; background: var(--tblr-bg-surface-secondary); border-radius: 8px;">
                 <div class="text-center text-secondary">
                     <i class="ti ti-@(m_chartType == "bar" ? "chart-bar" : "chart-line") mb-2" style="font-size: 2rem;"></i>
-                    <div>Revenue Chart (@m_chartGrouping)</div>
-                    <small>Implement with Chart.js or ApexCharts</small>
+                    <div>@Localizer["RevenueChart", m_chartGrouping]</div>
+                    <small>@Localizer["ChartPlaceholderHint"]</small>
                 </div>
             </div>
         </div>
@@ -109,7 +109,7 @@
         <div class="col-12 col-md-6">
             <div class="card h-100">
                 <div class="card-body">
-                    <h4 class="card-title mb-3">Revenue by Bike Type</h4>
+                    <h4 class="card-title mb-3">@Localizer["RevenueByBikeType"]</h4>
                     <div class="d-flex flex-column gap-3 mb-3">
                         @for (int i = 0; i < m_bikeTypeLabels.Length; i++)
                         {
@@ -137,7 +137,7 @@
         <div class="col-12 col-md-6">
             <div class="card h-100">
                 <div class="card-body">
-                    <h4 class="card-title mb-3">Revenue by Payment Method</h4>
+                    <h4 class="card-title mb-3">@Localizer["RevenueByPaymentMethod"]</h4>
                     <div class="d-flex flex-column gap-3">
                         @for (int i = 0; i < m_paymentMethodLabels.Length; i++)
                         {
@@ -166,12 +166,12 @@
     <div class="card">
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h4 class="card-title mb-0">Recent Transactions</h4>
+                <h4 class="card-title mb-0">@Localizer["RecentTransactions"]</h4>
                 <div class="input-icon">
                     <span class="input-icon-addon">
                         <i class="ti ti-search"></i>
                     </span>
-                    <input type="text" class="form-control form-control-sm" placeholder="Search..."
+                    <input type="text" class="form-control form-control-sm" placeholder="@CommonLocalizer["Search"]"
                            style="width: 200px;" @bind="m_searchText" @bind:event="oninput" />
                 </div>
             </div>
@@ -180,14 +180,14 @@
                 <table class="table table-vcenter table-striped table-hover">
                     <thead>
                         <tr>
-                            <th>Rental #</th>
-                            <th>Date</th>
-                            <th>Customer</th>
-                            <th>Motorbike</th>
-                            <th>Duration</th>
-                            <th class="text-end">Amount</th>
-                            <th>Payment</th>
-                            <th>Status</th>
+                            <th>@Localizer["RentalNo"]</th>
+                            <th>@Localizer["Date"]</th>
+                            <th>@Localizer["Customer"]</th>
+                            <th>@Localizer["Motorbike"]</th>
+                            <th>@Localizer["Duration"]</th>
+                            <th class="text-end">@Localizer["Amount"]</th>
+                            <th>@Localizer["Payment"]</th>
+                            <th>@Localizer["Status"]</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -202,7 +202,7 @@
                                 <td>@tx.Date.ToString("dd MMM")</td>
                                 <td>@tx.CustomerName</td>
                                 <td>@tx.MotorbikeName</td>
-                                <td>@tx.Duration days</td>
+                                <td>@Localizer["DurationDays", tx.Duration]</td>
                                 <td class="text-end fw-medium">@FormatCurrency(tx.Amount)</td>
                                 <td>
                                     <span class="badge bg-secondary-lt">@tx.PaymentMethod</span>
@@ -219,13 +219,13 @@
             <div class="d-flex justify-content-center mt-3">
                 <nav>
                     <ul class="pagination pagination-sm mb-0">
-                        <li class="page-item disabled"><a class="page-link" href="#">Previous</a></li>
+                        <li class="page-item disabled"><a class="page-link" href="#">@Localizer["Previous"]</a></li>
                         <li class="page-item active"><a class="page-link" href="#">1</a></li>
                         <li class="page-item"><a class="page-link" href="#">2</a></li>
                         <li class="page-item"><a class="page-link" href="#">3</a></li>
                         <li class="page-item"><a class="page-link" href="#">4</a></li>
                         <li class="page-item"><a class="page-link" href="#">5</a></li>
-                        <li class="page-item"><a class="page-link" href="#">Next</a></li>
+                        <li class="page-item"><a class="page-link" href="#">@Localizer["Next"]</a></li>
                     </ul>
                 </nav>
             </div>

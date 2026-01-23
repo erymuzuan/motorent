@@ -1,0 +1,504 @@
+@inherits LocalizedComponentBase<ClosingCountPanel>
+@inject ExchangeRateService ExchangeRateService
+@inject TillService TillService
+@implements IDisposable
+
+<div class="mr-closing-count-panel">
+    @* Currency Sections *@
+    <div class="mr-count-sections">
+        @foreach (var currency in m_visibleCurrencies)
+        {
+            var denominations = CurrencyDenominations.GetDenominations(currency);
+            var counts = GetOrCreateBreakdown(currency);
+            var currencyTotal = GetTotal(currency);
+            var expected = GetExpectedBalance(currency);
+            var variance = currencyTotal - expected;
+            var varianceClass = GetVarianceClass(variance);
+            var varianceIcon = GetVarianceIcon(variance);
+            var symbol = CurrencyDenominations.GetCurrencySymbol(currency);
+
+            <div class="mr-currency-section">
+                <div class="mr-currency-header">
+                    <span class="mr-currency-name">@GetCurrencyName(currency)</span>
+                    <span class="mr-expected-badge">
+                        @Localizer["Expected"]: @symbol@expected.ToString("N0")
+                    </span>
+                </div>
+
+                @* Denomination Rows *@
+                @foreach (var denomination in denominations)
+                {
+                    var count = counts.GetValueOrDefault(denomination, 0);
+                    var subtotal = denomination * count;
+                    var hasValue = count > 0;
+
+                    <div class="mr-denom-row @(hasValue ? "has-value" : "")">
+                        <span class="mr-denom-value">@symbol@denomination.ToString("N0")</span>
+                        <div class="mr-denom-counter">
+                            <button type="button" class="mr-denom-btn" @onclick="() => Decrement(currency, denomination)" disabled="@(Disabled || count <= 0)">
+                                <i class="ti ti-minus"></i>
+                            </button>
+                            <input type="number"
+                                   class="form-control form-control-sm mr-denom-count"
+                                   min="0"
+                                   step="1"
+                                   value="@count"
+                                   disabled="@Disabled"
+                                   @oninput="@(() => OnCountChanged(currency, denomination, count))" />
+                            <button type="button" class="mr-denom-btn" @onclick="() => Increment(currency, denomination)" disabled="@Disabled">
+                                <i class="ti ti-plus"></i>
+                            </button>
+                        </div>
+                        <span class="mr-denom-subtotal">
+                            @if (hasValue)
+                            {
+                                @($"{symbol}{subtotal:N0}")
+                            }
+                        </span>
+                    </div>
+                }
+
+                @* Section Summary *@
+                <div class="mr-section-summary">
+                    <div class="mr-summary-row">
+                        <span class="mr-summary-label">@Localizer["Actual"]:</span>
+                        <span class="mr-summary-value">@symbol@currencyTotal.ToString("N0")</span>
+                    </div>
+                    <div class="mr-summary-row @varianceClass">
+                        <span class="mr-summary-label">
+                            <i class="ti @varianceIcon me-1"></i>
+                            @Localizer["Variance"]:
+                        </span>
+                        <span class="mr-summary-value">
+                            @if (variance >= 0)
+                            {
+                                @($"+{symbol}{variance:N0}")
+                            }
+                            else
+                            {
+                                @($"-{symbol}{Math.Abs(variance):N0}")
+                            }
+                        </span>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @* No foreign currency message *@
+        @if (m_visibleCurrencies.Count == 1 && m_visibleCurrencies.Contains(SupportedCurrencies.THB))
+        {
+            <div class="mr-no-foreign-currency">
+                <i class="ti ti-info-circle me-2"></i>
+                @Localizer["NoForeignCurrency"]
+            </div>
+        }
+
+        @* Draft restored message *@
+        @if (m_draftRestored)
+        {
+            <div class="alert alert-info py-2 mt-2">
+                <i class="ti ti-history me-2"></i>
+                @Localizer["DraftRestored"]
+            </div>
+        }
+    </div>
+
+    @* Sticky Footer *@
+    <div class="mr-sticky-footer">
+        @* Per-currency totals *@
+        @foreach (var currency in m_visibleCurrencies)
+        {
+            var currencyTotal = GetTotal(currency);
+            var expected = GetExpectedBalance(currency);
+            var variance = currencyTotal - expected;
+            var varianceClass = GetVarianceClass(variance);
+            var symbol = CurrencyDenominations.GetCurrencySymbol(currency);
+
+            <div class="mr-footer-currency @varianceClass">
+                <span class="mr-footer-currency-name">@currency</span>
+                <span class="mr-footer-amounts">
+                    @symbol@currencyTotal.ToString("N0")
+                    @if (variance != 0)
+                    {
+                        <small class="ms-1">
+                            (@(variance >= 0 ? "+" : "")@variance.ToString("N0"))
+                        </small>
+                    }
+                </span>
+            </div>
+        }
+
+        @* Overall variance line *@
+        @{
+            var overallVariance = GetOverallVarianceThb();
+            var overallVarianceClass = GetVarianceClass(overallVariance);
+            var overallVarianceIcon = GetVarianceIcon(overallVariance);
+        }
+        <div class="mr-overall-variance @overallVarianceClass">
+            <span>
+                <i class="ti @overallVarianceIcon me-1"></i>
+                @Localizer["OverallVariance"]
+            </span>
+            <span class="mr-overall-amount">
+                @if (overallVariance >= 0)
+                {
+                    @($"+{CurrencyDenominations.GetCurrencySymbol(SupportedCurrencies.THB)}{overallVariance:N0}")
+                }
+                else
+                {
+                    @($"-{CurrencyDenominations.GetCurrencySymbol(SupportedCurrencies.THB)}{Math.Abs(overallVariance):N0}")
+                }
+            </span>
+        </div>
+
+        @* Grand total *@
+        <div class="mr-grand-total">
+            <span>@Localizer["GrandTotal"]</span>
+            <span class="mr-grand-amount">@CurrencyDenominations.GetCurrencySymbol(SupportedCurrencies.THB)@GetGrandTotalThb().ToString("N0")</span>
+        </div>
+
+        @* Variance warning *@
+        @if (overallVariance != 0)
+        {
+            <div class="mr-variance-warning">
+                <i class="ti ti-alert-circle me-1"></i>
+                @Localizer["VarianceWarning"]
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// Till session ID for draft loading and saving.
+    /// </summary>
+    [Parameter]
+    public int TillSessionId { get; set; }
+
+    /// <summary>
+    /// Expected balance per currency from TillSession.CurrencyBalances.
+    /// </summary>
+    [Parameter]
+    public Dictionary<string, decimal> ExpectedBalances { get; set; } = new();
+
+    /// <summary>
+    /// Callback when denomination breakdowns change.
+    /// </summary>
+    [Parameter]
+    public EventCallback<List<CurrencyDenominationBreakdown>> OnBreakdownsChanged { get; set; }
+
+    /// <summary>
+    /// Disable all inputs during save.
+    /// </summary>
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    // State
+    private Dictionary<string, Dictionary<decimal, int>> m_currencyBreakdowns = new();
+    private List<string> m_visibleCurrencies = [];
+    private Dictionary<string, decimal> m_exchangeRates = new();
+    private System.Timers.Timer? m_autoSaveTimer;
+    private bool m_draftRestored;
+    private bool m_autoSaving;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync();
+
+        // Determine which currencies to show based on expected balances
+        m_visibleCurrencies = [];
+
+        // THB always shown (required)
+        m_visibleCurrencies.Add(SupportedCurrencies.THB);
+
+        // Add foreign currencies only if expected balance > 0
+        foreach (var currency in CurrencyDenominations.CurrenciesWithDenominations)
+        {
+            if (currency == SupportedCurrencies.THB) continue;
+
+            if (ExpectedBalances.TryGetValue(currency, out var balance) && balance > 0)
+            {
+                m_visibleCurrencies.Add(currency);
+            }
+        }
+
+        // Initialize breakdowns for visible currencies
+        foreach (var currency in m_visibleCurrencies)
+        {
+            if (!m_currencyBreakdowns.ContainsKey(currency))
+            {
+                m_currencyBreakdowns[currency] = new Dictionary<decimal, int>();
+            }
+        }
+
+        // Load exchange rates for foreign currencies
+        await LoadExchangeRatesAsync();
+
+        // Try to restore draft counts
+        await LoadDraftCountsAsync();
+    }
+
+    /// <summary>
+    /// Loads any existing draft denomination counts for this session.
+    /// </summary>
+    private async Task LoadDraftCountsAsync()
+    {
+        if (TillSessionId <= 0) return;
+
+        try
+        {
+            var draft = await TillService.GetDenominationCountAsync(TillSessionId, DenominationCountType.Closing, includeDrafts: true);
+            if (draft is { IsFinal: false, CurrencyBreakdowns.Count: > 0 })
+            {
+                // Restore counts from draft
+                foreach (var breakdown in draft.CurrencyBreakdowns)
+                {
+                    if (m_currencyBreakdowns.ContainsKey(breakdown.Currency))
+                    {
+                        m_currencyBreakdowns[breakdown.Currency] = new Dictionary<decimal, int>(breakdown.Denominations);
+                    }
+                }
+
+                m_draftRestored = true;
+                // Notify parent of restored counts
+                await OnBreakdownsChanged.InvokeAsync(BuildBreakdowns());
+            }
+        }
+        catch
+        {
+            // Ignore draft loading errors - user can still enter counts manually
+        }
+    }
+
+    private async Task LoadExchangeRatesAsync()
+    {
+        foreach (var currency in m_visibleCurrencies)
+        {
+            if (currency == SupportedCurrencies.THB) continue;
+
+            var rate = await ExchangeRateService.GetCurrentRateAsync(currency);
+            if (rate != null)
+            {
+                m_exchangeRates[currency] = rate.BuyRate;
+            }
+        }
+    }
+
+    private Dictionary<decimal, int> GetOrCreateBreakdown(string currency)
+    {
+        if (!m_currencyBreakdowns.TryGetValue(currency, out var breakdown))
+        {
+            breakdown = new Dictionary<decimal, int>();
+            m_currencyBreakdowns[currency] = breakdown;
+        }
+        return breakdown;
+    }
+
+    private decimal GetTotal(string currency)
+    {
+        if (!m_currencyBreakdowns.TryGetValue(currency, out var breakdown))
+            return 0;
+
+        return breakdown.Sum(kvp => kvp.Key * kvp.Value);
+    }
+
+    private decimal GetExpectedBalance(string currency)
+    {
+        return ExpectedBalances.TryGetValue(currency, out var balance) ? balance : 0;
+    }
+
+    private decimal GetGrandTotalThb()
+    {
+        decimal total = 0;
+
+        foreach (var currency in m_visibleCurrencies)
+        {
+            var currencyTotal = GetTotal(currency);
+
+            if (currency == SupportedCurrencies.THB)
+            {
+                total += currencyTotal;
+            }
+            else if (m_exchangeRates.TryGetValue(currency, out var rate) && rate > 0)
+            {
+                total += currencyTotal * rate;
+            }
+            else
+            {
+                // Fallback: use raw amount if no rate
+                total += currencyTotal;
+            }
+        }
+
+        return total;
+    }
+
+    private decimal GetOverallVarianceThb()
+    {
+        decimal totalVariance = 0;
+
+        foreach (var currency in m_visibleCurrencies)
+        {
+            var actual = GetTotal(currency);
+            var expected = GetExpectedBalance(currency);
+            var variance = actual - expected;
+
+            if (currency == SupportedCurrencies.THB)
+            {
+                totalVariance += variance;
+            }
+            else if (m_exchangeRates.TryGetValue(currency, out var rate) && rate > 0)
+            {
+                totalVariance += variance * rate;
+            }
+            else
+            {
+                totalVariance += variance;
+            }
+        }
+
+        return totalVariance;
+    }
+
+    private string GetCurrencyName(string currency) => currency switch
+    {
+        SupportedCurrencies.THB => Localizer["ThailandBaht"],
+        SupportedCurrencies.USD => Localizer["USDollar"],
+        SupportedCurrencies.EUR => Localizer["Euro"],
+        SupportedCurrencies.CNY => Localizer["ChineseYuan"],
+        _ => currency
+    };
+
+    private string GetVarianceClass(decimal variance) => variance switch
+    {
+        0 => "mr-variance-balanced",
+        > 0 => "mr-variance-over",
+        < 0 => "mr-variance-short"
+    };
+
+    private string GetVarianceIcon(decimal variance) => variance switch
+    {
+        0 => "ti-check",
+        > 0 => "ti-trending-up",
+        < 0 => "ti-trending-down"
+    };
+
+    private void Increment(string currency, decimal denomination)
+    {
+        var breakdown = GetOrCreateBreakdown(currency);
+        breakdown[denomination] = breakdown.TryGetValue(denomination, out var count) ? count + 1 : 1;
+        NotifyChanged();
+    }
+
+    private void Decrement(string currency, decimal denomination)
+    {
+        var breakdown = GetOrCreateBreakdown(currency);
+        if (breakdown.TryGetValue(denomination, out var count) && count > 0)
+        {
+            breakdown[denomination] = count - 1;
+            NotifyChanged();
+        }
+    }
+
+    private void OnCountChanged(string currency, decimal denomination, int count)
+    {
+        var breakdown = GetOrCreateBreakdown(currency);
+        if (count >= 0)
+        {
+            breakdown[denomination] = count;
+        }
+        else
+        {
+            breakdown[denomination] = 0;
+        }
+        NotifyChanged();
+    }
+
+    private void NotifyChanged()
+    {
+        var breakdowns = BuildBreakdowns();
+        OnBreakdownsChanged.InvokeAsync(breakdowns);
+
+        // Schedule debounced auto-save
+        ScheduleAutoSave();
+    }
+
+    /// <summary>
+    /// Schedules an auto-save after 2 seconds of inactivity.
+    /// </summary>
+    private void ScheduleAutoSave()
+    {
+        if (TillSessionId <= 0) return;
+
+        m_autoSaveTimer?.Stop();
+        m_autoSaveTimer?.Dispose();
+        m_autoSaveTimer = new System.Timers.Timer(2000);
+        m_autoSaveTimer.Elapsed += async (_, _) =>
+        {
+            m_autoSaveTimer?.Stop();
+            await InvokeAsync(async () =>
+            {
+                await SaveDraftAsync();
+            });
+        };
+        m_autoSaveTimer.Start();
+    }
+
+    /// <summary>
+    /// Saves current counts as a draft (non-final).
+    /// </summary>
+    private async Task SaveDraftAsync()
+    {
+        if (TillSessionId <= 0 || m_autoSaving) return;
+
+        var breakdowns = BuildBreakdowns();
+        if (breakdowns.All(b => b.Total == 0)) return; // Don't save empty drafts
+
+        try
+        {
+            m_autoSaving = true;
+            await TillService.SaveDenominationCountAsync(
+                TillSessionId,
+                DenominationCountType.Closing,
+                breakdowns,
+                UserName ?? "system",
+                isFinal: false,
+                notes: null);
+        }
+        catch
+        {
+            // Ignore auto-save errors - user can still save manually
+        }
+        finally
+        {
+            m_autoSaving = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        m_autoSaveTimer?.Stop();
+        m_autoSaveTimer?.Dispose();
+    }
+
+    private List<CurrencyDenominationBreakdown> BuildBreakdowns()
+    {
+        var result = new List<CurrencyDenominationBreakdown>();
+
+        foreach (var currency in m_visibleCurrencies)
+        {
+            var denominations = GetOrCreateBreakdown(currency);
+            var expected = GetExpectedBalance(currency);
+
+            result.Add(new CurrencyDenominationBreakdown
+            {
+                Currency = currency,
+                Denominations = new Dictionary<decimal, int>(denominations),
+                ExpectedBalance = expected
+                // Note: Variance is computed automatically in CurrencyDenominationBreakdown
+            });
+        }
+
+        return result;
+    }
+}

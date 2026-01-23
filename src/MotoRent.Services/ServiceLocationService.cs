@@ -147,7 +147,7 @@ public class ServiceLocationService(RentalDataContext context)
 
         using var session = this.Context.OpenSession(username);
         session.Attach(location);
-        return await session.SubmitChanges("Create");
+        return await session.SubmitChanges("CreateServiceLocation");
     }
 
     /// <summary>
@@ -157,7 +157,7 @@ public class ServiceLocationService(RentalDataContext context)
     {
         using var session = this.Context.OpenSession(username);
         session.Attach(location);
-        return await session.SubmitChanges("Update");
+        return await session.SubmitChanges("UpdateServiceLocation");
     }
 
     /// <summary>
@@ -167,7 +167,7 @@ public class ServiceLocationService(RentalDataContext context)
     {
         using var session = this.Context.OpenSession(username);
         session.Delete(location);
-        return await session.SubmitChanges("Delete");
+        return await session.SubmitChanges("DeleteServiceLocation");
     }
 
     /// <summary>

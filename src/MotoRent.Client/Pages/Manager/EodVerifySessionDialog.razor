@@ -1,0 +1,132 @@
+@using MotoRent.Domain.Entities
+@using MotoRent.Services
+@inherits LocalizedComponentBase<EodVerifySessionDialog>
+@inject TillService TillService
+@inject IModalService ModalService
+
+<form id="verifySessionForm" @onsubmit="SaveAsync" @onsubmit:preventDefault>
+    <div class="modal-body">
+        <div class="text-center mb-4">
+            @if (Variance == 0)
+            {
+                <span class="avatar avatar-xl bg-success-lt mb-3">
+                    <i class="ti ti-check" style="font-size: 2rem;"></i>
+                </span>
+                <h4>@Localizer["SessionBalanced"]</h4>
+                <p class="text-secondary">
+                    @Localizer["SessionBalancedMessage", StaffName]
+                </p>
+            }
+            else
+            {
+                <span class="avatar avatar-xl @(Variance > 0 ? "bg-info-lt" : "bg-warning-lt") mb-3">
+                    <i class="@(Variance > 0 ? "ti ti-trending-up" : "ti ti-trending-down")" style="font-size: 2rem;"></i>
+                </span>
+                <h4>@(Variance > 0 ? Localizer["CashOver"] : Localizer["CashShort"])</h4>
+                <p class="text-secondary">
+                    @Localizer["SessionVarianceMessage", StaffName, Localizer[Variance > 0 ? "Surplus" : "Shortage"], FormatCurrency(Math.Abs(Variance))]
+                </p>
+            }
+        </div>
+
+        @if (Variance != 0)
+        {
+            <div class="alert @(Variance > 0 ? "alert-info" : "alert-warning") mb-4">
+                <div class="d-flex align-items-start">
+                    <i class="ti ti-info-circle me-2 mt-1"></i>
+                    <div>
+                        @if (Variance > 0)
+                        {
+                            @Localizer["SurplusWarning"]
+                        }
+                        else
+                        {
+                            @Localizer["ShortageWarning"]
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+        <div class="mb-0">
+            <label class="form-label">@Localizer["VerificationNotes"]</label>
+            <textarea class="form-control" @bind="m_notes" rows="3"
+                      placeholder="@GetNotesPlaceholder()"></textarea>
+            <small class="form-hint">
+                @Localizer["VerificationNotesHint"]
+            </small>
+        </div>
+    </div>
+</form>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
+        @CommonLocalizer["Cancel"]
+    </button>
+    <button type="submit" form="verifySessionForm" class="btn btn-primary" disabled="@m_saving">
+        @if (m_saving)
+        {
+            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+        }
+        <i class="ti ti-shield-check me-1"></i>
+        @Localizer["VerifySession"]
+    </button>
+</div>
+
+@code {
+    [Parameter]
+    public int SessionId { get; set; }
+
+    [Parameter]
+    public string StaffName { get; set; } = "";
+
+    [Parameter]
+    public decimal Variance { get; set; }
+
+    private string? m_notes;
+    private bool m_saving;
+
+    private string GetNotesPlaceholder()
+    {
+        if (Variance == 0)
+            return Localizer["PlaceholderBalanced"];
+        if (Variance > 0)
+            return Localizer["PlaceholderSurplus"];
+        return Localizer["PlaceholderShortage"];
+    }
+
+    private void Cancel()
+    {
+        ModalService.Close(ModalResult.Cancel());
+    }
+
+    private async Task SaveAsync()
+    {
+        if (m_saving) return;
+
+        try
+        {
+            m_saving = true;
+
+            var result = await TillService.VerifySessionAsync(SessionId, UserName, m_notes);
+
+            if (result.Success)
+            {
+                ModalService.Close(ModalResult.Ok(result));
+            }
+            else
+            {
+                ShowError(result.Message ?? Localizer["VerifyFailed"]);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error verifying session");
+            ShowError(Localizer["VerifyError"]);
+        }
+        finally
+        {
+            m_saving = false;
+        }
+    }
+}

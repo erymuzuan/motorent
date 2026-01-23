@@ -1,0 +1,85 @@
+@inherits LocalizedComponentBase<DenominationEntryPanel>
+
+<div class="mr-denomination-panel">
+    @foreach (var denomination in GetDenominations())
+    {
+        var count = GetCount(denomination);
+        var subtotal = denomination * count;
+        var hasValue = count > 0;
+
+        <div class="mr-denomination-row @(hasValue ? "has-value" : "")">
+            <span class="mr-denomination-value">@FormatDenomination(denomination)</span>
+            <input type="number"
+                   class="form-control form-control-sm mr-denomination-input"
+                   min="0"
+                   step="1"
+                   value="@count"
+                   disabled="@Disabled"
+                   @oninput="@(e => OnCountChanged(denomination, count))" />
+            <span class="mr-denomination-subtotal">
+                @if (hasValue)
+                {
+                    @FormatAmount(subtotal)
+                }
+            </span>
+        </div>
+    }
+
+    @if (ShowTotal)
+    {
+        <div class="mr-denomination-total">
+            <span>@Localizer["Total"]</span>
+            <span>@FormatAmount(Total)</span>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string Currency { get; set; } = SupportedCurrencies.THB;
+
+    [Parameter]
+    public Dictionary<decimal, int> DenominationCounts { get; set; } = [];
+
+    [Parameter]
+    public EventCallback<Dictionary<decimal, int>> DenominationCountsChanged { get; set; }
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter]
+    public bool ShowTotal { get; set; } = true;
+
+    private decimal Total => DenominationCounts.Sum(kvp => kvp.Key * kvp.Value);
+
+    private decimal[] GetDenominations() => CurrencyDenominations.GetDenominations(Currency);
+
+    private int GetCount(decimal denomination) => DenominationCounts.GetValueOrDefault(denomination, 0);
+   
+
+    private string FormatDenomination(decimal denomination)
+    {
+        var symbol = CurrencyDenominations.GetCurrencySymbol(Currency);
+        return $"{symbol}{denomination:N0}";
+    }
+
+    private string FormatAmount(decimal amount)
+    {
+        var symbol = CurrencyDenominations.GetCurrencySymbol(Currency);
+        return $"{symbol}{amount:N0}";
+    }
+
+    private async Task OnCountChanged(decimal denomination, int count)
+    {
+        if (count >= 0)
+        {
+            DenominationCounts[denomination] = count;
+        }
+        else
+        {
+            DenominationCounts[denomination] = 0;
+        }
+
+        await DenominationCountsChanged.InvokeAsync(DenominationCounts);
+    }
+}

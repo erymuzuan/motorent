@@ -1,0 +1,474 @@
+@using MotoRent.Domain.Entities
+@using MotoRent.Services
+@inherits MotoRent.Client.Controls.LocalizedDialogBase<TillSession, HandoverReportDialog>
+@inject TillService TillService
+@inject IJSRuntime JSRuntime
+
+@* Screen preview (hidden when printing) *@
+<div class="modal-body p-0 d-print-none" style="max-height: 70vh; overflow-y: auto;">
+    @if (m_loading)
+    {
+        <div class="p-4">
+            <div class="progress progress-sm">
+                <div class="progress-bar progress-bar-indeterminate"></div>
+            </div>
+        </div>
+    }
+    else if (Entity != null)
+    {
+        <div class="p-4">
+            @RenderReportContent()
+        </div>
+    }
+</div>
+
+@* Print-only version (shown only when printing) *@
+<div class="d-none d-print-block p-4">
+    @if (Entity != null)
+    {
+        @RenderReportContent()
+    }
+</div>
+
+<div class="modal-footer d-print-none">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
+        @CommonLocalizer["Close"]
+    </button>
+    <button type="button" class="btn btn-primary" @onclick="PrintAsync" disabled="@m_loading">
+        <i class="ti ti-printer me-1"></i>
+        @Localizer["Print"]
+    </button>
+</div>
+
+@code {
+    [Parameter]
+    public int SessionId { get; set; }
+
+    private bool m_loading = true;
+    private List<TillTransaction> m_transactions = [];
+    private List<JournalItem> m_journalItems = [];
+    private decimal m_totalCredit;
+    private decimal m_totalDebit;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (SessionId > 0)
+        {
+            await LoadDataAsync();
+        }
+    }
+
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            m_loading = true;
+            StateHasChanged();
+
+            Entity = await TillService.GetSessionByIdAsync(SessionId) ?? new TillSession();
+            if (Entity.TillSessionId > 0)
+            {
+                m_transactions = await TillService.GetTransactionsForSessionAsync(SessionId);
+                BuildJournalItems();
+            }
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private void BuildJournalItems()
+    {
+        m_journalItems.Clear();
+        m_totalCredit = 0;
+        m_totalDebit = 0;
+
+        if (Entity == null || Entity.TillSessionId == 0) return;
+
+        // === CREDITS (Inflows) ===
+
+        // Cash payments by currency (all cash-affecting inflows by currency)
+        foreach (var (currency, balance) in Entity.CurrencyBalances.Where(b => b.Value > 0))
+        {
+            // Cash transaction types (all except CardPayment, BankTransfer, PromptPay, TopUp)
+            var cashTransactionTypes = new[]
+            {
+                TillTransactionType.RentalPayment,
+                TillTransactionType.BookingDeposit,
+                TillTransactionType.CheckIn,
+                TillTransactionType.SecurityDeposit,
+                TillTransactionType.DamageCharge,
+                TillTransactionType.LateFee,
+                TillTransactionType.Surcharge,
+                TillTransactionType.MiscellaneousIncome
+            };
+
+            var cashIn = m_transactions
+                .Where(t => t.Direction == TillTransactionDirection.In)
+                .Where(t => cashTransactionTypes.Contains(t.TransactionType))
+                .Where(t => t.Currency == currency)
+                .Where(t => !t.IsVoided)
+                .Sum(t => t.Amount);
+
+            if (cashIn > 0)
+            {
+                var icon = currency switch
+                {
+                    SupportedCurrencies.THB => "ti-currency-baht",
+                    SupportedCurrencies.USD => "ti-currency-dollar",
+                    SupportedCurrencies.EUR => "ti-currency-euro",
+                    SupportedCurrencies.CNY => "ti-currency-yuan",
+                    _ => "ti-cash"
+                };
+
+                m_journalItems.Add(new JournalItem
+                {
+                    Icon = icon,
+                    Description = $"{Localizer["CashPayment"]} ({currency})",
+                    Credit = cashIn,
+                    Currency = currency
+                });
+                m_totalCredit += cashIn;
+            }
+        }
+
+        // Card payments
+        var cardTotal = m_transactions
+            .Where(t => t.TransactionType == TillTransactionType.CardPayment)
+            .Where(t => !t.IsVoided)
+            .Sum(t => t.Amount);
+        if (cardTotal > 0)
+        {
+            m_journalItems.Add(new JournalItem
+            {
+                Icon = "ti-credit-card",
+                Description = Localizer["CardPayments"],
+                Credit = cardTotal,
+                Currency = SupportedCurrencies.THB
+            });
+            m_totalCredit += cardTotal;
+        }
+
+        // PromptPay
+        var promptPayTotal = m_transactions
+            .Where(t => t.TransactionType == TillTransactionType.PromptPay)
+            .Where(t => !t.IsVoided)
+            .Sum(t => t.Amount);
+        if (promptPayTotal > 0)
+        {
+            m_journalItems.Add(new JournalItem
+            {
+                Icon = "ti-qrcode",
+                Description = Localizer["PromptPay"],
+                Credit = promptPayTotal,
+                Currency = SupportedCurrencies.THB
+            });
+            m_totalCredit += promptPayTotal;
+        }
+
+        // AliPay (not in TillTransactionType currently, but include for future)
+        // If AliPay enum exists, add similar block
+
+        // Bank transfers
+        var bankTotal = m_transactions
+            .Where(t => t.TransactionType == TillTransactionType.BankTransfer)
+            .Where(t => !t.IsVoided)
+            .Sum(t => t.Amount);
+        if (bankTotal > 0)
+        {
+            m_journalItems.Add(new JournalItem
+            {
+                Icon = "ti-building-bank",
+                Description = Localizer["BankTransfer"],
+                Credit = bankTotal,
+                Currency = SupportedCurrencies.THB
+            });
+            m_totalCredit += bankTotal;
+        }
+
+        // Top ups (float additions during shift)
+        var topUpTotal = m_transactions
+            .Where(t => t.TransactionType == TillTransactionType.TopUp)
+            .Where(t => !t.IsVoided)
+            .Sum(t => t.Amount);
+        if (topUpTotal > 0)
+        {
+            m_journalItems.Add(new JournalItem
+            {
+                Icon = "ti-plus",
+                Description = Localizer["FloatTopUp"],
+                Credit = topUpTotal,
+                Currency = SupportedCurrencies.THB
+            });
+            m_totalCredit += topUpTotal;
+        }
+
+        // === DEBITS (Outflows) ===
+
+        // Cash shortages by currency
+        foreach (var (currency, variance) in Entity.ClosingVariances.Where(v => v.Value < 0))
+        {
+            m_journalItems.Add(new JournalItem
+            {
+                Icon = "ti-alert-triangle",
+                Description = $"{Localizer["CashShortage"]} ({currency})",
+                Debit = Math.Abs(variance),
+                Currency = currency
+            });
+            m_totalDebit += Math.Abs(variance);
+        }
+
+        // Customer refunds (deposit refunds, overpayment refunds)
+        var refundTotal = m_transactions
+            .Where(t => t.TransactionType == TillTransactionType.DepositRefund ||
+                        t.TransactionType == TillTransactionType.OverpaymentRefund)
+            .Where(t => !t.IsVoided)
+            .Sum(t => t.Amount);
+        if (refundTotal > 0)
+        {
+            m_journalItems.Add(new JournalItem
+            {
+                Icon = "ti-receipt-refund",
+                Description = Localizer["CustomerRefunds"],
+                Debit = refundTotal,
+                Currency = SupportedCurrencies.THB
+            });
+            m_totalDebit += refundTotal;
+        }
+
+        // Cash drops to safe
+        var dropTotal = m_transactions
+            .Where(t => t.TransactionType == TillTransactionType.Drop)
+            .Where(t => !t.IsVoided)
+            .Sum(t => t.Amount);
+        if (dropTotal > 0)
+        {
+            m_journalItems.Add(new JournalItem
+            {
+                Icon = "ti-archive",
+                Description = Localizer["CashDropToSafe"],
+                Debit = dropTotal,
+                Currency = SupportedCurrencies.THB
+            });
+            m_totalDebit += dropTotal;
+        }
+
+        // Expenses/Payouts (petty cash, fuel reimbursement, agent commission)
+        var expenseTotal = m_transactions
+            .Where(t => t.TransactionType == TillTransactionType.PettyCash ||
+                        t.TransactionType == TillTransactionType.FuelReimbursement ||
+                        t.TransactionType == TillTransactionType.AgentCommission)
+            .Where(t => !t.IsVoided)
+            .Sum(t => t.Amount);
+        if (expenseTotal > 0)
+        {
+            m_journalItems.Add(new JournalItem
+            {
+                Icon = "ti-receipt",
+                Description = Localizer["Expenses"],
+                Debit = expenseTotal,
+                Currency = SupportedCurrencies.THB
+            });
+            m_totalDebit += expenseTotal;
+        }
+
+        // Change given (cash out transactions not covered above)
+        var changeTotal = m_transactions
+            .Where(t => t.Direction == TillTransactionDirection.Out)
+            .Where(t => t.TransactionType != TillTransactionType.Drop)
+            .Where(t => t.TransactionType != TillTransactionType.DepositRefund)
+            .Where(t => t.TransactionType != TillTransactionType.OverpaymentRefund)
+            .Where(t => t.TransactionType != TillTransactionType.PettyCash)
+            .Where(t => t.TransactionType != TillTransactionType.FuelReimbursement)
+            .Where(t => t.TransactionType != TillTransactionType.AgentCommission)
+            .Where(t => t.TransactionType != TillTransactionType.VoidReversal)
+            .Where(t => !t.IsVoided)
+            .Sum(t => t.Amount);
+        if (changeTotal > 0)
+        {
+            m_journalItems.Add(new JournalItem
+            {
+                Icon = "ti-coin",
+                Description = Localizer["ChangeGiven"],
+                Debit = changeTotal,
+                Currency = SupportedCurrencies.THB
+            });
+            m_totalDebit += changeTotal;
+        }
+    }
+
+    private async Task PrintAsync()
+    {
+        await JSRuntime.InvokeVoidAsync("print");
+    }
+
+    private RenderFragment RenderReportContent() => @<text>
+        <div class="handover-report" style="font-family: system-ui, -apple-system, sans-serif;">
+            @* Header *@
+            <div class="text-center mb-4">
+                <h2 class="mb-1">@Localizer["SalesClearingJournal"]</h2>
+                <p class="text-secondary mb-0">@Localizer["ShiftHandoverReport"]</p>
+            </div>
+
+            @* Session Info *@
+            <div class="row mb-4">
+                <div class="col-6">
+                    <small class="text-secondary d-block">@Localizer["Staff"]</small>
+                    <strong>@Entity.StaffDisplayName</strong>
+                </div>
+                <div class="col-6 text-end">
+                    <small class="text-secondary d-block">@Localizer["SessionDate"]</small>
+                    <strong>@Entity.OpenedAt.ToString("dd MMM yyyy")</strong>
+                </div>
+            </div>
+            <div class="row mb-4">
+                <div class="col-6">
+                    <small class="text-secondary d-block">@Localizer["OpenedAt"]</small>
+                    <span>@Entity.OpenedAt.ToString("HH:mm")</span>
+                </div>
+                <div class="col-6 text-end">
+                    <small class="text-secondary d-block">@Localizer["ClosedAt"]</small>
+                    <span>@Entity.ClosedAt?.ToString("HH:mm")</span>
+                </div>
+            </div>
+
+            <hr class="my-3" />
+
+            @* Journal Table *@
+            <table class="table table-sm">
+                <thead class="bg-light">
+                    <tr>
+                        <th style="width: 50%;">@Localizer["Description"]</th>
+                        <th class="text-end" style="width: 25%;">@Localizer["Credit"]</th>
+                        <th class="text-end" style="width: 25%;">@Localizer["Debit"]</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @* Opening Float row *@
+                    <tr>
+                        <td>
+                            <i class="ti ti-wallet me-2 text-primary"></i>
+                            @Localizer["OpeningFloat"]
+                        </td>
+                        <td class="text-end">@FormatAmount(Entity.OpeningFloat)</td>
+                        <td class="text-end"></td>
+                    </tr>
+
+                    @* Journal items *@
+                    @foreach (var item in m_journalItems)
+                    {
+                        <tr>
+                            <td>
+                                <i class="ti @item.Icon me-2"></i>
+                                @item.Description
+                            </td>
+                            <td class="text-end">
+                                @if (item.IsCredit)
+                                {
+                                    @FormatAmount(item.Credit, item.Currency)
+                                }
+                            </td>
+                            <td class="text-end">
+                                @if (item.IsDebit)
+                                {
+                                    @FormatAmount(item.Debit, item.Currency)
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr class="fw-bold border-top">
+                        <td>@Localizer["Total"]</td>
+                        <td class="text-end text-success">@FormatAmount(m_totalCredit + Entity.OpeningFloat)</td>
+                        <td class="text-end text-danger">@FormatAmount(m_totalDebit)</td>
+                    </tr>
+                </tfoot>
+            </table>
+
+            <hr class="my-3" />
+
+            @* Closing Summary *@
+            <div class="row">
+                <div class="col-6">
+                    <small class="text-secondary d-block">@Localizer["ExpectedBalance"]</small>
+                    <strong class="fs-4">@FormatAmount(Entity.ExpectedCash) THB</strong>
+                </div>
+                <div class="col-6 text-end">
+                    <small class="text-secondary d-block">@Localizer["ActualBalance"]</small>
+                    <strong class="fs-4">@FormatAmount(Entity.ActualCash) THB</strong>
+                </div>
+            </div>
+
+            @if (Entity.Variance != 0 || Entity.ClosingVariances.Any(v => v.Value != 0))
+            {
+                <div class="alert @(Entity.Variance >= 0 ? "alert-info" : "alert-warning") mt-3 mb-0">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span>
+                            <i class="ti @(Entity.Variance >= 0 ? "ti-trending-up" : "ti-trending-down") me-2"></i>
+                            @Localizer["TotalVariance"]
+                        </span>
+                        <strong class="@(Entity.Variance >= 0 ? "text-info" : "text-danger")">
+                            @(Entity.Variance >= 0 ? "+" : "")@FormatAmount(Entity.Variance) THB
+                        </strong>
+                    </div>
+
+                    @if (Entity.ClosingVariances.Count > 1)
+                    {
+                        <div class="small mt-2 pt-2 border-top">
+                            @foreach (var (currency, variance) in Entity.ClosingVariances.Where(v => v.Value != 0))
+                            {
+                                <div class="d-flex justify-content-between">
+                                    <span>@currency</span>
+                                    <span class="@GetVarianceClass(variance)">
+                                        @(variance >= 0 ? "+" : "")@FormatAmount(variance, currency)
+                                    </span>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+
+            @* Verification status *@
+            @if (Entity.Status == TillSessionStatus.Verified)
+            {
+                <div class="text-center mt-4 pt-3 border-top">
+                    <span class="badge bg-success-lt text-success">
+                        <i class="ti ti-circle-check me-1"></i>
+                        @Localizer["VerifiedBy"]: @Entity.VerifiedByUserName
+                    </span>
+                    <small class="d-block text-secondary mt-1">
+                        @Entity.VerifiedAt?.ToString("dd MMM yyyy HH:mm")
+                    </small>
+                </div>
+            }
+        </div>
+    </text>;
+
+    private static string FormatAmount(decimal amount, string currency = SupportedCurrencies.THB)
+    {
+        return currency == SupportedCurrencies.THB
+            ? amount.ToString("N0")
+            : amount.ToString("N2");
+    }
+
+    private static string GetVarianceClass(decimal variance)
+    {
+        if (variance == 0) return "text-success";
+        if (variance > 0) return "text-info";
+        return "text-danger";
+    }
+
+    public record JournalItem
+    {
+        public string Icon { get; init; } = "";
+        public string Description { get; init; } = "";
+        public decimal Credit { get; init; }
+        public decimal Debit { get; init; }
+        public string Currency { get; init; } = SupportedCurrencies.THB;
+        public bool IsCredit => Credit > 0;
+        public bool IsDebit => Debit > 0;
+    }
+}

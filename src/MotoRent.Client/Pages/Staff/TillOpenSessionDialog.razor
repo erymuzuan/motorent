@@ -1,0 +1,244 @@
+@inherits LocalizedDialogBase<TillSession, TillOpenSessionDialog>
+@using MotoRent.Domain.Entities
+@using MotoRent.Client.Components.Till
+@inject TillService TillService
+@inject ShopService ShopService
+
+<div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+    <div class="text-center mb-4">
+        <span class="avatar avatar-xl bg-primary-lt mb-3">
+            <i class="ti ti-cash-register" style="font-size: 2rem;"></i>
+        </span>
+        <p class="text-secondary">
+            @Localizer["EnterOpeningFloatDescription"]
+        </p>
+    </div>
+
+    @if (m_loading)
+    {
+        <div class="d-flex justify-content-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        @* Shop Selector *@
+        <div class="mb-3">
+            <label class="form-label required">@Localizer["SelectShop"]</label>
+            <select class="form-select form-select-lg" @bind="m_selectedShopId" required disabled="@m_saving">
+                <option value="0" disabled>@Localizer["ChooseShop"]</option>
+                @foreach (var shop in m_shops)
+                {
+                    <option value="@shop.ShopId">
+                        @shop.Name
+                        @if (!string.IsNullOrEmpty(shop.Location))
+                        {
+                            @($" ({shop.Location})")
+                        }
+                    </option>
+                }
+            </select>
+            @if (!string.IsNullOrEmpty(m_validationError))
+            {
+                <small class="text-danger mt-1 d-block">
+                    <i class="ti ti-alert-circle me-1"></i>
+                    @m_validationError
+                </small>
+            }
+        </div>
+
+        @* Opening Float Section Label *@
+        <div class="mb-2">
+            <label class="form-label required">@Localizer["OpeningFloat"]</label>
+            <small class="form-hint d-block mb-2">
+                @Localizer["CountAllCashHint"]
+            </small>
+        </div>
+
+        @* Denomination Entry Panel *@
+        <OpeningFloatPanel
+            OnBreakdownsChanged="@OnBreakdownsChanged"
+            Disabled="@m_saving" />
+
+        @* Validation Error for THB Total *@
+        @if (m_showThbValidation && OpeningFloatThb <= 0)
+        {
+            <div class="alert alert-warning mt-3">
+                <i class="ti ti-alert-triangle me-2"></i>
+                @Localizer["ThbRequiredError"]
+            </div>
+        }
+
+        @* Notes Section *@
+        <div class="mt-3 mb-0">
+            <label class="form-label">@Localizer["NotesOptional"]</label>
+            <textarea class="form-control" @bind="m_notes" rows="2"
+                      placeholder="@Localizer["NotesPlaceholder"]" disabled="@m_saving"></textarea>
+        </div>
+    }
+</div>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="this.Cancel" disabled="@m_saving">
+        @Localizer["Cancel"]
+    </button>
+    <button type="button" class="btn btn-primary" @onclick="SaveAsync"
+            disabled="@(m_saving || m_loading || m_selectedShopId == 0)">
+        @if (m_saving)
+        {
+            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+        }
+        <i class="ti ti-login me-1"></i>
+        @Localizer["OpenSession"]
+    </button>
+</div>
+
+@code {
+    /// <summary>
+    /// Optional pre-selected shop ID. If provided, the shop dropdown will be pre-selected.
+    /// </summary>
+    [Parameter]
+    public int ShopId { get; set; }
+
+    private bool m_loading = true;
+    private bool m_saving;
+    private List<Shop> m_shops = [];
+    private int m_selectedShopId;
+    private string? m_notes;
+    private string? m_validationError;
+    private bool m_showThbValidation;
+
+    // Denomination breakdowns from OpeningFloatPanel
+    private List<CurrencyDenominationBreakdown> m_currencyBreakdowns = [];
+
+    /// <summary>
+    /// Computed THB total from breakdowns.
+    /// </summary>
+    private decimal OpeningFloatThb => m_currencyBreakdowns
+        .Where(b => b.Currency == SupportedCurrencies.THB)
+        .Sum(b => b.Total);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await this.LoadShopsAsync();
+    }
+
+    private async Task LoadShopsAsync()
+    {
+        m_loading = true;
+        try
+        {
+            var result = await this.ShopService.GetShopsAsync(page: 1, pageSize: 100);
+            m_shops = result.ItemCollection.ToList();
+
+            // Pre-select shop if provided
+            if (this.ShopId > 0 && m_shops.Any(s => s.ShopId == this.ShopId))
+            {
+                m_selectedShopId = this.ShopId;
+            }
+            else if (m_shops.Count == 1)
+            {
+                // Auto-select if only one shop
+                m_selectedShopId = m_shops[0].ShopId;
+            }
+        }
+        catch (Exception ex)
+        {
+            this.Logger.LogError(ex, "Error loading shops");
+            this.ShowError("Failed to load shops");
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    /// <summary>
+    /// Callback when denomination breakdowns change from OpeningFloatPanel.
+    /// </summary>
+    private void OnBreakdownsChanged(List<CurrencyDenominationBreakdown> breakdowns)
+    {
+        m_currencyBreakdowns = breakdowns;
+        // Clear validation when user enters data
+        if (OpeningFloatThb > 0)
+        {
+            m_showThbValidation = false;
+        }
+        StateHasChanged();
+    }
+
+    private void Cancel()
+    {
+        this.ModalService.Close(ModalResult.Cancel());
+    }
+
+    private async Task SaveAsync()
+    {
+        if (m_saving || m_selectedShopId == 0) return;
+
+        // Validate THB total > 0
+        if (OpeningFloatThb <= 0)
+        {
+            m_showThbValidation = true;
+            return;
+        }
+
+        try
+        {
+            m_saving = true;
+            m_validationError = null;
+
+            // Validate can open session
+            var (canOpen, reason) = await this.TillService.CanOpenSessionAsync(m_selectedShopId, this.UserName);
+            if (!canOpen)
+            {
+                m_validationError = reason;
+                return;
+            }
+
+            var displayName = this.UserName;
+
+            // Open session with THB total (for backward compatibility)
+            var result = await this.TillService.OpenSessionAsync(
+                m_selectedShopId,
+                this.UserName,
+                displayName,
+                OpeningFloatThb,
+                m_notes);
+
+            if (result.Success)
+            {
+                // Get the created session to retrieve TillSessionId
+                var session = await this.TillService.GetActiveSessionAsync(m_selectedShopId, this.UserName);
+                if (session != null && m_currencyBreakdowns.Any())
+                {
+                    // Save denomination count with full breakdowns
+                    await this.TillService.SaveDenominationCountAsync(
+                        session.TillSessionId,
+                        DenominationCountType.Opening,
+                        m_currencyBreakdowns,
+                        this.UserName,
+                        isFinal: true,
+                        notes: m_notes);
+                }
+
+                this.ModalService.Close(ModalResult.Ok(result));
+            }
+            else
+            {
+                this.ShowError(result.Message ?? "Failed to open session");
+            }
+        }
+        catch (Exception ex)
+        {
+            this.Logger.LogError(ex, "Error opening till session");
+            this.ShowError("Failed to open session");
+        }
+        finally
+        {
+            m_saving = false;
+        }
+    }
+}

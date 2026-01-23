@@ -1,0 +1,39 @@
+@using MotoRent.Domain.Entities
+@using MotoRent.Domain.Settings
+@using MotoRent.Services
+@inherits MotoRentComponentBase
+@inject TillService TillService
+@inject ShopService ShopService
+
+<a href="/manager/till-dashboard" class="nav-link position-relative px-2" title="Till Sessions">
+    <i class="ti ti-bell fs-3"></i>
+    @if (m_alertCount > 0)
+    {
+        <span class="badge bg-danger position-absolute" style="top: 0; right: 0; transform: translate(25%, -25%); font-size: 0.65rem; min-width: 1.2rem;">
+            @(m_alertCount > 9 ? "9+" : m_alertCount.ToString())
+        </span>
+    }
+</a>
+
+@code {
+    private int m_alertCount;
+    private int m_shopId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Get current shop
+        var shops = await ShopService.GetShopsAsync(page: 1, pageSize: 1);
+        if (shops.ItemCollection.Any())
+        {
+            m_shopId = shops.ItemCollection.First().ShopId;
+        }
+
+        if (m_shopId > 0)
+        {
+            // Get threshold from settings, default 100 THB
+            var threshold = await SettingConfig.GetDecimalAsync(SettingKeys.Till_VarianceAlertThreshold, defaultValue: 100m);
+
+            m_alertCount = await TillService.GetVarianceAlertCountAsync(m_shopId, threshold);
+        }
+    }
+}

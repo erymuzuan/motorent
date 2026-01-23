@@ -79,7 +79,7 @@ public class OrganizationService(CoreDataContext context, ITenantResolverService
     {
         using var session = this.Context.OpenSession(username);
         session.Attach(organization);
-        return await session.SubmitChanges("Update");
+        return await session.SubmitChanges("UpdateOrganization");
     }
 
     /// <summary>
@@ -152,7 +152,7 @@ public class OrganizationService(CoreDataContext context, ITenantResolverService
 
         using var session = this.Context.OpenSession(username);
         session.Attach(organization);
-        return await session.SubmitChanges("Create");
+        return await session.SubmitChanges("CreateOrganization");
     }
 
     /// <summary>

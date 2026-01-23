@@ -1,0 +1,383 @@
+@using MotoRent.Domain.Entities
+@using MotoRent.Services
+@inherits MotoRent.Client.Controls.LocalizedDialogBase<Domain.Entities.DailyClose, DailySummaryReportDialog>
+@inject TillService TillService
+@inject ShopService ShopService
+@inject IJSRuntime JSRuntime
+
+@* Screen preview (hidden when printing) *@
+<div class="modal-body p-0 d-print-none" style="max-height: 70vh; overflow-y: auto;">
+    @if (m_loading)
+    {
+        <div class="p-4">
+            <div class="progress progress-sm">
+                <div class="progress-bar progress-bar-indeterminate"></div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="p-4">
+            @RenderReportContent()
+        </div>
+    }
+</div>
+
+@* Print-only version (shown only when printing) *@
+<div class="d-none d-print-block p-4">
+    @if (!m_loading)
+    {
+        @RenderReportContent()
+    }
+</div>
+
+<div class="modal-footer d-print-none">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
+        @CommonLocalizer["Close"]
+    </button>
+    <button type="button" class="btn btn-primary" @onclick="PrintAsync" disabled="@m_loading">
+        <i class="ti ti-printer me-1"></i>
+        @Localizer["Print"]
+    </button>
+</div>
+
+@code {
+    [Parameter] public int ShopId { get; set; }
+    [Parameter] public DateTime Date { get; set; }
+    [Parameter] public DailyTillSummary? Summary { get; set; }
+
+    private bool m_loading = true;
+    private Shop? m_shop;
+    private List<ShortageLog> m_shortages = [];
+    private Dictionary<string, decimal> m_paymentBreakdown = [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            m_loading = true;
+            StateHasChanged();
+
+            // Load shop info
+            m_shop = await ShopService.GetShopByIdAsync(ShopId);
+
+            // Load shortages for the date
+            m_shortages = await TillService.GetShortageLogsAsync(ShopId, Date, Date);
+
+            // Calculate payment breakdown from Summary
+            CalculatePaymentBreakdown();
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private void CalculatePaymentBreakdown()
+    {
+        if (Summary == null) return;
+
+        m_paymentBreakdown.Clear();
+
+        // Add cash payments (from TotalCashIn)
+        if (Summary.TotalCashIn > 0)
+        {
+            m_paymentBreakdown["Cash (THB)"] = Summary.TotalCashIn;
+        }
+
+        // Add electronic payments
+        if (Summary.TotalCardPayments > 0)
+        {
+            m_paymentBreakdown["Card"] = Summary.TotalCardPayments;
+        }
+
+        if (Summary.TotalPromptPay > 0)
+        {
+            m_paymentBreakdown["PromptPay"] = Summary.TotalPromptPay;
+        }
+
+        if (Summary.TotalBankTransfers > 0)
+        {
+            m_paymentBreakdown["Bank Transfer"] = Summary.TotalBankTransfers;
+        }
+    }
+
+    private async Task PrintAsync()
+    {
+        await JSRuntime.InvokeVoidAsync("print");
+    }
+
+    private RenderFragment RenderReportContent() => @<text>
+        <div class="daily-summary-report" style="font-family: system-ui, -apple-system, sans-serif;">
+            @* Header *@
+            <div class="text-center mb-4">
+                <h2 class="mb-1">@Localizer["DailySummaryReport"]</h2>
+                <p class="text-secondary mb-1">@(m_shop?.Name ?? "Shop")</p>
+                <h3 class="text-primary mb-0">@Date.ToString("dddd, dd MMMM yyyy")</h3>
+            </div>
+
+            <hr class="my-3" />
+
+            @* Generated Info *@
+            <div class="row mb-4 small">
+                <div class="col-6">
+                    <small class="text-secondary d-block">@Localizer["GeneratedBy"]</small>
+                    <span>@RequestContext.GetUserName()</span>
+                </div>
+                <div class="col-6 text-end">
+                    <small class="text-secondary d-block">@Localizer["GeneratedAt"]</small>
+                    <span>@DateTime.Now.ToString("dd MMM yyyy HH:mm")</span>
+                </div>
+            </div>
+
+            @if (Summary != null)
+            {
+                @* Summary Section *@
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="card-title mb-0">@Localizer["DailySummary"]</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-6">
+                                <div class="d-flex justify-content-between">
+                                    <span>@Localizer["TotalCashIn"]:</span>
+                                    <strong class="text-success">@FormatAmount(Summary.TotalCashIn)</strong>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="d-flex justify-content-between">
+                                    <span>@Localizer["TotalCashOut"]:</span>
+                                    <strong class="text-danger">@FormatAmount(Summary.TotalCashOut)</strong>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="d-flex justify-content-between">
+                                    <span>@Localizer["CardPayments"]:</span>
+                                    <strong>@FormatAmount(Summary.TotalCardPayments)</strong>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="d-flex justify-content-between">
+                                    <span>@Localizer["BankTransfers"]:</span>
+                                    <strong>@FormatAmount(Summary.TotalBankTransfers)</strong>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="d-flex justify-content-between">
+                                    <span>@Localizer["PromptPay"]:</span>
+                                    <strong>@FormatAmount(Summary.TotalPromptPay)</strong>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="d-flex justify-content-between">
+                                    <span>@Localizer["DroppedToSafe"]:</span>
+                                    <strong class="text-purple">@FormatAmount(Summary.TotalDropped)</strong>
+                                </div>
+                            </div>
+                        </div>
+                        <hr class="my-3" />
+                        <div class="row">
+                            <div class="col-6">
+                                <div class="d-flex justify-content-between">
+                                    <span>@Localizer["TotalSessions"]:</span>
+                                    <strong>@Summary.TotalSessions</strong>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="d-flex justify-content-between">
+                                    <span>@Localizer["VerifiedSessions"]:</span>
+                                    <strong>@Summary.VerifiedSessions / @Summary.TotalSessions</strong>
+                                </div>
+                            </div>
+                        </div>
+                        <hr class="my-3" />
+                        <div class="d-flex justify-content-between">
+                            <span class="fw-bold">@Localizer["TotalVariance"]:</span>
+                            <strong class="@GetVarianceClass(Summary.TotalVariance) fs-5">
+                                @(Summary.TotalVariance >= 0 ? "+" : "")@FormatAmount(Summary.TotalVariance) THB
+                            </strong>
+                        </div>
+                    </div>
+                </div>
+
+                @* Session Breakdown *@
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="card-title mb-0">@Localizer["SessionBreakdown"]</h5>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped mb-0">
+                            <thead>
+                                <tr>
+                                    <th>@Localizer["Staff"]</th>
+                                    <th>@Localizer["OpenTime"]</th>
+                                    <th>@Localizer["CloseTime"]</th>
+                                    <th class="text-end">@Localizer["CashIn"]</th>
+                                    <th class="text-end">@Localizer["CashOut"]</th>
+                                    <th class="text-end">@Localizer["Dropped"]</th>
+                                    <th class="text-end">@Localizer["Variance"]</th>
+                                    <th>@Localizer["Status"]</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var session in Summary.Sessions)
+                                {
+                                    <tr>
+                                        <td>@session.StaffDisplayName</td>
+                                        <td>@session.OpenedAt.ToString("HH:mm")</td>
+                                        <td>@(session.ClosedAt?.ToString("HH:mm") ?? "-")</td>
+                                        <td class="text-end text-success">@FormatAmount(session.TotalCashIn)</td>
+                                        <td class="text-end text-danger">@FormatAmount(session.TotalCashOut)</td>
+                                        <td class="text-end">@FormatAmount(session.TotalDropped)</td>
+                                        <td class="text-end @GetVarianceClass(session.Variance)">
+                                            @(session.Variance >= 0 ? "+" : "")@FormatAmount(session.Variance)
+                                        </td>
+                                        <td>
+                                            <span class="badge @GetStatusBadgeClass(session.Status)">
+                                                @GetStatusText(session.Status)
+                                            </span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                            <tfoot class="table-light fw-bold">
+                                <tr>
+                                    <td colspan="3">@Localizer["Total"]</td>
+                                    <td class="text-end text-success">@FormatAmount(Summary.TotalCashIn)</td>
+                                    <td class="text-end text-danger">@FormatAmount(Summary.TotalCashOut)</td>
+                                    <td class="text-end">@FormatAmount(Summary.TotalDropped)</td>
+                                    <td class="text-end @GetVarianceClass(Summary.TotalVariance)">
+                                        @(Summary.TotalVariance >= 0 ? "+" : "")@FormatAmount(Summary.TotalVariance)
+                                    </td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                @* Payment Method Breakdown *@
+                @if (m_paymentBreakdown.Any(p => p.Value > 0))
+                {
+                    <div class="card mb-4">
+                        <div class="card-header bg-light">
+                            <h5 class="card-title mb-0">@Localizer["PaymentMethodBreakdown"]</h5>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>@Localizer["Method"]</th>
+                                        <th class="text-end">@Localizer["Amount"]</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var (method, amount) in m_paymentBreakdown.Where(p => p.Value > 0))
+                                    {
+                                        <tr>
+                                            <td>@method</td>
+                                            <td class="text-end">@FormatAmount(amount) THB</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                                <tfoot class="table-light fw-bold">
+                                    <tr>
+                                        <td>@Localizer["Total"]</td>
+                                        <td class="text-end">@FormatAmount(m_paymentBreakdown.Values.Sum()) THB</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                }
+            }
+
+            @* Shortages Section *@
+            @if (m_shortages.Any())
+            {
+                <div class="card mb-4">
+                    <div class="card-header bg-warning-lt">
+                        <h5 class="card-title mb-0 text-warning">
+                            <i class="ti ti-alert-triangle me-2"></i>
+                            @Localizer["LoggedShortages"]
+                        </h5>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead>
+                                <tr>
+                                    <th>@Localizer["Staff"]</th>
+                                    <th>@Localizer["Currency"]</th>
+                                    <th class="text-end">@Localizer["Amount"]</th>
+                                    <th>@Localizer["Reason"]</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var shortage in m_shortages)
+                                {
+                                    <tr>
+                                        <td>@shortage.StaffDisplayName</td>
+                                        <td>@shortage.Currency</td>
+                                        <td class="text-end text-danger">@shortage.Amount.ToString("N2")</td>
+                                        <td>@shortage.Reason</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+
+            @* Footer - Signature *@
+            <div class="mt-5 pt-3 border-top">
+                <div class="row">
+                    <div class="col-6">
+                        <div class="text-center">
+                            <div class="mb-4" style="border-bottom: 1px solid #ccc; width: 80%; margin: 0 auto;">&nbsp;</div>
+                            <small class="text-secondary">@Localizer["ManagerSignature"]</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center">
+                            <small class="text-secondary d-block">@Localizer["PrintedAt"]</small>
+                            <small>@DateTime.Now.ToString("dd MMM yyyy HH:mm:ss")</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </text>;
+
+    private static string FormatAmount(decimal amount) => amount.ToString("N0");
+
+    private static string GetVarianceClass(decimal variance)
+    {
+        if (variance == 0) return "text-success";
+        if (variance > 0) return "text-info";
+        return "text-danger";
+    }
+
+    private static string GetStatusBadgeClass(TillSessionStatus status) => status switch
+    {
+        TillSessionStatus.Open => "bg-primary",
+        TillSessionStatus.Closed => "bg-success-lt text-success",
+        TillSessionStatus.ClosedWithVariance => "bg-warning-lt text-warning",
+        TillSessionStatus.Verified => "bg-success",
+        _ => "bg-secondary"
+    };
+
+    private string GetStatusText(TillSessionStatus status) => status switch
+    {
+        TillSessionStatus.Open => Localizer["StatusOpen"],
+        TillSessionStatus.Closed => Localizer["StatusClosed"],
+        TillSessionStatus.ClosedWithVariance => Localizer["StatusVariance"],
+        TillSessionStatus.Verified => Localizer["StatusVerified"],
+        _ => status.ToString()
+    };
+}

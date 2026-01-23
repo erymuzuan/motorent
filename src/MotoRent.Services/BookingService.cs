@@ -87,7 +87,7 @@ public class BookingService
 
         using var session = m_context.OpenSession(username);
         session.Attach(booking);
-        var result = await session.SubmitChanges("Create");
+        var result = await session.SubmitChanges("CreateBooking");
 
         if (result.Success)
         {
@@ -160,13 +160,19 @@ public class BookingService
         var dateStart = date.Date;
         var dateEnd = dateStart.AddDays(1);
 
-        var query = m_context.CreateQuery<Booking>()
-            .Where(b => b.StartDate >= dateStart && b.StartDate < dateEnd)
-            .Where(b => b.Status == BookingStatus.Pending || b.Status == BookingStatus.Confirmed);
-
+        IQueryable<Booking> query;
         if (shopId.HasValue)
         {
-            query = query.Where(b => b.PreferredShopId == shopId.Value);
+            query = m_context.CreateQuery<Booking>()
+                .Where(b => b.StartDate >= dateStart && b.StartDate < dateEnd
+                    && (b.Status == BookingStatus.Pending || b.Status == BookingStatus.Confirmed)
+                    && b.PreferredShopId == shopId.Value);
+        }
+        else
+        {
+            query = m_context.CreateQuery<Booking>()
+                .Where(b => b.StartDate >= dateStart && b.StartDate < dateEnd
+                    && (b.Status == BookingStatus.Pending || b.Status == BookingStatus.Confirmed));
         }
 
         var result = await m_context.LoadAsync(query, 1, 1000, includeTotalRows: false);
@@ -183,8 +189,7 @@ public class BookingService
         int size = 10)
     {
         var query = m_context.CreateQuery<Booking>()
-            .Where(b => b.StartDate >= startDate && b.StartDate < endDate)
-            .Where(b => b.Status == BookingStatus.Pending || b.Status == BookingStatus.Confirmed)
+            .Where(b => b.StartDate >= startDate && b.StartDate < endDate && (b.Status == BookingStatus.Pending || b.Status == BookingStatus.Confirmed))
             .OrderBy(b => b.StartDate);
 
         return await m_context.LoadAsync(query, page, size, includeTotalRows: true);
@@ -1155,7 +1160,7 @@ public class BookingService
     {
         using var session = m_context.OpenSession(username);
         session.Attach(booking);
-        return await session.SubmitChanges("Update");
+        return await session.SubmitChanges("UpdateBooking");
     }
 
     #endregion

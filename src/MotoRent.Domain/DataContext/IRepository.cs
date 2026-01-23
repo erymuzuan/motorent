@@ -1,3 +1,4 @@
+using System.Data;
 using System.Linq.Expressions;
 using MotoRent.Domain.Entities;
 
@@ -43,4 +44,14 @@ public interface IRepository<T> where T : Entity
     Task<List<(TResult, TResult2, TResult3)>> GetList3Async<TResult, TResult2, TResult3>(IQueryable<T> query,
         Expression<Func<T, TResult>> selector, Expression<Func<T, TResult2>> selector2,
         Expression<Func<T, TResult3>> selector3);
+
+    // DataReader for custom column queries
+    /// <summary>
+    /// Gets a data reader for specific columns from the query.
+    /// The connection is auto-closed when the reader is disposed.
+    /// </summary>
+    /// <param name="query">The query to execute</param>
+    /// <param name="columns">Column names to select</param>
+    /// <returns>IDataReader with CloseConnection behavior</returns>
+    Task<IDataReader> GetReaderAsync(IQueryable<T> query, params string[] columns);
 }

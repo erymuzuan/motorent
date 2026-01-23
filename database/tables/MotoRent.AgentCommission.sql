@@ -13,10 +13,10 @@ CREATE TABLE [<schema>].[AgentCommission]
     -- Amounts
     [CommissionAmount] AS CAST(JSON_VALUE([Json], '$.CommissionAmount') AS DECIMAL(18,2)),
     [BookingTotal] AS CAST(JSON_VALUE([Json], '$.BookingTotal') AS DECIMAL(18,2)),
-    -- Dates
-    [EligibleDate] AS CAST(JSON_VALUE([Json], '$.EligibleDate') AS DATETIMEOFFSET),
-    [ApprovedDate] AS CAST(JSON_VALUE([Json], '$.ApprovedDate') AS DATETIMEOFFSET),
-    [PaidDate] AS CAST(JSON_VALUE([Json], '$.PaidDate') AS DATETIMEOFFSET),
+    -- Dates (regular columns, not computed - per CLAUDE.md rules)
+    [EligibleDate] DATETIMEOFFSET NULL,
+    [ApprovedDate] DATETIMEOFFSET NULL,
+    [PaidDate] DATETIMEOFFSET NULL,
     -- Denormalized
     [AgentCode] AS CAST(JSON_VALUE([Json], '$.AgentCode') AS NVARCHAR(50)),
     [BookingRef] AS CAST(JSON_VALUE([Json], '$.BookingRef') AS NVARCHAR(10)),
@@ -44,5 +44,4 @@ CREATE INDEX IX_AgentCommission_Status ON [<schema>].[AgentCommission]([Status])
 -- Index for querying agent commissions by status (for approval/payment workflows)
 CREATE INDEX IX_AgentCommission_AgentId_Status ON [<schema>].[AgentCommission]([AgentId], [Status])
 
--- Note: EligibleDate and PaidDate cannot be indexed because DATETIMEOFFSET
--- computed columns from JSON_VALUE are not deterministic
+-- EligibleDate, ApprovedDate, PaidDate are now regular columns and can be indexed if needed

@@ -1,0 +1,223 @@
+@using MotoRent.Domain.Entities
+@using MotoRent.Services
+@using MotoRent.Client.Services
+@inherits MotoRent.Client.Controls.LocalizedDialogBase<ShortageLog, ShortageLogDialog>
+@inject TillService TillService
+@inject ShopService ShopService
+
+<div class="modal-body">
+    @if (m_loading)
+    {
+        <div class="progress progress-sm">
+            <div class="progress-bar progress-bar-indeterminate"></div>
+        </div>
+    }
+    else
+    {
+        <div class="mb-4">
+            <div class="alert alert-warning">
+                <div class="d-flex">
+                    <div>
+                        <i class="ti ti-alert-triangle me-2"></i>
+                    </div>
+                    <div>
+                        <h4 class="alert-title">@Localizer["PostingShortage"]</h4>
+                        <p class="mb-0">@Localizer["ShortageExplanation"]</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* Session Info *@
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-6">
+                        <small class="text-secondary d-block">@Localizer["Staff"]</small>
+                        <strong>@StaffDisplayName</strong>
+                    </div>
+                    <div class="col-6 text-end">
+                        <small class="text-secondary d-block">@Localizer["SessionVariance"]</small>
+                        <strong class="@GetVarianceClass(Variance)">
+                            @(Variance >= 0 ? "+" : "")@Variance.ToString("N2") THB
+                        </strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* Currency Selection (if multi-currency variance) *@
+        @if (m_currencyVariances.Count > 1)
+        {
+            <div class="mb-3">
+                <label class="form-label required">@Localizer["SelectCurrency"]</label>
+                <select class="form-select" @bind="m_selectedCurrency">
+                    @foreach (var cv in m_currencyVariances)
+                    {
+                        <option value="@cv.Key">@cv.Key - @cv.Value.ToString("N2")</option>
+                    }
+                </select>
+            </div>
+        }
+
+        @* Amount Input *@
+        <div class="mb-3">
+            <label class="form-label required">@Localizer["ShortageAmount"]</label>
+            <div class="input-group">
+                <input type="number" class="form-control" @bind="m_amount" step="0.01" min="0.01" />
+                <span class="input-group-text">@m_selectedCurrency</span>
+            </div>
+            <small class="text-secondary">@Localizer["AmountWillBePositive"]</small>
+        </div>
+
+        @* Reason Input *@
+        <div class="mb-3">
+            <label class="form-label required">@Localizer["Reason"]</label>
+            <textarea class="form-control" rows="3" @bind="m_reason"
+                      placeholder="@Localizer["ReasonPlaceholder"]"></textarea>
+            @if (!string.IsNullOrWhiteSpace(m_reason) && m_reason.Length < 5)
+            {
+                <small class="text-danger">@Localizer["ReasonTooShort"]</small>
+            }
+        </div>
+    }
+</div>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
+        @CommonLocalizer["Cancel"]
+    </button>
+    <button type="button" class="btn btn-warning" @onclick="SubmitAsync"
+            disabled="@(m_loading || m_submitting || !IsValid)">
+        @if (m_submitting)
+        {
+            <span class="spinner-border spinner-border-sm me-1"></span>
+        }
+        <i class="ti ti-file-alert me-1"></i>
+        @Localizer["PostShortage"]
+    </button>
+</div>
+
+@code {
+    [Parameter] public int SessionId { get; set; }
+    [Parameter] public string StaffUserName { get; set; } = string.Empty;
+    [Parameter] public string StaffDisplayName { get; set; } = string.Empty;
+    [Parameter] public decimal Variance { get; set; }
+    [Parameter] public int? DailyCloseId { get; set; }
+
+    private bool m_loading = true;
+    private bool m_submitting;
+    private string m_selectedCurrency = SupportedCurrencies.THB;
+    private decimal m_amount;
+    private string m_reason = string.Empty;
+    private int m_shopId;
+    private TillSession? m_session;
+    private Dictionary<string, decimal> m_currencyVariances = [];
+
+    private bool IsValid => m_amount > 0 && !string.IsNullOrWhiteSpace(m_reason) && m_reason.Length >= 5;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        try
+        {
+            m_loading = true;
+            StateHasChanged();
+
+            // Get shop ID
+            var shops = await ShopService.GetShopsAsync(page: 1, pageSize: 1);
+            if (shops.ItemCollection.Any())
+            {
+                m_shopId = shops.ItemCollection.First().ShopId;
+            }
+
+            // Load session to get per-currency variances
+            if (SessionId > 0)
+            {
+                m_session = await TillService.GetSessionByIdAsync(SessionId);
+                if (m_session != null)
+                {
+                    // Use ClosingVariances if available, otherwise use the simple Variance
+                    if (m_session.ClosingVariances.Any(v => v.Value != 0))
+                    {
+                        m_currencyVariances = m_session.ClosingVariances
+                            .Where(v => v.Value != 0)
+                            .ToDictionary(v => v.Key, v => v.Value);
+                    }
+                    else
+                    {
+                        m_currencyVariances = new Dictionary<string, decimal>
+                        {
+                            [SupportedCurrencies.THB] = Variance
+                        };
+                    }
+
+                    // Select first currency with variance
+                    if (m_currencyVariances.Any())
+                    {
+                        m_selectedCurrency = m_currencyVariances.First().Key;
+                        m_amount = Math.Abs(m_currencyVariances.First().Value);
+                    }
+                }
+            }
+            else
+            {
+                m_currencyVariances = new Dictionary<string, decimal>
+                {
+                    [SupportedCurrencies.THB] = Variance
+                };
+                m_amount = Math.Abs(Variance);
+            }
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (!IsValid) return;
+
+        try
+        {
+            m_submitting = true;
+
+            var result = await TillService.LogShortageAsync(
+                m_shopId,
+                SessionId,
+                DailyCloseId,
+                StaffUserName,
+                StaffDisplayName,
+                m_selectedCurrency,
+                m_amount,
+                m_reason,
+                RequestContext.GetUserName() ?? "system"
+            );
+
+            if (result.Success)
+            {
+                ModalService.Close(ModalResult.Ok(Entity));
+            }
+            else
+            {
+                ShowError(result.Message ?? Localizer["PostFailed"]);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error posting shortage");
+            ShowError(Localizer["PostFailed"]);
+        }
+        finally
+        {
+            m_submitting = false;
+        }
+    }
+
+    private static string GetVarianceClass(decimal variance)
+    {
+        if (variance == 0) return "text-success";
+        if (variance > 0) return "text-info";
+        return "text-danger";
+    }
+}

@@ -1,0 +1,713 @@
+@using MotoRent.Client.Components.Till
+@inherits LocalizedDialogBase<Booking, TillBookingDepositDialog>
+@inject TillService TillService
+@inject BookingService BookingService
+@inject ReceiptService ReceiptService
+@inject ExchangeRateService ExchangeRateService
+
+<div>
+    <div class="d-flex flex-column w-100">
+        @if (m_selectedBooking is not null)
+        {
+            <div class="mt-2 p-2 bg-primary-lt rounded">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="badge bg-purple me-2">@m_selectedBooking.BookingRef</span>
+                        <span class="fw-semibold">@m_selectedBooking.CustomerName</span>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-ghost-secondary" @onclick="ClearSelection">
+                        <i class="ti ti-x"></i>
+                    </button>
+                </div>
+                <div class="d-flex justify-content-between mt-2 small">
+                            <span class="text-muted">
+                                <i class="ti ti-calendar me-1"></i>
+                                @m_selectedBooking.StartDate.ToString("dd MMM") - @m_selectedBooking.EndDate.ToString("dd MMM")
+                            </span>
+                    <span class="fw-bold text-warning">
+                                @Localizer["Due"]: ฿@m_selectedBooking.BalanceDue.ToString("N0")
+                            </span>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<form id="bookingDepositForm" @onsubmit="this.SaveAsync" @onsubmit:preventDefault>
+    <div class="modal-body" style="padding-bottom: 100px;">
+        @if (m_selectedBooking is null)
+        {
+            @* === STEP 1: Search/Select Booking === *@
+            <div class="mb-3">
+                <label class="form-label">@Localizer["SearchBooking"]</label>
+                <div class="input-group">
+                    <input type="text" class="form-control"
+                           placeholder="@Localizer["BookingRefOrCustomer"]"
+                           @bind="m_searchTerm" @bind:event="oninput"
+                           @onkeydown="OnSearchKeyDown"/>
+                    <button type="button" class="btn btn-primary" @onclick="SearchBookingsAsync"
+                            disabled="@m_searching">
+                        @if (m_searching)
+                        {
+                            <span class="spinner-border spinner-border-sm"></span>
+                        }
+                        else
+                        {
+                            <i class="ti ti-search"></i>
+                        }
+                    </button>
+                </div>
+                <div class="form-hint">@Localizer["BookingSearchHint"]</div>
+            </div>
+
+            @* Recent/Search Results *@
+            @if (m_loading)
+            {
+                <div class="d-flex justify-content-center py-4">
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+                    @Localizer["LoadingBookings"]
+                </div>
+            }
+            else if (m_searchResults.Count > 0)
+            {
+                @if (!m_searched)
+                {
+                    <div class="small text-muted mb-2">@Localizer["RecentBookingsWithBalance"]</div>
+                }
+
+                <div class="list-group">
+                    @foreach (var booking in m_searchResults)
+                    {
+                        <button type="button" class="list-group-item list-group-item-action"
+                                @onclick="@(() => SelectBooking(booking))">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="fw-semibold">
+                                        <span class="badge bg-purple me-2">@booking.BookingRef</span>
+                                        @booking.CustomerName
+                                    </div>
+                                    <div class="small text-muted">
+                                        @booking.StartDate.ToString("dd MMM") - @booking.EndDate.ToString("dd MMM yyyy")
+                                    </div>
+                                </div>
+                                <div class="text-end">
+                                    <div class="fw-semibold">฿@booking.TotalAmount.ToString("N0")</div>
+                                    <div class="small">
+                                        @if (booking.BalanceDue > 0)
+                                        {
+                                            <span
+                                                class="text-warning">@Localizer["Due"]: ฿@booking.BalanceDue.ToString("N0")</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-success">@Localizer["Paid"]</span>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </button>
+                    }
+                </div>
+            }
+            else if (m_searched)
+            {
+                <div class="alert alert-warning">
+                    <i class="ti ti-alert-triangle me-2"></i>
+                    @Localizer["NoBookingsFound"]
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-info">
+                    <i class="ti ti-info-circle me-2"></i>
+                    @Localizer["NoRecentBookingsWithBalance"]
+                </div>
+            }
+        }
+        else
+        {
+            @* === STEP 2: Payment Entry === *@
+
+            @* Payment Summary Card *@
+            <div class="card card-body bg-light mb-3">
+                <div class="row text-center g-2">
+                    <div class="col-4">
+                        <div class="small text-muted">@Localizer["TotalAmount"]</div>
+                        <div class="fw-semibold">฿@m_selectedBooking.TotalAmount.ToString("N0")</div>
+                    </div>
+                    <div class="col-4">
+                        <div class="small text-muted">@Localizer["AmountPaid"]</div>
+                        <div class="fw-semibold text-success">฿@m_selectedBooking.AmountPaid.ToString("N0")</div>
+                    </div>
+                    <div class="col-4">
+                        <div class="small text-muted">@Localizer["BalanceDue"]</div>
+                        <div class="fw-semibold text-warning">฿@m_selectedBooking.BalanceDue.ToString("N0")</div>
+                    </div>
+                </div>
+            </div>
+
+            @if (m_selectedBooking.BalanceDue <= 0)
+            {
+                <div class="alert alert-success">
+                    <i class="ti ti-check me-2"></i>
+                    @Localizer["BookingFullyPaid"]
+                </div>
+            }
+            else
+            {
+                @* Payment Method Selection *@
+                <div class="mb-3">
+                    <label class="form-label required">@Localizer["PaymentMethod"]</label>
+                    <select class="form-select" @bind="m_paymentMethod" @bind:after="OnPaymentMethodChanged">
+                        <option value="Cash">@Localizer["Cash"]</option>
+                        <option value="Card">@Localizer["Card"]</option>
+                        <option value="PromptPay">@Localizer["PromptPay"]</option>
+                        <option value="BankTransfer">@Localizer["BankTransfer"]</option>
+                    </select>
+                </div>
+
+                @if (m_paymentMethod == "Cash")
+                {
+                    @* Currency Selection *@
+                    <div class="mb-3">
+                        <label class="form-label">@Localizer["PaymentCurrency"]</label>
+                        <div class="d-flex gap-2 flex-wrap">
+                            @foreach (var currency in CurrencyDenominations.CurrenciesWithDenominations)
+                            {
+                                <button type="button"
+                                        class="btn btn-sm @(m_selectedCurrency == currency ? "btn-purple" : "btn-outline-secondary")"
+                                        @onclick="@(() => SelectCurrencyAsync(currency))">
+                                    @currency
+                                </button>
+                            }
+                        </div>
+                    </div>
+
+                    @* Collapsible Denomination Entry *@
+                    <div class="card mb-3">
+                        <div class="card-header p-2" style="cursor: pointer;" @onclick="ToggleDenominationPanel">
+                            <div class="d-flex justify-content-between align-items-center">
+                                        <span>
+                                            <i class="ti ti-@(m_denominationExpanded ? "chevron-down" : "chevron-right") me-2"></i>
+                                            @Localizer["EnterDenominations"]
+                                        </span>
+                                <span class="badge bg-purple fs-6">
+                                            @if (m_receivedAmount > 0)
+                                    {
+                                        @FormatCurrency(m_receivedAmount, m_selectedCurrency)
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">@Localizer["TapToEnter"]</span>
+                                    }
+                                        </span>
+                            </div>
+                        </div>
+                        @if (m_denominationExpanded)
+                        {
+                            <div class="card-body p-2">
+                                <DenominationEntryPanel
+                                    Currency="@m_selectedCurrency"
+                                    DenominationCounts="@m_denominationCounts"
+                                    DenominationCountsChanged="@OnDenominationCountsChangedAsync"/>
+                            </div>
+                        }
+                    </div>
+
+                    @* Payment Summary for Cash *@
+                    @if (m_receivedAmount > 0)
+                    {
+                        <div class="card border-success">
+                            <div class="card-body p-3">
+                                @if (m_selectedCurrency != SupportedCurrencies.THB)
+                                {
+                                    @if (m_conversionError is not null)
+                                    {
+                                        <div class="alert alert-warning mb-0">
+                                            <i class="ti ti-alert-triangle me-2"></i>
+                                            @Localizer["NoRateConfigured", m_selectedCurrency]
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span class="text-muted">@Localizer["AmountReceived"]</span>
+                                            <span>@m_receivedAmount.ToString("N2") @m_selectedCurrency</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-1 small text-muted">
+                                            <span>@Localizer["ExchangeRate"]</span>
+                                            <span>1 @m_selectedCurrency = @m_conversionRate.ToString("N2") THB</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span class="text-muted">@Localizer["ThbEquivalent"]</span>
+                                            <span class="fw-semibold">@m_thbEquivalent.ToString("N0") THB</span>
+                                        </div>
+                                        <hr class="my-2"/>
+                                        <div class="d-flex justify-content-between fs-5 fw-bold">
+                                            <span>@Localizer["ChangeToGive"]</span>
+                                            <span class="@(m_changeAmount >= 0 ? "text-success" : "text-danger")">
+                                                        @m_changeAmount.ToString("N0") THB
+                                                    </span>
+                                        </div>
+                                    }
+                                }
+                                else
+                                {
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span class="text-muted">@Localizer["AmountReceived"]</span>
+                                        <span class="fw-semibold">฿@m_receivedAmount.ToString("N0")</span>
+                                    </div>
+                                    <hr class="my-2"/>
+                                    <div class="d-flex justify-content-between fs-5 fw-bold">
+                                        <span>@Localizer["ChangeToGive"]</span>
+                                        <span class="@(m_changeAmount >= 0 ? "text-success" : "text-danger")">
+                                                    ฿@m_changeAmount.ToString("N0")
+                                                </span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                }
+                else
+                {
+                    @* Simple Amount Input for Non-Cash Payments *@
+                    <div class="mb-3">
+                        <label class="form-label required">@Localizer["Amount"]</label>
+                        <div class="input-group input-group-lg">
+                            <span class="input-group-text">฿</span>
+                            <input type="number" class="form-control text-end fs-4" @bind="m_amount"
+                                   required min="1" max="@m_selectedBooking.BalanceDue" step="any" placeholder="0"/>
+                        </div>
+                        <div class="form-hint">@Localizer["MaxAmount"]:
+                            ฿@m_selectedBooking.BalanceDue.ToString("N0")</div>
+                    </div>
+                }
+
+                <div class="mt-3">
+                    <label class="form-label">@Localizer["Notes"]</label>
+                    <textarea class="form-control" @bind="m_notes" rows="2"
+                              placeholder="@Localizer["NotesPlaceholder"]"></textarea>
+                </div>
+            }
+        }
+    </div>
+</form>
+
+<div class="modal-footer sticky-bottom bg-white border-top" style="z-index: 10;">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="this.Cancel">
+        @Localizer["Cancel"]
+    </button>
+    <button type="submit" form="bookingDepositForm" class="btn btn-purple btn-lg"
+            disabled="@(!CanSave || m_saving)">
+        @if (m_saving)
+        {
+            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+        }
+        <i class="ti ti-check me-1"></i>
+        @Localizer["RecordPayment"]
+    </button>
+</div>
+
+
+
+@code {
+    [Parameter] public int SessionId { get; set; }
+
+    [Parameter] public int ShopId { get; set; }
+
+    // Search state
+    private string m_searchTerm = "";
+    private List<Booking> m_searchResults = [];
+    private Booking? m_selectedBooking;
+    private bool m_loading;
+    private bool m_searching;
+    private bool m_searched;
+    private bool m_saving;
+
+    // Payment state
+    private string m_paymentMethod = "Cash";
+    private string? m_notes;
+
+    // Non-cash payment amount (always THB)
+    private decimal m_amount;
+
+    // Multi-currency cash payment state
+    private string m_selectedCurrency = SupportedCurrencies.THB;
+    private Dictionary<decimal, int> m_denominationCounts = [];
+    private decimal m_receivedAmount;
+    private decimal m_conversionRate;
+    private decimal m_thbEquivalent;
+    private decimal m_changeAmount;
+    private string? m_conversionError;
+
+    // UI state for collapsible denomination panel
+    private bool m_denominationExpanded = true;
+
+    /// <summary>
+    /// Determines if the save button should be enabled.
+    /// </summary>
+    private bool CanSave
+    {
+        get
+        {
+            if (m_selectedBooking is null) return false;
+            if (m_selectedBooking.BalanceDue <= 0) return false;
+
+            if (m_paymentMethod == "Cash")
+            {
+                // For cash payments, need denomination entry with amount > 0
+                // For foreign currency, also need valid conversion (no error)
+                if (m_receivedAmount <= 0) return false;
+                if (m_selectedCurrency != SupportedCurrencies.THB && m_conversionError is not null) return false;
+                return true;
+            }
+            else
+            {
+                // For non-cash, need simple amount > 0 and not exceeding balance
+                return m_amount > 0 && m_amount <= m_selectedBooking.BalanceDue;
+            }
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRecentBookingsAsync();
+    }
+
+    /// <summary>
+    /// Loads recent bookings with balance due on dialog open.
+    /// Shows bookings from all shops (staff can accept payment for any booking).
+    /// </summary>
+    private async Task LoadRecentBookingsAsync()
+    {
+        try
+        {
+            m_loading = true;
+            m_searchResults.Clear();
+
+            // Load recent bookings (last 30 days) from ALL shops that can receive payments
+            // Staff should be able to accept payment for any booking regardless of shop
+            var fromDate = DateTimeOffset.Now.AddDays(-30);
+            var result = await BookingService.GetBookingsAsync(
+                preferredShopId: null, // Don't filter by shop - show all bookings
+                status: null,
+                fromDate: fromDate,
+                toDate: null,
+                searchTerm: null,
+                page: 1,
+                pageSize: 20);
+
+            // Filter to only bookings that can receive payments (have balance due)
+            m_searchResults.AddRange(result.ItemCollection.Where(b => b.CanReceivePayment));
+        }
+        catch (Exception ex)
+        {
+            this.Logger.LogError(ex, "Failed to load recent bookings");
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    /// <summary>
+    /// Initializes denomination counts for the selected currency.
+    /// </summary>
+    private void InitializeDenominationCounts()
+    {
+        m_denominationCounts.Clear();
+        foreach (var denom in CurrencyDenominations.GetDenominations(m_selectedCurrency))
+        {
+            m_denominationCounts[denom] = 0;
+        }
+
+        m_receivedAmount = 0;
+        m_thbEquivalent = 0;
+        m_changeAmount = 0;
+        m_conversionError = null;
+    }
+
+    private async Task OnSearchKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await SearchBookingsAsync();
+        }
+    }
+
+    private async Task SearchBookingsAsync()
+    {
+        if (string.IsNullOrWhiteSpace(m_searchTerm) || m_searching) return;
+
+        try
+        {
+            m_searching = true;
+            m_searched = true;
+            m_searchResults.Clear();
+
+            var searchTerm = m_searchTerm.Trim().ToUpperInvariant();
+
+            // Try to find by booking reference first (6 characters)
+            if (searchTerm.Length >= 4 && searchTerm.Length <= 8)
+            {
+                var booking = await BookingService.GetBookingByRefAsync(searchTerm);
+                if (booking is not null && booking.CanReceivePayment)
+                {
+                    m_searchResults.Add(booking);
+                }
+            }
+
+            // If no exact match, search by customer name
+            if (m_searchResults.Count == 0)
+            {
+                var result = await BookingService.GetBookingsAsync(
+                    preferredShopId: null,
+                    status: null,
+                    searchTerm: m_searchTerm,
+                    page: 1,
+                    pageSize: 10);
+
+                // Filter to only bookings that can receive payments
+                m_searchResults.AddRange(
+                    result.ItemCollection.Where(b => b.CanReceivePayment));
+            }
+        }
+        finally
+        {
+            m_searching = false;
+        }
+    }
+
+    private void SelectBooking(Booking booking)
+    {
+        m_selectedBooking = booking;
+        m_searchResults.Clear();
+
+        // Initialize denomination counts for cash payments
+        InitializeDenominationCounts();
+
+        // Default amount to balance due for non-cash payments
+        m_amount = booking.BalanceDue;
+
+        // Expand denomination panel when booking is selected
+        m_denominationExpanded = true;
+    }
+
+    private void ClearSelection()
+    {
+        m_selectedBooking = null;
+        m_searchTerm = "";
+        m_searched = false;
+        m_amount = 0;
+        m_selectedCurrency = SupportedCurrencies.THB;
+        InitializeDenominationCounts();
+
+        // Reload recent bookings
+        _ = LoadRecentBookingsAsync();
+    }
+
+    private void OnPaymentMethodChanged()
+    {
+        // Reset currency to THB when switching payment methods
+        m_selectedCurrency = SupportedCurrencies.THB;
+        InitializeDenominationCounts();
+        m_amount = m_selectedBooking?.BalanceDue ?? 0;
+        m_denominationExpanded = true;
+    }
+
+    private void ToggleDenominationPanel()
+    {
+        m_denominationExpanded = !m_denominationExpanded;
+    }
+
+    private async Task SelectCurrencyAsync(string currency)
+    {
+        m_selectedCurrency = currency;
+        InitializeDenominationCounts();
+        m_denominationExpanded = true;
+        await UpdateConversionPreviewAsync();
+    }
+
+    private async Task OnDenominationCountsChangedAsync(Dictionary<decimal, int> counts)
+    {
+        m_denominationCounts = counts;
+        m_receivedAmount = counts.Sum(kvp => kvp.Key * kvp.Value);
+        await UpdateConversionPreviewAsync();
+    }
+
+    private async Task UpdateConversionPreviewAsync()
+    {
+        m_conversionError = null;
+
+        if (m_receivedAmount <= 0 || m_selectedBooking is null)
+        {
+            m_thbEquivalent = 0;
+            m_changeAmount = 0;
+            return;
+        }
+
+        if (m_selectedCurrency == SupportedCurrencies.THB)
+        {
+            m_conversionRate = 1.0m;
+            m_thbEquivalent = m_receivedAmount;
+        }
+        else
+        {
+            var conversion = await ExchangeRateService.ConvertToThbAsync(m_selectedCurrency, m_receivedAmount);
+            if (conversion is null)
+            {
+                m_conversionError = $"No exchange rate configured for {m_selectedCurrency}";
+                m_thbEquivalent = 0;
+                m_changeAmount = 0;
+                return;
+            }
+
+            m_conversionRate = conversion.RateUsed;
+            m_thbEquivalent = conversion.ThbAmount;
+        }
+
+        // Calculate change (THB equivalent - balance due)
+        m_changeAmount = m_thbEquivalent - m_selectedBooking.BalanceDue;
+    }
+
+    private static string FormatCurrency(decimal amount, string currency)
+    {
+        var symbol = currency switch
+        {
+            SupportedCurrencies.THB => "฿",
+            SupportedCurrencies.USD => "$",
+            SupportedCurrencies.EUR => "€",
+            SupportedCurrencies.CNY => "¥",
+            SupportedCurrencies.GBP => "£",
+            SupportedCurrencies.JPY => "¥",
+            _ => currency + " "
+        };
+        return $"{symbol}{amount:N0}";
+    }
+
+    private void Cancel()
+    {
+        this.ModalService.Close(ModalResult.Cancel());
+    }
+
+    private async Task SaveAsync()
+    {
+        if (m_saving || m_selectedBooking is null) return;
+        if (!CanSave) return;
+
+        // Determine the THB amount to record
+        var thbAmount = m_paymentMethod == "Cash" ? m_thbEquivalent : m_amount;
+
+        // Validate amount doesn't exceed balance due (for non-cash or THB cash)
+        if (m_paymentMethod != "Cash" && m_amount > m_selectedBooking.BalanceDue)
+        {
+            this.ShowError(Localizer["AmountExceedsBalance"]);
+            return;
+        }
+
+        try
+        {
+            m_saving = true;
+
+            // 1. Record payment on booking
+            var payment = new BookingPayment
+            {
+                Amount = Math.Min(thbAmount, m_selectedBooking.BalanceDue), // Don't record more than balance due
+                PaymentType = BookingPaymentType.Deposit,
+                PaymentMethod = m_paymentMethod,
+                Notes = m_notes
+            };
+
+            // Add currency info to notes if foreign currency
+            if (m_paymentMethod == "Cash" && m_selectedCurrency != SupportedCurrencies.THB)
+            {
+                var currencyNote = $"Received {m_receivedAmount:N2} {m_selectedCurrency} @ {m_conversionRate:N2} THB";
+                payment.Notes = string.IsNullOrEmpty(m_notes) ? currencyNote : $"{currencyNote}. {m_notes}";
+            }
+
+            var paymentResult = await BookingService.RecordPaymentAsync(
+                m_selectedBooking.BookingId,
+                payment,
+                this.UserName);
+
+            if (!paymentResult.Success)
+            {
+                this.ShowError(paymentResult.Message ?? Localizer["FailedToRecordPayment"]);
+                return;
+            }
+
+            // 2. Record to till
+            var type = m_paymentMethod switch
+            {
+                "Cash" => TillTransactionType.BookingDeposit,
+                "Card" => TillTransactionType.CardPayment,
+                "PromptPay" => TillTransactionType.PromptPay,
+                "BankTransfer" => TillTransactionType.BankTransfer,
+                _ => TillTransactionType.BookingDeposit
+            };
+
+            var description = $"Booking deposit {m_selectedBooking.BookingRef} - {m_selectedBooking.CustomerName}";
+
+            SubmitOperation tillResult;
+
+            if (m_paymentMethod == "Cash")
+            {
+                // Use RecordForeignCurrencyPaymentAsync for cash (handles both THB and foreign currencies)
+                tillResult = await TillService.RecordForeignCurrencyPaymentAsync(
+                    SessionId,
+                    type,
+                    m_selectedCurrency,
+                    m_receivedAmount,
+                    description,
+                    this.UserName,
+                    notes: m_notes);
+            }
+            else
+            {
+                // Non-cash payments always in THB
+                tillResult = await TillService.RecordCashInAsync(
+                    SessionId,
+                    type,
+                    m_amount,
+                    description,
+                    this.UserName,
+                    notes: m_notes);
+            }
+
+            if (!tillResult.Success)
+            {
+                this.ShowError(tillResult.Message ?? Localizer["FailedToRecordPayment"]);
+                return;
+            }
+
+            // 3. Generate receipt (optional - could be done later)
+            try
+            {
+                await ReceiptService.GenerateBookingDepositReceiptAsync(
+                    m_selectedBooking.BookingId,
+                    payment.Amount,
+                    m_paymentMethod,
+                    SessionId,
+                    this.UserName);
+            }
+            catch (Exception ex)
+            {
+                // Log but don't fail the operation
+                this.Logger.LogWarning(ex, "Failed to generate booking deposit receipt");
+            }
+
+            this.ModalService.Close(ModalResult.Ok(tillResult));
+        }
+        catch (Exception ex)
+        {
+            this.Logger.LogError(ex, "Error recording booking deposit");
+            this.ShowError(Localizer["FailedToRecordPayment"]);
+        }
+        finally
+        {
+            m_saving = false;
+        }
+    }
+
+}

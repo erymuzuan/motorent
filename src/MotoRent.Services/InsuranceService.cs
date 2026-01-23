@@ -33,14 +33,14 @@ public class InsuranceService(RentalDataContext context)
     {
         using var session = this.Context.OpenSession(username);
         session.Attach(insurance);
-        return await session.SubmitChanges("Create");
+        return await session.SubmitChanges("CreateInsurance");
     }
 
     public async Task<SubmitOperation> UpdateInsuranceAsync(Insurance insurance, string username)
     {
         using var session = this.Context.OpenSession(username);
         session.Attach(insurance);
-        return await session.SubmitChanges("Update");
+        return await session.SubmitChanges("UpdateInsurance");
     }
 
     public async Task<SubmitOperation> DeleteInsuranceAsync(Insurance insurance, string username)
@@ -56,7 +56,7 @@ public class InsuranceService(RentalDataContext context)
 
         using var session = this.Context.OpenSession(username);
         session.Delete(insurance);
-        return await session.SubmitChanges("Delete");
+        return await session.SubmitChanges("DeleteInsurance");
     }
 
     public async Task<SubmitOperation> ToggleActiveAsync(int insuranceId, string username)
@@ -74,9 +74,10 @@ public class InsuranceService(RentalDataContext context)
 
     public async Task<Dictionary<bool, int>> GetActiveCountsAsync()
     {
-        var all = await this.Context.LoadAsync(this.Context.CreateQuery<Insurance>(), 1, 1000, false);
-        return all.ItemCollection
-            .GroupBy(i => i.IsActive)
-            .ToDictionary(g => g.Key, g => g.Count());
+        // Use SQL GROUP BY COUNT instead of loading all records
+        var query = this.Context.CreateQuery<Insurance>();
+        var groupCounts = await this.Context.GetGroupByCountAsync(query, i => i.IsActive);
+
+        return groupCounts.ToDictionary(g => g.Key, g => g.Count);
     }
 }

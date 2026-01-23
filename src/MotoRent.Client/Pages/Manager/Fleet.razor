@@ -1,25 +1,25 @@
 @page "/manager/fleet"
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize(Policy = "RequireTenantManager")]
-@inherits MotoRentComponentBase
+@inherits LocalizedComponentBase<Fleet>
 
-<PageTitle>Fleet Analytics - MotoRent Manager</PageTitle>
+<PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 <div class="container-xl py-4">
     @* Page Header *@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h2 class="page-title mb-0">Fleet Analytics</h2>
-            <p class="text-secondary mb-0">Monitor fleet performance, utilization, and maintenance status</p>
+            <h2 class="page-title mb-0">@Localizer["FleetAnalytics"]</h2>
+            <p class="text-secondary mb-0">@Localizer["FleetAnalyticsSubtitle"]</p>
         </div>
         <div class="btn-list">
             <a href="/motorbikes/create" class="btn btn-outline-primary">
                 <i class="ti ti-plus me-1"></i>
-                Add Motorbike
+                @Localizer["AddMotorbike"]
             </a>
             <button type="button" class="btn btn-outline-secondary">
                 <i class="ti ti-download me-1"></i>
-                Export
+                @CommonLocalizer["Export"]
             </button>
         </div>
     </div>
@@ -28,34 +28,34 @@
     <div class="row g-3 mb-4">
         <div class="col-12 col-sm-6 col-md-3">
             <MotoRent.Client.Components.Manager.MetricCard
-                Title="Total Fleet"
+                Title="@Localizer["TotalFleet"]"
                 Value="@m_totalFleet.ToString()"
-                Suffix="bikes"
+                Suffix="@Localizer["BikesSuffix"]"
                 Icon="ti-motorbike"
                 IconColor="primary" />
         </div>
         <div class="col-12 col-sm-6 col-md-3">
             <MotoRent.Client.Components.Manager.MetricCard
-                Title="Currently Rented"
+                Title="@Localizer["CurrentlyRented"]"
                 Value="@m_rentedCount.ToString()"
                 Icon="ti-bike"
                 IconColor="success"
-                Subtitle="@($"{m_utilizationRate:N0}% utilization")" />
+                Subtitle="@Localizer["UtilizationSubtitle", m_utilizationRate]" />
         </div>
         <div class="col-12 col-sm-6 col-md-3">
             <MotoRent.Client.Components.Manager.MetricCard
-                Title="Available"
+                Title="@Localizer["Available"]"
                 Value="@m_availableCount.ToString()"
                 Icon="ti-circle-check"
                 IconColor="info" />
         </div>
         <div class="col-12 col-sm-6 col-md-3">
             <MotoRent.Client.Components.Manager.MetricCard
-                Title="In Maintenance"
+                Title="@Localizer["InMaintenance"]"
                 Value="@m_maintenanceCount.ToString()"
                 Icon="ti-tool"
                 IconColor="warning"
-                Subtitle="@($"{m_scheduledMaintenance} scheduled")" />
+                Subtitle="@Localizer["ScheduledMaintenanceSubtitle", m_scheduledMaintenance]" />
         </div>
     </div>
 
@@ -65,21 +65,21 @@
             <div class="card">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h4 class="card-title mb-0">Fleet Utilization Trend</h4>
+                        <h4 class="card-title mb-0">@Localizer["FleetUtilizationTrend"]</h4>
                         <div class="btn-group btn-group-sm" role="group">
                             <button type="button" class="btn @(m_utilizationPeriod == "7d" ? "btn-primary" : "btn-outline-primary")"
-                                    @onclick="@(() => SetUtilizationPeriod("7d"))">7 Days</button>
+                                    @onclick="@(() => SetUtilizationPeriod("7d"))">@Localizer["Days7"]</button>
                             <button type="button" class="btn @(m_utilizationPeriod == "30d" ? "btn-primary" : "btn-outline-primary")"
-                                    @onclick="@(() => SetUtilizationPeriod("30d"))">30 Days</button>
+                                    @onclick="@(() => SetUtilizationPeriod("30d"))">@Localizer["Days30"]</button>
                             <button type="button" class="btn @(m_utilizationPeriod == "90d" ? "btn-primary" : "btn-outline-primary")"
-                                    @onclick="@(() => SetUtilizationPeriod("90d"))">90 Days</button>
+                                    @onclick="@(() => SetUtilizationPeriod("90d"))">@Localizer["Days90"]</button>
                         </div>
                     </div>
                     <div class="chart-placeholder d-flex align-items-center justify-content-center" style="height: 300px; background: var(--tblr-bg-surface-secondary); border-radius: 8px;">
                         <div class="text-center text-secondary">
                             <i class="ti ti-chart-area mb-2" style="font-size: 2rem;"></i>
-                            <div>Utilization Chart (@m_utilizationPeriod)</div>
-                            <small>Implement with Chart.js or ApexCharts</small>
+                            <div>@Localizer["UtilizationChart", m_utilizationPeriod]</div>
+                            <small>@Localizer["ChartPlaceholderHint"]</small>
                         </div>
                     </div>
                 </div>
@@ -90,7 +90,7 @@
         <div class="col-12 col-md-4">
             <div class="card h-100">
                 <div class="card-body">
-                    <h4 class="card-title mb-3">Fleet Status</h4>
+                    <h4 class="card-title mb-3">@Localizer["FleetStatus"]</h4>
                     <div class="d-flex flex-column gap-3">
                         @for (int i = 0; i < m_statusLabels.Length; i++)
                         {
@@ -99,7 +99,7 @@
                                 <div class="d-flex justify-content-between align-items-center mb-1">
                                     <div class="d-flex align-items-center gap-2">
                                         <div style="width: 12px; height: 12px; border-radius: 2px; background: @m_statusColors[index];"></div>
-                                        <span>@m_statusLabels[index]</span>
+                                        <span>@Localizer[m_statusLabels[index]]</span>
                                     </div>
                                     <span class="fw-semibold">@m_statusCounts[index]</span>
                                 </div>
@@ -118,19 +118,19 @@
     <div class="card mb-4">
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h4 class="card-title mb-0">Fleet Inventory</h4>
+                <h4 class="card-title mb-0">@Localizer["FleetInventory"]</h4>
                 <div class="d-flex gap-2">
                     <select class="form-select form-select-sm" style="width: 150px;" @bind="m_statusFilter">
-                        <option value="">All Status</option>
-                        <option value="Available">Available</option>
-                        <option value="Rented">Rented</option>
-                        <option value="Maintenance">Maintenance</option>
+                        <option value="">@Localizer["AllStatus"]</option>
+                        <option value="Available">@Localizer["Available"]</option>
+                        <option value="Rented">@Localizer["Rented"]</option>
+                        <option value="Maintenance">@Localizer["Maintenance"]</option>
                     </select>
                     <div class="input-icon">
                         <span class="input-icon-addon">
                             <i class="ti ti-search"></i>
                         </span>
-                        <input type="text" class="form-control form-control-sm" placeholder="Search..."
+                        <input type="text" class="form-control form-control-sm" placeholder="@CommonLocalizer["Search"]"
                                style="width: 200px;" @bind="m_searchText" @bind:event="oninput" />
                     </div>
                 </div>
@@ -140,15 +140,15 @@
                 <table class="table table-vcenter table-striped table-hover">
                     <thead>
                         <tr>
-                            <th>Motorbike</th>
-                            <th>Plate</th>
-                            <th>Type</th>
-                            <th>Status</th>
-                            <th class="text-center">Utilization</th>
-                            <th class="text-end">Revenue (MTD)</th>
-                            <th class="text-end">Rentals</th>
-                            <th>Last Service</th>
-                            <th>Actions</th>
+                            <th>@Localizer["Motorbike"]</th>
+                            <th>@Localizer["Plate"]</th>
+                            <th>@Localizer["Type"]</th>
+                            <th>@Localizer["Status"]</th>
+                            <th class="text-center">@Localizer["Utilization"]</th>
+                            <th class="text-end">@Localizer["RevenueMTD"]</th>
+                            <th class="text-end">@Localizer["Rentals"]</th>
+                            <th>@Localizer["LastService"]</th>
+                            <th>@CommonLocalizer["Actions"]</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -169,7 +169,7 @@
                                 <td><code>@bike.Plate</code></td>
                                 <td>@bike.Type</td>
                                 <td>
-                                    <span class="badge @GetStatusBadgeClass(bike.Status)">@bike.Status</span>
+                                    <span class="badge @GetStatusBadgeClass(bike.Status)">@Localizer[bike.Status]</span>
                                 </td>
                                 <td class="text-center">
                                     <div class="d-flex align-items-center gap-2">
@@ -184,7 +184,7 @@
                                 <td class="text-end">@bike.RentalCount</td>
                                 <td>
                                     <span class="@(bike.DaysSinceService > 30 ? "text-warning" : "")">
-                                        @bike.DaysSinceService days ago
+                                        @Localizer["DaysAgo", bike.DaysSinceService]
                                     </span>
                                 </td>
                                 <td>
@@ -209,15 +209,15 @@
 
             <div class="d-flex justify-content-between align-items-center mt-3">
                 <span class="text-secondary small">
-                    Showing @GetFilteredBikes().Count of @m_fleet.Count motorbikes
+                    @Localizer["ShowingCount", GetFilteredBikes().Count, m_fleet.Count]
                 </span>
                 <nav>
                     <ul class="pagination pagination-sm mb-0">
-                        <li class="page-item disabled"><a class="page-link" href="#">Previous</a></li>
+                        <li class="page-item disabled"><a class="page-link" href="#">@Localizer["Previous"]</a></li>
                         <li class="page-item active"><a class="page-link" href="#">1</a></li>
                         <li class="page-item"><a class="page-link" href="#">2</a></li>
                         <li class="page-item"><a class="page-link" href="#">3</a></li>
-                        <li class="page-item"><a class="page-link" href="#">Next</a></li>
+                        <li class="page-item"><a class="page-link" href="#">@Localizer["Next"]</a></li>
                     </ul>
                 </nav>
             </div>
@@ -228,9 +228,9 @@
     <div class="card">
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h4 class="card-title mb-0">Upcoming Maintenance</h4>
+                <h4 class="card-title mb-0">@Localizer["UpcomingMaintenance"]</h4>
                 <button type="button" class="btn btn-ghost-primary btn-sm">
-                    View All
+                    @Localizer["ViewAll"]
                     <i class="ti ti-arrow-right ms-1"></i>
                 </button>
             </div>
@@ -247,13 +247,13 @@
                                         <small class="text-secondary">@maintenance.Plate</small>
                                     </div>
                                     <span class="badge @GetMaintenanceUrgencyClass(maintenance.DaysUntil)">
-                                        @(maintenance.DaysUntil == 0 ? "Today" : maintenance.DaysUntil == 1 ? "Tomorrow" : $"In {maintenance.DaysUntil} days")
+                                        @(maintenance.DaysUntil == 0 ? Localizer["Today"] : maintenance.DaysUntil == 1 ? Localizer["Tomorrow"] : Localizer["InDays", maintenance.DaysUntil])
                                     </span>
                                 </div>
                                 <div class="mb-2">@maintenance.Type</div>
                                 <div class="btn-list">
-                                    <button type="button" class="btn btn-ghost-primary btn-sm">Start</button>
-                                    <button type="button" class="btn btn-ghost-secondary btn-sm">Reschedule</button>
+                                    <button type="button" class="btn btn-ghost-primary btn-sm">@Localizer["Start"]</button>
+                                    <button type="button" class="btn btn-ghost-secondary btn-sm">@Localizer["Reschedule"]</button>
                                 </div>
                             </div>
                         </div>
@@ -369,7 +369,7 @@
 
     private void ScheduleMaintenance(FleetBikeData bike)
     {
-        this.ShowInfo($"Schedule maintenance for {bike.Brand} {bike.Model} - Feature coming soon!");
+        this.ShowInfo(Localizer["ScheduleMaintenanceFeatureHint", bike.Brand, bike.Model]);
     }
 
     private record FleetBikeData(int MotorbikeId, string Brand, string Model, int Year, int EngineCC, string Plate, string Type, string Status, int Utilization, decimal Revenue, int RentalCount, int DaysSinceService);

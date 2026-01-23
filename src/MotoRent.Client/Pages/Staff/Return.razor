@@ -1,24 +1,24 @@
 @page "/staff/return"
 @using MotoRent.Domain
 @using Microsoft.AspNetCore.Authorization
-@inherits MotoRentComponentBase
+@inherits LocalizedComponentBase<Return>
 @attribute [Authorize(Policy = "RequireTenantStaff")]
 @inject NavigationManager NavigationManager
 
-<PageTitle>Return Bike - MotoRent</PageTitle>
+<PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 @if (m_rental == null)
 {
     @* Search/Scan View *@
-    <h4 class="mb-4">Return Bike</h4>
+    <h4 class="mb-4">@Localizer["ReturnBike"]</h4>
 
     <div class="card mb-4">
         <div class="card-body">
             <div class="mb-3">
-                <label class="form-label">Search by plate number or renter name</label>
+                <label class="form-label">@Localizer["SearchDescription"]</label>
                 <div class="input-icon">
                     <input type="text" class="form-control" @bind="m_searchText" @bind:event="oninput"
-                           @onkeydown="OnSearchKeyDown" placeholder="Enter plate or name..." autofocus />
+                           @onkeydown="OnSearchKeyDown" placeholder="@Localizer["SearchPlaceholder"]" autofocus />
                     <span class="input-icon-addon">
                         <i class="ti ti-search"></i>
                     </span>
@@ -27,7 +27,7 @@
 
             <button type="button" class="btn btn-outline-primary w-100" disabled>
                 <i class="ti ti-qrcode me-2"></i>
-                Scan QR Code (Coming Soon)
+                @Localizer["ScanQRCode"] (@Localizer["ComingSoon"])
             </button>
         </div>
     </div>
@@ -40,7 +40,7 @@
     }
     else if (m_searchResults.Any())
     {
-        <p class="text-secondary small mb-2">Select rental to process return:</p>
+        <p class="text-secondary small mb-2">@Localizer["SelectRentalToProcess"]:</p>
 
         <div class="d-flex flex-column gap-2">
             @foreach (var rental in m_searchResults)
@@ -63,14 +63,14 @@
     else if (!string.IsNullOrEmpty(m_searchText) && m_searchText.Length >= 2)
     {
         <div class="alert alert-info">
-            No active rentals found matching "@m_searchText"
+            @Localizer["NoRentalsFound", m_searchText]
         </div>
     }
 
     @* Recent Returns Quick Access *@
     @if (!m_searchResults.Any() && m_recentActive.Any())
     {
-        <p class="text-secondary small mb-2 mt-4">Due Today / Overdue:</p>
+        <p class="text-secondary small mb-2 mt-4">@Localizer["DueTodayOverdue"]:</p>
 
         <div class="d-flex flex-column gap-2">
             @foreach (var rental in m_recentActive.Take(5))
@@ -86,7 +86,7 @@
                                 </div>
                             </div>
                             <span class="badge @(rental.IsOverdue ? "bg-danger" : "bg-warning")">
-                                @(rental.IsOverdue ? "Overdue" : "Due Today")
+                                @(rental.IsOverdue ? Localizer["Overdue"] : Localizer["DueToday"])
                             </span>
                         </div>
                     </div>
@@ -102,7 +102,7 @@ else
         <button type="button" class="btn btn-icon btn-ghost-secondary me-2" @onclick="ClearSelection">
             <i class="ti ti-arrow-left"></i>
         </button>
-        <h4 class="mb-0">Return: @m_rental.LicensePlate</h4>
+        <h4 class="mb-0">@Localizer["ReturnTitle", m_rental.LicensePlate]</h4>
     </div>
 
     @* Rental Summary *@
@@ -111,15 +111,15 @@ else
             <div class="d-flex justify-content-between align-items-start">
                 <div>
                     <h5 class="mb-1">@m_rental.MotorbikeName</h5>
-                    <div class="text-secondary small">Renter: @m_rental.RenterName</div>
+                    <div class="text-secondary small">@Localizer["Renter"]: @m_rental.RenterName</div>
                     <div class="text-secondary small">
-                        Period: @m_rental.StartDate.ToString("MMM dd") - @m_rental.DueDate.ToString("MMM dd")
-                        (@m_rental.TotalDays days)
+                        @Localizer["Period"]: @m_rental.StartDate.ToString("MMM dd") - @m_rental.DueDate.ToString("MMM dd")
+                        (@Localizer["DaysCount", m_rental.TotalDays])
                     </div>
                 </div>
                 @if (m_rental.IsOverdue)
                 {
-                    <span class="badge bg-danger">@m_extraDays day(s) overdue</span>
+                    <span class="badge bg-danger">@Localizer["OverdueDaysCount", m_extraDays]</span>
                 }
             </div>
         </div>
@@ -128,47 +128,47 @@ else
     @* Condition Checklist *@
     <div class="card mb-3">
         <div class="card-body">
-            <h5 class="card-title mb-3">Return Checklist</h5>
+            <h5 class="card-title mb-3">@Localizer["ReturnChecklist"]</h5>
 
             <div class="d-flex flex-column gap-2">
                 <label class="form-check">
                     <input type="checkbox" class="form-check-input" @bind="m_bikeConditionOk" />
-                    <span class="form-check-label">Bike condition OK (no new damage)</span>
+                    <span class="form-check-label">@Localizer["ConditionOk"]</span>
                 </label>
 
                 <label class="form-check">
                     <input type="checkbox" class="form-check-input" @bind="m_fuelChecked" />
-                    <span class="form-check-label">Fuel level checked</span>
+                    <span class="form-check-label">@Localizer["FuelChecked"]</span>
                 </label>
 
                 <label class="form-check">
                     <input type="checkbox" class="form-check-input" @bind="m_keysReturned" />
-                    <span class="form-check-label">Keys returned</span>
+                    <span class="form-check-label">@Localizer["KeysReturned"]</span>
                 </label>
 
                 <label class="form-check">
                     <input type="checkbox" class="form-check-input" @bind="m_helmetReturned" />
-                    <span class="form-check-label">Helmet(s) returned</span>
+                    <span class="form-check-label">@Localizer["HelmetsReturned"]</span>
                 </label>
 
                 <label class="form-check">
                     <input type="checkbox" class="form-check-input" @bind="m_accessoriesReturned" />
-                    <span class="form-check-label">All accessories returned</span>
+                    <span class="form-check-label">@Localizer["AccessoriesReturned"]</span>
                 </label>
             </div>
 
             @if (!m_bikeConditionOk)
             {
                 <div class="alert alert-warning mt-3">
-                    <h5 class="alert-title">Report damage or issues:</h5>
+                    <h5 class="alert-title">@Localizer["ReportDamageTitle"]:</h5>
                     <div class="mb-2">
                         <textarea class="form-control" rows="2" @bind="m_damageNotes"
-                                  placeholder="Describe damage..."></textarea>
+                                  placeholder="@Localizer["DamagePlaceholder"]"></textarea>
                     </div>
                     <div class="input-group">
                         <span class="input-group-text">฿</span>
                         <input type="number" class="form-control" @bind="m_damageCharge"
-                               min="0" placeholder="Damage charge" />
+                               min="0" placeholder="@Localizer["DamageCharge"]" />
                     </div>
                 </div>
             }
@@ -178,40 +178,40 @@ else
     @* Financial Summary *@
     <div class="card mb-3">
         <div class="card-body">
-            <h5 class="card-title mb-3">Payment Summary</h5>
+            <h5 class="card-title mb-3">@Localizer["PaymentSummary"]</h5>
 
             <div class="d-flex flex-column gap-1">
                 <div class="d-flex justify-content-between">
-                    <span class="small">Rental (@m_rental.TotalDays days x ฿@m_rental.DailyRate)</span>
-                    <span class="small">฿@m_rentalTotal.ToString("N0")</span>
+                    <span class="small">@Localizer["RentalCostSummary", m_rental.TotalDays, FormatCurrency(m_rental.DailyRate)]</span>
+                    <span class="small">@FormatCurrency(m_rentalTotal)</span>
                 </div>
 
                 @if (m_extraDays > 0)
                 {
                     <div class="d-flex justify-content-between text-danger">
-                        <span class="small">Extra days (@m_extraDays x ฿@m_rental.DailyRate)</span>
-                        <span class="small">฿@m_extraDaysCharge.ToString("N0")</span>
+                        <span class="small">@Localizer["ExtraDaysSummary", m_extraDays, FormatCurrency(m_rental.DailyRate)]</span>
+                        <span class="small">@FormatCurrency(m_extraDaysCharge)</span>
                     </div>
                 }
 
                 @if (m_damageCharge > 0)
                 {
                     <div class="d-flex justify-content-between text-warning">
-                        <span class="small">Damage charge</span>
-                        <span class="small">฿@m_damageCharge.ToString("N0")</span>
+                        <span class="small">@Localizer["DamageCharge"]</span>
+                        <span class="small">@FormatCurrency(m_damageCharge)</span>
                     </div>
                 }
 
                 <hr class="my-2" />
 
                 <div class="d-flex justify-content-between">
-                    <span class="fw-semibold">Total Due</span>
-                    <span class="fw-semibold">฿@TotalDue.ToString("N0")</span>
+                    <span class="fw-semibold">@Localizer["TotalDue"]</span>
+                    <span class="fw-semibold">@FormatCurrency(TotalDue)</span>
                 </div>
 
                 <div class="d-flex justify-content-between text-secondary">
-                    <span class="small">Deposit held</span>
-                    <span class="small">฿@m_rental.DepositAmount.ToString("N0")</span>
+                    <span class="small">@Localizer["DepositHeld"]</span>
+                    <span class="small">@FormatCurrency(m_rental.DepositAmount)</span>
                 </div>
 
                 <hr class="my-2" />
@@ -219,21 +219,21 @@ else
                 @if (RefundAmount > 0)
                 {
                     <div class="d-flex justify-content-between text-success">
-                        <span class="h5 mb-0">REFUND TO CUSTOMER</span>
-                        <span class="h5 mb-0">฿@RefundAmount.ToString("N0")</span>
+                        <span class="h5 mb-0">@Localizer["RefundToCustomer"]</span>
+                        <span class="h5 mb-0">@FormatCurrency(RefundAmount)</span>
                     </div>
                 }
                 else if (RefundAmount < 0)
                 {
                     <div class="d-flex justify-content-between text-danger">
-                        <span class="h5 mb-0">COLLECT FROM CUSTOMER</span>
-                        <span class="h5 mb-0">฿@Math.Abs(RefundAmount).ToString("N0")</span>
+                        <span class="h5 mb-0">@Localizer["CollectFromCustomer"]</span>
+                        <span class="h5 mb-0">@FormatCurrency(Math.Abs(RefundAmount))</span>
                     </div>
                 }
                 else
                 {
                     <div class="d-flex justify-content-between">
-                        <span class="h5 mb-0">DEPOSIT USED (No refund)</span>
+                        <span class="h5 mb-0">@Localizer["DepositUsedNoRefund"]</span>
                         <span class="h5 mb-0">฿0</span>
                     </div>
                 }
@@ -249,15 +249,15 @@ else
         <i class="ti ti-circle-check me-2"></i>
         @if (RefundAmount > 0)
         {
-            @($"Complete Return & Refund ฿{RefundAmount:N0}")
+            @Localizer["CompleteReturnRefund", FormatCurrency(RefundAmount)]
         }
         else if (RefundAmount < 0)
         {
-            @($"Complete Return & Collect ฿{Math.Abs(RefundAmount):N0}")
+            @Localizer["CompleteReturnCollect", FormatCurrency(Math.Abs(RefundAmount))]
         }
         else
         {
-            @("Complete Return")
+            @Localizer["CompleteReturn"]
         }
     </button>
 }
@@ -422,16 +422,16 @@ else
     private async Task CompleteReturn()
     {
         var message = this.RefundAmount > 0
-            ? $"Complete return and refund ฿{this.RefundAmount:N0} to {this.m_rental!.RenterName}?"
+            ? Localizer["ConfirmRefund", FormatCurrency(this.RefundAmount), this.m_rental!.RenterName]
             : this.RefundAmount < 0
-                ? $"Complete return and collect ฿{Math.Abs(this.RefundAmount):N0} from {this.m_rental!.RenterName}?"
-                : $"Complete return for {this.m_rental!.RenterName}? Deposit will be used for rental.";
+                ? Localizer["ConfirmCollect", FormatCurrency(Math.Abs(this.RefundAmount)), this.m_rental!.RenterName]
+                : Localizer["ConfirmReturnNoRefund", this.m_rental!.RenterName];
 
-        if (!await this.DialogService.ConfirmAsync(message, "Confirm Return"))
+        if (!await this.DialogService.ConfirmAsync(message, Localizer["ConfirmReturn"]))
             return;
 
         // TODO: Process return via service
-        this.ShowSuccess($"Return completed for {this.m_rental!.LicensePlate}");
+        this.ShowSuccess(Localizer["ReturnSuccess", this.m_rental!.LicensePlate]);
         this.NavigationManager.NavigateTo("/staff");
     }
 

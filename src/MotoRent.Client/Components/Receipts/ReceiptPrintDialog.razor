@@ -1,0 +1,44 @@
+@using MotoRent.Domain.Entities
+@using MotoRent.Client.Components.Receipts
+@inherits MotoRent.Client.Controls.LocalizedDialogBase<Receipt, ReceiptPrintDialog>
+@inject IJSRuntime JSRuntime
+@inject MotoRent.Services.ReceiptService ReceiptService
+
+<div class="modal-body p-0" style="max-height: 70vh; overflow-y: auto;">
+    <ReceiptDocument Receipt="@Entity" />
+</div>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
+        @Localizer["Close"]
+    </button>
+    @if (Entity.Status != ReceiptStatus.Voided)
+    {
+        <button type="button" class="btn btn-primary" @onclick="PrintReceiptAsync">
+            <i class="ti ti-printer me-1"></i>
+            @Localizer["Print"]
+        </button>
+    }
+</div>
+
+@code {
+    [CascadingParameter] private ModalInstance? ModalInstance { get; set; }
+
+    /// <summary>
+    /// Whether to record a reprint when printing.
+    /// Set to false for initial print, true for reprints.
+    /// </summary>
+    [Parameter]
+    public bool IsReprint { get; set; }
+
+    private async Task PrintReceiptAsync()
+    {
+        // Record reprint if this is a reprint
+        if (IsReprint && Entity.ReceiptId > 0)
+        {
+            await ReceiptService.RecordReprintAsync(Entity.ReceiptId, UserName);
+        }
+
+        await JSRuntime.InvokeVoidAsync("print");
+    }
+}

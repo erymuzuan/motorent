@@ -17,21 +17,6 @@ public static class ServiceCollectionExtensions
     /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddCoreRepository(this IServiceCollection services, IConfiguration configuration)
     {
-        // Configure options
-        services.Configure<CoreRepositoryOptions>(options =>
-        {
-            options.ConnectionString = configuration.GetConnectionString("MotoRent") ?? string.Empty;
-        });
-
-        // Register options instance for direct injection
-        services.AddSingleton(sp =>
-        {
-            var config = configuration;
-            return new CoreRepositoryOptions
-            {
-                ConnectionString = config.GetConnectionString("MotoRent") ?? string.Empty
-            };
-        });
 
         // Register the paging translator
         services.AddSingleton<ICorePagingTranslator, Core2012PagingTranslator>();

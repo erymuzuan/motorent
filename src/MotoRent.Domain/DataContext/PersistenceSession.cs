@@ -10,6 +10,16 @@ public sealed class PersistenceSession : IDisposable
     internal List<Entity> AttachedCollection { get; } = [];
     internal List<Entity> DeletedCollection { get; } = [];
 
+    /// <summary>
+    /// Gets the username for audit fields.
+    /// </summary>
+    public string Username => m_username;
+
+    /// <summary>
+    /// Gets the operation name for messaging/logging.
+    /// </summary>
+    public string? Operation { get; private set; }
+
     public PersistenceSession(RentalDataContext context, string username = "system")
     {
         m_context = context;
@@ -42,9 +52,10 @@ public sealed class PersistenceSession : IDisposable
         if (m_context == null)
             throw new ObjectDisposedException("Session has been completed");
 
+        this.Operation = operation;
         try
         {
-            var so = await m_context.SubmitChangesAsync(this, operation, m_username);
+            var so = await m_context.SubmitChangesAsync(this);
             AttachedCollection.Clear();
             DeletedCollection.Clear();
             m_context = null;
