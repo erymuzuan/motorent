@@ -38,25 +38,25 @@ This plan outlines the steps for implementing the visual document template desig
 
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Core Rendering Engine (QuestPDF & HTML)' (Protocol in workflow.md) ec94caf
 
-## Phase 3: Visual Designer UI & Component Library [checkpoint: pending]
+## Phase 3: Visual Designer UI & Component Library [checkpoint: 8a91487]
 
-### Task 1: Designer Backend API (PENDING)
-- [ ] Task: Create API endpoints for template management and preview generation.
-    - [ ] Write unit tests for the Template API Controller.
-    - [ ] Implement CRUD endpoints (using `IRepository<DocumentTemplate>`) and a "Preview" endpoint (PDF/HTML).
+### Task 1: Designer Backend API (COMPLETED) 8a91487
+- [x] Task: Create API endpoints for template management and preview generation. ec94caf
+    - [x] Write unit tests for the Template API Controller. ec94caf
+    - [x] Implement CRUD endpoints (using `IRepository<DocumentTemplate>`) and a "Preview" endpoint (PDF/HTML). ec94caf
 
-### Task 2: Blazor Drag-and-Drop Designer (PENDING)
-- [ ] Task: Build the visual designer interface.
-    - [ ] Implement a section-based drag-and-drop UI following `blazor-development` and `css-styling` patterns.
-    - [ ] Create a library of draggable "blocks" (Header, Text, Table, Image, Footer).
-    - [ ] Implement property editors for each block (font size, alignment, data binding) using localized labels.
+### Task 2: Blazor Drag-and-Drop Designer (COMPLETED) 8a91487
+- [x] Task: Build the visual designer interface. 8a91487
+    - [x] Implement a section-based drag-and-drop UI following `blazor-development` and `css-styling` patterns. 8a91487
+    - [x] Create a library of draggable "blocks" (Header, Text, Table, Image, Footer). 8a91487
+    - [x] Implement property editors for each block (font size, alignment, data binding) using localized labels. 8a91487
 
-### Task 3: Live Preview Component (PENDING)
-- [ ] Task: Create a dual-pane preview for HTML and PDF.
-    - [ ] Implement a toggleable preview window within the designer using `dialog-pattern` if appropriate.
-    - [ ] Integrate the PDF viewer for the QuestPDF output.
+### Task 3: Live Preview Component (COMPLETED) 8a91487
+- [x] Task: Create a dual-pane preview for HTML and PDF. 8a91487
+    - [x] Implement a toggleable preview window within the designer using `dialog-pattern` if appropriate. 8a91487
+    - [x] Integrate the PDF viewer for the QuestPDF output. 8a91487
 
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Visual Designer UI & Component Library' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Visual Designer UI & Component Library' (Protocol in workflow.md) 8a91487
 
 ## Phase 4: Workflow Integration & Default Templates [checkpoint: pending]
 
