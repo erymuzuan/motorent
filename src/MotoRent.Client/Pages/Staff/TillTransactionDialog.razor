@@ -1,12 +1,15 @@
 @using MotoRent.Domain.Models
 @using MotoRent.Client.Components.Till
+@using MotoRent.Client.Components.Receipts
 @inherits LocalizedDialogBase<object, TillTransactionDialog>
 @inject BookingService BookingService
 @inject RentalService RentalService
 @inject AccessoryService AccessoryService
 @inject InsuranceService InsuranceService
+@inject ReceiptService ReceiptService
+@inject RenterService RenterService
 
-<div class="modal-body" style="padding-bottom: 100px; min-height: 400px;">
+<div class="modal-body" style="min-height: 400px; max-height: calc(100vh - 200px); overflow-y: auto;">
     @* === STEP 1: Search & Select === *@
     @if (m_currentStep == 1)
     {
@@ -155,20 +158,176 @@
                     </div>
                 }
 
-                @* === Recent Transactions (when no search) === *@
-                @if (!m_searched && m_bookingResults.Count == 0 && m_rentalResults.Count == 0)
+                @* === Categorized Lists (when no search) === *@
+                @if (!m_searched)
                 {
-                    <div class="alert alert-info">
-                        <i class="ti ti-info-circle me-2"></i>
-                        @Localizer["SearchToStart"]
-                    </div>
-                }
-                else if (!m_searched && (m_bookingResults.Count > 0 || m_rentalResults.Count > 0))
-                {
-                    <div class="small text-muted mb-3">
-                        <i class="ti ti-history me-1"></i>
-                        @Localizer["RecentTransactions"]
-                    </div>
+                    @* Overdue Rentals - Priority! *@
+                    @if (m_overdueRentals.Count > 0)
+                    {
+                        <div class="mb-4">
+                            <h6 class="mb-2 d-flex align-items-center gap-2 text-danger">
+                                <i class="ti ti-alert-triangle"></i>
+                                @Localizer["OverdueReturns"]
+                                <span class="badge bg-danger">@m_overdueRentals.Count</span>
+                            </h6>
+                            <div class="list-group list-group-flush">
+                                @foreach (var rental in m_overdueRentals)
+                                {
+                                    <button type="button" class="list-group-item list-group-item-action py-2 bg-danger-lt"
+                                            @onclick="@(() => SelectRentalAsync(rental))">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <span class="badge bg-danger me-2 small">#@rental.RentalId</span>
+                                                <span class="fw-medium">@rental.RenterName</span>
+                                                <span class="text-muted small ms-2">@rental.VehicleName</span>
+                                            </div>
+                                            <div class="text-end">
+                                                <span class="badge bg-danger">@Localizer["Overdue"]</span>
+                                                <div class="small text-muted">@rental.ExpectedEndDate.ToString("dd MMM")</div>
+                                            </div>
+                                        </div>
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    @* Expected Check-outs Today *@
+                    @if (m_rentalsCheckingOutToday.Count > 0)
+                    {
+                        <div class="mb-4">
+                            <h6 class="mb-2 d-flex align-items-center gap-2 text-info">
+                                <i class="ti ti-logout"></i>
+                                @Localizer["ReturningToday"]
+                                <span class="badge bg-info">@m_rentalsCheckingOutToday.Count</span>
+                            </h6>
+                            <div class="list-group list-group-flush">
+                                @foreach (var rental in m_rentalsCheckingOutToday)
+                                {
+                                    <button type="button" class="list-group-item list-group-item-action py-2"
+                                            @onclick="@(() => SelectRentalAsync(rental))">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <span class="badge bg-success me-2 small">#@rental.RentalId</span>
+                                                <span class="fw-medium">@rental.RenterName</span>
+                                                <span class="text-muted small ms-2">@rental.VehicleName</span>
+                                            </div>
+                                            <span class="badge bg-info-lt text-info">@Localizer["CheckOut"]</span>
+                                        </div>
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    @* Arriving Today - Check-ins *@
+                    @if (m_bookingsArrivingToday.Count > 0)
+                    {
+                        <div class="mb-4">
+                            <h6 class="mb-2 d-flex align-items-center gap-2 text-success">
+                                <i class="ti ti-login"></i>
+                                @Localizer["ArrivingToday"]
+                                <span class="badge bg-success">@m_bookingsArrivingToday.Count</span>
+                            </h6>
+                            <div class="list-group list-group-flush">
+                                @foreach (var booking in m_bookingsArrivingToday)
+                                {
+                                    <button type="button" class="list-group-item list-group-item-action py-2"
+                                            @onclick="@(() => SelectBookingAsync(booking))">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <span class="badge bg-purple me-2 small">@booking.BookingRef</span>
+                                                <span class="fw-medium">@booking.CustomerName</span>
+                                            </div>
+                                            <div class="text-end">
+                                                <span class="badge bg-success-lt text-success">@Localizer["CheckIn"]</span>
+                                                @if (booking.BalanceDue > 0)
+                                                {
+                                                    <div class="small text-warning">@Localizer["Due"]: @FormatAmount(booking.BalanceDue)</div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    @* Awaiting Payment *@
+                    @if (m_bookingsAwaitingPayment.Count > 0)
+                    {
+                        <div class="mb-4">
+                            <h6 class="mb-2 d-flex align-items-center gap-2 text-warning">
+                                <i class="ti ti-cash"></i>
+                                @Localizer["AwaitingPayment"]
+                                <span class="badge bg-warning">@m_bookingsAwaitingPayment.Count</span>
+                            </h6>
+                            <div class="list-group list-group-flush">
+                                @foreach (var booking in m_bookingsAwaitingPayment)
+                                {
+                                    <button type="button" class="list-group-item list-group-item-action py-2"
+                                            @onclick="@(() => SelectBookingAsync(booking))">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <span class="badge bg-purple me-2 small">@booking.BookingRef</span>
+                                                <span class="fw-medium">@booking.CustomerName</span>
+                                                <span class="text-muted small ms-2">@booking.StartDate.ToString("dd MMM")</span>
+                                            </div>
+                                            <span class="text-warning fw-medium">@FormatAmount(booking.BalanceDue)</span>
+                                        </div>
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    @* Upcoming Bookings *@
+                    @if (m_upcomingBookings.Count > 0)
+                    {
+                        <div class="mb-4">
+                            <h6 class="mb-2 d-flex align-items-center gap-2 text-muted">
+                                <i class="ti ti-calendar-event"></i>
+                                @Localizer["UpcomingBookings"]
+                                <span class="badge bg-secondary">@m_upcomingBookings.Count</span>
+                            </h6>
+                            <div class="list-group list-group-flush">
+                                @foreach (var booking in m_upcomingBookings)
+                                {
+                                    <button type="button" class="list-group-item list-group-item-action py-2"
+                                            @onclick="@(() => SelectBookingAsync(booking))">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <span class="badge bg-purple me-2 small">@booking.BookingRef</span>
+                                                <span class="fw-medium">@booking.CustomerName</span>
+                                            </div>
+                                            <div class="text-end">
+                                                <span class="small text-muted">@booking.StartDate.ToString("dd MMM")</span>
+                                                @if (booking.BalanceDue > 0)
+                                                {
+                                                    <div class="small text-warning">@FormatAmount(booking.BalanceDue)</div>
+                                                }
+                                                else
+                                                {
+                                                    <div class="small text-success">@Localizer["Paid"]</div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    @* Empty state when no items at all *@
+                    @if (m_bookingsArrivingToday.Count == 0 && m_bookingsAwaitingPayment.Count == 0 &&
+                         m_upcomingBookings.Count == 0 && m_rentalsCheckingOutToday.Count == 0 && m_overdueRentals.Count == 0)
+                    {
+                        <div class="text-center py-5 text-muted">
+                            <i class="ti ti-calendar-off fs-1 mb-3 d-block"></i>
+                            <div class="fw-medium mb-1">@Localizer["NoTransactionsToday"]</div>
+                            <div class="small">@Localizer["SearchToStart"]</div>
+                        </div>
+                    }
                 }
             }
         }
@@ -450,13 +609,14 @@
 </div>
 
 @* === Footer === *@
-<div class="modal-footer sticky-bottom bg-white border-top" style="z-index: 10;">
+<div class="modal-footer d-flex justify-content-between">
     @if (m_currentStep == 1)
     {
         @* Step 1 footer *@
         <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
             @Localizer["Cancel"]
         </button>
+        <span></span> @* Spacer for justify-content-between *@
     }
     else if (m_currentStep == 2)
     {
@@ -476,6 +636,7 @@
         <button type="button" class="btn btn-ghost-secondary" @onclick="GoBackToItemConfirmation">
             <i class="ti ti-arrow-left"></i> @Localizer["BackToItems"]
         </button>
+        <span></span> @* Spacer for justify-content-between *@
     }
 </div>
 
@@ -494,6 +655,13 @@
     private bool m_loading;
     private bool m_searching;
     private bool m_searched;
+
+    // Categorized lists for default view
+    private List<Booking> m_bookingsAwaitingPayment = [];
+    private List<Booking> m_bookingsArrivingToday = [];
+    private List<Booking> m_upcomingBookings = [];
+    private List<Rental> m_rentalsCheckingOutToday = [];
+    private List<Rental> m_overdueRentals = [];
 
     // Selected entity (Step 2)
     private Booking? m_selectedBooking;
@@ -530,48 +698,91 @@
     }
 
     /// <summary>
-    /// Loads recent bookings and active rentals on dialog open.
-    /// Shows items from the last 7 days that are actionable.
+    /// Loads categorized transactions on dialog open.
+    /// Shows: bookings awaiting payment, arriving today, upcoming, and rentals checking out.
     /// </summary>
     private async Task LoadRecentTransactionsAsync()
     {
         try
         {
             m_loading = true;
-            m_bookingResults.Clear();
-            m_rentalResults.Clear();
+            m_bookingsAwaitingPayment.Clear();
+            m_bookingsArrivingToday.Clear();
+            m_upcomingBookings.Clear();
+            m_rentalsCheckingOutToday.Clear();
+            m_overdueRentals.Clear();
 
-            // Load recent bookings (last 7 days) that are actionable
-            var fromDate = DateTimeOffset.Now.AddDays(-7);
+            var today = DateTimeOffset.Now.Date;
+            var todayEnd = today.AddDays(1);
+
+            // Load pending and confirmed bookings (next 7 days)
             var bookingsTask = BookingService.GetBookingsAsync(
-                preferredShopId: null,
+                preferredShopId: null, // All shops - user may need to handle cross-shop
                 status: null,
-                fromDate: fromDate,
-                toDate: null,
+                fromDate: today.AddDays(-1), // Include yesterday for late arrivals
+                toDate: today.AddDays(7),
                 searchTerm: null,
                 page: 1,
-                pageSize: 20);
+                pageSize: 50);
 
-            // Load active rentals
+            // Load active rentals (all active, not just this shop)
             var rentalsTask = RentalService.GetRentalsAsync(
-                shopId: ShopId,
+                shopId: 0, // All shops
                 status: "Active",
                 searchTerm: null,
                 fromDate: null,
                 toDate: null,
                 page: 1,
-                pageSize: 20);
+                pageSize: 50);
 
             await Task.WhenAll(bookingsTask, rentalsTask);
 
-            // Filter bookings to only actionable ones (with balance due or pending check-in)
-            var bookings = await bookingsTask;
-            m_bookingResults.AddRange(bookings.ItemCollection
-                .Where(b => b.CanReceivePayment || b.Status == BookingStatus.Confirmed));
+            var bookings = (await bookingsTask).ItemCollection.ToList();
+            var rentals = (await rentalsTask).ItemCollection.ToList();
 
-            // Add active rentals
-            var rentals = await rentalsTask;
-            m_rentalResults.AddRange(rentals.ItemCollection.Where(r => r.Status == "Active"));
+            // Categorize bookings
+            foreach (var booking in bookings.Where(b => b.Status != BookingStatus.Cancelled && b.Status != BookingStatus.Completed))
+            {
+                // Arriving today (pending/confirmed bookings starting today)
+                if ((booking.Status == BookingStatus.Pending || booking.Status == BookingStatus.Confirmed) &&
+                    booking.StartDate.Date == today)
+                {
+                    m_bookingsArrivingToday.Add(booking);
+                }
+                // Awaiting payment (has balance due)
+                else if (booking.BalanceDue > 0)
+                {
+                    m_bookingsAwaitingPayment.Add(booking);
+                }
+                // Upcoming bookings (pending/confirmed, starting in the future)
+                else if ((booking.Status == BookingStatus.Pending || booking.Status == BookingStatus.Confirmed) &&
+                         booking.StartDate.Date > today)
+                {
+                    m_upcomingBookings.Add(booking);
+                }
+            }
+
+            // Categorize rentals
+            foreach (var rental in rentals.Where(r => r.Status == "Active"))
+            {
+                // Overdue rentals (should have returned already)
+                if (rental.ExpectedEndDate.Date < today)
+                {
+                    m_overdueRentals.Add(rental);
+                }
+                // Checking out today
+                else if (rental.ExpectedEndDate.Date == today)
+                {
+                    m_rentalsCheckingOutToday.Add(rental);
+                }
+            }
+
+            // Sort lists by date
+            m_bookingsArrivingToday = m_bookingsArrivingToday.OrderBy(b => b.StartDate).ToList();
+            m_bookingsAwaitingPayment = m_bookingsAwaitingPayment.OrderBy(b => b.StartDate).ToList();
+            m_upcomingBookings = m_upcomingBookings.OrderBy(b => b.StartDate).Take(5).ToList();
+            m_overdueRentals = m_overdueRentals.OrderBy(r => r.ExpectedEndDate).ToList();
+            m_rentalsCheckingOutToday = m_rentalsCheckingOutToday.OrderBy(r => r.ExpectedEndDate).ToList();
         }
         catch (Exception ex)
         {
@@ -1032,12 +1243,76 @@
 
     /// <summary>
     /// Handles payment completion from PaymentTerminalPanel.
-    /// Builds the final TransactionSearchResult and closes the dialog.
+    /// Records payment to booking, generates receipt, and shows print dialog.
     /// </summary>
-    private void OnPaymentComplete(List<ReceiptPayment> payments)
+    private async Task OnPaymentComplete(List<ReceiptPayment> payments)
     {
+        var totalPaymentAmount = payments.Sum(p => p.AmountInBaseCurrency);
+
+        // Record payment to booking if applicable
+        if (m_selectedBooking is not null && totalPaymentAmount > 0)
+        {
+            // Record each payment to the booking
+            foreach (var payment in payments)
+            {
+                var bookingPayment = new BookingPayment
+                {
+                    Amount = payment.AmountInBaseCurrency,
+                    PaymentMethod = payment.Method,
+                    PaymentType = m_transactionType == TillTransactionType.BookingDeposit
+                        ? BookingPaymentType.Deposit
+                        : BookingPaymentType.Partial,
+                    TransactionRef = payment.Reference,
+                    PaidAt = DateTimeOffset.Now
+                };
+
+                var result = await BookingService.RecordPaymentAsync(
+                    m_selectedBooking.BookingId,
+                    bookingPayment,
+                    UserName);
+
+                if (!result.Success)
+                {
+                    Logger.LogError("Failed to record payment to booking: {Message}", result.Message);
+                }
+            }
+
+            // Reload booking to get updated AmountPaid
+            m_selectedBooking = await BookingService.GetBookingByIdAsync(m_selectedBooking.BookingId);
+        }
+
+        // Generate receipt
+        Receipt? receipt = null;
+        if (m_selectedBooking is not null)
+        {
+            // Get renter if linked
+            Renter? renter = null;
+            if (m_selectedBooking.RenterId.HasValue)
+            {
+                renter = await RenterService.GetRenterByIdAsync(m_selectedBooking.RenterId.Value);
+            }
+
+            receipt = await ReceiptService.GenerateBookingDepositReceiptAsync(
+                m_selectedBooking.BookingId,
+                m_selectedBooking,
+                renter,
+                SessionId,
+                payments,
+                UserName);
+        }
+
+        // Show receipt print dialog if receipt was generated
+        if (receipt is not null)
+        {
+            await this.DialogService.Create<ReceiptPrintDialog>(Localizer["PaymentComplete"])
+                .WithParameter(x => x.Entity, receipt)
+                .WithParameter(x => x.IsReprint, false)
+                .WithSize(ModalSize.Large)
+                .ShowDialogAsync();
+        }
+
         // Build the final transaction result
-        var result = new TransactionSearchResult
+        var transactionResult = new TransactionSearchResult
         {
             EntityType = m_selectedBooking is not null ? TransactionEntityType.Booking : TransactionEntityType.Rental,
             Booking = m_selectedBooking,
@@ -1046,10 +1321,10 @@
             LineItems = m_lineItems.ToList(),
             GrandTotal = m_grandTotal,
             Payments = payments,
-            Change = payments.Sum(p => p.AmountInBaseCurrency) - m_grandTotal
+            Change = totalPaymentAmount - m_grandTotal
         };
 
-        this.ModalService.Close(ModalResult.Ok(result));
+        this.ModalService.Close(ModalResult.Ok(transactionResult));
     }
 
     /// <summary>
