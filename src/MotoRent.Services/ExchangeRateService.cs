@@ -1,5 +1,6 @@
 using MotoRent.Domain.DataContext;
 using MotoRent.Domain.Entities;
+using MotoRent.Services.ExchangeRateProviders;
 
 namespace MotoRent.Services;
 
@@ -7,9 +8,12 @@ namespace MotoRent.Services;
 /// Service for managing exchange rates.
 /// Provides CRUD operations for rates plus currency conversion.
 /// </summary>
-public partial class ExchangeRateService(RentalDataContext context)
+public partial class ExchangeRateService(
+    RentalDataContext context,
+    IEnumerable<IExchangeRateProvider> providers)
 {
     private RentalDataContext Context { get; } = context;
+    private IEnumerable<IExchangeRateProvider> m_providers = providers;
 
     // Rate Retrieval
 

@@ -109,19 +109,37 @@ public class MamyExchangeProvider : IExchangeRateProvider
             }
             else if (root.ValueKind == JsonValueKind.Object)
             {
-                // Some APIs wrap in an object with "data" or "rates" property
-                if (root.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Array)
+                // Handle various API wrapper structures
+                JsonElement? ratesArray = null;
+
+                // Check for { "data": { "rates": [...] } } structure
+                if (root.TryGetProperty("data", out var data))
                 {
-                    foreach (var element in data.EnumerateArray())
+                    if (data.ValueKind == JsonValueKind.Array)
                     {
-                        var rate = ParseRateElement(element);
-                        if (rate != null)
-                            rates.Add(rate);
+                        ratesArray = data;
+                    }
+                    else if (data.ValueKind == JsonValueKind.Object &&
+                             data.TryGetProperty("rates", out var nestedRates) &&
+                             nestedRates.ValueKind == JsonValueKind.Array)
+                    {
+                        ratesArray = nestedRates;
                     }
                 }
-                else if (root.TryGetProperty("rates", out var ratesArray) && ratesArray.ValueKind == JsonValueKind.Array)
+                // Check for { "rates": [...] } structure
+                else if (root.TryGetProperty("rates", out var directRates) && directRates.ValueKind == JsonValueKind.Array)
                 {
-                    foreach (var element in ratesArray.EnumerateArray())
+                    ratesArray = directRates;
+                }
+                // Check for { "results": [...] } structure
+                else if (root.TryGetProperty("results", out var results) && results.ValueKind == JsonValueKind.Array)
+                {
+                    ratesArray = results;
+                }
+
+                if (ratesArray.HasValue)
+                {
+                    foreach (var element in ratesArray.Value.EnumerateArray())
                     {
                         var rate = ParseRateElement(element);
                         if (rate != null)
@@ -147,8 +165,8 @@ public class MamyExchangeProvider : IExchangeRateProvider
             if (string.IsNullOrEmpty(currency))
                 return null;
 
-            var buying = GetDecimalProperty(element, "buying", "Buying", "buy", "Buy", "buyRate", "BuyRate");
-            var selling = GetDecimalProperty(element, "selling", "Selling", "sell", "Sell", "sellRate", "SellRate");
+            var buying = GetDecimalProperty(element, "buying", "Buying", "buy", "Buy", "buyRate", "BuyRate", "buying_rate", "buyingRate");
+            var selling = GetDecimalProperty(element, "selling", "Selling", "sell", "Sell", "sellRate", "SellRate", "selling_rate", "sellingRate");
 
             if (buying == 0 && selling == 0)
                 return null;
@@ -211,8 +229,19 @@ public class MamyExchangeProvider : IExchangeRateProvider
             {
                 if (prop.ValueKind == JsonValueKind.Number && prop.TryGetDecimal(out var d))
                     return d;
-                if (prop.ValueKind == JsonValueKind.String && decimal.TryParse(prop.GetString(), out d))
-                    return d;
+                if (prop.ValueKind == JsonValueKind.String)
+                {
+                    var str = prop.GetString();
+                    if (!string.IsNullOrEmpty(str))
+                    {
+                        // Handle rate ranges like "30.28–30.98" or "30.28-30.98"
+                        // Take the first (lower) value for buying, which is more conservative
+                        var separators = new[] { '–', '-', '~' };
+                        var parts = str.Split(separators, StringSplitOptions.RemoveEmptyEntries);
+                        if (parts.Length > 0 && decimal.TryParse(parts[0].Trim(), out d))
+                            return d;
+                    }
+                }
             }
         }
         return 0;
