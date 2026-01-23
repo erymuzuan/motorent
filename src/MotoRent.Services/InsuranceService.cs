@@ -74,9 +74,10 @@ public class InsuranceService(RentalDataContext context)
 
     public async Task<Dictionary<bool, int>> GetActiveCountsAsync()
     {
-        var all = await this.Context.LoadAsync(this.Context.CreateQuery<Insurance>(), 1, 1000, false);
-        return all.ItemCollection
-            .GroupBy(i => i.IsActive)
-            .ToDictionary(g => g.Key, g => g.Count());
+        // Use SQL GROUP BY COUNT instead of loading all records
+        var query = this.Context.CreateQuery<Insurance>();
+        var groupCounts = await this.Context.GetGroupByCountAsync(query, i => i.IsActive);
+
+        return groupCounts.ToDictionary(g => g.Key, g => g.Count);
     }
 }

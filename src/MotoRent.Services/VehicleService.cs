@@ -191,11 +191,9 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
             query = query.Where(v => v.VehicleType == vehicleType.Value);
         }
 
-        var allVehicles = await this.Context.LoadAsync(query, page: 1, size: 1000, includeTotalRows: false);
+        var groupCounts = await this.Context.GetGroupByCountAsync(query, v => v.Status);
 
-        return allVehicles.ItemCollection
-            .GroupBy(v => v.Status)
-            .ToDictionary(g => g.Key, g => g.Count());
+        return groupCounts.ToDictionary(g => g.Key, g => g.Count);
     }
 
     /// <summary>
@@ -204,13 +202,10 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
     public async Task<Dictionary<VehicleType, int>> GetTypeCountsAsync(int shopId)
     {
         // shopId parameter kept for backwards compatibility but ignored
-        var allVehicles = await this.Context.LoadAsync(
-            this.Context.CreateQuery<Vehicle>(),
-            page: 1, size: 1000, includeTotalRows: false);
+        var query = this.Context.CreateQuery<Vehicle>();
+        var groupCounts = await this.Context.GetGroupByCountAsync(query, v => v.VehicleType);
 
-        return allVehicles.ItemCollection
-            .GroupBy(v => v.VehicleType)
-            .ToDictionary(g => g.Key, g => g.Count());
+        return groupCounts.ToDictionary(g => g.Key, g => g.Count);
     }
 
     /// <summary>

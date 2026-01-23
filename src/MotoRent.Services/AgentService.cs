@@ -22,7 +22,7 @@ public class AgentService
     /// </summary>
     public async Task<Agent?> GetAgentByIdAsync(int agentId)
     {
-        return await m_context.LoadOneAsync<Agent>(a => a.AgentId == agentId);
+        return await this.m_context.LoadOneAsync<Agent>(a => a.AgentId == agentId);
     }
 
     /// <summary>
@@ -30,7 +30,7 @@ public class AgentService
     /// </summary>
     public async Task<Agent?> GetAgentByCodeAsync(string agentCode)
     {
-        return await m_context.LoadOneAsync<Agent>(a => a.AgentCode == agentCode);
+        return await this.m_context.LoadOneAsync<Agent>(a => a.AgentCode == agentCode);
     }
 
     /// <summary>
@@ -43,7 +43,7 @@ public class AgentService
         int page = 1,
         int pageSize = 20)
     {
-        var query = m_context.CreateQuery<Agent>();
+        var query = this.m_context.CreateQuery<Agent>();
 
         if (!string.IsNullOrWhiteSpace(status))
         {
@@ -57,7 +57,7 @@ public class AgentService
 
         query = query.OrderBy(a => a.Name);
 
-        return await m_context.LoadAsync(query, page, pageSize, includeTotalRows: true);
+        return await this.m_context.LoadAsync(query, page, pageSize, includeTotalRows: true);
     }
 
     /// <summary>
@@ -65,11 +65,11 @@ public class AgentService
     /// </summary>
     public async Task<List<Agent>> GetActiveAgentsAsync()
     {
-        var query = m_context.CreateQuery<Agent>()
+        var query = this.m_context.CreateQuery<Agent>()
             .Where(a => a.Status == AgentStatus.Active)
             .OrderBy(a => a.Name);
 
-        var result = await m_context.LoadAsync(query, 1, 1000, includeTotalRows: false);
+        var result = await this.m_context.LoadAsync(query, 1, 1000, includeTotalRows: false);
         return result.ItemCollection.ToList();
     }
 
@@ -91,7 +91,7 @@ public class AgentService
             return SubmitOperation.CreateFailure($"Agent code '{agent.AgentCode}' already exists");
         }
 
-        using var session = m_context.OpenSession(username);
+        using var session = this.m_context.OpenSession(username);
         session.Attach(agent);
         return await session.SubmitChanges("CreateAgent");
     }
@@ -101,7 +101,7 @@ public class AgentService
     /// </summary>
     public async Task<SubmitOperation> UpdateAgentAsync(Agent agent, string username)
     {
-        using var session = m_context.OpenSession(username);
+        using var session = this.m_context.OpenSession(username);
         session.Attach(agent);
         return await session.SubmitChanges("UpdateAgent");
     }
@@ -112,9 +112,9 @@ public class AgentService
     public async Task<(bool CanDelete, string? Reason)> CanDeleteAgentAsync(int agentId)
     {
         // Check for associated commissions
-        var commissionQuery = m_context.CreateQuery<AgentCommission>()
+        var commissionQuery = this.m_context.CreateQuery<AgentCommission>()
             .Where(c => c.AgentId == agentId);
-        var commissionCount = await m_context.GetCountAsync(commissionQuery);
+        var commissionCount = await this.m_context.GetCountAsync(commissionQuery);
 
         if (commissionCount > 0)
         {
@@ -122,9 +122,9 @@ public class AgentService
         }
 
         // Check for associated bookings
-        var bookingQuery = m_context.CreateQuery<Booking>()
+        var bookingQuery = this.m_context.CreateQuery<Booking>()
             .Where(b => b.AgentId == agentId);
-        var bookingCount = await m_context.GetCountAsync(bookingQuery);
+        var bookingCount = await this.m_context.GetCountAsync(bookingQuery);
 
         if (bookingCount > 0)
         {
@@ -151,7 +151,7 @@ public class AgentService
             return SubmitOperation.CreateFailure(reason ?? "Agent cannot be deleted");
         }
 
-        using var session = m_context.OpenSession(username);
+        using var session = this.m_context.OpenSession(username);
         session.Delete(agent);
         return await session.SubmitChanges("DeleteAgent");
     }
@@ -165,10 +165,10 @@ public class AgentService
         var prefix = GetAgentCodePrefix(agentType);
 
         // Find highest existing number for this prefix
-        var query = m_context.CreateQuery<Agent>()
+        var query = this.m_context.CreateQuery<Agent>()
             .Where(a => a.AgentCode.StartsWith(prefix));
 
-        var result = await m_context.LoadAsync(query, 1, 1000, includeTotalRows: false);
+        var result = await this.m_context.LoadAsync(query, 1, 1000, includeTotalRows: false);
         var existingCodes = result.ItemCollection
             .Select(a => a.AgentCode)
             .ToList();
@@ -271,41 +271,38 @@ public class AgentService
     /// </summary>
     public async Task<SubmitOperation> UpdateAgentStatisticsAsync(int agentId, string username)
     {
-        var agent = await GetAgentByIdAsync(agentId);
+        var agent = await this.GetAgentByIdAsync(agentId);
         if (agent == null)
         {
             return SubmitOperation.CreateFailure("Agent not found");
         }
 
-        // Get all commissions for this agent
-        var commissionQuery = m_context.CreateQuery<AgentCommission>()
-            .Where(c => c.AgentId == agentId);
+        // Get total bookings count
+        agent.TotalBookings = await this.m_context.GetCountAsync<AgentCommission>(
+            c => c.AgentId == agentId);
 
-        var commissionResult = await m_context.LoadAsync(commissionQuery, 1, 10000, includeTotalRows: true);
-        var commissions = commissionResult.ItemCollection.ToList();
+        // Get total commission earned (excluding voided)
+        var earnedQuery = this.m_context.CreateQuery<AgentCommission>()
+            .Where(c => c.AgentId == agentId)
+            .Where(c => c.Status != AgentCommissionStatus.Voided);
+        agent.TotalCommissionEarned = await this.m_context.GetSumAsync(earnedQuery, c => c.CommissionAmount);
 
-        // Calculate totals
-        agent.TotalBookings = commissions.Count;
-        agent.TotalCommissionEarned = commissions
-            .Where(c => c.Status != AgentCommissionStatus.Voided)
-            .Sum(c => c.CommissionAmount);
-        agent.TotalCommissionPaid = commissions
-            .Where(c => c.Status == AgentCommissionStatus.Paid)
-            .Sum(c => c.CommissionAmount);
+        // Get total commission paid
+        var paidQuery = this.m_context.CreateQuery<AgentCommission>()
+            .Where(c => c.AgentId == agentId)
+            .Where(c => c.Status == AgentCommissionStatus.Paid);
+        agent.TotalCommissionPaid = await this.m_context.GetSumAsync(paidQuery, c => c.CommissionAmount);
+
         agent.CommissionBalance = agent.TotalCommissionEarned - agent.TotalCommissionPaid;
 
-        // Update last booking date
-        var latestCommission = commissions
-            .Where(c => c.Status != AgentCommissionStatus.Voided)
-            .OrderByDescending(c => c.CreatedTimestamp)
-            .FirstOrDefault();
-
-        if (latestCommission != null)
+        // Get last booking date (max created timestamp for non-voided)
+        var lastBookingDate = await this.m_context.GetMaxAsync(earnedQuery, c => c.CreatedTimestamp);
+        if (lastBookingDate != default)
         {
-            agent.LastBookingDate = latestCommission.CreatedTimestamp;
+            agent.LastBookingDate = lastBookingDate;
         }
 
-        using var session = m_context.OpenSession(username);
+        using var session = this.m_context.OpenSession(username);
         session.Attach(agent);
         return await session.SubmitChanges("UpdateStatistics");
     }
@@ -315,40 +312,60 @@ public class AgentService
     /// </summary>
     public async Task<AgentStatistics> GetAgentStatisticsAsync(int agentId, DateTimeOffset? from, DateTimeOffset? to)
     {
-        var agent = await GetAgentByIdAsync(agentId);
+        var agent = await this.GetAgentByIdAsync(agentId);
         if (agent == null)
         {
             return new AgentStatistics();
         }
 
-        var query = m_context.CreateQuery<AgentCommission>()
+        // Build base query with date filters
+        var baseQuery = this.m_context.CreateQuery<AgentCommission>()
             .Where(c => c.AgentId == agentId)
             .Where(c => c.Status != AgentCommissionStatus.Voided);
 
         if (from.HasValue)
         {
-            query = query.Where(c => c.CreatedTimestamp >= from.Value);
+            baseQuery = baseQuery.Where(c => c.CreatedTimestamp >= from.Value);
         }
 
         if (to.HasValue)
         {
-            query = query.Where(c => c.CreatedTimestamp <= to.Value);
+            baseQuery = baseQuery.Where(c => c.CreatedTimestamp <= to.Value);
         }
 
-        var result = await m_context.LoadAsync(query, 1, 10000, includeTotalRows: true);
-        var commissions = result.ItemCollection.ToList();
+        // Get counts and sums using SQL aggregates
+        var totalBookings = await this.m_context.GetCountAsync(baseQuery);
+        var totalCommissionEarned = await this.m_context.GetSumAsync(baseQuery, c => c.CommissionAmount);
+        var totalBookingValue = await this.m_context.GetSumAsync(baseQuery, c => c.BookingTotal);
+
+        // Get paid commission
+        var paidQuery = baseQuery.Where(c => c.Status == AgentCommissionStatus.Paid);
+        var totalCommissionPaid = await this.m_context.GetSumAsync(paidQuery, c => c.CommissionAmount);
+
+        // Get pending commission
+        var pendingQuery = baseQuery.Where(c => c.Status == AgentCommissionStatus.Pending);
+        var pendingCommission = await this.m_context.GetSumAsync(pendingQuery, c => c.CommissionAmount);
+
+        // Get approved commission
+        var approvedQuery = baseQuery.Where(c => c.Status == AgentCommissionStatus.Approved);
+        var approvedCommission = await this.m_context.GetSumAsync(approvedQuery, c => c.CommissionAmount);
+
+        // Get average using SQL
+        var averageBookingValue = totalBookings > 0
+            ? await this.m_context.GetAverageAsync(baseQuery, c => c.BookingTotal)
+            : 0m;
 
         return new AgentStatistics
         {
             AgentId = agentId,
             AgentName = agent.Name,
-            TotalBookings = commissions.Count,
-            TotalCommissionEarned = commissions.Sum(c => c.CommissionAmount),
-            TotalCommissionPaid = commissions.Where(c => c.Status == AgentCommissionStatus.Paid).Sum(c => c.CommissionAmount),
-            PendingCommission = commissions.Where(c => c.Status == AgentCommissionStatus.Pending).Sum(c => c.CommissionAmount),
-            ApprovedCommission = commissions.Where(c => c.Status == AgentCommissionStatus.Approved).Sum(c => c.CommissionAmount),
-            TotalBookingValue = commissions.Sum(c => c.BookingTotal),
-            AverageBookingValue = commissions.Count > 0 ? commissions.Average(c => c.BookingTotal) : 0,
+            TotalBookings = totalBookings,
+            TotalCommissionEarned = totalCommissionEarned,
+            TotalCommissionPaid = totalCommissionPaid,
+            PendingCommission = pendingCommission,
+            ApprovedCommission = approvedCommission,
+            TotalBookingValue = totalBookingValue,
+            AverageBookingValue = averageBookingValue,
             FromDate = from,
             ToDate = to
         };

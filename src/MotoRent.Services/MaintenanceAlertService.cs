@@ -19,18 +19,13 @@ public class MaintenanceAlertService(RentalDataContext context, MaintenanceServi
     /// <returns>Number of new alerts created.</returns>
     public async Task<int> TriggerAlertsAsync(string username)
     {
-        // 1. Get all vehicles
+        // 1. Get all non-retired vehicles
         // Note: In a large system, we might want to batch this by shop or last check date.
-        // Load all vehicles first, then filter in memory since Status is stored as string in DB
-        // but deserialized as enum in the entity.
-        var allVehiclesResult = await this.Context.LoadAsync(
-            this.Context.CreateQuery<Vehicle>(),
-            page: 1, size: 5000, includeTotalRows: false);
+        var vehiclesQuery = this.Context.CreateQuery<Vehicle>()
+            .Where(v => v.Status != VehicleStatus.Retired);
 
-        // Filter out retired vehicles in memory after deserialization
-        var vehicles = allVehiclesResult.ItemCollection
-            .Where(v => v.Status != VehicleStatus.Retired)
-            .ToList();
+        var vehiclesResult = await this.Context.LoadAsync(vehiclesQuery, page: 1, size: 5000, includeTotalRows: false);
+        var vehicles = vehiclesResult.ItemCollection;
 
         int alertsCreated = 0;
         var today = DateTimeOffset.UtcNow;

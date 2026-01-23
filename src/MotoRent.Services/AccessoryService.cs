@@ -78,12 +78,12 @@ public class AccessoryService(RentalDataContext context)
 
     public async Task<(int Total, int IncludedFree)> GetAccessoryCountsAsync(int shopId)
     {
-        var allAccessories = await this.Context.LoadAsync(
-            this.Context.CreateQuery<Accessory>().Where(a => a.ShopId == shopId),
-            page: 1, size: 1000, includeTotalRows: false);
+        // Get total count using SQL COUNT
+        var total = await this.Context.GetCountAsync<Accessory>(a => a.ShopId == shopId);
 
-        var total = allAccessories.ItemCollection.Count;
-        var includedFree = allAccessories.ItemCollection.Count(a => a.IsIncluded);
+        // Get included free count using SQL COUNT with filter
+        var includedFree = await this.Context.GetCountAsync<Accessory>(
+            a => a.ShopId == shopId && a.IsIncluded);
 
         return (total, includedFree);
     }

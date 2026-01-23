@@ -24,12 +24,12 @@ public class DamageReportService(RentalDataContext context)
         int pageSize = 20)
     {
         // Get rental IDs for the shop
-        var rentalIds = await Context.GetDistinctAsync<Rental, int>(
+        var rentalIds = await this.Context.GetDistinctAsync<Rental, int>(
             r => r.RentedFromShopId == shopId,
             r => r.RentalId);
 
         // Build query with all filters at SQL level
-        var query = Context.CreateQuery<DamageReport>()
+        var query = this.Context.CreateQuery<DamageReport>()
             .Where(d => rentalIds.IsInList(d.RentalId));
 
         if (!string.IsNullOrWhiteSpace(status))
@@ -54,7 +54,7 @@ public class DamageReportService(RentalDataContext context)
 
         query = query.OrderByDescending(d => d.DamageReportId);
 
-        return await Context.LoadAsync(query, page, pageSize, includeTotalRows: true);
+        return await this.Context.LoadAsync(query, page, pageSize, includeTotalRows: true);
     }
 
     /// <summary>
@@ -62,7 +62,7 @@ public class DamageReportService(RentalDataContext context)
     /// </summary>
     public async Task<DamageReport?> GetByIdAsync(int damageReportId)
     {
-        return await Context.LoadOneAsync<DamageReport>(d => d.DamageReportId == damageReportId);
+        return await this.Context.LoadOneAsync<DamageReport>(d => d.DamageReportId == damageReportId);
     }
 
     /// <summary>
@@ -70,8 +70,8 @@ public class DamageReportService(RentalDataContext context)
     /// </summary>
     public async Task<List<DamageReport>> GetByRentalAsync(int rentalId)
     {
-        var result = await Context.LoadAsync(
-            Context.CreateQuery<DamageReport>().Where(d => d.RentalId == rentalId),
+        var result = await this.Context.LoadAsync(
+            this.Context.CreateQuery<DamageReport>().Where(d => d.RentalId == rentalId),
             page: 1, size: 100, includeTotalRows: false);
 
         return result.ItemCollection;
@@ -83,8 +83,8 @@ public class DamageReportService(RentalDataContext context)
     public async Task<List<DamageReport>> GetByVehicleAsync(int vehicleId)
     {
         // DamageReport may have MotorbikeId for backwards compatibility
-        var result = await Context.LoadAsync(
-            Context.CreateQuery<DamageReport>().Where(d => d.MotorbikeId == vehicleId),
+        var result = await this.Context.LoadAsync(
+            this.Context.CreateQuery<DamageReport>().Where(d => d.MotorbikeId == vehicleId),
             page: 1, size: 100, includeTotalRows: false);
 
         return result.ItemCollection.OrderByDescending(d => d.ReportedOn).ToList();
@@ -108,12 +108,12 @@ public class DamageReportService(RentalDataContext context)
         int pageSize = 50)
     {
         // Get rental IDs for the shop
-        var rentalIds = await Context.GetDistinctAsync<Rental, int>(
+        var rentalIds = await this.Context.GetDistinctAsync<Rental, int>(
             r => r.RentedFromShopId == shopId,
             r => r.RentalId);
 
         // Build damage reports query with SQL-level filters
-        var damageReportsQuery = Context.CreateQuery<DamageReport>()
+        var damageReportsQuery = this.Context.CreateQuery<DamageReport>()
             .Where(d => rentalIds.IsInList(d.RentalId));
 
         if (!string.IsNullOrWhiteSpace(status))
@@ -123,7 +123,7 @@ public class DamageReportService(RentalDataContext context)
 
         damageReportsQuery = damageReportsQuery.OrderByDescending(d => d.DamageReportId);
 
-        var damageReportsResult = await Context.LoadAsync(damageReportsQuery, page, pageSize, includeTotalRows: false);
+        var damageReportsResult = await this.Context.LoadAsync(damageReportsQuery, page, pageSize, includeTotalRows: false);
         var damageReportsList = damageReportsResult.ItemCollection;
 
         if (damageReportsList.Count == 0)
@@ -133,26 +133,26 @@ public class DamageReportService(RentalDataContext context)
 
         // Get the relevant rentals for the damage reports
         var relevantRentalIds = damageReportsList.Select(d => d.RentalId).Distinct().ToList();
-        var rentalsResult = await Context.LoadAsync(
-            Context.CreateQuery<Rental>().Where(r => relevantRentalIds.IsInList(r.RentalId)),
+        var rentalsResult = await this.Context.LoadAsync(
+            this.Context.CreateQuery<Rental>().Where(r => relevantRentalIds.IsInList(r.RentalId)),
             page: 1, size: 1000, includeTotalRows: false);
 
         // Get renter info using IsInList
         var renterIds = rentalsResult.ItemCollection.Select(r => r.RenterId).Distinct().ToList();
-        var rentersResult = await Context.LoadAsync(
-            Context.CreateQuery<Renter>().Where(r => renterIds.IsInList(r.RenterId)),
+        var rentersResult = await this.Context.LoadAsync(
+            this.Context.CreateQuery<Renter>().Where(r => renterIds.IsInList(r.RenterId)),
             page: 1, size: 1000, includeTotalRows: false);
 
         // Get vehicle info using IsInList
         var vehicleIds = rentalsResult.ItemCollection.Select(r => r.VehicleId).Distinct().ToList();
-        var vehiclesResult = await Context.LoadAsync(
-            Context.CreateQuery<Vehicle>().Where(v => vehicleIds.IsInList(v.VehicleId)),
+        var vehiclesResult = await this.Context.LoadAsync(
+            this.Context.CreateQuery<Vehicle>().Where(v => vehicleIds.IsInList(v.VehicleId)),
             page: 1, size: 1000, includeTotalRows: false);
 
         // Get damage photos using IsInList
         var damageReportIds = damageReportsList.Select(d => d.DamageReportId).ToList();
-        var photosResult = await Context.LoadAsync(
-            Context.CreateQuery<DamagePhoto>().Where(p => damageReportIds.IsInList(p.DamageReportId)),
+        var photosResult = await this.Context.LoadAsync(
+            this.Context.CreateQuery<DamagePhoto>().Where(p => damageReportIds.IsInList(p.DamageReportId)),
             page: 1, size: 1000, includeTotalRows: false);
 
         var rentersDict = rentersResult.ItemCollection.ToDictionary(r => r.RenterId);
@@ -197,7 +197,7 @@ public class DamageReportService(RentalDataContext context)
         if (!validStatuses.Contains(newStatus))
             return SubmitOperation.CreateFailure($"Invalid status. Valid values: {string.Join(", ", validStatuses)}");
 
-        using var session = Context.OpenSession(username);
+        using var session = this.Context.OpenSession(username);
 
         damageReport.Status = newStatus;
         if (actualCost.HasValue)
@@ -215,8 +215,8 @@ public class DamageReportService(RentalDataContext context)
     /// </summary>
     public async Task<List<DamagePhoto>> GetPhotosAsync(int damageReportId)
     {
-        var result = await Context.LoadAsync(
-            Context.CreateQuery<DamagePhoto>().Where(p => p.DamageReportId == damageReportId),
+        var result = await this.Context.LoadAsync(
+            this.Context.CreateQuery<DamagePhoto>().Where(p => p.DamageReportId == damageReportId),
             page: 1, size: 100, includeTotalRows: false);
 
         return result.ItemCollection;
@@ -236,7 +236,7 @@ public class DamageReportService(RentalDataContext context)
         if (damageReport == null)
             return SubmitOperation.CreateFailure("Damage report not found");
 
-        using var session = Context.OpenSession(username);
+        using var session = this.Context.OpenSession(username);
 
         var photo = new DamagePhoto
         {
@@ -258,15 +258,15 @@ public class DamageReportService(RentalDataContext context)
     public async Task<Dictionary<string, int>> GetStatusCountsAsync(int shopId)
     {
         // Get rental IDs for the shop
-        var rentalIds = await Context.GetDistinctAsync<Rental, int>(
+        var rentalIds = await this.Context.GetDistinctAsync<Rental, int>(
             r => r.RentedFromShopId == shopId,
             r => r.RentalId);
 
         // Get status counts via SQL GROUP BY
-        var query = Context.CreateQuery<DamageReport>()
+        var query = this.Context.CreateQuery<DamageReport>()
             .Where(d => rentalIds.IsInList(d.RentalId));
 
-        var groupCounts = await Context.GetGroupByCountAsync(query, d => d.Status ?? "Unknown");
+        var groupCounts = await this.Context.GetGroupByCountAsync(query, d => d.Status ?? "Unknown");
 
         return groupCounts.ToDictionary(g => g.Key, g => g.Count);
     }
@@ -277,11 +277,11 @@ public class DamageReportService(RentalDataContext context)
     public async Task<DamageCostSummary> GetCostSummaryAsync(int shopId)
     {
         // Get rental IDs for the shop
-        var rentalIds = await Context.GetDistinctAsync<Rental, int>(
+        var rentalIds = await this.Context.GetDistinctAsync<Rental, int>(
             r => r.RentedFromShopId == shopId,
             r => r.RentalId);
 
-        var baseQuery = Context.CreateQuery<DamageReport>()
+        var baseQuery = this.Context.CreateQuery<DamageReport>()
             .Where(d => rentalIds.IsInList(d.RentalId));
 
         // Get counts and sums for each status using SQL aggregates
@@ -290,20 +290,20 @@ public class DamageReportService(RentalDataContext context)
         var waivedQuery = baseQuery.Where(d => d.Status == "Waived");
         var insuranceClaimQuery = baseQuery.Where(d => d.Status == "InsuranceClaim");
 
-        var pendingCount = await Context.GetCountAsync(pendingQuery);
-        var pendingSum = await Context.GetSumAsync(pendingQuery, d => d.EstimatedCost);
+        var pendingCount = await this.Context.GetCountAsync(pendingQuery);
+        var pendingSum = await this.Context.GetSumAsync(pendingQuery, d => d.EstimatedCost);
 
-        var chargedCount = await Context.GetCountAsync(chargedQuery);
+        var chargedCount = await this.Context.GetCountAsync(chargedQuery);
         // For charged, we need ActualCost if available, otherwise EstimatedCost
         // This requires loading the data since we can't do COALESCE in the expression tree
-        var chargedResult = await Context.LoadAsync(chargedQuery, 1, 10000, false);
+        var chargedResult = await this.Context.LoadAsync(chargedQuery, 1, 10000, false);
         var chargedAmount = chargedResult.ItemCollection.Sum(d => d.ActualCost ?? d.EstimatedCost);
 
-        var waivedCount = await Context.GetCountAsync(waivedQuery);
-        var waivedSum = await Context.GetSumAsync(waivedQuery, d => d.EstimatedCost);
+        var waivedCount = await this.Context.GetCountAsync(waivedQuery);
+        var waivedSum = await this.Context.GetSumAsync(waivedQuery, d => d.EstimatedCost);
 
-        var insuranceClaimCount = await Context.GetCountAsync(insuranceClaimQuery);
-        var insuranceClaimSum = await Context.GetSumAsync(insuranceClaimQuery, d => d.EstimatedCost);
+        var insuranceClaimCount = await this.Context.GetCountAsync(insuranceClaimQuery);
+        var insuranceClaimSum = await this.Context.GetSumAsync(insuranceClaimQuery, d => d.EstimatedCost);
 
         return new DamageCostSummary
         {
