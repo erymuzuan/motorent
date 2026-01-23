@@ -8,21 +8,10 @@ namespace MotoRent.Services;
 /// </summary>
 public partial class ExchangeRateService
 {
-    private IEnumerable<IExchangeRateProvider>? m_providers;
-
-    /// <summary>
-    /// Sets the available exchange rate providers.
-    /// Called during DI configuration.
-    /// </summary>
-    public void SetProviders(IEnumerable<IExchangeRateProvider> providers)
-    {
-        this.m_providers = providers;
-    }
-
     /// <summary>
     /// Gets all registered exchange rate providers.
     /// </summary>
-    public IEnumerable<IExchangeRateProvider> GetProviders() => this.m_providers ?? [];
+    public IEnumerable<IExchangeRateProvider> GetProviders() => this.m_providers;
 
     /// <summary>
     /// Gets a provider by its code.
