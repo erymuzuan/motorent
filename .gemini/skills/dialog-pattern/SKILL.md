@@ -1,8 +1,6 @@
----
 name: dialog-pattern
 description: Tabler modal dialog patterns using localized base classes and fluent API extensions.
 ---
-
 # Dialog Pattern Skills
 
 ## Dialog Pattern
@@ -337,7 +335,7 @@ public partial class SelectionDialog
 1. **Visual Hierarchy**: Use headers with icons to establish context
 2. **Color Coding**: Semantic colors for debit/credit, success/error
 3. **Spacing**: Generous padding (`p-3`, `gap-3`) for breathing room
-4. **Typography**: Monospace fonts for numbers, bold for totals
+4. **Typography**: Monospace fonts forHub monospace fonts for numbers, bold for totals
 5. **Rounded Corners**: Use `rounded-3` for modern feel
 6. **Subtle Gradients**: Only for decorative icons (avatars), NOT for buttons
 7. **Theme Aware**: Use `var(--tblr-*)` variables with fallbacks for adaptive colors

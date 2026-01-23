@@ -1,19 +1,16 @@
----
-name: showme
-description: Visual mockup and annotation tool for creating UI designs with coordinate-tracked annotations across multiple pages.
----
+# ShowMe - Visual Mockup & Annotation Tool for Gemini CLI
 
-# ShowMe - Visual Mockup & Annotation Tool
+ShowMe lets you create visual mockups with coordinate-tracked annotations across multiple pages. Draw, annotate, and provide component-specific feedback that Gemini CLI can see and act on.
 
-ShowMe lets you create visual mockups with coordinate-tracked annotations across multiple pages. Draw, annotate, and provide component-specific feedback that the AI can see and act on.
-
-## Instructions
+## Instructions for Gemini CLI
 
 When the user invokes `/showme`, execute this command and wait for the result:
 
 ```bash
 bun run ../ai.apps/ShowMe/server/index.ts
 ```
+
+Run the command through the `powershell` tool (typically `mode:"sync"` with a generous `initial_wait`) so that stdout, stderr, and the resulting JSON are captured in the transcript.
 
 The command will:
 
@@ -155,4 +152,8 @@ You should:
 3. Switch to annotation mode and add markers
 4. Click annotations to add component-specific feedback
 5. Add global notes at the bottom for overall context
-6. Click "Send" when done
+6. Click "Send to Gemini" when done
+
+---
+
+Built with love by **Yaron - No Fluff** | [YouTube](https://www.youtube.com/channel/UCuCwMz8aMJBFfhDnYicfdjg/)

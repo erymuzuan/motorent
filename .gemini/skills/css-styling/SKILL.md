@@ -1,6 +1,6 @@
----
 name: css-styling
 description: MotoRent CSS styling patterns using mr-* prefixed classes for consistent UI components, gradients, and theme support.
+context: fork
 ---
 
 # MotoRent CSS Styling Patterns
@@ -239,3 +239,5 @@ Compact page header with breadcrumb navigation and subtle background.
     --mr-text-muted: #64748b;
 }
 ```
+
+See `instructions.md` for complete documentation with all classes and examples.

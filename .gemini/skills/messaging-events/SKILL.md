@@ -1,11 +1,10 @@
----
 name: messaging-events
 description: RabbitMQ pub/sub patterns for asynchronous processing of entity changes and system events.
 ---
 
 # Messaging & Events (RabbitMQ)
 
-RabbitMQ pub/sub patterns for asynchronous processing of entity changes and system events.
+RabbitMQ pub/sub patterns from rx-erp for async processing.
 
 ## Overview
 
@@ -62,7 +61,7 @@ public enum CrudOperation
 Messages are automatically published when calling `SubmitChanges`:
 
 ```csharp
-using var session = this.DataContext.OpenSession();
+using var session = context.OpenSession();
 session.Attach(rental);
 await session.SubmitChanges("CheckIn");
 // Publishes: Rental.Changed.CheckIn
@@ -95,18 +94,18 @@ public abstract class Subscriber<T> : Subscriber where T : Entity
             try
             {
                 var item = message.Item as T;
-                await this.ProcessMessage(item!, message);
+                await ProcessMessage(item!, message);
                 return MessageReceiveStatus.Accepted;
             }
             catch (Exception ex)
             {
-                this.Logger.LogError(ex, "Failed to process message");
+                Logger.LogError(ex, "Failed to process message");
                 return MessageReceiveStatus.Rejected;
             }
         }, new SubscriberOption
         {
-            QueueName = this.QueueName,
-            RoutingKeys = this.RoutingKeys
+            QueueName = QueueName,
+            RoutingKeys = RoutingKeys
         });
     }
 }
@@ -137,7 +136,7 @@ public class RentalCheckOutSubscriber : Subscriber<Rental>
         await session.SubmitChanges("StatusUpdate");
 
         // Send thank you notification
-        await this.SendThankYouEmail(rental);
+        await SendThankYouEmail(rental);
 
         message.Accept();
     }
@@ -169,7 +168,7 @@ public class RentalExpirySubscriber : Subscriber<Rental>
 
         if (daysRemaining <= 1)
         {
-            await this.SendExpiryWarning(rental);
+            await SendExpiryWarning(rental);
         }
 
         message.Accept();
@@ -188,7 +187,7 @@ public class DamageReportSubscriber : Subscriber<DamageReport>
     protected override async Task ProcessMessage(DamageReport damage, BrokeredMessage message)
     {
         // Notify shop owner
-        await this.NotifyShopOwner(damage);
+        await NotifyShopOwner(damage);
 
         // If major damage, flag motorbike for maintenance
         if (damage.Severity == "Major")
@@ -230,7 +229,7 @@ public class SubscriberHostedService : BackgroundService
 
         foreach (var subscriber in subscribers)
         {
-            subscriber.Run(this.m_broker);
+            subscriber.Run(m_broker);
         }
 
         await Task.Delay(Timeout.Infinite, stoppingToken);
@@ -245,7 +244,7 @@ protected override async Task ProcessMessage(Rental rental, BrokeredMessage mess
 {
     try
     {
-        await this.ProcessRentalAsync(rental);
+        await ProcessRentalAsync(rental);
         message.Accept();
     }
     catch (TransientException ex)
@@ -257,13 +256,13 @@ protected override async Task ProcessMessage(Rental rental, BrokeredMessage mess
         }
         else
         {
-            this.Logger.LogError(ex, "Max retries exceeded");
+            Logger.LogError(ex, "Max retries exceeded");
             message.Reject();  // Move to dead letter queue
         }
     }
     catch (Exception ex)
     {
-        this.Logger.LogError(ex, "Unrecoverable error");
+        Logger.LogError(ex, "Unrecoverable error");
         message.Reject();
     }
 }
@@ -297,6 +296,6 @@ protected override async Task ProcessMessage(Rental rental, BrokeredMessage mess
 | Motorbike.Maintenance | Update availability |
 
 ## Source
-- From: `E:\project\work\rx-erp` messaging patterns
+- From: `D:\project\work\rx-erp` messaging patterns
 
 ```

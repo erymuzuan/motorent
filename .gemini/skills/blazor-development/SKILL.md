@@ -1,11 +1,7 @@
----
 name: blazor-development
-description: Manage blazor development, razor and razor.cs and any blazor component editing skills.
+description: Manage blazor development, razor and razor.cs and any blazor component editing skills
 ---
-
 # Blazor Development Skills
-
-Manage blazor development, razor and razor.cs and any blazor component editing skills.
 
 ## Blazor Conventions
 - **Rendering Mode**: Server-side rendering (default)
@@ -29,6 +25,65 @@ Manage blazor development, razor and razor.cs and any blazor component editing s
 - **Property name** - Always use `Loading` (not `Busy`, `IsLoading`, etc.)
 - **Early return guard** - Add `if (this.Loading) return;` at start of load method to avoid double loading
 - **try-finally** - Always wrap loading logic in try-finally to ensure `Loading = false`
+
+
+## Blazor Components
+For components that display list of items
+
+```razor
+@* Component file naming: PascalCase.razor *@
+@* Code-behind: PascalCase.razor.cs *@
+@inherits LocalizedComponentBase<RentalList>
+
+@page "/rentals"
+@inject RentalDataContext DataContext
+@inject ToastService ToastService
+
+<MotoRentPageTitle>@Localizer["Rentals"]</MotoRentPageTitle>
+
+@* Component markup *@
+
+@code {
+    // Fields with m_ prefix
+    private List<Rental> Rentals {get;} = [];
+    private bool Loading {get;set;}
+    private int TotalRows {get;set;} // for pagination
+    private int Size{get;set;} = 40; //
+
+    // Lifecycle methods
+    protected override async Task OnInitializedAsync()
+    {
+        await this.LoadDataAsync();
+    }
+
+    // Event handlers
+    private async Task OnSaveClicked()
+    {
+        // ...
+    }
+
+    // Private methods
+    private async Task LoadDataAsync()
+    {
+        if (this.Loading) return; // Prevent double loading
+        this.Loading = true;
+        try
+        {
+            var query = this.DataContext.CreateQuery<Rental>()
+                    .Where(x => x.RentalId > 0)
+                    .OrderByDescending(x => x.StartDate);
+            var result = await this.DataContext.LoadAsync(query, size: Math.Min(this.Size, 40), includeTotalRows: true);
+            this.Rentals.Clear();
+            this.Rentals.AddRange(result.ItemCollection);
+            this.TotalRows = result.TotalRows ?? 0;
+        }
+        finally
+        {
+            this.Loading = false;
+        }
+    }
+}
+```
 
 ### LoadingSkeleton Modes
 ```csharp
@@ -405,3 +460,61 @@ Always use Tabler icons (`ti ti-*`) for consistency:
 - **CommonLocalizer** Some commonly used text are already in CommonLocalizer class and should be used
 - **Formatted and C# interpolated string** should be localized from `$"Some text here {amount:C} and some more {count:N0} items here"` to `@Localizer["Name", $"{amount:c}", $"{count:N0}"]` and the translated text value should be `Some text here {0} and some more {1} items here`
 - **Razor.resx** for every razor files, 4 new files should be created at `<project_root>/Resources/<razor_path_from_project_root>/<razor>.<culture>.resx`
+
+## MotoRent CSS Classes (mr-* prefix)
+
+For enhanced UI components, use the `mr-` prefixed CSS classes defined in `site.css`. See the **css-styling** skill for complete documentation.
+
+### Quick Reference
+```html
+<!-- Gradient navbar wrapper -->
+<div class="mr-navbar-gradient">...</div>
+
+<!-- Primary action button with gradient -->
+<a href="/action" class="mr-btn-primary-action">
+    <i class="ti ti-plus"></i> Action
+</a>
+
+<!-- Summary cards grid -->
+<div class="mr-summary-cards">
+    <div class="mr-summary-card">...</div>
+</div>
+
+<!-- Enhanced card -->
+<div class="mr-card">
+    <div class="mr-card-header">...</div>
+    <div class="mr-card-body">...</div>
+</div>
+
+<!-- Status badges -->
+<span class="mr-status-badge mr-status-badge-success">Active</span>
+<span class="mr-status-badge mr-status-badge-warning">Pending</span>
+<span class="mr-status-badge mr-status-badge-danger">Overdue</span>
+
+<!-- Field labels and values -->
+<div class="mr-field-label">Label</div>
+<div class="mr-field-value mr-mono mr-highlight">1,350 THB</div>
+
+<!-- Filter tabs -->
+<div class="mr-filter-tabs">
+    <button class="mr-filter-tab active">All</button>
+</div>
+
+<!-- Animation -->
+<div class="mr-animate-in mr-animate-delay-1">...</div>
+
+<!-- Theme transition -->
+<div class="mr-theme-transition">...</div>
+```
+
+### Key CSS Variables
+```css
+/* Colors */
+var(--mr-accent-primary)    /* #0f766e - Primary teal */
+var(--mr-accent-light)      /* #14b8a6 - Light teal */
+var(--mr-text-primary)      /* Main text color */
+var(--mr-text-secondary)    /* Secondary text */
+var(--mr-text-muted)        /* Muted text */
+var(--mr-border-default)    /* Border color */
+var(--mr-bg-card)           /* Card background */
+```

@@ -1,8 +1,6 @@
----
 name: localization
 description: Multi-language support (English/Thai) implementation using localized base classes and resource files.
 ---
-
 # Localization (Multi-Language Support)
 
 Multi-language support patterns for MotoRent (English/Thai) using localized base classes.
@@ -12,7 +10,9 @@ Multi-language support patterns for MotoRent (English/Thai) using localized base
 ### Inherit from Localized Base Classes
 
 ```razor
-@* Page with localization *@@page "/motorbikes"@inherits LocalizedComponentBase<Motorbikes>
+@* Page with localization *@
+@page "/motorbikes"
+@inherits LocalizedComponentBase<Motorbikes>
 
 @* Dialog with localization *@
 @inherits LocalizedDialogBase<Motorbike, MotorbikeDialog>
@@ -30,15 +30,15 @@ Multi-language support patterns for MotoRent (English/Thai) using localized base
 ```razor
 @* Component-specific strings *@
 <MudText>@Localizer["PageTitle"]</MudText>
-<MudTextField Label="@Localizer["LicensePlate"]" />
+<Component Label="@Localizer["LicensePlate"]" />
 
 @* Shared strings (buttons, common labels) *@
-<MudButton>@CommonLocalizer["Save"]</MudButton>
-<MudButton>@CommonLocalizer["Cancel"]</MudButton>
-<MudButton>@CommonLocalizer["Delete"]</MudButton>
+<Component>@CommonLocalizer["Save"]</Component>
+<Component>@CommonLocalizer["Cancel"]</Component>
+<Component>@CommonLocalizer["Delete"]</Component>
 
 @* With parameters *@
-<MudText>@Localizer["WelcomeMessage", userName, shopName]</MudText>
+<Component>@Localizer["WelcomeMessage", userName, shopName]</Component>
 ```
 
 ## Naming Conventions for Keys
@@ -146,9 +146,7 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
 app.UseRequestLocalization();
 ```
 
-## Component Examples
 
-### Page with Localization
 
 ```razor
 @page "/motorbikes"
@@ -183,7 +181,6 @@ app.UseRequestLocalization();
 }
 ```
 
-### Dialog with Localization
 
 ```razor
 @inherits LocalizedDialogBase<Motorbike, MotorbikeDialog>
@@ -235,16 +232,7 @@ app.UseRequestLocalization();
 
 ## Culture Switching
 
-```razor
-@inject NavigationManager Navigation
-
-<MudSelect T="string" Value="@m_currentCulture" ValueChanged="OnCultureChanged"
-           Label="Language" Style="width: 120px;">
-    <MudSelectItem Value="@("en")">English</MudSelectItem>
-    <MudSelectItem Value="@("th")">ไทย</MudSelectItem>
-</MudSelect>
-
-@code {
+```csharp
     private string m_currentCulture = CultureInfo.CurrentCulture.TwoLetterISOLanguageName;
 
     private void OnCultureChanged(string culture)
@@ -255,7 +243,7 @@ app.UseRequestLocalization();
             $"Culture/Set?culture={Uri.EscapeDataString(culture)}&redirectUri={Uri.EscapeDataString(uri)}",
             forceLoad: true);
     }
-}
+
 ```
 
 ## Source

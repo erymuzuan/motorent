@@ -1,11 +1,9 @@
----
 name: gemini-ocr
 description: Document OCR integration using Google Gemini Flash API for extracting data from passports and licenses.
 ---
-
 # Gemini OCR Integration
 
-Document OCR using Google Gemini Flash API for extracting data from passports and licenses.
+Document OCR using Google Gemini Flash API.
 
 ## Overview
 
@@ -17,7 +15,7 @@ Document OCR using Google Gemini Flash API for extracting data from passports an
 
 ## API Configuration
 
-```json
+```csharp
 // appsettings.json
 {
   "Gemini": {
@@ -197,10 +195,10 @@ public class InlineDataPart
 public class InlineData
 {
     [JsonPropertyName("mime_type")]
-    public string MimeType { get; set; } = "image/jpeg";
+    public string MimeType = "image/jpeg";
 
     [JsonPropertyName("data")]
-    public string Data { get; set; } = "";
+    public string Data = "";
 }
 
 public class GeminiResponse

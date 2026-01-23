@@ -1,11 +1,9 @@
----
 name: extensions
 description: Generic extension methods for strings, collections, DateTime, decimals, and entities.
 ---
-
 # Extension Methods
 
-Generic extension methods for strings, collections, DateTime, decimals, and entities.
+Generic extension methods for common operations.
 
 ## String Extensions
 
