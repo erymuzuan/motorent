@@ -7,11 +7,11 @@ namespace MotoRent.Services;
 /// Service for managing exchange rates.
 /// Provides CRUD operations for rates plus currency conversion.
 /// </summary>
-public class ExchangeRateService(RentalDataContext context)
+public partial class ExchangeRateService(RentalDataContext context)
 {
     private RentalDataContext Context { get; } = context;
 
-    #region Rate Retrieval
+    // Rate Retrieval
 
     /// <summary>
     /// Gets the current active exchange rate for a currency.
@@ -24,8 +24,8 @@ public class ExchangeRateService(RentalDataContext context)
         var now = DateTimeOffset.Now;
 
         // Query for active rate for this currency
-        var result = await Context.LoadAsync(
-            Context.CreateQuery<ExchangeRate>()
+        var result = await this.Context.LoadAsync(
+            this.Context.CreateQuery<ExchangeRate>()
                 .Where(r => r.Currency == currency && r.IsActive)
                 .OrderByDescending(r => r.EffectiveDate),
             page: 1, size: 1, includeTotalRows: false);
@@ -53,8 +53,8 @@ public class ExchangeRateService(RentalDataContext context)
         var now = DateTimeOffset.Now;
 
         // Load all active rates
-        var result = await Context.LoadAsync(
-            Context.CreateQuery<ExchangeRate>()
+        var result = await this.Context.LoadAsync(
+            this.Context.CreateQuery<ExchangeRate>()
                 .Where(r => r.IsActive)
                 .OrderBy(r => r.Currency),
             page: 1, size: 100, includeTotalRows: false);
@@ -81,8 +81,8 @@ public class ExchangeRateService(RentalDataContext context)
     /// <returns>List of historical rates ordered by effective date descending</returns>
     public async Task<List<ExchangeRate>> GetRateHistoryAsync(string currency, int count = 10)
     {
-        var result = await Context.LoadAsync(
-            Context.CreateQuery<ExchangeRate>()
+        var result = await this.Context.LoadAsync(
+            this.Context.CreateQuery<ExchangeRate>()
                 .Where(r => r.Currency == currency)
                 .OrderByDescending(r => r.EffectiveDate),
             page: 1, size: count, includeTotalRows: false);
@@ -90,9 +90,7 @@ public class ExchangeRateService(RentalDataContext context)
         return result.ItemCollection.ToList();
     }
 
-    #endregion
-
-    #region Rate Management
+    // Rate Management
 
     /// <summary>
     /// Sets a new exchange rate for a currency.
@@ -116,7 +114,7 @@ public class ExchangeRateService(RentalDataContext context)
         var now = DateTimeOffset.Now;
 
         // Get current active rate for this currency (if any)
-        var currentRate = await GetCurrentRateAsync(currency);
+        var currentRate = await this.GetCurrentRateAsync(currency);
 
         // Create new rate
         var newRate = new ExchangeRate
@@ -130,7 +128,7 @@ public class ExchangeRateService(RentalDataContext context)
             Notes = notes
         };
 
-        using var session = Context.OpenSession(username);
+        using var session = this.Context.OpenSession(username);
 
         // Deactivate current rate if exists
         if (currentRate != null)
@@ -144,9 +142,7 @@ public class ExchangeRateService(RentalDataContext context)
         return await session.SubmitChanges("SetExchangeRate");
     }
 
-    #endregion
-
-    #region Currency Conversion
+    // Currency Conversion
 
     /// <summary>
     /// Converts a foreign currency amount to THB.
@@ -164,7 +160,7 @@ public class ExchangeRateService(RentalDataContext context)
         }
 
         // Get current rate for currency
-        var rate = await GetCurrentRateAsync(currency);
+        var rate = await this.GetCurrentRateAsync(currency);
         if (rate == null)
             return null;
 
@@ -174,9 +170,7 @@ public class ExchangeRateService(RentalDataContext context)
         return new ExchangeConversionResult(thbAmount, rate.BuyRate, rate.Source, rate.ExchangeRateId);
     }
 
-    #endregion
-
-    #region API Integration
+    // API Integration
 
     /// <summary>
     /// Fetches exchange rates from the Forex POS API.
@@ -193,8 +187,6 @@ public class ExchangeRateService(RentalDataContext context)
             "Forex POS API integration not yet configured. Contact system administrator.",
             0));
     }
-
-    #endregion
 }
 
 /// <summary>

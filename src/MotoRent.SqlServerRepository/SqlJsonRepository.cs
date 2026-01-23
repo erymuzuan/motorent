@@ -80,8 +80,9 @@ public async Task<LoadOperation<T>> LoadAsync(IQueryable<T> query, int page = 1,
 // Get total count if requested
                 if (includeTotalRows)
                 {
-                    // For COUNT, we don't need computed columns, use standard method
-                    var countSql = query.ToSqlCommand("COUNT(*)");
+                    // For COUNT, we use ToCountSqlCommand which strips ORDER BY clause
+                    // (ORDER BY is not valid with COUNT(*) without GROUP BY in SQL Server)
+                    var countSql = query.ToCountSqlCommand();
                     await using var countCmd = new SqlCommand(countSql, conn);
                     result.TotalRows = (int)(await countCmd.ExecuteScalarAsync() ?? 0);
                 }

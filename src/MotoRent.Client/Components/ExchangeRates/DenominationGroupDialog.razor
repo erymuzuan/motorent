@@ -1,0 +1,190 @@
+@inherits LocalizedComponentBase<DenominationGroupDialog>
+
+@* Modal dialog for editing denomination groups *@
+
+@if (m_visible)
+{
+    <div class="modal modal-blur fade show" style="display: block;" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        @(m_isNew ? Localizer["AddDenominationGroup"] : Localizer["EditDenominationGroup"])
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="Hide"></button>
+                </div>
+                <div class="modal-body">
+                    @if (m_group != null)
+                    {
+                        <div class="mb-3">
+                            <label class="form-label required">@Localizer["Currency"]</label>
+                            <select class="form-select" @bind="m_group.Currency" disabled="@(!m_isNew)">
+                                @foreach (var currency in SupportedCurrencies.All.Where(c => c != SupportedCurrencies.THB))
+                                {
+                                    <option value="@currency">@currency - @GetCurrencyName(currency)</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label required">@Localizer["GroupName"]</label>
+                            <input type="text"
+                                   class="form-control"
+                                   @bind="m_group.GroupName"
+                                   placeholder="@Localizer["GroupNamePlaceholder"]" />
+                            <small class="form-hint">@Localizer["GroupNameHint"]</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label required">@Localizer["Denominations"]</label>
+                            <div class="d-flex flex-wrap gap-2 mb-2">
+                                @foreach (var denom in m_group.Denominations.OrderByDescending(d => d))
+                                {
+                                    <span class="badge bg-azure-lt d-flex align-items-center gap-1">
+                                        @denom.ToString("N0")
+                                        <button type="button"
+                                                class="btn-close btn-close-sm ms-1"
+                                                style="font-size: 0.5rem;"
+                                                @onclick="() => RemoveDenomination(denom)"></button>
+                                    </span>
+                                }
+                            </div>
+                            <div class="input-group">
+                                <input type="number"
+                                       class="form-control"
+                                       @bind="m_newDenomination"
+                                       @onkeydown="HandleDenomKeyDown"
+                                       placeholder="@Localizer["EnterDenomination"]"
+                                       min="1"
+                                       step="1" />
+                                <button type="button"
+                                        class="btn btn-outline-primary"
+                                        @onclick="AddDenomination">
+                                    <i class="ti ti-plus"></i>
+                                </button>
+                            </div>
+                            <small class="form-hint">@Localizer["DenominationHint"]</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">@Localizer["SortOrder"]</label>
+                            <input type="number"
+                                   class="form-control"
+                                   @bind="m_group.SortOrder"
+                                   min="0"
+                                   step="1" />
+                            <small class="form-hint">@Localizer["SortOrderHint"]</small>
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-link link-secondary" @onclick="Hide">
+                        @Localizer["Cancel"]
+                    </button>
+                    <button type="button"
+                            class="btn btn-primary"
+                            @onclick="SaveAsync"
+                            disabled="@(!IsValid || m_saving)">
+                        @if (m_saving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1"></span>
+                        }
+                        @Localizer["Save"]
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@code {
+    /// <summary>
+    /// Callback when group is saved
+    /// </summary>
+    [Parameter] public EventCallback<DenominationGroup> OnSave { get; set; }
+
+    private bool m_visible;
+    private bool m_isNew;
+    private bool m_saving;
+    private DenominationGroup? m_group;
+    private decimal m_newDenomination;
+
+    private bool IsValid =>
+        this.m_group != null &&
+        !string.IsNullOrWhiteSpace(this.m_group.Currency) &&
+        !string.IsNullOrWhiteSpace(this.m_group.GroupName) &&
+        this.m_group.Denominations.Count > 0;
+
+    public void Show(DenominationGroup group)
+    {
+        this.m_isNew = group.DenominationGroupId == 0;
+        this.m_group = group.Clone() as DenominationGroup ?? new DenominationGroup();
+        this.m_newDenomination = 0;
+        this.m_visible = true;
+        this.StateHasChanged();
+    }
+
+    public void Hide()
+    {
+        this.m_visible = false;
+        this.m_group = null;
+        this.StateHasChanged();
+    }
+
+    private void AddDenomination()
+    {
+        if (this.m_group == null || this.m_newDenomination <= 0)
+            return;
+
+        if (!this.m_group.Denominations.Contains(this.m_newDenomination))
+        {
+            this.m_group.Denominations.Add(this.m_newDenomination);
+            this.m_group.Denominations = this.m_group.Denominations.OrderByDescending(d => d).ToList();
+        }
+
+        this.m_newDenomination = 0;
+    }
+
+    private void RemoveDenomination(decimal denom)
+    {
+        this.m_group?.Denominations.Remove(denom);
+    }
+
+    private void HandleDenomKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            this.AddDenomination();
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (this.m_group == null || !this.IsValid)
+            return;
+
+        this.m_saving = true;
+        try
+        {
+            await this.OnSave.InvokeAsync(this.m_group);
+            this.Hide();
+        }
+        finally
+        {
+            this.m_saving = false;
+        }
+    }
+
+    private static string GetCurrencyName(string currency) => currency switch
+    {
+        "USD" => "US Dollar",
+        "EUR" => "Euro",
+        "GBP" => "British Pound",
+        "CNY" => "Chinese Yuan",
+        "JPY" => "Japanese Yen",
+        "AUD" => "Australian Dollar",
+        "RUB" => "Russian Ruble",
+        _ => currency
+    };
+}

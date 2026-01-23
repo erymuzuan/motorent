@@ -1,0 +1,163 @@
+@inherits LocalizedComponentBase<DeltaEditor>
+
+@* Inline editor for delta values with badge display and edit mode *@
+
+@if (IsEditing)
+{
+    <div class="d-flex align-items-center gap-1" style="min-width: 140px;">
+        <input type="number"
+               class="form-control form-control-sm text-end"
+               style="width: 80px;"
+               @bind="m_editValue"
+               @bind:event="oninput"
+               @onkeydown="HandleKeyDown"
+               step="0.01"
+               placeholder="0.00" />
+        <button type="button"
+                class="btn btn-sm btn-icon btn-success"
+                @onclick="SaveAsync"
+                disabled="@m_saving"
+                title="@Localizer["Save"]">
+            @if (m_saving)
+            {
+                <span class="spinner-border spinner-border-sm"></span>
+            }
+            else
+            {
+                <i class="ti ti-check"></i>
+            }
+        </button>
+        <button type="button"
+                class="btn btn-sm btn-icon btn-outline-secondary"
+                @onclick="Cancel"
+                title="@Localizer["Cancel"]">
+            <i class="ti ti-x"></i>
+        </button>
+    </div>
+}
+else
+{
+    <button type="button"
+            class="@GetBadgeClass() border-0"
+            @onclick="StartEdit"
+            title="@Localizer["ClickToEdit"]"
+            style="cursor: pointer;">
+        @GetDisplayValue()
+    </button>
+}
+
+@code {
+    /// <summary>
+    /// Current delta value
+    /// </summary>
+    [Parameter] public decimal Value { get; set; }
+
+    /// <summary>
+    /// Callback when value changes
+    /// </summary>
+    [Parameter] public EventCallback<decimal> ValueChanged { get; set; }
+
+    /// <summary>
+    /// Callback when save is requested with new value
+    /// </summary>
+    [Parameter] public EventCallback<decimal> OnSave { get; set; }
+
+    /// <summary>
+    /// Whether this editor is currently in edit mode
+    /// </summary>
+    [Parameter] public bool IsEditing { get; set; }
+
+    /// <summary>
+    /// Callback when edit mode changes
+    /// </summary>
+    [Parameter] public EventCallback<bool> IsEditingChanged { get; set; }
+
+    /// <summary>
+    /// Type of delta (Buy or Sell) for display purposes
+    /// </summary>
+    [Parameter] public DeltaType Type { get; set; } = DeltaType.Buy;
+
+    /// <summary>
+    /// Whether the editor is disabled
+    /// </summary>
+    [Parameter] public bool Disabled { get; set; }
+
+    private decimal m_editValue;
+    private bool m_saving;
+
+    protected override void OnParametersSet()
+    {
+        if (!this.IsEditing)
+        {
+            this.m_editValue = this.Value;
+        }
+    }
+
+    private void StartEdit()
+    {
+        if (this.Disabled) return;
+        this.m_editValue = this.Value;
+        this.IsEditing = true;
+        _ = this.IsEditingChanged.InvokeAsync(true);
+    }
+
+    private void Cancel()
+    {
+        this.m_editValue = this.Value;
+        this.IsEditing = false;
+        _ = this.IsEditingChanged.InvokeAsync(false);
+    }
+
+    private async Task SaveAsync()
+    {
+        this.m_saving = true;
+        try
+        {
+            await this.ValueChanged.InvokeAsync(this.m_editValue);
+            await this.OnSave.InvokeAsync(this.m_editValue);
+            this.IsEditing = false;
+            await this.IsEditingChanged.InvokeAsync(false);
+        }
+        finally
+        {
+            this.m_saving = false;
+        }
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await this.SaveAsync();
+        }
+        else if (e.Key == "Escape")
+        {
+            this.Cancel();
+        }
+    }
+
+    private string GetDisplayValue()
+    {
+        if (this.Value == 0)
+            return "0.00";
+
+        var sign = this.Value > 0 ? "+" : "";
+        return $"{sign}{this.Value:N2}";
+    }
+
+    private string GetBadgeClass()
+    {
+        if (this.Value == 0)
+            return "badge bg-secondary-lt";
+
+        return this.Value > 0
+            ? "badge bg-green-lt text-green"
+            : "badge bg-red-lt text-red";
+    }
+
+    public enum DeltaType
+    {
+        Buy,
+        Sell
+    }
+}

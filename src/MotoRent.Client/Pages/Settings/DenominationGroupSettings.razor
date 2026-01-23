@@ -1,0 +1,194 @@
+@page "/settings/denomination-groups"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "OrgAdmin")]
+@inherits LocalizedComponentBase<DenominationGroupSettings>
+@inject ExchangeRateService ExchangeRateService
+
+<MotoRentPageTitle>@Localizer["DenominationGroups"]</MotoRentPageTitle>
+
+<TablerHeader Title="@Localizer["DenominationGroups"]" PreTitle="@Localizer["ConfigureDenominationGroups"]">
+    <button type="button" class="btn btn-primary" @onclick="ShowAddDialog">
+        <i class="ti ti-plus me-1"></i>
+        @Localizer["AddGroup"]
+    </button>
+</TablerHeader>
+
+<LoadingSkeleton Loading="@m_loading" Mode="LoadingSkeleton.PlaceholderMode.Card">
+    <div class="row g-3">
+        @foreach (var currencyGroup in m_groups.GroupBy(g => g.Currency))
+        {
+            var currency = currencyGroup.Key;
+            var groups = currencyGroup.OrderBy(g => g.SortOrder).ToList();
+
+            <div class="col-12 col-lg-6">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="d-flex align-items-center">
+                            <span class="me-2" style="font-size: 1.5rem;">@GetCurrencyFlag(currency)</span>
+                            <div>
+                                <h3 class="card-title mb-0">@currency</h3>
+                                <span class="text-muted small">@GetCurrencyName(currency)</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="list-group list-group-flush">
+                        @foreach (var group in groups)
+                        {
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="fw-medium">@group.GroupName</div>
+                                    <div class="d-flex flex-wrap gap-1 mt-1">
+                                        @foreach (var denom in group.Denominations.OrderByDescending(d => d))
+                                        {
+                                            <span class="badge bg-azure-lt">@denom.ToString("N0")</span>
+                                        }
+                                    </div>
+                                </div>
+                                <div class="d-flex gap-1">
+                                    <button type="button"
+                                            class="btn btn-sm btn-icon btn-ghost-primary"
+                                            @onclick="() => ShowEditDialog(group)"
+                                            title="@Localizer["Edit"]">
+                                        <i class="ti ti-edit"></i>
+                                    </button>
+                                    <button type="button"
+                                            class="btn btn-sm btn-icon btn-ghost-danger"
+                                            @onclick="() => DeleteGroupAsync(group)"
+                                            title="@Localizer["Delete"]">
+                                        <i class="ti ti-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                        @if (!groups.Any())
+                        {
+                            <div class="list-group-item text-center text-muted py-4">
+                                @Localizer["NoGroupsForCurrency"]
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+        @if (!m_groups.Any())
+        {
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body text-center py-5">
+                        <i class="ti ti-currency-off mb-3" style="font-size: 3rem; color: var(--tblr-muted);"></i>
+                        <h3 class="text-muted">@Localizer["NoGroupsConfigured"]</h3>
+                        <p class="text-muted mb-3">@Localizer["NoGroupsHelpText"]</p>
+                        <button type="button" class="btn btn-primary" @onclick="ShowAddDialog">
+                            <i class="ti ti-plus me-1"></i>
+                            @Localizer["AddFirstGroup"]
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</LoadingSkeleton>
+
+@* Edit Dialog *@
+<DenominationGroupDialog @ref="m_dialog" OnSave="OnGroupSavedAsync" />
+
+@code {
+    private bool m_loading = true;
+    private List<DenominationGroup> m_groups = [];
+    private DenominationGroupDialog? m_dialog;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await this.LoadGroupsAsync();
+    }
+
+    private async Task LoadGroupsAsync()
+    {
+        this.m_loading = true;
+        try
+        {
+            this.m_groups = await this.ExchangeRateService.LoadDenominationGroupsAsync();
+        }
+        finally
+        {
+            this.m_loading = false;
+        }
+    }
+
+    private void ShowAddDialog()
+    {
+        this.m_dialog?.Show(new DenominationGroup());
+    }
+
+    private void ShowEditDialog(DenominationGroup group)
+    {
+        this.m_dialog?.Show(group);
+    }
+
+    private async Task OnGroupSavedAsync(DenominationGroup group)
+    {
+        var result = await this.ExchangeRateService.SaveDenominationGroupAsync(group, this.UserName);
+        if (result.Success)
+        {
+            this.ShowSuccess(this.Localizer["GroupSaved"]);
+            await this.LoadGroupsAsync();
+        }
+        else
+        {
+            this.ShowError(result.Message ?? this.Localizer["SaveFailed"]);
+        }
+    }
+
+    private async Task DeleteGroupAsync(DenominationGroup group)
+    {
+        // Confirm deletion
+        var confirmed = await this.ConfirmAsync(
+            this.Localizer["ConfirmDeleteTitle"],
+            this.Localizer["ConfirmDeleteMessage", group.GroupName]);
+
+        if (!confirmed)
+            return;
+
+        var result = await this.ExchangeRateService.DeleteDenominationGroupAsync(group.DenominationGroupId, this.UserName);
+        if (result.Success)
+        {
+            this.ShowSuccess(this.Localizer["GroupDeleted"]);
+            await this.LoadGroupsAsync();
+        }
+        else
+        {
+            this.ShowError(result.Message ?? this.Localizer["DeleteFailed"]);
+        }
+    }
+
+    #region Helper Methods
+
+    private static string GetCurrencyName(string currency) => currency switch
+    {
+        "THB" => "Thai Baht",
+        "USD" => "US Dollar",
+        "EUR" => "Euro",
+        "GBP" => "British Pound",
+        "CNY" => "Chinese Yuan",
+        "JPY" => "Japanese Yen",
+        "AUD" => "Australian Dollar",
+        "RUB" => "Russian Ruble",
+        _ => currency
+    };
+
+    private static string GetCurrencyFlag(string currency) => currency switch
+    {
+        "THB" => "\U0001F1F9\U0001F1ED",
+        "USD" => "\U0001F1FA\U0001F1F8",
+        "EUR" => "\U0001F1EA\U0001F1FA",
+        "GBP" => "\U0001F1EC\U0001F1E7",
+        "CNY" => "\U0001F1E8\U0001F1F3",
+        "JPY" => "\U0001F1EF\U0001F1F5",
+        "AUD" => "\U0001F1E6\U0001F1FA",
+        "RUB" => "\U0001F1F7\U0001F1FA",
+        _ => "\U0001F4B0"
+    };
+
+    #endregion
+}
