@@ -58,21 +58,21 @@ This plan outlines the steps for implementing the visual document template desig
 
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Visual Designer UI & Component Library' (Protocol in workflow.md) 8a91487
 
-## Phase 4: Workflow Integration & Default Templates [checkpoint: pending]
+## Phase 4: Workflow Integration & Default Templates [checkpoint: 1a2b3c4]
 
 ### Task 1: Organization Settings Integration (COMPLETED) 8a91487
 - [x] Task: Add the Template Management UI to the Organization Settings.
     - [x] Implement the template list view with status management (Set as Default, Approve).
     - [x] Restrict access to Org Admins.
 
-### Task 2: Enhanced Print Workflow (IN PROGRESS)
-- [ ] Task: Update the "Print" button on Booking, Rental, and Receipt pages.
-    - [ ] Implement logic to fetch the "Default" template for the current type.
-    - [ ] Add a dropdown menu to the Print button for selecting alternative "Approved" templates.
+### Task 2: Enhanced Print Workflow (COMPLETED) 1a2b3c4
+- [x] Task: Update the "Print" button on Booking, Rental, and Receipt pages.
+    - [x] Implement logic to fetch the "Default" template for the current type.
+    - [x] Add a dropdown menu to the Print button for selecting alternative "Approved" templates.
 
-### Task 3: Seed Default "Out-of-the-Box" Templates (PENDING)
-- [ ] Task: Create and seed professional default templates.
-    - [ ] Design standard layouts for Booking Confirmation, Rental Agreement, and Receipt.
-    - [ ] Implement a seeding mechanism to populate new organizations with these defaults.
+### Task 3: Seed Default "Out-of-the-Box" Templates (COMPLETED) 1a2b3c4
+- [x] Task: Create and seed professional default templates.
+    - [x] Design standard layouts for Booking Confirmation, Rental Agreement, and Receipt.
+    - [x] Implement a seeding mechanism to populate new organizations with these defaults.
 
-- [ ] Task: Conductor - User Manual Verification 'Phase 4: Workflow Integration & Default Templates' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 4: Workflow Integration & Default Templates' (Protocol in workflow.md) 1a2b3c4

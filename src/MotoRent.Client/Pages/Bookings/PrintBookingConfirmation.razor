@@ -1,0 +1,269 @@
+@page "/bookings/print-confirmation/{BookingRef}"
+@using Microsoft.AspNetCore.Authorization
+@using MotoRent.Domain.Models
+@using MotoRent.Services.Core
+@attribute [Authorize(Policy = "RequireTenantStaff")]
+@inherits LocalizedComponentBase<PrintBookingConfirmation>
+
+@using MotoRent.Domain.Entities
+@inject BookingService BookingService
+@inject ShopService ShopService
+@inject DocumentTemplateService TemplateService
+@inject IHtmlTemplateRenderer HtmlRenderer
+@inject ITemplateDataResolver DataResolver
+@inject OrganizationService OrganizationService
+@inject IJSRuntime JS
+
+@if (m_customHtml != null)
+{
+    @* Render Custom Template *@
+    <div class="no-print print-button fixed-top p-3 d-flex justify-content-end">
+        <button class="btn btn-primary shadow" @onclick="Print">
+            <i class="ti ti-printer me-2"></i>
+            @Localizer["PrintConfirmation"]
+        </button>
+        <button class="btn btn-outline-secondary ms-2 shadow" @onclick="GoBack">
+            <i class="ti ti-arrow-left me-2"></i>
+            @Localizer["Back"]
+        </button>
+    </div>
+    <div class="custom-print-container">
+        @((MarkupString)m_customHtml)
+    </div>
+}
+else if (m_loading)
+{
+    <div class="d-flex justify-content-center p-5">
+        <div class="spinner-border"></div>
+    </div>
+}
+else
+{
+    @* Fallback to Legacy Layout *@
+    <style>
+        @@media print {
+            .no-print { display: none !important; }
+            body { margin: 0; padding: 0; }
+            .print-container { padding: 20px; }
+        }
+
+        .print-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #000;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            margin: 0 0 5px 0;
+            font-size: 20px;
+            text-transform: uppercase;
+        }
+
+        .section {
+            margin-bottom: 20px;
+        }
+
+        .section h3 {
+            font-size: 14px;
+            margin: 0 0 10px 0;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 5px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .item {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px dotted #ddd;
+            padding: 3px 0;
+        }
+
+        .label { color: #666; }
+        .value { font-weight: bold; }
+
+        .footer {
+            margin-top: 30px;
+            font-size: 10px;
+            color: #999;
+            text-align: center;
+            border-top: 1px solid #ddd;
+            padding-top: 10px;
+        }
+
+        .print-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+    </style>
+
+    <div class="no-print print-button">
+        <button class="btn btn-primary" @onclick="Print">
+            <i class="ti ti-printer me-2"></i>
+            @Localizer["PrintConfirmation"]
+        </button>
+        <button class="btn btn-outline-secondary ms-2" @onclick="GoBack">
+            <i class="ti ti-arrow-left me-2"></i>
+            @Localizer["Back"]
+        </button>
+    </div>
+
+    <div class="print-container">
+        <div class="header">
+            <h1>@Localizer["BookingConfirmation"]</h1>
+            <p>@(m_shop?.Name ?? "MotoRent")</p>
+            <p>@Localizer["Reference"]: <strong>@BookingRef</strong></p>
+            <p>@Localizer["Date"]: @DateTime.Now.ToString("dd MMM yyyy")</p>
+        </div>
+
+        @if (m_booking != null)
+        {
+            <div class="section">
+                <h3>@Localizer["CustomerInformation"]</h3>
+                <div class="grid">
+                    <div class="item">
+                        <span class="label">@Localizer["Name"]:</span>
+                        <span class="value">@m_booking.CustomerName</span>
+                    </div>
+                    <div class="item">
+                        <span class="label">@Localizer["Phone"]:</span>
+                        <span class="value">@m_booking.CustomerPhone</span>
+                    </div>
+                    <div class="item">
+                        <span class="label">@Localizer["Email"]:</span>
+                        <span class="value">@m_booking.CustomerEmail</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>@Localizer["BookingDetails"]</h3>
+                <div class="grid">
+                    <div class="item">
+                        <span class="label">@Localizer["PickupDate"]:</span>
+                        <span class="value">@m_booking.StartDate.ToString("dd MMM yyyy")</span>
+                    </div>
+                    <div class="item">
+                        <span class="label">@Localizer["ReturnDate"]:</span>
+                        <span class="value">@m_booking.EndDate.ToString("dd MMM yyyy")</span>
+                    </div>
+                    <div class="item">
+                        <span class="label">@Localizer["Duration"]:</span>
+                        <span class="value">@m_booking.Days @Localizer["Days"]</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>@Localizer["Vehicles"]</h3>
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>@Localizer["Vehicle"]</th>
+                            <th class="text-end">@Localizer["Amount"]</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in m_booking.Items)
+                        {
+                            <tr>
+                                <td>@item.VehicleDisplayName</td>
+                                <td class="text-end">@FormatCurrency(item.ItemTotal)</td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <th class="text-end">@Localizer["TotalAmount"]:</th>
+                            <th class="text-end">@FormatCurrency(m_booking.TotalAmount)</th>
+                        </tr>
+                        <tr>
+                            <th class="text-end">@Localizer["DepositRequired"]:</th>
+                            <th class="text-end">@FormatCurrency(m_booking.DepositRequired)</th>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        }
+
+        <div class="footer">
+            @if (m_shop != null)
+            {
+                <p>@m_shop.Name | @m_shop.Address | @m_shop.Phone</p>
+            }
+            <p>@Localizer["GeneratedOn", DateTime.Now.ToString("dd MMM yyyy HH:mm")]</p>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public string BookingRef { get; set; } = string.Empty;
+    [SupplyParameterFromQuery] public int? TemplateId { get; set; }
+
+    private bool m_loading = true;
+    private string? m_customHtml;
+    private Booking? m_booking;
+    private Shop? m_shop;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            m_loading = true;
+
+            m_booking = await BookingService.GetBookingByRefAsync(BookingRef);
+            if (m_booking != null)
+            {
+                m_shop = await ShopService.GetShopByIdAsync(m_booking.PreferredShopId ?? RequestContext.GetShopId());
+            }
+
+            // Check for template
+            DocumentTemplate? template = null;
+            if (this.TemplateId > 0)
+            {
+                template = await TemplateService.GetTemplateByIdAsync(this.TemplateId.Value);
+            }
+            else
+            {
+                template = await TemplateService.GetEffectiveDefaultTemplateAsync(DocumentType.BookingConfirmation, m_shop?.ShopId);
+            }
+
+            if (template != null)
+            {
+                var layout = await TemplateService.GetTemplateLayoutAsync(template.StoreId);
+                if (layout != null)
+                {
+                    var org = await OrganizationService.GetOrganizationByAccountNoAsync(AccountNo);
+                    var staff = new User { FullName = UserName, UserName = UserName };
+                    
+                    var data = DataResolver.Resolve(m_booking!, org ?? new Organization(), staff);
+                    m_customHtml = HtmlRenderer.RenderHtml(layout, data);
+                }
+            }
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private void GoBack() => NavigationManager.NavigateTo($"/bookings/{BookingRef}");
+
+    private async Task Print() => await this.JS.InvokeVoidAsync("window.print");
+}

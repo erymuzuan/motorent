@@ -7,6 +7,8 @@
 @inherits LocalizedComponentBase<BookingDetails>
 @inject BookingService BookingService
 @inject ShopService ShopService
+@inject DocumentTemplateService TemplateService
+@inject IJSRuntime JS
 
 <MotoRentPageTitle>@Localizer["PageTitle"] @BookingRef</MotoRentPageTitle>
 
@@ -35,6 +37,48 @@
                         @Localizer["CheckIn"]
                     </a>
                 }
+                
+                @if (m_booking != null)
+                {
+                    @if (m_templates.Count > 1)
+                    {
+                        <div class="dropdown">
+                            <div class="btn-group">
+                                <button type="button" class="mr-btn-header-action" @onclick="() => PrintConfirmation()">
+                                    <i class="ti ti-printer"></i>
+                                    @Localizer["PrintConfirmation"]
+                                </button>
+                                <button type="button" class="mr-btn-header-action dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <span class="visually-hidden">Toggle Dropdown</span>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end shadow">
+                                    <li class="dropdown-header">Select Template</li>
+                                    @foreach (var template in m_templates)
+                                    {
+                                        <li>
+                                            <a class="dropdown-item d-flex align-items-center gap-2" href="#" @onclick="@(() => PrintConfirmation(template.DocumentTemplateId))" @onclick:preventDefault>
+                                                <i class="ti ti-file-description text-secondary"></i>
+                                                <span>@template.Name</span>
+                                                @if (template.IsDefault)
+                                                {
+                                                    <span class="badge bg-blue-lt ms-auto">Default</span>
+                                                }
+                                            </a>
+                                        </li>
+                                    }
+                                </ul>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <button class="mr-btn-header-action" @onclick="() => PrintConfirmation()">
+                            <i class="ti ti-printer"></i>
+                            @Localizer["PrintConfirmation"]
+                        </button>
+                    }
+                }
+
                 @if (m_booking?.CanBeCancelled == true)
                 {
                     <button class="btn btn-outline-danger" @onclick="CancelBooking">
@@ -313,10 +357,23 @@
 
     private Booking? m_booking;
     private bool m_loading = true;
+    private List<DocumentTemplate> m_templates = new();
 
     protected override async Task OnParametersSetAsync()
     {
         await LoadBookingAsync();
+        
+        // Load templates
+        var result = await TemplateService.GetTemplatesAsync(DocumentType.BookingConfirmation);
+        m_templates = result.ItemCollection.Where(t => t.Status == DocumentTemplateStatus.Approved).ToList();
+    }
+
+    private async Task PrintConfirmation(int? templateId = null)
+    {
+        var url = $"/bookings/print-confirmation/{BookingRef}";
+        if (templateId.HasValue) url += $"?TemplateId={templateId}";
+        
+        await JS.InvokeVoidAsync("window.open", url, "_blank");
     }
 
     private async Task LoadBookingAsync()
