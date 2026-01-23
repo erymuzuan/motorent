@@ -31,6 +31,11 @@ public class Receipt : Entity
     public int? BookingId { get; set; }
 
     /// <summary>
+    /// Booking reference code (denormalized from Booking.BookingRef for display)
+    /// </summary>
+    public string? BookingRef { get; set; }
+
+    /// <summary>
     /// Reference to the rental (for CheckIn and Settlement receipts)
     /// </summary>
     public int? RentalId { get; set; }

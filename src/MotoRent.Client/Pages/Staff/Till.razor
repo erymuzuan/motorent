@@ -57,6 +57,30 @@ else if (this.m_session is null)
                         <i class="ti ti-player-play"></i>
                         @Localizer["OpenTillSession"]
                     </button>
+
+                    @* Show existing open sessions *@
+                    @if (m_existingOpenSessions.Any())
+                    {
+                        <div class="mt-4 pt-4 border-top">
+                            <p class="text-muted small mb-3">
+                                <i class="ti ti-info-circle me-1"></i>
+                                @Localizer["YouHaveOpenSessions"]
+                            </p>
+                            <div class="d-flex flex-column gap-2">
+                                @foreach (var session in m_existingOpenSessions)
+                                {
+                                    var shopName = m_shopsById.TryGetValue(session.ShopId, out var shop) ? shop.Name : $"Shop #{session.ShopId}";
+                                    <div class="d-flex align-items-center justify-content-center p-2 bg-teal-lt rounded">
+                                        <i class="ti ti-cash-register text-teal me-2"></i>
+                                        <span class="fw-medium">@shopName</span>
+                                        <span class="text-muted ms-2 small">
+                                            (@Localizer["OpenedAt"] @session.OpenedAt.ToLocalTime().ToString("HH:mm"))
+                                        </span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
                 </div>
             </div>
         </div>
@@ -293,47 +317,6 @@ else
             </div>
         }
 
-        @* ========== SESSION RECEIPTS ========== *@
-        @if (this.m_sessionReceipts.Any())
-        {
-            <div class="mr-card mb-4">
-                <div class="mr-card-header">
-                    <i class="ti ti-receipt text-primary me-2"></i>
-                    <span class="mr-card-title">@Localizer["SessionReceipts"]</span>
-                    <span class="badge bg-primary ms-2">@this.m_sessionReceipts.Count</span>
-                    <button type="button" class="btn btn-sm btn-ghost-primary ms-auto" @onclick="this.ViewAllReceiptsDialog">
-                        @Localizer["ViewAll"]
-                        <i class="ti ti-chevron-right ms-1"></i>
-                    </button>
-                </div>
-                <div class="mr-receipt-list">
-                    @foreach (var receipt in this.m_sessionReceipts.Take(5))
-                    {
-                        <div class="mr-receipt-item" @onclick="@(() => this.ViewReceiptDialog(receipt))">
-                            <div class="mr-receipt-icon @GetReceiptTypeClass(receipt)">
-                                <i class="@GetReceiptTypeIcon(receipt)"></i>
-                            </div>
-                            <div class="mr-receipt-details">
-                                <div class="mr-receipt-no">@receipt.ReceiptNo</div>
-                                <div class="mr-receipt-customer">@receipt.CustomerName</div>
-                            </div>
-                            <div class="mr-receipt-amount">
-                                ฿@receipt.GrandTotal.ToString("N0")
-                            </div>
-                            <div class="mr-receipt-time">
-                                @this.FormatTime(receipt.IssuedOn)
-                            </div>
-                            <button type="button" class="btn btn-sm btn-icon btn-ghost-primary"
-                                    @onclick:stopPropagation="true"
-                                    @onclick="@(() => this.PrintReceiptDialog(receipt))">
-                                <i class="ti ti-printer"></i>
-                            </button>
-                        </div>
-                    }
-                </div>
-            </div>
-        }
-
         @* ========== NEW TRANSACTION BUTTON ========== *@
         <div class="mb-4">
             <button type="button" class="mr-btn-primary-action w-100 py-3" @onclick="this.NewTransactionDialog">
@@ -444,82 +427,61 @@ else
             </div>
         </div>
 
-        @* ========== RECENT TRANSACTIONS ========== *@
+        @* ========== RECENT RECEIPTS ========== *@
         <div class="mr-card">
             <div class="mr-card-header">
-                <i class="ti ti-list-details text-primary me-2"></i>
-                <span class="mr-card-title">@Localizer["RecentTransactions"]</span>
-                <button type="button" class="btn btn-sm btn-ghost-primary ms-auto" @onclick="this.ViewHistoryDialog">
+                <i class="ti ti-receipt text-primary me-2"></i>
+                <span class="mr-card-title">@Localizer["RecentReceipts"]</span>
+                <button type="button" class="btn btn-sm btn-ghost-primary ms-auto" @onclick="this.ViewAllReceiptsDialog">
                     @Localizer["ViewAll"]
                     <i class="ti ti-chevron-right ms-1"></i>
                 </button>
             </div>
-            <div class="mr-transaction-list">
-                @if (!this.m_recentTransactions.Any())
+            <div class="mr-receipt-list">
+                @if (!this.m_sessionReceipts.Any())
                 {
                     <div class="mr-empty-state py-5">
                         <div class="mr-empty-state-icon">
                             <i class="ti ti-receipt-off"></i>
                         </div>
-                        <div class="mr-empty-state-title">@Localizer["NoTransactionsYet"]</div>
-                        <div class="mr-empty-state-subtitle">@Localizer["TransactionsWillAppearHere"]</div>
+                        <div class="mr-empty-state-title">@Localizer["NoReceiptsYet"]</div>
+                        <div class="mr-empty-state-subtitle">@Localizer["ReceiptsWillAppearHere"]</div>
                     </div>
                 }
                 else
                 {
-                    @foreach (var txn in this.m_recentTransactions)
+                    @foreach (var receipt in this.m_sessionReceipts.Take(10))
                     {
-                        <div class="mr-transaction-item @(txn.IsVoided ? "mr-transaction-voided" : "")">
-                            <div class="mr-transaction-icon @GetTransactionIconClass(txn)">
-                                <i class="@GetTransactionIcon(txn)"></i>
+                        <div class="mr-receipt-item @(receipt.Status == ReceiptStatus.Voided ? "mr-receipt-voided" : "")" @onclick="@(() => this.ViewReceiptDialog(receipt))">
+                            <div class="mr-receipt-icon @GetReceiptTypeClass(receipt)">
+                                <i class="@GetReceiptTypeIcon(receipt)"></i>
                             </div>
-                            <div class="mr-transaction-details">
-                                <div class="mr-transaction-type">
-                                    @if (txn.IsVoided)
+                            <div class="mr-receipt-details">
+                                <div class="mr-receipt-ref">
+                                    @if (receipt.Status == ReceiptStatus.Voided)
                                     {
-                                        <span class="badge bg-danger me-2 mr-void-badge">VOID</span>
+                                        <span class="badge bg-danger me-2">VOID</span>
                                     }
-                                    <span class="@(txn.IsVoided ? "text-decoration-line-through text-muted" : "")">
-                                        @GetTransactionTypeName(txn.TransactionType)
+                                    <span class="@(receipt.Status == ReceiptStatus.Voided ? "text-decoration-line-through text-muted" : "")">
+                                        @GetReceiptReference(receipt)
                                     </span>
                                 </div>
-                                <div class="mr-transaction-desc @(txn.IsVoided ? "text-decoration-line-through text-muted" : "")">@txn.Description</div>
+                                <div class="mr-receipt-no small text-muted @(receipt.Status == ReceiptStatus.Voided ? "text-decoration-line-through" : "")">
+                                    @receipt.ReceiptNo
+                                </div>
                             </div>
-                            <div class="mr-transaction-amount @(txn.IsVoided ? "text-decoration-line-through text-muted" : GetAmountColorClass(txn))">
-                                @(txn.Direction == TillTransactionDirection.In ? "+" : "−")฿@txn.Amount.ToString("N0")
+                            <div class="mr-receipt-amount @(receipt.Status == ReceiptStatus.Voided ? "text-decoration-line-through text-muted" : "")">
+                                ฿@receipt.GrandTotal.ToString("N0")
                             </div>
-                            <div class="mr-transaction-time">
-                                @this.FormatTime(txn.TransactionTime)
+                            <div class="mr-receipt-time">
+                                @this.FormatTime(receipt.IssuedOn)
                             </div>
-                            <div class="mr-transaction-actions">
-                                @if (!txn.IsVoided && CanVoidTransaction(txn) && IsSessionOpen)
-                                {
-                                    <button type="button"
-                                            class="btn btn-sm btn-icon btn-ghost-danger"
-                                            @onclick="@(() => this.InitiateVoidAsync(txn))"
-                                            title="@Localizer["VoidTransaction"]">
-                                        <i class="ti ti-x"></i>
-                                    </button>
-                                }
-                                @if (CanInitiateRefund(txn) && IsSessionOpen)
-                                {
-                                    <button type="button"
-                                            class="btn btn-sm btn-icon btn-ghost-success"
-                                            @onclick="@(() => this.InitiateOverpaymentRefundAsync(txn))"
-                                            title="@Localizer["OverpaymentRefund"]">
-                                        <i class="ti ti-cash-off"></i>
-                                    </button>
-                                }
-                                @if (txn.IsVoided)
-                                {
-                                    <button type="button"
-                                            class="btn btn-sm btn-icon btn-ghost-secondary"
-                                            @onclick="@(() => this.ShowVoidDetailsAsync(txn))"
-                                            title="@Localizer["ViewVoidDetails"]">
-                                        <i class="ti ti-info-circle"></i>
-                                    </button>
-                                }
-                            </div>
+                            <button type="button" class="btn btn-sm btn-icon btn-ghost-primary"
+                                    @onclick:stopPropagation="true"
+                                    @onclick="@(() => this.PrintReceiptDialog(receipt))"
+                                    title="@Localizer["Reprint"]">
+                                <i class="ti ti-printer"></i>
+                            </button>
                         </div>
                     }
                 }
@@ -538,6 +500,8 @@ else
     private bool m_isStaleSession;
     private List<TillTransaction> m_recentTransactions = [];
     private List<Receipt> m_sessionReceipts = [];
+    private List<TillSession> m_existingOpenSessions = [];
+    private Dictionary<int, Shop> m_shopsById = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -580,12 +544,16 @@ else
             }
             else
             {
-                // No active session - get default shop for opening new session
-                var shops = await this.ShopService.GetShopsAsync(page: 1, pageSize: 1);
+                // No active session - get default shop and load existing open sessions
+                var shops = await this.ShopService.GetShopsAsync(page: 1, pageSize: 100);
                 if (shops.ItemCollection.Any())
                 {
                     this.m_shopId = shops.ItemCollection.First().ShopId;
+                    this.m_shopsById = shops.ItemCollection.ToDictionary(s => s.ShopId);
                 }
+
+                // Load existing open sessions for this user (to show on Start Your Shift panel)
+                this.m_existingOpenSessions = await this.TillService.GetAllActiveSessionsForUserAsync(this.UserName);
             }
         }
         catch (Exception ex)
@@ -603,7 +571,8 @@ else
     {
         var result = await this.DialogService.Create<TillOpenSessionDialog>("Open Till Session")
             .WithParameter(x => x.ShopId, this.m_shopId)
-            .WithSize(ModalSize.Medium)
+            .WithFullscreen()
+            .WithHeader(false)
             .ShowDialogAsync();
 
         if (result is { Cancelled: false })
@@ -737,6 +706,36 @@ else
         ReceiptTypes.BookingDeposit => "mr-receipt-icon-booking",
         _ => "mr-receipt-icon-default"
     };
+
+    /// <summary>
+    /// Gets a display reference for the receipt (BookingRef or Rental #).
+    /// </summary>
+    private string GetReceiptReference(Receipt receipt)
+    {
+        // For booking deposits, show BookingRef
+        if (receipt.ReceiptType == ReceiptTypes.BookingDeposit)
+        {
+            return !string.IsNullOrEmpty(receipt.BookingRef)
+                ? $"{Localizer["Booking"]} #{receipt.BookingRef}"
+                : receipt.BookingId.HasValue
+                    ? $"{Localizer["Booking"]} #{receipt.BookingId}"
+                    : Localizer["BookingDeposit"];
+        }
+
+        // For check-in and settlement, show Rental #
+        if (receipt.RentalId.HasValue)
+        {
+            return $"{Localizer["Rental"]} #{receipt.RentalId}";
+        }
+
+        // Fallback to receipt type
+        return receipt.ReceiptType switch
+        {
+            ReceiptTypes.CheckIn => Localizer["CheckIn"],
+            ReceiptTypes.Settlement => Localizer["Settlement"],
+            _ => Localizer["Receipt"]
+        };
+    }
 
     private string GetTransactionTypeName(TillTransactionType type) => type switch
     {
