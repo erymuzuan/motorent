@@ -1,0 +1,170 @@
+@inherits LocalizedComponentBase<OpeningFloatPanel>
+
+<div class="mr-float-panel">
+    @* Add Cash Section - Denomination Chips *@
+    <div class="mr-add-cash-section">
+        <div class="mr-section-header">
+            <i class="ti ti-plus text-teal me-2"></i>
+            <span>@Localizer["AddCash"]</span>
+        </div>
+        <div class="mr-denomination-chips">
+            @foreach (var denomination in CurrencyDenominations.GetDenominations(SupportedCurrencies.THB))
+            {
+                var isBill = denomination >= 20;
+                var chipClass = isBill ? "mr-chip-bill" : "mr-chip-coin";
+                var count = GetCount(denomination);
+
+                <button type="button"
+                        class="mr-denom-chip @chipClass @(count > 0 ? "active" : "")"
+                        disabled="@Disabled"
+                        @onclick="() => Increment(denomination)">
+                    <span class="mr-chip-indicator"></span>
+                    <span class="mr-chip-icon">@(isBill ? "฿" : "C")</span>
+                    <span class="mr-chip-value">@denomination.ToString("N0")</span>
+                </button>
+            }
+        </div>
+    </div>
+
+    @* Counted Items Section - Only show items with count > 0 *@
+    @{
+        var countedItems = CurrencyDenominations.GetDenominations(SupportedCurrencies.THB)
+            .Where(d => GetCount(d) > 0)
+            .ToList();
+    }
+
+    @if (countedItems.Any())
+    {
+        <div class="mr-counted-section">
+            <div class="mr-section-header">
+                <i class="ti ti-coins text-muted me-2"></i>
+                <span>@Localizer["CountedItems"]</span>
+                <span class="ms-auto badge bg-secondary-lt">@countedItems.Count @Localizer["Types"]</span>
+            </div>
+
+            <div class="mr-counted-list">
+                @foreach (var denomination in countedItems)
+                {
+                    var count = GetCount(denomination);
+                    var subtotal = denomination * count;
+                    var isBill = denomination >= 20;
+                    var chipClass = isBill ? "mr-item-bill" : "mr-item-coin";
+
+                    <div class="mr-counted-item">
+                        <div class="mr-item-badge @chipClass">
+                            <span class="mr-badge-icon">@(isBill ? "฿" : "C")</span>
+                            <span class="mr-badge-value">@denomination.ToString("N0")</span>
+                        </div>
+                        <div class="mr-item-subtotal">
+                            <span class="mr-subtotal-label">@Localizer["Subtotal"]</span>
+                            <span class="mr-subtotal-value">฿@subtotal.ToString("N0")</span>
+                        </div>
+                        <div class="mr-item-controls">
+                            @if (count > 1)
+                            {
+                                <button type="button" class="mr-control-btn" disabled="@Disabled"
+                                        @onclick="() => Decrement(denomination)">
+                                    <i class="ti ti-minus"></i>
+                                </button>
+                            }
+                            else
+                            {
+                                <button type="button" class="mr-control-btn mr-control-delete" disabled="@Disabled"
+                                        @onclick="() => Remove(denomination)">
+                                    <i class="ti ti-trash"></i>
+                                </button>
+                            }
+                            <span class="mr-item-count">@count</span>
+                            <button type="button" class="mr-control-btn" disabled="@Disabled"
+                                    @onclick="() => Increment(denomination)">
+                                <i class="ti ti-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="mr-empty-state">
+            <i class="ti ti-coins text-muted mb-2" style="font-size: 2rem;"></i>
+            <p class="text-muted mb-0">@Localizer["TapToAddDenominations"]</p>
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// Callback when breakdowns change.
+    /// </summary>
+    [Parameter]
+    public EventCallback<List<CurrencyDenominationBreakdown>> OnBreakdownsChanged { get; set; }
+
+    /// <summary>
+    /// Whether to disable all inputs during save.
+    /// </summary>
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    // THB denomination -> count (simplified for THB only)
+    private Dictionary<decimal, int> m_counts = new();
+
+    protected override void OnInitialized()
+    {
+        // Initialize all denominations with 0 counts
+        foreach (var denom in CurrencyDenominations.GetDenominations(SupportedCurrencies.THB))
+        {
+            m_counts[denom] = 0;
+        }
+    }
+
+    private int GetCount(decimal denomination)
+    {
+        return m_counts.TryGetValue(denomination, out var count) ? count : 0;
+    }
+
+    private void SetCount(decimal denomination, int count)
+    {
+        m_counts[denomination] = Math.Max(0, count);
+        NotifyChanged();
+    }
+
+    private void Increment(decimal denomination)
+    {
+        var current = GetCount(denomination);
+        SetCount(denomination, current + 1);
+    }
+
+    private void Decrement(decimal denomination)
+    {
+        var current = GetCount(denomination);
+        if (current > 0)
+        {
+            SetCount(denomination, current - 1);
+        }
+    }
+
+    private void Remove(decimal denomination)
+    {
+        SetCount(denomination, 0);
+    }
+
+    private List<CurrencyDenominationBreakdown> BuildBreakdowns()
+    {
+        var breakdown = new CurrencyDenominationBreakdown
+        {
+            Currency = SupportedCurrencies.THB,
+            Denominations = new Dictionary<decimal, int>(m_counts.Where(kvp => kvp.Value > 0))
+        };
+
+        return [breakdown];
+    }
+
+    private async void NotifyChanged()
+    {
+        var breakdowns = BuildBreakdowns();
+        await OnBreakdownsChanged.InvokeAsync(breakdowns);
+        StateHasChanged();
+    }
+}

@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using MotoRent.Domain.Core;
 using MotoRent.Domain.Tourist;
 
@@ -21,36 +22,39 @@ public class TouristRequestContext : IRequestContext
     private string? m_resolvedAccountNo;
     private const double c_thailandTimezone = 7.0;
 
-    public TouristRequestContext(IHttpContextAccessor accessor)
+    public TouristRequestContext(IHttpContextAccessor accessor, IConfiguration configuration)
     {
-        m_accessor = accessor;
-        m_fallback = new MotoRentRequestContext(accessor);
+        this.m_accessor = accessor;
+        this.m_fallback = new MotoRentRequestContext(accessor, configuration);
     }
 
-    private HttpContext? Context => m_accessor.HttpContext;
+    public string GetConnectionString()
+    {
+        return this.m_fallback.GetConnectionString();
+    }
 
-    #region Multi-Tenant Identity
+    private HttpContext? Context => this.m_accessor.HttpContext;
 
     public string? GetUserName()
     {
         // Tourists are typically anonymous
-        return m_fallback.GetUserName();
+        return this.m_fallback.GetUserName();
     }
 
     public string? GetAccountNo()
     {
-        if (m_resolvedAccountNo != null)
-            return m_resolvedAccountNo;
+        if (this.m_resolvedAccountNo != null)
+            return this.m_resolvedAccountNo;
 
         if (Context == null)
-            return m_fallback.GetAccountNo();
+            return this.m_fallback.GetAccountNo();
 
         // Priority 1: Custom domain middleware set the tenant
         if (Context.Items.TryGetValue("TenantAccountNo", out var domainTenant) &&
             domainTenant is string tenantStr && !string.IsNullOrEmpty(tenantStr))
         {
-            m_resolvedAccountNo = tenantStr;
-            return m_resolvedAccountNo;
+            this.m_resolvedAccountNo = tenantStr;
+            return this.m_resolvedAccountNo;
         }
 
         // Priority 2: Extract from URL path /tourist/{accountNo}/...
@@ -60,58 +64,50 @@ public class TouristRequestContext : IRequestContext
             var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
             if (segments.Length >= 2)
             {
-                m_resolvedAccountNo = segments[1];
-                return m_resolvedAccountNo;
+                this.m_resolvedAccountNo = segments[1];
+                return this.m_resolvedAccountNo;
             }
         }
 
         // Priority 3: Fall back to authenticated user's tenant
-        return m_fallback.GetAccountNo();
+        return this.m_fallback.GetAccountNo();
     }
 
     public int GetShopId()
     {
         // Default shop for tourist browsing
-        return m_fallback.GetShopId();
+        return this.m_fallback.GetShopId();
     }
-
-    #endregion
-
-    #region Claims Access
 
     public string? GetClaim(string claimType)
     {
-        return m_fallback.GetClaim(claimType);
+        return this.m_fallback.GetClaim(claimType);
     }
 
     public Task<T?> GetClaimAsync<T>(string claimType)
     {
-        return m_fallback.GetClaimAsync<T>(claimType);
+        return this.m_fallback.GetClaimAsync<T>(claimType);
     }
 
     public Task<string[]> GetClaimsAsync(string claimType)
     {
-        return m_fallback.GetClaimsAsync(claimType);
+        return this.m_fallback.GetClaimsAsync(claimType);
     }
 
     public Task<string[]> GetSubscriptions()
     {
-        return m_fallback.GetSubscriptions();
+        return this.m_fallback.GetSubscriptions();
     }
 
     public Task<bool> HasSubscription(string subscription)
     {
-        return m_fallback.HasSubscription(subscription);
+        return this.m_fallback.HasSubscription(subscription);
     }
 
     public Task<bool> IsInRoleAsync(string role)
     {
-        return m_fallback.IsInRoleAsync(role);
+        return this.m_fallback.IsInRoleAsync(role);
     }
-
-    #endregion
-
-    #region Timezone and Date/Time
 
     public double TimezoneOffset
     {
@@ -125,7 +121,7 @@ public class TouristRequestContext : IRequestContext
             }
 
             // Fall back to user claims or default
-            return m_fallback.TimezoneOffset;
+            return this.m_fallback.TimezoneOffset;
         }
     }
 
@@ -134,71 +130,65 @@ public class TouristRequestContext : IRequestContext
         get
         {
             // Default to Monday for Thailand
-            return m_fallback.FirstDayOfWeek;
+            return this.m_fallback.FirstDayOfWeek;
         }
     }
 
-    #endregion
-
-    #region Date/Time Formatting
-
     public DateTimeOffset ConvertToDateTimeOffset(DateOnly date)
     {
-        return new DateTimeOffset(date.ToDateTime(TimeOnly.MinValue), TimeSpan.FromHours(TimezoneOffset));
+        return new DateTimeOffset(date.ToDateTime(TimeOnly.MinValue), TimeSpan.FromHours(this.TimezoneOffset));
     }
 
     public DateTimeOffset ConvertToDateTimeOffset(DateTime date)
     {
-        return new DateTimeOffset(date, TimeSpan.FromHours(TimezoneOffset));
+        return new DateTimeOffset(date, TimeSpan.FromHours(this.TimezoneOffset));
     }
 
     public DateTimeOffset GetStartOfDay(DateTimeOffset? dt = null)
     {
         dt ??= DateTimeOffset.UtcNow;
-        var localTime = dt.Value.ToUniversalTime().AddHours(TimezoneOffset);
-        return new DateTimeOffset(localTime.Date, TimeSpan.FromHours(TimezoneOffset));
+        var localTime = dt.Value.ToUniversalTime().AddHours(this.TimezoneOffset);
+        return new DateTimeOffset(localTime.Date, TimeSpan.FromHours(this.TimezoneOffset));
     }
 
     public DateOnly GetDate()
     {
-        return DateOnly.FromDateTime(DateTimeOffset.UtcNow.AddHours(TimezoneOffset).DateTime);
+        return DateOnly.FromDateTime(DateTimeOffset.UtcNow.AddHours(this.TimezoneOffset).DateTime);
     }
 
     public string FormatDateTimeOffsetSortable(DateTimeOffset? dateTimeOffset)
     {
         if (!dateTimeOffset.HasValue) return "";
-        var localTime = dateTimeOffset.Value.ToUniversalTime().AddHours(TimezoneOffset);
+        var localTime = dateTimeOffset.Value.ToUniversalTime().AddHours(this.TimezoneOffset);
         return $"{localTime:yyyy-MM-ddTHH:mm}";
     }
 
     public string FormatDate(DateTimeOffset dateTimeOffset)
     {
-        var localTime = dateTimeOffset.ToUniversalTime().AddHours(TimezoneOffset);
+        var localTime = dateTimeOffset.ToUniversalTime().AddHours(this.TimezoneOffset);
         return $"{localTime:dd/MM/yyyy}";
     }
 
     public string FormatDateTime(DateTimeOffset dateTimeOffset)
     {
-        var localTime = dateTimeOffset.ToUniversalTime().AddHours(TimezoneOffset);
+        var localTime = dateTimeOffset.ToUniversalTime().AddHours(this.TimezoneOffset);
         return $"{localTime:dd/MM/yyyy HH:mm}";
     }
 
     public string FormatTime(DateTimeOffset dateTimeOffset)
     {
-        var localTime = dateTimeOffset.ToUniversalTime().AddHours(TimezoneOffset);
+        var localTime = dateTimeOffset.ToUniversalTime().AddHours(this.TimezoneOffset);
         return $"{localTime:HH:mm}";
     }
 
     public DateOnly BeginningOfWeek(DateOnly date)
     {
-        var diff = (7 + (date.DayOfWeek - FirstDayOfWeek)) % 7;
+        var diff = (7 + (date.DayOfWeek - this.FirstDayOfWeek)) % 7;
         return date.AddDays(-diff);
     }
 
     public DateOnly EndOfWeek(DateOnly date)
     {
-        return BeginningOfWeek(date).AddDays(6);
+        return this.BeginningOfWeek(date).AddDays(6);
     }
-
-    #endregion
 }

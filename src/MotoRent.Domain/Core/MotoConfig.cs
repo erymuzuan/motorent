@@ -1,6 +1,3 @@
-using System.Collections.Concurrent;
-using Microsoft.Data.SqlClient;
-
 namespace MotoRent.Domain.Core;
 
 /// <summary>

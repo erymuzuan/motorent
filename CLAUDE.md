@@ -1,11 +1,11 @@
 # MotoRent - Claude Code Instructions
 
 ## Project Overview
-Motorbike rental system for Thailand tourist areas (Phuket, Krabi, etc.). Blazor Server + WASM PWA with MudBlazor UI.
+Motorbike rental system for Thailand tourist areas (Phuket, Krabi, etc.). Blazor Server + WASM PWA with Tabler css.
 
 ## Tech Stack
 - **Frontend**: Blazor Server + WASM (PWA)
-- **UI**: MudBlazor (Material Design) - Tropical Teal theme (#00897B)
+- **UI**: Tabler.css
 - **Database**: SQL Server with JSON columns and computed columns
 - **ORM**: Custom Repository Pattern (from rx-erp)
 - **JSON**: System.Text.Json with polymorphism support
@@ -15,32 +15,32 @@ Motorbike rental system for Thailand tourist areas (Phuket, Krabi, etc.). Blazor
 ## Project Structure
 ```
 motorent/
-├── .claude/                    # Skills documentation
-│   ├── skills/                 # Pattern references
-│   └── plans/                  # Implementation plans
-├── database/                   # SQL scripts
+├── .claude/                           # Skills documentation
+│   ├── skills/                        # Pattern references
+│   └── plans/                         # Implementation plans
+├── database/                          # SQL scripts
 ├── src/
-│   ├── MotoRent.Server/        # Blazor Server host
-│   ├── MotoRent.Client/        # WASM client (PWA)
-│   ├── MotoRent.Domain/        # Entities & DataContext
-│   └── MotoRent.Services/      # Business services
+│   ├── MotoRent.Server/               # Blazor Server host
+│   ├── MotoRent.Client/               # WASM client (PWA)
+│   ├── MotoRent.Domain/               # Entities, interfaces & DataContext (implementation-agnostic)
+│   ├── MotoRent.SqlServerRepository/  # SQL Server IRepository implementation
+│   ├── MotoRent.Core.Repository/      # Core schema SQL Server repository
+│   └── MotoRent.Services/             # Business services
 └── tests/
 ```
 
 ## Build Commands
 ```bash
-cd D:\project\work\motorent
 dotnet build
-dotnet run --project src/MotoRent.Server
+dotnet watch --project src/MotoRent.Server
 ```
 
 ## Code Conventions
 
 ### Naming
 - Private fields: `m_` prefix (e.g., `m_context`, `m_loading`)
-- Static fields: `s_` prefix (e.g., `s_defaultOptions`)
-- Constants: `c_` prefix or PascalCase
 - Async methods: `Async` suffix
+-
 
 ### Entity Pattern
 All entities inherit from `Entity` base class with:
@@ -71,7 +71,7 @@ public class MotorbikeService
 ```
 
 ### Blazor Components
-- Use MudBlazor components (MudDataGrid, MudDialog, MudForm, etc.)
+- Inherits `LocalizedComponentBase`
 - Clone entities before editing: `var cloned = entity.Clone();`
 - Use `@inject` for service injection
 - Private fields use `m_` prefix in `@code` blocks
@@ -82,7 +82,9 @@ Tables use JSON columns with computed columns for indexing:
 CREATE TABLE [MotoRent].[Entity]
 (
     [EntityId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
-    [ComputedColumn] AS CAST(JSON_VALUE([Json], '$.Property') AS TYPE),
+    [ComputedColumn] AS CAST(JSON_VALUE([Json], '$.Property') AS TYPE), --  except for DATE and DATETIMEOFFSET
+    [Date] DATE NULL,
+    [TimeStamp] DATETIMEOFFSET NULL,
     [Json] NVARCHAR(MAX) NOT NULL,
     [CreatedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
     [ChangedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
@@ -109,7 +111,7 @@ CREATE TABLE [MotoRent].[Entity]
 |--------|---------|
 | Shop | Shop location within an organization |
 | Renter | Tourist/customer information |
-| Motorbike | Inventory with status tracking |
+| Vehicle | Inventory with status tracking |
 | Rental | Rental transactions |
 | Deposit | Cash/card deposits |
 | Insurance | Insurance packages |
@@ -118,7 +120,7 @@ CREATE TABLE [MotoRent].[Entity]
 | DamageReport | Damage documentation |
 | Document | Passport/license OCR data |
 
-## Motorbike Status Values
+## Vehicle Status Values
 - `Available` - Ready for rental
 - `Rented` - Currently rented out
 - `Maintenance` - Under repair/service
@@ -197,7 +199,6 @@ The NavMenu shows **tenant menus only** - SuperAdmin without impersonation sees 
 ### Core Infrastructure
 - [x] Solution structure
 - [x] Domain entities with JSON polymorphism
-- [x] MudBlazor theme configuration
 - [x] Database schema (SQL scripts)
 - [x] Repository pattern
 - [x] Core multi-tenant module
@@ -205,7 +206,7 @@ The NavMenu shows **tenant menus only** - SuperAdmin without impersonation sees 
 - [x] Super admin impersonation
 
 ### Shop Management
-- [x] Motorbike/Vehicle CRUD pages
+- [x] Vehicle CRUD pages
 - [x] Insurance packages management
 - [x] Accessories management
 - [x] Daily rate configuration (embedded in entity dialogs)
@@ -256,16 +257,15 @@ The NavMenu shows **tenant menus only** - SuperAdmin without impersonation sees 
 See `.claude/skills/` for detailed patterns:
 - `database-repository/` - Repository and Unit of Work
 - `json-serialization/` - System.Text.Json setup
-- `blazor-mudblazor/` - MudBlazor components
 - `dialog-pattern/` - Dialog usage
 - `code-standards/` - C# conventions
 - `domain-entities/` - Entity definitions
 - `rental-workflow/` - Check-in/check-out logic
 
 ## Connection String
-Default: `Server=localhost;Database=MotoRent;Trusted_Connection=True;TrustServerCertificate=True;`
+Default: `Server=(local)\DEV2022;Database=MotoRent;Trusted_Connection=True;TrustServerCertificate=True;`
 
-Configure in `appsettings.json` under `ConnectionStrings:MotoRent`
+Configure in env `MOTO_SqlConnectionString`
 
 ## GitHub Repository
 https://github.com/erymuzuan/motorent

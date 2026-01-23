@@ -1,11 +1,11 @@
 @page "/staff/rentals"
 @using MotoRent.Domain
 @using Microsoft.AspNetCore.Authorization
-@inherits MotoRentComponentBase
+@inherits LocalizedComponentBase<ActiveRentals>
 @attribute [Authorize(Policy = "RequireTenantStaff")]
 @inject NavigationManager NavigationManager
 
-<PageTitle>Active Rentals - MotoRent</PageTitle>
+<PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 @* Search and Filters *@
 <div class="mb-3">
@@ -13,7 +13,7 @@
         <span class="input-icon-addon">
             <i class="ti ti-search"></i>
         </span>
-        <input type="text" class="form-control" placeholder="Search renter or plate..."
+        <input type="text" class="form-control" placeholder="@Localizer["SearchPlaceholder"]"
                @bind="m_searchText" @bind:event="oninput" />
     </div>
 </div>
@@ -22,19 +22,19 @@
 <div class="btn-group mb-3" role="group">
     <button type="button" class="btn @(m_selectedFilter == "all" ? "btn-secondary" : "btn-outline-secondary")"
             @onclick="@(() => SetFilter("all"))">
-        All (@m_allRentals.Count)
+        @Localizer["FilterAll", m_allRentals.Count]
     </button>
     <button type="button" class="btn @(m_selectedFilter == "active" ? "btn-success" : "btn-outline-success")"
             @onclick="@(() => SetFilter("active"))">
-        Active (@m_allRentals.Count(r => r.Status == "Active"))
+        @Localizer["FilterActive", m_allRentals.Count(r => r.Status == "Active")]
     </button>
     <button type="button" class="btn @(m_selectedFilter == "duetoday" ? "btn-warning" : "btn-outline-warning")"
             @onclick="@(() => SetFilter("duetoday"))">
-        Due Today (@m_allRentals.Count(r => r.DueDate.Date == DateTime.Today))
+        @Localizer["FilterDueToday", m_allRentals.Count(r => r.DueDate.Date == DateTime.Today)]
     </button>
     <button type="button" class="btn @(m_selectedFilter == "overdue" ? "btn-danger" : "btn-outline-danger")"
             @onclick="@(() => SetFilter("overdue"))">
-        Overdue (@m_allRentals.Count(r => r.IsOverdue))
+        @Localizer["FilterOverdue", m_allRentals.Count(r => r.IsOverdue)]
     </button>
 </div>
 
@@ -57,7 +57,7 @@
 else if (!FilteredRentals.Any())
 {
     <div class="alert alert-info mt-4">
-        No rentals match your search criteria
+        @Localizer["NoRentalsMatch"]
     </div>
 }
 else
@@ -85,14 +85,14 @@ else
                         @* Right: Due date + Status *@
                         <div class="text-end">
                             <small class="text-secondary">
-                                Day @rental.CurrentDay of @rental.TotalDays
+                                @Localizer["DayProgress", rental.CurrentDay, rental.TotalDays]
                             </small>
                             <div class="@GetDueColorClass(rental) small fw-medium">
                                 @GetDueText(rental)
                             </div>
                             @if (rental.IsOverdue)
                             {
-                                <span class="badge bg-danger">OVERDUE</span>
+                                <span class="badge bg-danger">@Localizer["OverdueBadge"]</span>
                             }
                         </div>
                     </div>
@@ -102,17 +102,17 @@ else
                         <button type="button" class="btn btn-sm btn-ghost-secondary"
                                 @onclick="@(() => CallRenter(rental))">
                             <i class="ti ti-phone me-1"></i>
-                            Call
+                            @Localizer["Call"]
                         </button>
                         <button type="button" class="btn btn-sm btn-ghost-primary"
                                 @onclick="@(() => ExtendRental(rental))">
                             <i class="ti ti-calendar-plus me-1"></i>
-                            Extend
+                            @Localizer["Extend"]
                         </button>
                         <button type="button" class="btn btn-sm btn-primary"
                                 @onclick="@(() => ProcessReturn(rental))">
                             <i class="ti ti-logout me-1"></i>
-                            Return
+                            @Localizer["Return"]
                         </button>
                     </div>
                 </div>
@@ -255,25 +255,25 @@ else
         return "text-secondary";
     }
 
-    private static string GetDueText(RentalDisplayItem rental)
+    private string GetDueText(RentalDisplayItem rental)
     {
         if (rental.IsOverdue)
         {
             var days = (DateTime.Today - rental.DueDate.Date).Days;
-            return $"{days} day{(days > 1 ? "s" : "")} overdue";
+            return Localizer["DaysOverdue", days];
         }
 
         if (rental.DueDate.Date == DateTime.Today)
         {
-            return $"Due today {rental.DueDate:HH:mm}";
+            return Localizer["DueTodayAt", rental.DueDate.ToString("HH:mm")];
         }
 
         if (rental.DueDate.Date == DateTime.Today.AddDays(1))
         {
-            return "Due tomorrow";
+            return Localizer["DueTomorrow"];
         }
 
-        return $"Due {rental.DueDate:MMM dd}";
+        return Localizer["DueOn", rental.DueDate.ToString("MMM dd")];
     }
 
     private void ShowDetails(RentalDisplayItem rental)
@@ -289,11 +289,11 @@ else
 
     private async Task ExtendRental(RentalDisplayItem rental)
     {
-        if (!await this.DialogService.ConfirmAsync($"Extend rental for {rental.RenterName}?", "Extend Rental"))
+        if (!await this.DialogService.ConfirmAsync(Localizer["ExtendConfirmation", rental.RenterName], Localizer["ExtendRental"]))
             return;
 
         // TODO: Process extension
-        this.ShowSuccess("Rental extended successfully");
+        this.ShowSuccess(Localizer["ExtendSuccess"]);
     }
 
     private void ProcessReturn(RentalDisplayItem rental)

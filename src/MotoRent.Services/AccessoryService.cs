@@ -50,14 +50,14 @@ public class AccessoryService(RentalDataContext context)
     {
         using var session = this.Context.OpenSession(username);
         session.Attach(accessory);
-        return await session.SubmitChanges("Create");
+        return await session.SubmitChanges("CreateAccessory");
     }
 
     public async Task<SubmitOperation> UpdateAccessoryAsync(Accessory accessory, string username)
     {
         using var session = this.Context.OpenSession(username);
         session.Attach(accessory);
-        return await session.SubmitChanges("Update");
+        return await session.SubmitChanges("UpdateAccessory");
     }
 
     public async Task<SubmitOperation> DeleteAccessoryAsync(Accessory accessory, string username)
@@ -73,17 +73,17 @@ public class AccessoryService(RentalDataContext context)
 
         using var session = this.Context.OpenSession(username);
         session.Delete(accessory);
-        return await session.SubmitChanges("Delete");
+        return await session.SubmitChanges("DeleteAccessory");
     }
 
     public async Task<(int Total, int IncludedFree)> GetAccessoryCountsAsync(int shopId)
     {
-        var allAccessories = await this.Context.LoadAsync(
-            this.Context.CreateQuery<Accessory>().Where(a => a.ShopId == shopId),
-            page: 1, size: 1000, includeTotalRows: false);
+        // Get total count using SQL COUNT
+        var total = await this.Context.GetCountAsync<Accessory>(a => a.ShopId == shopId);
 
-        var total = allAccessories.ItemCollection.Count;
-        var includedFree = allAccessories.ItemCollection.Count(a => a.IsIncluded);
+        // Get included free count using SQL COUNT with filter
+        var includedFree = await this.Context.GetCountAsync<Accessory>(
+            a => a.ShopId == shopId && a.IsIncluded);
 
         return (total, includedFree);
     }

@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.Extensions.Configuration;
 using MotoRent.Domain.Core;
 
 namespace MotoRent.Server.Services;
@@ -11,16 +12,22 @@ namespace MotoRent.Server.Services;
 public class MotoRentRequestContext : IRequestContext
 {
     private readonly IHttpContextAccessor m_accessor;
+    private readonly IConfiguration m_configuration;
     private const double c_thailandTimezone = 7.0; // UTC+7
 
-    public MotoRentRequestContext(IHttpContextAccessor accessor)
+    public MotoRentRequestContext(IHttpContextAccessor accessor, IConfiguration configuration)
     {
-        m_accessor = accessor;
+        this.m_accessor = accessor;
+        this.m_configuration = configuration;
     }
 
-    private HttpContext? Context => m_accessor.HttpContext;
+    public string GetConnectionString()
+    {
+        return this.m_configuration.GetConnectionString("MotoRent")
+            ?? throw new InvalidOperationException("Connection string 'MotoRent' not found in configuration.");
+    }
 
-    #region Multi-Tenant Identity
+    private HttpContext? Context => this.m_accessor.HttpContext;
 
     public string? GetUserName()
     {
@@ -47,10 +54,6 @@ public class MotoRentRequestContext : IRequestContext
         return 0; // No shop selected - user sees all shops
     }
 
-    #endregion
-
-    #region Claims Access
-
     public string? GetClaim(string claimType)
     {
         if (string.IsNullOrWhiteSpace(claimType))
@@ -62,7 +65,7 @@ public class MotoRentRequestContext : IRequestContext
 
     public Task<T?> GetClaimAsync<T>(string claimType)
     {
-        var value = GetClaim(claimType);
+        var value = this.GetClaim(claimType);
         if (string.IsNullOrWhiteSpace(value))
             return Task.FromResult<T?>(default);
 
@@ -113,13 +116,9 @@ public class MotoRentRequestContext : IRequestContext
 
     public async Task<bool> HasSubscription(string subscription)
     {
-        var subscriptions = await GetSubscriptions();
+        var subscriptions = await this.GetSubscriptions();
         return subscriptions.Contains(subscription, StringComparer.OrdinalIgnoreCase);
     }
-
-    #endregion
-
-    #region Timezone and Date/Time
 
     public double TimezoneOffset
     {
@@ -146,52 +145,50 @@ public class MotoRentRequestContext : IRequestContext
         }
     }
 
-    #endregion
-
     public DateTimeOffset ConvertToDateTimeOffset(DateOnly date)
     {
-        return new DateTimeOffset(date.ToDateTime(TimeOnly.MinValue), TimeSpan.FromHours(TimezoneOffset));
+        return new DateTimeOffset(date.ToDateTime(TimeOnly.MinValue), TimeSpan.FromHours(this.TimezoneOffset));
     }
 
     public DateTimeOffset ConvertToDateTimeOffset(DateTime date)
     {
-        return new DateTimeOffset(date, TimeSpan.FromHours(TimezoneOffset));
+        return new DateTimeOffset(date, TimeSpan.FromHours(this.TimezoneOffset));
     }
 
     public DateTimeOffset GetStartOfDay(DateTimeOffset? dt = null)
     {
         dt ??= DateTimeOffset.UtcNow;
-        var localTime = dt.Value.ToUniversalTime().AddHours(TimezoneOffset);
-        return new DateTimeOffset(localTime.Date, TimeSpan.FromHours(TimezoneOffset));
+        var localTime = dt.Value.ToUniversalTime().AddHours(this.TimezoneOffset);
+        return new DateTimeOffset(localTime.Date, TimeSpan.FromHours(this.TimezoneOffset));
     }
 
     public DateOnly GetDate()
     {
-        return DateOnly.FromDateTime(DateTimeOffset.UtcNow.AddHours(TimezoneOffset).DateTime);
+        return DateOnly.FromDateTime(DateTimeOffset.UtcNow.AddHours(this.TimezoneOffset).DateTime);
     }
 
     public string FormatDateTimeOffsetSortable(DateTimeOffset? dateTimeOffset)
     {
         if (!dateTimeOffset.HasValue) return "";
-        var localTime = dateTimeOffset.Value.ToUniversalTime().AddHours(TimezoneOffset);
+        var localTime = dateTimeOffset.Value.ToUniversalTime().AddHours(this.TimezoneOffset);
         return $"{localTime:yyyy-MM-ddTHH:mm}";
     }
 
     public string FormatDate(DateTimeOffset dateTimeOffset)
     {
-        var localTime = dateTimeOffset.ToUniversalTime().AddHours(TimezoneOffset);
+        var localTime = dateTimeOffset.ToUniversalTime().AddHours(this.TimezoneOffset);
         return $"{localTime:dd/MM/yyyy}";
     }
 
     public string FormatDateTime(DateTimeOffset dateTimeOffset)
     {
-        var localTime = dateTimeOffset.ToUniversalTime().AddHours(TimezoneOffset);
+        var localTime = dateTimeOffset.ToUniversalTime().AddHours(this.TimezoneOffset);
         return $"{localTime:dd/MM/yyyy HH:mm}";
     }
 
     public string FormatTime(DateTimeOffset dateTimeOffset)
     {
-        var localTime = dateTimeOffset.ToUniversalTime().AddHours(TimezoneOffset);
+        var localTime = dateTimeOffset.ToUniversalTime().AddHours(this.TimezoneOffset);
         return $"{localTime:HH:mm}";
     }
 
@@ -215,12 +212,12 @@ public class MotoRentRequestContext : IRequestContext
 
     public DateOnly BeginningOfWeek(DateOnly date)
     {
-        var diff = (7 + (date.DayOfWeek - FirstDayOfWeek)) % 7;
+        var diff = (7 + (date.DayOfWeek - this.FirstDayOfWeek)) % 7;
         return date.AddDays(-diff);
     }
 
     public DateOnly EndOfWeek(DateOnly date)
     {
-        return BeginningOfWeek(date).AddDays(6);
+        return this.BeginningOfWeek(date).AddDays(6);
     }
 }

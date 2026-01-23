@@ -14,9 +14,11 @@ using MotoRent.Services.Core;
 using MotoRent.Services.Search;
 using MotoRent.Services.Storage;
 using MotoRent.Services.Tourist;
+using MotoRent.Services.ExchangeRateProviders;
 using MotoRent.Domain.Search;
 using MotoRent.Server.Middleware;
 using MotoRent.Core.Repository;
+using MotoRent.SqlServerRepository;
 using HashidsNet;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -33,20 +35,24 @@ builder.Services.AddSingleton<IHashids>(_ => new Hashids(builder.Configuration["
 builder.Services.AddScoped<IRequestContext>(sp =>
 {
     var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
+    var configuration = sp.GetRequiredService<IConfiguration>();
     var path = httpContextAccessor.HttpContext?.Request.Path.Value ?? "";
 
     // Use TouristRequestContext for tourist pages
     if (path.StartsWith("/tourist/", StringComparison.OrdinalIgnoreCase))
     {
-        return new TouristRequestContext(httpContextAccessor);
+        return new TouristRequestContext(httpContextAccessor, configuration);
     }
 
     // Use standard context for authenticated pages
-    return new MotoRentRequestContext(httpContextAccessor);
+    return new MotoRentRequestContext(httpContextAccessor, configuration);
 });
 
 // Add MotoRent data context (uses environment variable MOTO_SqlConnectionString)
 builder.Services.AddMotoRentDataContext(MotoConfig.SqlConnectionString);
+
+// Add SQL Server repository implementations (IPagingTranslator, ISqlServerMetadata, IRepository<T>)
+builder.Services.AddMotoRentSqlServerRepository();
 
 // Add MotoRent services
 builder.Services.AddScoped<MotorbikeService>(); // Deprecated: use VehicleService
@@ -93,6 +99,14 @@ builder.Services.AddSingleton<DepreciationCalculator>();
 builder.Services.AddScoped<AssetService>();
 builder.Services.AddScoped<AssetExpenseService>();
 builder.Services.AddScoped<AssetLoanService>();
+// Cashier till services
+builder.Services.AddScoped<TillService>();
+builder.Services.AddScoped<ReceiptService>();
+builder.Services.AddScoped<ExchangeRateService>();
+// Exchange rate providers
+builder.Services.AddScoped<IExchangeRateProvider, MamyExchangeProvider>();
+builder.Services.AddScoped<IExchangeRateProvider, SuperRichProvider>();
+builder.Services.AddScoped<ManagerPinService>();
 
 // Error logging services
 builder.Services.AddScoped<MotoRent.Domain.Core.ILogger, SqlLogger>();
@@ -102,6 +116,10 @@ builder.Services.AddScoped<LogEntryService>();
 builder.Services.AddHttpClient("Gemini", client => { client.Timeout = TimeSpan.FromSeconds(60); });
 // Add HttpClient for NotificationService (Email + LINE)
 builder.Services.AddHttpClient<NotificationService>(client => { client.Timeout = TimeSpan.FromSeconds(30); });
+
+// Add HttpClients for Exchange Rate Providers
+builder.Services.AddHttpClient<MamyExchangeProvider>(client => { client.Timeout = TimeSpan.FromSeconds(30); });
+builder.Services.AddHttpClient<SuperRichProvider>(client => { client.Timeout = TimeSpan.FromSeconds(30); });
 
 // Add OpenSearch HttpClient (optional, enabled via MOTO_OpenSearchHost env var)
 var openSearchHost = Environment.GetEnvironmentVariable("MOTO_OpenSearchHost");

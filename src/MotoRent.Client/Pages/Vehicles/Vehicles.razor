@@ -167,9 +167,9 @@
             <div class="col-md-2">
                 <select class="form-select" @bind="m_statusFilter" @bind:after="LoadDataAsync">
                     <option value="">@Localizer["AllStatus"]</option>
-                    @foreach (VehicleStatus status in Enum.GetValues<VehicleStatus>())
+                    @foreach (var status in VehicleStatus.AllStatuses)
                     {
-                        <option value="@status">@Localizer[status.ToString()]</option>
+                        <option value="@status">@Localizer[status]</option>
                     }
                 </select>
             </div>
@@ -654,14 +654,14 @@
     private List<Vehicle> m_vehicles = [];
     private List<VehicleGroup> m_vehicleGroups = [];
     private HashSet<string> m_expandedGroups = [];
-    private Dictionary<VehicleStatus, int> m_statusCounts = new();
+    private Dictionary<string, int> m_statusCounts = new();
     private Dictionary<VehicleType, int> m_typeCounts = new();
     private Dictionary<int, string> m_vehiclePrimaryImages = new();
     private List<string> m_availableBrands = [];
     private List<VehicleType> m_enabledVehicleTypes = [];
     private bool m_loading = true;
     private string? m_searchTerm;
-    private VehicleStatus? m_statusFilter;
+    private string? m_statusFilter;
     private VehicleType? m_vehicleTypeFilter;
     private string? m_brandFilter;
     private bool m_includePooled = true;
@@ -782,7 +782,7 @@
         this.m_debounceTimer.Start();
     }
 
-    private async Task FilterByStatus(VehicleStatus status)
+    private async Task FilterByStatus(string status)
     {
         this.m_statusFilter = this.m_statusFilter == status ? null : status;
         await this.LoadDataAsync();
@@ -804,14 +804,14 @@
 
     private bool HasActiveFilters() =>
         !string.IsNullOrEmpty(m_searchTerm) ||
-        m_statusFilter.HasValue ||
+        !string.IsNullOrEmpty(m_statusFilter) ||
         !string.IsNullOrEmpty(m_brandFilter);
 
     private int GetTotalCount() => m_vehicleTypeFilter.HasValue
         ? m_typeCounts.GetValueOrDefault(m_vehicleTypeFilter.Value, 0)
         : m_typeCounts.Values.Sum();
 
-    private int GetStatusCount(VehicleStatus status) => m_statusCounts.GetValueOrDefault(status, 0);
+    private int GetStatusCount(string status) => m_statusCounts.GetValueOrDefault(status, 0);
 
     private void NavigateToEdit(Vehicle vehicle)
     {
@@ -892,7 +892,7 @@
         _ => "bg-secondary-lt text-secondary"
     };
 
-    private static string GetStatusBadgeClass(VehicleStatus status) => status switch
+    private static string GetStatusBadgeClass(string status) => status switch
     {
         VehicleStatus.Available => "bg-teal-lt text-teal",
         VehicleStatus.Rented => "bg-indigo-lt text-indigo",
@@ -902,7 +902,7 @@
         _ => "bg-secondary-lt text-secondary"
     };
 
-    private static string GetStatusAvatarClass(VehicleStatus status) => status switch
+    private static string GetStatusAvatarClass(string status) => status switch
     {
         VehicleStatus.Available => "bg-teal-lt",
         VehicleStatus.Rented => "bg-indigo-lt",
@@ -912,7 +912,7 @@
         _ => "bg-secondary-lt"
     };
 
-    private static string GetStatusIcon(VehicleStatus status) => status switch
+    private static string GetStatusIcon(string status) => status switch
     {
         VehicleStatus.Available => "ti-circle-check",
         VehicleStatus.Rented => "ti-steering-wheel",

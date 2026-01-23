@@ -1,127 +1,295 @@
 @page "/staff"
 @using MotoRent.Client.Components.Staff
 @using MotoRent.Domain
+@using MotoRent.Domain.Entities
 @using Microsoft.AspNetCore.Authorization
+@inject MotoRent.Services.BookingService BookingService
 @attribute [Authorize(Policy = "RequireTenantStaff")]
 @inherits LocalizedComponentBase<Index>
 
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
-@* Main Action Cards *@
-<div class="row g-3 mb-4">
-    <div class="col-6">
-        <StaffActionCard Icon="ti-login"
-                         Title="@Localizer["NewCheckIn"]"
-                         Subtitle="@Localizer["NewCheckInSubtitle"]"
-                         IconColor="primary"
-                         OnClick="@(() => NavigationManager.NavigateTo("/rentals/checkin"))" />
-    </div>
-
-    <div class="col-6">
-        <StaffActionCard Icon="ti-logout"
-                         Title="@Localizer["ReturnBike"]"
-                         Subtitle="@Localizer["ReturnBikeSubtitle"]"
-                         IconColor="secondary"
-                         OnClick="@(() => NavigationManager.NavigateTo("/staff/return"))" />
-    </div>
-
-    <div class="col-6">
-        <StaffActionCard Icon="ti-receipt"
-                         Title="@Localizer["Active"]"
-                         Subtitle="@Localizer["ActiveSubtitle"]"
-                         IconColor="success"
-                         BadgeCount="@m_activeCount"
-                         BadgeColor="success"
-                         OnClick="@(() => NavigationManager.NavigateTo("/staff/rentals"))" />
-    </div>
-
-    <div class="col-6">
-        <StaffActionCard Icon="ti-alert-triangle"
-                         Title="@Localizer["Overdue"]"
-                         Subtitle="@Localizer["OverdueSubtitle"]"
-                         IconColor="danger"
-                         BadgeCount="@m_overdueCount"
-                         BadgeColor="danger"
-                         OnClick="@(() => NavigationManager.NavigateTo("/staff/rentals?filter=overdue"))" />
+@* Fleet Status Hero *@
+<div class="mr-staff-hero">
+    <div class="mr-staff-hero-bg"></div>
+    <div class="mr-staff-hero-content">
+        <div class="mr-staff-hero-stats">
+            <div class="mr-staff-stat mr-staff-stat-available">
+                <div class="mr-staff-stat-icon">
+                    <i class="ti ti-motorbike"></i>
+                </div>
+                <div class="mr-staff-stat-info">
+                    <span class="mr-staff-stat-value">@m_availableBikes</span>
+                    <span class="mr-staff-stat-label">@Localizer["Available"]</span>
+                </div>
+            </div>
+            <div class="mr-staff-stat mr-staff-stat-rented">
+                <div class="mr-staff-stat-icon">
+                    <i class="ti ti-key"></i>
+                </div>
+                <div class="mr-staff-stat-info">
+                    <span class="mr-staff-stat-value">@m_activeCount</span>
+                    <span class="mr-staff-stat-label">@Localizer["Rented"]</span>
+                </div>
+            </div>
+            <div class="mr-staff-stat mr-staff-stat-maintenance">
+                <div class="mr-staff-stat-icon">
+                    <i class="ti ti-tool"></i>
+                </div>
+                <div class="mr-staff-stat-info">
+                    <span class="mr-staff-stat-value">@m_maintenanceCount</span>
+                    <span class="mr-staff-stat-label">@Localizer["Maintenance"]</span>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
-@* Due Today Section *@
-<div class="card">
-    <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h4 class="card-title mb-0">
-                <i class="ti ti-clock me-2" style="vertical-align: middle;"></i>
-                @Localizer["DueToday"]
-            </h4>
-            <span class="badge bg-warning">@m_dueTodayRentals.Count</span>
+@* Main Action Cards *@
+<div class="mr-staff-actions">
+    <div class="mr-staff-action mr-staff-action-checkin" @onclick="@(() => NavigationManager.NavigateTo("/rentals/checkin"))">
+        <div class="mr-staff-action-icon">
+            <i class="ti ti-login"></i>
         </div>
+        <div class="mr-staff-action-content">
+            <h3>@Localizer["NewCheckIn"]</h3>
+            <p>@Localizer["NewCheckInSubtitle"]</p>
+        </div>
+        <div class="mr-staff-action-arrow">
+            <i class="ti ti-chevron-right"></i>
+        </div>
+    </div>
 
-        @if (m_loading)
+    <div class="mr-staff-action mr-staff-action-return" @onclick="@(() => NavigationManager.NavigateTo("/staff/return"))">
+        <div class="mr-staff-action-icon">
+            <i class="ti ti-logout"></i>
+        </div>
+        <div class="mr-staff-action-content">
+            <h3>@Localizer["ReturnBike"]</h3>
+            <p>@Localizer["ReturnBikeSubtitle"]</p>
+        </div>
+        <div class="mr-staff-action-arrow">
+            <i class="ti ti-chevron-right"></i>
+        </div>
+    </div>
+</div>
+
+@* Quick Access Cards *@
+<div class="mr-staff-quick-cards">
+    <div class="mr-staff-quick-card mr-staff-quick-active" @onclick="@(() => NavigationManager.NavigateTo("/staff/rentals"))">
+        <div class="mr-staff-quick-header">
+            <i class="ti ti-receipt"></i>
+            <span class="mr-staff-quick-badge bg-success">@m_activeCount</span>
+        </div>
+        <h4>@Localizer["Active"]</h4>
+        <p>@Localizer["ActiveSubtitle"]</p>
+    </div>
+
+    <div class="mr-staff-quick-card mr-staff-quick-overdue @(m_overdueCount > 0 ? "has-items" : "")" @onclick="@(() => NavigationManager.NavigateTo("/staff/rentals?filter=overdue"))">
+        <div class="mr-staff-quick-header">
+            <i class="ti ti-alert-triangle"></i>
+            @if (m_overdueCount > 0)
+            {
+                <span class="mr-staff-quick-badge bg-danger mr-pulse">@m_overdueCount</span>
+            }
+        </div>
+        <h4>@Localizer["Overdue"]</h4>
+        <p>@Localizer["OverdueSubtitle"]</p>
+    </div>
+</div>
+
+@* Expected Arrivals Section *@
+<div class="mr-staff-arrivals">
+    <div class="mr-staff-arrivals-header">
+        <div class="mr-staff-arrivals-title">
+            <i class="ti ti-calendar-event"></i>
+            <h3>@Localizer["ExpectedArrivals"]</h3>
+        </div>
+        @if (m_missedCount > 0)
         {
-            <div class="progress progress-sm">
-                <div class="progress-bar progress-bar-indeterminate"></div>
-            </div>
+            <span class="mr-staff-missed-badge mr-pulse" @onclick="@(() => SetBookingFilter("missed"))">
+                @Localizer["MissedCount", m_missedCount]
+            </span>
         }
-        else if (m_dueTodayRentals.Count == 0)
+    </div>
+
+    @* Search Bar *@
+    <div class="mr-staff-arrivals-search">
+        <i class="ti ti-search"></i>
+        <input type="text"
+               placeholder="@Localizer["SearchBookings"]"
+               value="@m_bookingSearchTerm"
+               @oninput="OnSearchInput" />
+        @if (!string.IsNullOrWhiteSpace(m_bookingSearchTerm))
         {
-            <div class="alert alert-info">
-                @Localizer["NoBikesDueToday"]
+            <button class="mr-staff-search-clear" @onclick="ClearSearch">
+                <i class="ti ti-x"></i>
+            </button>
+        }
+    </div>
+
+    @* Filter Tabs *@
+    <div class="mr-staff-arrivals-tabs">
+        <button class="@(m_bookingFilter == "upcoming" ? "active" : "")"
+                @onclick="@(() => SetBookingFilter("upcoming"))">
+            @Localizer["Upcoming"]
+        </button>
+        <button class="@(m_bookingFilter == "missed" ? "active" : "")"
+                @onclick="@(() => SetBookingFilter("missed"))">
+            @Localizer["Missed"]
+            @if (m_missedCount > 0)
+            {
+                <span class="tab-badge">@m_missedCount</span>
+            }
+        </button>
+    </div>
+
+    @* Booking List *@
+    <div class="mr-staff-arrivals-list">
+        @if (!m_filteredBookings.Any())
+        {
+            <div class="mr-staff-arrivals-empty">
+                <i class="ti ti-calendar-off"></i>
+                <p>@GetEmptyMessage()</p>
             </div>
         }
         else
         {
-            <div class="d-flex flex-column gap-2">
+            @foreach (var booking in m_filteredBookings.Take(5))
+            {
+                <div class="mr-staff-arrival-item @(IsMissed(booking) ? "missed" : "")">
+                    <div class="mr-staff-arrival-avatar @GetPaymentStatusClass(booking)">
+                        <i class="ti ti-user"></i>
+                    </div>
+                    <div class="mr-staff-arrival-info">
+                        <div class="mr-staff-arrival-ref">
+                            <span class="mr-mono">@booking.BookingRef</span>
+                            <span class="mr-staff-arrival-dot">·</span>
+                            <span>@booking.CustomerName</span>
+                        </div>
+                        <div class="mr-staff-arrival-details">
+                            <i class="ti ti-motorbike"></i>
+                            @if (booking.VehicleCount == 1)
+                            {
+                                @(booking.Items.FirstOrDefault()?.VehicleDisplayName ?? Localizer["Vehicle"])
+                            }
+                            else
+                            {
+                                @Localizer["VehicleCount", booking.VehicleCount]
+                            }
+                            @if (booking.IsAgentBooking)
+                            {
+                                <span class="mr-staff-arrival-agent">
+                                    @Localizer["ViaAgent", booking.AgentCode ?? booking.AgentName]
+                                </span>
+                            }
+                        </div>
+                    </div>
+                    <div class="mr-staff-arrival-time">
+                        @if (IsMissed(booking))
+                        {
+                            <span class="mr-staff-arrival-missed-badge">@Localizer["MissedLabel"]</span>
+                        }
+                        else
+                        {
+                            <span class="mr-staff-arrival-date">@GetArrivalDateText(booking)</span>
+                            @if (booking.PickupTime.HasValue)
+                            {
+                                <span class="mr-staff-arrival-time-value">@booking.PickupTime.Value.ToString(@"hh\:mm")</span>
+                            }
+                        }
+                    </div>
+                    <button class="mr-staff-arrival-btn"
+                            @onclick="@(() => StartCheckIn(booking.BookingRef))">
+                        <i class="ti ti-login"></i>
+                        @Localizer["CheckIn"]
+                    </button>
+                </div>
+            }
+        }
+    </div>
+
+    @if (m_filteredBookings.Count > 5)
+    {
+        <button class="mr-staff-arrivals-view-all" @onclick="ViewAllBookings">
+            <span>@Localizer["ViewAllCount", m_filteredBookings.Count]</span>
+            <i class="ti ti-chevron-right"></i>
+        </button>
+    }
+</div>
+
+@* Due Today Section *@
+<div class="mr-staff-due-today">
+    <div class="mr-staff-due-header">
+        <div class="mr-staff-due-title">
+            <i class="ti ti-clock"></i>
+            <h3>@Localizer["DueToday"]</h3>
+        </div>
+        @if (m_dueTodayRentals.Count > 0)
+        {
+            <span class="mr-staff-due-count">@m_dueTodayRentals.Count</span>
+        }
+    </div>
+
+    <div class="mr-staff-due-content">
+        @if (m_loading)
+        {
+            <div class="mr-staff-due-loading">
+                <div class="progress progress-sm">
+                    <div class="progress-bar progress-bar-indeterminate"></div>
+                </div>
+            </div>
+        }
+        else if (m_dueTodayRentals.Count == 0)
+        {
+            <div class="mr-staff-due-empty">
+                <i class="ti ti-mood-happy"></i>
+                <p>@Localizer["NoBikesDueToday"]</p>
+            </div>
+        }
+        else
+        {
+            <div class="mr-staff-due-list">
                 @foreach (var rental in m_dueTodayRentals.Take(5))
                 {
-                    <div class="card bg-muted-lt">
-                        <div class="card-body py-2 px-3">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <div class="fw-medium">@rental.RenterName</div>
-                                    <small class="text-secondary">
-                                        @rental.MotorbikeName (@rental.LicensePlate)
-                                    </small>
-                                </div>
-                                <div class="text-end">
-                                    <div class="@(rental.IsOverdue ? "text-danger" : "text-warning") small">
-                                        @(rental.IsOverdue ? Localizer["OverdueLabel"] : rental.DueTime?.ToString("HH:mm") ?? Localizer["Today"])
-                                    </div>
-                                    <button type="button" class="btn btn-sm btn-ghost-primary"
-                                            @onclick="@(() => ProcessReturn(rental.RentalId))">
-                                        @Localizer["Return"]
-                                    </button>
-                                </div>
+                    <div class="mr-staff-due-item @(rental.IsOverdue ? "overdue" : "")">
+                        <div class="mr-staff-due-item-avatar">
+                            <i class="ti ti-user"></i>
+                        </div>
+                        <div class="mr-staff-due-item-info">
+                            <div class="mr-staff-due-item-name">@rental.RenterName</div>
+                            <div class="mr-staff-due-item-bike">
+                                <i class="ti ti-motorbike"></i>
+                                @rental.MotorbikeName
+                                <span class="mr-staff-due-item-plate">@rental.LicensePlate</span>
                             </div>
                         </div>
+                        <div class="mr-staff-due-item-time">
+                            @if (rental.IsOverdue)
+                            {
+                                <span class="mr-staff-due-overdue-badge">@Localizer["OverdueLabel"]</span>
+                            }
+                            else
+                            {
+                                <span class="mr-staff-due-time-value">@(rental.DueTime?.ToString("HH:mm") ?? Localizer["Today"])</span>
+                            }
+                        </div>
+                        <button type="button" class="mr-staff-due-item-btn" @onclick="@(() => ProcessReturn(rental.RentalId))" @onclick:stopPropagation="true">
+                            <i class="ti ti-arrow-back-up"></i>
+                            @Localizer["Return"]
+                        </button>
                     </div>
                 }
             </div>
 
             @if (m_dueTodayRentals.Count > 5)
             {
-                <button type="button" class="btn btn-ghost-primary w-100 mt-2"
-                        @onclick="@(() => NavigationManager.NavigateTo("/staff/rentals?filter=duetoday"))">
-                    @Localizer["ViewAllCount", m_dueTodayRentals.Count]
+                <button type="button" class="mr-staff-due-view-all" @onclick="@(() => NavigationManager.NavigateTo("/staff/rentals?filter=duetoday"))">
+                    <span>@Localizer["ViewAllCount", m_dueTodayRentals.Count]</span>
+                    <i class="ti ti-chevron-right"></i>
                 </button>
             }
         }
-    </div>
-</div>
-
-@* Quick Stats Footer *@
-<div class="row g-2 mt-4">
-    <div class="col-4 text-center">
-        <div class="h3 text-primary mb-0">@m_availableBikes</div>
-        <small class="text-secondary">@Localizer["Available"]</small>
-    </div>
-    <div class="col-4 text-center border-start border-end">
-        <div class="h3 text-success mb-0">@m_activeCount</div>
-        <small class="text-secondary">@Localizer["Rented"]</small>
-    </div>
-    <div class="col-4 text-center">
-        <div class="h3 text-warning mb-0">@m_maintenanceCount</div>
-        <small class="text-secondary">@Localizer["Maintenance"]</small>
     </div>
 </div>
 
@@ -132,6 +300,14 @@
     private int m_availableBikes;
     private int m_maintenanceCount;
     private List<DueTodayItem> m_dueTodayRentals = [];
+
+    // Booking arrivals state
+    private List<Booking> m_upcomingBookings = [];
+    private List<Booking> m_filteredBookings = [];
+    private string m_bookingSearchTerm = "";
+    private string m_bookingFilter = "upcoming";
+    private int m_missedCount;
+    private System.Timers.Timer? m_searchDebounceTimer;
 
     protected override async Task OnInitializedAsync()
     {
@@ -167,7 +343,18 @@
                 new("Alex Brown", "Honda Wave 110", "E-7890", 5, TimeOnly.Parse("12:00"), false),
             ];
 
-            await Task.CompletedTask;
+            // Load today's and tomorrow's bookings
+            var today = DateTimeOffset.Now.Date;
+            var tomorrow = today.AddDays(2);
+            var bookingsResult = await BookingService.GetUpcomingBookingsAsync(today, tomorrow, 1, 50);
+            m_upcomingBookings = bookingsResult.ItemCollection.ToList();
+
+            // Calculate missed (past pickup time, still Pending/Confirmed)
+            var now = DateTime.Now;
+            m_missedCount = m_upcomingBookings.Count(b => IsMissed(b));
+
+            // Apply filter
+            ApplyBookingFilter();
         }
         finally
         {
@@ -179,6 +366,115 @@
     {
         this.NavigationManager.NavigateTo($"/staff/return?rentalId={EncodeId(rentalId)}");
     }
+
+    #region Booking Arrivals Methods
+
+    private void ApplyBookingFilter()
+    {
+        if (!string.IsNullOrWhiteSpace(m_bookingSearchTerm))
+        {
+            var term = m_bookingSearchTerm.ToLowerInvariant();
+            m_filteredBookings = m_upcomingBookings
+                .Where(b =>
+                    b.BookingRef.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                    b.CustomerName.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                    (b.CustomerPassportNo?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (b.AgentCode?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (b.AgentName?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false))
+                .ToList();
+        }
+        else if (m_bookingFilter == "missed")
+        {
+            m_filteredBookings = m_upcomingBookings
+                .Where(b => IsMissed(b))
+                .OrderBy(b => b.PickupTime)
+                .ToList();
+        }
+        else // "upcoming"
+        {
+            m_filteredBookings = m_upcomingBookings
+                .Where(b => !IsMissed(b))
+                .OrderBy(b => b.StartDate)
+                .ThenBy(b => b.PickupTime)
+                .ToList();
+        }
+    }
+
+    private bool IsMissed(Booking booking)
+    {
+        var today = DateTimeOffset.Now.Date;
+        var now = DateTime.Now.TimeOfDay;
+        return booking.StartDate.Date <= today &&
+               booking.PickupTime.HasValue &&
+               booking.PickupTime.Value < now;
+    }
+
+    private string GetArrivalDateText(Booking booking)
+    {
+        var today = DateTimeOffset.Now.Date;
+        if (booking.StartDate.Date == today) return Localizer["Today"];
+        if (booking.StartDate.Date == today.AddDays(1)) return Localizer["Tomorrow"];
+        return booking.StartDate.ToString("ddd MMM d");
+    }
+
+    private string GetPaymentStatusClass(Booking booking) => booking.PaymentStatus switch
+    {
+        BookingPaymentStatus.FullyPaid => "payment-full",
+        BookingPaymentStatus.PartiallyPaid => "payment-partial",
+        _ => "payment-none"
+    };
+
+    private string GetEmptyMessage() => m_bookingFilter switch
+    {
+        "missed" => Localizer["NoMissedBookings"],
+        _ when !string.IsNullOrWhiteSpace(m_bookingSearchTerm) => Localizer["NoSearchResults"],
+        _ => Localizer["NoUpcomingBookings"]
+    };
+
+    private void SetBookingFilter(string filter)
+    {
+        m_bookingFilter = filter;
+        m_bookingSearchTerm = "";
+        ApplyBookingFilter();
+    }
+
+    private void OnSearchInput(ChangeEventArgs e)
+    {
+        m_bookingSearchTerm = e.Value?.ToString() ?? "";
+        m_searchDebounceTimer?.Stop();
+        m_searchDebounceTimer?.Dispose();
+        m_searchDebounceTimer = new System.Timers.Timer(300);
+        m_searchDebounceTimer.Elapsed += async (_, _) =>
+        {
+            await InvokeAsync(() =>
+            {
+                ApplyBookingFilter();
+                StateHasChanged();
+            });
+            m_searchDebounceTimer?.Dispose();
+        };
+        m_searchDebounceTimer.AutoReset = false;
+        m_searchDebounceTimer.Start();
+    }
+
+    private void ClearSearch()
+    {
+        m_bookingSearchTerm = "";
+        m_bookingFilter = "upcoming";
+        ApplyBookingFilter();
+    }
+
+    private void StartCheckIn(string bookingRef)
+    {
+        NavigationManager.NavigateTo($"/rentals/checkin/{bookingRef}");
+    }
+
+    private void ViewAllBookings()
+    {
+        NavigationManager.NavigateTo("/bookings");
+    }
+
+    #endregion
 
     private record DueTodayItem(
         string RenterName,

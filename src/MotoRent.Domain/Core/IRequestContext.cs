@@ -35,6 +35,11 @@ public interface IRequestContext
     string? GetSchema() => GetAccountNo();
 
     /// <summary>
+    /// Gets the SQL connection string for the current request context.
+    /// </summary>
+    string GetConnectionString();
+
+    /// <summary>
     /// Gets the current shop ID for the authenticated user.
     /// Returns 0 if no shop is selected (user sees all shops).
     /// </summary>

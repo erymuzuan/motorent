@@ -1,0 +1,383 @@
+@page "/finance/receipts"
+@using Microsoft.AspNetCore.Authorization
+@using MotoRent.Domain.Entities
+@using MotoRent.Client.Components.Receipts
+@attribute [Authorize(Policy = "RequireTenantManager")]
+@inherits LocalizedComponentBase<Receipts>
+@inject MotoRent.Services.ReceiptService ReceiptService
+
+<MotoRentPageTitle>@Localizer["Receipts"]</MotoRentPageTitle>
+
+<TablerHeader Title="@Localizer["Receipts"]" PreTitle="@Localizer["Finance"]">
+</TablerHeader>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label">@Localizer["ReceiptType"]</label>
+                <select class="form-select" @bind="m_typeFilter" @bind:after="FilterChanged">
+                    <option value="">@Localizer["AllTypes"]</option>
+                    <option value="@ReceiptTypes.CheckIn">@Localizer["CheckIn"]</option>
+                    <option value="@ReceiptTypes.Settlement">@Localizer["Settlement"]</option>
+                    <option value="@ReceiptTypes.BookingDeposit">@Localizer["BookingDeposit"]</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">@Localizer["Status"]</label>
+                <select class="form-select" @bind="m_statusFilter" @bind:after="FilterChanged">
+                    <option value="">@Localizer["AllStatus"]</option>
+                    <option value="@ReceiptStatus.Issued">@Localizer["Issued"]</option>
+                    <option value="@ReceiptStatus.Voided">@Localizer["Voided"]</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">@Localizer["From"]</label>
+                <input type="date" class="form-control" @bind="m_fromDate" @bind:after="FilterChanged" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">@Localizer["To"]</label>
+                <input type="date" class="form-control" @bind="m_toDate" @bind:after="FilterChanged" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">@Localizer["Search"]</label>
+                <div class="input-group">
+                    <input type="text" class="form-control" placeholder="@Localizer["SearchPlaceholder"]"
+                           @bind="m_searchTerm" @bind:event="oninput" @bind:after="FilterChanged" />
+                    @if (!string.IsNullOrEmpty(m_searchTerm))
+                    {
+                        <button type="button" class="btn btn-outline-secondary" @onclick="ClearSearch">
+                            <i class="ti ti-x"></i>
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* Summary Cards *@
+<div class="row row-deck row-cards mb-3">
+    <div class="col-6 col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="subheader">@Localizer["TotalReceipts"]</div>
+                <div class="h2 text-primary">@m_totalReceipts</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="subheader">@Localizer["CheckIns"]</div>
+                <div class="h4">@m_checkInCount</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="subheader">@Localizer["Settlements"]</div>
+                <div class="h4">@m_settlementCount</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="subheader">@Localizer["TotalAmount"]</div>
+                <div class="h4 text-success">@FormatCurrency(m_totalAmount)</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<LoadingSkeleton Loading="@m_loading" Mode="LoadingSkeleton.PlaceholderMode.Table" Rows="10" Columns="7">
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-vcenter card-table table-striped">
+                <thead>
+                    <tr>
+                        <th>@Localizer["ReceiptNo"]</th>
+                        <th>@Localizer["Type"]</th>
+                        <th>@Localizer["Customer"]</th>
+                        <th>@Localizer["Vehicle"]</th>
+                        <th class="text-end">@Localizer["Amount"]</th>
+                        <th>@Localizer["Status"]</th>
+                        <th>@Localizer["IssuedOn"]</th>
+                        <th class="w-1">@Localizer["Actions"]</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (m_receipts.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="8" class="text-center text-secondary py-4">
+                                <i class="ti ti-receipt mb-2" style="font-size: 2rem;"></i>
+                                <div>@Localizer["NoReceiptsFound"]</div>
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var receipt in m_receipts)
+                        {
+                            <tr class="@(receipt.Status == ReceiptStatus.Voided ? "table-danger" : "")">
+                                <td>
+                                    <span class="fw-bold">@receipt.ReceiptNo</span>
+                                </td>
+                                <td>
+                                    <span class="badge @GetTypeBadgeClass(receipt.ReceiptType)">
+                                        @GetTypeDisplay(receipt.ReceiptType)
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="fw-medium">@receipt.CustomerName</div>
+                                    @if (!string.IsNullOrEmpty(receipt.CustomerPhone))
+                                    {
+                                        <small class="text-secondary">@receipt.CustomerPhone</small>
+                                    }
+                                </td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(receipt.VehicleName))
+                                    {
+                                        <div>@receipt.VehicleName</div>
+                                    }
+                                    @if (!string.IsNullOrEmpty(receipt.LicensePlate))
+                                    {
+                                        <small class="text-secondary">@receipt.LicensePlate</small>
+                                    }
+                                </td>
+                                <td class="text-end">
+                                    @if (receipt.ReceiptType == ReceiptTypes.Settlement && receipt.RefundAmount > 0)
+                                    {
+                                        <div class="text-success">@FormatCurrency(receipt.RefundAmount)</div>
+                                        <small class="text-secondary">Refund</small>
+                                    }
+                                    else
+                                    {
+                                        <span class="fw-bold text-primary">@FormatCurrency(receipt.GrandTotal)</span>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="badge @GetStatusBadgeClass(receipt.Status)">
+                                        @receipt.Status
+                                    </span>
+                                    @if (receipt.ReprintCount > 0)
+                                    {
+                                        <span class="badge bg-warning ms-1" title="Reprinted @receipt.ReprintCount time(s)">
+                                            <i class="ti ti-copy"></i> @receipt.ReprintCount
+                                        </span>
+                                    }
+                                </td>
+                                <td>
+                                    <div>@FormatDate(receipt.IssuedOn)</div>
+                                    <small class="text-secondary">@receipt.IssuedOn.ToString("HH:mm")</small>
+                                </td>
+                                <td>
+                                    <div class="btn-list flex-nowrap">
+                                        <button type="button" class="btn btn-icon btn-ghost-primary"
+                                                title="@Localizer["ViewPrint"]"
+                                                @onclick="@(() => ViewReceiptAsync(receipt))">
+                                            <i class="ti ti-printer"></i>
+                                        </button>
+                                        @if (receipt.Status == ReceiptStatus.Issued)
+                                        {
+                                            <button type="button" class="btn btn-icon btn-ghost-danger"
+                                                    title="@Localizer["Void"]"
+                                                    @onclick="@(() => VoidReceiptAsync(receipt))">
+                                                <i class="ti ti-ban"></i>
+                                            </button>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @* Pagination *@
+        @if (m_totalPages > 1)
+        {
+            <div class="card-footer d-flex align-items-center">
+                <p class="m-0 text-secondary">
+                    @Localizer["ShowingPage", m_currentPage, m_totalPages, m_totalCount]
+                </p>
+                <ul class="pagination m-0 ms-auto">
+                    <li class="page-item @(m_currentPage <= 1 ? "disabled" : "")">
+                        <button class="page-link" @onclick="() => GoToPageAsync(m_currentPage - 1)" disabled="@(m_currentPage <= 1)">
+                            <i class="ti ti-chevron-left"></i>
+                        </button>
+                    </li>
+                    @for (var i = Math.Max(1, m_currentPage - 2); i <= Math.Min(m_totalPages, m_currentPage + 2); i++)
+                    {
+                        var pageNum = i;
+                        <li class="page-item @(m_currentPage == pageNum ? "active" : "")">
+                            <button class="page-link" @onclick="() => GoToPageAsync(pageNum)">@pageNum</button>
+                        </li>
+                    }
+                    <li class="page-item @(m_currentPage >= m_totalPages ? "disabled" : "")">
+                        <button class="page-link" @onclick="() => GoToPageAsync(m_currentPage + 1)" disabled="@(m_currentPage >= m_totalPages)">
+                            <i class="ti ti-chevron-right"></i>
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        }
+    </div>
+</LoadingSkeleton>
+
+@code {
+    private List<Receipt> m_receipts = [];
+    private bool m_loading = true;
+    private string? m_typeFilter;
+    private string? m_statusFilter;
+    private DateTime? m_fromDate;
+    private DateTime? m_toDate;
+    private string? m_searchTerm;
+
+    // Pagination
+    private int m_currentPage = 1;
+    private int m_pageSize = 20;
+    private int m_totalCount;
+    private int m_totalPages;
+
+    // Summary
+    private int m_totalReceipts;
+    private int m_checkInCount;
+    private int m_settlementCount;
+    private decimal m_totalAmount;
+
+    protected override async Task OnInitializedAsync()
+    {
+        m_fromDate = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+        m_toDate = DateTime.Today;
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        m_loading = true;
+        try
+        {
+            var fromDateOffset = m_fromDate.HasValue ? new DateTimeOffset(m_fromDate.Value) : (DateTimeOffset?)null;
+            var toDateOffset = m_toDate.HasValue ? new DateTimeOffset(m_toDate.Value.AddDays(1).AddSeconds(-1)) : (DateTimeOffset?)null;
+
+            var result = await ReceiptService.GetReceiptsAsync(
+                shopId: 0, // Gets all shops for this tenant
+                receiptType: m_typeFilter,
+                status: m_statusFilter,
+                fromDate: fromDateOffset,
+                toDate: toDateOffset,
+                searchTerm: m_searchTerm,
+                page: m_currentPage,
+                pageSize: m_pageSize);
+
+            m_receipts = result.ItemCollection.ToList();
+            m_totalCount = result.TotalRows;
+            m_totalPages = (int)Math.Ceiling((double)m_totalCount / m_pageSize);
+
+            // Calculate summary from current filter
+            var issuedReceipts = m_receipts.Where(r => r.Status == ReceiptStatus.Issued).ToList();
+            m_totalReceipts = m_totalCount;
+            m_checkInCount = issuedReceipts.Count(r => r.ReceiptType == ReceiptTypes.CheckIn);
+            m_settlementCount = issuedReceipts.Count(r => r.ReceiptType == ReceiptTypes.Settlement);
+            m_totalAmount = issuedReceipts.Sum(r => r.GrandTotal);
+        }
+        catch (Exception ex)
+        {
+            ShowError(Localizer["ErrorLoadingReceipts", ex.Message]);
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private async Task FilterChanged()
+    {
+        m_currentPage = 1;
+        await LoadDataAsync();
+    }
+
+    private async Task ClearSearch()
+    {
+        m_searchTerm = null;
+        await FilterChanged();
+    }
+
+    private async Task GoToPageAsync(int page)
+    {
+        if (page < 1 || page > m_totalPages) return;
+        m_currentPage = page;
+        await LoadDataAsync();
+    }
+
+    private async Task ViewReceiptAsync(Receipt receipt)
+    {
+        await DialogService
+            .Create<ReceiptPrintDialog>(GetTypeDisplay(receipt.ReceiptType))
+            .WithParameter(x => x.Entity, receipt)
+            .WithParameter(x => x.IsReprint, true)
+            .ShowDialogAsync();
+
+        await LoadDataAsync();
+    }
+
+    private async Task VoidReceiptAsync(Receipt receipt)
+    {
+        var confirmed = await DialogService.ConfirmYesNoAsync(
+            Localizer["VoidConfirmMessage", receipt.ReceiptNo],
+            Localizer["VoidReceipt"]);
+
+        if (!confirmed) return;
+
+        // Prompt for void reason
+        var reason = await DialogService.PromptAsync(
+            Localizer["VoidReasonPrompt"],
+            Localizer["VoidReason"],
+            defaultValue: "");
+
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            ShowWarning(Localizer["VoidReasonRequired"]);
+            return;
+        }
+
+        var result = await ReceiptService.VoidReceiptAsync(receipt.ReceiptId, reason, UserName);
+        if (result.Success)
+        {
+            ShowSuccess(Localizer["ReceiptVoided"]);
+            await LoadDataAsync();
+        }
+        else
+        {
+            ShowError(Localizer["VoidFailed", result.Message ?? ""]);
+        }
+    }
+
+    private static string GetTypeBadgeClass(string type) => type switch
+    {
+        ReceiptTypes.CheckIn => "bg-primary",
+        ReceiptTypes.Settlement => "bg-success",
+        ReceiptTypes.BookingDeposit => "bg-info",
+        _ => "bg-secondary"
+    };
+
+    private string GetTypeDisplay(string type) => type switch
+    {
+        ReceiptTypes.CheckIn => Localizer["CheckIn"],
+        ReceiptTypes.Settlement => Localizer["Settlement"],
+        ReceiptTypes.BookingDeposit => Localizer["BookingDeposit"],
+        _ => type
+    };
+
+    private static string GetStatusBadgeClass(string status) => status switch
+    {
+        ReceiptStatus.Issued => "bg-success",
+        ReceiptStatus.Voided => "bg-danger",
+        _ => "bg-secondary"
+    };
+}

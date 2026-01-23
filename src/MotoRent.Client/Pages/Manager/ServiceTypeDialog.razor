@@ -7,39 +7,39 @@
     <div class="modal-body">
         <div class="row g-3">
             <div class="col-12">
-                <label class="form-label required">Service Name</label>
+                <label class="form-label required">@Localizer["ServiceName"]</label>
                 <input type="text" class="form-control" @bind="Entity.Name" required
-                       placeholder="e.g., Oil Change, Brake Check" />
+                       placeholder="@Localizer["ServiceNamePlaceholder"]" />
             </div>
 
             <div class="col-12">
-                <label class="form-label">Description</label>
+                <label class="form-label">@Localizer["Description"]</label>
                 <textarea class="form-control" @bind="Entity.Description" rows="2"
-                          placeholder="What does this service include..."></textarea>
+                          placeholder="@Localizer["DescriptionPlaceholder"]"></textarea>
             </div>
 
             <div class="col-md-6">
-                <label class="form-label required">Days Interval</label>
+                <label class="form-label required">@Localizer["DaysInterval"]</label>
                 <div class="input-group">
                     <input type="number" class="form-control" @bind="Entity.DaysInterval" required
                            min="1" max="365" />
-                    <span class="input-group-text">days</span>
+                    <span class="input-group-text">@Localizer["DaysSuffix"]</span>
                 </div>
-                <small class="form-hint">Service due every X days</small>
+                <small class="form-hint">@Localizer["DaysIntervalHint"]</small>
             </div>
 
             <div class="col-md-6">
-                <label class="form-label required">Mileage Interval</label>
+                <label class="form-label required">@Localizer["MileageInterval"]</label>
                 <div class="input-group">
                     <input type="number" class="form-control" @bind="Entity.KmInterval" required
                            min="100" max="50000" step="100" />
-                    <span class="input-group-text">km</span>
+                    <span class="input-group-text">@Localizer["KmSuffix"]</span>
                 </div>
-                <small class="form-hint">Service due every X kilometers</small>
+                <small class="form-hint">@Localizer["MileageIntervalHint"]</small>
             </div>
 
             <div class="col-md-6">
-                <label class="form-label">Sort Order</label>
+                <label class="form-label">@Localizer["SortOrder"]</label>
                 <input type="number" class="form-control" @bind="Entity.SortOrder" min="1" />
             </div>
 
@@ -47,7 +47,7 @@
                 <label class="form-label d-block">&nbsp;</label>
                 <label class="form-check">
                     <input type="checkbox" class="form-check-input" @bind="Entity.IsActive" />
-                    <span class="form-check-label">Active</span>
+                    <span class="form-check-label">@Localizer["IsActive"]</span>
                 </label>
             </div>
         </div>
@@ -55,7 +55,7 @@
 </form>
 
 <div class="modal-footer">
-    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">Cancel</button>
+    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">@CommonLocalizer["Cancel"]</button>
     <button type="submit" form="@FormId" class="btn btn-primary" disabled="@Saving">
         @if (Saving)
         {
@@ -88,12 +88,12 @@
             }
             else
             {
-                ShowError($"Save failed: {result.Message}");
+                ShowError(Localizer["SaveFailed", result.Message ?? ""]);
             }
         }
         catch (Exception ex)
         {
-            ShowError($"Error: {ex.Message}");
+            ShowError(Localizer["SaveError", ex.Message]);
         }
         finally
         {

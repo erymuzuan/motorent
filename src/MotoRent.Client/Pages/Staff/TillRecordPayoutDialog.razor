@@ -1,0 +1,238 @@
+@using MotoRent.Domain.Entities
+@using MotoRent.Domain.Storage
+@inherits LocalizedDialogBase<TillTransaction, TillRecordPayoutDialog>
+@inject TillService TillService
+@inject IBinaryStore BinaryStore
+
+<form id="recordPayoutForm" @onsubmit="this.SaveAsync" @onsubmit:preventDefault>
+    <div class="modal-body">
+        <div class="mb-3">
+            <label class="form-label required">@Localizer["Amount"]</label>
+            <div class="input-group input-group-lg">
+                <span class="input-group-text">฿</span>
+                <input type="number" class="form-control text-end" @bind="this.Amount"
+                       required min="1" step="any" placeholder="0" autofocus />
+            </div>
+        </div>
+
+        @if (this.PayoutType == TillTransactionType.FuelReimbursement)
+        {
+            <div class="mb-3">
+                <label class="form-label">@Localizer["Recipient"]</label>
+                <input type="text" class="form-control" @bind="this.RecipientName"
+                       placeholder="@Localizer["StaffOrCustomerName"]" />
+            </div>
+        }
+        else if (this.PayoutType == TillTransactionType.AgentCommission)
+        {
+            <div class="mb-3">
+                <label class="form-label required">@Localizer["AgentName"]</label>
+                <input type="text" class="form-control" @bind="this.RecipientName" required
+                       placeholder="@Localizer["AgentOrReferrerName"]" />
+            </div>
+        }
+
+        <div class="mb-3">
+            <label class="form-label">@Localizer["Category"]</label>
+            <select class="form-select" @bind="this.Category">
+                <option value="">@Localizer["SelectCategory"]</option>
+                @foreach (var cat in this.GetCategories())
+                {
+                    <option value="@cat">@cat</option>
+                }
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">@Localizer["ReceiptNumber"]</label>
+            <input type="text" class="form-control" @bind="this.ReceiptNumber"
+                   placeholder="@Localizer["ReceiptNumberPlaceholder"]" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">@Localizer["Description"]</label>
+            <input type="text" class="form-control" @bind="this.Description" required
+                   placeholder="@Localizer["DescriptionPlaceholder"]" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">@Localizer["Notes"]</label>
+            <textarea class="form-control" @bind="this.Notes" rows="2"
+                      placeholder="@Localizer["NotesPlaceholder"]"></textarea>
+        </div>
+
+        @* Attachments Section *@
+        <div class="mb-0">
+            <label class="form-label">
+                @Localizer["Attachments"]
+                <span class="badge bg-secondary ms-1">@m_attachments.Count / @c_maxAttachments</span>
+            </label>
+            <p class="form-hint mb-2">@Localizer["AttachmentsHint"]</p>
+
+            @* Attachment Grid *@
+            @if (m_attachments.Count > 0)
+            {
+                <div class="row g-2 mb-3">
+                    @foreach (var attachment in m_attachments)
+                    {
+                        <div class="col-4">
+                            <div class="position-relative">
+                                <img src="@BinaryStore.GetImageUrl(attachment.StoreId)"
+                                     alt="@(attachment.Caption ?? "Attachment")"
+                                     class="img-thumbnail w-100"
+                                     style="height: 80px; object-fit: cover;" />
+                                <button type="button"
+                                        class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1 p-0"
+                                        style="width: 20px; height: 20px; line-height: 1;"
+                                        @onclick="@(() => RemoveAttachment(attachment))"
+                                        title="@Localizer["Remove"]">
+                                    <i class="ti ti-x" style="font-size: 12px;"></i>
+                                </button>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+
+            @* Upload Zone *@
+            @if (m_attachments.Count < c_maxAttachments)
+            {
+                <ImageUpload StoreId="@m_pendingStoreId"
+                             StoreIdChanged="OnAttachmentUploaded"
+                             Title="@Localizer["UploadReceipt"]"
+                             HelpHint="@Localizer["DropOrClick"]"
+                             Capture="ImageUpload.CameraCapture.Environment" />
+            }
+            else
+            {
+                <div class="text-center text-muted py-2">
+                    <i class="ti ti-photo-check"></i>
+                    @Localizer["MaxAttachmentsReached"]
+                </div>
+            }
+        </div>
+    </div>
+</form>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="this.Cancel">
+        @Localizer["Cancel"]
+    </button>
+    <button type="submit" form="recordPayoutForm" class="btn btn-danger" disabled="@this.Saving">
+        @if (this.Saving)
+        {
+            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+        }
+        <i class="ti ti-cash-off me-1"></i>
+        @Localizer["RecordPayout"]
+    </button>
+</div>
+
+@code {
+    private const int c_maxAttachments = 5;
+
+    [Parameter]
+    public int SessionId { get; set; }
+
+    [Parameter]
+    public TillTransactionType PayoutType { get; set; }
+
+    private decimal Amount { get; set; }
+    private string? Category { get; set; }
+    private string? RecipientName { get; set; }
+    private string? ReceiptNumber { get; set; }
+    private string Description { get; set; } = "";
+    private string? Notes { get; set; }
+    private bool Saving { get; set; }
+
+    // Attachments
+    private readonly List<TillAttachment> m_attachments = [];
+    private string? m_pendingStoreId;
+
+    protected override void OnParametersSet()
+    {
+        // Set default description based on type
+        this.Description = this.PayoutType switch
+        {
+            TillTransactionType.FuelReimbursement => Localizer["DescFuelReimbursement"],
+            TillTransactionType.AgentCommission => Localizer["DescAgentCommission"],
+            TillTransactionType.PettyCash => Localizer["DescPettyCash"],
+            _ => ""
+        };
+    }
+
+    private IEnumerable<string> GetCategories() => this.PayoutType switch
+    {
+        TillTransactionType.FuelReimbursement => [Localizer["CatFullTank"], Localizer["CatPartialRefill"], Localizer["CatDeliveryFuel"]],
+        TillTransactionType.AgentCommission => [Localizer["CatBookingAgent"], Localizer["CatHotelReferral"], Localizer["CatWalkInReferral"]],
+        TillTransactionType.PettyCash => [Localizer["CatOfficeSupplies"], Localizer["CatCleaning"], Localizer["CatTransport"], Localizer["CatFoodBeverage"], Localizer["CatRepairs"], Localizer["CatOther"]],
+        _ => []
+    };
+
+    private void Cancel()
+    {
+        this.ModalService.Close(ModalResult.Cancel());
+    }
+
+    private Task OnAttachmentUploaded(string? storeId)
+    {
+        if (string.IsNullOrEmpty(storeId)) return Task.CompletedTask;
+        if (m_attachments.Count >= c_maxAttachments) return Task.CompletedTask;
+
+        m_attachments.Add(new TillAttachment
+        {
+            StoreId = storeId,
+            AttachmentType = "Receipt",
+            UploadedOn = DateTimeOffset.Now
+        });
+
+        m_pendingStoreId = null;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private void RemoveAttachment(TillAttachment attachment)
+    {
+        m_attachments.Remove(attachment);
+    }
+
+    private async Task SaveAsync()
+    {
+        if (this.Saving || this.Amount <= 0) return;
+
+        try
+        {
+            this.Saving = true;
+
+            var result = await this.TillService.RecordPayoutAsync(
+                this.SessionId,
+                this.PayoutType,
+                this.Amount,
+                this.Description,
+                this.UserName,
+                category: this.Category,
+                recipientName: this.RecipientName,
+                receiptNumber: this.ReceiptNumber,
+                notes: this.Notes,
+                attachments: m_attachments);
+
+            if (result.Success)
+            {
+                this.ModalService.Close(ModalResult.Ok(result));
+            }
+            else
+            {
+                this.ShowError(result.Message ?? "Failed to record payout");
+            }
+        }
+        catch (Exception ex)
+        {
+            this.Logger.LogError(ex, "Error recording payout");
+            this.ShowError("Failed to record payout");
+        }
+        finally
+        {
+            this.Saving = false;
+        }
+    }
+}

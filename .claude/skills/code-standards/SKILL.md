@@ -105,13 +105,64 @@ public class RentalService(RentalDataContext context)
     }
 
 
-    //  DO NOT user #region and #endregion, instead use partial class for example:
-    // Rental.search.cs for search related members
-    // Rental.validation.cs for validation rules etc
 }
-
-
 ```
+
+## Partial Class File Splitting (NO #region)
+
+**NEVER use `#region` and `#endregion`** - instead split large classes into partial class files.
+
+### Naming Convention
+```
+ClassName.<lowercase_section_name>.cs
+```
+
+### Examples
+For a service class with logical sections:
+```
+TillService.cs              # Core: constructor, properties, DTOs
+TillService.session.cs      # Session management operations
+TillService.transaction.cs  # Transaction recording
+TillService.currency.cs     # Multi-currency operations
+TillService.reports.cs      # Reporting methods
+TillService.void.cs         # Void and refund operations
+```
+
+For an entity with behavior:
+```
+Rental.cs                   # Core entity properties
+Rental.validation.cs        # Validation rules
+Rental.search.cs            # Search/query helpers
+```
+
+### Structure of Partial Files
+Each partial file should:
+1. Have its own usings (only what's needed for that file)
+2. Include a summary comment describing the section
+3. Contain logically related methods
+
+```csharp
+// TillService.session.cs
+using MotoRent.Domain.DataContext;
+using MotoRent.Domain.Entities;
+
+namespace MotoRent.Services;
+
+/// <summary>
+/// Session management operations for till service.
+/// </summary>
+public partial class TillService
+{
+    public async Task<SubmitOperation> OpenSessionAsync(...) { ... }
+    public async Task<SubmitOperation> CloseSessionAsync(...) { ... }
+    public Task<TillSession?> GetSessionByIdAsync(int id) => ...;
+}
+```
+
+### When to Split
+- Class exceeds ~300 lines
+- Class has distinct logical sections (CRUD, validation, search, etc.)
+- Methods naturally group by domain concept
 
 ## Expression-Bodied Members
 
@@ -148,7 +199,7 @@ if (rental is null)
 if (rental is { Status: "Active" })
     ProcessActive(rental);
 
-if (shop == null || !shop.IsActive) // Wrong
+if (shop != null && shop.IsActive) // Wrong
 if( shop is {IsActive:true}) // correct
 
 // Null coalescing

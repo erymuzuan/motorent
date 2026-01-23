@@ -48,21 +48,21 @@ public class MotorbikeService(RentalDataContext context)
     {
         using var session = this.Context.OpenSession(username);
         session.Attach(motorbike);
-        return await session.SubmitChanges("Create");
+        return await session.SubmitChanges("CreateMotorbike");
     }
 
     public async Task<SubmitOperation> UpdateMotorbikeAsync(Motorbike motorbike, string username)
     {
         using var session = this.Context.OpenSession(username);
         session.Attach(motorbike);
-        return await session.SubmitChanges("Update");
+        return await session.SubmitChanges("UpdateMotorbike");
     }
 
     public async Task<SubmitOperation> DeleteMotorbikeAsync(Motorbike motorbike, string username)
     {
         using var session = this.Context.OpenSession(username);
         session.Delete(motorbike);
-        return await session.SubmitChanges("Delete");
+        return await session.SubmitChanges("DeleteMotorbike");
     }
 
     public async Task<SubmitOperation> UpdateStatusAsync(int motorbikeId, string status, string username)
@@ -80,13 +80,11 @@ public class MotorbikeService(RentalDataContext context)
 
     public async Task<Dictionary<string, int>> GetStatusCountsAsync()
     {
-        var allBikes = await this.Context.LoadAsync(
+        var groupCounts = await this.Context.GetGroupByCountAsync(
             this.Context.CreateQuery<Motorbike>(),
-            page: 1, size: 1000, includeTotalRows: false);
+            m => m.Status ?? "Unknown");
 
-        return allBikes.ItemCollection
-            .GroupBy(m => m.Status ?? "Unknown")
-            .ToDictionary(g => g.Key, g => g.Count());
+        return groupCounts.ToDictionary(g => g.Key, g => g.Count);
     }
 
     /// <summary>

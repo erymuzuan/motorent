@@ -241,7 +241,7 @@ public class VehicleLookupService(CoreDataContext context)
 
         using var session = this.Context.OpenSession(username);
         session.Attach(vehicleModel);
-        return await session.SubmitChanges("Create");
+        return await session.SubmitChanges("CreateVehicleModel");
     }
 
     /// <summary>
@@ -251,7 +251,7 @@ public class VehicleLookupService(CoreDataContext context)
     {
         using var session = this.Context.OpenSession(username);
         session.Attach(vehicleModel);
-        return await session.SubmitChanges("Update");
+        return await session.SubmitChanges("UpdateVehicleModel");
     }
 
     /// <summary>

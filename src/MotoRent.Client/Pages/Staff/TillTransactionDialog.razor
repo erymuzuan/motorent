@@ -1,0 +1,1473 @@
+@using MotoRent.Domain.Models
+@using MotoRent.Client.Components.Till
+@using MotoRent.Client.Components.Receipts
+@inherits LocalizedDialogBase<object, TillTransactionDialog>
+@inject BookingService BookingService
+@inject RentalService RentalService
+@inject AccessoryService AccessoryService
+@inject InsuranceService InsuranceService
+@inject ReceiptService ReceiptService
+@inject RenterService RenterService
+
+<div class="modal-body" style="min-height: 400px; max-height: calc(100vh - 200px); overflow-y: auto;">
+    @* === STEP 1: Search & Select === *@
+    @if (m_currentStep == 1)
+    {
+        @* === Search Input === *@
+        <div class="mb-3">
+            <label class="form-label">@Localizer["SearchTransaction"]</label>
+            <div class="input-group">
+                <input type="text" class="form-control form-control-lg"
+                       placeholder="@Localizer["SearchHint"]"
+                       @bind="m_searchTerm" @bind:event="oninput"
+                       @onkeydown="OnSearchKeyDown" />
+                <button type="button" class="btn btn-primary" @onclick="SearchAsync"
+                        disabled="@m_searching">
+                    @if (m_searching)
+                    {
+                        <span class="spinner-border spinner-border-sm"></span>
+                    }
+                    else
+                    {
+                        <i class="ti ti-search"></i>
+                    }
+                </button>
+            </div>
+            <div class="form-hint">@Localizer["SearchHintDetail"]</div>
+        </div>
+
+        @* === Loading State === *@
+        @if (m_loading)
+        {
+            <div class="d-flex justify-content-center py-4">
+                <span class="spinner-border spinner-border-sm me-2"></span>
+                @Localizer["Loading"]
+            </div>
+        }
+        else
+        {
+            @* === Search Results === *@
+            @if (m_searched && m_bookingResults.Count == 0 && m_rentalResults.Count == 0)
+            {
+                <div class="alert alert-warning">
+                    <i class="ti ti-alert-triangle me-2"></i>
+                    @Localizer["NoResultsFound"]
+                </div>
+            }
+            else
+            {
+                @* === Bookings Section === *@
+                @if (m_bookingResults.Count > 0)
+                {
+                    <div class="mb-4">
+                        <h5 class="mb-3 d-flex align-items-center gap-2">
+                            <i class="ti ti-calendar-event text-primary"></i>
+                            @Localizer["Bookings"]
+                            <span class="badge bg-primary">@m_bookingResults.Count</span>
+                        </h5>
+                        <div class="list-group">
+                            @foreach (var booking in m_bookingResults)
+                            {
+                                <button type="button" class="list-group-item list-group-item-action"
+                                        @onclick="@(() => SelectBookingAsync(booking))">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <div class="fw-semibold">
+                                                <span class="badge bg-purple me-2">@booking.BookingRef</span>
+                                                @booking.CustomerName
+                                            </div>
+                                            <div class="small text-muted mt-1">
+                                                <i class="ti ti-calendar me-1"></i>
+                                                @booking.StartDate.ToString("dd MMM") - @booking.EndDate.ToString("dd MMM yyyy")
+                                            </div>
+                                            @if (!string.IsNullOrEmpty(booking.CustomerPhone))
+                                            {
+                                                <div class="small text-muted">
+                                                    <i class="ti ti-phone me-1"></i>@booking.CustomerPhone
+                                                </div>
+                                            }
+                                        </div>
+                                        <div class="text-end">
+                                            <div class="fw-semibold">@FormatAmount(booking.TotalAmount)</div>
+                                            <div class="small">
+                                                @if (booking.BalanceDue > 0)
+                                                {
+                                                    <span class="text-warning">
+                                                        @Localizer["Due"]: @FormatAmount(booking.BalanceDue)
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-success">@Localizer["FullyPaid"]</span>
+                                                }
+                                            </div>
+                                            <div class="mt-1">
+                                                <span class="badge @GetBookingStatusBadgeClass(booking)">
+                                                    @GetTransactionTypeLabel(booking)
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </button>
+                            }
+                        </div>
+                    </div>
+                }
+
+                @* === Active Rentals Section === *@
+                @if (m_rentalResults.Count > 0)
+                {
+                    <div class="mb-4">
+                        <h5 class="mb-3 d-flex align-items-center gap-2">
+                            <i class="ti ti-motorbike text-success"></i>
+                            @Localizer["ActiveRentals"]
+                            <span class="badge bg-success">@m_rentalResults.Count</span>
+                        </h5>
+                        <div class="list-group">
+                            @foreach (var rental in m_rentalResults)
+                            {
+                                <button type="button" class="list-group-item list-group-item-action"
+                                        @onclick="@(() => SelectRentalAsync(rental))">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <div class="fw-semibold">
+                                                <span class="badge bg-success me-2">#@rental.RentalId</span>
+                                                @rental.RenterName
+                                            </div>
+                                            <div class="small text-muted mt-1">
+                                                <i class="ti ti-motorbike me-1"></i>@rental.VehicleName
+                                            </div>
+                                            <div class="small text-muted">
+                                                <i class="ti ti-calendar me-1"></i>
+                                                @rental.StartDate.ToString("dd MMM") - @rental.ExpectedEndDate.ToString("dd MMM yyyy")
+                                            </div>
+                                        </div>
+                                        <div class="text-end">
+                                            <div class="fw-semibold">@FormatAmount(rental.TotalAmount)</div>
+                                            <div class="small">
+                                                <span class="badge bg-success-lt text-success">@Localizer["Active"]</span>
+                                            </div>
+                                            <div class="mt-1">
+                                                <span class="badge bg-info">@Localizer["CheckOut"]</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </button>
+                            }
+                        </div>
+                    </div>
+                }
+
+                @* === Categorized Lists (when no search) === *@
+                @if (!m_searched)
+                {
+                    @* Overdue Rentals - Priority! *@
+                    @if (m_overdueRentals.Count > 0)
+                    {
+                        <div class="mb-4">
+                            <h6 class="mb-2 d-flex align-items-center gap-2 text-danger">
+                                <i class="ti ti-alert-triangle"></i>
+                                @Localizer["OverdueReturns"]
+                                <span class="badge bg-danger">@m_overdueRentals.Count</span>
+                            </h6>
+                            <div class="list-group list-group-flush">
+                                @foreach (var rental in m_overdueRentals)
+                                {
+                                    <button type="button" class="list-group-item list-group-item-action py-2 bg-danger-lt"
+                                            @onclick="@(() => SelectRentalAsync(rental))">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <span class="badge bg-danger me-2 small">#@rental.RentalId</span>
+                                                <span class="fw-medium">@rental.RenterName</span>
+                                                <span class="text-muted small ms-2">@rental.VehicleName</span>
+                                            </div>
+                                            <div class="text-end">
+                                                <span class="badge bg-danger">@Localizer["Overdue"]</span>
+                                                <div class="small text-muted">@rental.ExpectedEndDate.ToString("dd MMM")</div>
+                                            </div>
+                                        </div>
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    @* Expected Check-outs Today *@
+                    @if (m_rentalsCheckingOutToday.Count > 0)
+                    {
+                        <div class="mb-4">
+                            <h6 class="mb-2 d-flex align-items-center gap-2 text-info">
+                                <i class="ti ti-logout"></i>
+                                @Localizer["ReturningToday"]
+                                <span class="badge bg-info">@m_rentalsCheckingOutToday.Count</span>
+                            </h6>
+                            <div class="list-group list-group-flush">
+                                @foreach (var rental in m_rentalsCheckingOutToday)
+                                {
+                                    <button type="button" class="list-group-item list-group-item-action py-2"
+                                            @onclick="@(() => SelectRentalAsync(rental))">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <span class="badge bg-success me-2 small">#@rental.RentalId</span>
+                                                <span class="fw-medium">@rental.RenterName</span>
+                                                <span class="text-muted small ms-2">@rental.VehicleName</span>
+                                            </div>
+                                            <span class="badge bg-info-lt text-info">@Localizer["CheckOut"]</span>
+                                        </div>
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    @* Arriving Today - Check-ins *@
+                    @if (m_bookingsArrivingToday.Count > 0)
+                    {
+                        <div class="mb-4">
+                            <h6 class="mb-2 d-flex align-items-center gap-2 text-success">
+                                <i class="ti ti-login"></i>
+                                @Localizer["ArrivingToday"]
+                                <span class="badge bg-success">@m_bookingsArrivingToday.Count</span>
+                            </h6>
+                            <div class="list-group list-group-flush">
+                                @foreach (var booking in m_bookingsArrivingToday)
+                                {
+                                    <button type="button" class="list-group-item list-group-item-action py-2"
+                                            @onclick="@(() => SelectBookingAsync(booking))">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <span class="badge bg-purple me-2 small">@booking.BookingRef</span>
+                                                <span class="fw-medium">@booking.CustomerName</span>
+                                            </div>
+                                            <div class="text-end">
+                                                <span class="badge bg-success-lt text-success">@Localizer["CheckIn"]</span>
+                                                @if (booking.BalanceDue > 0)
+                                                {
+                                                    <div class="small text-warning">@Localizer["Due"]: @FormatAmount(booking.BalanceDue)</div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    @* Awaiting Payment *@
+                    @if (m_bookingsAwaitingPayment.Count > 0)
+                    {
+                        <div class="mb-4">
+                            <h6 class="mb-2 d-flex align-items-center gap-2 text-warning">
+                                <i class="ti ti-cash"></i>
+                                @Localizer["AwaitingPayment"]
+                                <span class="badge bg-warning">@m_bookingsAwaitingPayment.Count</span>
+                            </h6>
+                            <div class="list-group list-group-flush">
+                                @foreach (var booking in m_bookingsAwaitingPayment)
+                                {
+                                    <button type="button" class="list-group-item list-group-item-action py-2"
+                                            @onclick="@(() => SelectBookingAsync(booking))">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <span class="badge bg-purple me-2 small">@booking.BookingRef</span>
+                                                <span class="fw-medium">@booking.CustomerName</span>
+                                                <span class="text-muted small ms-2">@booking.StartDate.ToString("dd MMM")</span>
+                                            </div>
+                                            <span class="text-warning fw-medium">@FormatAmount(booking.BalanceDue)</span>
+                                        </div>
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    @* Upcoming Bookings *@
+                    @if (m_upcomingBookings.Count > 0)
+                    {
+                        <div class="mb-4">
+                            <h6 class="mb-2 d-flex align-items-center gap-2 text-muted">
+                                <i class="ti ti-calendar-event"></i>
+                                @Localizer["UpcomingBookings"]
+                                <span class="badge bg-secondary">@m_upcomingBookings.Count</span>
+                            </h6>
+                            <div class="list-group list-group-flush">
+                                @foreach (var booking in m_upcomingBookings)
+                                {
+                                    <button type="button" class="list-group-item list-group-item-action py-2"
+                                            @onclick="@(() => SelectBookingAsync(booking))">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <span class="badge bg-purple me-2 small">@booking.BookingRef</span>
+                                                <span class="fw-medium">@booking.CustomerName</span>
+                                            </div>
+                                            <div class="text-end">
+                                                <span class="small text-muted">@booking.StartDate.ToString("dd MMM")</span>
+                                                @if (booking.BalanceDue > 0)
+                                                {
+                                                    <div class="small text-warning">@FormatAmount(booking.BalanceDue)</div>
+                                                }
+                                                else
+                                                {
+                                                    <div class="small text-success">@Localizer["Paid"]</div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    @* Empty state when no items at all *@
+                    @if (m_bookingsArrivingToday.Count == 0 && m_bookingsAwaitingPayment.Count == 0 &&
+                         m_upcomingBookings.Count == 0 && m_rentalsCheckingOutToday.Count == 0 && m_overdueRentals.Count == 0)
+                    {
+                        <div class="text-center py-5 text-muted">
+                            <i class="ti ti-calendar-off fs-1 mb-3 d-block"></i>
+                            <div class="fw-medium mb-1">@Localizer["NoTransactionsToday"]</div>
+                            <div class="small">@Localizer["SearchToStart"]</div>
+                        </div>
+                    }
+                }
+            }
+        }
+    }
+    else if (m_currentStep == 2)
+    {
+        @* === STEP 2: Item Confirmation === *@
+        <div class="row">
+            @* === Left Column: Customer & Booking Summary === *@
+            <div class="col-12 col-md-5 mb-3 mb-md-0">
+                <div class="card bg-primary-lt">
+                    <div class="card-body">
+                        @* Transaction Type Badge *@
+                        <div class="mb-3">
+                            <span class="badge @GetTransactionTypeBadgeClass() fs-6">
+                                <i class="ti @GetTransactionTypeIcon() me-1"></i>
+                                @GetCurrentTransactionTypeLabel()
+                            </span>
+                        </div>
+
+                        @* Customer Info *@
+                        <div class="mb-3">
+                            <div class="subheader mb-1">@Localizer["Customer"]</div>
+                            <div class="fw-semibold fs-4">@GetCustomerName()</div>
+                            @if (!string.IsNullOrEmpty(GetCustomerPhone()))
+                            {
+                                <div class="text-muted">
+                                    <i class="ti ti-phone me-1"></i>@GetCustomerPhone()
+                                </div>
+                            }
+                        </div>
+
+                        @* Vehicle Info *@
+                        <div class="mb-3">
+                            <div class="subheader mb-1">@Localizer["Vehicle"]</div>
+                            <div class="fw-semibold">
+                                <i class="ti ti-motorbike me-1"></i>
+                                @GetVehicleDisplayName()
+                            </div>
+                        </div>
+
+                        @* Rental Period *@
+                        <div class="mb-3">
+                            <div class="subheader mb-1">@Localizer["RentalPeriod"]</div>
+                            <div>
+                                <i class="ti ti-calendar me-1"></i>
+                                @GetStartDate().ToString("dd MMM yyyy") - @GetEndDate().ToString("dd MMM yyyy")
+                            </div>
+                            <div class="text-muted">
+                                @GetDays() @Localizer["Days"]
+                            </div>
+                        </div>
+
+                        @* Booking Reference (if booking) *@
+                        @if (m_selectedBooking is not null)
+                        {
+                            <div>
+                                <div class="subheader mb-1">@Localizer["BookingRef"]</div>
+                                <span class="badge bg-purple fs-6">@m_selectedBooking.BookingRef</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            @* === Right Column: Line Items & Actions === *@
+            <div class="col-12 col-md-7">
+                @* === Action Buttons === *@
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    <button type="button" class="btn btn-outline-primary btn-sm" @onclick="ShowAddAccessoryDialog">
+                        <i class="ti ti-plus"></i> @Localizer["AddAccessory"]
+                    </button>
+                    <button type="button" class="btn btn-outline-primary btn-sm" @onclick="ShowChangeInsuranceDialog">
+                        <i class="ti ti-shield"></i> @Localizer["ChangeInsurance"]
+                    </button>
+                    <button type="button" class="btn btn-outline-warning btn-sm" @onclick="ShowApplyDiscountDialog">
+                        <i class="ti ti-discount-2"></i> @Localizer["ApplyDiscount"]
+                    </button>
+                </div>
+
+                @* === Accessory Selector (inline) === *@
+                @if (m_showAccessorySelector)
+                {
+                    <div class="card card-body mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <strong>@Localizer["SelectAccessory"]</strong>
+                            <button type="button" class="btn btn-sm btn-ghost-secondary" @onclick="@(() => m_showAccessorySelector = false)">
+                                <i class="ti ti-x"></i>
+                            </button>
+                        </div>
+                        @if (m_loadingAccessories)
+                        {
+                            <div class="d-flex justify-content-center py-2">
+                                <span class="spinner-border spinner-border-sm"></span>
+                            </div>
+                        }
+                        else if (GetAvailableAccessoriesToAdd().Count == 0)
+                        {
+                            <div class="text-muted">@Localizer["NoAccessoriesAvailable"]</div>
+                        }
+                        else
+                        {
+                            <div class="list-group">
+                                @foreach (var acc in GetAvailableAccessoriesToAdd())
+                                {
+                                    <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between"
+                                            @onclick="@(() => AddAccessory(acc))">
+                                        <span>@acc.Name</span>
+                                        <span class="text-muted">@FormatAmount(acc.DailyRate)/day</span>
+                                    </button>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+
+                @* === Insurance Selector (inline) === *@
+                @if (m_showInsuranceSelector)
+                {
+                    <div class="card card-body mb-3 bg-azure-lt">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <strong>@Localizer["SelectInsurance"]</strong>
+                            <button type="button" class="btn btn-sm btn-ghost-secondary" @onclick="@(() => m_showInsuranceSelector = false)">
+                                <i class="ti ti-x"></i>
+                            </button>
+                        </div>
+                        @if (m_loadingInsurances)
+                        {
+                            <div class="d-flex justify-content-center py-2">
+                                <span class="spinner-border spinner-border-sm"></span>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="list-group">
+                                @* No insurance option *@
+                                <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between @(GetCurrentInsuranceId() is null ? "active" : "")"
+                                        @onclick="@(() => RemoveInsurance())">
+                                    <span>@Localizer["NoInsurance"]</span>
+                                    <span class="text-muted">@FormatAmount(0)</span>
+                                </button>
+                                @foreach (var ins in m_availableInsurances)
+                                {
+                                    <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between @(GetCurrentInsuranceId() == ins.InsuranceId ? "active" : "")"
+                                            @onclick="@(() => ChangeInsurance(ins))">
+                                        <div>
+                                            <div>@ins.Name</div>
+                                            <div class="small text-muted">@ins.Description</div>
+                                        </div>
+                                        <span class="text-muted">@FormatAmount(ins.DailyRate)/day</span>
+                                    </button>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+
+                @* === Discount Form (inline) === *@
+                @if (m_showDiscountForm)
+                {
+                    <div class="card card-body mb-3 bg-warning-lt">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <strong>@Localizer["ApplyDiscount"]</strong>
+                            <button type="button" class="btn btn-sm btn-ghost-secondary" @onclick="@(() => m_showDiscountForm = false)">
+                                <i class="ti ti-x"></i>
+                            </button>
+                        </div>
+
+                        <div class="mb-2">
+                            <div class="btn-group w-100" role="group">
+                                <input type="radio" class="btn-check" name="discountType" id="discountPercent"
+                                       checked="@m_discountIsPercent" @onchange="@(() => m_discountIsPercent = true)">
+                                <label class="btn btn-outline-primary" for="discountPercent">@Localizer["Percentage"]</label>
+                                <input type="radio" class="btn-check" name="discountType" id="discountFixed"
+                                       checked="@(!m_discountIsPercent)" @onchange="@(() => m_discountIsPercent = false)">
+                                <label class="btn btn-outline-primary" for="discountFixed">@Localizer["FixedAmount"]</label>
+                            </div>
+                        </div>
+
+                        <div class="mb-2">
+                            <div class="input-group">
+                                <input type="number" class="form-control" @bind="m_discountValue" min="0"
+                                       placeholder="@(m_discountIsPercent ? "10" : "100")" />
+                                <span class="input-group-text">@(m_discountIsPercent ? "%" : "THB")</span>
+                            </div>
+                        </div>
+
+                        <div class="mb-2">
+                            <input type="text" class="form-control" @bind="m_discountReason"
+                                   placeholder="@Localizer["DiscountReason"]" />
+                            <div class="form-hint">@Localizer["DiscountReasonRequired"]</div>
+                        </div>
+
+                        <button type="button" class="btn btn-warning w-100" @onclick="ApplyDiscount"
+                                disabled="@(m_discountValue <= 0 || string.IsNullOrWhiteSpace(m_discountReason))">
+                            <i class="ti ti-check"></i> @Localizer["Apply"]
+                        </button>
+                    </div>
+                }
+
+                @* === Line Items Table === *@
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="card-title">@Localizer["LineItems"]</h4>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-vcenter card-table">
+                            <tbody>
+                                @foreach (var item in m_lineItems.OrderBy(i => i.SortOrder))
+                                {
+                                    <tr class="@(item.IsDeduction ? "bg-warning-lt" : "")">
+                                        <td style="width: 40px;">
+                                            <i class="ti @GetCategoryIcon(item.Category) text-muted"></i>
+                                        </td>
+                                        <td>
+                                            <div class="fw-semibold">@item.Description</div>
+                                            @if (!string.IsNullOrEmpty(item.Detail))
+                                            {
+                                                <div class="small text-muted">@item.Detail</div>
+                                            }
+                                        </td>
+                                        <td class="text-end" style="width: 120px;">
+                                            <span class="@(item.IsDeduction ? "text-danger" : "")">
+                                                @(item.IsDeduction ? "-" : "")@FormatAmount(Math.Abs(item.Amount))
+                                            </span>
+                                        </td>
+                                        <td style="width: 40px;">
+                                            @if (item.CanRemove)
+                                            {
+                                                <button type="button" class="btn btn-sm btn-ghost-danger"
+                                                        @onclick="@(() => RemoveLineItem(item))"
+                                                        title="@Localizer["RemoveItem"]">
+                                                    <i class="ti ti-x"></i>
+                                                </button>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                            <tfoot>
+                                <tr class="bg-light">
+                                    <td colspan="2" class="text-end fw-semibold">@Localizer["Subtotal"]</td>
+                                    <td class="text-end fw-semibold">@FormatAmount(m_subtotal)</td>
+                                    <td></td>
+                                </tr>
+                                @if (m_discountTotal > 0)
+                                {
+                                    <tr class="bg-warning-lt">
+                                        <td colspan="2" class="text-end text-danger fw-semibold">@Localizer["Discount"]</td>
+                                        <td class="text-end text-danger fw-semibold">-@FormatAmount(m_discountTotal)</td>
+                                        <td></td>
+                                    </tr>
+                                }
+                                <tr class="bg-primary-lt">
+                                    <td colspan="2" class="text-end fw-bold fs-4">@Localizer["Total"]</td>
+                                    <td class="text-end fw-bold fs-4">@FormatAmount(m_grandTotal)</td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else if (m_currentStep == 3)
+    {
+        @* === STEP 3: Payment Terminal === *@
+        <PaymentTerminalPanel
+            AmountDue="@m_grandTotal"
+            SessionId="@SessionId"
+            RentalId="@(m_selectedRental?.RentalId)"
+            BookingId="@(m_selectedBooking?.BookingId)"
+            TransactionType="@m_transactionType"
+            UserName="@UserName"
+            OnPaymentComplete="@OnPaymentComplete"
+            OnCancel="@GoBackToItemConfirmation" />
+    }
+</div>
+
+@* === Footer === *@
+<div class="modal-footer d-flex justify-content-between">
+    @if (m_currentStep == 1)
+    {
+        @* Step 1 footer *@
+        <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
+            @Localizer["Cancel"]
+        </button>
+        <span></span> @* Spacer for justify-content-between *@
+    }
+    else if (m_currentStep == 2)
+    {
+        @* Step 2 footer *@
+        <button type="button" class="btn btn-ghost-secondary" @onclick="ClearSelection">
+            <i class="ti ti-arrow-left"></i> @Localizer["Back"]
+        </button>
+        <button type="button" class="btn btn-purple btn-lg" @onclick="ProceedToPayment"
+                disabled="@(m_grandTotal <= 0)">
+            <i class="ti ti-credit-card"></i>
+            @Localizer["ProceedToPayment"] - @FormatAmount(m_grandTotal)
+        </button>
+    }
+    else if (m_currentStep == 3)
+    {
+        @* Step 3 footer - Back button only; PaymentTerminalPanel has its own Complete button *@
+        <button type="button" class="btn btn-ghost-secondary" @onclick="GoBackToItemConfirmation">
+            <i class="ti ti-arrow-left"></i> @Localizer["BackToItems"]
+        </button>
+        <span></span> @* Spacer for justify-content-between *@
+    }
+</div>
+
+@code {
+    [Parameter] public int SessionId { get; set; }
+    [Parameter] public int ShopId { get; set; }
+    [Parameter] public string UserName { get; set; } = "";
+
+    // Step tracking: 1 = Search, 2 = Item Confirmation, 3 = Payment
+    private int m_currentStep = 1;
+
+    // Search state (Step 1)
+    private string m_searchTerm = "";
+    private List<Booking> m_bookingResults = [];
+    private List<Rental> m_rentalResults = [];
+    private bool m_loading;
+    private bool m_searching;
+    private bool m_searched;
+
+    // Categorized lists for default view
+    private List<Booking> m_bookingsAwaitingPayment = [];
+    private List<Booking> m_bookingsArrivingToday = [];
+    private List<Booking> m_upcomingBookings = [];
+    private List<Rental> m_rentalsCheckingOutToday = [];
+    private List<Rental> m_overdueRentals = [];
+
+    // Selected entity (Step 2)
+    private Booking? m_selectedBooking;
+    private Rental? m_selectedRental;
+    private TillTransactionType m_transactionType;
+
+    // Line items
+    private List<TransactionLineItem> m_lineItems = [];
+    private decimal m_subtotal;
+    private decimal m_discountTotal;
+    private decimal m_grandTotal;
+
+    // Available options for editing
+    private List<Accessory> m_availableAccessories = [];
+    private List<Insurance> m_availableInsurances = [];
+    private bool m_loadingAccessories;
+    private bool m_loadingInsurances;
+
+    // Accessory selection state
+    private bool m_showAccessorySelector;
+
+    // Insurance selection state
+    private bool m_showInsuranceSelector;
+
+    // Discount form state
+    private bool m_showDiscountForm;
+    private decimal m_discountValue;
+    private bool m_discountIsPercent = true;
+    private string m_discountReason = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRecentTransactionsAsync();
+    }
+
+    /// <summary>
+    /// Loads categorized transactions on dialog open.
+    /// Shows: bookings awaiting payment, arriving today, upcoming, and rentals checking out.
+    /// </summary>
+    private async Task LoadRecentTransactionsAsync()
+    {
+        try
+        {
+            m_loading = true;
+            m_bookingsAwaitingPayment.Clear();
+            m_bookingsArrivingToday.Clear();
+            m_upcomingBookings.Clear();
+            m_rentalsCheckingOutToday.Clear();
+            m_overdueRentals.Clear();
+
+            var today = DateTimeOffset.Now.Date;
+            var todayEnd = today.AddDays(1);
+
+            // Load pending and confirmed bookings (next 7 days)
+            var bookingsTask = BookingService.GetBookingsAsync(
+                preferredShopId: null, // All shops - user may need to handle cross-shop
+                status: null,
+                fromDate: today.AddDays(-1), // Include yesterday for late arrivals
+                toDate: today.AddDays(7),
+                searchTerm: null,
+                page: 1,
+                pageSize: 50);
+
+            // Load active rentals (all active, not just this shop)
+            var rentalsTask = RentalService.GetRentalsAsync(
+                shopId: 0, // All shops
+                status: "Active",
+                searchTerm: null,
+                fromDate: null,
+                toDate: null,
+                page: 1,
+                pageSize: 50);
+
+            await Task.WhenAll(bookingsTask, rentalsTask);
+
+            var bookings = (await bookingsTask).ItemCollection.ToList();
+            var rentals = (await rentalsTask).ItemCollection.ToList();
+
+            // Categorize bookings
+            foreach (var booking in bookings.Where(b => b.Status != BookingStatus.Cancelled && b.Status != BookingStatus.Completed))
+            {
+                // Arriving today (pending/confirmed bookings starting today)
+                if ((booking.Status == BookingStatus.Pending || booking.Status == BookingStatus.Confirmed) &&
+                    booking.StartDate.Date == today)
+                {
+                    m_bookingsArrivingToday.Add(booking);
+                }
+                // Awaiting payment (has balance due)
+                else if (booking.BalanceDue > 0)
+                {
+                    m_bookingsAwaitingPayment.Add(booking);
+                }
+                // Upcoming bookings (pending/confirmed, starting in the future)
+                else if ((booking.Status == BookingStatus.Pending || booking.Status == BookingStatus.Confirmed) &&
+                         booking.StartDate.Date > today)
+                {
+                    m_upcomingBookings.Add(booking);
+                }
+            }
+
+            // Categorize rentals
+            foreach (var rental in rentals.Where(r => r.Status == "Active"))
+            {
+                // Overdue rentals (should have returned already)
+                if (rental.ExpectedEndDate.Date < today)
+                {
+                    m_overdueRentals.Add(rental);
+                }
+                // Checking out today
+                else if (rental.ExpectedEndDate.Date == today)
+                {
+                    m_rentalsCheckingOutToday.Add(rental);
+                }
+            }
+
+            // Sort lists by date
+            m_bookingsArrivingToday = m_bookingsArrivingToday.OrderBy(b => b.StartDate).ToList();
+            m_bookingsAwaitingPayment = m_bookingsAwaitingPayment.OrderBy(b => b.StartDate).ToList();
+            m_upcomingBookings = m_upcomingBookings.OrderBy(b => b.StartDate).Take(5).ToList();
+            m_overdueRentals = m_overdueRentals.OrderBy(r => r.ExpectedEndDate).ToList();
+            m_rentalsCheckingOutToday = m_rentalsCheckingOutToday.OrderBy(r => r.ExpectedEndDate).ToList();
+        }
+        catch (Exception ex)
+        {
+            this.Logger.LogError(ex, "Failed to load recent transactions");
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private async Task OnSearchKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await SearchAsync();
+        }
+    }
+
+    private async Task SearchAsync()
+    {
+        if (string.IsNullOrWhiteSpace(m_searchTerm) || m_searching) return;
+
+        try
+        {
+            m_searching = true;
+            m_searched = true;
+            m_bookingResults.Clear();
+            m_rentalResults.Clear();
+
+            var searchTerm = m_searchTerm.Trim();
+            var searchTermUpper = searchTerm.ToUpperInvariant();
+
+            // Try exact booking reference match first (4-8 characters)
+            if (searchTerm.Length >= 4 && searchTerm.Length <= 8)
+            {
+                var booking = await BookingService.GetBookingByRefAsync(searchTermUpper);
+                if (booking is not null)
+                {
+                    m_bookingResults.Add(booking);
+                }
+            }
+
+            // Search by customer name if no exact ref match or search term is longer
+            if (m_bookingResults.Count == 0 || searchTerm.Length > 8)
+            {
+                var bookings = await BookingService.GetBookingsAsync(
+                    preferredShopId: null,
+                    status: null,
+                    fromDate: null,
+                    toDate: null,
+                    searchTerm: searchTerm,
+                    page: 1,
+                    pageSize: 20);
+
+                // Filter to actionable bookings
+                var actionableBookings = bookings.ItemCollection
+                    .Where(b => b.CanReceivePayment || b.Status == BookingStatus.Confirmed || b.Status == BookingStatus.Pending)
+                    .ToList();
+
+                // Avoid duplicates if exact ref was already added
+                foreach (var b in actionableBookings)
+                {
+                    if (!m_bookingResults.Any(existing => existing.BookingId == b.BookingId))
+                    {
+                        m_bookingResults.Add(b);
+                    }
+                }
+            }
+
+            // Search active rentals by renter name
+            var rentals = await RentalService.SearchActiveRentalsAsync(searchTerm, ShopId);
+            m_rentalResults.AddRange(rentals);
+        }
+        catch (Exception ex)
+        {
+            this.Logger.LogError(ex, "Failed to search transactions for term: {SearchTerm}", m_searchTerm);
+        }
+        finally
+        {
+            m_searching = false;
+        }
+    }
+
+    private async Task SelectBookingAsync(Booking booking)
+    {
+        m_selectedBooking = booking;
+        m_selectedRental = null;
+        m_transactionType = DetectTransactionType(booking);
+        BuildLineItemsFromBooking(booking);
+        m_currentStep = 2;
+
+        // Load available options in parallel
+        await Task.WhenAll(
+            LoadAvailableAccessoriesAsync(),
+            LoadAvailableInsurancesAsync()
+        );
+    }
+
+    private async Task SelectRentalAsync(Rental rental)
+    {
+        m_selectedRental = rental;
+        m_selectedBooking = null;
+        m_transactionType = TillTransactionType.RentalPayment;
+        BuildLineItemsFromRental(rental);
+        m_currentStep = 2;
+
+        // Load available options in parallel
+        await Task.WhenAll(
+            LoadAvailableAccessoriesAsync(),
+            LoadAvailableInsurancesAsync()
+        );
+    }
+
+    private void BuildLineItemsFromBooking(Booking booking)
+    {
+        m_lineItems.Clear();
+        var days = booking.Days;
+        int sortOrder = 0;
+
+        foreach (var item in booking.Items)
+        {
+            // Vehicle rental
+            m_lineItems.Add(new TransactionLineItem
+            {
+                Category = ReceiptItemCategory.Rental,
+                Description = item.VehicleDisplayName ?? "Vehicle",
+                Detail = $"{days} days @ {item.DailyRate:N0}/day",
+                Quantity = days,
+                UnitPrice = item.DailyRate,
+                Amount = item.DailyRate * days,
+                SortOrder = sortOrder++,
+                CanRemove = false
+            });
+
+            // Insurance (if any)
+            if (item.InsuranceId.HasValue && item.InsuranceRate > 0)
+            {
+                m_lineItems.Add(new TransactionLineItem
+                {
+                    Category = ReceiptItemCategory.Insurance,
+                    Description = item.InsuranceName ?? "Insurance",
+                    Detail = $"{days} days @ {item.InsuranceRate:N0}/day",
+                    Quantity = days,
+                    UnitPrice = item.InsuranceRate,
+                    Amount = item.InsuranceRate * days,
+                    InsuranceId = item.InsuranceId,
+                    SortOrder = sortOrder++,
+                    CanRemove = false // Changed via ChangeInsurance
+                });
+            }
+
+            // Security deposit (for check-in)
+            if (m_transactionType == TillTransactionType.CheckIn && item.DepositAmount > 0)
+            {
+                m_lineItems.Add(new TransactionLineItem
+                {
+                    Category = ReceiptItemCategory.Deposit,
+                    Description = Localizer["SecurityDeposit"],
+                    Amount = item.DepositAmount,
+                    SortOrder = sortOrder++,
+                    CanRemove = false
+                });
+            }
+
+            // Existing accessories from booking
+            // (AccessoryIds contains IDs of pre-selected accessories)
+            // These would need accessory lookup - simplified for now
+        }
+
+        // Location fees
+        if (booking.PickupLocationFee > 0)
+        {
+            m_lineItems.Add(new TransactionLineItem
+            {
+                Category = ReceiptItemCategory.LocationFee,
+                Description = $"Pickup: {booking.PickupLocationName}",
+                Amount = booking.PickupLocationFee,
+                SortOrder = sortOrder++,
+                CanRemove = false
+            });
+        }
+
+        if (booking.DropoffLocationFee > 0)
+        {
+            m_lineItems.Add(new TransactionLineItem
+            {
+                Category = ReceiptItemCategory.LocationFee,
+                Description = $"Dropoff: {booking.DropoffLocationName}",
+                Amount = booking.DropoffLocationFee,
+                SortOrder = sortOrder++,
+                CanRemove = false
+            });
+        }
+
+        RecalculateTotals();
+    }
+
+    private void BuildLineItemsFromRental(Rental rental)
+    {
+        m_lineItems.Clear();
+        int sortOrder = 0;
+
+        // Calculate rental days
+        var rentalDays = Math.Max(1, (int)Math.Ceiling((rental.ExpectedEndDate - rental.StartDate).TotalDays));
+
+        // For check-out, we typically show what's due
+        // This is a simplified version - actual implementation would depend on rental status
+
+        // Vehicle rental
+        m_lineItems.Add(new TransactionLineItem
+        {
+            Category = ReceiptItemCategory.Rental,
+            Description = rental.VehicleName ?? "Vehicle",
+            Detail = $"{rentalDays} days @ {rental.RentalRate:N0}/day",
+            Quantity = rentalDays,
+            UnitPrice = rental.RentalRate,
+            Amount = rental.TotalAmount,
+            SortOrder = sortOrder++,
+            CanRemove = false
+        });
+
+        // Insurance - would need to be loaded separately or from the rental's TotalAmount breakdown
+        // For now, insurance is included in TotalAmount
+        if (rental.InsuranceId.HasValue)
+        {
+            // Insurance rate not stored on rental - would need to look up
+            // Adding placeholder for UI, the actual amount is in TotalAmount
+            m_lineItems.Add(new TransactionLineItem
+            {
+                Category = ReceiptItemCategory.Insurance,
+                Description = Localizer["InsuranceIncluded"],
+                Detail = Localizer["IncludedInTotal"],
+                InsuranceId = rental.InsuranceId,
+                Amount = 0, // Already included in TotalAmount
+                SortOrder = sortOrder++,
+                CanRemove = false
+            });
+        }
+
+        // Note: Deposit refund would be calculated based on Deposit entity lookup
+        // For check-out flow, this would typically show what customer owes or gets back
+
+        RecalculateTotals();
+    }
+
+    private void RecalculateTotals()
+    {
+        m_subtotal = m_lineItems.Where(i => !i.IsDeduction).Sum(i => i.Amount);
+        m_discountTotal = m_lineItems.Where(i => i.IsDeduction && i.Category == ReceiptItemCategory.Discount).Sum(i => Math.Abs(i.Amount));
+
+        // Grand total = subtotal - all deductions
+        var allDeductions = m_lineItems.Where(i => i.IsDeduction).Sum(i => Math.Abs(i.Amount));
+        m_grandTotal = m_subtotal - allDeductions;
+    }
+
+    private async Task LoadAvailableAccessoriesAsync()
+    {
+        try
+        {
+            m_loadingAccessories = true;
+            m_availableAccessories = await AccessoryService.GetAvailableAccessoriesAsync(ShopId);
+        }
+        catch (Exception ex)
+        {
+            this.Logger.LogError(ex, "Failed to load available accessories");
+        }
+        finally
+        {
+            m_loadingAccessories = false;
+        }
+    }
+
+    private async Task LoadAvailableInsurancesAsync()
+    {
+        try
+        {
+            m_loadingInsurances = true;
+            m_availableInsurances = await InsuranceService.GetActiveInsurancesAsync();
+        }
+        catch (Exception ex)
+        {
+            this.Logger.LogError(ex, "Failed to load available insurances");
+        }
+        finally
+        {
+            m_loadingInsurances = false;
+        }
+    }
+
+    private void ShowAddAccessoryDialog()
+    {
+        m_showAccessorySelector = true;
+        m_showInsuranceSelector = false;
+        m_showDiscountForm = false;
+    }
+
+    private void ShowChangeInsuranceDialog()
+    {
+        m_showInsuranceSelector = true;
+        m_showAccessorySelector = false;
+        m_showDiscountForm = false;
+    }
+
+    private void ShowApplyDiscountDialog()
+    {
+        m_showDiscountForm = true;
+        m_showAccessorySelector = false;
+        m_showInsuranceSelector = false;
+        m_discountValue = 0;
+        m_discountIsPercent = true;
+        m_discountReason = "";
+    }
+
+    private List<Accessory> GetAvailableAccessoriesToAdd()
+    {
+        // Filter out accessories already in line items
+        var existingAccessoryIds = m_lineItems
+            .Where(i => i.AccessoryId.HasValue)
+            .Select(i => i.AccessoryId!.Value)
+            .ToHashSet();
+
+        return m_availableAccessories
+            .Where(a => !existingAccessoryIds.Contains(a.AccessoryId))
+            .ToList();
+    }
+
+    private void AddAccessory(Accessory accessory)
+    {
+        var days = GetDays();
+        m_lineItems.Add(new TransactionLineItem
+        {
+            Category = ReceiptItemCategory.Accessory,
+            Description = accessory.Name,
+            Detail = $"{days} days @ {accessory.DailyRate:N0}/day",
+            Quantity = days,
+            UnitPrice = accessory.DailyRate,
+            Amount = accessory.DailyRate * days,
+            AccessoryId = accessory.AccessoryId,
+            CanRemove = true,
+            SortOrder = 100 + m_lineItems.Count
+        });
+        m_showAccessorySelector = false;
+        RecalculateTotals();
+    }
+
+    private int? GetCurrentInsuranceId()
+    {
+        return m_lineItems.FirstOrDefault(i => i.Category == ReceiptItemCategory.Insurance)?.InsuranceId;
+    }
+
+    private void ChangeInsurance(Insurance insurance)
+    {
+        var days = GetDays();
+
+        // Remove existing insurance line item
+        var existingInsurance = m_lineItems.FirstOrDefault(i => i.Category == ReceiptItemCategory.Insurance);
+        if (existingInsurance is not null)
+        {
+            m_lineItems.Remove(existingInsurance);
+        }
+
+        // Add new insurance
+        m_lineItems.Add(new TransactionLineItem
+        {
+            Category = ReceiptItemCategory.Insurance,
+            Description = insurance.Name,
+            Detail = $"{days} days @ {insurance.DailyRate:N0}/day",
+            Quantity = days,
+            UnitPrice = insurance.DailyRate,
+            Amount = insurance.DailyRate * days,
+            InsuranceId = insurance.InsuranceId,
+            SortOrder = 10,
+            CanRemove = false
+        });
+
+        m_showInsuranceSelector = false;
+        RecalculateTotals();
+    }
+
+    private void RemoveInsurance()
+    {
+        // Remove existing insurance line item
+        var existingInsurance = m_lineItems.FirstOrDefault(i => i.Category == ReceiptItemCategory.Insurance);
+        if (existingInsurance is not null)
+        {
+            m_lineItems.Remove(existingInsurance);
+        }
+
+        m_showInsuranceSelector = false;
+        RecalculateTotals();
+    }
+
+    private void ApplyDiscount()
+    {
+        if (m_discountValue <= 0 || string.IsNullOrWhiteSpace(m_discountReason)) return;
+
+        decimal discountAmount;
+        string detail;
+
+        if (m_discountIsPercent)
+        {
+            discountAmount = m_subtotal * (m_discountValue / 100m);
+            detail = $"{m_discountValue}% discount";
+        }
+        else
+        {
+            discountAmount = m_discountValue;
+            detail = "Fixed discount";
+        }
+
+        m_lineItems.Add(new TransactionLineItem
+        {
+            Category = ReceiptItemCategory.Discount,
+            Description = m_discountReason,
+            Detail = detail,
+            Amount = -discountAmount,
+            IsDeduction = true,
+            DiscountReason = m_discountReason,
+            CanRemove = true,
+            SortOrder = 999
+        });
+
+        m_showDiscountForm = false;
+        RecalculateTotals();
+    }
+
+    private void RemoveLineItem(TransactionLineItem item)
+    {
+        m_lineItems.Remove(item);
+        RecalculateTotals();
+    }
+
+    private void ClearSelection()
+    {
+        m_selectedBooking = null;
+        m_selectedRental = null;
+        m_lineItems.Clear();
+        m_showAccessorySelector = false;
+        m_showInsuranceSelector = false;
+        m_showDiscountForm = false;
+        m_currentStep = 1;
+    }
+
+    private void ProceedToPayment()
+    {
+        // Transition to Step 3 (Payment Terminal)
+        m_currentStep = 3;
+    }
+
+    /// <summary>
+    /// Returns to the item confirmation step from payment.
+    /// </summary>
+    private void GoBackToItemConfirmation()
+    {
+        m_currentStep = 2;
+    }
+
+    /// <summary>
+    /// Handles payment completion from PaymentTerminalPanel.
+    /// Records payment to booking, generates receipt, and shows print dialog.
+    /// </summary>
+    private async Task OnPaymentComplete(List<ReceiptPayment> payments)
+    {
+        var totalPaymentAmount = payments.Sum(p => p.AmountInBaseCurrency);
+
+        // Record payment to booking if applicable
+        if (m_selectedBooking is not null && totalPaymentAmount > 0)
+        {
+            // Record each payment to the booking
+            foreach (var payment in payments)
+            {
+                var bookingPayment = new BookingPayment
+                {
+                    Amount = payment.AmountInBaseCurrency,
+                    PaymentMethod = payment.Method,
+                    PaymentType = m_transactionType == TillTransactionType.BookingDeposit
+                        ? BookingPaymentType.Deposit
+                        : BookingPaymentType.Partial,
+                    TransactionRef = payment.Reference,
+                    PaidAt = DateTimeOffset.Now
+                };
+
+                var result = await BookingService.RecordPaymentAsync(
+                    m_selectedBooking.BookingId,
+                    bookingPayment,
+                    UserName);
+
+                if (!result.Success)
+                {
+                    Logger.LogError("Failed to record payment to booking: {Message}", result.Message);
+                }
+            }
+
+            // Reload booking to get updated AmountPaid
+            m_selectedBooking = await BookingService.GetBookingByIdAsync(m_selectedBooking.BookingId);
+        }
+
+        // Generate receipt
+        Receipt? receipt = null;
+        if (m_selectedBooking is not null)
+        {
+            // Get renter if linked
+            Renter? renter = null;
+            if (m_selectedBooking.RenterId.HasValue)
+            {
+                renter = await RenterService.GetRenterByIdAsync(m_selectedBooking.RenterId.Value);
+            }
+
+            receipt = await ReceiptService.GenerateBookingDepositReceiptAsync(
+                m_selectedBooking.BookingId,
+                m_selectedBooking,
+                renter,
+                SessionId,
+                payments,
+                UserName);
+        }
+
+        // Show receipt print dialog if receipt was generated
+        if (receipt is not null)
+        {
+            await this.DialogService.Create<ReceiptPrintDialog>(Localizer["PaymentComplete"])
+                .WithParameter(x => x.Entity, receipt)
+                .WithParameter(x => x.IsReprint, false)
+                .WithSize(ModalSize.Large)
+                .ShowDialogAsync();
+        }
+
+        // Build the final transaction result
+        var transactionResult = new TransactionSearchResult
+        {
+            EntityType = m_selectedBooking is not null ? TransactionEntityType.Booking : TransactionEntityType.Rental,
+            Booking = m_selectedBooking,
+            Rental = m_selectedRental,
+            TransactionType = m_transactionType,
+            LineItems = m_lineItems.ToList(),
+            GrandTotal = m_grandTotal,
+            Payments = payments,
+            Change = totalPaymentAmount - m_grandTotal
+        };
+
+        this.ModalService.Close(ModalResult.Ok(transactionResult));
+    }
+
+    /// <summary>
+    /// Detects the appropriate transaction type based on booking status.
+    /// </summary>
+    private static TillTransactionType DetectTransactionType(Booking booking)
+    {
+        // If booking has balance due, it's a deposit payment
+        if (booking.BalanceDue > 0)
+        {
+            return TillTransactionType.BookingDeposit;
+        }
+
+        // If booking is confirmed and fully paid, it's a check-in
+        if (booking.Status == BookingStatus.Confirmed)
+        {
+            return TillTransactionType.CheckIn;
+        }
+
+        // Default to booking deposit for pending bookings
+        return TillTransactionType.BookingDeposit;
+    }
+
+    private string GetTransactionTypeLabel(Booking booking)
+    {
+        var type = DetectTransactionType(booking);
+        return type switch
+        {
+            TillTransactionType.BookingDeposit => Localizer["BookingDeposit"],
+            TillTransactionType.CheckIn => Localizer["CheckIn"],
+            _ => Localizer["BookingDeposit"]
+        };
+    }
+
+    private string GetCurrentTransactionTypeLabel()
+    {
+        return m_transactionType switch
+        {
+            TillTransactionType.BookingDeposit => Localizer["BookingDeposit"],
+            TillTransactionType.CheckIn => Localizer["CheckIn"],
+            TillTransactionType.RentalPayment => Localizer["CheckOut"],
+            _ => Localizer["Transaction"]
+        };
+    }
+
+    private string GetTransactionTypeBadgeClass()
+    {
+        return m_transactionType switch
+        {
+            TillTransactionType.BookingDeposit => "bg-warning",
+            TillTransactionType.CheckIn => "bg-primary",
+            TillTransactionType.RentalPayment => "bg-info",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetTransactionTypeIcon()
+    {
+        return m_transactionType switch
+        {
+            TillTransactionType.BookingDeposit => "ti-coin",
+            TillTransactionType.CheckIn => "ti-login",
+            TillTransactionType.RentalPayment => "ti-logout",
+            _ => "ti-receipt"
+        };
+    }
+
+    private static string GetBookingStatusBadgeClass(Booking booking)
+    {
+        var type = DetectTransactionType(booking);
+        return type switch
+        {
+            TillTransactionType.BookingDeposit => "bg-warning",
+            TillTransactionType.CheckIn => "bg-primary",
+            _ => "bg-secondary"
+        };
+    }
+
+    private static string GetCategoryIcon(string category)
+    {
+        return category switch
+        {
+            ReceiptItemCategory.Rental => "ti-motorbike",
+            ReceiptItemCategory.Insurance => "ti-shield",
+            ReceiptItemCategory.Accessory => "ti-helmet",
+            ReceiptItemCategory.Deposit => "ti-wallet",
+            ReceiptItemCategory.Discount => "ti-discount-2",
+            ReceiptItemCategory.LocationFee => "ti-map-pin",
+            ReceiptItemCategory.Damage => "ti-alert-triangle",
+            ReceiptItemCategory.LateFee => "ti-clock",
+            _ => "ti-receipt"
+        };
+    }
+
+    private string GetCustomerName()
+    {
+        return m_selectedBooking?.CustomerName ?? m_selectedRental?.RenterName ?? "";
+    }
+
+    private string GetCustomerPhone()
+    {
+        return m_selectedBooking?.CustomerPhone ?? "";
+    }
+
+    private string GetVehicleDisplayName()
+    {
+        if (m_selectedBooking?.Items.Count > 0)
+        {
+            return m_selectedBooking.Items.First().VehicleDisplayName ?? "Vehicle";
+        }
+        return m_selectedRental?.VehicleName ?? "Vehicle";
+    }
+
+    private DateTimeOffset GetStartDate()
+    {
+        return m_selectedBooking?.StartDate ?? m_selectedRental?.StartDate ?? DateTimeOffset.Now;
+    }
+
+    private DateTimeOffset GetEndDate()
+    {
+        return m_selectedBooking?.EndDate ?? m_selectedRental?.ExpectedEndDate ?? DateTimeOffset.Now;
+    }
+
+    private int GetDays()
+    {
+        if (m_selectedBooking is not null)
+        {
+            return m_selectedBooking.Days;
+        }
+        if (m_selectedRental is not null)
+        {
+            return Math.Max(1, (int)Math.Ceiling((m_selectedRental.ExpectedEndDate - m_selectedRental.StartDate).TotalDays));
+        }
+        return 1;
+    }
+
+    private static string FormatAmount(decimal amount)
+    {
+        return $"\u0e3f{amount:N0}"; // Thai Baht symbol
+    }
+
+    private void Cancel()
+    {
+        this.ModalService.Close(ModalResult.Cancel());
+    }
+}

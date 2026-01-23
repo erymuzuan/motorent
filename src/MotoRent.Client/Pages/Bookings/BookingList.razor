@@ -6,6 +6,7 @@
 @inherits LocalizedComponentBase<BookingList>
 @inject BookingService BookingService
 @inject ShopService ShopService
+@inject IJSRuntime JsRuntime
 
 <MotoRentPageTitle>@Localizer["PageTitle"]</MotoRentPageTitle>
 
@@ -144,41 +145,45 @@
                         @* Card Header *@
                         <div class="mr-card-header">
                             <div class="d-flex align-items-center gap-3">
-                                <span class="mr-card-id mr-booking-ref">@booking.BookingRef</span>
                                 <span class="mr-card-date">
                                     <i class="ti ti-calendar"></i>
                                     @FormatDateShort(booking.StartDate)
                                 </span>
-                                @if (IsArrivingToday(booking))
+                                @if (this.IsArrivingToday(booking))
                                 {
                                     <span class="mr-status-badge pending">
                                         <i class="ti ti-clock"></i>
-                                        @Localizer["ArrivingToday"]
+                                        @this.Localizer["ArrivingToday"]
                                     </span>
                                 }
                                 else
                                 {
                                     <span class="mr-status-badge @GetStatusBadgeClass(booking)">
                                         <i class="ti @GetStatusIcon(booking)"></i>
-                                        @Localizer[booking.Status ?? ""]
+                                        @this.Localizer[booking.Status ?? ""]
                                     </span>
                                 }
                                 @if (booking.PaymentStatus == BookingPaymentStatus.FullyPaid)
                                 {
                                     <span class="mr-badge-payment-paid">
                                         <i class="ti ti-check"></i>
-                                        @Localizer["Paid"]
+                                        @this.Localizer["Paid"]
                                     </span>
                                 }
                                 else if (booking.PaymentStatus == BookingPaymentStatus.PartiallyPaid)
                                 {
                                     <span class="mr-badge-payment-partial">
                                         <i class="ti ti-coin"></i>
-                                        @Localizer["PartiallyPaid"]
+                                        @this.Localizer["PartiallyPaid"]
                                     </span>
                                 }
                             </div>
-                            <div class="mr-card-amount">@FormatCurrency(booking.TotalAmount)</div>
+                            <div class="mr-card-booking-ref"
+                                 @onclick="@(() => this.CopyToClipboardAsync(booking.BookingRef))"
+                                 @onclick:stopPropagation="true"
+                                 title="@this.Localizer["ClickToCopy"]">
+                                <i class="ti ti-copy me-1"></i>@booking.BookingRef
+                            </div>
                         </div>
 
                         @* Card Body *@
@@ -191,6 +196,10 @@
                                 <div class="mr-field">
                                     <span class="mr-field-label">@Localizer["Phone"]</span>
                                     <span class="mr-field-value mr-mono">@booking.CustomerPhone</span>
+                                </div>
+                                <div class="mr-field">
+                                    <span class="mr-field-label">@Localizer["Amount"]</span>
+                                    <span class="mr-field-value mr-amount">@FormatCurrency(booking.TotalAmount)</span>
                                 </div>
                                 <div class="mr-field">
                                     <span class="mr-field-label">@Localizer["Vehicles"]</span>
@@ -355,6 +364,35 @@
         border-radius: 4px;
         font-size: 0.8rem;
     }
+
+    .mr-amount {
+        font-weight: 600;
+        color: var(--tblr-success);
+    }
+
+    .mr-card-booking-ref {
+        font-family: var(--mr-font-mono);
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--mr-accent-primary);
+        letter-spacing: 0.05em;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .mr-card-booking-ref:hover {
+        color: var(--mr-accent-light);
+        transform: scale(1.02);
+    }
+
+    .mr-card-booking-ref i {
+        opacity: 0.6;
+        font-size: 0.9rem;
+    }
+
+    .mr-card-booking-ref:hover i {
+        opacity: 1;
+    }
 </style>
 
 @code {
@@ -376,110 +414,109 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadShopsAsync();
-        await LoadDataAsync();
+        await this.LoadShopsAsync();
+        await this.LoadDataAsync();
     }
 
     private async Task LoadShopsAsync()
     {
         try
         {
-            var result = await ShopService.GetShopsAsync(page: 1, pageSize: 100);
-            m_shops = result.ItemCollection.ToList();
+            var result = await this.ShopService.GetShopsAsync(page: 1, pageSize: 100);
+            this.m_shops = result.ItemCollection.ToList();
         }
         catch
         {
-            m_shops = [];
+            this.m_shops = [];
         }
     }
 
     private async Task SetActiveTab(string tab)
     {
-        m_activeTab = tab;
-        m_statusFilter = tab switch
+        this.m_activeTab = tab;
+        this.m_statusFilter = tab switch
         {
             "All" => null,
-            "TodayArrivals" => null, // Special filter
+            "TodayArrivals" => null,
             "Pending" => BookingStatus.Pending,
             "Confirmed" => BookingStatus.Confirmed,
             "CheckedIn" => BookingStatus.CheckedIn,
             "Cancelled" => BookingStatus.Cancelled,
             _ => null
         };
-        m_currentPage = 1;
-        await LoadDataAsync();
+        this.m_currentPage = 1;
+        await this.LoadDataAsync();
     }
 
     private void OnSearchKeyUp(KeyboardEventArgs e)
     {
-        m_debounceTimer?.Stop();
-        m_debounceTimer?.Dispose();
-        m_debounceTimer = new System.Timers.Timer(300);
-        m_debounceTimer.Elapsed += async (_, _) =>
+        this.m_debounceTimer?.Stop();
+        this.m_debounceTimer?.Dispose();
+        this.m_debounceTimer = new System.Timers.Timer(300);
+        this.m_debounceTimer.Elapsed += async (_, _) =>
         {
-            m_debounceTimer?.Stop();
-            await InvokeAsync(async () =>
+            this.m_debounceTimer?.Stop();
+            await this.InvokeAsync(async () =>
             {
-                m_currentPage = 1;
-                await LoadDataAsync();
-                StateHasChanged();
+                this.m_currentPage = 1;
+                await this.LoadDataAsync();
+                this.StateHasChanged();
             });
         };
-        m_debounceTimer.Start();
+        this.m_debounceTimer.Start();
     }
 
-    private async Task OnShopFilterChanged() => await LoadDataAsync();
-    private async Task OnDateFilterChanged() => await LoadDataAsync();
+    private async Task OnShopFilterChanged() => await this.LoadDataAsync();
+    private async Task OnDateFilterChanged() => await this.LoadDataAsync();
+
     private async Task GoToPage(int page)
     {
-        m_currentPage = page;
-        await LoadDataAsync();
+        this.m_currentPage = page;
+        await this.LoadDataAsync();
     }
 
     private async Task LoadDataAsync()
     {
-        m_loading = true;
+        this.m_loading = true;
         try
         {
             DateTimeOffset? fromDate = null;
             DateTimeOffset? toDate = null;
 
-            // Handle today arrivals filter
-            if (m_activeTab == "TodayArrivals")
+            if (this.m_activeTab == "TodayArrivals")
             {
                 var today = DateTimeOffset.Now.Date;
                 fromDate = today;
                 toDate = today.AddDays(1);
             }
-            else if (m_dateFilter.HasValue)
+            else if (this.m_dateFilter.HasValue)
             {
-                fromDate = m_dateFilter.Value.ToDateTime(TimeOnly.MinValue);
-                toDate = m_dateFilter.Value.ToDateTime(TimeOnly.MaxValue);
+                fromDate = this.m_dateFilter.Value.ToDateTime(TimeOnly.MinValue);
+                toDate = this.m_dateFilter.Value.ToDateTime(TimeOnly.MaxValue);
             }
 
-            var result = await BookingService.GetBookingsAsync(
-                preferredShopId: m_selectedShopId > 0 ? m_selectedShopId : null,
-                status: m_statusFilter,
+            var result = await this.BookingService.GetBookingsAsync(
+                preferredShopId: this.m_selectedShopId > 0 ? this.m_selectedShopId : null,
+                status: this.m_statusFilter,
                 fromDate: fromDate,
                 toDate: toDate,
-                searchTerm: m_searchTerm,
-                page: m_currentPage,
-                pageSize: m_pageSize);
+                searchTerm: this.m_searchTerm,
+                page: this.m_currentPage,
+                pageSize: this.m_pageSize);
 
-            m_bookings = result.ItemCollection.ToList();
-            m_totalCount = result.TotalRows;
-            m_totalPages = result.TotalPages;
+            this.m_bookings = result.ItemCollection.ToList();
+            this.m_totalCount = result.TotalRows;
+            this.m_totalPages = result.TotalPages;
 
-            // Load status counts
-            await LoadStatusCountsAsync();
+            await this.LoadStatusCountsAsync();
         }
         catch (Exception ex)
         {
-            ShowError(Localizer["ErrorLoadingData", ex.Message]);
+            this.ShowError(this.Localizer["ErrorLoadingData", ex.Message]);
         }
         finally
         {
-            m_loading = false;
+            this.m_loading = false;
         }
     }
 
@@ -487,57 +524,66 @@
     {
         try
         {
-            // Get counts for each status
-            var pendingResult = await BookingService.GetBookingsAsync(status: BookingStatus.Pending, pageSize: 1);
-            var confirmedResult = await BookingService.GetBookingsAsync(status: BookingStatus.Confirmed, pageSize: 1);
-            var checkedInResult = await BookingService.GetBookingsAsync(status: BookingStatus.CheckedIn, pageSize: 1);
+            var pendingResult = await this.BookingService.GetBookingsAsync(status: BookingStatus.Pending, pageSize: 1);
+            var confirmedResult = await this.BookingService.GetBookingsAsync(status: BookingStatus.Confirmed, pageSize: 1);
+            var checkedInResult = await this.BookingService.GetBookingsAsync(status: BookingStatus.CheckedIn, pageSize: 1);
 
-            m_statusCounts = new Dictionary<string, int>
+            this.m_statusCounts = new Dictionary<string, int>
             {
                 [BookingStatus.Pending] = pendingResult.TotalRows,
                 [BookingStatus.Confirmed] = confirmedResult.TotalRows,
                 [BookingStatus.CheckedIn] = checkedInResult.TotalRows
             };
 
-            // Today arrivals
             var today = DateTimeOffset.Now.Date;
-            var todayResult = await BookingService.GetUpcomingBookingsAsync(today);
-            m_todayArrivalsCount = todayResult.Count;
+            var todayResult = await this.BookingService.GetUpcomingBookingsAsync(today);
+            this.m_todayArrivalsCount = todayResult.Count;
         }
         catch
         {
-            m_statusCounts = new();
-            m_todayArrivalsCount = 0;
+            this.m_statusCounts = new();
+            this.m_todayArrivalsCount = 0;
         }
     }
 
-    private void ViewBookingDetails(Booking booking)
-    {
-        NavigationManager.NavigateTo($"/bookings/{booking.BookingRef}");
-    }
+    private void ViewBookingDetails(Booking booking) =>
+        this.NavigationManager.NavigateTo($"/bookings/{booking.BookingRef}");
 
     private async Task ConfirmBooking(Booking booking)
     {
-        if (!await DialogService.ConfirmAsync(Localizer["ConfirmBookingQuestion", booking.CustomerName]))
+        if (!await this.DialogService.ConfirmAsync(this.Localizer["ConfirmBookingQuestion", booking.CustomerName]))
             return;
 
-        var result = await BookingService.ConfirmBookingAsync(booking.BookingId, UserName);
+        var result = await this.BookingService.ConfirmBookingAsync(booking.BookingId, this.UserName);
         if (result.Success)
         {
-            ShowSuccess(Localizer["BookingConfirmed"]);
-            await LoadDataAsync();
+            this.ShowSuccess(this.Localizer["BookingConfirmed"]);
+            await this.LoadDataAsync();
         }
         else
         {
-            ShowError(result.Message ?? Localizer["ErrorConfirmingBooking"]);
+            this.ShowError(result.Message ?? this.Localizer["ErrorConfirmingBooking"]);
         }
     }
 
-    private bool IsArrivingToday(Booking booking)
+    private async Task CopyToClipboardAsync(string? text)
     {
-        return booking.StartDate.Date == DateTimeOffset.Now.Date &&
-               (booking.Status == BookingStatus.Pending || booking.Status == BookingStatus.Confirmed);
+        if (string.IsNullOrEmpty(text)) return;
+
+        try
+        {
+            await this.JsRuntime.InvokeVoidAsync("navigator.clipboard.writeText", text);
+            this.ShowSuccess(this.Localizer["CopiedToClipboard"]);
+        }
+        catch
+        {
+            this.ShowError(this.Localizer["CopyFailed"]);
+        }
     }
+
+    private bool IsArrivingToday(Booking booking) =>
+        booking.StartDate.Date == DateTimeOffset.Now.Date &&
+        (booking.Status == BookingStatus.Pending || booking.Status == BookingStatus.Confirmed);
 
     private static string GetStatusBadgeClass(Booking booking) => booking.Status switch
     {
@@ -559,20 +605,17 @@
         _ => "ti-hourglass"
     };
 
-    private string GetEmptyStateMessage() => m_activeTab switch
+    private string GetEmptyStateMessage() => this.m_activeTab switch
     {
-        "TodayArrivals" => Localizer["EmptyStateTodayArrivals"],
-        "Pending" => Localizer["EmptyStatePending"],
-        "Confirmed" => Localizer["EmptyStateConfirmed"],
-        "CheckedIn" => Localizer["EmptyStateCheckedIn"],
-        "Cancelled" => Localizer["EmptyStateCancelled"],
-        _ => Localizer["EmptyStateDefault"]
+        "TodayArrivals" => this.Localizer["EmptyStateTodayArrivals"],
+        "Pending" => this.Localizer["EmptyStatePending"],
+        "Confirmed" => this.Localizer["EmptyStateConfirmed"],
+        "CheckedIn" => this.Localizer["EmptyStateCheckedIn"],
+        "Cancelled" => this.Localizer["EmptyStateCancelled"],
+        _ => this.Localizer["EmptyStateDefault"]
     };
 
-    private string FormatDateShort(DateTimeOffset date) => date.ToString("MMM d");
+    private static string FormatDateShort(DateTimeOffset date) => date.ToString("MMM d");
 
-    public void Dispose()
-    {
-        m_debounceTimer?.Dispose();
-    }
+    public void Dispose() => this.m_debounceTimer?.Dispose();
 }

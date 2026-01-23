@@ -1,3 +1,4 @@
+using System.Data;
 using System.Linq.Expressions;
 using Microsoft.Data.SqlClient;
 using MotoRent.Domain.Entities;
@@ -414,5 +415,41 @@ public partial class CoreSqlJsonRepository<T> where T : Entity, new()
             throw pr.FinalException;
 
         return list;
+    }
+
+    /// <summary>
+    /// Gets a data reader for specific columns without loading full entities.
+    /// Performance-optimized: no [Json] column, no deserialization.
+    /// </summary>
+    /// <param name="query">The query to execute</param>
+    /// <param name="columns">Column names to select</param>
+    /// <returns>IDataReader with CloseConnection behavior - disposes connection when reader is closed</returns>
+    public async Task<IDataReader> GetReaderAsync(IQueryable<T> query, params string[] columns)
+    {
+        if (columns.Length == 0)
+            throw new ArgumentException("At least one column must be specified", nameof(columns));
+
+        var fields = string.Join(", ", columns.Select(c => $"[{c}]"));
+        var sql = query.ToString()!.Replace("[Data]", fields);
+
+        var pr = await Policy.Handle<SqlException>(HasNetworkError)
+            .WaitAndRetryAsync(5, Sleep)
+            .ExecuteAndCaptureAsync(async () =>
+            {
+                var conn = new SqlConnection(m_connectionString);
+                var cmd = new SqlCommand(sql, conn);
+                await conn.OpenAsync();
+                // CommandBehavior.CloseConnection ensures connection closes when reader is disposed
+                return await cmd.ExecuteReaderAsync(CommandBehavior.CloseConnection);
+            });
+
+        if (pr.FinalException is not null)
+        {
+            System.Diagnostics.Debug.WriteLine($"SQL Error for {typeof(T).Name}: {sql}");
+            Console.WriteLine($"SQL Error for {typeof(T).Name}: {sql}");
+            throw new InvalidOperationException($"SQL Error for {typeof(T).Name}: {sql}", pr.FinalException);
+        }
+
+        return pr.Result;
     }
 }

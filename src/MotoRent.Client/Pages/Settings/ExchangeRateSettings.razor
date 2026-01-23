@@ -1,0 +1,410 @@
+@page "/settings/exchange-rates"
+@using Microsoft.AspNetCore.Authorization
+@using MotoRent.Services.ExchangeRateProviders
+@attribute [Authorize(Roles = "OrgAdmin,ShopManager")]
+@inherits LocalizedComponentBase<ExchangeRateSettings>
+@inject ExchangeRateService ExchangeRateService
+@inject ShopService ShopService
+
+<MotoRentPageTitle>@Localizer["ExchangeRates"]</MotoRentPageTitle>
+
+<TablerHeader Title="@Localizer["ExchangeRates"]" PreTitle="@Localizer["ManageExchangeRates"]">
+    <div class="d-flex gap-2 align-items-center">
+        @* Provider Selector *@
+        <div class="dropdown">
+            <button type="button" class="btn btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown">
+                <i class="@GetProviderIcon(m_selectedProvider) me-1"></i>
+                @RateProviderCodes.GetDisplayName(m_selectedProvider)
+            </button>
+            <div class="dropdown-menu">
+                @foreach (var provider in RateProviderCodes.All)
+                {
+                    <a class="dropdown-item @(m_selectedProvider == provider ? "active" : "")"
+                       href="#"
+                       @onclick="() => SelectProvider(provider)"
+                       @onclick:preventDefault>
+                        <i class="@GetProviderIcon(provider) me-2"></i>
+                        @RateProviderCodes.GetDisplayName(provider)
+                    </a>
+                }
+            </div>
+        </div>
+
+        @* Refresh Button *@
+        <button type="button"
+                class="btn btn-primary"
+                @onclick="RefreshFromProviderAsync"
+                disabled="@(m_refreshing || m_selectedProvider == RateProviderCodes.Manual)">
+            @if (m_refreshing)
+            {
+                <span class="spinner-border spinner-border-sm me-1"></span>
+                @Localizer["Refreshing"]
+            }
+            else
+            {
+                <i class="ti ti-refresh me-1"></i>
+                @Localizer["RefreshRates"]
+            }
+        </button>
+
+        @* Buy/Sell Toggle *@
+        <div class="btn-group ms-2" role="group">
+            <input type="radio" class="btn-check" name="rateType" id="btnBuy"
+                   checked="@m_showBuyRates" @onchange="() => m_showBuyRates = true" />
+            <label class="btn btn-outline-success" for="btnBuy">
+                <i class="ti ti-arrow-down-left me-1"></i>@Localizer["Buy"]
+            </label>
+
+            <input type="radio" class="btn-check" name="rateType" id="btnSell"
+                   checked="@(!m_showBuyRates)" @onchange="() => m_showBuyRates = false" />
+            <label class="btn btn-outline-primary" for="btnSell">
+                <i class="ti ti-arrow-up-right me-1"></i>@Localizer["Sell"]
+            </label>
+        </div>
+    </div>
+</TablerHeader>
+
+<LoadingSkeleton Loading="@m_loading" Mode="LoadingSkeleton.PlaceholderMode.Card">
+    @* Shop Tabs (if multiple shops) *@
+    @if (m_shops.Count > 1)
+    {
+        <ul class="nav nav-tabs mb-3">
+            <li class="nav-item">
+                <a class="nav-link @(m_selectedShopId == null ? "active" : "")"
+                   href="#"
+                   @onclick="() => SelectShop(null)"
+                   @onclick:preventDefault>
+                    <i class="ti ti-building me-1"></i>
+                    @Localizer["OrganizationDefaults"]
+                </a>
+            </li>
+            @foreach (var shop in m_shops)
+            {
+                <li class="nav-item">
+                    <a class="nav-link @(m_selectedShopId == shop.ShopId ? "active" : "")"
+                       href="#"
+                       @onclick="() => SelectShop(shop.ShopId)"
+                       @onclick:preventDefault>
+                        <i class="ti ti-building-store me-1"></i>
+                        @shop.Name
+                    </a>
+                </li>
+            }
+        </ul>
+    }
+
+    @* Rate Cards by Currency *@
+    <div class="row g-3">
+        @foreach (var currencyGroup in m_rateSummaries.GroupBy(r => r.Currency))
+        {
+            var currency = currencyGroup.Key;
+            var rates = currencyGroup.ToList();
+
+            <div class="col-12 col-lg-6">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="d-flex align-items-center">
+                            <span class="me-2" style="font-size: 1.5rem;">@GetCurrencyFlag(currency)</span>
+                            <div>
+                                <h3 class="card-title mb-0">@currency</h3>
+                                <span class="text-muted small">@GetCurrencyName(currency)</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-vcenter card-table table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>@Localizer["Denominations"]</th>
+                                        <th class="text-end">@Localizer["ProviderRate"]</th>
+                                        <th class="text-center">@Localizer["Delta"]</th>
+                                        <th class="text-end">@Localizer["FinalRate"]</th>
+                                        <th class="w-1"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var rate in rates)
+                                    {
+                                        var isEditingDelta = m_editingDeltaKey == GetDeltaKey(rate);
+
+                                        <tr class="cursor-pointer" @onclick="() => ShowRateDetails(rate)">
+                                            <td>
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <span class="fw-medium">@rate.GroupName</span>
+                                                    @if (rate.IsShopOverride)
+                                                    {
+                                                        <span class="badge bg-blue-lt" title="@Localizer["ShopOverride"]">
+                                                            <i class="ti ti-building-store"></i>
+                                                        </span>
+                                                    }
+                                                </div>
+                                                <div class="text-muted small">@rate.Denominations</div>
+                                            </td>
+                                            <td class="text-end font-monospace">
+                                                @GetProviderRate(rate).ToString("N4")
+                                            </td>
+                                            <td class="text-center" @onclick:stopPropagation>
+                                                <DeltaEditor
+                                                    Value="@GetDelta(rate)"
+                                                    IsEditing="@isEditingDelta"
+                                                    IsEditingChanged="@((bool val) => ToggleDeltaEdit(rate, val))"
+                                                    OnSave="@((decimal val) => SaveDeltaAsync(rate, val))"
+                                                    Type="@(m_showBuyRates ? DeltaEditor.DeltaType.Buy : DeltaEditor.DeltaType.Sell)" />
+                                            </td>
+                                            <td class="text-end font-monospace fw-bold">
+                                                @GetFinalRate(rate).ToString("N4")
+                                            </td>
+                                            <td>
+                                                <i class="ti ti-chevron-right text-muted"></i>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    @if (!rates.Any())
+                    {
+                        <div class="card-body text-center text-muted">
+                            <i class="ti ti-currency-off mb-2" style="font-size: 2rem;"></i>
+                            <p class="mb-0">@Localizer["NoRatesConfigured"]</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        @if (!m_rateSummaries.Any())
+        {
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body text-center py-5">
+                        <i class="ti ti-currency-off mb-3" style="font-size: 3rem; color: var(--tblr-muted);"></i>
+                        <h3 class="text-muted">@Localizer["NoRatesConfigured"]</h3>
+                        <p class="text-muted mb-3">@Localizer["NoRatesHelpText"]</p>
+                        @if (m_selectedProvider != RateProviderCodes.Manual)
+                        {
+                            <button type="button" class="btn btn-primary" @onclick="RefreshFromProviderAsync" disabled="@m_refreshing">
+                                <i class="ti ti-refresh me-1"></i>
+                                @Localizer["FetchRatesNow"]
+                            </button>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</LoadingSkeleton>
+
+@* Rate Details Flyout *@
+<RateDetailsFlyout
+    Rate="@m_selectedRate"
+    IsShopOverride="@(m_selectedRateSummary?.IsShopOverride ?? false)"
+    IsOpen="@m_flyoutOpen"
+    IsOpenChanged="@CloseFlyout" />
+
+@code {
+    private bool m_loading = true;
+    private bool m_refreshing;
+    private bool m_showBuyRates = true;
+    private bool m_flyoutOpen;
+
+    private string m_selectedProvider = RateProviderCodes.Manual;
+    private int? m_selectedShopId;
+    private string? m_editingDeltaKey;
+
+    private List<Shop> m_shops = [];
+    private List<RateSummary> m_rateSummaries = [];
+    private List<DenominationRate> m_denominationRates = [];
+
+    private DenominationRate? m_selectedRate;
+    private RateSummary? m_selectedRateSummary;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await this.LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        this.m_loading = true;
+        try
+        {
+            // Load shops
+            this.m_shops = await this.ShopService.GetActiveShopsAsync();
+
+            // Load rate summaries
+            this.m_rateSummaries = await this.ExchangeRateService.GetRateSummaryAsync(this.m_selectedShopId);
+
+            // Load denomination rates for flyout details
+            this.m_denominationRates = await this.ExchangeRateService.GetDenominationRatesAsync(this.m_selectedShopId);
+
+            // Determine provider from existing rates
+            var providerRate = this.m_denominationRates.FirstOrDefault(r => r.IsActive);
+            if (providerRate != null)
+            {
+                this.m_selectedProvider = providerRate.ProviderCode;
+            }
+        }
+        finally
+        {
+            this.m_loading = false;
+        }
+    }
+
+    private void SelectProvider(string provider)
+    {
+        this.m_selectedProvider = provider;
+    }
+
+    private async Task SelectShop(int? shopId)
+    {
+        this.m_selectedShopId = shopId;
+        await this.LoadDataAsync();
+    }
+
+    private async Task RefreshFromProviderAsync()
+    {
+        if (this.m_selectedProvider == RateProviderCodes.Manual)
+        {
+            this.ShowInfo(this.Localizer["ManualProviderNoRefresh"]);
+            return;
+        }
+
+        this.m_refreshing = true;
+        try
+        {
+            var result = await this.ExchangeRateService.RefreshRatesFromProviderAsync(
+                this.m_selectedProvider,
+                this.m_selectedShopId,
+                this.UserName);
+
+            if (result.Success)
+            {
+                this.ShowSuccess(result.Message);
+                await this.LoadDataAsync();
+            }
+            else
+            {
+                this.ShowError(result.Message);
+            }
+        }
+        finally
+        {
+            this.m_refreshing = false;
+        }
+    }
+
+    private string GetDeltaKey(RateSummary rate)
+        => $"{rate.Currency}-{rate.GroupName}";
+
+    private void ToggleDeltaEdit(RateSummary rate, bool isEditing)
+    {
+        this.m_editingDeltaKey = isEditing ? this.GetDeltaKey(rate) : null;
+    }
+
+    private async Task SaveDeltaAsync(RateSummary rate, decimal newDelta)
+    {
+        // Find the group ID for this rate
+        var groups = await this.ExchangeRateService.LoadDenominationGroupsAsync();
+        var group = groups.FirstOrDefault(g => g.Currency == rate.Currency && g.GroupName == rate.GroupName);
+        if (group == null)
+        {
+            this.ShowError(this.Localizer["GroupNotFound"]);
+            return;
+        }
+
+        var buyDelta = this.m_showBuyRates ? newDelta : rate.BuyDelta;
+        var sellDelta = !this.m_showBuyRates ? newDelta : rate.SellDelta;
+
+        var result = await this.ExchangeRateService.UpdateGroupDeltaAsync(
+            rate.Currency,
+            group.DenominationGroupId,
+            this.m_selectedShopId,
+            buyDelta,
+            sellDelta,
+            this.UserName);
+
+        if (result.Success)
+        {
+            this.ShowSuccess(this.Localizer["DeltaSaved"]);
+            this.m_editingDeltaKey = null;
+            await this.LoadDataAsync();
+        }
+        else
+        {
+            this.ShowError(result.Message ?? this.Localizer["SaveFailed"]);
+        }
+    }
+
+    private void ShowRateDetails(RateSummary summary)
+    {
+        // Find the full rate object
+        var rate = this.m_denominationRates.FirstOrDefault(r =>
+            r.Currency == summary.Currency &&
+            r.GroupName == summary.GroupName &&
+            r.IsActive);
+
+        if (rate != null)
+        {
+            this.m_selectedRate = rate;
+            this.m_selectedRateSummary = summary;
+            this.m_flyoutOpen = true;
+        }
+    }
+
+    private decimal GetProviderRate(RateSummary rate)
+        => this.m_showBuyRates ? (rate.BuyRate - rate.BuyDelta) : (rate.SellRate - rate.SellDelta);
+
+    private decimal GetDelta(RateSummary rate)
+        => this.m_showBuyRates ? rate.BuyDelta : rate.SellDelta;
+
+    private decimal GetFinalRate(RateSummary rate)
+        => this.m_showBuyRates ? rate.BuyRate : rate.SellRate;
+
+    private void CloseFlyout(bool isOpen)
+    {
+        this.m_flyoutOpen = isOpen;
+        if (!isOpen)
+        {
+            this.m_selectedRate = null;
+            this.m_selectedRateSummary = null;
+        }
+    }
+
+    // Helper Methods
+
+    private static string GetCurrencyName(string currency) => currency switch
+    {
+        "THB" => "Thai Baht",
+        "USD" => "US Dollar",
+        "EUR" => "Euro",
+        "GBP" => "British Pound",
+        "CNY" => "Chinese Yuan",
+        "JPY" => "Japanese Yen",
+        "AUD" => "Australian Dollar",
+        "RUB" => "Russian Ruble",
+        _ => currency
+    };
+
+    private static string GetCurrencyFlag(string currency) => currency switch
+    {
+        "THB" => "\U0001F1F9\U0001F1ED",
+        "USD" => "\U0001F1FA\U0001F1F8",
+        "EUR" => "\U0001F1EA\U0001F1FA",
+        "GBP" => "\U0001F1EC\U0001F1E7",
+        "CNY" => "\U0001F1E8\U0001F1F3",
+        "JPY" => "\U0001F1EF\U0001F1F5",
+        "AUD" => "\U0001F1E6\U0001F1FA",
+        "RUB" => "\U0001F1F7\U0001F1FA",
+        _ => "\U0001F4B0"
+    };
+
+    private static string GetProviderIcon(string provider) => provider switch
+    {
+        RateProviderCodes.MamyExchange => "ti ti-currency-baht",
+        RateProviderCodes.SuperRich => "ti ti-crown",
+        _ => "ti ti-edit"
+    };
+}

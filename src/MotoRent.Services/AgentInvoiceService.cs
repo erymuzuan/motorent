@@ -107,7 +107,7 @@ public class AgentInvoiceService
 
         using var session = m_context.OpenSession(username);
         session.Attach(invoice);
-        await session.SubmitChanges("Create");
+        await session.SubmitChanges("CreateAgentInvoice");
 
         return invoice;
     }
@@ -119,7 +119,7 @@ public class AgentInvoiceService
     {
         using var session = m_context.OpenSession(username);
         session.Attach(invoice);
-        return await session.SubmitChanges("Update");
+        return await session.SubmitChanges("UpdateAgentInvoice");
     }
 
     /// <summary>

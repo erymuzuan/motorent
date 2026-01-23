@@ -21,7 +21,7 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
     public async Task<LoadOperation<Vehicle>> GetVehiclesAsync(
         int shopId,
         VehicleType? vehicleType = null,
-        VehicleStatus? status = null,
+        string? status = null,
         string? searchTerm = null,
         bool includePooled = false,
         int page = 1,
@@ -35,9 +35,9 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
             query = query.Where(v => v.VehicleType == vehicleType.Value);
         }
 
-        if (status.HasValue)
+        if (!string.IsNullOrEmpty(status))
         {
-            query = query.Where(v => v.Status == status.Value);
+            query = query.Where(v => v.Status == status);
         }
 
         query = query.OrderByDescending(v => v.VehicleId);
@@ -181,7 +181,7 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
     /// <summary>
     /// Gets status counts for vehicles (organization-wide).
     /// </summary>
-    public async Task<Dictionary<VehicleStatus, int>> GetStatusCountsAsync(int shopId, VehicleType? vehicleType = null)
+    public async Task<Dictionary<string, int>> GetStatusCountsAsync(int shopId, VehicleType? vehicleType = null)
     {
         // shopId parameter kept for backwards compatibility but ignored
         var query = this.Context.CreateQuery<Vehicle>();
@@ -191,11 +191,9 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
             query = query.Where(v => v.VehicleType == vehicleType.Value);
         }
 
-        var allVehicles = await this.Context.LoadAsync(query, page: 1, size: 1000, includeTotalRows: false);
+        var groupCounts = await this.Context.GetGroupByCountAsync(query, v => v.Status);
 
-        return allVehicles.ItemCollection
-            .GroupBy(v => v.Status)
-            .ToDictionary(g => g.Key, g => g.Count());
+        return groupCounts.ToDictionary(g => g.Key, g => g.Count);
     }
 
     /// <summary>
@@ -204,13 +202,10 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
     public async Task<Dictionary<VehicleType, int>> GetTypeCountsAsync(int shopId)
     {
         // shopId parameter kept for backwards compatibility but ignored
-        var allVehicles = await this.Context.LoadAsync(
-            this.Context.CreateQuery<Vehicle>(),
-            page: 1, size: 1000, includeTotalRows: false);
+        var query = this.Context.CreateQuery<Vehicle>();
+        var groupCounts = await this.Context.GetGroupByCountAsync(query, v => v.VehicleType);
 
-        return allVehicles.ItemCollection
-            .GroupBy(v => v.VehicleType)
-            .ToDictionary(g => g.Key, g => g.Count());
+        return groupCounts.ToDictionary(g => g.Key, g => g.Count);
     }
 
     /// <summary>
@@ -219,7 +214,7 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
     public async Task<List<VehicleGroup>> GetVehicleGroupsAsync(
         int shopId,
         VehicleType? vehicleType = null,
-        VehicleStatus? status = null,
+        string? status = null,
         string? searchTerm = null,
         bool includePooled = true)
     {
@@ -228,9 +223,9 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
 
         // Filter by status if specified (since GetVehiclesAsync may not filter correctly in all cases)
         var vehicles = result.ItemCollection;
-        if (status.HasValue)
+        if (!string.IsNullOrEmpty(status))
         {
-            vehicles = vehicles.Where(v => v.Status == status.Value).ToList();
+            vehicles = vehicles.Where(v => v.Status == status).ToList();
         }
 
         // Group by Brand, Model, Year, VehicleType, and Engine (CC or Liters)
@@ -328,7 +323,7 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
 
         using var session = this.Context.OpenSession(username);
         session.Attach(vehicle);
-        return await session.SubmitChanges("Create");
+        return await session.SubmitChanges("CreateVehicle");
     }
 
     /// <summary>
@@ -338,7 +333,7 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
     {
         using var session = this.Context.OpenSession(username);
         session.Attach(vehicle);
-        return await session.SubmitChanges("Update");
+        return await session.SubmitChanges("UpdateVehicle");
     }
 
     /// <summary>
@@ -360,13 +355,13 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
 
         using var session = this.Context.OpenSession(username);
         session.Delete(vehicle);
-        return await session.SubmitChanges("Delete");
+        return await session.SubmitChanges("DeleteVehicle");
     }
 
     /// <summary>
     /// Updates vehicle status.
     /// </summary>
-    public async Task<SubmitOperation> UpdateStatusAsync(int vehicleId, VehicleStatus status, string username)
+    public async Task<SubmitOperation> UpdateStatusAsync(int vehicleId, string status, string username)
     {
         var vehicle = await GetVehicleByIdAsync(vehicleId);
         if (vehicle == null)

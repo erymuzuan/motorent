@@ -1,0 +1,1105 @@
+@page "/staff/till"
+@using MotoRent.Client.Components.Auth
+@using MotoRent.Client.Components.Receipts
+@using MotoRent.Client.Components.Till
+@using MotoRent.Domain.Models
+@using Microsoft.AspNetCore.Authorization
+@inherits LocalizedComponentBase<Till>
+@attribute [Authorize(Policy = "RequireTenantStaff")]
+@inject TillService TillService
+@inject ShopService ShopService
+@inject ReceiptService ReceiptService
+
+<MotoRentPageTitle>@Localizer["CashierTill"]</MotoRentPageTitle>
+
+@if (this.m_loading)
+{
+    <div class="container-xl py-4">
+        <LoadingSkeleton Loading="true" Mode="LoadingSkeleton.PlaceholderMode.Card" />
+    </div>
+}
+else if (this.m_session is null)
+{
+    @* ========== NO ACTIVE SESSION - OPEN SESSION UI ========== *@
+    <div class="mr-page-header">
+        <div class="container-xl">
+            <nav class="mr-breadcrumb">
+                <span class="mr-breadcrumb-item"><a href="/"><i class="ti ti-home"></i></a></span>
+                <span class="mr-breadcrumb-separator"><i class="ti ti-chevron-right"></i></span>
+                <span class="mr-breadcrumb-item active">@Localizer["CashierTill"]</span>
+            </nav>
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="mr-page-title">
+                        <i class="ti ti-cash-register"></i>
+                        @Localizer["CashierTill"]
+                    </h1>
+                    <p class="mr-page-subtitle">@Localizer["ManageYourCashDrawer"]</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container-xl py-4">
+        <div class="row justify-content-center">
+            <div class="col-md-8 col-lg-6">
+                <div class="mr-card text-center p-5">
+                    <div class="mb-4">
+                        <div class="mr-till-open-icon">
+                            <i class="ti ti-lock-open"></i>
+                        </div>
+                    </div>
+                    <h2 class="mb-2">@Localizer["StartYourShift"]</h2>
+                    <p class="text-secondary mb-4 px-4">
+                        @Localizer["OpenNewTillSessionDescription"]
+                    </p>
+                    <button type="button" class="mr-btn-primary-action" @onclick="this.OpenSessionDialog">
+                        <i class="ti ti-player-play"></i>
+                        @Localizer["OpenTillSession"]
+                    </button>
+
+                    @* Show existing open sessions *@
+                    @if (m_existingOpenSessions.Any())
+                    {
+                        <div class="mt-4 pt-4 border-top">
+                            <p class="text-muted small mb-3">
+                                <i class="ti ti-info-circle me-1"></i>
+                                @Localizer["YouHaveOpenSessions"]
+                            </p>
+                            <div class="d-flex flex-column gap-2">
+                                @foreach (var session in m_existingOpenSessions)
+                                {
+                                    var shopName = m_shopsById.TryGetValue(session.ShopId, out var shop) ? shop.Name : $"Shop #{session.ShopId}";
+                                    <div class="d-flex align-items-center justify-content-center p-2 bg-teal-lt rounded">
+                                        <i class="ti ti-cash-register text-teal me-2"></i>
+                                        <span class="fw-medium">@shopName</span>
+                                        <span class="text-muted ms-2 small">
+                                            (@Localizer["OpenedAt"] @session.OpenedAt.ToLocalTime().ToString("HH:mm"))
+                                        </span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+else if (this.m_isStaleSession)
+{
+    @* ========== STALE SESSION - MUST CLOSE BEFORE NEW SESSION ========== *@
+    <div class="mr-page-header mr-page-header-warning">
+        <div class="container-xl">
+            <nav class="mr-breadcrumb">
+                <span class="mr-breadcrumb-item"><a href="/"><i class="ti ti-home"></i></a></span>
+                <span class="mr-breadcrumb-separator"><i class="ti ti-chevron-right"></i></span>
+                <span class="mr-breadcrumb-item active">@Localizer["CashierTill"]</span>
+            </nav>
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="mr-page-title text-warning">
+                        <i class="ti ti-alert-triangle"></i>
+                        @Localizer["StaleSessionTitle"]
+                    </h1>
+                    <p class="mr-page-subtitle">@Localizer["StaleSessionClosePrompt"]</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container-xl py-4">
+        @* Warning Banner *@
+        <div class="alert alert-warning mb-4">
+            <div class="d-flex align-items-start">
+                <i class="ti ti-alert-triangle fs-2 me-3 text-warning"></i>
+                <div>
+                    <h4 class="alert-title mb-1">@Localizer["StaleSessionTitle"]</h4>
+                    <p class="mb-2">@Localizer["StaleSessionWarning", this.m_session!.OpenedAt.ToString("dddd, d MMMM yyyy")]</p>
+                    <p class="mb-0 small text-muted">
+                        <i class="ti ti-info-circle me-1"></i>
+                        @Localizer["LateClosureNote"]
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        @* Session Info Card *@
+        <div class="mr-card mb-4">
+            <div class="mr-card-header">
+                <i class="ti ti-cash-register text-warning me-2"></i>
+                <span class="mr-card-title">@Localizer["Till"] #@this.m_session.TillSessionId</span>
+                <span class="badge bg-warning text-dark ms-auto">@Localizer["SessionStale"]</span>
+            </div>
+            <div class="mr-card-body">
+                <div class="row g-3">
+                    <div class="col-6">
+                        <div class="text-secondary small">@Localizer["StaffName"]</div>
+                        <div class="fw-semibold">@this.m_session.StaffDisplayName</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-secondary small">@Localizer["OpenedOn"]</div>
+                        <div class="fw-semibold">@this.m_session.OpenedAt.ToString("d MMM yyyy HH:mm")</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-secondary small">@Localizer["OpeningFloat"]</div>
+                        <div class="fw-semibold">฿@this.m_session.OpeningFloat.ToString("N0")</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-secondary small">@Localizer["ExpectedCashInTill"]</div>
+                        <div class="fw-semibold">฿@this.m_session.ExpectedCash.ToString("N0")</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* Cash Summary *@
+        <div class="row g-3 mb-4">
+            <div class="col-6">
+                <div class="mr-till-stat-card mr-till-stat-in">
+                    <div class="mr-till-stat-icon">
+                        <i class="ti ti-trending-up"></i>
+                    </div>
+                    <div class="mr-till-stat-content">
+                        <div class="mr-till-stat-label">@Localizer["CashIn"]</div>
+                        <div class="mr-till-stat-value">฿@this.m_session.TotalCashIn.ToString("N0")</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="mr-till-stat-card mr-till-stat-out">
+                    <div class="mr-till-stat-icon">
+                        <i class="ti ti-trending-down"></i>
+                    </div>
+                    <div class="mr-till-stat-content">
+                        <div class="mr-till-stat-label">@Localizer["CashOut"]</div>
+                        <div class="mr-till-stat-value">฿@this.m_session.TotalCashOut.ToString("N0")</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* Close Session Button - Prominent *@
+        <div class="d-grid gap-2">
+            <button type="button" class="btn btn-warning btn-lg py-3" @onclick="this.CloseSessionDialog">
+                <i class="ti ti-door-exit me-2"></i>
+                @Localizer["CloseShift"]
+            </button>
+            <p class="text-center text-secondary small mb-0">
+                @Localizer["CloseShiftToStartNew"]
+            </p>
+        </div>
+    </div>
+}
+else
+{
+    @* ========== ACTIVE SESSION - TILL DASHBOARD ========== *@
+
+    @* Session Status Bar *@
+    <div class="mr-till-session-bar">
+        <div class="container-xl">
+            <div class="d-flex justify-content-between align-items-center py-2">
+                <div class="d-flex align-items-center gap-3">
+                    <span class="mr-till-session-id">
+                        <i class="ti ti-cash-register me-1"></i>
+                        @Localizer["Till"] #@this.m_session!.TillSessionId
+                    </span>
+                    <span class="mr-status-badge mr-status-badge-success">
+                        <span class="mr-status-dot"></span>
+                        @Localizer["SessionActive"]
+                    </span>
+                </div>
+                <div class="d-flex align-items-center gap-3">
+                    <span class="text-white-50 d-none d-sm-inline">
+                        <i class="ti ti-user me-1"></i>@this.m_session.StaffDisplayName
+                    </span>
+                    <span class="text-white-50 d-none d-md-flex align-items-center gap-2">
+                        <i class="ti ti-clock"></i>
+                        <span>@Localizer["Started"] @this.FormatTime(this.m_session.OpenedAt)</span>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container-xl py-3 pb-footer">
+        @* ========== CURRENCY BALANCE PANEL ========== *@
+        <div class="mb-4">
+            <CurrencyBalancePanel
+                CurrencyBalances="@this.GetCurrencyBalances()"
+                OnRefresh="@this.LoadDataAsync" />
+        </div>
+
+        @* ========== SESSION META ========== *@
+        <div class="d-flex justify-content-between align-items-center mb-4 px-1">
+            <div class="small text-secondary">
+                <i class="ti ti-wallet me-1"></i>
+                @Localizer["OpeningFloat"]: <strong>฿@this.m_session.OpeningFloat.ToString("N0")</strong>
+            </div>
+            @if (this.m_session.TotalDropped > 0)
+            {
+                <div class="small text-secondary">
+                    <i class="ti ti-archive me-1"></i>
+                    @Localizer["DroppedToSafe", $"{this.m_session.TotalDropped:N0}"]
+                </div>
+            }
+        </div>
+
+        @* ========== CASH FLOW CARDS ========== *@
+        <div class="row g-3 mb-4">
+            <div class="col-6">
+                <div class="mr-till-stat-card mr-till-stat-in">
+                    <div class="mr-till-stat-icon">
+                        <i class="ti ti-trending-up"></i>
+                    </div>
+                    <div class="mr-till-stat-content">
+                        <div class="mr-till-stat-label">@Localizer["CashIn"]</div>
+                        <div class="mr-till-stat-value">฿@this.m_session.TotalCashIn.ToString("N0")</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="mr-till-stat-card mr-till-stat-out">
+                    <div class="mr-till-stat-icon">
+                        <i class="ti ti-trending-down"></i>
+                    </div>
+                    <div class="mr-till-stat-content">
+                        <div class="mr-till-stat-label">@Localizer["CashOut"]</div>
+                        <div class="mr-till-stat-value">฿@this.m_session.TotalCashOut.ToString("N0")</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* ========== NON-CASH PAYMENTS SUMMARY ========== *@
+        @if (this.m_session.TotalNonCashPayments > 0)
+        {
+            <div class="mr-card mb-4">
+                <div class="mr-card-header">
+                    <i class="ti ti-credit-card text-info me-2"></i>
+                    <span class="mr-card-title">@Localizer["NonCashPayments"]</span>
+                    <span class="ms-auto fw-semibold">฿@this.m_session.TotalNonCashPayments.ToString("N0")</span>
+                </div>
+                <div class="mr-card-body py-2">
+                    <div class="d-flex gap-4 justify-content-center flex-wrap">
+                        @if (this.m_session.TotalCardPayments > 0)
+                        {
+                            <div class="text-center">
+                                <div class="mr-payment-icon bg-primary-lt text-primary">
+                                    <i class="ti ti-credit-card"></i>
+                                </div>
+                                <div class="small text-secondary mt-1">@Localizer["Card"]</div>
+                                <div class="fw-semibold">฿@this.m_session.TotalCardPayments.ToString("N0")</div>
+                            </div>
+                        }
+                        @if (this.m_session.TotalBankTransfers > 0)
+                        {
+                            <div class="text-center">
+                                <div class="mr-payment-icon bg-info-lt text-info">
+                                    <i class="ti ti-building-bank"></i>
+                                </div>
+                                <div class="small text-secondary mt-1">@Localizer["BankTransfer"]</div>
+                                <div class="fw-semibold">฿@this.m_session.TotalBankTransfers.ToString("N0")</div>
+                            </div>
+                        }
+                        @if (this.m_session.TotalPromptPay > 0)
+                        {
+                            <div class="text-center">
+                                <div class="mr-payment-icon bg-success-lt text-success">
+                                    <i class="ti ti-qrcode"></i>
+                                </div>
+                                <div class="small text-secondary mt-1">@Localizer["PromptPay"]</div>
+                                <div class="fw-semibold">฿@this.m_session.TotalPromptPay.ToString("N0")</div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+        @* ========== NEW TRANSACTION BUTTON ========== *@
+        <div class="mb-4">
+            <button type="button" class="mr-btn-primary-action w-100 py-3" @onclick="this.NewTransactionDialog">
+                <i class="ti ti-receipt-2 me-2"></i>
+                @Localizer["NewTransaction"]
+            </button>
+        </div>
+
+        @* ========== QUICK PAYMENTS (Cash In) ========== *@
+        <div class="mb-4">
+            <h4 class="mr-section-title mb-3">
+                <i class="ti ti-coin"></i>
+                @Localizer["QuickPayments"]
+            </h4>
+            <div class="row g-2">
+                <div class="col-4">
+                    <button type="button" class="mr-quick-action mr-quick-action-rental"
+                            @onclick="this.ReceiveRentalPaymentDialog">
+                        <div class="mr-quick-action-icon">
+                            <i class="ti ti-motorbike"></i>
+                        </div>
+                        <span class="mr-quick-action-label">@Localizer["RentalPayment"]</span>
+                    </button>
+                </div>
+                <div class="col-4">
+                    <button type="button" class="mr-quick-action mr-quick-action-deposit"
+                            @onclick="this.ReceiveDepositDialog">
+                        <div class="mr-quick-action-icon">
+                            <i class="ti ti-shield-check"></i>
+                        </div>
+                        <span class="mr-quick-action-label">@Localizer["Deposit"]</span>
+                    </button>
+                </div>
+                <div class="col-4">
+                    <button type="button" class="mr-quick-action mr-quick-action-booking"
+                            @onclick="this.ReceiveBookingDepositDialog">
+                        <div class="mr-quick-action-icon">
+                            <i class="ti ti-calendar-check"></i>
+                        </div>
+                        <span class="mr-quick-action-label">@Localizer["BookingDeposit"]</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        @* ========== QUICK PAYOUTS (Cash Out) ========== *@
+        <div class="mb-4">
+            <h4 class="mr-section-title mb-3">
+                <i class="ti ti-bolt"></i>
+                @Localizer["QuickPayouts"]
+            </h4>
+            <div class="row g-2">
+                <div class="col-4">
+                    <button type="button" class="mr-quick-action mr-quick-action-fuel"
+                            @onclick="@(() => this.RecordPayoutDialog(TillTransactionType.FuelReimbursement))">
+                        <div class="mr-quick-action-icon">
+                            <i class="ti ti-gas-station"></i>
+                        </div>
+                        <span class="mr-quick-action-label">@Localizer["Fuel"]</span>
+                    </button>
+                </div>
+                <div class="col-4">
+                    <button type="button" class="mr-quick-action mr-quick-action-agent"
+                            @onclick="@(() => this.RecordPayoutDialog(TillTransactionType.AgentCommission))">
+                        <div class="mr-quick-action-icon">
+                            <i class="ti ti-users"></i>
+                        </div>
+                        <span class="mr-quick-action-label">@Localizer["Agent"]</span>
+                    </button>
+                </div>
+                <div class="col-4">
+                    <button type="button" class="mr-quick-action mr-quick-action-petty"
+                            @onclick="@(() => this.RecordPayoutDialog(TillTransactionType.PettyCash))">
+                        <div class="mr-quick-action-icon">
+                            <i class="ti ti-wallet"></i>
+                        </div>
+                        <span class="mr-quick-action-label">@Localizer["PettyCash"]</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        @* ========== TILL OPERATIONS ========== *@
+        <div class="mb-4">
+            <h4 class="mr-section-title mb-3">
+                <i class="ti ti-settings"></i>
+                @Localizer["TillOperations"]
+            </h4>
+            <div class="row g-2">
+                <div class="col-4">
+                    <button type="button" class="mr-till-operation mr-till-operation-drop" @onclick="this.CashDropDialog">
+                        <i class="ti ti-archive"></i>
+                        <span>@Localizer["CashDrop"]</span>
+                    </button>
+                </div>
+                <div class="col-4">
+                    <button type="button" class="mr-till-operation mr-till-operation-topup" @onclick="this.TopUpDialog">
+                        <i class="ti ti-cash"></i>
+                        <span>@Localizer["TopUp"]</span>
+                    </button>
+                </div>
+                <div class="col-4">
+                    <button type="button" class="mr-till-operation mr-till-operation-close" @onclick="this.CloseSessionDialog">
+                        <i class="ti ti-door-exit"></i>
+                        <span>@Localizer["CloseShift"]</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        @* ========== RECENT RECEIPTS ========== *@
+        <div class="mr-card">
+            <div class="mr-card-header">
+                <i class="ti ti-receipt text-primary me-2"></i>
+                <span class="mr-card-title">@Localizer["RecentReceipts"]</span>
+                <button type="button" class="btn btn-sm btn-ghost-primary ms-auto" @onclick="this.ViewAllReceiptsDialog">
+                    @Localizer["ViewAll"]
+                    <i class="ti ti-chevron-right ms-1"></i>
+                </button>
+            </div>
+            <div class="mr-receipt-list">
+                @if (!this.m_sessionReceipts.Any())
+                {
+                    <div class="mr-empty-state py-5">
+                        <div class="mr-empty-state-icon">
+                            <i class="ti ti-receipt-off"></i>
+                        </div>
+                        <div class="mr-empty-state-title">@Localizer["NoReceiptsYet"]</div>
+                        <div class="mr-empty-state-subtitle">@Localizer["ReceiptsWillAppearHere"]</div>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var receipt in this.m_sessionReceipts.Take(10))
+                    {
+                        <div class="mr-receipt-item @(receipt.Status == ReceiptStatus.Voided ? "mr-receipt-voided" : "")" @onclick="@(() => this.ViewReceiptDialog(receipt))">
+                            <div class="mr-receipt-icon @GetReceiptTypeClass(receipt)">
+                                <i class="@GetReceiptTypeIcon(receipt)"></i>
+                            </div>
+                            <div class="mr-receipt-details">
+                                <div class="mr-receipt-ref">
+                                    @if (receipt.Status == ReceiptStatus.Voided)
+                                    {
+                                        <span class="badge bg-danger me-2">VOID</span>
+                                    }
+                                    <span class="@(receipt.Status == ReceiptStatus.Voided ? "text-decoration-line-through text-muted" : "")">
+                                        @GetReceiptReference(receipt)
+                                    </span>
+                                </div>
+                                <div class="mr-receipt-no small text-muted @(receipt.Status == ReceiptStatus.Voided ? "text-decoration-line-through" : "")">
+                                    @receipt.ReceiptNo
+                                </div>
+                            </div>
+                            <div class="mr-receipt-amount @(receipt.Status == ReceiptStatus.Voided ? "text-decoration-line-through text-muted" : "")">
+                                ฿@receipt.GrandTotal.ToString("N0")
+                            </div>
+                            <div class="mr-receipt-time">
+                                @this.FormatTime(receipt.IssuedOn)
+                            </div>
+                            <button type="button" class="btn btn-sm btn-icon btn-ghost-primary"
+                                    @onclick:stopPropagation="true"
+                                    @onclick="@(() => this.PrintReceiptDialog(receipt))"
+                                    title="@Localizer["Reprint"]">
+                                <i class="ti ti-printer"></i>
+                            </button>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+
+    @* ========== EXCHANGE RATE FAB ========== *@
+    <ExchangeRatePanel />
+}
+
+@code {
+    private bool m_loading = true;
+    private int m_shopId;
+    private TillSession? m_session;
+    private bool m_isStaleSession;
+    private List<TillTransaction> m_recentTransactions = [];
+    private List<Receipt> m_sessionReceipts = [];
+    private List<TillSession> m_existingOpenSessions = [];
+    private Dictionary<int, Shop> m_shopsById = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await this.LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            this.m_loading = true;
+
+            // First, check if user has any active session (across all shops)
+            this.m_session = await this.TillService.GetActiveSessionForUserAsync(this.UserName);
+
+            // Safety check: ensure session belongs to current user
+            if (this.m_session is not null &&
+                !string.Equals(this.m_session.StaffUserName, this.UserName, StringComparison.OrdinalIgnoreCase))
+            {
+                // Session doesn't belong to current user - shouldn't happen, but prevent access
+                this.Logger.LogWarning(
+                    "Till session {SessionId} belongs to {SessionUser} but {CurrentUser} tried to access it",
+                    this.m_session.TillSessionId,
+                    this.m_session.StaffUserName,
+                    this.UserName);
+                this.m_session = null;
+            }
+
+            // Check if session is stale (opened before today)
+            this.m_isStaleSession = TillService.IsSessionStale(this.m_session);
+
+            // Get shop info - use session's shop if active, otherwise get default shop
+            if (this.m_session is not null)
+            {
+                this.m_shopId = this.m_session.ShopId;
+
+                // Load recent transactions and receipts
+                this.m_recentTransactions = await this.TillService.GetRecentTransactionsAsync(this.m_session.TillSessionId, 10);
+                this.m_sessionReceipts = await this.ReceiptService.GetReceiptsByTillSessionAsync(this.m_session.TillSessionId);
+            }
+            else
+            {
+                // No active session - get default shop and load existing open sessions
+                var shops = await this.ShopService.GetShopsAsync(page: 1, pageSize: 100);
+                if (shops.ItemCollection.Any())
+                {
+                    this.m_shopId = shops.ItemCollection.First().ShopId;
+                    this.m_shopsById = shops.ItemCollection.ToDictionary(s => s.ShopId);
+                }
+
+                // Load existing open sessions for this user (to show on Start Your Shift panel)
+                this.m_existingOpenSessions = await this.TillService.GetAllActiveSessionsForUserAsync(this.UserName);
+            }
+        }
+        catch (Exception ex)
+        {
+            this.Logger.LogError(ex, "Error loading till data");
+            this.ShowError("Failed to load till data");
+        }
+        finally
+        {
+            this.m_loading = false;
+        }
+    }
+
+    private async Task OpenSessionDialog()
+    {
+        var result = await this.DialogService.Create<TillOpenSessionDialog>("Open Till Session")
+            .WithParameter(x => x.ShopId, this.m_shopId)
+            .WithFullscreen()
+            .WithHeader(false)
+            .ShowDialogAsync();
+
+        if (result is { Cancelled: false })
+        {
+            this.ShowSuccess("Till session opened");
+            await this.LoadDataAsync();
+        }
+    }
+
+    private async Task CloseSessionDialog()
+    {
+        if (this.m_session is null) return;
+
+        var result = await this.DialogService.Create<TillCloseSessionDialog>("Close Till Session")
+            .WithParameter(x => x.Entity, this.m_session)
+            .WithSize(ModalSize.Medium)
+            .ShowDialogAsync();
+
+        if (result is { Cancelled: false })
+        {
+            this.ShowSuccess("Till session closed");
+            this.m_session = null;
+            this.m_recentTransactions.Clear();
+            this.m_sessionReceipts.Clear();
+            this.StateHasChanged();
+        }
+    }
+
+    private async Task RecordPayoutDialog(TillTransactionType type)
+    {
+        if (this.m_session is null) return;
+
+        var result = await this.DialogService.Create<TillRecordPayoutDialog>(GetTransactionTypeName(type))
+            .WithParameter(x => x.SessionId, this.m_session.TillSessionId)
+            .WithParameter(x => x.PayoutType, type)
+            .WithSize(ModalSize.Medium)
+            .ShowDialogAsync();
+
+        if (result is { Cancelled: false })
+        {
+            this.ShowSuccess("Payout recorded");
+            await this.LoadDataAsync();
+        }
+    }
+
+    private async Task CashDropDialog()
+    {
+        if (this.m_session is null) return;
+
+        var result = await this.DialogService.Create<TillCashDropDialog>("Cash Drop")
+            .WithParameter(x => x.SessionId, this.m_session.TillSessionId)
+            .WithParameter(x => x.IsDrop, true)
+            .WithParameter(x => x.CurrencyBalances, this.GetCurrencyBalances())
+            .WithSize(ModalSize.Medium)
+            .ShowDialogAsync();
+
+        if (result is { Cancelled: false })
+        {
+            this.ShowSuccess("Cash drop recorded");
+            await this.LoadDataAsync();
+        }
+    }
+
+    private async Task TopUpDialog()
+    {
+        if (this.m_session is null) return;
+
+        var result = await this.DialogService.Create<TillCashDropDialog>("Top Up")
+            .WithParameter(x => x.SessionId, this.m_session.TillSessionId)
+            .WithParameter(x => x.IsDrop, false)
+            .WithSize(ModalSize.Small)
+            .ShowDialogAsync();
+
+        if (result is { Cancelled: false })
+        {
+            this.ShowSuccess("Top up recorded");
+            await this.LoadDataAsync();
+        }
+    }
+
+    private async Task ViewHistoryDialog()
+    {
+        if (this.m_session is null) return;
+
+        await this.DialogService.Create<TillHistoryDialog>("Transaction History")
+            .WithParameter(x => x.SessionId, this.m_session.TillSessionId)
+            .WithSize(ModalSize.Large)
+            .ShowDialogAsync();
+    }
+
+    private async Task ViewReceiptDialog(Receipt receipt)
+    {
+        await this.DialogService.Create<ReceiptPrintDialog>(Localizer["Receipt"])
+            .WithParameter(x => x.Entity, receipt)
+            .WithParameter(x => x.IsReprint, true)
+            .WithSize(ModalSize.Large)
+            .ShowDialogAsync();
+    }
+
+    private async Task PrintReceiptDialog(Receipt receipt)
+    {
+        await this.DialogService.Create<ReceiptPrintDialog>(Localizer["Receipt"])
+            .WithParameter(x => x.Entity, receipt)
+            .WithParameter(x => x.IsReprint, true)
+            .WithSize(ModalSize.Large)
+            .ShowDialogAsync();
+    }
+
+    private async Task ViewAllReceiptsDialog()
+    {
+        if (this.m_session is null) return;
+
+        await this.DialogService.Create<TillReceiptsDialog>(Localizer["SessionReceipts"])
+            .WithParameter(x => x.SessionId, this.m_session.TillSessionId)
+            .WithSize(ModalSize.Large)
+            .ShowDialogAsync();
+    }
+
+    private static string GetReceiptTypeIcon(Receipt receipt) => receipt.ReceiptType switch
+    {
+        ReceiptTypes.CheckIn => "ti ti-login",
+        ReceiptTypes.Settlement => "ti ti-logout",
+        ReceiptTypes.BookingDeposit => "ti ti-calendar-check",
+        _ => "ti ti-receipt"
+    };
+
+    private static string GetReceiptTypeClass(Receipt receipt) => receipt.ReceiptType switch
+    {
+        ReceiptTypes.CheckIn => "mr-receipt-icon-checkin",
+        ReceiptTypes.Settlement => "mr-receipt-icon-settlement",
+        ReceiptTypes.BookingDeposit => "mr-receipt-icon-booking",
+        _ => "mr-receipt-icon-default"
+    };
+
+    /// <summary>
+    /// Gets a display reference for the receipt (BookingRef or Rental #).
+    /// </summary>
+    private string GetReceiptReference(Receipt receipt)
+    {
+        // For booking deposits, show BookingRef
+        if (receipt.ReceiptType == ReceiptTypes.BookingDeposit)
+        {
+            return !string.IsNullOrEmpty(receipt.BookingRef)
+                ? $"{Localizer["Booking"]} #{receipt.BookingRef}"
+                : receipt.BookingId.HasValue
+                    ? $"{Localizer["Booking"]} #{receipt.BookingId}"
+                    : Localizer["BookingDeposit"];
+        }
+
+        // For check-in and settlement, show Rental #
+        if (receipt.RentalId.HasValue)
+        {
+            return $"{Localizer["Rental"]} #{receipt.RentalId}";
+        }
+
+        // Fallback to receipt type
+        return receipt.ReceiptType switch
+        {
+            ReceiptTypes.CheckIn => Localizer["CheckIn"],
+            ReceiptTypes.Settlement => Localizer["Settlement"],
+            _ => Localizer["Receipt"]
+        };
+    }
+
+    private string GetTransactionTypeName(TillTransactionType type) => type switch
+    {
+        TillTransactionType.RentalPayment => Localizer["TxnRentalPayment"],
+        TillTransactionType.BookingDeposit => Localizer["TxnBookingDeposit"],
+        TillTransactionType.CheckIn => Localizer["TxnCheckIn"],
+        TillTransactionType.SecurityDeposit => Localizer["TxnSecurityDeposit"],
+        TillTransactionType.DamageCharge => Localizer["TxnDamageCharge"],
+        TillTransactionType.LateFee => Localizer["TxnLateFee"],
+        TillTransactionType.Surcharge => Localizer["TxnSurcharge"],
+        TillTransactionType.MiscellaneousIncome => Localizer["TxnMiscellaneous"],
+        TillTransactionType.TopUp => Localizer["TxnTopUp"],
+        TillTransactionType.CardPayment => Localizer["TxnCardPayment"],
+        TillTransactionType.BankTransfer => Localizer["TxnBankTransfer"],
+        TillTransactionType.PromptPay => Localizer["TxnPromptPay"],
+        TillTransactionType.DepositRefund => Localizer["TxnDepositRefund"],
+        TillTransactionType.FuelReimbursement => Localizer["TxnFuelReimbursement"],
+        TillTransactionType.AgentCommission => Localizer["TxnAgentCommission"],
+        TillTransactionType.PettyCash => Localizer["TxnPettyCash"],
+        TillTransactionType.Drop => Localizer["TxnCashDrop"],
+        TillTransactionType.CashShortage => Localizer["TxnCashShortage"],
+        TillTransactionType.OverpaymentRefund => Localizer["TxnOverpaymentRefund"],
+        TillTransactionType.VoidReversal => Localizer["TxnVoidReversal"],
+        _ => type.ToString()
+    };
+
+    private static string GetTransactionIcon(TillTransaction txn) => txn.TransactionType switch
+    {
+        TillTransactionType.RentalPayment => "ti ti-motorbike",
+        TillTransactionType.BookingDeposit => "ti ti-calendar-check",
+        TillTransactionType.CheckIn => "ti ti-login",
+        TillTransactionType.SecurityDeposit => "ti ti-shield-check",
+        TillTransactionType.DamageCharge => "ti ti-alert-triangle",
+        TillTransactionType.LateFee => "ti ti-clock-exclamation",
+        TillTransactionType.TopUp => "ti ti-cash",
+        TillTransactionType.CardPayment => "ti ti-credit-card",
+        TillTransactionType.BankTransfer => "ti ti-building-bank",
+        TillTransactionType.PromptPay => "ti ti-qrcode",
+        TillTransactionType.DepositRefund => "ti ti-arrow-back",
+        TillTransactionType.FuelReimbursement => "ti ti-gas-station",
+        TillTransactionType.AgentCommission => "ti ti-users",
+        TillTransactionType.PettyCash => "ti ti-wallet",
+        TillTransactionType.Drop => "ti ti-archive",
+        TillTransactionType.OverpaymentRefund => "ti ti-cash-off",
+        TillTransactionType.VoidReversal => "ti ti-x",
+        _ => "ti ti-receipt"
+    };
+
+    private static string GetTransactionIconClass(TillTransaction txn)
+    {
+        if (txn.Direction == TillTransactionDirection.In)
+        {
+            return txn.AffectsCash ? "mr-txn-icon-in" : "mr-txn-icon-non-cash";
+        }
+        return "mr-txn-icon-out";
+    }
+
+    private static string GetAmountColorClass(TillTransaction txn)
+    {
+        return txn.Direction == TillTransactionDirection.In ? "mr-amount-in" : "mr-amount-out";
+    }
+
+    /// <summary>
+    /// Gets the currency balances from the session.
+    /// For backward compatibility with existing sessions that don't have CurrencyBalances,
+    /// initializes with THB = ExpectedCash if null or empty.
+    /// </summary>
+    private Dictionary<string, decimal> GetCurrencyBalances()
+    {
+        if (this.m_session is null) return new Dictionary<string, decimal>();
+
+        // If CurrencyBalances exists and has values, use it
+        if (this.m_session.CurrencyBalances is { Count: > 0 })
+        {
+            return this.m_session.CurrencyBalances;
+        }
+
+        // Backward compatibility: return THB balance based on ExpectedCash
+        return new Dictionary<string, decimal>
+        {
+            [SupportedCurrencies.THB] = this.m_session.ExpectedCash
+        };
+    }
+
+    private async Task ReceiveRentalPaymentDialog()
+    {
+        if (this.m_session is null) return;
+
+        var result = await this.DialogService.Create<TillReceivePaymentDialog>(Localizer["RentalPayment"])
+            .WithParameter(x => x.SessionId, this.m_session.TillSessionId)
+            .WithParameter(x => x.ShopId, this.m_shopId)
+            .WithSize(ModalSize.Medium)
+            .ShowDialogAsync();
+
+        if (result is { Cancelled: false })
+        {
+            this.ShowSuccess(Localizer["PaymentRecorded"]);
+            await this.LoadDataAsync();
+        }
+    }
+
+    private async Task ReceiveDepositDialog()
+    {
+        if (this.m_session is null) return;
+
+        var result = await this.DialogService.Create<TillReceiveDepositDialog>(Localizer["Deposit"])
+            .WithParameter(x => x.SessionId, this.m_session.TillSessionId)
+            .WithParameter(x => x.ShopId, this.m_shopId)
+            .WithSize(ModalSize.Medium)
+            .ShowDialogAsync();
+
+        if (result is { Cancelled: false })
+        {
+            this.ShowSuccess(Localizer["DepositRecorded"]);
+            await this.LoadDataAsync();
+        }
+    }
+
+    private async Task ReceiveBookingDepositDialog()
+    {
+        if (this.m_session is null) return;
+
+        var result = await this.DialogService.Create<TillBookingDepositDialog>(Localizer["BookingDeposit"])
+            .WithParameter(x => x.SessionId, this.m_session.TillSessionId)
+            .WithParameter(x => x.ShopId, this.m_shopId)
+            .WithFullscreen()
+            .ShowDialogAsync();
+
+        if (result is { Cancelled: false })
+        {
+            this.ShowSuccess(Localizer["PaymentRecorded"]);
+            await this.LoadDataAsync();
+        }
+    }
+
+    private async Task NewTransactionDialog()
+    {
+        if (this.m_session is null) return;
+
+        var result = await this.DialogService.Create<TillTransactionDialog>(Localizer["NewTransaction"])
+            .WithParameter(x => x.SessionId, this.m_session.TillSessionId)
+            .WithParameter(x => x.ShopId, this.m_shopId)
+            .WithParameter(x => x.UserName, this.UserName)
+            .WithFullscreen()
+            .ShowDialogAsync();
+
+        if (result is { Cancelled: false, Data: TransactionSearchResult transaction })
+        {
+            // Transaction completed with payments - reload data to reflect till changes
+            await this.LoadDataAsync();
+        }
+    }
+
+    #region Void and Refund Workflow
+
+    /// <summary>
+    /// Helper for checking if session is open.
+    /// </summary>
+    private bool IsSessionOpen => this.m_session?.Status == TillSessionStatus.Open;
+
+    /// <summary>
+    /// Checks if a transaction can be voided.
+    /// </summary>
+    private static bool CanVoidTransaction(TillTransaction txn)
+    {
+        if (txn.IsVoided) return false;
+        if (txn.TransactionType == TillTransactionType.VoidReversal) return false;
+        return true;
+    }
+
+    /// <summary>
+    /// Checks if a refund can be initiated for this transaction.
+    /// Typically RentalPayment or similar IN transactions.
+    /// </summary>
+    private static bool CanInitiateRefund(TillTransaction txn)
+    {
+        if (txn.IsVoided) return false;
+        if (txn.Direction != TillTransactionDirection.In) return false;
+        // Only allow refund on payment-type transactions
+        return txn.TransactionType is TillTransactionType.RentalPayment
+                                   or TillTransactionType.BookingDeposit
+                                   or TillTransactionType.SecurityDeposit;
+    }
+
+    /// <summary>
+    /// Initiates the void workflow - shows void dialog then manager PIN.
+    /// Uses DialogService.Create pattern matching existing codebase conventions.
+    /// </summary>
+    private async Task InitiateVoidAsync(TillTransaction txn)
+    {
+        // Step 1: Show void confirmation dialog with reason entry
+        var voidResult = await this.DialogService.Create<VoidTransactionDialog>(Localizer["VoidTransaction"])
+            .WithParameter(x => x.Transaction, txn)
+            .WithSize(ModalSize.Medium)
+            .ShowDialogAsync();
+
+        if (voidResult is null or { Cancelled: true }) return;
+
+        var voidData = voidResult.Data as VoidTransactionResult;
+        if (voidData == null) return;
+
+        // Step 2: Show manager PIN dialog
+        var pinResult = await ShowManagerPinDialogAsync();
+        if (pinResult == null) return;
+
+        // Step 3: Execute the void
+        await ExecuteVoidAsync(txn.TillTransactionId, voidData.Reason, pinResult);
+    }
+
+    /// <summary>
+    /// Shows manager PIN dialog using DialogService.Create pattern.
+    /// ManagerPinDialog handles manager loading and PIN verification internally.
+    /// Returns manager username on success, null on cancel/failure.
+    /// </summary>
+    private async Task<string?> ShowManagerPinDialogAsync()
+    {
+        var result = await this.DialogService.Create<ManagerPinDialog>(Localizer["ManagerApproval"])
+            .WithSize(ModalSize.Medium)
+            .ShowDialogAsync();
+
+        if (result is null or { Cancelled: true }) return null;
+        return result.Data as string;
+    }
+
+    /// <summary>
+    /// Executes the void operation after confirmation and PIN approval.
+    /// </summary>
+    private async Task ExecuteVoidAsync(int transactionId, string reason, string managerUserName)
+    {
+        this.m_loading = true;
+        this.StateHasChanged();
+
+        try
+        {
+            var result = await this.TillService.VoidTransactionAsync(
+                transactionId,
+                this.UserName,
+                managerUserName,
+                reason);
+
+            if (result.Success)
+            {
+                this.ShowSuccess(Localizer["TransactionVoided"]);
+                await this.LoadDataAsync();
+            }
+            else
+            {
+                this.ShowError(result.Errors.FirstOrDefault()?.Message ?? Localizer["VoidFailed"]);
+            }
+        }
+        finally
+        {
+            this.m_loading = false;
+            this.StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Shows void details for a voided transaction.
+    /// </summary>
+    private void ShowVoidDetailsAsync(TillTransaction txn)
+    {
+        var message = $"{Localizer["VoidedBy"]}: {txn.VoidedByUserName}\n" +
+                      $"{Localizer["ApprovedBy"]}: {txn.VoidApprovedByUserName}\n" +
+                      $"{Localizer["Reason"]}: {txn.VoidReason}\n" +
+                      $"{Localizer["VoidedAt"]}: {txn.VoidedAt?.ToString("yyyy-MM-dd HH:mm")}";
+
+        this.ShowInfo(message);
+    }
+
+    /// <summary>
+    /// Initiates overpayment refund workflow.
+    /// Called when staff identifies an overpayment on a transaction.
+    /// </summary>
+    private async Task InitiateOverpaymentRefundAsync(TillTransaction txn)
+    {
+        if (this.m_session == null || this.m_session.Status != TillSessionStatus.Open)
+        {
+            this.ShowError(Localizer["SessionNotOpen"]);
+            return;
+        }
+
+        // Get payment details for the transaction
+        var totalPaid = txn.AmountInBaseCurrency;
+        var amountDue = 0m;
+
+        // Build payment info from the transaction
+        var payments = new List<ReceiptPayment>
+        {
+            new()
+            {
+                Method = GetPaymentMethodFromType(txn.TransactionType),
+                Amount = txn.Amount,
+                Currency = txn.Currency,
+                ExchangeRate = txn.ExchangeRate,
+                AmountInBaseCurrency = txn.AmountInBaseCurrency
+            }
+        };
+
+        // Use GetCurrencyBalance method which exists on TillSession
+        var thbBalance = this.m_session.GetCurrencyBalance(SupportedCurrencies.THB);
+
+        var refundResult = await this.DialogService.Create<OverpaymentRefundDialog>(Localizer["OverpaymentRefund"])
+            .WithParameter(x => x.OriginalPayments, payments)
+            .WithParameter(x => x.TotalPaidThb, totalPaid)
+            .WithParameter(x => x.AmountDueThb, amountDue)
+            .WithParameter(x => x.RentalId, txn.RentalId)
+            .WithParameter(x => x.TillThbBalance, thbBalance)
+            .WithSize(ModalSize.Medium)
+            .ShowDialogAsync();
+
+        if (refundResult is null or { Cancelled: true }) return;
+
+        var refundData = refundResult.Data as OverpaymentRefundResult;
+        if (refundData == null || refundData.RefundAmountThb <= 0) return;
+
+        await ExecuteOverpaymentRefundAsync(refundData);
+    }
+
+    /// <summary>
+    /// Executes the overpayment refund.
+    /// </summary>
+    private async Task ExecuteOverpaymentRefundAsync(OverpaymentRefundResult refundData)
+    {
+        this.m_loading = true;
+        this.StateHasChanged();
+
+        try
+        {
+            var result = await this.TillService.RecordOverpaymentRefundAsync(
+                this.m_session!.TillSessionId,
+                refundData.RefundAmountThb,
+                refundData.Reason,
+                refundData.OriginalPaymentIds,
+                refundData.RentalId,
+                this.UserName);
+
+            if (result.Success)
+            {
+                this.ShowSuccess(Localizer["RefundRecorded", FormatThb(refundData.RefundAmountThb)]);
+                await this.LoadDataAsync();
+            }
+            else
+            {
+                this.ShowError(result.Errors.FirstOrDefault()?.Message ?? Localizer["RefundFailed"]);
+            }
+        }
+        finally
+        {
+            this.m_loading = false;
+            this.StateHasChanged();
+        }
+    }
+
+    private static string GetPaymentMethodFromType(TillTransactionType type) => type switch
+    {
+        TillTransactionType.RentalPayment => PaymentMethods.Cash,
+        TillTransactionType.CardPayment => PaymentMethods.Card,
+        TillTransactionType.PromptPay => PaymentMethods.PromptPay,
+        TillTransactionType.BankTransfer => PaymentMethods.BankTransfer,
+        _ => PaymentMethods.Cash
+    };
+
+    private static string FormatThb(decimal amount) => $"\u0e3f{amount:N0}";
+
+    #endregion
+}

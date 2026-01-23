@@ -14,6 +14,8 @@ Quick start guides for all Safe & Go user roles.
 | [ShopManager Quick Start](04-shopmanager-quickstart.md) | Shop Manager | Full access - shop operations |
 | [Tourist Portal Guide](05-tourist-guide.md) | Tourist/Renter | Browse, reserve, rental history |
 | [Super Admin Guide](06-superadmin-guide.md) | Platform Admin | Organizations, Users, System |
+| [Asset Depreciation Guide](07-asset-depreciation-guide.md) | Managers | Asset tracking, depreciation |
+| [Cashier Till Guide](08-cashier-till-guide.md) | Staff | Till sessions, payments, receipts |
 
 ## Role Hierarchy
 
@@ -35,7 +37,9 @@ ShopManager
 └── Local settings
 
 Staff
+├── Till session management
 ├── Rental operations
+├── Receipt printing
 ├── Customer management
 └── Accident reporting
 
@@ -56,10 +60,13 @@ Tourist/Renter
 | Dashboard | Yes | Yes | Yes | Yes |
 | Rentals | Yes | Yes | Yes | - |
 | Check-In/Out | Yes | Yes | Yes | - |
+| **Till Session** | Yes | Yes | Yes | - |
+| **Receipts** | Yes | Yes | Yes | - |
 | Finance | Yes | Yes | - | - |
 | Payments | Yes | Yes | - | - |
 | Deposits | Yes | Yes | - | - |
 | Reports | Yes | Yes | - | - |
+| **End of Day** | Yes | Yes | - | - |
 | Fleet | Yes | Yes | - | View |
 | Vehicles | Yes | Yes | - | View |
 | Accessories | Yes | Yes | - | View |

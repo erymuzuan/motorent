@@ -1,0 +1,230 @@
+@using MotoRent.Domain.Entities
+@using MotoRent.Services
+@inherits LocalizedComponentBase<CashDropVerificationDialog>
+@inject TillService TillService
+@inject IModalService ModalService
+
+<div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+    @if (m_loading)
+    {
+        <div class="progress progress-sm mb-3">
+            <div class="progress-bar progress-bar-indeterminate"></div>
+        </div>
+    }
+    else if (!m_drops.Any())
+    {
+        <div class="text-center py-4">
+            <span class="avatar avatar-lg bg-secondary-lt mb-3">
+                <i class="ti ti-archive-off" style="font-size: 1.5rem;"></i>
+            </span>
+            <h4>@Localizer["NoDropsRecorded"]</h4>
+        </div>
+    }
+    else
+    {
+        @* Session Header *@
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="mb-1">
+                            <i class="ti ti-user me-2"></i>
+                            @StaffName
+                        </h4>
+                        <div class="text-secondary">
+                            @Localizer["TotalDropped"]: <strong>@FormatCurrency(TotalDropped)</strong>
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <span class="badge bg-purple-lt text-purple fs-5">
+                            @m_dropTotals.Count @Localizer["CurrencyTypes"]
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* Drop Transactions Timeline *@
+        <div class="card mb-4">
+            <div class="card-header">
+                <h4 class="card-title mb-0">
+                    <i class="ti ti-list me-2"></i>
+                    @Localizer["SessionDrops"]
+                    <span class="badge bg-secondary ms-2">@m_drops.Count</span>
+                </h4>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-vcenter card-table table-sm">
+                    <thead>
+                        <tr>
+                            <th>@Localizer["DropTime"]</th>
+                            <th>@Localizer["Currency"]</th>
+                            <th class="text-end">@Localizer["DropAmount"]</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var drop in m_drops)
+                        {
+                            <tr>
+                                <td>
+                                    <small>@FormatTime(drop.TransactionTime)</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary-lt">@drop.Currency</span>
+                                </td>
+                                <td class="text-end fw-semibold">
+                                    @FormatAmount(drop.Amount, drop.Currency)
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        @* Per-Currency Verification *@
+        <div class="card mb-4">
+            <div class="card-header">
+                <h4 class="card-title mb-0">
+                    <i class="ti ti-checkbox me-2"></i>
+                    @Localizer["VerifySafeContents"]
+                </h4>
+            </div>
+            <div class="card-body p-0">
+                @foreach (var kvp in m_dropTotals)
+                {
+                    var currency = kvp.Key;
+                    var droppedAmount = kvp.Value;
+                    var verification = m_verifications.GetValueOrDefault(currency);
+                    if (verification == null) continue;
+
+                    <div class="border-bottom p-3 @(kvp.Key != m_dropTotals.Keys.Last() ? "" : "border-bottom-0")">
+                        <div class="row align-items-center mb-2">
+                            <div class="col">
+                                <h5 class="mb-0">
+                                    <span class="badge bg-primary-lt me-2">@currency</span>
+                                    @Localizer["DroppedAmount"]: <strong>@FormatAmount(droppedAmount, currency)</strong>
+                                </h5>
+                            </div>
+                            <div class="col-auto">
+                                <div class="btn-group" role="group">
+                                    <input type="radio" class="btn-check" name="verify-@currency" id="matches-@currency"
+                                           checked="@verification.Matches"
+                                           @onchange="@(() => OnMatchesChanged(currency, true))" />
+                                    <label class="btn btn-sm @(verification.Matches ? "btn-success" : "btn-outline-success")" for="matches-@currency">
+                                        <i class="ti ti-check me-1"></i>
+                                        @Localizer["Matches"]
+                                    </label>
+
+                                    <input type="radio" class="btn-check" name="verify-@currency" id="different-@currency"
+                                           checked="@(!verification.Matches)"
+                                           @onchange="@(() => OnMatchesChanged(currency, false))" />
+                                    <label class="btn btn-sm @(!verification.Matches ? "btn-warning" : "btn-outline-warning")" for="different-@currency">
+                                        <i class="ti ti-alert-triangle me-1"></i>
+                                        @Localizer["Different"]
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        @if (!verification.Matches)
+                        {
+                            <div class="row g-3 mt-2">
+                                <div class="col-md-4">
+                                    <label class="form-label">@Localizer["ActualCount"]</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">@currency</span>
+                                        <input type="number" class="form-control" step="0.01" min="0"
+                                               value="@verification.ActualAmount"
+                                               @onchange="@(e => OnActualAmountChanged(currency, decimal.TryParse(e.Value?.ToString(), out var v) ? v : null))"
+                                               placeholder="@Localizer["EnterActualAmount"]" />
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">@Localizer["Variance"]</label>
+                                    <div class="form-control-plaintext">
+                                        <span class="@GetVarianceClass(verification.Variance) fw-bold">
+                                            @(verification.Variance >= 0 ? "+" : "")@FormatAmount(verification.Variance, currency)
+                                            <small class="ms-1">(@GetVarianceText(verification.Variance))</small>
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">@Localizer["Status"]</label>
+                                    <div class="form-control-plaintext">
+                                        @if (verification.ActualAmount.HasValue && !string.IsNullOrWhiteSpace(verification.Reason))
+                                        {
+                                            <span class="badge bg-success-lt text-success">
+                                                <i class="ti ti-check me-1"></i>@Localizer["Complete"]
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-warning-lt text-warning">
+                                                <i class="ti ti-alert-circle me-1"></i>@Localizer["Incomplete"]
+                                            </span>
+                                        }
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">
+                                        @Localizer["Reason"]
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    <textarea class="form-control" rows="2"
+                                              value="@verification.Reason"
+                                              @onchange="@(e => OnReasonChanged(currency, e.Value?.ToString()))"
+                                              placeholder="@Localizer["EnterReason"]"></textarea>
+                                    <small class="form-hint text-warning">
+                                        <i class="ti ti-info-circle me-1"></i>
+                                        @Localizer["ReasonRequired"]
+                                    </small>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+
+        @* Summary Footer *@
+        @if (HasAnyVariance())
+        {
+            <div class="alert alert-warning mb-0">
+                <div class="d-flex align-items-center">
+                    <i class="ti ti-alert-triangle me-2" style="font-size: 1.5rem;"></i>
+                    <div>
+                        <div class="fw-semibold">@Localizer["VarianceDetected"]</div>
+                        <div>@Localizer["TotalVarianceAmount"]: <strong class="@GetVarianceClass(GetTotalVariance())">@FormatCurrency(GetTotalVariance())</strong></div>
+                    </div>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-success mb-0">
+                <div class="d-flex align-items-center">
+                    <i class="ti ti-check me-2" style="font-size: 1.5rem;"></i>
+                    <div class="fw-semibold">@Localizer["AllDropsMatch"]</div>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
+        @CommonLocalizer["Cancel"]
+    </button>
+    @if (m_drops.Any())
+    {
+        <button type="button" class="btn btn-primary" disabled="@(m_saving || !IsValid())" @onclick="ConfirmVerificationAsync">
+            @if (m_saving)
+            {
+                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+            }
+            <i class="ti ti-shield-check me-1"></i>
+            @Localizer["ConfirmVerification"]
+        </button>
+    }
+</div>

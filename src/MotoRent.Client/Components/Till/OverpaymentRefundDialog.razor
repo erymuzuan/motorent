@@ -1,0 +1,173 @@
+@inherits LocalizedDialogBase<OverpaymentRefundResult, OverpaymentRefundDialog>
+@using MotoRent.Domain.Entities
+
+<div class="overpayment-refund-dialog">
+    <div class="dialog-header text-center mb-4">
+        <div class="avatar avatar-lg bg-success-lt mb-2">
+            <i class="ti ti-cash-off fs-2"></i>
+        </div>
+        <h4>@Localizer["OverpaymentRefund"]</h4>
+        <p class="text-muted">@Localizer["RefundExcessPayment"]</p>
+    </div>
+
+    @* Original Payment Summary *@
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="card-title mb-0">@Localizer["OriginalPayment"]</h5>
+        </div>
+        <div class="card-body">
+            @if (OriginalPayments != null && OriginalPayments.Count > 0)
+            {
+                @foreach (var payment in OriginalPayments)
+                {
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>
+                            <i class="ti @GetPaymentMethodIcon(payment.Method) me-1"></i>
+                            @payment.Method (@payment.Currency)
+                        </span>
+                        <span>
+                            @FormatCurrency(payment.Amount, payment.Currency)
+                            @if (payment.Currency != SupportedCurrencies.THB)
+                            {
+                                <span class="text-muted"> = @FormatThb(payment.AmountInBaseCurrency)</span>
+                            }
+                        </span>
+                    </div>
+                }
+                <hr />
+                <div class="d-flex justify-content-between fw-bold">
+                    <span>@Localizer["TotalPaid"]</span>
+                    <span>@FormatThb(TotalPaidThb)</span>
+                </div>
+                <div class="d-flex justify-content-between text-muted">
+                    <span>@Localizer["AmountDue"]</span>
+                    <span>@FormatThb(AmountDueThb)</span>
+                </div>
+            }
+            else
+            {
+                <p class="text-muted">@Localizer["NoPaymentData"]</p>
+            }
+        </div>
+    </div>
+
+    @* Overpayment Amount *@
+    <div class="refund-amount-card mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <div class="text-muted small">@Localizer["OverpaymentAmount"]</div>
+                <div class="fs-3 fw-bold text-success">@FormatThb(OverpaymentAmount)</div>
+            </div>
+            <div class="refund-icon">
+                <i class="ti ti-arrow-right"></i>
+            </div>
+            <div class="text-end">
+                <div class="text-muted small">@Localizer["RefundInCash"]</div>
+                <div class="fs-3 fw-bold">@FormatThb(OverpaymentAmount) THB</div>
+            </div>
+        </div>
+    </div>
+
+    @* Reason Entry *@
+    <div class="mb-4">
+        <label class="form-label required">@Localizer["RefundReason"]</label>
+        <textarea class="form-control @(m_reasonError != null ? "is-invalid" : "")"
+                  rows="2"
+                  placeholder="@Localizer["EnterRefundReason"]"
+                  @bind="m_reason"
+                  @bind:event="oninput"></textarea>
+        @if (m_reasonError != null)
+        {
+            <div class="invalid-feedback">@m_reasonError</div>
+        }
+    </div>
+
+    @* Warning if till balance is low *@
+    @if (TillThbBalance < OverpaymentAmount)
+    {
+        <div class="alert alert-warning mb-4">
+            <i class="ti ti-alert-triangle me-2"></i>
+            @Localizer["TillBalanceWarning", FormatThb(TillThbBalance)]
+        </div>
+    }
+
+    @* Action Buttons *@
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-ghost-secondary flex-fill" @onclick="OnCancel">
+            @Localizer["Cancel"]
+        </button>
+        <button type="button" class="btn btn-success flex-fill" @onclick="OnConfirmRefund" disabled="@(OverpaymentAmount <= 0)">
+            <i class="ti ti-cash me-1"></i>
+            @Localizer["IssueRefund"]
+        </button>
+    </div>
+</div>
+
+@code {
+    [Parameter] public List<ReceiptPayment>? OriginalPayments { get; set; }
+    [Parameter] public decimal TotalPaidThb { get; set; }
+    [Parameter] public decimal AmountDueThb { get; set; }
+    [Parameter] public int? RentalId { get; set; }
+    [Parameter] public decimal TillThbBalance { get; set; }
+
+    private string m_reason = "";
+    private string? m_reasonError;
+
+    private decimal OverpaymentAmount => Math.Max(0, TotalPaidThb - AmountDueThb);
+
+    private void OnConfirmRefund()
+    {
+        // Validate reason
+        if (string.IsNullOrWhiteSpace(m_reason))
+        {
+            m_reasonError = Localizer["ReasonRequired"];
+            return;
+        }
+
+        if (m_reason.Length < 5)
+        {
+            m_reasonError = Localizer["ReasonTooShort"];
+            return;
+        }
+
+        m_reasonError = null;
+
+        var result = new OverpaymentRefundResult
+        {
+            RefundAmountThb = OverpaymentAmount,
+            Reason = m_reason.Trim(),
+            RentalId = RentalId,
+            OriginalPaymentIds = OriginalPayments?
+                .Select(p => p.PaymentId)
+                .Where(id => !string.IsNullOrEmpty(id))
+                .ToList()
+        };
+
+        ModalService.Close(ModalResult.Ok(result));
+    }
+
+    private void OnCancel()
+    {
+        ModalService.Close(ModalResult.Cancel());
+    }
+
+    private static string GetPaymentMethodIcon(string method) => method switch
+    {
+        PaymentMethods.Cash => "ti-cash",
+        PaymentMethods.Card => "ti-credit-card",
+        PaymentMethods.PromptPay => "ti-qrcode",
+        PaymentMethods.BankTransfer => "ti-building-bank",
+        _ => "ti-currency-baht"
+    };
+
+    private static string FormatThb(decimal amount) => $"\u0e3f{amount:N0}";
+
+    private static string FormatCurrency(decimal amount, string currency) => currency switch
+    {
+        SupportedCurrencies.THB => $"\u0e3f{amount:N0}",
+        SupportedCurrencies.USD => $"${amount:N2}",
+        SupportedCurrencies.EUR => $"\u20ac{amount:N2}",
+        SupportedCurrencies.CNY => $"\u00a5{amount:N2}",
+        _ => $"{currency} {amount:N2}"
+    };
+}

@@ -79,14 +79,14 @@ public class VehicleOwnerService(RentalDataContext context)
     {
         using var session = this.Context.OpenSession(username);
         session.Attach(owner);
-        return await session.SubmitChanges("Create");
+        return await session.SubmitChanges("CreateVehicleOwner");
     }
 
     public async Task<SubmitOperation> UpdateOwnerAsync(VehicleOwner owner, string username)
     {
         using var session = this.Context.OpenSession(username);
         session.Attach(owner);
-        return await session.SubmitChanges("Update");
+        return await session.SubmitChanges("UpdateVehicleOwner");
     }
 
     public async Task<SubmitOperation> DeleteOwnerAsync(VehicleOwner owner, string username)
@@ -114,7 +114,7 @@ public class VehicleOwnerService(RentalDataContext context)
 
         using var session = this.Context.OpenSession(username);
         session.Delete(owner);
-        return await session.SubmitChanges("Delete");
+        return await session.SubmitChanges("DeleteVehicleOwner");
     }
 
     public async Task<SubmitOperation> SetActiveStatusAsync(int ownerId, bool isActive, string username)
