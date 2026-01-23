@@ -73,6 +73,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IRepository<TillTransaction>, SqlJsonRepository<TillTransaction>>();
         services.AddScoped<IRepository<TillDenominationCount>, SqlJsonRepository<TillDenominationCount>>();
         services.AddScoped<IRepository<Receipt>, SqlJsonRepository<Receipt>>();
+        // Document template entity
+        services.AddScoped<IRepository<DocumentTemplate>, SqlJsonRepository<DocumentTemplate>>();
         // Exchange rate entities
         services.AddScoped<IRepository<ExchangeRate>, SqlJsonRepository<ExchangeRate>>();
         services.AddScoped<IRepository<DenominationGroup>, SqlJsonRepository<DenominationGroup>>();

@@ -1,0 +1,167 @@
+@page "/settings/templates"
+@using Microsoft.AspNetCore.Authorization
+@using MotoRent.Domain.Core
+@using MotoRent.Domain.Entities
+@using MotoRent.Services
+@attribute [Authorize(Policy = "RequireTenantOrgAdmin")]
+@inherits MotoRentComponentBase
+@inject DocumentTemplateService TemplateService
+
+<MotoRentPageTitle>Document Templates</MotoRentPageTitle>
+
+<TablerHeader Title="Document Templates" PreTitle="Settings">
+    <div class="btn-list">
+        <div class="dropdown">
+            <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="ti ti-plus me-1"></i>
+                New Template
+            </button>
+            <ul class="dropdown-menu">
+                @foreach (DocumentType type in Enum.GetValues(typeof(DocumentType)))
+                {
+                    <li><a class="dropdown-item" href="/settings/templates/designer?type=@type">@type</a></li>
+                }
+            </ul>
+        </div>
+    </div>
+</TablerHeader>
+
+<div class="container-xl mt-4">
+    <LoadingSkeleton Loading="@m_loading" Mode="LoadingSkeleton.PlaceholderMode.Card">
+        @foreach (DocumentType type in Enum.GetValues(typeof(DocumentType)))
+        {
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">@type Templates</h3>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-vcenter card-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Shop</th>
+                                <th>Status</th>
+                                <th>Default</th>
+                                <th>Version</th>
+                                <th class="w-1"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{
+                                var typeTemplates = m_templates.Where(t => t.Type == type).OrderByDescending(t => t.IsDefault).ThenBy(t => t.Name);
+                            }
+                            @if (!typeTemplates.Any())
+                            {
+                                <tr>
+                                    <td colspan="6" class="text-center text-secondary py-4">
+                                        No templates found for @type
+                                    </td>
+                                </tr>
+                            }
+                            @foreach (var template in typeTemplates)
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="font-weight-medium">@template.Name</div>
+                                        <div class="text-secondary small">@template.Description</div>
+                                    </td>
+                                    <td>@(template.ShopId > 0 ? $"Shop {template.ShopId}" : "Global")</td>
+                                    <td>
+                                        <span class="badge @GetStatusClass(template.Status)">
+                                            @template.Status
+                                        </span>
+                                    </td>
+                                    <td>
+                                        @if (template.IsDefault)
+                                        {
+                                            <span class="badge bg-success-lt">Default</span>
+                                        }
+                                    </td>
+                                    <td>v@template.Version</td>
+                                    <td>
+                                        <div class="btn-list flex-nowrap">
+                                            <a href="/settings/templates/designer/@template.DocumentTemplateId" class="btn btn-white btn-sm">
+                                                Edit
+                                            </a>
+                                            <button class="btn btn-white btn-sm" @onclick="() => SetAsDefault(template)" disabled="@template.IsDefault">
+                                                Set Default
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+    </LoadingSkeleton>
+</div>
+
+@code {
+    private List<DocumentTemplate> m_templates = new();
+    private bool m_loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTemplatesAsync();
+    }
+
+    private async Task LoadTemplatesAsync()
+    {
+        m_loading = true;
+        try
+        {
+            // Fetch all templates for the org - we'll iterate through types
+            m_templates.Clear();
+            foreach (DocumentType type in Enum.GetValues(typeof(DocumentType)))
+            {
+                var result = await TemplateService.GetTemplatesByTypeAsync(type);
+                m_templates.AddRange(result.ItemCollection);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error loading templates: {ex.Message}");
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private string GetStatusClass(DocumentTemplateStatus status) => status switch
+    {
+        DocumentTemplateStatus.Approved => "bg-green-lt",
+        DocumentTemplateStatus.Draft => "bg-yellow-lt",
+        DocumentTemplateStatus.Archived => "bg-red-lt",
+        _ => "bg-secondary-lt"
+    };
+
+    private async Task SetAsDefault(DocumentTemplate template)
+    {
+        try
+        {
+            template.IsDefault = true;
+            template.Status = DocumentTemplateStatus.Approved;
+            
+            // We need a layout to save, but here we just want to update metadata.
+            // For now, let's assume SaveTemplateAsync can handle partial updates if we add a method
+            // or we just fetch the existing layout first.
+            var layout = await TemplateService.GetTemplateLayoutAsync(template.StoreId);
+            if (layout != null)
+            {
+                var result = await TemplateService.SaveTemplateAsync(template, layout, UserName);
+                if (result.Success)
+                {
+                    ShowSuccess($"{template.Name} is now the default {template.Type} template");
+                    await LoadTemplatesAsync();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error setting default: {ex.Message}");
+        }
+    }
+}

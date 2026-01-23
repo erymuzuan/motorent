@@ -112,4 +112,12 @@ public class DocumentTemplateService(RentalDataContext context, IBinaryStore bin
 
         return await this.Context.LoadAsync(query, page, size, includeTotalRows: true);
     }
+
+    /// <summary>
+    /// Gets a single template by its ID.
+    /// </summary>
+    public async Task<DocumentTemplate?> GetTemplateByIdAsync(int templateId)
+    {
+        return await this.Context.LoadOneAsync<DocumentTemplate>(t => t.DocumentTemplateId == templateId);
+    }
 }

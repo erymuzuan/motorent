@@ -45,8 +45,20 @@ public class QuestPdfGenerator(IBinaryStore binaryStore) : IQuestPdfGenerator
     {
         switch (block)
         {
+            case HeadingBlock headingBlock:
+                RenderHeadingBlock(container, headingBlock, data);
+                break;
             case TextBlock textBlock:
                 RenderTextBlock(container, textBlock, data);
+                break;
+            case DividerBlock dividerBlock:
+                container.PaddingVertical(5).LineHorizontal(dividerBlock.Thickness).LineColor(dividerBlock.Color);
+                break;
+            case SignatureBlock signatureBlock:
+                RenderSignatureBlock(container, signatureBlock, data);
+                break;
+            case TwoColumnBlock twoColumnBlock:
+                RenderTwoColumnBlock(container, twoColumnBlock, data);
                 break;
             case SpacerBlock spacerBlock:
                 container.PaddingTop(spacerBlock.Height, Unit.Point);
@@ -58,6 +70,47 @@ public class QuestPdfGenerator(IBinaryStore binaryStore) : IQuestPdfGenerator
                 RenderTableBlock(container, tableBlock, data);
                 break;
         }
+    }
+
+    private void RenderHeadingBlock(IContainer container, HeadingBlock block, Dictionary<string, object?> data)
+    {
+        var content = ReplaceTokens(block.Content, data);
+        var text = container.Text(content).Bold();
+        
+        // Scale font size based on level (H1=24, H2=18, H3=14)
+        var fontSize = block.Level switch { 1 => 24, 2 => 18, 3 => 14, _ => 12 };
+        text.FontSize(fontSize);
+
+        switch (block.HorizontalAlignment?.ToLower())
+        {
+            case "center": container.AlignCenter(); break;
+            case "right": container.AlignRight(); break;
+        }
+    }
+
+    private void RenderSignatureBlock(IContainer container, SignatureBlock block, Dictionary<string, object?> data)
+    {
+        container.PaddingTop(20).Width(200).Column(col =>
+        {
+            col.Item().Height(40).BorderBottom(1);
+            col.Item().PaddingTop(2).Text(block.Label).FontSize(9);
+        });
+    }
+
+    private void RenderTwoColumnBlock(IContainer container, TwoColumnBlock block, Dictionary<string, object?> data)
+    {
+        container.Row(row =>
+        {
+            row.RelativeItem().Column(col =>
+            {
+                foreach (var leftBlock in block.LeftColumn) RenderBlock(col.Item(), leftBlock, data);
+            });
+            row.ConstantItem(20); // Gap
+            row.RelativeItem().Column(col =>
+            {
+                foreach (var rightBlock in block.RightColumn) RenderBlock(col.Item(), rightBlock, data);
+            });
+        });
     }
 
     private void RenderTextBlock(IContainer container, TextBlock block, Dictionary<string, object?> data)

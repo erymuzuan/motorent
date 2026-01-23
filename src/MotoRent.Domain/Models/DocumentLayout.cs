@@ -32,6 +32,10 @@ public class LayoutSection
 [JsonDerivedType(typeof(ImageBlock), "image")]
 [JsonDerivedType(typeof(TableBlock), "table")]
 [JsonDerivedType(typeof(SpacerBlock), "spacer")]
+[JsonDerivedType(typeof(HeadingBlock), "heading")]
+[JsonDerivedType(typeof(DividerBlock), "divider")]
+[JsonDerivedType(typeof(SignatureBlock), "signature")]
+[JsonDerivedType(typeof(TwoColumnBlock), "two-columns")]
 public abstract class LayoutBlock
 {
     public string? Style { get; set; }
@@ -43,6 +47,11 @@ public class TextBlock : LayoutBlock
     public string? HorizontalAlignment { get; set; } // Left, Center, Right
     public bool IsBold { get; set; }
     public float? FontSize { get; set; }
+}
+
+public class HeadingBlock : TextBlock
+{
+    public int Level { get; set; } = 1; // 1 to 6
 }
 
 public class ImageBlock : LayoutBlock
@@ -57,6 +66,24 @@ public class TableBlock : LayoutBlock
 {
     public string BindingPath { get; set; } = string.Empty; // e.g., "Rental.Items"
     public List<TableColumn> Columns { get; set; } = new();
+}
+
+public class DividerBlock : LayoutBlock
+{
+    public float Thickness { get; set; } = 1;
+    public string Color { get; set; } = "#000000";
+}
+
+public class SignatureBlock : LayoutBlock
+{
+    public string Label { get; set; } = "Signature";
+    public string? BindingPath { get; set; } // e.g., "Customer.Signature"
+}
+
+public class TwoColumnBlock : LayoutBlock
+{
+    public List<LayoutBlock> LeftColumn { get; set; } = new();
+    public List<LayoutBlock> RightColumn { get; set; } = new();
 }
 
 public class TableColumn

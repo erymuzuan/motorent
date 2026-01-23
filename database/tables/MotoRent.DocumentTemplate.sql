@@ -14,13 +14,8 @@ CREATE TABLE [MotoRent].[DocumentTemplate]
     [CreatedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
     [ChangedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
 )
-GO
-
 CREATE INDEX [IX_DocumentTemplate_ShopId] ON [MotoRent].[DocumentTemplate] ([ShopId])
-GO
 
 CREATE INDEX [IX_DocumentTemplate_Type] ON [MotoRent].[DocumentTemplate] ([Type])
-GO
 
 CREATE INDEX [IX_DocumentTemplate_Status] ON [MotoRent].[DocumentTemplate] ([Status])
-GO

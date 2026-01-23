@@ -40,8 +40,20 @@ public class HtmlTemplateRenderer : IHtmlTemplateRenderer
     {
         switch (block)
         {
+            case HeadingBlock headingBlock:
+                RenderHeadingBlock(sb, headingBlock, data);
+                break;
             case TextBlock textBlock:
                 RenderTextBlock(sb, textBlock, data);
+                break;
+            case DividerBlock dividerBlock:
+                sb.Append($"<hr style='border: none; border-top: {dividerBlock.Thickness}pt solid {dividerBlock.Color}; margin: 10pt 0;'>");
+                break;
+            case SignatureBlock signatureBlock:
+                RenderSignatureBlock(sb, signatureBlock, data);
+                break;
+            case TwoColumnBlock twoColumnBlock:
+                RenderTwoColumnBlock(sb, twoColumnBlock, data);
                 break;
             case SpacerBlock spacerBlock:
                 sb.Append($"<div style='height: {spacerBlock.Height}pt'></div>");
@@ -53,6 +65,36 @@ public class HtmlTemplateRenderer : IHtmlTemplateRenderer
                 RenderTableBlock(sb, tableBlock, data);
                 break;
         }
+    }
+
+    private void RenderHeadingBlock(StringBuilder sb, HeadingBlock block, Dictionary<string, object?> data)
+    {
+        var content = ReplaceTokens(block.Content, data);
+        var align = !string.IsNullOrEmpty(block.HorizontalAlignment) ? $"text-align: {block.HorizontalAlignment.ToLower()};" : "";
+        sb.Append($"<h{block.Level} style='{align}'>{content}</h{block.Level}>");
+    }
+
+    private void RenderSignatureBlock(StringBuilder sb, SignatureBlock block, Dictionary<string, object?> data)
+    {
+        sb.Append("<div style='margin-top: 30pt; width: 250pt;'>");
+        sb.Append("<div style='border-bottom: 1px solid black; height: 40pt;'></div>");
+        sb.Append($"<div style='font-size: 9pt; margin-top: 4pt;'>{block.Label}</div>");
+        sb.Append("</div>");
+    }
+
+    private void RenderTwoColumnBlock(StringBuilder sb, TwoColumnBlock block, Dictionary<string, object?> data)
+    {
+        sb.Append("<div style='display: flex; gap: 20pt; margin-bottom: 10pt;'>");
+        
+        sb.Append("<div style='flex: 1;'>");
+        foreach (var leftBlock in block.LeftColumn) RenderBlock(sb, leftBlock, data);
+        sb.Append("</div>");
+
+        sb.Append("<div style='flex: 1;'>");
+        foreach (var rightBlock in block.RightColumn) RenderBlock(sb, rightBlock, data);
+        sb.Append("</div>");
+
+        sb.Append("</div>");
     }
 
     private void RenderTextBlock(StringBuilder sb, TextBlock block, Dictionary<string, object?> data)
