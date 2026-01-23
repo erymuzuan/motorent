@@ -44,6 +44,15 @@ This roadmap delivers a tenant-customizable document template system for MotoRen
 **Critical Risks:**
 - Blazor/JavaScript state desync during drag operations (mitigate: JS is source of truth during drag)
 
+**Plans:** 5 plans
+
+Plans:
+- [ ] 01-01-PLAN.md - Domain model (TemplateElement hierarchy, DocumentTemplate entity, SQL schema)
+- [ ] 01-02-PLAN.md - SortableJS interop (library, ES module, C# interop class)
+- [ ] 01-03-PLAN.md - Element components (ElementsPalette, element view components)
+- [ ] 01-04-PLAN.md - Properties panel (type-specific editors, localization)
+- [ ] 01-05-PLAN.md - Designer canvas and page (integration, full designer experience)
+
 ---
 
 ## Phase 2: Data Binding
@@ -78,6 +87,8 @@ This roadmap delivers a tenant-customizable document template system for MotoRen
 **Critical Risks:**
 - Null reference exceptions on incomplete data (mitigate: null-safe expression evaluator from day one)
 
+**Plans:** (created by /gsd:plan-phase)
+
 ---
 
 ## Phase 3: Rendering and Print
@@ -107,6 +118,8 @@ This roadmap delivers a tenant-customizable document template system for MotoRen
 
 **Critical Risks:**
 - Preview not matching print output (mitigate: test with actual print early)
+
+**Plans:** (created by /gsd:plan-phase)
 
 ---
 
@@ -146,6 +159,8 @@ This roadmap delivers a tenant-customizable document template system for MotoRen
 **Critical Risks:**
 - Staff adoption (mitigate: drop-in replacement, same button locations, auto-select default)
 
+**Plans:** (created by /gsd:plan-phase)
+
 ---
 
 ## Phase 5: Advanced Features (Optional)
@@ -178,6 +193,8 @@ This roadmap delivers a tenant-customizable document template system for MotoRen
 **Critical Risks:**
 - Thai text rendering in PDF (mitigate: early prototype testing)
 - QuestPDF .NET 10 compatibility (mitigate: verify before starting)
+
+**Plans:** (created by /gsd:plan-phase)
 
 ---
 
@@ -215,7 +232,7 @@ This roadmap delivers a tenant-customizable document template system for MotoRen
 
 | Phase | Status | Requirements |
 |-------|--------|--------------|
-| 1 - Designer Foundation | Pending | REQ-001, REQ-002 |
+| 1 - Designer Foundation | Planned | REQ-001, REQ-002 |
 | 2 - Data Binding | Pending | REQ-004, REQ-005, REQ-012 |
 | 3 - Rendering and Print | Pending | REQ-006 |
 | 4 - Template Management and Integration | Pending | REQ-003, REQ-007, REQ-008, REQ-014, REQ-015 |
