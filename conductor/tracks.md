@@ -9,5 +9,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [~] **Track: feature - designer for agreement template, receip template and booking confirmation template**
+- [x] **Track: feature - designer for agreement template, receip template and booking confirmation template**
 *Link: [./tracks/document_template_editor_20260123/](./tracks/document_template_editor_20260123/)*
