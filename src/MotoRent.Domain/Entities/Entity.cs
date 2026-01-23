@@ -68,6 +68,8 @@ namespace MotoRent.Domain.Entities;
 [JsonDerivedType(typeof(TillTransaction), nameof(TillTransaction))]
 [JsonDerivedType(typeof(TillDenominationCount), nameof(TillDenominationCount))]
 [JsonDerivedType(typeof(Receipt), nameof(Receipt))]
+// Document template entities
+[JsonDerivedType(typeof(DocumentTemplate), nameof(DocumentTemplate))]
 // Exchange rate entities
 [JsonDerivedType(typeof(ExchangeRate), nameof(ExchangeRate))]
 [JsonDerivedType(typeof(DenominationGroup), nameof(DenominationGroup))]
