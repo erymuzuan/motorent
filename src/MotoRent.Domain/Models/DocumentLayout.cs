@@ -7,7 +7,7 @@ namespace MotoRent.Domain.Models;
 /// </summary>
 public class DocumentLayout
 {
-    public List<LayoutSection> Sections { get; set; } = new();
+    public List<LayoutSection> Sections { get; set; } = [];
     public LayoutSettings Settings { get; set; } = new();
 }
 
@@ -24,7 +24,7 @@ public class LayoutSettings
 public class LayoutSection
 {
     public string Name { get; set; } = "Section";
-    public List<LayoutBlock> Blocks { get; set; } = new();
+    public List<LayoutBlock> Blocks { get; set; } = [];
 }
 
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "$type")]
@@ -65,7 +65,7 @@ public class ImageBlock : LayoutBlock
 public class TableBlock : LayoutBlock
 {
     public string BindingPath { get; set; } = string.Empty; // e.g., "Rental.Items"
-    public List<TableColumn> Columns { get; set; } = new();
+    public List<TableColumn> Columns { get; set; } = [];
 }
 
 public class DividerBlock : LayoutBlock
@@ -82,8 +82,8 @@ public class SignatureBlock : LayoutBlock
 
 public class TwoColumnBlock : LayoutBlock
 {
-    public List<LayoutBlock> LeftColumn { get; set; } = new();
-    public List<LayoutBlock> RightColumn { get; set; } = new();
+    public List<LayoutBlock> LeftColumn { get; set; } = [];
+    public List<LayoutBlock> RightColumn { get; set; } = [];
 }
 
 public class TableColumn

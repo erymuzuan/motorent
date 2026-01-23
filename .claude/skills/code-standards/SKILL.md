@@ -335,18 +335,18 @@ public async Task<Rental?> GetRentalAsync(int rentalId)
 
 ```csharp
 // WRONG - missing this keyword
-m_loading = true;
+Loading = true;
 DataContext.LoadAsync(query);
 ShowSuccess("Saved");
 
 // CORRECT - always use this
-this.m_loading = true;
+this.Loading = true;
 this.DataContext.LoadAsync(query);
 this.ShowSuccess("Saved");
 ```
 
 This applies to:
-- Private fields (`this.m_field`)
+- Private properties (`this.Loading`)
 - Properties (`this.PropertyName`)
 - Methods (`this.MethodName()`)
 - Injected services (`this.DataContext`, `this.DialogService`)
@@ -363,3 +363,7 @@ This applies to:
 
 ## Blazor & Razor files
 Use blazor development skill and css styling skill
+
+
+## Data access and persistence
+database-repository **MUST** be observerd, for tenant data access and persistence

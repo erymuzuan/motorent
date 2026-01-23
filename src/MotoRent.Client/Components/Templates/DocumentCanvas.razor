@@ -1,21 +1,22 @@
 @using MotoRent.Domain.Models
 @using MotoRent.Client.Services
+@inherits LocalizedComponentBase<DocumentCanvas>
 @inject DesignerState DesignerState
 
 <div class="designer-scroll-area">
     <div class="a4-canvas" 
-         @ondragover="HandleCanvasDragOver" 
+         @ondragover="this.HandleCanvasDragOver" 
          @ondragover:preventDefault="true"
-         @ondrop="HandleCanvasDrop">
+         @ondrop="this.HandleCanvasDrop">
         
-        @foreach (var layoutSection in Layout.Sections)
+        @foreach (var layoutSection in this.Layout.Sections)
         {
             <div class="canvas-section mb-4">
                 <div class="section-label small text-muted mb-1 px-3 d-flex justify-content-between align-items-center">
                     <span>@layoutSection.Name</span>
-                    @if (Layout.Sections.Count > 1)
+                    @if (this.Layout.Sections.Count > 1)
                     {
-                        <button class="btn btn-ghost-danger btn-xs" @onclick="() => Layout.Sections.Remove(layoutSection)">
+                        <button class="btn btn-ghost-danger btn-xs" @onclick="() => this.Layout.Sections.Remove(layoutSection)">
                             <i class="ti ti-trash"></i>
                         </button>
                     }
@@ -24,25 +25,25 @@
                 @foreach (var block in layoutSection.Blocks)
                 {
                     <CanvasBlock Block="block" 
-                                IsSelected="@(SelectedBlock == block)"
-                                OnSelect="() => OnBlockSelected.InvokeAsync(block)"
+                                IsSelected="@(this.SelectedBlock == block)"
+                                OnSelect="() => this.OnBlockSelected.InvokeAsync(block)"
                                 OnDelete="() => layoutSection.Blocks.Remove(block)"
-                                OnMoveUp="() => MoveBlockUp(layoutSection, block)"
-                                OnMoveDown="() => MoveBlockDown(layoutSection, block)" />
+                                OnMoveUp="() => this.MoveBlockUp(layoutSection, block)"
+                                OnMoveDown="() => this.MoveBlockDown(layoutSection, block)" />
                 }
 
                 @if (!layoutSection.Blocks.Any())
                 {
                     <div class="text-center py-4 border-dashed rounded m-2 text-muted small">
-                        Drop blocks here
+                        @this.Localizer["DropBlocksHere"]
                     </div>
                 }
             </div>
         }
 
         <div class="p-4 text-center">
-            <button class="btn btn-ghost-primary btn-sm" @onclick="AddSection">
-                <i class="ti ti-plus me-1"></i> Add Section
+            <button class="btn btn-ghost-primary btn-sm" @onclick="this.AddSection">
+                <i class="ti ti-plus me-1"></i> @this.Localizer["AddSection"]
             </button>
         </div>
     </div>
@@ -56,7 +57,7 @@
 
     private void AddSection()
     {
-        Layout.Sections.Add(new LayoutSection { Name = $"Section {Layout.Sections.Count + 1}" });
+        this.Layout.Sections.Add(new LayoutSection { Name = this.Localizer["SectionName", this.Layout.Sections.Count + 1] });
     }
 
     private void MoveBlockUp(LayoutSection section, LayoutBlock block)
@@ -86,10 +87,10 @@
 
     private async Task HandleCanvasDrop(DragEventArgs e)
     {
-        if (!string.IsNullOrEmpty(DesignerState.DraggingBlockType))
+        if (!string.IsNullOrEmpty(this.DesignerState.DraggingBlockType))
         {
-            await OnBlockAdded.InvokeAsync(DesignerState.DraggingBlockType);
-            DesignerState.DraggingBlockType = null;
+            await this.OnBlockAdded.InvokeAsync(this.DesignerState.DraggingBlockType);
+            this.DesignerState.DraggingBlockType = null;
         }
     }
 }

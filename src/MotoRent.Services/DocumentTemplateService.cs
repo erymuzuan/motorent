@@ -199,7 +199,7 @@ public class DocumentTemplateService(RentalDataContext context, IBinaryStore bin
                         new TextBlock { Content = "Reference: {{Booking.Ref}}\nPickup: {{Booking.StartDate}}\nReturn: {{Booking.EndDate}}\nDuration: {{Booking.Days}} Days" },
                         new SpacerBlock { Height = 10 },
                         new TableBlock 
-                        { 
+                        {
                             BindingPath = "Booking.Items",
                             Columns = new List<TableColumn>
                             {
@@ -311,23 +311,30 @@ public class DocumentTemplateService(RentalDataContext context, IBinaryStore bin
     {
         var layout = new DocumentLayout
         {
-            Sections = new List<LayoutSection>
-            {
+            Sections =
+            [
                 new LayoutSection
                 {
                     Name = "Header",
-                    Blocks = new List<LayoutBlock>
-                    {
-                        new HeadingBlock { Content = "RECEIPT", Level = 2, HorizontalAlignment = "Center", IsBold = true },
+                    Blocks =
+                    [
+                        new HeadingBlock
+                            { Content = "RECEIPT", Level = 2, HorizontalAlignment = "Center", IsBold = true },
+
                         new TextBlock { Content = "{{Org.Name}}", HorizontalAlignment = "Center" }
-                    }
+                    ]
                 },
+
                 new LayoutSection
                 {
                     Name = "Details",
                     Blocks = new List<LayoutBlock>
                     {
-                        new TextBlock { Content = "Receipt No: {{Receipt.No}}\nDate: {{Receipt.Date}}\nCustomer: {{Receipt.CustomerName}}" },
+                        new TextBlock
+                        {
+                            Content =
+                                "Receipt No: {{Receipt.No}}\nDate: {{Receipt.Date}}\nCustomer: {{Receipt.CustomerName}}"
+                        },
                         new SpacerBlock { Height = 10 },
                         new TableBlock
                         {
@@ -335,23 +342,33 @@ public class DocumentTemplateService(RentalDataContext context, IBinaryStore bin
                             Columns = new List<TableColumn>
                             {
                                 new TableColumn { Header = "Description", BindingPath = "Description" },
-                                new TableColumn { Header = "Amount", BindingPath = "Total", HorizontalAlignment = "Right" }
+                                new TableColumn
+                                    { Header = "Amount", BindingPath = "Total", HorizontalAlignment = "Right" }
                             }
                         }
                     }
                 },
+
                 new LayoutSection
                 {
                     Name = "Footer",
                     Blocks = new List<LayoutBlock>
                     {
                         new DividerBlock { Thickness = 1 },
-                        new TextBlock { Content = "Grand Total: {{Receipt.TotalAmount}}", HorizontalAlignment = "Right", IsBold = true, FontSize = 14 },
+                        new TextBlock
+                        {
+                            Content = "Grand Total: {{Receipt.TotalAmount}}", HorizontalAlignment = "Right",
+                            IsBold = true, FontSize = 14
+                        },
                         new SpacerBlock { Height = 20 },
-                        new TextBlock { Content = "Thank you for choosing {{Org.Name}}!", HorizontalAlignment = "Center", FontSize = 10 }
+                        new TextBlock
+                        {
+                            Content = "Thank you for choosing {{Org.Name}}!", HorizontalAlignment = "Center",
+                            FontSize = 10
+                        }
                     }
                 }
-            }
+            ]
         };
 
         var template = new DocumentTemplate

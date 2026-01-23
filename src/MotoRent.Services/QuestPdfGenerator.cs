@@ -31,7 +31,7 @@ public class QuestPdfGenerator(IBinaryStore binaryStore) : IQuestPdfGenerator
                     {
                         foreach (var block in section.Blocks)
                         {
-                            RenderBlock(col.Item(), block, data);
+                            this.RenderBlock(col.Item(), block, data);
                         }
                     }
                 });
@@ -46,35 +46,35 @@ public class QuestPdfGenerator(IBinaryStore binaryStore) : IQuestPdfGenerator
         switch (block)
         {
             case HeadingBlock headingBlock:
-                RenderHeadingBlock(container, headingBlock, data);
+                this.RenderHeadingBlock(container, headingBlock, data);
                 break;
             case TextBlock textBlock:
-                RenderTextBlock(container, textBlock, data);
+                this.RenderTextBlock(container, textBlock, data);
                 break;
             case DividerBlock dividerBlock:
                 container.PaddingVertical(5).LineHorizontal(dividerBlock.Thickness).LineColor(dividerBlock.Color);
                 break;
             case SignatureBlock signatureBlock:
-                RenderSignatureBlock(container, signatureBlock, data);
+                this.RenderSignatureBlock(container, signatureBlock, data);
                 break;
             case TwoColumnBlock twoColumnBlock:
-                RenderTwoColumnBlock(container, twoColumnBlock, data);
+                this.RenderTwoColumnBlock(container, twoColumnBlock, data);
                 break;
             case SpacerBlock spacerBlock:
                 container.PaddingTop(spacerBlock.Height, Unit.Point);
                 break;
             case ImageBlock imageBlock:
-                RenderImageBlock(container, imageBlock, data);
+                this.RenderImageBlock(container, imageBlock, data);
                 break;
             case TableBlock tableBlock:
-                RenderTableBlock(container, tableBlock, data);
+                this.RenderTableBlock(container, tableBlock, data);
                 break;
         }
     }
 
     private void RenderHeadingBlock(IContainer container, HeadingBlock block, Dictionary<string, object?> data)
     {
-        var content = ReplaceTokens(block.Content, data);
+        var content = this.ReplaceTokens(block.Content, data);
         var text = container.Text(content).Bold();
         
         // Scale font size based on level (H1=24, H2=18, H3=14)
@@ -103,19 +103,19 @@ public class QuestPdfGenerator(IBinaryStore binaryStore) : IQuestPdfGenerator
         {
             row.RelativeItem().Column(col =>
             {
-                foreach (var leftBlock in block.LeftColumn) RenderBlock(col.Item(), leftBlock, data);
+                foreach (var leftBlock in block.LeftColumn) this.RenderBlock(col.Item(), leftBlock, data);
             });
             row.ConstantItem(20); // Gap
             row.RelativeItem().Column(col =>
             {
-                foreach (var rightBlock in block.RightColumn) RenderBlock(col.Item(), rightBlock, data);
+                foreach (var rightBlock in block.RightColumn) this.RenderBlock(col.Item(), rightBlock, data);
             });
         });
     }
 
     private void RenderTextBlock(IContainer container, TextBlock block, Dictionary<string, object?> data)
     {
-        var content = ReplaceTokens(block.Content, data);
+        var content = this.ReplaceTokens(block.Content, data);
         var text = container.Text(content);
 
         if (block.IsBold) text.Bold();
@@ -172,7 +172,7 @@ public class QuestPdfGenerator(IBinaryStore binaryStore) : IQuestPdfGenerator
             {
                 foreach (var col in block.Columns)
                 {
-                    var value = GetValueFromItem(item, col.BindingPath);
+                    var value = this.GetValueFromItem(item, col.BindingPath);
                     table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(2).Text(value?.ToString() ?? "");
                 }
             }

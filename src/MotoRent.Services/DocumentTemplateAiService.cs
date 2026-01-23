@@ -32,7 +32,7 @@ public class DocumentTemplateAiService(
         if (string.IsNullOrEmpty(apiKey))
         {
             this.Logger.LogWarning("Gemini API key not configured, returning empty suggestions");
-            return new List<string>();
+            return [];
         }
 
         var prompt = $"""
@@ -82,12 +82,12 @@ public class DocumentTemplateAiService(
             if (rawJson.EndsWith("```")) rawJson = rawJson[..^3];
             rawJson = rawJson.Trim();
 
-            return JsonSerializer.Deserialize<List<string>>(rawJson, s_jsonOptions) ?? new List<string>();
+            return JsonSerializer.Deserialize<List<string>>(rawJson, s_jsonOptions) ?? [];
         }
         catch (Exception ex)
         {
             this.Logger.LogError(ex, "Failed to get AI suggested clauses from Gemini API");
-            return new List<string> { "Error generating suggestions: " + ex.Message };
+            return ["Error generating suggestions: " + ex.Message];
         }
     }
 }

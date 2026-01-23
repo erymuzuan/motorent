@@ -1,33 +1,34 @@
 @using MotoRent.Domain.Models
 @using MotoRent.Services
+@inherits LocalizedComponentBase<CanvasBlock>
 
-<div class="canvas-block @(IsSelected ? "selected" : "")" 
-     @onclick="HandleClick" 
+<div class="canvas-block @(this.IsSelected ? "selected" : "")" 
+     @onclick="this.HandleClick" 
      @onclick:stopPropagation="true"
      draggable="true"
-     @ondragstart="HandleDragStart"
-     @ondragover="HandleDragOver"
-     @ondrop="HandleDrop">
+     @ondragstart="this.HandleDragStart"
+     @ondragover="this.HandleDragOver"
+     @ondrop="this.HandleDrop">
     
     <div class="block-controls">
-        <button class="btn btn-sm btn-icon btn-white shadow-sm" @onclick="OnMoveUp" @onclick:stopPropagation="true">
+        <button class="btn btn-sm btn-icon btn-white shadow-sm" @onclick="this.OnMoveUp" @onclick:stopPropagation="true">
             <i class="ti ti-arrow-up"></i>
         </button>
-        <button class="btn btn-sm btn-icon btn-white shadow-sm" @onclick="OnMoveDown" @onclick:stopPropagation="true">
+        <button class="btn btn-sm btn-icon btn-white shadow-sm" @onclick="this.OnMoveDown" @onclick:stopPropagation="true">
             <i class="ti ti-arrow-down"></i>
         </button>
-        <button class="btn btn-sm btn-icon btn-danger shadow-sm" @onclick="OnDelete" @onclick:stopPropagation="true">
+        <button class="btn btn-sm btn-icon btn-danger shadow-sm" @onclick="this.OnDelete" @onclick:stopPropagation="true">
             <i class="ti ti-trash"></i>
         </button>
     </div>
 
     <div class="block-content">
-        @if (Block is HeadingBlock hb)
+        @if (this.Block is HeadingBlock hb)
         {
-            <div style="text-align: @(hb.HorizontalAlignment ?? "left"); font-weight: @(hb.IsBold ? "bold" : "normal"); font-size: @(GetFontSize(hb.Level, hb.FontSize))px;">
+            <div style="text-align: @(hb.HorizontalAlignment ?? "left"); font-weight: @(hb.IsBold ? "bold" : "normal"); font-size: @(this.GetFontSize(hb.Level, hb.FontSize))px;">
                 @if (string.IsNullOrEmpty(hb.Content))
                 {
-                    <span class="text-muted italic">Empty Heading</span>
+                    <span class="text-muted italic">@this.Localizer["EmptyHeading"]</span>
                 }
                 else
                 {
@@ -35,12 +36,12 @@
                 }
             </div>
         }
-        else if (Block is TextBlock tb)
+        else if (this.Block is TextBlock tb)
         {
             <div style="text-align: @(tb.HorizontalAlignment ?? "left"); font-weight: @(tb.IsBold ? "bold" : "normal"); font-size: @(tb.FontSize ?? 14)px; white-space: pre-wrap;">
                 @if (string.IsNullOrEmpty(tb.Content))
                 {
-                    <span class="text-muted italic">Empty Text Block</span>
+                    <span class="text-muted italic">@this.Localizer["EmptyTextBlock"]</span>
                 }
                 else
                 {
@@ -48,15 +49,15 @@
                 }
             </div>
         }
-        else if (Block is DividerBlock db)
+        else if (this.Block is DividerBlock db)
         {
             <hr style="border-top: @(db.Thickness)px solid @(db.Color); margin: 1rem 0;" />
         }
-        else if (Block is SpacerBlock sb)
+        else if (this.Block is SpacerBlock sb)
         {
             <div style="height: @(sb.Height)px;"></div>
         }
-        else if (Block is ImageBlock ib)
+        else if (this.Block is ImageBlock ib)
         {
             <div class="text-center p-2">
                 @if (!string.IsNullOrEmpty(ib.ImageUrl))
@@ -67,12 +68,12 @@
                 {
                     <div class="bg-light p-4 rounded text-muted">
                         <i class="ti ti-photo size-lg"></i>
-                        <div>Image Placeholder</div>
+                        <div>@this.Localizer["ImagePlaceholder"]</div>
                     </div>
                 }
             </div>
         }
-        else if (Block is TableBlock table)
+        else if (this.Block is TableBlock table)
         {
             <table class="table table-sm table-bordered mb-0">
                 <thead>
@@ -83,7 +84,7 @@
                         }
                         @if (!table.Columns.Any())
                         {
-                            <th>No Columns</th>
+                            <th>@this.Localizer["NoColumns"]</th>
                         }
                     </tr>
                 </thead>
@@ -101,13 +102,13 @@
                 </tbody>
             </table>
         }
-        else if (Block is SignatureBlock sig)
+        else if (this.Block is SignatureBlock sig)
         {
             <div class="mt-4 pt-2 border-top" style="max-width: 250px;">
                 <div class="text-muted small">@sig.Label</div>
             </div>
         }
-        else if (Block is TwoColumnBlock twoCol)
+        else if (this.Block is TwoColumnBlock twoCol)
         {
             <div class="row g-2">
                 <div class="col-6 border-end">
@@ -115,14 +116,14 @@
                     {
                         <div class="p-1 mb-1 bg-light-subtle rounded small border border-dashed">@b.GetType().Name</div>
                     }
-                    <div class="text-center text-muted smaller py-2">Left Column</div>
+                    <div class="text-center text-muted smaller py-2">@this.Localizer["LeftColumn"]</div>
                 </div>
                 <div class="col-6">
                     @foreach (var b in twoCol.RightColumn)
                     {
                         <div class="p-1 mb-1 bg-light-subtle rounded small border border-dashed">@b.GetType().Name</div>
                     }
-                    <div class="text-center text-muted smaller py-2">Right Column</div>
+                    <div class="text-center text-muted smaller py-2">@this.Localizer["RightColumn"]</div>
                 </div>
             </div>
         }
@@ -137,7 +138,7 @@
     [Parameter] public EventCallback OnMoveUp { get; set; }
     [Parameter] public EventCallback OnMoveDown { get; set; }
 
-    private void HandleClick() => OnSelect.InvokeAsync();
+    private void HandleClick() => this.OnSelect.InvokeAsync();
 
     private float GetFontSize(int level, float? customSize)
     {

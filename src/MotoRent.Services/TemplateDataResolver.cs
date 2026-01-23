@@ -11,7 +11,7 @@ public class TemplateDataResolver : ITemplateDataResolver
 {
     public Dictionary<string, object?> Resolve(Entity entity, Organization organization, User? staff = null)
     {
-        var data = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, object?> data = new(StringComparer.OrdinalIgnoreCase);
 
         // 1. Add Organization details
         this.AddOrganization(data, organization);

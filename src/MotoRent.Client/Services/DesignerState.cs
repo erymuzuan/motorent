@@ -10,9 +10,9 @@ public class DesignerState
 
     public void SetSelectedBlock(LayoutBlock? block)
     {
-        SelectedBlock = block;
-        OnStateChanged?.Invoke();
+        this.SelectedBlock = block;
+        this.OnStateChanged?.Invoke();
     }
 
-    public void NotifyStateChanged() => OnStateChanged?.Invoke();
+    public void NotifyStateChanged() => this.OnStateChanged?.Invoke();
 }

@@ -4,21 +4,21 @@
 @using MotoRent.Domain.Entities
 @using MotoRent.Services
 @attribute [Authorize(Policy = "RequireTenantOrgAdmin")]
-@inherits MotoRentComponentBase
+@inherits LocalizedComponentBase<DocumentTemplates>
 @inject DocumentTemplateService TemplateService
 
-<MotoRentPageTitle>Document Templates</MotoRentPageTitle>
+<MotoRentPageTitle>@this.Localizer["PageTitle"]</MotoRentPageTitle>
 
-<TablerHeader Title="Document Templates" PreTitle="Settings">
+<TablerHeader Title="@this.Localizer["Header"]" PreTitle="@this.CommonLocalizer["Settings"]">
     <div class="btn-list">
-        <button class="btn btn-outline-secondary" @onclick="SeedDefaultsAsync" disabled="@m_loading">
+        <button class="btn btn-outline-secondary" @onclick="this.SeedDefaultsAsync" disabled="@this.m_loading">
             <i class="ti ti-database-import me-1"></i>
-            Seed Defaults
+            @this.Localizer["SeedDefaults"]
         </button>
         <div class="dropdown">
             <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                 <i class="ti ti-plus me-1"></i>
-                New Template
+                @this.Localizer["NewTemplate"]
             </button>
             <ul class="dropdown-menu">
                 @foreach (DocumentType type in Enum.GetValues(typeof(DocumentType)))
@@ -31,34 +31,34 @@
 </TablerHeader>
 
 <div class="container-xl mt-4">
-    <LoadingSkeleton Loading="@m_loading" Mode="LoadingSkeleton.PlaceholderMode.Card">
+    <LoadingSkeleton Loading="@this.m_loading" Mode="LoadingSkeleton.PlaceholderMode.Card">
         @foreach (DocumentType type in Enum.GetValues(typeof(DocumentType)))
         {
             <div class="card mb-4">
                 <div class="card-header">
-                    <h3 class="card-title">@type Templates</h3>
+                    <h3 class="card-title">@type @this.Localizer["Header"]</h3>
                 </div>
                 <div class="table-responsive">
                     <table class="table table-vcenter card-table">
                         <thead>
                             <tr>
-                                <th>Name</th>
-                                <th>Shop</th>
-                                <th>Status</th>
-                                <th>Default</th>
-                                <th>Version</th>
+                                <th>@this.Localizer["Name"]</th>
+                                <th>@this.Localizer["Shop"]</th>
+                                <th>@this.Localizer["Status"]</th>
+                                <th>@this.Localizer["Default"]</th>
+                                <th>@this.Localizer["Version"]</th>
                                 <th class="w-1"></th>
                             </tr>
                         </thead>
                         <tbody>
                             @{
-                                var typeTemplates = m_templates.Where(t => t.Type == type).OrderByDescending(t => t.IsDefault).ThenBy(t => t.Name);
+                                var typeTemplates = this.m_templates.Where(t => t.Type == type).OrderByDescending(t => t.IsDefault).ThenBy(t => t.Name);
                             }
                             @if (!typeTemplates.Any())
                             {
                                 <tr>
                                     <td colspan="6" class="text-center text-secondary py-4">
-                                        No templates found for @type
+                                        @this.Localizer["NoTemplatesFound", type]
                                     </td>
                                 </tr>
                             }
@@ -69,26 +69,26 @@
                                         <div class="font-weight-medium">@template.Name</div>
                                         <div class="text-secondary small">@template.Description</div>
                                     </td>
-                                    <td>@(template.ShopId > 0 ? $"Shop {template.ShopId}" : "Global")</td>
+                                    <td>@(template.ShopId > 0 ? this.Localizer["ShopLabel", template.ShopId] : this.Localizer["Global"])</td>
                                     <td>
-                                        <span class="badge @GetStatusClass(template.Status)">
+                                        <span class="badge @this.GetStatusClass(template.Status)">
                                             @template.Status
                                         </span>
                                     </td>
                                     <td>
                                         @if (template.IsDefault)
                                         {
-                                            <span class="badge bg-success-lt">Default</span>
+                                            <span class="badge bg-success-lt">@this.Localizer["Default"]</span>
                                         }
                                     </td>
                                     <td>v@template.Version</td>
                                     <td>
                                         <div class="btn-list flex-nowrap">
                                             <a href="/settings/templates/designer/@template.DocumentTemplateId" class="btn btn-white btn-sm">
-                                                Edit
+                                                @this.CommonLocalizer["Edit"]
                                             </a>
-                                            <button class="btn btn-white btn-sm" @onclick="() => SetAsDefault(template)" disabled="@template.IsDefault">
-                                                Set Default
+                                            <button class="btn btn-white btn-sm" @onclick="() => this.SetAsDefault(template)" disabled="@template.IsDefault">
+                                                @this.Localizer["SetDefault"]
                                             </button>
                                         </div>
                                     </td>
@@ -103,34 +103,53 @@
 </div>
 
 @code {
-    private List<DocumentTemplate> m_templates = new();
+    private List<DocumentTemplate> m_templates = [];
     private bool m_loading = true;
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadTemplatesAsync();
+        await this.LoadTemplatesAsync();
+    }
+
+    private async Task SeedDefaultsAsync()
+    {
+        try
+        {
+            this.m_loading = true;
+            await this.TemplateService.SeedDefaultTemplatesAsync(null, this.UserName);
+            this.ShowSuccess(this.Localizer["SeedSuccess"]);
+            await this.LoadTemplatesAsync();
+        }
+        catch (Exception ex)
+        {
+            this.ShowError(this.Localizer["SeedError", ex.Message]);
+        }
+        finally
+        {
+            this.m_loading = false;
+        }
     }
 
     private async Task LoadTemplatesAsync()
     {
-        m_loading = true;
+        this.m_loading = true;
         try
         {
             // Fetch all templates for the org - we'll iterate through types
-            m_templates.Clear();
+            this.m_templates.Clear();
             foreach (DocumentType type in Enum.GetValues(typeof(DocumentType)))
             {
-                var result = await TemplateService.GetTemplatesByTypeAsync(type);
-                m_templates.AddRange(result.ItemCollection);
+                var result = await this.TemplateService.GetTemplatesByTypeAsync(type);
+                this.m_templates.AddRange(result.ItemCollection);
             }
         }
         catch (Exception ex)
         {
-            ShowError($"Error loading templates: {ex.Message}");
+            this.ShowError(this.Localizer["LoadError", ex.Message]);
         }
         finally
         {
-            m_loading = false;
+            this.m_loading = false;
         }
     }
 
@@ -152,20 +171,20 @@
             // We need a layout to save, but here we just want to update metadata.
             // For now, let's assume SaveTemplateAsync can handle partial updates if we add a method
             // or we just fetch the existing layout first.
-            var layout = await TemplateService.GetTemplateLayoutAsync(template.StoreId);
+            var layout = await this.TemplateService.GetTemplateLayoutAsync(template.StoreId);
             if (layout != null)
             {
-                var result = await TemplateService.SaveTemplateAsync(template, layout, UserName);
+                var result = await this.TemplateService.SaveTemplateAsync(template, layout, this.UserName);
                 if (result.Success)
                 {
-                    ShowSuccess($"{template.Name} is now the default {template.Type} template");
-                    await LoadTemplatesAsync();
+                    this.ShowSuccess(this.Localizer["SetDefaultSuccess", template.Name, template.Type]);
+                    await this.LoadTemplatesAsync();
                 }
             }
         }
         catch (Exception ex)
         {
-            ShowError($"Error setting default: {ex.Message}");
+            this.ShowError(this.Localizer["SetDefaultError", ex.Message]);
         }
     }
 }

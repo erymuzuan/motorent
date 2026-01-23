@@ -10,7 +10,7 @@
 @using MotoRent.Client.Services
 @implements IDisposable
 @attribute [Authorize(Policy = "RequireTenantOrgAdmin")]
-@inherits MotoRentComponentBase
+@inherits LocalizedComponentBase<DocumentTemplateDesigner>
 @inject DocumentTemplateService TemplateService
 @inject DocumentTemplateAiService AiService
 @inject DesignerState DesignerState
@@ -18,20 +18,22 @@
 @inject IHtmlTemplateRenderer HtmlRenderer
 @inject OrganizationService OrganizationService
 
-<MotoRentPageTitle>Document Template Designer</MotoRentPageTitle>
+<MotoRentPageTitle>@this.Localizer["PageTitle"]</MotoRentPageTitle>
 
-<TablerHeader Title="Template Designer" PreTitle="@(m_template.DocumentTemplateId == 0 ? "Create New Template" : "Edit Template")">
+<TablerHeader Title="@this.Localizer["Header"]"
+              PreTitle="@(this.m_template.DocumentTemplateId == 0 ? this.Localizer["CreateNewTemplate"] : this.Localizer["EditTemplate"])">
     <div class="btn-list">
-        <button type="button" class="btn btn-outline-secondary" @onclick="() => m_showAiSidebar = !m_showAiSidebar">
+        <button type="button" class="btn btn-outline-secondary"
+                @onclick="() => this.m_showAiSidebar = !this.m_showAiSidebar">
             <i class="ti ti-sparkles me-1 text-accent"></i>
-            AI Suggester
+            @this.Localizer["AiSuggester"]
         </button>
-        <button type="button" class="btn btn-outline-primary" @onclick="TogglePreview">
+        <button type="button" class="btn btn-outline-primary" @onclick="this.TogglePreview">
             <i class="ti ti-eye me-1"></i>
-            Preview
+            @this.Localizer["Preview"]
         </button>
-        <button type="button" class="btn btn-primary" @onclick="SaveTemplateAsync" disabled="@m_saving">
-            @if (m_saving)
+        <button type="button" class="btn btn-primary" @onclick="this.SaveTemplateAsync" disabled="@this.m_saving">
+            @if (this.m_saving)
             {
                 <span class="spinner-border spinner-border-sm me-2" role="status"></span>
             }
@@ -39,28 +41,29 @@
             {
                 <i class="ti ti-device-floppy me-1"></i>
             }
-            Save Template
+            @this.Localizer["SaveTemplate"]
         </button>
     </div>
 </TablerHeader>
 
 <div class="container-fluid mt-4">
-    <LoadingSkeleton Loading="@m_loading" Mode="LoadingSkeleton.PlaceholderMode.Card">
+    <LoadingSkeleton Loading="@this.m_loading" Mode="LoadingSkeleton.PlaceholderMode.Card">
         <div class="row g-4">
             @* Left Sidebar - Template Info & Block Library *@
             <div class="col-lg-2">
                 <div class="card mb-3">
                     <div class="card-header">
-                        <h3 class="card-title">Template Info</h3>
+                        <h3 class="card-title">@this.Localizer["TemplateInfo"]</h3>
                     </div>
                     <div class="card-body">
                         <div class="mb-3">
-                            <label class="form-label">Name</label>
-                            <input type="text" class="form-control" @bind="m_template.Name" placeholder="e.g., Standard Receipt" />
+                            <label class="form-label">@this.Localizer["Name"]</label>
+                            <input type="text" class="form-control" @bind="this.m_template.Name"
+                                   placeholder="@this.Localizer["NamePlaceholder"]"/>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Document Type</label>
-                            <select class="form-select" @bind="m_template.Type">
+                            <label class="form-label">@this.Localizer["DocumentType"]</label>
+                            <select class="form-select" @bind="this.m_template.Type">
                                 @foreach (DocumentType type in Enum.GetValues(typeof(DocumentType)))
                                 {
                                     <option value="@type">@type</option>
@@ -72,33 +75,49 @@
 
                 <div class="card">
                     <div class="card-header">
-                        <h3 class="card-title">Block Library</h3>
+                        <h3 class="card-title">@this.Localizer["BlockLibrary"]</h3>
                     </div>
                     <div class="card-body p-0">
                         <div class="list-group list-group-flush">
-                            <button class="list-group-item list-group-item-action" @onclick='() => AddBlock("heading")' draggable="true" @ondragstart='() => DesignerState.DraggingBlockType = "heading"'>
-                                <i class="ti ti-heading me-2"></i> Heading
+                            <button class="list-group-item list-group-item-action"
+                                    @onclick='() => this.AddBlock("heading")' draggable="true"
+                                    @ondragstart='() => this.DesignerState.DraggingBlockType = "heading"'>
+                                <i class="ti ti-heading me-2"></i> @this.Localizer["Heading"]
                             </button>
-                            <button class="list-group-item list-group-item-action" @onclick='() => AddBlock("text")' draggable="true" @ondragstart='() => DesignerState.DraggingBlockType = "text"'>
-                                <i class="ti ti-type me-2"></i> Text Block
+                            <button class="list-group-item list-group-item-action"
+                                    @onclick='() => this.AddBlock("text")' draggable="true"
+                                    @ondragstart='() => this.DesignerState.DraggingBlockType = "text"'>
+                                <i class="ti ti-type me-2"></i> @this.Localizer["TextBlock"]
                             </button>
-                            <button class="list-group-item list-group-item-action" @onclick='() => AddBlock("table")' draggable="true" @ondragstart='() => DesignerState.DraggingBlockType = "table"'>
-                                <i class="ti ti-table me-2"></i> Data Table
+                            <button class="list-group-item list-group-item-action"
+                                    @onclick='() => this.AddBlock("table")' draggable="true"
+                                    @ondragstart='() => this.DesignerState.DraggingBlockType = "table"'>
+                                <i class="ti ti-table me-2"></i> @this.Localizer["DataTable"]
                             </button>
-                            <button class="list-group-item list-group-item-action" @onclick='() => AddBlock("image")' draggable="true" @ondragstart='() => DesignerState.DraggingBlockType = "image"'>
-                                <i class="ti ti-photo me-2"></i> Image/Logo
+                            <button class="list-group-item list-group-item-action"
+                                    @onclick='() => this.AddBlock("image")' draggable="true"
+                                    @ondragstart='() => this.DesignerState.DraggingBlockType = "image"'>
+                                <i class="ti ti-photo me-2"></i> @this.Localizer["ImageLogo"]
                             </button>
-                            <button class="list-group-item list-group-item-action" @onclick='() => AddBlock("divider")' draggable="true" @ondragstart='() => DesignerState.DraggingBlockType = "divider"'>
-                                <i class="ti ti-minus me-2"></i> Divider Line
+                            <button class="list-group-item list-group-item-action"
+                                    @onclick='() => this.AddBlock("divider")' draggable="true"
+                                    @ondragstart='() => this.DesignerState.DraggingBlockType = "divider"'>
+                                <i class="ti ti-minus me-2"></i> @this.Localizer["DividerLine"]
                             </button>
-                            <button class="list-group-item list-group-item-action" @onclick='() => AddBlock("signature")' draggable="true" @ondragstart='() => DesignerState.DraggingBlockType = "signature"'>
-                                <i class="ti ti-pencil me-2"></i> Signature
+                            <button class="list-group-item list-group-item-action"
+                                    @onclick='() => this.AddBlock("signature")' draggable="true"
+                                    @ondragstart='() => this.DesignerState.DraggingBlockType = "signature"'>
+                                <i class="ti ti-pencil me-2"></i> @this.Localizer["Signature"]
                             </button>
-                            <button class="list-group-item list-group-item-action" @onclick='() => AddBlock("two-columns")' draggable="true" @ondragstart='() => DesignerState.DraggingBlockType = "two-columns"'>
-                                <i class="ti ti-columns me-2"></i> Two Columns
+                            <button class="list-group-item list-group-item-action"
+                                    @onclick='() => this.AddBlock("two-columns")' draggable="true"
+                                    @ondragstart='() => this.DesignerState.DraggingBlockType = "two-columns"'>
+                                <i class="ti ti-columns me-2"></i> @this.Localizer["TwoColumns"]
                             </button>
-                            <button class="list-group-item list-group-item-action" @onclick='() => AddBlock("spacer")' draggable="true" @ondragstart='() => DesignerState.DraggingBlockType = "spacer"'>
-                                <i class="ti ti-separator-horizontal me-2"></i> Spacer
+                            <button class="list-group-item list-group-item-action"
+                                    @onclick='() => this.AddBlock("spacer")' draggable="true"
+                                    @ondragstart='() => this.DesignerState.DraggingBlockType = "spacer"'>
+                                <i class="ti ti-separator-horizontal me-2"></i> @this.Localizer["Spacer"]
                             </button>
                         </div>
                     </div>
@@ -107,78 +126,144 @@
 
             @* Main Canvas Editor *@
             <div class="col-lg-7">
-                <DocumentCanvas Layout="m_layout" 
-                                SelectedBlock="DesignerState.SelectedBlock" 
-                                OnBlockSelected="b => DesignerState.SetSelectedBlock(b)"
-                                OnBlockAdded="AddBlock" />
+                <DocumentCanvas Layout="this.m_layout"
+                                SelectedBlock="this.DesignerState.SelectedBlock"
+                                OnBlockSelected="b => this.DesignerState.SetSelectedBlock(b)"
+                                OnBlockAdded="this.AddBlock"/>
             </div>
 
             @* Right Sidebar - Properties & AI *@
             <div class="col-lg-3">
-                <BlockPropertyEditor Block="DesignerState.SelectedBlock" 
-                                     OnDeleteRequested="DeleteSelectedBlock" />
+                <BlockPropertyEditor Block="this.DesignerState.SelectedBlock"
+                                     OnDeleteRequested="this.DeleteSelectedBlock"/>
 
-                @if (m_showAiSidebar)
-                {
-                    <div class="card mt-3">
-                        <div class="card-header bg-primary-lt">
-                            <h3 class="card-title">
-                                <i class="ti ti-sparkles me-2"></i>
-                                AI Suggester
-                            </h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="mb-3">
-                                <label class="form-label">Context / Keywords</label>
-                                <textarea class="form-control" @bind="m_aiContext" rows="3" placeholder="e.g. insurance, fuel policy..."></textarea>
-                            </div>
-                            <button class="btn btn-primary w-100 mb-3" @onclick="GetAiSuggestions" disabled="@m_loadingAi">
-                                @if (m_loadingAi)
-                                {
-                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
-                                }
-                                Suggest Clauses
-                            </button>
+                                @if (this.m_showAiSidebar)
 
-                            <div class="list-group list-group-flush border-top overflow-auto" style="max-height: 400px;">
-                                @foreach (var suggestion in m_aiSuggestions)
                                 {
-                                    <div class="list-group-item p-3 border-bottom cursor-pointer hover-bg-light"
-                                         @onclick="() => AddClauseToLayout(suggestion)">
-                                        <div class="text-secondary small mb-2">Click to add</div>
-                                        <div class="fw-medium text-wrap">@suggestion</div>
+
+                                    <div class="card mt-3">
+
+                                        <div class="card-header bg-primary-lt">
+
+                                            <h3 class="card-title">
+
+                                                <i class="ti ti-sparkles me-2"></i>
+
+                                                @this.Localizer["AiSuggester"]
+
+                                            </h3>
+
+                                        </div>
+
+                                        <div class="card-body">
+
+                                            <div class="mb-3">
+
+                                                <label class="form-label">@this.Localizer["AiContextLabel"]</label>
+
+                                                <textarea class="form-control" @bind="this.m_aiContext" rows="3"
+
+                                                          placeholder="@this.Localizer["AiContextPlaceholder"]"></textarea>
+
+                                            </div>
+
+                                            <button class="btn btn-primary w-100 mb-3" @onclick="this.GetAiSuggestions"
+
+                                                    disabled="@this.m_loadingAi">
+
+                                                @if (this.m_loadingAi)
+
+                                                {
+
+                                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+
+                                                }
+
+                                                @this.Localizer["SuggestClauses"]
+
+                                            </button>
+
+                
+
+                                            <div class="list-group list-group-flush border-top overflow-auto" style="max-height: 400px;">
+
+                                                @foreach (var suggestion in this.m_aiSuggestions)
+
+                                                {
+
+                                                    <div class="list-group-item p-3 border-bottom cursor-pointer hover-bg-light"
+
+                                                         @onclick="() => this.AddClauseToLayout(suggestion)">
+
+                                                        <div class="text-secondary small mb-2">@this.Localizer["ClickToAdd"]</div>
+
+                                                        <div class="fw-medium text-wrap">@suggestion</div>
+
+                                                    </div>
+
+                                                }
+
+                                            </div>
+
+                                        </div>
+
                                     </div>
-                                }
-                            </div>
-                        </div>
-                    </div>
-                }
-            </div>
-        </div>
-    </LoadingSkeleton>
-</div>
 
-@* Preview Modal *@
-@if (m_showPreview)
-{
-    <div class="modal modal-blur fade show d-block" tabindex="-1" role="dialog">
-        <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Live Preview (HTML)</h5>
-                    <button type="button" class="btn-close" @onclick="TogglePreview"></button>
+                                }
+
+                            </div>
+
+                        </div>
+
+                    </LoadingSkeleton>
+
                 </div>
-                <div class="modal-body p-0" style="height: 600px; overflow-y: auto;">
-                    <iframe srcdoc="@m_previewHtml" style="width: 100%; height: 100%; border: none;"></iframe>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="TogglePreview">Close</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="modal-backdrop fade show"></div>
-}
+
+                
+
+                @* Preview Modal *@
+
+                @if (this.m_showPreview)
+
+                {
+
+                    <div class="modal modal-blur fade show d-block" tabindex="-1" role="dialog">
+
+                        <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+
+                            <div class="modal-content">
+
+                                <div class="modal-header">
+
+                                    <h5 class="modal-title">@this.Localizer["PreviewTitle"]</h5>
+
+                                    <button type="button" class="btn-close" @onclick="this.TogglePreview"></button>
+
+                                </div>
+
+                                <div class="modal-body p-0" style="height: 600px; overflow-y: auto;">
+
+                                    <iframe srcdoc="@this.m_previewHtml" style="width: 100%; height: 100%; border: none;"></iframe>
+
+                                </div>
+
+                                <div class="modal-footer">
+
+                                    <button type="button" class="btn btn-secondary"
+
+                                            @onclick="this.TogglePreview">@this.CommonLocalizer["Close"]</button>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <div class="modal-backdrop fade show"></div>
+
+                }
 
 @code {
     [Parameter] public int? TemplateId { get; set; }
@@ -194,95 +279,95 @@
     // AI Features
     private bool m_showAiSidebar = true;
     private string m_aiContext = "";
-    private List<string> m_aiSuggestions = new();
+    private List<string> m_aiSuggestions = [];
     private bool m_loadingAi;
 
     protected override async Task OnInitializedAsync()
     {
-        DesignerState.OnStateChanged += StateHasChanged;
-        await LoadDataAsync();
+        this.DesignerState.OnStateChanged += this.StateHasChanged;
+        await this.LoadDataAsync();
     }
 
     public void Dispose()
     {
-        DesignerState.OnStateChanged -= StateHasChanged;
+        this.DesignerState.OnStateChanged -= this.StateHasChanged;
     }
 
     private async Task GetAiSuggestions()
     {
-        m_loadingAi = true;
+        this.m_loadingAi = true;
         try
         {
-            m_aiSuggestions = await AiService.GetSuggestedClausesAsync(m_template.Type, m_aiContext);
+            this.m_aiSuggestions = await this.AiService.GetSuggestedClausesAsync(this.m_template.Type, this.m_aiContext);
         }
         catch (Exception ex)
         {
-            ShowError($"AI Suggestion failed: {ex.Message}");
+            this.ShowError($"AI Suggestion failed: {ex.Message}");
         }
         finally
         {
-            m_loadingAi = false;
+            this.m_loadingAi = false;
         }
     }
 
     private void AddClauseToLayout(string clause)
     {
-        if (!m_layout.Sections.Any()) m_layout.Sections.Add(new LayoutSection { Name = "Main Content" });
-        var section = m_layout.Sections.Last();
+        if (!this.m_layout.Sections.Any()) this.m_layout.Sections.Add(new LayoutSection { Name = "Main Content" });
+        var section = this.m_layout.Sections.Last();
         var block = new TextBlock { Content = clause };
         section.Blocks.Add(block);
-        DesignerState.SetSelectedBlock(block);
-        ShowSuccess("Clause added to layout");
+        this.DesignerState.SetSelectedBlock(block);
+        this.ShowSuccess("Clause added to layout");
     }
 
     private async Task LoadDataAsync()
     {
-        m_loading = true;
+        this.m_loading = true;
         try
         {
-            if (TemplateId > 0)
+            if (this.TemplateId > 0)
             {
-                var template = await TemplateService.GetTemplateByIdAsync(TemplateId.Value);
+                var template = await this.TemplateService.GetTemplateByIdAsync(this.TemplateId.Value);
                 if (template != null)
                 {
-                    m_template = template;
-                    var layout = await TemplateService.GetTemplateLayoutAsync(m_template.StoreId);
-                    if (layout != null) m_layout = layout;
+                    this.m_template = template;
+                    var layout = await this.TemplateService.GetTemplateLayoutAsync(this.m_template.StoreId);
+                    if (layout != null) this.m_layout = layout;
                 }
             }
             else
             {
-                m_template = new DocumentTemplate
+                this.m_template = new DocumentTemplate
                 {
-                    Type = Enum.TryParse<DocumentType>(Type, true, out var t) ? t : DocumentType.Receipt,
+                    Type = Enum.TryParse<DocumentType>(this.Type, true, out var t) ? t : DocumentType.Receipt,
                     Status = DocumentTemplateStatus.Draft
                 };
-                m_layout = new DocumentLayout
+                this.m_layout = new DocumentLayout
                 {
-                    Sections = new List<LayoutSection> { new LayoutSection { Name = "Main Content" } }
-                } ;
+                    Sections = [new LayoutSection { Name = "Main Content" }]
+                };
             }
         }
         catch (Exception ex)
         {
-            ShowError($"Error loading template: {ex.Message}");
+            this.ShowError($"Error loading template: {ex.Message}");
         }
         finally
         {
-            m_loading = false;
+            this.m_loading = false;
         }
     }
 
     private void DeleteSelectedBlock()
     {
-        if (DesignerState.SelectedBlock == null) return;
+        if (this.DesignerState.SelectedBlock == null) return;
 
-        foreach (var section in m_layout.Sections)
+        foreach (var section in this.m_layout.Sections)
         {
-            if (section.Blocks.Contains(DesignerState.SelectedBlock))
+            if (section.Blocks.Contains(this.DesignerState.SelectedBlock))
             {
-                section.Blocks.Remove(DesignerState.SelectedBlock);
-                DesignerState.SetSelectedBlock(null);
+                section.Blocks.Remove(this.DesignerState.SelectedBlock);
+                this.DesignerState.SetSelectedBlock(null);
                 return;
             }
         }
@@ -290,20 +375,22 @@
 
     private void AddBlock(string type)
     {
-        if (!m_layout.Sections.Any()) m_layout.Sections.Add(new LayoutSection { Name = "Main Content" });
-        
-        var section = m_layout.Sections.Last();
+        if (!this.m_layout.Sections.Any()) this.m_layout.Sections.Add(new LayoutSection { Name = "Main Content" });
+
+        var section = this.m_layout.Sections.Last();
         LayoutBlock block = type switch
         {
             "heading" => new HeadingBlock { Content = "New Heading", Level = 2, HorizontalAlignment = "Center", IsBold = true },
             "text" => new TextBlock { Content = "New Text Block", HorizontalAlignment = "Left" },
             "image" => new ImageBlock { Width = 200 },
-            "table" => new TableBlock { 
-                Columns = new List<TableColumn> { 
+            "table" => new TableBlock
+            {
+                Columns =
+                [
                     new TableColumn { Header = "Item", BindingPath = "Description" },
                     new TableColumn { Header = "Qty", BindingPath = "Quantity" },
                     new TableColumn { Header = "Price", BindingPath = "Price" }
-                } 
+                ]
             },
             "divider" => new DividerBlock { Thickness = 1, Color = "#eeeeee" },
             "signature" => new SignatureBlock { Label = "Authorized Signature" },
@@ -311,62 +398,64 @@
             "spacer" => new SpacerBlock { Height = 20 },
             _ => new TextBlock { Content = "New Block" }
         };
-        
+
         section.Blocks.Add(block);
-        DesignerState.SetSelectedBlock(block);
+        this.DesignerState.SetSelectedBlock(block);
     }
 
     private async Task TogglePreview()
     {
-        if (!m_showPreview)
+        if (!this.m_showPreview)
         {
             // Prepare sample data for preview
-            var sampleData = await GetSampleDataAsync();
-            m_previewHtml = HtmlRenderer.RenderHtml(m_layout, sampleData);
+            var sampleData = await this.GetSampleDataAsync();
+            this.m_previewHtml = this.HtmlRenderer.RenderHtml(this.m_layout, sampleData);
         }
-        m_showPreview = !m_showPreview;
+
+        this.m_showPreview = !this.m_showPreview;
     }
 
     private async Task<Dictionary<string, object?>> GetSampleDataAsync()
     {
-        var org = await OrganizationService.GetOrganizationByAccountNoAsync(AccountNo);
-        var staff = new User { FullName = UserName, UserName = UserName };
+        var org = await this.OrganizationService.GetOrganizationByAccountNoAsync(this.AccountNo);
+        var staff = new User { FullName = this.UserName, UserName = this.UserName };
         var booking = new Booking { BookingRef = "PRV-001", CustomerName = "John Preview" };
-        return DataResolver.Resolve(booking, org ?? new Organization { Name = "Preview Org" }, staff);
+        return this.DataResolver.Resolve(booking, org ?? new Organization { Name = "Preview Org" }, staff);
     }
 
     private async Task SaveTemplateAsync()
     {
-        if (string.IsNullOrWhiteSpace(m_template.Name))
+        if (string.IsNullOrWhiteSpace(this.m_template.Name))
         {
-            ShowError("Template name is required");
+            this.ShowError("Template name is required");
             return;
         }
 
-        m_saving = true;
+        this.m_saving = true;
         try
         {
-            var result = await TemplateService.SaveTemplateAsync(m_template, m_layout, UserName);
+            var result = await this.TemplateService.SaveTemplateAsync(this.m_template, this.m_layout, this.UserName);
             if (result.Success)
             {
-                ShowSuccess("Template saved successfully");
-                if (TemplateId == null || TemplateId == 0)
+                this.ShowSuccess("Template saved successfully");
+                if (this.TemplateId == null || this.TemplateId == 0)
                 {
-                    NavigationManager.NavigateTo($"/settings/templates/designer/{m_template.DocumentTemplateId}");
+                    this.NavigationManager.NavigateTo($"/settings/templates/designer/{this.m_template.DocumentTemplateId}");
                 }
             }
             else
             {
-                ShowError(result.Message ?? "Failed to save template");
+                this.ShowError(result.Message ?? "Failed to save template");
             }
         }
         catch (Exception ex)
         {
-            ShowError($"Error saving template: {ex.Message}");
+            this.ShowError($"Error saving template: {ex.Message}");
         }
         finally
         {
-            m_saving = false;
+            this.m_saving = false;
         }
     }
+
 }
