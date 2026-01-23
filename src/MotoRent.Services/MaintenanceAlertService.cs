@@ -98,16 +98,11 @@ public class MaintenanceAlertService(RentalDataContext context, MaintenanceServi
     /// </summary>
     public async Task<LoadOperation<MaintenanceAlert>> GetActiveAlertsAsync(int shopId, int page = 1, int size = 40)
     {
-        // Join with Vehicle to filter by ShopId
-        // The current repository/query provider might not support complex joins easily,
-        // so we might need to filter by VehicleIds.
-        
-        var vehiclesResult = await this.Context.LoadAsync(
-            this.Context.CreateQuery<Vehicle>().Where(v => v.CurrentShopId == shopId),
-            page: 1, size: 1000, includeTotalRows: false);
-            
-        var vehicleIds = vehiclesResult.ItemCollection.Select(v => v.VehicleId).ToList();
-        
+        // Get vehicle IDs for the shop using SQL DISTINCT
+        var vehicleIds = await this.Context.GetDistinctAsync<Vehicle, int>(
+            v => v.CurrentShopId == shopId,
+            v => v.VehicleId);
+
         if (vehicleIds.Count == 0)
             return new LoadOperation<MaintenanceAlert> { ItemCollection = [], TotalRows = 0 };
 
