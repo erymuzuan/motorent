@@ -52,7 +52,7 @@ public class ReceiptService(RentalDataContext context, ShopService shopService)
         int page = 1,
         int pageSize = 20)
     {
-        var query = Context.CreateQuery<Receipt>()
+        IQueryable<Receipt> query = Context.CreateQuery<Receipt>()
             .OrderByDescending(r => r.IssuedOn);
 
         // Filter by shop if specified
@@ -540,7 +540,7 @@ public class ReceiptService(RentalDataContext context, ShopService shopService)
         var startOfDay = new DateTimeOffset(today.Date, today.Offset);
         var endOfDay = startOfDay.AddDays(1);
 
-        var query = Context.CreateQuery<Receipt>()
+        IQueryable<Receipt> query = Context.CreateQuery<Receipt>()
             .Where(r => r.IssuedOn >= startOfDay)
             .Where(r => r.IssuedOn < endOfDay)
             .OrderByDescending(r => r.ReceiptId);

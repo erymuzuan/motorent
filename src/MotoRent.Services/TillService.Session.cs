@@ -53,34 +53,28 @@ public partial class TillService
 
     /// <summary>
     /// Gets the active (open) session for a staff member at a shop.
-    /// Note: Uses chained Where calls because Repository only supports simple predicates.
     /// </summary>
     public async Task<TillSession?> GetActiveSessionAsync(int shopId, string staffUserName)
     {
         var query = this.Context.CreateQuery<TillSession>()
-            .Where(s => s.ShopId == shopId)
-            .Where(s => s.StaffUserName == staffUserName)
-            .Where(s => s.Status == TillSessionStatus.Open);
+            .Where(s => s.ShopId == shopId && s.StaffUserName == staffUserName && s.Status == TillSessionStatus.Open);
         return await this.Context.LoadOneAsync(query);
     }
 
     /// <summary>
     /// Gets any active (open) session for a staff member across all shops.
     /// Used by header button to display till status.
-    /// Note: Uses chained Where calls because Repository only supports simple predicates.
     /// </summary>
     public async Task<TillSession?> GetActiveSessionForUserAsync(string staffUserName)
     {
         var query = this.Context.CreateQuery<TillSession>()
-            .Where(s => s.StaffUserName == staffUserName)
-            .Where(s => s.Status == TillSessionStatus.Open);
+            .Where(s => s.StaffUserName == staffUserName && s.Status == TillSessionStatus.Open);
         return await this.Context.LoadOneAsync(query);
     }
 
     /// <summary>
     /// Checks if a staff member can open a new session at a shop.
     /// Enforces one-till-per-staff-per-shop-per-day constraint.
-    /// Note: Uses chained Where calls because Repository only supports simple predicates.
     /// </summary>
     public async Task<(bool CanOpen, string? Reason)> CanOpenSessionAsync(int shopId, string staffUserName)
     {
@@ -97,10 +91,7 @@ public partial class TillService
         var todayEnd = todayStart.AddDays(1);
 
         var sameDayQuery = this.Context.CreateQuery<TillSession>()
-            .Where(s => s.ShopId == shopId)
-            .Where(s => s.StaffUserName == staffUserName)
-            .Where(s => s.OpenedAt >= todayStart)
-            .Where(s => s.OpenedAt < todayEnd);
+            .Where(s => s.ShopId == shopId && s.StaffUserName == staffUserName && s.OpenedAt >= todayStart && s.OpenedAt < todayEnd);
         var existingToday = await this.Context.LoadOneAsync(sameDayQuery);
 
         if (existingToday is not null)
@@ -113,14 +104,12 @@ public partial class TillService
 
     /// <summary>
     /// Gets all active sessions at a shop.
-    /// Note: Uses chained Where calls because Repository only supports simple predicates.
     /// </summary>
     public async Task<List<TillSession>> GetActiveSessionsAsync(int shopId)
     {
         var result = await this.Context.LoadAsync(
             this.Context.CreateQuery<TillSession>()
-                .Where(s => s.ShopId == shopId)
-                .Where(s => s.Status == TillSessionStatus.Open)
+                .Where(s => s.ShopId == shopId && s.Status == TillSessionStatus.Open)
                 .OrderByDescending(s => s.OpenedAt),
             page: 1, size: 100, includeTotalRows: false);
         return result.ItemCollection.ToList();

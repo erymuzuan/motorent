@@ -1,6 +1,7 @@
 @inherits LocalizedComponentBase<ClosingCountPanel>
-@using MotoRent.Domain.Entities
 @inject ExchangeRateService ExchangeRateService
+@inject TillService TillService
+@implements IDisposable
 
 <div class="mr-closing-count-panel">
     @* Currency Sections *@
@@ -27,7 +28,7 @@
                 @* Denomination Rows *@
                 @foreach (var denomination in denominations)
                 {
-                    var count = counts.TryGetValue(denomination, out var c) ? c : 0;
+                    var count = counts.GetValueOrDefault(denomination, 0);
                     var subtotal = denomination * count;
                     var hasValue = count > 0;
 
@@ -43,7 +44,7 @@
                                    step="1"
                                    value="@count"
                                    disabled="@Disabled"
-                                   @oninput="@(e => OnCountChanged(currency, denomination, e))" />
+                                   @oninput="@(() => OnCountChanged(currency, denomination, count))" />
                             <button type="button" class="mr-denom-btn" @onclick="() => Increment(currency, denomination)" disabled="@Disabled">
                                 <i class="ti ti-plus"></i>
                             </button>
@@ -89,6 +90,15 @@
             <div class="mr-no-foreign-currency">
                 <i class="ti ti-info-circle me-2"></i>
                 @Localizer["NoForeignCurrency"]
+            </div>
+        }
+
+        @* Draft restored message *@
+        @if (m_draftRestored)
+        {
+            <div class="alert alert-info py-2 mt-2">
+                <i class="ti ti-history me-2"></i>
+                @Localizer["DraftRestored"]
             </div>
         }
     </div>
@@ -160,6 +170,12 @@
 
 @code {
     /// <summary>
+    /// Till session ID for draft loading and saving.
+    /// </summary>
+    [Parameter]
+    public int TillSessionId { get; set; }
+
+    /// <summary>
     /// Expected balance per currency from TillSession.CurrencyBalances.
     /// </summary>
     [Parameter]
@@ -181,6 +197,9 @@
     private Dictionary<string, Dictionary<decimal, int>> m_currencyBreakdowns = new();
     private List<string> m_visibleCurrencies = [];
     private Dictionary<string, decimal> m_exchangeRates = new();
+    private System.Timers.Timer? m_autoSaveTimer;
+    private bool m_draftRestored;
+    private bool m_autoSaving;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -214,6 +233,41 @@
 
         // Load exchange rates for foreign currencies
         await LoadExchangeRatesAsync();
+
+        // Try to restore draft counts
+        await LoadDraftCountsAsync();
+    }
+
+    /// <summary>
+    /// Loads any existing draft denomination counts for this session.
+    /// </summary>
+    private async Task LoadDraftCountsAsync()
+    {
+        if (TillSessionId <= 0) return;
+
+        try
+        {
+            var draft = await TillService.GetDenominationCountAsync(TillSessionId, DenominationCountType.Closing, includeDrafts: true);
+            if (draft is { IsFinal: false, CurrencyBreakdowns.Count: > 0 })
+            {
+                // Restore counts from draft
+                foreach (var breakdown in draft.CurrencyBreakdowns)
+                {
+                    if (m_currencyBreakdowns.ContainsKey(breakdown.Currency))
+                    {
+                        m_currencyBreakdowns[breakdown.Currency] = new Dictionary<decimal, int>(breakdown.Denominations);
+                    }
+                }
+
+                m_draftRestored = true;
+                // Notify parent of restored counts
+                await OnBreakdownsChanged.InvokeAsync(BuildBreakdowns());
+            }
+        }
+        catch
+        {
+            // Ignore draft loading errors - user can still enter counts manually
+        }
     }
 
     private async Task LoadExchangeRatesAsync()
@@ -346,10 +400,10 @@
         }
     }
 
-    private void OnCountChanged(string currency, decimal denomination, ChangeEventArgs e)
+    private void OnCountChanged(string currency, decimal denomination, int count)
     {
         var breakdown = GetOrCreateBreakdown(currency);
-        if (int.TryParse(e.Value?.ToString(), out var count) && count >= 0)
+        if (count >= 0)
         {
             breakdown[denomination] = count;
         }
@@ -364,6 +418,67 @@
     {
         var breakdowns = BuildBreakdowns();
         OnBreakdownsChanged.InvokeAsync(breakdowns);
+
+        // Schedule debounced auto-save
+        ScheduleAutoSave();
+    }
+
+    /// <summary>
+    /// Schedules an auto-save after 2 seconds of inactivity.
+    /// </summary>
+    private void ScheduleAutoSave()
+    {
+        if (TillSessionId <= 0) return;
+
+        m_autoSaveTimer?.Stop();
+        m_autoSaveTimer?.Dispose();
+        m_autoSaveTimer = new System.Timers.Timer(2000);
+        m_autoSaveTimer.Elapsed += async (_, _) =>
+        {
+            m_autoSaveTimer?.Stop();
+            await InvokeAsync(async () =>
+            {
+                await SaveDraftAsync();
+            });
+        };
+        m_autoSaveTimer.Start();
+    }
+
+    /// <summary>
+    /// Saves current counts as a draft (non-final).
+    /// </summary>
+    private async Task SaveDraftAsync()
+    {
+        if (TillSessionId <= 0 || m_autoSaving) return;
+
+        var breakdowns = BuildBreakdowns();
+        if (breakdowns.All(b => b.Total == 0)) return; // Don't save empty drafts
+
+        try
+        {
+            m_autoSaving = true;
+            await TillService.SaveDenominationCountAsync(
+                TillSessionId,
+                DenominationCountType.Closing,
+                breakdowns,
+                UserName ?? "system",
+                isFinal: false,
+                notes: null);
+        }
+        catch
+        {
+            // Ignore auto-save errors - user can still save manually
+        }
+        finally
+        {
+            m_autoSaving = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        m_autoSaveTimer?.Stop();
+        m_autoSaveTimer?.Dispose();
     }
 
     private List<CurrencyDenominationBreakdown> BuildBreakdowns()

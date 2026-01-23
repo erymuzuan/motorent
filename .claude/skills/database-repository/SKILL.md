@@ -87,7 +87,11 @@ public partial class RentalDataContext
         return await repos.LoadAsync(query, page, size, includeTotalRows);
     }
 
-    // Aggregate methods
+
+    // ALWAYS use  GetList to get few columns, DO NOT use LoadAsync (only when you need the full objects)
+    public async Task<List<(TResult, TResult2, TResult3)>> GetListAsync(*)
+
+    // ALWAYS use  aggregate methods, when querying aggregate values, DO NOT use LoadAsync
     public async Task<int> GetCountAsync<T>(IQueryable<T> query) where T : Entity;
     public async Task<bool> ExistAsync<T>(IQueryable<T> query) where T : Entity;
     public async Task<TResult> GetSumAsync<T, TResult>(IQueryable<T> query, Expression<Func<T, TResult>> selector);
@@ -96,6 +100,11 @@ public partial class RentalDataContext
     public async Task<decimal> GetAverageAsync<T>(IQueryable<T> query, Expression<Func<T, decimal>> selector);
     public async Task<TResult?> GetScalarAsync<T, TResult>(IQueryable<T> query, Expression<Func<T, TResult>> selector);
     public async Task<List<TResult>> GetDistinctAsync<T, TResult>(IQueryable<T> query, Expression<Func<T, TResult>> selector);
+    //
+    public async Task<List<(TKey Key, int Count)>> GetGroupByCountAsync<T, TKey>(Expression<Func<T, bool>> predicate,
+        Expression<Func<T, TKey>> keySelector)
+    public async Task<List<(TKey Key, TValue Sum)>> GetGroupBySumAsync<T, TKey, TValue>(IQueryable<T> query,
+        Expression<Func<T, TKey>> keySelector, Expression<Func<T, TValue>> valueSelector)
 
     public PersistenceSession OpenSession(string username = "system") => new PersistenceSession(this, username);
 }
@@ -156,7 +165,9 @@ var rental = await context.LoadOneAsync<Rental>(r => r.RentalId == id);
 
 // Load with pagination
 var query = context.CreateQuery<Rental>()
-    .Where(r => r.ShopId == shopId && r.Status == "Active")
+    .Where(r => r.ShopId == shopId)
+    .Where(r => r.Status == "Active")
+    // use multiple line of Where for readablity
     .OrderByDescending(r => r.StartDate);
 
 var result = await context.LoadAsync(query, page: 1, size: 20, includeTotalRows: true);

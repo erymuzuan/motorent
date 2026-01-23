@@ -2,6 +2,7 @@ using System.Text.RegularExpressions;
 using Microsoft.Data.SqlClient;
 using MotoRent.Domain.Core;
 using MotoRent.Domain.DataContext;
+using MotoRent.SqlServerRepository;
 
 namespace MotoRent.Services.Core;
 
@@ -12,7 +13,7 @@ public partial class SqlSubscriptionService(
     CoreDataContext context,
     IDirectoryService directoryService,
     IRequestContext requestContext,
-    QueryProvider queryProvider) : ISubscriptionService
+    SqlQueryProvider queryProvider) : ISubscriptionService
 {
     // Static readonly for table creation order
     private static readonly string[] s_tableOrder =
@@ -38,7 +39,7 @@ public partial class SqlSubscriptionService(
     private CoreDataContext Context { get; } = context;
     private IDirectoryService DirectoryService { get; } = directoryService;
     private IRequestContext RequestContext { get; } = requestContext;
-    private QueryProvider QueryProvider { get; } = queryProvider;
+    private SqlQueryProvider QueryProvider { get; } = queryProvider;
 
     #region Organization Management
 

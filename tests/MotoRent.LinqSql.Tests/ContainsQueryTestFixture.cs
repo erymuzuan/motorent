@@ -12,16 +12,9 @@ namespace MotoRent.LinqSql.Tests;
 /// Tests for IN clause translation using IsInList extension method.
 /// Note: This codebase requires using IsInList() instead of .Contains() on arrays.
 /// </summary>
-public class ContainsQueryTestFixture
+public class ContainsQueryTestFixture(ITestOutputHelper output)
 {
-    private readonly ITestOutputHelper m_output;
-    private readonly SqlQueryProvider m_provider;
-
-    public ContainsQueryTestFixture(ITestOutputHelper output)
-    {
-        this.m_output = output;
-        this.m_provider = new SqlQueryProvider(new MockRequestContext());
-    }
+    private readonly SqlQueryProvider m_provider = new(new MockRequestContext());
 
     [Fact]
     public void IntegerListIsInList_GeneratesInClause()
@@ -33,7 +26,7 @@ public class ContainsQueryTestFixture
 
         // Act
         var sql = query.ToString();
-        this.m_output.WriteLine(sql);
+        output.WriteLine(sql);
 
         // Assert
         sql.Should().Contain("[ShopId] IN (1,2,3)");
@@ -49,7 +42,7 @@ public class ContainsQueryTestFixture
 
         // Act
         var sql = query.ToString();
-        this.m_output.WriteLine(sql);
+        output.WriteLine(sql);
 
         // Assert
         sql.Should().Contain("[StaffUserName] IN (");
@@ -68,7 +61,7 @@ public class ContainsQueryTestFixture
 
         // Act
         var sql = query.ToString();
-        this.m_output.WriteLine(sql);
+        output.WriteLine(sql);
 
         // Assert
         sql.Should().Contain("1=0");
@@ -84,7 +77,7 @@ public class ContainsQueryTestFixture
 
         // Act
         var sql = query.ToString();
-        this.m_output.WriteLine(sql);
+        output.WriteLine(sql);
 
         // Assert
         sql.Should().Contain("1=0");
@@ -100,7 +93,7 @@ public class ContainsQueryTestFixture
 
         // Act
         var sql = query.ToString();
-        this.m_output.WriteLine(sql);
+        output.WriteLine(sql);
 
         // Assert
         sql.Should().Contain("NOT IN");
@@ -116,7 +109,7 @@ public class ContainsQueryTestFixture
 
         // Act
         var sql = query.ToString();
-        this.m_output.WriteLine(sql);
+        output.WriteLine(sql);
 
         // Assert
         sql.Should().Contain("1=1");
@@ -132,7 +125,7 @@ public class ContainsQueryTestFixture
 
         // Act
         var sql = query.ToString();
-        this.m_output.WriteLine(sql);
+        output.WriteLine(sql);
 
         // Assert
         sql.Should().Contain("[Status]");
@@ -151,7 +144,7 @@ public class ContainsQueryTestFixture
 
         // Act
         var sql = query.ToString();
-        this.m_output.WriteLine(sql);
+        output.WriteLine(sql);
 
         // Assert
         sql.Should().Contain("[ShopId] IN (1)");
@@ -168,7 +161,7 @@ public class ContainsQueryTestFixture
 
         // Act
         var sql = query.ToString();
-        this.m_output.WriteLine(sql);
+        output.WriteLine(sql);
 
         // Assert - Both conditions present in nested structure
         sql.Should().Contain("[ShopId] IN (");
@@ -191,7 +184,7 @@ public class ContainsQueryTestFixture
 
         // Act
         var sql = query.ToString();
-        this.m_output.WriteLine(sql);
+        output.WriteLine(sql);
 
         // Assert
         sql.Should().Contain("[Status]");
@@ -211,7 +204,7 @@ public class ContainsQueryTestFixture
 
         // Act
         var sql = query.ToString();
-        this.m_output.WriteLine(sql);
+        output.WriteLine(sql);
 
         // Assert
         sql.Should().Contain("1=1");
@@ -227,7 +220,7 @@ public class ContainsQueryTestFixture
 
         // Act
         var sql = query.ToString();
-        this.m_output.WriteLine(sql);
+        output.WriteLine(sql);
 
         // Assert
         sql.Should().Contain("[ShopId] IN (5,10)");

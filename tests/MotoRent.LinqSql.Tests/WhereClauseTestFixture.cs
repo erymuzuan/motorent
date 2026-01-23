@@ -13,6 +13,21 @@ public class WhereClauseTestFixture(ITestOutputHelper output)
     private SqlQueryProvider Provider { get; } = new(new MockRequestContext());
 
     [Fact]
+    public void ShopRentals()
+    {
+        // Arrange
+        var query = new Query<Rental>(this.Provider)
+            .Where(s => s.RentedFromShopId == 56);
+
+        // Act
+        var sql = query.ToString();
+        output.WriteLine(sql);
+
+        var flattened = sql.FlattenSql();
+        flattened.Should().Be(
+            "SELECT [RentalId], [Json] FROM [MotoRent].[Rental] WHERE ([RentedFromShopId] = 56)");
+    }
+    [Fact]
     public void NoSelectSelect()
     {
         // Arrange
@@ -29,6 +44,7 @@ public class WhereClauseTestFixture(ITestOutputHelper output)
         flattened.Should().Be(
             "SELECT [TillSessionId], [Json] FROM [MotoRent].[TillSession] WHERE (([StaffUserName] = 'john') AND ([Status] = 'Open'))");
     }
+    
     [Fact]
     public void SimpleStringEquality_GeneratesCorrectSql()
     {

@@ -10,16 +10,9 @@ namespace MotoRent.LinqSql.Tests;
 /// <summary>
 /// Tests for date/time value translation to SQL.
 /// </summary>
-public class DateTimeQueryTestFixture
+public class DateTimeQueryTestFixture(ITestOutputHelper output)
 {
-    private readonly ITestOutputHelper m_output;
-    private readonly SqlQueryProvider m_provider;
-
-    public DateTimeQueryTestFixture(ITestOutputHelper output)
-    {
-        this.m_output = output;
-        this.m_provider = new SqlQueryProvider(new MockRequestContext());
-    }
+    private readonly SqlQueryProvider m_provider = new(new MockRequestContext());
 
     [Fact]
     public void DateTimeOffsetGreaterThanOrEqual_GeneratesCorrectFormat()
@@ -31,7 +24,7 @@ public class DateTimeQueryTestFixture
 
         // Act
         var sql = query.ToString();
-        this.m_output.WriteLine(sql);
+        output.WriteLine(sql);
 
         // Assert
         sql.Should().Contain("[OpenedAt] >= '");
@@ -48,7 +41,7 @@ public class DateTimeQueryTestFixture
 
         // Act
         var sql = query.ToString();
-        this.m_output.WriteLine(sql);
+        output.WriteLine(sql);
 
         // Assert
         sql.Should().Contain("[OpenedAt] < '");
@@ -67,7 +60,7 @@ public class DateTimeQueryTestFixture
 
         // Act
         var sql = query.ToString();
-        this.m_output.WriteLine(sql);
+        output.WriteLine(sql);
 
         // Assert - Both conditions present in nested structure
         sql.Should().Contain("[OpenedAt] >=");
@@ -85,7 +78,7 @@ public class DateTimeQueryTestFixture
 
         // Act
         var sql = query.ToString();
-        this.m_output.WriteLine(sql);
+        output.WriteLine(sql);
 
         // Assert
         sql.Should().Contain("[ExpectedCloseDate]");
@@ -102,7 +95,7 @@ public class DateTimeQueryTestFixture
 
         // Act
         var sql = query.ToString();
-        this.m_output.WriteLine(sql);
+        output.WriteLine(sql);
 
         // Assert
         sql.Should().Contain("[ExpectedCloseDate]");
@@ -118,7 +111,7 @@ public class DateTimeQueryTestFixture
 
         // Act
         var sql = query.ToString();
-        this.m_output.WriteLine(sql);
+        output.WriteLine(sql);
 
         // Assert
         sql.Should().Contain("[ClosedAt]");
@@ -134,7 +127,7 @@ public class DateTimeQueryTestFixture
 
         // Act
         var sql = query.ToString();
-        this.m_output.WriteLine(sql);
+        output.WriteLine(sql);
 
         // Assert
         sql.Should().Contain("[ClosedAt]");
@@ -151,7 +144,7 @@ public class DateTimeQueryTestFixture
 
         // Act
         var sql = query.ToString();
-        this.m_output.WriteLine(sql);
+        output.WriteLine(sql);
 
         // Assert
         sql.Should().Contain("[OpenedAt] >= '");
@@ -168,7 +161,7 @@ public class DateTimeQueryTestFixture
 
         // Act
         var sql = query.ToString();
-        this.m_output.WriteLine(sql);
+        output.WriteLine(sql);
 
         // Assert
         sql.Should().Contain("2024-03-15");
@@ -186,7 +179,7 @@ public class DateTimeQueryTestFixture
 
         // Act
         var sql = query.ToString();
-        this.m_output.WriteLine(sql);
+        output.WriteLine(sql);
 
         // Assert - Both conditions present in nested structure
         sql.Should().Contain("[OpenedAt] >=");

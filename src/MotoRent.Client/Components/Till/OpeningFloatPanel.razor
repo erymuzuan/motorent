@@ -1,5 +1,4 @@
 @inherits LocalizedComponentBase<OpeningFloatPanel>
-@using MotoRent.Domain.Entities
 @inject ExchangeRateService ExchangeRateService
 
 <div class="mr-opening-float-panel">
@@ -26,7 +25,7 @@
                            min="0"
                            value="@count"
                            disabled="@Disabled"
-                           @oninput="@(e => OnCountChanged(SupportedCurrencies.THB, denomination, e))" />
+                           @oninput="@(_ => OnCountChanged(SupportedCurrencies.THB, denomination, count))" />
                     <button type="button" class="mr-denom-btn" disabled="@Disabled" @onclick="() => Increment(SupportedCurrencies.THB, denomination)">
                         <i class="ti ti-plus"></i>
                     </button>
@@ -74,7 +73,7 @@
                                min="0"
                                value="@count"
                                disabled="@Disabled"
-                               @oninput="@(e => OnCountChanged(currency, denomination, e))" />
+                               @oninput="@(_ => OnCountChanged(currency, denomination, count))" />
                         <button type="button" class="mr-denom-btn" disabled="@Disabled" @onclick="() => Increment(currency, denomination)">
                             <i class="ti ti-plus"></i>
                         </button>
@@ -243,17 +242,10 @@
         }
     }
 
-    private void OnCountChanged(string currency, decimal denomination, ChangeEventArgs e)
+    private void OnCountChanged(string currency, decimal denomination, int count)
     {
-        if (int.TryParse(e.Value?.ToString(), out var count) && count >= 0)
-        {
-            SetCount(currency, denomination, count);
-        }
-        else
-        {
-            SetCount(currency, denomination, 0);
-        }
-        NotifyChanged();
+        this.SetCount(currency, denomination, count >= 0 ? count : 0);
+        this.NotifyChanged();
     }
 
     private decimal GetCurrencyTotal(string currency)

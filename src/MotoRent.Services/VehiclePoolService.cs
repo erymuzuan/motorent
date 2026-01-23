@@ -19,7 +19,7 @@ public class VehiclePoolService(RentalDataContext context)
         int page = 1,
         int pageSize = 20)
     {
-        var query = this.Context.CreateQuery<VehiclePool>().OrderBy(p => p.Name);
+        IQueryable<VehiclePool> query = this.Context.CreateQuery<VehiclePool>().OrderBy(p => p.Name);
 
         if (isActive.HasValue)
         {

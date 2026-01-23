@@ -49,8 +49,7 @@ public partial class TillService
     {
         var dateOnly = date.Date;
         var query = this.Context.CreateQuery<DailyClose>()
-            .Where(dc => dc.ShopId == shopId)
-            .Where(dc => dc.Date == dateOnly);
+            .Where(dc => dc.ShopId == shopId && dc.Date == dateOnly);
         return await this.Context.LoadOneAsync(query);
     }
 
@@ -234,8 +233,7 @@ public partial class TillService
     public async Task<List<ShortageLog>> GetShortageLogsByStaffAsync(int shopId, string staffUserName)
     {
         var query = this.Context.CreateQuery<ShortageLog>()
-            .Where(sl => sl.ShopId == shopId)
-            .Where(sl => sl.StaffUserName == staffUserName)
+            .Where(sl => sl.ShopId == shopId && sl.StaffUserName == staffUserName)
             .OrderByDescending(sl => sl.LoggedAt);
 
         var result = await this.Context.LoadAsync(query, page: 1, size: 1000, includeTotalRows: false);
@@ -254,9 +252,7 @@ public partial class TillService
     public async Task<Dictionary<string, decimal>> GetDropTotalsByCurrencyAsync(int sessionId)
     {
         var query = this.Context.CreateQuery<TillTransaction>()
-            .Where(t => t.TillSessionId == sessionId)
-            .Where(t => t.TransactionType == TillTransactionType.Drop)
-            .Where(t => !t.IsVoided);
+            .Where(t => t.TillSessionId == sessionId && t.TransactionType == TillTransactionType.Drop && !t.IsVoided);
 
         var result = await this.Context.LoadAsync(query, page: 1, size: 1000, includeTotalRows: false);
 
@@ -276,9 +272,7 @@ public partial class TillService
     public async Task<List<TillTransaction>> GetDropTransactionsAsync(int sessionId)
     {
         var query = this.Context.CreateQuery<TillTransaction>()
-            .Where(t => t.TillSessionId == sessionId)
-            .Where(t => t.TransactionType == TillTransactionType.Drop)
-            .Where(t => !t.IsVoided)
+            .Where(t => t.TillSessionId == sessionId && t.TransactionType == TillTransactionType.Drop && !t.IsVoided)
             .OrderBy(t => t.TransactionTime);
 
         var result = await this.Context.LoadAsync(query, page: 1, size: 1000, includeTotalRows: false);

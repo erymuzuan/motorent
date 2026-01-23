@@ -19,9 +19,7 @@ public partial class TillService
 
         var result = await this.Context.LoadAsync(
             this.Context.CreateQuery<TillSession>()
-                .Where(s => s.ShopId == shopId)
-                .Where(s => s.OpenedAt >= startOfDay)
-                .Where(s => s.OpenedAt < endOfDay)
+                .Where(s => s.ShopId == shopId && s.OpenedAt >= startOfDay && s.OpenedAt < endOfDay)
                 .OrderBy(s => s.OpenedAt),
             page: 1, size: 100, includeTotalRows: false);
         return result.ItemCollection.ToList();
@@ -132,8 +130,7 @@ public partial class TillService
 
         var result = await this.Context.LoadAsync(
             this.Context.CreateQuery<TillTransaction>()
-                .Where(t => t.TransactionType == TillTransactionType.Drop)
-                .Where(t => !t.IsVerified),
+                .Where(t => t.TransactionType == TillTransactionType.Drop && !t.IsVerified),
             page: 1, size: 1000, includeTotalRows: false);
 
         // Filter by session IDs (since we can't do IsInList in the query easily)
@@ -183,8 +180,7 @@ public partial class TillService
     {
         var result = await this.Context.LoadAsync(
             this.Context.CreateQuery<TillSession>()
-                .Where(s => s.ShopId == shopId)
-                .Where(s => s.Status == TillSessionStatus.Open)
+                .Where(s => s.ShopId == shopId && s.Status == TillSessionStatus.Open)
                 .OrderBy(s => s.OpenedAt),
             page: 1, size: 100, includeTotalRows: false);
         return result.ItemCollection.ToList();
@@ -200,10 +196,10 @@ public partial class TillService
 
         var result = await this.Context.LoadAsync(
             this.Context.CreateQuery<TillSession>()
-                .Where(s => s.ShopId == shopId)
-                .Where(s => s.Status != TillSessionStatus.Open)
-                .Where(s => s.Status != TillSessionStatus.Reconciling)
-                .Where(s => s.ClosedAt >= cutoffDate)
+                .Where(s => s.ShopId == shopId
+                    && s.Status != TillSessionStatus.Open
+                    && s.Status != TillSessionStatus.Reconciling
+                    && s.ClosedAt >= cutoffDate)
                 .OrderByDescending(s => s.ClosedAt),
             page: 1, size: 100, includeTotalRows: false);
         return result.ItemCollection.ToList();

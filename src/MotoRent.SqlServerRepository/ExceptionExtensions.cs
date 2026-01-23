@@ -1,7 +1,7 @@
 using Microsoft.Data.SqlClient;
 using MotoRent.Domain.Core;
 
-namespace MotoRent.Domain.DataContext;
+namespace MotoRent.SqlServerRepository;
 
 /// <summary>
 /// Extension methods for handling SQL exceptions related to missing database objects.
