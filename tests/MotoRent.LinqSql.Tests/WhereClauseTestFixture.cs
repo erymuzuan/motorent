@@ -1,5 +1,6 @@
 using FluentAssertions;
 using MotoRent.Domain.Entities;
+using MotoRent.Domain.Extensions;
 using MotoRent.Domain.QueryProviders;
 using MotoRent.SqlServerRepository;
 using Xunit;
@@ -7,30 +8,37 @@ using Xunit.Abstractions;
 
 namespace MotoRent.LinqSql.Tests;
 
-/// <summary>
-/// Tests for basic WHERE clause translation.
-/// </summary>
-public class WhereClauseTestFixture
+public class WhereClauseTestFixture(ITestOutputHelper output)
 {
-    private readonly ITestOutputHelper m_output;
-    private readonly SqlQueryProvider m_provider;
+    private SqlQueryProvider Provider { get; } = new(new MockRequestContext());
 
-    public WhereClauseTestFixture(ITestOutputHelper output)
+    [Fact]
+    public void NoSelectSelect()
     {
-        this.m_output = output;
-        this.m_provider = new SqlQueryProvider(new MockRequestContext());
-    }
+        // Arrange
+        var query = new Query<TillSession>(this.Provider)
+            .Where(s => s.StaffUserName == "john")
+            .Where(x => x.Status == TillSessionStatus.Open);
 
+        // Act
+        var sql = query.ToString();
+        output.WriteLine(sql);
+
+        var flattened = sql.FlattenSql();
+        // Assert - Note: Expression.AndAlso wraps combined conditions in extra parentheses
+        flattened.Should().Be(
+            "SELECT [TillSessionId], [Json] FROM [MotoRent].[TillSession] WHERE (([StaffUserName] = 'john') AND ([Status] = 'Open'))");
+    }
     [Fact]
     public void SimpleStringEquality_GeneratesCorrectSql()
     {
         // Arrange
-        var query = new Query<TillSession>(this.m_provider)
+        var query = new Query<TillSession>(this.Provider)
             .Where(s => s.StaffUserName == "john");
 
         // Act
         var sql = query.ToString();
-        this.m_output.WriteLine(sql);
+        output.WriteLine(sql);
 
         // Assert
         sql.Should().Contain("[StaffUserName] = 'john'");
@@ -41,12 +49,12 @@ public class WhereClauseTestFixture
     public void SimpleIntEquality_GeneratesCorrectSql()
     {
         // Arrange
-        var query = new Query<TillSession>(this.m_provider)
+        var query = new Query<TillSession>(this.Provider)
             .Where(s => s.ShopId == 42);
 
         // Act
         var sql = query.ToString();
-        this.m_output.WriteLine(sql);
+        output.WriteLine(sql);
 
         // Assert
         sql.Should().Contain("[ShopId] = 42");
@@ -56,13 +64,13 @@ public class WhereClauseTestFixture
     public void ChainedWhereClauses_GeneratesNestedSubqueries()
     {
         // Arrange - Chained Where clauses create nested subqueries in this codebase
-        var query = new Query<TillSession>(this.m_provider)
+        var query = new Query<TillSession>(this.Provider)
             .Where(s => s.StaffUserName == "john")
             .Where(s => s.ShopId == 1);
 
         // Act
         var sql = query.ToString();
-        this.m_output.WriteLine(sql);
+        output.WriteLine(sql);
 
         // Assert - Both conditions are in separate WHERE clauses due to nested subquery structure
         sql.Should().Contain("[StaffUserName] = 'john'");
@@ -74,12 +82,12 @@ public class WhereClauseTestFixture
     public void CompoundAndPredicate_GeneratesAndOperator()
     {
         // Arrange
-        var query = new Query<TillSession>(this.m_provider)
+        var query = new Query<TillSession>(this.Provider)
             .Where(s => s.StaffUserName == "john" && s.ShopId == 1);
 
         // Act
         var sql = query.ToString();
-        this.m_output.WriteLine(sql);
+        output.WriteLine(sql);
 
         // Assert
         sql.Should().Contain("AND");
@@ -91,12 +99,12 @@ public class WhereClauseTestFixture
     public void CompoundOrPredicate_GeneratesOrOperator()
     {
         // Arrange
-        var query = new Query<TillSession>(this.m_provider)
+        var query = new Query<TillSession>(this.Provider)
             .Where(s => s.StaffUserName == "john" || s.StaffUserName == "jane");
 
         // Act
         var sql = query.ToString();
-        this.m_output.WriteLine(sql);
+        output.WriteLine(sql);
 
         // Assert
         sql.Should().Contain("OR");
@@ -106,12 +114,12 @@ public class WhereClauseTestFixture
     public void NullEquality_GeneratesIsNull()
     {
         // Arrange
-        var query = new Query<TillSession>(this.m_provider)
+        var query = new Query<TillSession>(this.Provider)
             .Where(s => s.ClosingNotes == null);
 
         // Act
         var sql = query.ToString();
-        this.m_output.WriteLine(sql);
+        output.WriteLine(sql);
 
         // Assert
         sql.Should().Contain("IS NULL");
@@ -121,12 +129,12 @@ public class WhereClauseTestFixture
     public void NotNullEquality_GeneratesIsNotNull()
     {
         // Arrange
-        var query = new Query<TillSession>(this.m_provider)
+        var query = new Query<TillSession>(this.Provider)
             .Where(s => s.ClosingNotes != null);
 
         // Act
         var sql = query.ToString();
-        this.m_output.WriteLine(sql);
+        output.WriteLine(sql);
 
         // Assert
         sql.Should().Contain("IS NOT NULL");
@@ -136,12 +144,12 @@ public class WhereClauseTestFixture
     public void GreaterThan_GeneratesCorrectOperator()
     {
         // Arrange
-        var query = new Query<TillSession>(this.m_provider)
+        var query = new Query<TillSession>(this.Provider)
             .Where(s => s.OpeningFloat > 1000);
 
         // Act
         var sql = query.ToString();
-        this.m_output.WriteLine(sql);
+        output.WriteLine(sql);
 
         // Assert
         sql.Should().Contain("[OpeningFloat] > 1000");
@@ -151,12 +159,12 @@ public class WhereClauseTestFixture
     public void LessThanOrEqual_GeneratesCorrectOperator()
     {
         // Arrange
-        var query = new Query<TillSession>(this.m_provider)
+        var query = new Query<TillSession>(this.Provider)
             .Where(s => s.Variance <= 0);
 
         // Act
         var sql = query.ToString();
-        this.m_output.WriteLine(sql);
+        output.WriteLine(sql);
 
         // Assert
         sql.Should().Contain("[Variance] <= 0");
@@ -166,12 +174,12 @@ public class WhereClauseTestFixture
     public void StringWithSingleQuote_EscapesCorrectly()
     {
         // Arrange
-        var query = new Query<TillSession>(this.m_provider)
+        var query = new Query<TillSession>(this.Provider)
             .Where(s => s.StaffUserName == "john's");
 
         // Act
         var sql = query.ToString();
-        this.m_output.WriteLine(sql);
+        output.WriteLine(sql);
 
         // Assert
         sql.Should().Contain("'john''s'");
@@ -182,37 +190,38 @@ public class WhereClauseTestFixture
     {
         // Arrange
         var staffName = "john";
-        var query = new Query<TillSession>(this.m_provider)
+        var query = new Query<TillSession>(this.Provider)
             .Where(s => s.StaffUserName == staffName);
 
         // Act
         var sql = query.ToString();
-        this.m_output.WriteLine(sql);
+        output.WriteLine(sql);
 
         // Assert
         sql.Should().Contain("[StaffUserName] = 'john'");
     }
 
     [Fact]
-    public void MultipleChainedWheres_GeneratesNestedSubqueries()
+    public void MultipleChainedWheres_GeneratesMergedWhereClause()
     {
-        // Arrange - Multiple chained Where clauses create deeply nested subqueries
-        var query = new Query<TillSession>(this.m_provider)
+        // Arrange - Multiple chained Where clauses are merged into a single flat query
+        var query = new Query<TillSession>(this.Provider)
             .Where(s => s.StaffUserName == "john")
             .Where(s => s.ShopId == 1)
             .Where(s => s.OpeningFloat >= 5000);
 
         // Act
         var sql = query.ToString();
-        this.m_output.WriteLine(sql);
+        output.WriteLine(sql);
 
-        // Assert - All three conditions are present in the nested structure
+        // Assert - All three conditions are present in merged WHERE clause
         sql.Should().NotBeNull();
         sql.Should().Contain("[StaffUserName] = 'john'");
         sql.Should().Contain("[ShopId] = 1");
         sql.Should().Contain("[OpeningFloat] >= 5000");
-        // Count occurrences of WHERE for nested subqueries
+        // Verify flat query with single WHERE and AND operators
         var whereCount = sql!.Split("WHERE").Length - 1;
-        whereCount.Should().BeGreaterThanOrEqualTo(3);
+        whereCount.Should().Be(1);
+        sql.Should().Contain("AND");
     }
 }
