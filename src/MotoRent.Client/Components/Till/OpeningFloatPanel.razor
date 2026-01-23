@@ -1,157 +1,97 @@
 @inherits LocalizedComponentBase<OpeningFloatPanel>
-@inject ExchangeRateService ExchangeRateService
 
-<div class="mr-opening-float-panel">
-    @* THB Section (always visible) *@
-    <div class="mr-currency-section">
-        <div class="mr-currency-header">
-            <span class="mr-currency-icon">@CurrencyDenominations.GetCurrencySymbol(SupportedCurrencies.THB)</span>
-            <span class="mr-currency-name">@Localizer["ThailandBaht"]</span>
+<div class="mr-float-panel">
+    @* Add Cash Section - Denomination Chips *@
+    <div class="mr-add-cash-section">
+        <div class="mr-section-header">
+            <i class="ti ti-plus text-teal me-2"></i>
+            <span>@Localizer["AddCash"]</span>
         </div>
+        <div class="mr-denomination-chips">
+            @foreach (var denomination in CurrencyDenominations.GetDenominations(SupportedCurrencies.THB))
+            {
+                var isBill = denomination >= 20;
+                var chipClass = isBill ? "mr-chip-bill" : "mr-chip-coin";
+                var count = GetCount(denomination);
 
-        @foreach (var denomination in CurrencyDenominations.GetDenominations(SupportedCurrencies.THB))
-        {
-            var count = GetCount(SupportedCurrencies.THB, denomination);
-            var subtotal = denomination * count;
-
-            <div class="mr-denom-row @(count > 0 ? "has-value" : "")">
-                <span class="mr-denom-value">@FormatDenomination(SupportedCurrencies.THB, denomination)</span>
-                <div class="mr-denom-counter">
-                    <button type="button" class="mr-denom-btn" disabled="@(Disabled || count == 0)" @onclick="() => Decrement(SupportedCurrencies.THB, denomination)">
-                        <i class="ti ti-minus"></i>
-                    </button>
-                    <input type="number"
-                           class="mr-denom-count"
-                           min="0"
-                           value="@count"
-                           disabled="@Disabled"
-                           @oninput="@(_ => OnCountChanged(SupportedCurrencies.THB, denomination, count))" />
-                    <button type="button" class="mr-denom-btn" disabled="@Disabled" @onclick="() => Increment(SupportedCurrencies.THB, denomination)">
-                        <i class="ti ti-plus"></i>
-                    </button>
-                </div>
-                <span class="mr-denom-subtotal">
-                    @if (count > 0)
-                    {
-                        @FormatAmount(SupportedCurrencies.THB, subtotal)
-                    }
-                </span>
-            </div>
-        }
-
-        <div class="mr-currency-total">
-            <span>@Localizer["Total"]</span>
-            <span>@FormatAmount(SupportedCurrencies.THB, GetCurrencyTotal(SupportedCurrencies.THB))</span>
+                <button type="button"
+                        class="mr-denom-chip @chipClass @(count > 0 ? "active" : "")"
+                        disabled="@Disabled"
+                        @onclick="() => Increment(denomination)">
+                    <span class="mr-chip-indicator"></span>
+                    <span class="mr-chip-icon">@(isBill ? "฿" : "C")</span>
+                    <span class="mr-chip-value">@denomination.ToString("N0")</span>
+                </button>
+            }
         </div>
     </div>
 
-    @* Foreign Currency Sections *@
-    @foreach (var currency in m_visibleCurrencies.Where(c => c != SupportedCurrencies.THB))
-    {
-        <div class="mr-currency-section">
-            <div class="mr-currency-header">
-                <span class="mr-currency-icon">@CurrencyDenominations.GetCurrencySymbol(currency)</span>
-                <span class="mr-currency-name">@GetCurrencyName(currency)</span>
-                <button type="button" class="btn btn-ghost-danger btn-sm ms-auto" disabled="@Disabled" @onclick="() => RemoveCurrency(currency)">
-                    <i class="ti ti-x me-1"></i>@Localizer["RemoveCurrency"]
-                </button>
-            </div>
-
-            @foreach (var denomination in CurrencyDenominations.GetDenominations(currency))
-            {
-                var count = GetCount(currency, denomination);
-                var subtotal = denomination * count;
-
-                <div class="mr-denom-row @(count > 0 ? "has-value" : "")">
-                    <span class="mr-denom-value">@FormatDenomination(currency, denomination)</span>
-                    <div class="mr-denom-counter">
-                        <button type="button" class="mr-denom-btn" disabled="@(Disabled || count == 0)" @onclick="() => Decrement(currency, denomination)">
-                            <i class="ti ti-minus"></i>
-                        </button>
-                        <input type="number"
-                               class="mr-denom-count"
-                               min="0"
-                               value="@count"
-                               disabled="@Disabled"
-                               @oninput="@(_ => OnCountChanged(currency, denomination, count))" />
-                        <button type="button" class="mr-denom-btn" disabled="@Disabled" @onclick="() => Increment(currency, denomination)">
-                            <i class="ti ti-plus"></i>
-                        </button>
-                    </div>
-                    <span class="mr-denom-subtotal">
-                        @if (count > 0)
-                        {
-                            @FormatAmount(currency, subtotal)
-                        }
-                    </span>
-                </div>
-            }
-
-            <div class="mr-currency-total">
-                <span>@Localizer["Total"]</span>
-                <span>@FormatAmount(currency, GetCurrencyTotal(currency))</span>
-            </div>
-
-            @if (m_exchangeRates.TryGetValue(currency, out var rate) && rate > 0)
-            {
-                var thbEquivalent = GetCurrencyTotal(currency) * rate;
-                <div class="mr-currency-thb-equiv">
-                    <span>@Localizer["ThbEquivalent"]</span>
-                    <span>@FormatAmount(SupportedCurrencies.THB, thbEquivalent)</span>
-                </div>
-            }
-        </div>
-    }
-
-    @* Add Currency Button *@
+    @* Counted Items Section - Only show items with count > 0 *@
     @{
-        var availableCurrencies = CurrencyDenominations.CurrenciesWithDenominations
-            .Where(c => c != SupportedCurrencies.THB && !m_visibleCurrencies.Contains(c))
+        var countedItems = CurrencyDenominations.GetDenominations(SupportedCurrencies.THB)
+            .Where(d => GetCount(d) > 0)
             .ToList();
     }
-    @if (availableCurrencies.Any() && !Disabled)
+
+    @if (countedItems.Any())
     {
-        <div class="mr-add-currency-section">
-            <small class="text-muted d-block mb-2">@Localizer["TapToAddCurrency"]</small>
-            <div class="d-flex flex-wrap gap-2">
-                @foreach (var currency in availableCurrencies)
+        <div class="mr-counted-section">
+            <div class="mr-section-header">
+                <i class="ti ti-coins text-muted me-2"></i>
+                <span>@Localizer["CountedItems"]</span>
+                <span class="ms-auto badge bg-secondary-lt">@countedItems.Count @Localizer["Types"]</span>
+            </div>
+
+            <div class="mr-counted-list">
+                @foreach (var denomination in countedItems)
                 {
-                    <button type="button" class="btn btn-outline-primary btn-sm" @onclick="() => AddCurrency(currency)">
-                        <i class="ti ti-plus me-1"></i>
-                        @CurrencyDenominations.GetCurrencySymbol(currency) @GetCurrencyName(currency)
-                    </button>
+                    var count = GetCount(denomination);
+                    var subtotal = denomination * count;
+                    var isBill = denomination >= 20;
+                    var chipClass = isBill ? "mr-item-bill" : "mr-item-coin";
+
+                    <div class="mr-counted-item">
+                        <div class="mr-item-badge @chipClass">
+                            <span class="mr-badge-icon">@(isBill ? "฿" : "C")</span>
+                            <span class="mr-badge-value">@denomination.ToString("N0")</span>
+                        </div>
+                        <div class="mr-item-subtotal">
+                            <span class="mr-subtotal-label">@Localizer["Subtotal"]</span>
+                            <span class="mr-subtotal-value">฿@subtotal.ToString("N0")</span>
+                        </div>
+                        <div class="mr-item-controls">
+                            @if (count > 1)
+                            {
+                                <button type="button" class="mr-control-btn" disabled="@Disabled"
+                                        @onclick="() => Decrement(denomination)">
+                                    <i class="ti ti-minus"></i>
+                                </button>
+                            }
+                            else
+                            {
+                                <button type="button" class="mr-control-btn mr-control-delete" disabled="@Disabled"
+                                        @onclick="() => Remove(denomination)">
+                                    <i class="ti ti-trash"></i>
+                                </button>
+                            }
+                            <span class="mr-item-count">@count</span>
+                            <button type="button" class="mr-control-btn" disabled="@Disabled"
+                                    @onclick="() => Increment(denomination)">
+                                <i class="ti ti-plus"></i>
+                            </button>
+                        </div>
+                    </div>
                 }
             </div>
         </div>
     }
-
-    @* Sticky Footer with Grand Total *@
-    <div class="mr-sticky-footer">
-        <div class="mr-grand-total-breakdown">
-            @{
-                var thbTotal = GetCurrencyTotal(SupportedCurrencies.THB);
-            }
-            <span class="mr-total-item">@CurrencyDenominations.GetCurrencySymbol(SupportedCurrencies.THB)@thbTotal.ToString("N0")</span>
-
-            @foreach (var currency in m_visibleCurrencies.Where(c => c != SupportedCurrencies.THB))
-            {
-                var foreignTotal = GetCurrencyTotal(currency);
-                if (foreignTotal > 0 && m_exchangeRates.TryGetValue(currency, out var rate) && rate > 0)
-                {
-                    var thbEquiv = foreignTotal * rate;
-                    <span class="mr-total-separator">+</span>
-                    <span class="mr-total-item">
-                        @CurrencyDenominations.GetCurrencySymbol(currency)@foreignTotal.ToString("N0")
-                        <small class="text-muted">(= @CurrencyDenominations.GetCurrencySymbol(SupportedCurrencies.THB)@thbEquiv.ToString("N0"))</small>
-                    </span>
-                }
-            }
+    else
+    {
+        <div class="mr-empty-state">
+            <i class="ti ti-coins text-muted mb-2" style="font-size: 2rem;"></i>
+            <p class="text-muted mb-0">@Localizer["TapToAddDenominations"]</p>
         </div>
-        <div class="mr-grand-total">
-            <span class="mr-grand-total-label">@Localizer["GrandTotal"]</span>
-            <span class="mr-grand-total-value">@CurrencyDenominations.GetCurrencySymbol(SupportedCurrencies.THB)@GetGrandTotalThb().ToString("N0")</span>
-        </div>
-    </div>
+    }
 </div>
 
 @code {
@@ -167,153 +107,58 @@
     [Parameter]
     public bool Disabled { get; set; }
 
-    // Currency -> denomination -> count
-    private Dictionary<string, Dictionary<decimal, int>> m_currencyBreakdowns = new();
+    // THB denomination -> count (simplified for THB only)
+    private Dictionary<decimal, int> m_counts = new();
 
-    // Currencies currently visible (THB always included)
-    private HashSet<string> m_visibleCurrencies = [SupportedCurrencies.THB];
-
-    // Cached exchange rates for foreign currencies
-    private Dictionary<string, decimal> m_exchangeRates = new();
-
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
-        // Initialize THB with empty counts
-        InitializeCurrencyBreakdown(SupportedCurrencies.THB);
-
-        // Load exchange rates for all supported foreign currencies
-        await LoadExchangeRatesAsync();
-    }
-
-    private void InitializeCurrencyBreakdown(string currency)
-    {
-        if (m_currencyBreakdowns.ContainsKey(currency))
-            return;
-
-        var denominations = CurrencyDenominations.GetDenominations(currency);
-        m_currencyBreakdowns[currency] = denominations.ToDictionary(d => d, _ => 0);
-    }
-
-    private async Task LoadExchangeRatesAsync()
-    {
-        foreach (var currency in CurrencyDenominations.CurrenciesWithDenominations.Where(c => c != SupportedCurrencies.THB))
+        // Initialize all denominations with 0 counts
+        foreach (var denom in CurrencyDenominations.GetDenominations(SupportedCurrencies.THB))
         {
-            var rate = await ExchangeRateService.GetCurrentRateAsync(currency);
-            if (rate != null)
-            {
-                m_exchangeRates[currency] = rate.BuyRate;
-            }
+            m_counts[denom] = 0;
         }
     }
 
-    private int GetCount(string currency, decimal denomination)
+    private int GetCount(decimal denomination)
     {
-        if (m_currencyBreakdowns.TryGetValue(currency, out var counts))
-        {
-            return counts.TryGetValue(denomination, out var count) ? count : 0;
-        }
-        return 0;
+        return m_counts.TryGetValue(denomination, out var count) ? count : 0;
     }
 
-    private void SetCount(string currency, decimal denomination, int count)
+    private void SetCount(decimal denomination, int count)
     {
-        if (!m_currencyBreakdowns.ContainsKey(currency))
-        {
-            InitializeCurrencyBreakdown(currency);
-        }
-
-        m_currencyBreakdowns[currency][denomination] = Math.Max(0, count);
-    }
-
-    private void Increment(string currency, decimal denomination)
-    {
-        var current = GetCount(currency, denomination);
-        SetCount(currency, denomination, current + 1);
+        m_counts[denomination] = Math.Max(0, count);
         NotifyChanged();
     }
 
-    private void Decrement(string currency, decimal denomination)
+    private void Increment(decimal denomination)
     {
-        var current = GetCount(currency, denomination);
+        var current = GetCount(denomination);
+        SetCount(denomination, current + 1);
+    }
+
+    private void Decrement(decimal denomination)
+    {
+        var current = GetCount(denomination);
         if (current > 0)
         {
-            SetCount(currency, denomination, current - 1);
-            NotifyChanged();
+            SetCount(denomination, current - 1);
         }
     }
 
-    private void OnCountChanged(string currency, decimal denomination, int count)
+    private void Remove(decimal denomination)
     {
-        this.SetCount(currency, denomination, count >= 0 ? count : 0);
-        this.NotifyChanged();
-    }
-
-    private decimal GetCurrencyTotal(string currency)
-    {
-        if (!m_currencyBreakdowns.TryGetValue(currency, out var counts))
-            return 0;
-
-        return counts.Sum(kvp => kvp.Key * kvp.Value);
-    }
-
-    private decimal GetGrandTotalThb()
-    {
-        decimal total = GetCurrencyTotal(SupportedCurrencies.THB);
-
-        foreach (var currency in m_visibleCurrencies.Where(c => c != SupportedCurrencies.THB))
-        {
-            var foreignTotal = GetCurrencyTotal(currency);
-            if (foreignTotal > 0 && m_exchangeRates.TryGetValue(currency, out var rate) && rate > 0)
-            {
-                total += foreignTotal * rate;
-            }
-        }
-
-        return total;
-    }
-
-    private void AddCurrency(string currency)
-    {
-        if (m_visibleCurrencies.Contains(currency))
-            return;
-
-        m_visibleCurrencies.Add(currency);
-        InitializeCurrencyBreakdown(currency);
-        NotifyChanged();
-    }
-
-    private void RemoveCurrency(string currency)
-    {
-        if (currency == SupportedCurrencies.THB)
-            return; // Cannot remove THB
-
-        m_visibleCurrencies.Remove(currency);
-        m_currencyBreakdowns.Remove(currency);
-        NotifyChanged();
+        SetCount(denomination, 0);
     }
 
     private List<CurrencyDenominationBreakdown> BuildBreakdowns()
     {
-        var breakdowns = new List<CurrencyDenominationBreakdown>();
-
-        foreach (var currency in m_visibleCurrencies)
+        var breakdown = new CurrencyDenominationBreakdown
         {
-            if (!m_currencyBreakdowns.TryGetValue(currency, out var counts))
-                continue;
+            Currency = SupportedCurrencies.THB,
+            Denominations = new Dictionary<decimal, int>(m_counts.Where(kvp => kvp.Value > 0))
+        };
 
-            // Only include currencies that have at least one non-zero count
-            // or always include THB
-            if (currency == SupportedCurrencies.THB || counts.Any(kvp => kvp.Value > 0))
-            {
-                breakdowns.Add(new CurrencyDenominationBreakdown
-                {
-                    Currency = currency,
-                    Denominations = new Dictionary<decimal, int>(counts.Where(kvp => kvp.Value > 0))
-                });
-            }
-        }
-
-        return breakdowns;
+        return [breakdown];
     }
 
     private async void NotifyChanged()
@@ -322,25 +167,4 @@
         await OnBreakdownsChanged.InvokeAsync(breakdowns);
         StateHasChanged();
     }
-
-    private string FormatDenomination(string currency, decimal denomination)
-    {
-        var symbol = CurrencyDenominations.GetCurrencySymbol(currency);
-        return $"{symbol}{denomination:N0}";
-    }
-
-    private string FormatAmount(string currency, decimal amount)
-    {
-        var symbol = CurrencyDenominations.GetCurrencySymbol(currency);
-        return $"{symbol}{amount:N0}";
-    }
-
-    private string GetCurrencyName(string currency) => currency switch
-    {
-        SupportedCurrencies.THB => Localizer["ThailandBaht"],
-        SupportedCurrencies.USD => Localizer["USDollar"],
-        SupportedCurrencies.EUR => Localizer["Euro"],
-        SupportedCurrencies.CNY => Localizer["ChineseYuan"],
-        _ => currency
-    };
 }

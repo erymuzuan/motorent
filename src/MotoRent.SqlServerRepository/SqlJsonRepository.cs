@@ -24,6 +24,9 @@ public class SqlJsonRepository<T>(
     private string IdColumn { get; } = $"{typeof(T).Name}Id";
     private string TableName { get; } = typeof(T).Name;
 
+    // Audit columns to include in SELECT queries
+    private const string AuditColumns = "[CreatedBy], [CreatedTimestamp], [ChangedBy], [ChangedTimestamp]";
+
     private static bool HasNetworkError(SqlException exception) => exception switch
     {
         null => false,
@@ -61,7 +64,10 @@ public class SqlJsonRepository<T>(
 public async Task<LoadOperation<T>> LoadAsync(IQueryable<T> query, int page = 1, int size = 40, bool includeTotalRows = false)
     {
         var schema = this.GetSchema();
+        var queryString = query.ToString();
+        Console.WriteLine($"⨸ {typeof(T).Name} query.ToString(): {queryString}");
         var sql = this.GenerateSqlWithComputedColumns(query);
+        Console.WriteLine($"⨸ {typeof(T).Name} GeneratedSQL: {sql}");
         var pagedSql = string.Empty;
 
         var pr = await Policy.Handle<SqlException>(HasNetworkError)
@@ -80,15 +86,21 @@ public async Task<LoadOperation<T>> LoadAsync(IQueryable<T> query, int page = 1,
 // Get total count if requested
                 if (includeTotalRows)
                 {
-                    // For COUNT, we use ToCountSqlCommand which strips ORDER BY clause
-                    // (ORDER BY is not valid with COUNT(*) without GROUP BY in SQL Server)
-                    var countSql = query.ToCountSqlCommand();
+                    // For COUNT, we don't need computed columns, use standard method
+                    var countSql = query.ToSqlCommand("COUNT(*)");
+                    // ORDER BY is invalid in COUNT queries - strip it
+                    var orderByIndex = countSql.IndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase);
+                    if (orderByIndex >= 0)
+                        countSql = countSql.Substring(0, orderByIndex).TrimEnd();
+                    Console.WriteLine($"⨸ {typeof(T).Name} CountSQL: {countSql}");
                     await using var countCmd = new SqlCommand(countSql, conn);
                     result.TotalRows = (int)(await countCmd.ExecuteScalarAsync() ?? 0);
+                    Console.WriteLine($"⨸ {typeof(T).Name} TotalRows: {result.TotalRows}");
                 }
 
 // Apply paging
                 pagedSql = this.ApplyPagingWithComputedColumns(sql, page, size);
+                Console.WriteLine($"⨸ {typeof(T).Name} PagedSQL: {pagedSql}");
 
                 await using var cmd = new SqlCommand(pagedSql, conn);
                 await using var reader = await cmd.ExecuteReaderAsync();
@@ -110,6 +122,8 @@ public async Task<LoadOperation<T>> LoadAsync(IQueryable<T> query, int page = 1,
         {
             System.Diagnostics.Debug.WriteLine($"SQL Error for {typeof(T).Name}: {pagedSql}");
             Console.WriteLine($"SQL Error for {typeof(T).Name}: {pagedSql}");
+            Console.WriteLine($"⚠ {typeof(T).Name} Exception: {pr.FinalException.Message}");
+            Console.WriteLine($"⚠ {typeof(T).Name} Stack: {pr.FinalException.StackTrace}");
             throw new InvalidOperationException($"SQL Error for {typeof(T).Name}: {pagedSql}", pr.FinalException);
         }
 
@@ -308,7 +322,26 @@ public async Task<LoadOperation<T>> LoadAsync(IQueryable<T> query, int page = 1,
         var entity = json.DeserializeFromJson<T>();
 
         if (entity is not null)
+        {
             entity.SetId(reader.GetInt32(reader.GetOrdinal(this.IdColumn)));
+
+            // Read audit columns
+            var createdByOrdinal = reader.GetOrdinal("CreatedBy");
+            if (!reader.IsDBNull(createdByOrdinal))
+                entity.CreatedBy = reader.GetString(createdByOrdinal);
+
+            var createdTimestampOrdinal = reader.GetOrdinal("CreatedTimestamp");
+            if (!reader.IsDBNull(createdTimestampOrdinal))
+                entity.CreatedTimestamp = reader.GetDateTimeOffset(createdTimestampOrdinal);
+
+            var changedByOrdinal = reader.GetOrdinal("ChangedBy");
+            if (!reader.IsDBNull(changedByOrdinal))
+                entity.ChangedBy = reader.GetString(changedByOrdinal);
+
+            var changedTimestampOrdinal = reader.GetOrdinal("ChangedTimestamp");
+            if (!reader.IsDBNull(changedTimestampOrdinal))
+                entity.ChangedTimestamp = reader.GetDateTimeOffset(changedTimestampOrdinal);
+        }
 
         return entity;
     }
@@ -738,11 +771,11 @@ public async Task<LoadOperation<T>> LoadAsync(IQueryable<T> query, int page = 1,
         if (computedColumns.Length == 0)
         {
             // No computed columns, use standard method
-            return query.ToSqlCommand($"[{this.IdColumn}], [Json]");
-}
+            return query.ToSqlCommand($"[{this.IdColumn}], [Json], {AuditColumns}");
+        }
 
         // Generate base SQL and then apply paging with computed column support
-        var baseSql = query.ToSqlCommand($"[{this.IdColumn}], [Json]");
+        var baseSql = query.ToSqlCommand($"[{this.IdColumn}], [Json], {AuditColumns}");
         return baseSql; // Will be processed by paging translator
     }
 
@@ -797,8 +830,9 @@ public async Task<LoadOperation<T>> LoadAsync(IQueryable<T> query, int page = 1,
             },
             "Vehicle" => new[]
             {
-                "ShopId", "Status", "VehicleTypeId", "Make", "Model", "Year", "LicensePlate",
-                "DailyRate", "IsAvailable", "LocationId"
+                "HomeShopId", "CurrentShopId", "VehiclePoolId", "VehicleType", "Segment",
+                "DurationType", "LicensePlate", "Brand", "Model", "Status", "DailyRate",
+                "VehicleOwnerId", "OwnerPaymentModel", "OwnerDailyRate", "OwnerRevenueSharePercent"
             },
             "Renter" => new[]
             {
@@ -817,8 +851,7 @@ public async Task<LoadOperation<T>> LoadAsync(IQueryable<T> query, int page = 1,
             },
             "Shop" => new[]
             {
-                "OrganizationId", "Name", "Code", "Status", "City", "Province",
-                "Address", "Phone", "Email", "IsOpen"
+                "Name", "Location", "IsActive", "Latitude", "Longitude"
             },
             _ => Array.Empty<string>()
         };

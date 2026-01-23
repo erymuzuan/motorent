@@ -405,6 +405,7 @@ public class ReceiptService(RentalDataContext context, ShopService shopService)
             ReceiptType = ReceiptTypes.BookingDeposit,
             Status = ReceiptStatus.Issued,
             BookingId = bookingId,
+            BookingRef = booking.BookingRef,
             TillSessionId = tillSessionId,
             ShopId = shopId,
             RenterId = renter?.RenterId,

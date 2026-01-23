@@ -90,23 +90,39 @@ public partial class Sql2012PagingTranslator : IPagingTranslator
     {
         var selectIndex = sql.IndexOf("SELECT", StringComparison.OrdinalIgnoreCase);
         var fromIndex = sql.IndexOf("FROM", StringComparison.OrdinalIgnoreCase);
-        
+
         if (selectIndex < 0 || fromIndex < 0) return sql;
 
         // Extract the original SELECT clause (without SELECT keyword)
         var originalSelect = sql.Substring(selectIndex + 6, fromIndex - selectIndex - 6).Trim();
-        
-        // Build new SELECT with computed columns
-        var additionalColumns = computedColumns.Where(col => originalSelect.Contains($"[{col}]")).ToList();
-        var newSelect = additionalColumns.Count > 0 
+
+        // Build new SELECT with computed columns for WHERE clause filtering
+        var whereIndex = sql.IndexOf("WHERE", StringComparison.OrdinalIgnoreCase);
+        var additionalColumns = new List<string>();
+        if (whereIndex >= 0)
+        {
+            var wherePart = sql.Substring(whereIndex);
+            additionalColumns = computedColumns.Where(col => wherePart.Contains($"[{col}]")).ToList();
+        }
+        var newSelect = additionalColumns.Count > 0
             ? $"{originalSelect}, {string.Join(", ", additionalColumns.Select(c => $"[{c}]"))}"
             : originalSelect;
 
-        // Build inner query
-        var innerQuery = $"SELECT {newSelect} {sql.Substring(fromIndex)}";
-        
-        // Build final query with subquery
-        return $"SELECT {originalSelect} FROM ({innerQuery}) AS t1 OFFSET {skip} ROWS FETCH NEXT {size} ROWS ONLY";
+        // Extract table name to derive entity ID column for ORDER BY
+        var tableMatch = TableNameRegex().Match(sql);
+        var orderColumn = tableMatch.Success ? $"{tableMatch.Groups[1].Value}Id" : "1";
+
+        // Build inner query (without ORDER BY - ORDER BY should be on outer query with OFFSET/FETCH)
+        var innerSql = sql.Substring(fromIndex);
+        var orderByIndex = innerSql.IndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase);
+        if (orderByIndex >= 0)
+        {
+            innerSql = innerSql.Substring(0, orderByIndex).TrimEnd();
+        }
+        var innerQuery = $"SELECT {newSelect} {innerSql}";
+
+        // Build final query with subquery - ORDER BY must be before OFFSET/FETCH
+        return $"SELECT {originalSelect} FROM ({innerQuery}) AS t1 ORDER BY [{orderColumn}] OFFSET {skip} ROWS FETCH NEXT {size} ROWS ONLY";
     }
 
     public string TranslateWithSkip(string sql, int top, int skip)
