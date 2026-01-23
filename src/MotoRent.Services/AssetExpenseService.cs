@@ -250,13 +250,11 @@ public class AssetExpenseService(RentalDataContext context, AssetService assetSe
     /// </summary>
     public async Task<Dictionary<AssetExpenseCategory, decimal>> GetExpensesByCategoryAsync()
     {
-        var expenses = await this.Context.LoadAsync(
-            this.Context.CreateQuery<AssetExpense>(),
-            page: 1, size: 10000, includeTotalRows: false);
+        // Use SQL GROUP BY SUM
+        var query = this.Context.CreateQuery<AssetExpense>();
+        var groupSums = await this.Context.GetGroupBySumAsync(query, e => e.Category, e => e.Amount);
 
-        return expenses.ItemCollection
-            .GroupBy(e => e.Category)
-            .ToDictionary(g => g.Key, g => g.Sum(e => e.Amount));
+        return groupSums.ToDictionary(g => g.Key, g => g.Sum);
     }
 
     /// <summary>

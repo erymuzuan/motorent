@@ -1,5 +1,6 @@
 using MotoRent.Domain.DataContext;
 using MotoRent.Domain.Entities;
+using MotoRent.Domain.Extensions;
 using MotoRent.Services.Core;
 
 namespace MotoRent.Services;
@@ -111,7 +112,7 @@ public class MaintenanceAlertService(RentalDataContext context, MaintenanceServi
             return new LoadOperation<MaintenanceAlert> { ItemCollection = [], TotalRows = 0 };
 
         var query = this.Context.CreateQuery<MaintenanceAlert>()
-            .Where(ma => vehicleIds.Contains(ma.VehicleId) && !ma.IsRead && ma.ResolvedDate == null)
+            .Where(ma => vehicleIds.IsInList(ma.VehicleId) && !ma.IsRead && ma.ResolvedDate == null)
             .OrderByDescending(ma => ma.Status == MaintenanceStatus.Overdue ? 1 : 0)
             .ThenBy(ma => ma.TriggerDate);
 

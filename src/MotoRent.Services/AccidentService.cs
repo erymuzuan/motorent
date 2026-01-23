@@ -19,35 +19,42 @@ public class AccidentService(RentalDataContext context)
         int page = 1,
         int pageSize = 20)
     {
-        var query = this.Context.CreateQuery<Accident>()
-            .OrderByDescending(a => a.AccidentDate);
+        var query = this.Context.CreateQuery<Accident>();
 
+        // Apply filters at SQL level
+        if (status.HasValue)
+            query = query.Where(a => a.Status == status.Value);
+        if (severity.HasValue)
+            query = query.Where(a => a.Severity == severity.Value);
+        if (vehicleId.HasValue)
+            query = query.Where(a => a.VehicleId == vehicleId.Value);
+        if (fromDate.HasValue)
+            query = query.Where(a => a.AccidentDate >= fromDate.Value);
+        if (toDate.HasValue)
+            query = query.Where(a => a.AccidentDate <= toDate.Value);
+
+        query = query.OrderByDescending(a => a.AccidentDate);
+
+        // If no search term, return SQL-filtered results
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            return await this.Context.LoadAsync(query, page, pageSize, includeTotalRows: true);
+        }
+
+        // For search term, load more and filter in memory
         var result = await this.Context.LoadAsync(query, page, pageSize * 2, includeTotalRows: true);
 
-        var filtered = result.ItemCollection.AsEnumerable();
-
-        if (status.HasValue)
-            filtered = filtered.Where(a => a.Status == status.Value);
-        if (severity.HasValue)
-            filtered = filtered.Where(a => a.Severity == severity.Value);
-        if (vehicleId.HasValue)
-            filtered = filtered.Where(a => a.VehicleId == vehicleId.Value);
-        if (fromDate.HasValue)
-            filtered = filtered.Where(a => a.AccidentDate >= fromDate.Value);
-        if (toDate.HasValue)
-            filtered = filtered.Where(a => a.AccidentDate <= toDate.Value);
-        if (!string.IsNullOrWhiteSpace(searchTerm))
-        {
-            var term = searchTerm.ToLowerInvariant();
-            filtered = filtered.Where(a =>
+        var term = searchTerm.ToLowerInvariant();
+        result.ItemCollection = result.ItemCollection
+            .Where(a =>
                 (a.Title?.ToLowerInvariant().Contains(term) ?? false) ||
                 (a.ReferenceNo?.ToLowerInvariant().Contains(term) ?? false) ||
                 (a.VehicleLicensePlate?.ToLowerInvariant().Contains(term) ?? false) ||
                 (a.RenterName?.ToLowerInvariant().Contains(term) ?? false) ||
-                (a.Description?.ToLowerInvariant().Contains(term) ?? false));
-        }
+                (a.Description?.ToLowerInvariant().Contains(term) ?? false))
+            .Take(pageSize)
+            .ToList();
 
-        result.ItemCollection = filtered.Take(pageSize).ToList();
         return result;
     }
 
@@ -342,29 +349,43 @@ public class AccidentService(RentalDataContext context)
     {
         var query = this.Context.CreateQuery<Accident>();
 
-        var result = await this.Context.LoadAsync(query, 1, 1000, true);
-        var accidents = result.ItemCollection.AsEnumerable();
-
+        // Apply date filters at SQL level
         if (fromDate.HasValue)
-            accidents = accidents.Where(a => a.AccidentDate >= fromDate.Value);
+            query = query.Where(a => a.AccidentDate >= fromDate.Value);
         if (toDate.HasValue)
-            accidents = accidents.Where(a => a.AccidentDate <= toDate.Value);
+            query = query.Where(a => a.AccidentDate <= toDate.Value);
 
-        var list = accidents.ToList();
+        // Get counts using SQL
+        var totalCount = await this.Context.GetCountAsync(query);
+        var reportedCount = await this.Context.GetCountAsync(query.Where(a => a.Status == AccidentStatus.Reported));
+        var inProgressCount = await this.Context.GetCountAsync(query.Where(a => a.Status == AccidentStatus.InProgress));
+        var resolvedCount = await this.Context.GetCountAsync(query.Where(a => a.Status == AccidentStatus.Resolved));
+
+        // Get sums using SQL
+        var totalEstimatedCost = await this.Context.GetSumAsync(query, a => a.TotalEstimatedCost);
+        var totalActualCost = await this.Context.GetSumAsync(query, a => a.TotalActualCost);
+        var totalNetCost = await this.Context.GetSumAsync(query, a => a.NetCost);
+
+        // Get severity breakdown using SQL GROUP BY
+        var severityCounts = await this.Context.GetGroupByCountAsync(query, a => a.Severity);
+
+        // Get boolean counts - load minimal data for these
+        var result = await this.Context.LoadAsync(query, 1, 10000, false);
+        var policeInvolvedCount = result.ItemCollection.Count(a => a.PoliceInvolved);
+        var insuranceClaimCount = result.ItemCollection.Count(a => a.InsuranceClaimFiled);
 
         return new AccidentStatistics
         {
-            TotalAccidents = list.Count,
-            ReportedCount = list.Count(a => a.Status == AccidentStatus.Reported),
-            InProgressCount = list.Count(a => a.Status == AccidentStatus.InProgress),
-            ResolvedCount = list.Count(a => a.Status == AccidentStatus.Resolved),
-            TotalEstimatedCost = list.Sum(a => a.TotalEstimatedCost),
-            TotalActualCost = list.Sum(a => a.TotalActualCost),
-            TotalNetCost = list.Sum(a => a.NetCost),
-            BySeverity = list.GroupBy(a => a.Severity)
-                .ToDictionary(g => g.Key, g => g.Count()),
-            PoliceInvolvedCount = list.Count(a => a.PoliceInvolved),
-            InsuranceClaimCount = list.Count(a => a.InsuranceClaimFiled)
+            TotalAccidents = totalCount,
+            ReportedCount = reportedCount,
+            InProgressCount = inProgressCount,
+            ResolvedCount = resolvedCount,
+            TotalEstimatedCost = totalEstimatedCost,
+            TotalActualCost = totalActualCost,
+            TotalNetCost = totalNetCost,
+            BySeverity = severityCounts.ToDictionary(g => g.Key, g => g.Count),
+            PoliceInvolvedCount = policeInvolvedCount,
+            InsuranceClaimCount = insuranceClaimCount
         };
     }
 
