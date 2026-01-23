@@ -8,15 +8,12 @@ public partial class RentalService
     public async Task<Dictionary<string, int>> GetStatusCountsAsync(int shopId)
     {
         // Use database-side grouping instead of loading all rentals
-        // Note: Status column should never be null in practice, but SQL GROUP BY handles NULLs correctly
-        var groups = await this.Context.GetGroupByCountAsync<Rental, string>(
+        var groups = await this.Context.GetGroupByCountAsync<Rental, string?>(
             r => r.RentedFromShopId == shopId,
             r => r.Status);
 
-        // Convert to dictionary, mapping null keys to "Unknown"
-        return groups.ToDictionary(
-            g => g.Key ?? "Unknown",
-            g => g.Count);
+        // Handle null keys by converting to "Unknown"
+        return groups.ToDictionary(g => g.Key ?? "Unknown", g => g.Count);
     }
 
     /// <summary>
