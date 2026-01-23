@@ -73,6 +73,20 @@ public partial class TillService
     }
 
     /// <summary>
+    /// Gets all active (open) sessions for a staff member across all shops.
+    /// Used by Till page to show existing open sessions.
+    /// </summary>
+    public async Task<List<TillSession>> GetAllActiveSessionsForUserAsync(string staffUserName)
+    {
+        var result = await this.Context.LoadAsync(
+            this.Context.CreateQuery<TillSession>()
+                .Where(s => s.StaffUserName == staffUserName && s.Status == TillSessionStatus.Open)
+                .OrderByDescending(s => s.OpenedAt),
+            page: 1, size: 100, includeTotalRows: false);
+        return result.ItemCollection.ToList();
+    }
+
+    /// <summary>
     /// Checks if a staff member can open a new session at a shop.
     /// Enforces one-till-per-staff-per-shop-per-day constraint.
     /// </summary>
