@@ -1,0 +1,342 @@
+@using MotoRent.Client.Interops
+@using MotoRent.Domain.Entities
+@using MotoRent.Domain.Models.VehicleInspection
+@inject VehicleInspectorJsInterop JsInterop
+@implements IAsyncDisposable
+
+<div class="vehicle-inspector @CssClass" style="@Style">
+    @* Header with controls *@
+    <div class="inspector-header d-flex justify-content-between align-items-center mb-2">
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-primary">
+                <i class="ti ti-circle-number-@(m_markers.Count + 1) me-1"></i>
+                @m_markers.Count Markers
+            </span>
+            @if (m_markers.Any(m => !m.IsPreExisting))
+            {
+                <span class="badge bg-danger">@m_markers.Count(m => !m.IsPreExisting) New</span>
+            }
+        </div>
+        <div class="btn-group btn-group-sm">
+            <button type="button" class="btn btn-outline-secondary" @onclick="ResetCameraAsync" title="Reset camera">
+                <i class="ti ti-home"></i>
+            </button>
+            <button type="button" class="btn btn-outline-secondary" @onclick="TakeSnapshotAsync" title="Take snapshot">
+                <i class="ti ti-camera"></i>
+            </button>
+            @if (AllowClear && m_markers.Count > 0)
+            {
+                <button type="button" class="btn btn-outline-danger" @onclick="ClearMarkersAsync" title="Clear all markers">
+                    <i class="ti ti-trash"></i>
+                </button>
+            }
+        </div>
+    </div>
+
+    @* Main 3D viewer container *@
+    <div class="inspector-viewer-container position-relative" style="height: @(Height)px;">
+        @* model-viewer element *@
+        <model-viewer @ref="m_modelViewerRef"
+                      src="@ModelPath"
+                      alt="Vehicle 3D model"
+                      camera-controls
+                      touch-action="pan-y"
+                      interaction-prompt="none"
+                      shadow-intensity="1"
+                      exposure="1"
+                      style="width: 100%; height: 100%; background-color: #f8f9fa;">
+            @* Loading indicator slot *@
+            <div slot="progress-bar" class="progress" style="height: 4px;">
+                <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
+                     style="width: 100%;"></div>
+            </div>
+        </model-viewer>
+
+        @* Canvas overlay for markers *@
+        <canvas @ref="m_canvasRef"
+                class="marker-overlay"
+                style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;">
+        </canvas>
+
+        @* Loading overlay *@
+        @if (m_loading)
+        {
+            <div class="loading-overlay position-absolute top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center"
+                 style="background-color: rgba(255,255,255,0.8); z-index: 10;">
+                <div class="text-center">
+                    <div class="spinner-border text-primary mb-2" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <div class="text-muted">Loading 3D model...</div>
+                </div>
+            </div>
+        }
+
+        @* Click instruction overlay *@
+        @if (!m_loading && !m_hasInteracted && ShowInstructions)
+        {
+            <div class="instruction-overlay position-absolute top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center"
+                 style="background-color: rgba(0,0,0,0.3); z-index: 5; pointer-events: none;">
+                <div class="text-center text-white p-3 rounded" style="background-color: rgba(0,0,0,0.6);">
+                    <i class="ti ti-hand-click fs-1 mb-2"></i>
+                    <div>Rotate: Drag</div>
+                    <div>Zoom: Pinch / Scroll</div>
+                    <div>Mark damage: Tap on vehicle</div>
+                </div>
+            </div>
+        }
+    </div>
+
+    @* Markers list *@
+    @if (ShowMarkersList && m_markers.Count > 0)
+    {
+        <div class="markers-list mt-2">
+            <div class="list-group list-group-flush" style="max-height: 200px; overflow-y: auto;">
+                @for (int i = 0; i < m_markers.Count; i++)
+                {
+                    var index = i;
+                    var marker = m_markers[i];
+                    <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-2 @(m_selectedMarkerIndex == index ? "active" : "")"
+                         @onclick="() => SelectMarkerAsync(index)"
+                         style="cursor: pointer;">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge @GetDamageTypeBadgeClass(marker.DamageType) rounded-pill">@(index + 1)</span>
+                            <div>
+                                <div class="fw-medium small">@marker.DamageType</div>
+                                @if (!string.IsNullOrEmpty(marker.LocationDescription))
+                                {
+                                    <div class="text-muted small">@marker.LocationDescription</div>
+                                }
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge @GetSeverityBadgeClass(marker.Severity)">@marker.Severity</span>
+                            @if (marker.IsPreExisting)
+                            {
+                                <span class="badge bg-secondary">Pre-existing</span>
+                            }
+                            <button type="button" class="btn btn-ghost-danger btn-sm" @onclick:stopPropagation="true" @onclick="() => RemoveMarkerAsync(index)">
+                                <i class="ti ti-x"></i>
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private ElementReference m_modelViewerRef;
+    private ElementReference m_canvasRef;
+    private DotNetObjectReference<VehicleInspector>? m_dotNetRef;
+    private List<DamageMarker> m_markers = [];
+    private bool m_loading = true;
+    private bool m_hasInteracted;
+    private int m_selectedMarkerIndex = -1;
+
+    [Parameter] public string ModelPath { get; set; } = "models/vehicles/scooter.glb";
+    [Parameter] public int Height { get; set; } = 400;
+    [Parameter] public string? CssClass { get; set; }
+    [Parameter] public string? Style { get; set; }
+    [Parameter] public bool ShowMarkersList { get; set; } = true;
+    [Parameter] public bool ShowInstructions { get; set; } = true;
+    [Parameter] public bool AllowClear { get; set; } = true;
+    [Parameter] public bool ReadOnly { get; set; }
+
+    [Parameter] public List<DamageMarker>? Markers { get; set; }
+    [Parameter] public EventCallback<List<DamageMarker>> MarkersChanged { get; set; }
+    [Parameter] public EventCallback<DamageMarker> OnMarkerAdded { get; set; }
+    [Parameter] public EventCallback<DamageMarker> OnMarkerSelected { get; set; }
+    [Parameter] public EventCallback<DamageMarker> OnMarkerRemoved { get; set; }
+    [Parameter] public EventCallback<string> OnSnapshotTaken { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (this.Markers is not null)
+        {
+            this.m_markers = [.. this.Markers];
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            this.m_dotNetRef = DotNetObjectReference.Create(this);
+
+            var options = new InspectorOptions
+            {
+                Markers = this.m_markers.Select(ToDto).ToList()
+            };
+
+            var result = await this.JsInterop.InitializeAsync(this.m_modelViewerRef, this.m_canvasRef, this.m_dotNetRef, options);
+
+            this.m_loading = !result.Success;
+
+            if (!result.Success)
+            {
+                Console.WriteLine($"Failed to initialize vehicle inspector: {result.Error}");
+            }
+
+            this.StateHasChanged();
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnModelClicked(MarkerPosition position, ScreenPosition screenPosition)
+    {
+        if (this.ReadOnly) return;
+
+        this.m_hasInteracted = true;
+
+        var marker = new DamageMarker
+        {
+            MarkerId = Guid.NewGuid(),
+            Position = position,
+            ScreenPosition = screenPosition,
+            DamageType = "Scratch",
+            Severity = "Minor",
+            CreatedAt = DateTimeOffset.Now
+        };
+
+        this.m_markers.Add(marker);
+        this.m_selectedMarkerIndex = this.m_markers.Count - 1;
+
+        await UpdateJsMarkersAsync();
+        await this.MarkersChanged.InvokeAsync(this.m_markers);
+        await this.OnMarkerAdded.InvokeAsync(marker);
+        this.StateHasChanged();
+    }
+
+    private async Task SelectMarkerAsync(int index)
+    {
+        this.m_selectedMarkerIndex = index;
+        await this.JsInterop.HighlightMarkerAsync(index);
+
+        if (index >= 0 && index < this.m_markers.Count)
+        {
+            await this.OnMarkerSelected.InvokeAsync(this.m_markers[index]);
+        }
+    }
+
+    private async Task RemoveMarkerAsync(int index)
+    {
+        if (index >= 0 && index < this.m_markers.Count)
+        {
+            var removed = this.m_markers[index];
+            this.m_markers.RemoveAt(index);
+            this.m_selectedMarkerIndex = -1;
+
+            await UpdateJsMarkersAsync();
+            await this.MarkersChanged.InvokeAsync(this.m_markers);
+            await this.OnMarkerRemoved.InvokeAsync(removed);
+        }
+    }
+
+    private async Task ClearMarkersAsync()
+    {
+        this.m_markers.Clear();
+        this.m_selectedMarkerIndex = -1;
+        await UpdateJsMarkersAsync();
+        await this.MarkersChanged.InvokeAsync(this.m_markers);
+    }
+
+    private async Task ResetCameraAsync()
+    {
+        await this.JsInterop.ResetCameraAsync();
+    }
+
+    private async Task TakeSnapshotAsync()
+    {
+        var base64 = await this.JsInterop.TakeSnapshotAsync();
+        if (!string.IsNullOrEmpty(base64))
+        {
+            await this.OnSnapshotTaken.InvokeAsync(base64);
+        }
+    }
+
+    private async Task UpdateJsMarkersAsync()
+    {
+        var dtos = this.m_markers.Select(ToDto).ToList();
+        await this.JsInterop.UpdateMarkersAsync(dtos);
+    }
+
+    public async Task<CameraState?> GetCameraStateAsync()
+    {
+        return await this.JsInterop.GetCameraStateAsync();
+    }
+
+    public async Task SetCameraStateAsync(CameraState state)
+    {
+        await this.JsInterop.SetCameraStateAsync(state);
+    }
+
+    public void UpdateMarker(DamageMarker marker)
+    {
+        var index = this.m_markers.FindIndex(m => m.MarkerId == marker.MarkerId);
+        if (index >= 0)
+        {
+            this.m_markers[index] = marker;
+            _ = UpdateJsMarkersAsync();
+            this.StateHasChanged();
+        }
+    }
+
+    public DamageMarker? GetSelectedMarker()
+    {
+        return this.m_selectedMarkerIndex >= 0 && this.m_selectedMarkerIndex < this.m_markers.Count
+            ? this.m_markers[this.m_selectedMarkerIndex]
+            : null;
+    }
+
+    public List<DamageMarker> GetMarkers() => [.. this.m_markers];
+
+    private static DamageMarkerDto ToDto(DamageMarker marker) => new()
+    {
+        MarkerId = marker.MarkerId,
+        Position = new MarkerPositionDto
+        {
+            X = marker.Position.X,
+            Y = marker.Position.Y,
+            Z = marker.Position.Z,
+            NormalX = marker.Position.NormalX,
+            NormalY = marker.Position.NormalY,
+            NormalZ = marker.Position.NormalZ,
+            ScreenX = marker.Position.ScreenX ?? marker.ScreenPosition?.X,
+            ScreenY = marker.Position.ScreenY ?? marker.ScreenPosition?.Y
+        },
+        DamageType = marker.DamageType,
+        Severity = marker.Severity,
+        IsPreExisting = marker.IsPreExisting
+    };
+
+    private static string GetDamageTypeBadgeClass(string damageType) => damageType switch
+    {
+        "Scratch" => "bg-warning text-dark",
+        "Dent" => "bg-danger",
+        "Crack" => "bg-purple",
+        "Scuff" => "bg-secondary",
+        "MissingPart" => "bg-indigo",
+        "Paint" => "bg-teal",
+        "Rust" => "bg-brown",
+        "Mechanical" => "bg-blue",
+        "Broken" => "bg-pink",
+        "Wear" => "bg-green",
+        _ => "bg-secondary"
+    };
+
+    private static string GetSeverityBadgeClass(string severity) => severity switch
+    {
+        "Minor" => "bg-success",
+        "Moderate" => "bg-warning text-dark",
+        "Major" => "bg-danger",
+        _ => "bg-secondary"
+    };
+
+    public async ValueTask DisposeAsync()
+    {
+        await this.JsInterop.DisposeInspectorAsync();
+        this.m_dotNetRef?.Dispose();
+    }
+}

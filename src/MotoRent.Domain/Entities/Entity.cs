@@ -78,6 +78,8 @@ namespace MotoRent.Domain.Entities;
 // End of day entities
 [JsonDerivedType(typeof(DailyClose), nameof(DailyClose))]
 [JsonDerivedType(typeof(ShortageLog), nameof(ShortageLog))]
+// Vehicle inspection entities
+[JsonDerivedType(typeof(VehicleInspection), nameof(VehicleInspection))]
 public abstract class Entity
 {
     public string? WebId { get; set; }

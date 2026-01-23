@@ -85,6 +85,7 @@ builder.Services.AddScoped<AlertService>();
 builder.Services.AddScoped<DynamicPricingService>();
 builder.Services.AddScoped<RegionalPresetService>();
 builder.Services.AddScoped<DamageReportService>();
+builder.Services.AddScoped<VehicleInspectionService>();
 // Third-party owner services
 builder.Services.AddScoped<VehicleOwnerService>();
 builder.Services.AddScoped<OwnerPaymentService>();
@@ -185,6 +186,7 @@ if (rabbitMqEnabled)
 // Add JS Interop services
 builder.Services.AddScoped<FileUploadJsInterop>();
 builder.Services.AddScoped<GoogleMapJsInterop>();
+builder.Services.AddScoped<VehicleInspectorJsInterop>();
 
 // Add UI services (Modal, Toast, Dialog)
 builder.Services.AddScoped<IModalService, ModalService>();
@@ -308,7 +310,15 @@ builder.Services.AddSignalR();
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
+    .AddInteractiveServerComponents()
+    .AddCircuitOptions(options =>
+    {
+        // Enable detailed errors in development for debugging JS interop issues
+        if (builder.Environment.IsDevelopment())
+        {
+            options.DetailedErrors = true;
+        }
+    });
 
 var app = builder.Build();
 
@@ -333,7 +343,11 @@ else
 
 app.UseHttpsRedirection();
 
-app.UseStaticFiles();
+// Configure static files with custom MIME types for 3D models
+var contentTypeProvider = new Microsoft.AspNetCore.StaticFiles.FileExtensionContentTypeProvider();
+contentTypeProvider.Mappings[".glb"] = "model/gltf-binary";
+contentTypeProvider.Mappings[".gltf"] = "model/gltf+json";
+app.UseStaticFiles(new StaticFileOptions { ContentTypeProvider = contentTypeProvider });
 
 // Tenant domain resolution middleware (for custom domains and subdomains)
 // Must be before authentication so tourist pages work for anonymous users

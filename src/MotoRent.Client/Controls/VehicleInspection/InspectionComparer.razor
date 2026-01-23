@@ -1,0 +1,266 @@
+@using MotoRent.Domain.Entities
+@using MotoRent.Domain.Models.VehicleInspection
+
+<div class="inspection-comparer @CssClass" style="@Style">
+    <div class="row g-3">
+        @* Pre-Rental Inspection *@
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header bg-info text-white">
+                    <i class="ti ti-login me-1"></i>
+                    Pre-Rental (Check-In)
+                    @if (PreRentalInspection is not null)
+                    {
+                        <small class="ms-2 opacity-75">
+                            @PreRentalInspection.InspectedAt.ToString("MMM dd, HH:mm")
+                        </small>
+                    }
+                </div>
+                <div class="card-body p-0">
+                    @if (PreRentalInspection is null)
+                    {
+                        <div class="text-center text-muted py-4">
+                            <i class="ti ti-file-off fs-1 mb-2"></i>
+                            <div>No pre-rental inspection</div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="list-group list-group-flush">
+                            @if (PreRentalInspection.Markers.Count == 0)
+                            {
+                                <div class="list-group-item text-success">
+                                    <i class="ti ti-check me-1"></i>
+                                    No damage recorded
+                                </div>
+                            }
+                            else
+                            {
+                                @foreach (var marker in PreRentalInspection.Markers)
+                                {
+                                    <div class="list-group-item py-2">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <span class="badge @GetDamageTypeBadgeClass(marker.DamageType) me-1">
+                                                    @marker.DamageType
+                                                </span>
+                                                @if (!string.IsNullOrEmpty(marker.LocationDescription))
+                                                {
+                                                    <span class="text-muted small">@marker.LocationDescription</span>
+                                                }
+                                            </div>
+                                            <span class="badge @GetSeverityBadgeClass(marker.Severity)">@marker.Severity</span>
+                                        </div>
+                                    </div>
+                                }
+                            }
+                        </div>
+                        <div class="card-footer small">
+                            <div class="d-flex justify-content-between">
+                                <span>Total markers:</span>
+                                <span class="fw-medium">@PreRentalInspection.Markers.Count</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>Condition:</span>
+                                <span class="fw-medium @GetConditionClass(PreRentalInspection.OverallCondition)">
+                                    @PreRentalInspection.OverallCondition
+                                </span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        @* Post-Rental Inspection *@
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header bg-warning text-dark">
+                    <i class="ti ti-logout me-1"></i>
+                    Post-Rental (Check-Out)
+                    @if (PostRentalInspection is not null)
+                    {
+                        <small class="ms-2 opacity-75">
+                            @PostRentalInspection.InspectedAt.ToString("MMM dd, HH:mm")
+                        </small>
+                    }
+                </div>
+                <div class="card-body p-0">
+                    @if (PostRentalInspection is null)
+                    {
+                        <div class="text-center text-muted py-4">
+                            <i class="ti ti-file-off fs-1 mb-2"></i>
+                            <div>No post-rental inspection yet</div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="list-group list-group-flush">
+                            @if (PostRentalInspection.Markers.Count == 0)
+                            {
+                                <div class="list-group-item text-success">
+                                    <i class="ti ti-check me-1"></i>
+                                    No damage recorded
+                                </div>
+                            }
+                            else
+                            {
+                                @foreach (var marker in PostRentalInspection.Markers)
+                                {
+                                    var isNew = !marker.IsPreExisting && !IsPreExistingMarker(marker);
+                                    <div class="list-group-item py-2 @(isNew ? "list-group-item-danger" : "")">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                @if (isNew)
+                                                {
+                                                    <span class="badge bg-danger me-1">NEW</span>
+                                                }
+                                                <span class="badge @GetDamageTypeBadgeClass(marker.DamageType) me-1">
+                                                    @marker.DamageType
+                                                </span>
+                                                @if (!string.IsNullOrEmpty(marker.LocationDescription))
+                                                {
+                                                    <span class="text-muted small">@marker.LocationDescription</span>
+                                                }
+                                            </div>
+                                            <div class="text-end">
+                                                <span class="badge @GetSeverityBadgeClass(marker.Severity)">@marker.Severity</span>
+                                                @if (marker.EstimatedCost.HasValue)
+                                                {
+                                                    <div class="small text-danger fw-medium">
+                                                        @marker.EstimatedCost.Value.ToString("N0") THB
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            }
+                        </div>
+                        <div class="card-footer small">
+                            <div class="d-flex justify-content-between">
+                                <span>Total markers:</span>
+                                <span class="fw-medium">@PostRentalInspection.Markers.Count</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>New damage:</span>
+                                <span class="fw-medium text-danger">
+                                    @PostRentalInspection.Markers.Count(m => !m.IsPreExisting && !IsPreExistingMarker(m))
+                                </span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>Condition:</span>
+                                <span class="fw-medium @GetConditionClass(PostRentalInspection.OverallCondition)">
+                                    @PostRentalInspection.OverallCondition
+                                </span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Summary *@
+    @if (PreRentalInspection is not null && PostRentalInspection is not null)
+    {
+        var newDamageMarkers = PostRentalInspection.Markers
+            .Where(m => !m.IsPreExisting && !IsPreExistingMarker(m))
+            .ToList();
+        var totalCost = newDamageMarkers
+            .Where(m => m.EstimatedCost.HasValue)
+            .Sum(m => m.EstimatedCost!.Value);
+
+        <div class="mt-3">
+            <div class="card @(newDamageMarkers.Count > 0 ? "border-danger" : "border-success")">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            @if (newDamageMarkers.Count > 0)
+                            {
+                                <div class="avatar avatar-lg bg-danger-lt">
+                                    <i class="ti ti-alert-triangle text-danger fs-2"></i>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="avatar avatar-lg bg-success-lt">
+                                    <i class="ti ti-check text-success fs-2"></i>
+                                </div>
+                            }
+                        </div>
+                        <div class="col">
+                            <h4 class="mb-1">
+                                @if (newDamageMarkers.Count > 0)
+                                {
+                                    <span class="text-danger">@newDamageMarkers.Count New Damage Found</span>
+                                }
+                                else
+                                {
+                                    <span class="text-success">No New Damage</span>
+                                }
+                            </h4>
+                            @if (totalCost > 0)
+                            {
+                                <div class="text-muted">
+                                    Estimated repair cost: <strong class="text-danger">@totalCost.ToString("N0") THB</strong>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public VehicleInspection? PreRentalInspection { get; set; }
+    [Parameter] public VehicleInspection? PostRentalInspection { get; set; }
+    [Parameter] public string? CssClass { get; set; }
+    [Parameter] public string? Style { get; set; }
+
+    private bool IsPreExistingMarker(DamageMarker marker)
+    {
+        if (this.PreRentalInspection is null) return false;
+
+        // Check if a marker with similar position exists in pre-rental
+        return this.PreRentalInspection.Markers.Any(pre =>
+            Math.Abs(pre.Position.X - marker.Position.X) < 0.1 &&
+            Math.Abs(pre.Position.Y - marker.Position.Y) < 0.1 &&
+            Math.Abs(pre.Position.Z - marker.Position.Z) < 0.1);
+    }
+
+    private static string GetDamageTypeBadgeClass(string damageType) => damageType switch
+    {
+        "Scratch" => "bg-warning text-dark",
+        "Dent" => "bg-danger",
+        "Crack" => "bg-purple",
+        "Scuff" => "bg-secondary",
+        "MissingPart" => "bg-indigo",
+        "Paint" => "bg-teal",
+        "Rust" => "bg-brown",
+        "Mechanical" => "bg-blue",
+        "Broken" => "bg-pink",
+        "Wear" => "bg-green",
+        _ => "bg-secondary"
+    };
+
+    private static string GetSeverityBadgeClass(string severity) => severity switch
+    {
+        "Minor" => "bg-success",
+        "Moderate" => "bg-warning text-dark",
+        "Major" => "bg-danger",
+        _ => "bg-secondary"
+    };
+
+    private static string GetConditionClass(string condition) => condition switch
+    {
+        "Excellent" => "text-success",
+        "Good" => "text-primary",
+        "Fair" => "text-warning",
+        "Poor" => "text-orange",
+        "Damaged" => "text-danger",
+        _ => ""
+    };
+}

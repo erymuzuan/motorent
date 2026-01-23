@@ -82,7 +82,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IRepository<RateDelta>, SqlJsonRepository<RateDelta>>();
         // End of day entities
         services.AddScoped<IRepository<DailyClose>, SqlJsonRepository<DailyClose>>();
-        services.AddScoped<IRepository<ShortageLog>, SqlJsonRepository<ShortageLog>>();
+        services.AddScoped<IRepository<ShortageLog>, SqlJsonRepository<ShortageLog>>(); 
+        services.AddSingleton<IRepository<VehicleInspection>, SqlJsonRepository<VehicleInspection>>();
+
 
         return services;
     }
