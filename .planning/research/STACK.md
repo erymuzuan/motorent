@@ -1,224 +1,230 @@
-# Technology Stack: Document Template Editor
+# Technology Stack: Cashier Till Multi-Currency Support
 
-**Project:** MotoRent Document Template Editor
-**Researched:** 2026-01-23
-**Confidence:** MEDIUM (based on training data + project analysis; web verification unavailable)
+**Project:** MotoRent Cashier Till Enhancement
+**Researched:** 2026-01-19
+**Overall Confidence:** HIGH
 
 ## Executive Summary
 
-The document template editor requires four key capabilities:
-1. **Drag-and-drop designer** - For visual template layout
-2. **Template storage/binding** - For storing templates and binding data
-3. **HTML rendering** - For screen preview and browser print
-4. **PDF generation** - For downloadable documents
+The MotoRent codebase already has a **well-designed till system** with TillSession, TillTransaction, Receipt entities, and a comprehensive TillService. Multi-currency support is partially implemented via `ReceiptPayment` (with `Currency`, `ExchangeRate`, `AmountInBaseCurrency` fields). The enhancement needed is to **extend the existing till to track cash by currency** and provide **real-time exchange rate management**.
 
-The recommended stack leverages existing project patterns while adding minimal new dependencies.
+**Key finding:** No external libraries are needed. The existing .NET 10 + Blazor Server + SQL Server stack fully supports all required features.
 
 ---
 
 ## Recommended Stack
 
-### Drag-and-Drop: Native HTML5 + SortableJS Interop
+### Core Framework (Already in Place)
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| .NET 10 | Latest | Runtime | Already in use, provides decimal precision for financial calculations |
+| Blazor Server | .NET 10 | UI Framework | Already in use, enables real-time UI updates via SignalR |
+| SQL Server | 2019+ | Database | Already in use, JSON columns with computed columns pattern |
+| System.Text.Json | Built-in | Serialization | Already configured with decimal converters |
 
-| Technology | Version | Purpose | Confidence |
-|------------|---------|---------|------------|
-| Native HTML5 Drag API | N/A | Element repositioning on canvas | HIGH |
-| SortableJS | 1.15.x | List reordering, palette-to-canvas drops | MEDIUM |
-| Custom JS Interop | N/A | Blazor-JS bridge for drag operations | HIGH |
+### Multi-Currency Support (Extend Existing)
+| Technology | Purpose | Rationale |
+|------------|---------|-----------|
+| `decimal` type | Currency amounts | Native .NET type with 28-29 significant digits, no floating-point errors |
+| `SupportedCurrencies` class | Currency codes | Already defined in `ReceiptPayment.cs` with THB, USD, EUR, GBP, CNY, JPY, AUD, RUB |
+| Custom `ExchangeRateService` | Rate management | Build using existing repository pattern, no external library needed |
 
-**Rationale:**
-- The project already uses native drag events (see `VehicleRecognitionPanel.razor` with `@ondragenter`, `@ondrop`)
-- Existing patterns: `file-upload.js`, `google-map.js` demonstrate ES module interop
-- SortableJS is lightweight (10KB gzipped), framework-agnostic, MIT licensed
-- Works identically in Blazor Server and WASM modes
+### Real-Time Updates (Already Available)
+| Technology | Purpose | Rationale |
+|------------|---------|-----------|
+| SignalR | Real-time notifications | Already configured (`CommentHub.cs`), extend pattern for till updates |
+| Blazor `StateHasChanged()` | UI refresh | Standard pattern used throughout the codebase |
 
-**Why NOT MudBlazor.Extensions or Blazored.DragDrop:**
-- Project has migrated AWAY from MudBlazor to Tabler CSS (see `mudblazor-to-tabler-migration.md`)
-- Adding MudBlazor back would conflict with Tabler CSS styling
-- Blazored.DragDrop has limited maintenance and no .NET 10 verification
-
-**Implementation Pattern (matching existing interops):**
-```javascript
-// wwwroot/scripts/template-designer.js - ES module pattern
-let designers = new Map();
-
-export function initDesigner(canvasElement, paletteElement, dotNetRef) {
-    if (!canvasElement || !paletteElement) return;
-
-    const config = {
-        canvas: new Sortable(canvasElement, {
-            group: 'template-elements',
-            animation: 150,
-            onEnd: async (evt) => {
-                await dotNetRef.invokeMethodAsync('OnElementDropped', {
-                    elementId: evt.item.dataset.elementId,
-                    fromPalette: evt.from === paletteElement,
-                    newIndex: evt.newIndex
-                });
-            }
-        }),
-        palette: new Sortable(paletteElement, {
-            group: { name: 'template-elements', pull: 'clone', put: false },
-            sort: false
-        })
-    };
-
-    designers.set(canvasElement, config);
-}
-
-export function updateElementPosition(canvasElement, elementId, x, y) {
-    const element = canvasElement.querySelector(`[data-element-id="${elementId}"]`);
-    if (element) {
-        element.style.left = `${x}px`;
-        element.style.top = `${y}px`;
-    }
-}
-
-export function dispose(canvasElement) {
-    const config = designers.get(canvasElement);
-    if (config) {
-        config.canvas.destroy();
-        config.palette.destroy();
-        designers.delete(canvasElement);
-    }
-}
-```
+### Receipt Generation (Already Implemented)
+| Technology | Purpose | Rationale |
+|------------|---------|-----------|
+| `ReceiptService` | Receipt management | Already handles multi-currency payments via `ReceiptPayment` |
+| HTML/CSS receipts | Print-ready output | `ReceiptDocument.razor` already supports exchange rate display |
 
 ---
 
-### PDF Generation: QuestPDF
+## What NOT to Use
 
-| Technology | Version | Purpose | Confidence |
-|------------|---------|---------|------------|
-| QuestPDF | 2024.12.x+ | Server-side PDF generation | MEDIUM |
+### External Currency Libraries
+| Library | Why NOT |
+|---------|---------|
+| `NodaMoney` | Overkill for this use case. The codebase already has `decimal` + currency code pattern working |
+| `Money.NET` | Adds abstraction layer that conflicts with existing JSON serialization approach |
+| `CurrencyConverter.NET` | External API dependency for rates; shop owners should set their own rates |
 
-**Rationale:**
-- Fluent C# API - no HTML-to-PDF conversion complexity
-- MIT licensed for revenue under $1M USD/year (Community License)
-- Pure .NET - no native dependencies, works on Windows/Linux Docker
-- Excellent for structured documents (receipts, agreements)
-- Strong community adoption in .NET ecosystem as of 2024-2025
-
-**Why NOT iText:**
-- AGPL license requires open-sourcing code OR expensive commercial license
-- Overkill for template-based documents
-
-**Why NOT PdfSharp:**
-- Lower-level API, more code for same result
-- Less active development, .NET 10 compatibility uncertain
-
-**Why NOT Syncfusion/Telerik:**
-- Commercial licensing costs
-- Heavy dependencies, not suitable for this project scale
-
-**Why NOT Puppeteer/Playwright HTML-to-PDF:**
-- Requires headless Chromium browser (heavy deployment, 300MB+ image size)
-- Complex in containerized environments
-- Slower generation (browser startup overhead)
-- But provides exact WYSIWYG fidelity if needed in Phase 3
-
-**Implementation Pattern:**
+**Rationale:** The existing `ReceiptPayment` class already implements the exact pattern needed:
 ```csharp
-public class PdfExportService
-{
-    private readonly ILogger<PdfExportService> m_logger;
-
-    public byte[] GeneratePdf(DocumentTemplate template, AgreementModel data)
-    {
-        return Document.Create(container =>
-        {
-            container.Page(page =>
-            {
-                page.Size(GetPageSize(template.Page.Size));
-                page.Margin(template.Page.MarginTop, Unit.Millimetre);
-
-                page.Content().Column(col =>
-                {
-                    foreach (var element in template.Elements)
-                    {
-                        RenderElement(col.Item(), element, data);
-                    }
-                });
-            });
-        }).GeneratePdf();
-    }
-
-    private PageSize GetPageSize(string size) => size switch
-    {
-        "Letter" => PageSizes.Letter,
-        _ => PageSizes.A4
-    };
-
-    private void RenderElement(IContainer container, TemplateElement element, object data)
-    {
-        switch (element)
-        {
-            case TextElement text:
-                var content = ResolveBinding(data, text.DataBinding) ?? text.Content;
-                container.Text(content)
-                    .FontSize((float)text.FontSize)
-                    .FontFamily(text.FontFamily);
-                break;
-            // ... other element types
-        }
-    }
-}
+public decimal Amount { get; set; }
+public string Currency { get; set; } = SupportedCurrencies.THB;
+public decimal ExchangeRate { get; set; } = 1.0m;
+public decimal AmountInBaseCurrency { get; set; }
 ```
+This is simpler and more maintainable than introducing a money library.
 
-**Thai Font Support:**
-```csharp
-// Configure Thai fonts at startup
-FontManager.RegisterFontFromFile("wwwroot/fonts/THSarabunNew.ttf");
-FontManager.RegisterFontFromFile("wwwroot/fonts/NotoSansThai-Regular.ttf");
-```
+### External Exchange Rate APIs
+| Service | Why NOT |
+|---------|---------|
+| Open Exchange Rates | Internet dependency at point of sale is risky |
+| Fixer.io | Same concern; also has rate limits |
+| XE API | Expensive for small rental shops |
+
+**Rationale:** Tourist rental shops need to set their own **buy rates** that include margin. External APIs provide mid-market rates that aren't useful for cash exchange. Build a simple rate management UI instead.
+
+### Complex Event Sourcing
+| Pattern | Why NOT |
+|---------|---------|
+| Event Sourcing | The existing `TillTransaction` table is already an append-only transaction log |
+| CQRS | Unnecessary complexity; the read/write patterns are simple |
 
 ---
 
-### Template Storage: JSON in SQL Server
+## Design Patterns to Implement
 
-| Technology | Version | Purpose | Confidence |
-|------------|---------|---------|------------|
-| System.Text.Json | .NET 10 built-in | Template serialization | HIGH |
-| SQL Server JSON column | Existing | Template persistence | HIGH |
+### 1. Multi-Currency Till Balance Tracking
 
-**Rationale:**
-- Matches existing project patterns exactly (see `CLAUDE.md` Entity Pattern)
-- JSON column with computed columns for indexing
-- System.Text.Json polymorphism for element type hierarchy
-- No new dependencies - uses existing `RentalDataContext` and Repository pattern
+**Pattern:** Extend `TillSession` to track cash balances per currency.
 
-**Entity Design (matching existing patterns):**
+**Current state:**
 ```csharp
-public class DocumentTemplate : Entity
+public decimal TotalCashIn { get; set; }
+public decimal TotalCashOut { get; set; }
+public decimal ExpectedCash { get; set; }  // THB only
+```
+
+**Required extension:**
+```csharp
+public class CurrencyBalance
 {
-    public int DocumentTemplateId { get; set; }
+    public string Currency { get; set; } = SupportedCurrencies.THB;
+    public decimal CashIn { get; set; }
+    public decimal CashOut { get; set; }
+    public decimal Balance => CashIn - CashOut;
+}
 
-    // Indexed via computed columns
-    public string Name { get; set; } = "";
-    public string DocumentType { get; set; } = "Agreement"; // Agreement, Receipt, BookingConfirmation
-    public bool IsDefault { get; set; }
-    public bool IsApproved { get; set; }
-    public string Status { get; set; } = "Draft"; // Draft, Approved, Archived
+// In TillSession:
+public List<CurrencyBalance> CurrencyBalances { get; set; } = [];
+```
 
-    // Full template definition stored in JSON
-    public PageSettings Page { get; set; } = new();
-    public List<TemplateElement> Elements { get; set; } = [];
+**Why this pattern:**
+- Aligns with existing JSON-in-SQL approach
+- CurrencyBalances embedded in TillSession JSON
+- No schema migration needed for new currencies
 
-    public override int GetId() => DocumentTemplateId;
-    public override void SetId(int value) => DocumentTemplateId = value;
+### 2. Exchange Rate Service Pattern
+
+**Pattern:** Organization-scoped exchange rates with effective dates.
+
+```csharp
+public class ExchangeRate : Entity
+{
+    public int ExchangeRateId { get; set; }
+    public string FromCurrency { get; set; } = string.Empty;
+    public string ToCurrency { get; set; } = SupportedCurrencies.THB;
+    public decimal BuyRate { get; set; }   // Rate when customer pays in foreign currency
+    public decimal SellRate { get; set; }  // Rate when customer receives foreign currency (refunds)
+    public DateTimeOffset EffectiveFrom { get; set; }
+    public DateTimeOffset? EffectiveTo { get; set; }
+    public bool IsActive { get; set; } = true;
 }
 ```
 
-**SQL Table (matching existing convention):**
+**Why buy/sell rates:**
+- Tourist pays USD -> shop uses **buy rate** (favorable to shop)
+- Shop refunds in USD -> shop uses **sell rate** (favorable to shop)
+- This is how every money changer operates
+
+### 3. Currency Drawer Pattern
+
+**Pattern:** Physical cash drawer slots mapped to currencies.
+
+The till should display:
+```
+[Drawer Status]
+THB: ฿15,000 (base currency)
+USD: $200 (@32.50 = ฿6,500)
+EUR: €150 (@36.80 = ฿5,520)
+---
+Total THB Equivalent: ฿27,020
+```
+
+**Implementation:**
+- Each `TillTransaction` records `Currency` and `Amount`
+- `TillSession.CurrencyBalances` maintains running totals
+- UI shows drawer by currency with THB equivalents
+
+### 4. Real-Time Balance Updates
+
+**Pattern:** Extend existing SignalR infrastructure.
+
+```csharp
+public class TillHub : Hub
+{
+    public async Task TillUpdated(int tillSessionId, CurrencyBalance[] balances)
+    {
+        await Clients.Group($"till-{tillSessionId}")
+            .SendAsync("OnTillUpdated", balances);
+    }
+}
+```
+
+**Why SignalR is sufficient:**
+- Already configured in the project
+- Blazor Server already uses SignalR for UI
+- No additional infrastructure needed
+
+---
+
+## Data Model Extensions
+
+### TillTransaction Enhancement
+Add to existing `TillTransaction.cs`:
+```csharp
+/// <summary>
+/// Currency of the transaction (default: THB)
+/// </summary>
+public string Currency { get; set; } = SupportedCurrencies.THB;
+
+/// <summary>
+/// Exchange rate applied (1.0 for THB)
+/// </summary>
+public decimal ExchangeRate { get; set; } = 1.0m;
+
+/// <summary>
+/// Amount converted to base currency (THB)
+/// </summary>
+public decimal AmountInBaseCurrency { get; set; }
+```
+
+### TillSession Enhancement
+Add to existing `TillSession.cs`:
+```csharp
+/// <summary>
+/// Cash balances by currency
+/// </summary>
+public List<CurrencyBalance> CurrencyBalances { get; set; } = [];
+
+/// <summary>
+/// Opening float by currency (for multi-currency drawer)
+/// </summary>
+public List<CurrencyBalance> OpeningFloatByCurrency { get; set; } = [];
+
+/// <summary>
+/// Actual cash counted at close, by currency
+/// </summary>
+public List<CurrencyBalance> ActualCashByCurrency { get; set; } = [];
+```
+
+### New Entity: ExchangeRate
 ```sql
-CREATE TABLE [<schema>].[DocumentTemplate]
+CREATE TABLE [<schema>].[ExchangeRate]
 (
-    [DocumentTemplateId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
-    [Name] AS CAST(JSON_VALUE([Json], '$.Name') AS NVARCHAR(100)),
-    [DocumentType] AS CAST(JSON_VALUE([Json], '$.DocumentType') AS NVARCHAR(50)),
-    [Status] AS CAST(JSON_VALUE([Json], '$.Status') AS NVARCHAR(20)),
-    [IsDefault] AS CAST(JSON_VALUE([Json], '$.IsDefault') AS BIT),
-    [IsApproved] AS CAST(JSON_VALUE([Json], '$.IsApproved') AS BIT),
+    [ExchangeRateId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
+    [FromCurrency] AS CAST(JSON_VALUE([Json], '$.FromCurrency') AS CHAR(3)),
+    [ToCurrency] AS CAST(JSON_VALUE([Json], '$.ToCurrency') AS CHAR(3)),
+    [BuyRate] AS CAST(JSON_VALUE([Json], '$.BuyRate') AS DECIMAL(18,6)),
+    [SellRate] AS CAST(JSON_VALUE([Json], '$.SellRate') AS DECIMAL(18,6)),
+    [EffectiveFrom] AS CONVERT(DATE, JSON_VALUE([Json], '$.EffectiveFrom'), 127) PERSISTED,
+    [IsActive] AS CAST(JSON_VALUE([Json], '$.IsActive') AS BIT),
     [Json] NVARCHAR(MAX) NOT NULL,
     [CreatedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
     [ChangedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
@@ -226,264 +232,144 @@ CREATE TABLE [<schema>].[DocumentTemplate]
     [ChangedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
 )
 
-CREATE INDEX IX_DocumentTemplate_Type_Default
-    ON [<schema>].[DocumentTemplate]([DocumentType], [IsDefault])
+CREATE INDEX IX_ExchangeRate_Currency ON [<schema>].[ExchangeRate]([FromCurrency], [ToCurrency], [IsActive])
 ```
 
 ---
 
-### Template Engine: Expression-Based Data Binding
+## Service Layer
 
-| Technology | Version | Purpose | Confidence |
-|------------|---------|---------|------------|
-| Custom expression evaluator | N/A | Data binding resolution | HIGH |
-| Reflection-based property access | .NET 10 | Dynamic property lookup | HIGH |
-
-**Rationale:**
-- Simple path expressions (`Rental.RenterName`, `Vehicle.LicensePlate`)
-- No need for full template engine (Handlebars, Scriban, etc.)
-- Faster and simpler than external libraries
-- Type-safe at design time via context models
-
-**Why NOT Handlebars.NET or Scriban:**
-- Overkill for property path resolution
-- Additional parsing overhead per render
-- Less control over error handling and null propagation
-
-**Implementation Pattern:**
+### ExchangeRateService
 ```csharp
-public class DataBinder
+public class ExchangeRateService(RentalDataContext context)
 {
-    private readonly ConcurrentDictionary<string, Func<object, object?>> m_accessorCache = new();
+    /// <summary>
+    /// Gets the current buy rate for a currency pair.
+    /// </summary>
+    public async Task<decimal> GetBuyRateAsync(string fromCurrency, string toCurrency = "THB");
 
-    public string? ResolveBinding(string path, object context)
-    {
-        // Handle special bindings
-        if (path == "DateTime.Now")
-            return DateTimeOffset.Now.ToString("dd MMMM yyyy");
-        if (path == "DateTime.Today")
-            return DateOnly.FromDateTime(DateTime.Today).ToString("dd MMMM yyyy");
+    /// <summary>
+    /// Gets the current sell rate for a currency pair.
+    /// </summary>
+    public async Task<decimal> GetSellRateAsync(string fromCurrency, string toCurrency = "THB");
 
-        var accessor = m_accessorCache.GetOrAdd(path, BuildAccessor);
-        var value = accessor(context);
-        return value?.ToString() ?? "";
-    }
+    /// <summary>
+    /// Gets all active exchange rates.
+    /// </summary>
+    public async Task<List<ExchangeRate>> GetActiveRatesAsync();
 
-    private Func<object, object?> BuildAccessor(string path)
-    {
-        var parts = path.Split('.');
-        return (context) =>
-        {
-            object? current = context;
-            foreach (var part in parts)
-            {
-                if (current == null) return null;
-                var prop = current.GetType().GetProperty(part);
-                current = prop?.GetValue(current);
-            }
-            return current;
-        };
-    }
-
-    public string FormatValue(object? value, string? format)
-    {
-        if (value == null) return "";
-        return format switch
-        {
-            "d" => value is DateTimeOffset dto ? dto.ToString("dd/MM/yyyy") : value.ToString()!,
-            "D" => value is DateTimeOffset dto ? dto.ToString("dd MMMM yyyy") : value.ToString()!,
-            "C" => value is decimal d ? $"{d:N0} THB" : value.ToString()!,
-            _ => value.ToString()!
-        };
-    }
+    /// <summary>
+    /// Sets a new exchange rate (creates new record, deactivates old).
+    /// </summary>
+    public async Task<SubmitOperation> SetRateAsync(
+        string fromCurrency,
+        decimal buyRate,
+        decimal sellRate,
+        string username);
 }
 ```
 
----
+### TillService Extensions
+Add to existing `TillService.cs`:
+```csharp
+/// <summary>
+/// Records a multi-currency cash-in transaction.
+/// </summary>
+public async Task<SubmitOperation> RecordMultiCurrencyCashInAsync(
+    int sessionId,
+    TillTransactionType type,
+    decimal amount,
+    string currency,
+    decimal exchangeRate,
+    string description,
+    string username,
+    int? paymentId = null,
+    int? rentalId = null);
 
-### Canvas/WYSIWYG: Custom Blazor Components
-
-| Technology | Version | Purpose | Confidence |
-|------------|---------|---------|------------|
-| Blazor components | .NET 10 | Designer UI | HIGH |
-| CSS Grid/Flexbox | N/A | Layout engine | HIGH |
-| Tabler CSS | 1.4.0 | Styling (existing) | HIGH |
-
-**Rationale:**
-- No external WYSIWYG library needed
-- Designer is specialized, not general rich text editing
-- Blazor components provide full control
-- Matches existing project patterns exactly
-
-**Why NOT TinyMCE/CKEditor/Quill:**
-- These are rich text editors, not document designers
-- Wrong tool for the job
-- Heavy dependencies and licensing complexity
-
-**Component Architecture:**
-```
-src/MotoRent.Client/
-├── Pages/Settings/
-│   ├── TemplateList.razor          # Template CRUD list
-│   └── TemplateDesigner.razor      # Main designer page (full-screen)
-├── Components/Designer/
-│   ├── DesignerCanvas.razor        # Center canvas with drop zones
-│   ├── ElementsPalette.razor       # Left sidebar with draggable elements
-│   ├── PropertiesPanel.razor       # Right sidebar for element config
-│   ├── PageNavigator.razor         # Multi-page navigation
-│   ├── DataBindingPicker.razor     # Field picker dialog
-│   └── Elements/
-│       ├── TextElementDesigner.razor
-│       ├── ImageElementDesigner.razor
-│       ├── ContainerDesigner.razor
-│       ├── RepeaterDesigner.razor
-│       ├── DividerDesigner.razor
-│       └── SignatureDesigner.razor
-├── Services/
-│   └── DesignerStateService.cs     # Scoped state management
+/// <summary>
+/// Gets currency drawer balances for a session.
+/// </summary>
+public async Task<List<CurrencyBalance>> GetCurrencyBalancesAsync(int sessionId);
 ```
 
 ---
 
-## Supporting Libraries
+## UI Components to Build
 
-| Library | Version | Purpose | When to Use |
-|---------|---------|---------|-------------|
-| SortableJS | 1.15.x | Drag-drop sorting | Palette-to-canvas, element reordering |
-| QuestPDF | 2024.12.x | PDF generation | Download button, email attachments |
-| (existing) signature-pad.js | N/A | Signature capture | Signature element if needed |
+### 1. Exchange Rate Management
+`/settings/exchange-rates`
+- Table showing current rates by currency
+- Edit dialog for rate updates
+- History of rate changes
 
----
+### 2. Multi-Currency Payment Dialog
+Extend existing `TillReceivePaymentDialog.razor`:
+- Currency selector dropdown
+- Amount in selected currency
+- Real-time THB equivalent display
+- Exchange rate used (from ExchangeRateService)
 
-## Alternatives Considered
+### 3. Currency Drawer Display
+Extend existing `Till.razor`:
+- Per-currency balance cards
+- THB equivalent totals
+- Visual drawer status
 
-| Category | Recommended | Alternative | Why Not |
-|----------|-------------|-------------|---------|
-| Drag-Drop | SortableJS + Native | MudBlazor.Extensions | Project migrated away from MudBlazor |
-| Drag-Drop | SortableJS + Native | Blazored.DragDrop | Limited maintenance, .NET 10 unverified |
-| Drag-Drop | SortableJS + Native | Native-only | SortableJS handles edge cases (touch, scrolling) better |
-| PDF | QuestPDF | iText | AGPL license issues |
-| PDF | QuestPDF | Puppeteer | Heavy browser dependency (300MB+) |
-| PDF | QuestPDF | PdfSharp | Lower-level API, less active |
-| Template Engine | Custom binding | Scriban | Overkill for property paths |
-| Template Engine | Custom binding | Handlebars.NET | Overkill, less control |
-| WYSIWYG | Custom components | TinyMCE | Wrong tool - text editor not doc designer |
-
----
-
-## Installation
-
-### NuGet Packages (Server project)
-```xml
-<!-- Add to MotoRent.Services.csproj -->
-<PackageReference Include="QuestPDF" Version="2024.12.0" />
-```
-
-### NPM/CDN for SortableJS
-```html
-<!-- Option 1: CDN (quick start) -->
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.3/Sortable.min.js"></script>
-
-<!-- Option 2: Local (recommended for production) -->
-<!-- Download to wwwroot/lib/sortablejs/Sortable.min.js -->
-<script src="lib/sortablejs/Sortable.min.js"></script>
-```
-
-### Thai Fonts for PDF
-```
-wwwroot/fonts/
-├── THSarabunNew.ttf           # Thai government standard font
-├── THSarabunNew-Bold.ttf
-├── NotoSansThai-Regular.ttf   # Google Noto (fallback)
-└── NotoSansThai-Bold.ttf
-```
+### 4. Multi-Currency Close Session
+Extend existing `TillCloseSessionDialog.razor`:
+- Count cash by currency
+- Per-currency variance calculation
+- Total variance in THB
 
 ---
 
-## Integration Points
+## Confidence Assessment
 
-### With Existing Project Patterns
-
-| Existing Pattern | How Template Editor Uses It |
-|------------------|---------------------------|
-| `Entity` base class | `DocumentTemplate : Entity` |
-| `RentalDataContext` | Template CRUD, session management |
-| `Repository<T>` pattern | `IRepository<DocumentTemplate>` |
-| `DialogService` | Properties panel dialogs, data picker |
-| `ToastService` | Save confirmation, error messages |
-| JSON polymorphism | Element type hierarchy |
-| `LocalizedComponentBase<T>` | Designer UI localization |
-| Print styling (`@media print`) | Document preview |
-| JS Interop pattern | `DesignerJsInterop.cs` matching `GoogleMapJsInterop.cs` |
-
-### With Existing Entities
-
-| Entity | Template Context Model |
-|--------|----------------------|
-| Rental | `AgreementModel.Rental.*` |
-| Renter | `AgreementModel.Renter.*` |
-| Vehicle | `AgreementModel.Vehicle.*` |
-| Shop | `AgreementModel.Shop.*` |
-| Organization | `AgreementModel.Organization.*` |
-| Payment | `ReceiptModel.Payment.*` |
-| Booking | `BookingConfirmationModel.Booking.*` |
+| Area | Confidence | Rationale |
+|------|------------|-----------|
+| No external libraries needed | HIGH | Codebase already has all required patterns |
+| Exchange rate entity design | HIGH | Standard forex pattern, aligns with existing Entity base class |
+| TillSession extension | HIGH | JSON column approach allows schema evolution without migration |
+| SignalR for real-time | HIGH | Already implemented for comments, same pattern applies |
+| Receipt multi-currency | HIGH | Already supported in ReceiptPayment class |
 
 ---
 
-## Risk Assessment
+## Implementation Checklist
 
-| Risk | Likelihood | Impact | Mitigation |
-|------|------------|--------|------------|
-| SortableJS Blazor interop complexity | Medium | Medium | Follow existing patterns (GoogleMapJsInterop, file-upload.js) |
-| QuestPDF licensing change | Low | High | Community license covers <$1M revenue; monitor announcements |
-| Thai font rendering in PDF | Medium | High | Test with Thai samples early (Phase 2), embed full fonts |
-| Complex element nesting | Medium | Medium | Limit nesting to 2 levels for v1 |
-| Preview vs PDF mismatch | Medium | Medium | Use same data binding engine; test side-by-side |
+**Phase 1: Data Layer**
+- [ ] Create `ExchangeRate` entity
+- [ ] Add `CurrencyBalance` class
+- [ ] Extend `TillTransaction` with currency fields
+- [ ] Extend `TillSession` with currency balances
+- [ ] Create SQL migration script
 
----
+**Phase 2: Service Layer**
+- [ ] Create `ExchangeRateService`
+- [ ] Extend `TillService` with multi-currency methods
+- [ ] Update `ReceiptService` to use exchange rates from service
 
-## Verification Needed
+**Phase 3: UI Components**
+- [ ] Build exchange rate management page
+- [ ] Extend payment dialogs with currency selection
+- [ ] Update Till.razor with currency drawer display
+- [ ] Extend close session dialog with multi-currency counting
 
-Before implementation, verify:
-
-1. **QuestPDF .NET 10 compatibility** - Check NuGet for net10.0 target
-2. **SortableJS touch support** - Test on mobile/tablet for staff PWA use
-3. **Thai font embedding** - Test "กรุงเทพมหานคร" with tone marks renders correctly
-4. **PDF rendering accuracy** - Prototype complex layouts early (Phase 1 spike)
+**Phase 4: Integration**
+- [ ] Wire up SignalR for real-time balance updates
+- [ ] Test end-to-end multi-currency payment flow
+- [ ] Test reconciliation with multi-currency
 
 ---
 
 ## Sources
 
-| Claim | Source | Confidence |
-|-------|--------|------------|
-| Project uses Tabler CSS (not MudBlazor) | `.claude/plans/mudblazor-to-tabler-migration.md` | HIGH |
-| Native drag events work in project | `VehicleRecognitionPanel.razor` lines 24-29 | HIGH |
-| JS interop ES module pattern | `GoogleMapJsInterop.cs`, `file-upload.js` | HIGH |
-| JSON polymorphism available | Entity.cs pattern, CLAUDE.md | HIGH |
-| Repository pattern | `RentalDataContext`, existing services | HIGH |
-| QuestPDF recommendation | Training data (2024-2025 .NET ecosystem) | MEDIUM |
-| SortableJS recommendation | Training data (stable library, wide adoption) | MEDIUM |
+- Existing codebase analysis:
+  - `TillSession.cs`, `TillTransaction.cs`, `TillEnums.cs` - Current till implementation
+  - `ReceiptPayment.cs` - Multi-currency payment support already present
+  - `SupportedCurrencies` class - Currency codes defined
+  - `CommentHub.cs` - SignalR pattern for real-time updates
+  - `Organization.cs` - Base currency configuration
+  - `SettingKeys.cs` - Payment settings including default currency
 
----
-
-## Summary
-
-**New dependencies (minimal):**
-- QuestPDF (NuGet) - PDF generation
-- SortableJS (JS, 10KB) - Drag-drop enhancement
-
-**Leverages existing patterns:**
-- Native HTML5 drag events (already in codebase)
-- ES module JS interop (GoogleMapJsInterop pattern)
-- Entity + JSON columns (existing convention)
-- DialogService/ToastService (existing services)
-- Tabler CSS styling (existing framework)
-- LocalizedComponentBase (existing localization)
-
-**Key architectural decisions:**
-1. **Dual-render approach:** Blazor for preview, QuestPDF for PDF (different but complementary)
-2. **Expression-based binding:** Simple property paths, not full template engine
-3. **Custom designer components:** No external WYSIWYG library
-4. **SortableJS for complex drag-drop:** Native for simple cases, SortableJS for lists and cross-container
-5. **Flat element list with containers:** Max 2 levels of nesting (Template -> Container -> Elements)
+- .NET documentation for `decimal` financial calculations (training knowledge, verified by codebase usage patterns)

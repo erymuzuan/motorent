@@ -1,473 +1,341 @@
-# Feature Landscape: Document Template Editor
+# Feature Landscape: Cashier Till / POS System
 
-**Domain:** Document Template Designer for Rental SaaS
-**Researched:** 2026-01-23
-**Confidence:** MEDIUM (based on domain expertise; WebSearch unavailable for competitor verification)
+**Domain:** Vehicle Rental POS with Multi-Currency Cash Management
+**Context:** MotoRent SaaS for Thailand tourist areas (Phuket, Krabi, etc.)
+**Target Users:** Desk staff, Shop managers, Business owners
+**Researched:** 2026-01-19
+**Confidence:** MEDIUM-HIGH (based on industry research and existing codebase analysis)
+
+---
+
+## Executive Summary
+
+Vehicle rental in Thailand tourist areas has unique characteristics:
+1. **Cash-heavy operations** - Thailand is still predominantly cash-based (62% of in-store payments)
+2. **Multi-currency acceptance** - Tourists pay in USD, EUR, CNY, etc. with change given in THB
+3. **Deposit-intensive** - Security deposits are critical (1,000-4,000 THB typical)
+4. **Shift-based accountability** - Staff must reconcile their own till at end of shift
+
+The existing codebase already implements core till session management, transaction recording, and basic reconciliation. This research identifies gaps and priorities for completing the feature set.
+
+---
 
 ## Table Stakes
 
-Features users expect. Missing = product feels incomplete or unprofessional.
+Features users expect. Missing = product feels incomplete.
 
-### Designer Core
+### Session Management
 
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| Drag-and-drop element placement | Standard in all template builders (Canva, Google Docs, Word) | Medium | Core interaction pattern |
-| Text element with formatting | Basic content building block | Low | Bold, italic, alignment, font size |
-| Image element (logo upload) | Branding is essential for business documents | Low | Support upload and URL reference |
-| Container/layout elements | Users need to organize content in rows/columns | Medium | Two-column layout minimum |
-| Property panel | Users expect right-click or sidebar configuration | Low | Shows options for selected element |
-| Visual data binding display | Users need to see what's dynamic vs static | Low | `[Rental.StartDate]` vs plain text |
-| Undo/redo | Standard document editing expectation | Medium | At least 10 levels |
-| Save/load templates | Persistence is fundamental | Low | Existing repository pattern |
-| Live preview | Users need to see final output before saving | Medium | Render with sample data |
+| Feature | Why Expected | Complexity | Current Status |
+|---------|--------------|------------|----------------|
+| Open Till Session | Staff must declare opening float before processing transactions | Low | IMPLEMENTED |
+| Close Till Session | Staff counts cash and declares closing amount | Low | IMPLEMENTED |
+| Single Assignment | One staff per till session for accountability | Low | IMPLEMENTED |
+| Session History | View past sessions by date, staff, status | Low | IMPLEMENTED |
 
-### Data Binding
+### Cash-In Operations
 
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| Property picker UI | Users shouldn't type field names manually | Medium | Tree view of available fields |
-| Date/currency formatting | Localized display critical for Thai market | Low | `{StartDate:dd MMM yyyy}`, `{Amount:C}` |
-| Null handling | Empty fields shouldn't show `null` or break layout | Low | Show empty string or placeholder |
-| Context-aware fields | Different document types have different available data | Medium | Agreement has Rental, Receipt has Payment |
+| Feature | Why Expected | Complexity | Current Status |
+|---------|--------------|------------|----------------|
+| Receive Rental Payment | Core business operation - collect payment for rental | Low | IMPLEMENTED |
+| Collect Security Deposit | Every rental requires deposit collection | Low | IMPLEMENTED |
+| Collect Booking Deposit | Advance payments for reservations | Low | IMPLEMENTED |
+| Record Damage Charges | Collect payment for vehicle damage | Low | IMPLEMENTED |
+| Record Late Fees | Collect payment for late returns | Low | IMPLEMENTED |
+| Record Surcharges | Fuel, delivery, accessories | Low | IMPLEMENTED |
+| Cash Top-Up | Add change from safe when till runs low | Low | IMPLEMENTED |
 
-### Document Types
+### Cash-Out Operations
 
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| Rental Agreement template | Primary legal document for vehicle handover | Low | Standard rental form |
-| Receipt template | Proof of payment required by customers | Low | Payment confirmation |
-| Booking Confirmation template | Sent to customers after reservation | Low | Email-friendly format |
+| Feature | Why Expected | Complexity | Current Status |
+|---------|--------------|------------|----------------|
+| Refund Security Deposit | Return deposit at checkout | Low | IMPLEMENTED |
+| Cash Drop | Move excess cash to safe for security | Low | IMPLEMENTED |
+| Petty Cash Payout | Small expenses (office supplies, tips, etc.) | Low | IMPLEMENTED |
+| Agent Commission | Pay booking agents their commission | Low | IMPLEMENTED |
 
-### Printing/Export
+### Non-Cash Payment Tracking
 
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| Browser print (Ctrl+P) | Standard web printing | Low | CSS print media |
-| PDF download | Customers expect PDF receipts/agreements | Medium | PDF generation library needed |
-| A4 paper size support | Standard document format | Low | CSS page setup |
+| Feature | Why Expected | Complexity | Current Status |
+|---------|--------------|------------|----------------|
+| Card Payment Recording | Track card payments for reconciliation | Low | IMPLEMENTED |
+| PromptPay Recording | Thailand's national QR payment system | Low | IMPLEMENTED |
+| Bank Transfer Recording | Track wire transfers | Low | IMPLEMENTED |
+
+### Reconciliation
+
+| Feature | Why Expected | Complexity | Current Status |
+|---------|--------------|------------|----------------|
+| Expected vs Actual Cash | Calculate variance at close | Low | IMPLEMENTED |
+| Variance Recording | Track over/short amounts | Low | IMPLEMENTED |
+| Session Verification | Manager sign-off on closed sessions | Low | IMPLEMENTED |
+| Daily Summary | Aggregate all sessions for a day | Low | IMPLEMENTED |
+
+### Receipt Generation
+
+| Feature | Why Expected | Complexity | Current Status |
+|---------|--------------|------------|----------------|
+| Check-In Receipt | Document showing rental terms, deposit collected | Medium | IMPLEMENTED |
+| Settlement Receipt | Document showing deposit refund/deductions | Medium | IMPLEMENTED |
+| Receipt Reprint | Reprint receipts when needed | Low | PARTIAL |
+| Receipt Voiding | Void incorrect receipts with reason | Low | PARTIAL |
+
+---
+
+## Table Stakes - GAPS TO ADDRESS
+
+Features expected but not yet implemented.
+
+### Multi-Currency Cash Handling
+
+| Feature | Why Expected | Complexity | Priority |
+|---------|--------------|------------|----------|
+| Multi-Currency Float Tracking | Track opening/closing by currency (THB, USD, EUR, etc.) | Medium | HIGH |
+| Currency-Specific Cash Count | Count and declare amounts per currency at close | Medium | HIGH |
+| Exchange Rate Configuration | Operator sets their buy/sell rates per currency | Medium | HIGH |
+| Change Calculation in THB | Accept foreign currency, calculate change in THB | Medium | HIGH |
+| Multi-Currency Variance | Track over/short per currency | Medium | HIGH |
+| Foreign Currency Running Total | Display current foreign currency amounts in till | Medium | HIGH |
+
+**Rationale:** The existing codebase tracks payments in multiple currencies (ReceiptPayment has Currency/ExchangeRate) but TillSession only tracks aggregate THB amounts. Real-world operators need to count and reconcile each currency separately.
+
+### Denomination Counting
+
+| Feature | Why Expected | Complexity | Priority |
+|---------|--------------|------------|----------|
+| Denomination-Based Counting | Count by bill/coin denomination at close | Medium | MEDIUM |
+| Quick Count Templates | Pre-defined denomination breakdown forms | Low | LOW |
+| Auto-Calculate Total | Sum denominations to get total | Low | MEDIUM |
+
+**Rationale:** Professional till reconciliation always involves counting by denomination (e.g., "10 x 1000THB + 5 x 500THB + ..."). This prevents counting errors and creates better audit trail. However, basic amount entry works for MVP.
+
+### Quick Payment Reception
+
+| Feature | Why Expected | Complexity | Priority |
+|---------|--------------|------------|----------|
+| Quick Cash-In (Non-Rental) | Receive payment not tied to specific rental | Low | MEDIUM |
+| Payment Search | Find past payments by amount, date, reference | Low | MEDIUM |
+| Payment Categorization | Categorize miscellaneous income | Low | LOW |
+
+### Audit & Security
+
+| Feature | Why Expected | Complexity | Priority |
+|---------|--------------|------------|----------|
+| Payout Attachment Upload | Photo of receipt for petty cash payouts | Low | IMPLEMENTED |
+| Manager Override | Manager can override restrictions | Low | MEDIUM |
+| Spot Check Support | Mid-shift till count without closing | Medium | LOW |
+| Blind Close Option | Enter counted amount without seeing expected | Low | LOW |
+
+---
 
 ## Differentiators
 
-Features that set product apart. Not universally expected, but high value when present.
+Features that set the product apart. Not expected, but valued.
 
-### Smart Features
-
-| Feature | Value Proposition | Complexity | Notes |
-|---------|-------------------|------------|-------|
-| AI Clause Suggester | Speeds up agreement creation with industry-standard clauses | Medium | Gemini API already integrated |
-| Professional default templates | Users can start immediately without design work | Low | Pre-built templates per document type |
-| Template cloning | Quick way to create variations | Low | Copy existing template |
-| Template preview with real data | See how document looks with actual rental, not just sample | Low | Select rental to preview |
-
-### Advanced Layout
+### Multi-Currency Excellence
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| Repeater element | Display lists (accessories, clauses, charges) dynamically | High | Complex data binding |
-| Multi-page support | Long agreements need page breaks | Medium | Manual page breaks, auto-pagination |
-| Header/footer per page | Professional document appearance | Medium | Consistent branding on all pages |
-| Page numbering | "Page 1 of 3" standard for legal docs | Low | System field binding |
-| Signature placeholder | Digital signature capture integration | Medium | Existing signature capture can integrate |
-| QR code element | Link to digital copy or verification | Low | Generate QR from URL |
+| Real-Time Rate Display | Show current exchange rates at point of payment | Low | Builds trust with tourists |
+| Rate Margin Configuration | Set buy vs sell rate spread | Low | Operators profit from exchange |
+| Multi-Currency Receipt | Print receipt showing original currency and THB equivalent | Medium | Professional documentation |
+| Cross-Border Payment QR | Accept Alipay/WeChat Pay via PromptPay bridge | High | Chinese tourist market |
 
-### Template Management
+### Advanced Reconciliation
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| Multiple templates per type | Different templates for different purposes | Low | Basic CRUD |
-| Default template per type | Staff don't need to choose every time | Low | Setting flag |
-| Template approval workflow | OrgAdmin approves before staff can use | Low | Status flag: Draft/Approved |
-| Template categories | Organize templates by purpose/language | Low | Tag or category field |
+| Photo-Based Cash Count | Take photo of cash during count for audit | Medium | Dispute resolution evidence |
+| Variance Trend Analysis | Track which staff have repeated variances | Medium | Loss prevention |
+| Auto-Variance Alerts | Notify manager when variance exceeds threshold | Low | Proactive management |
+| Scheduled Spot Checks | Random mid-shift count prompts | Medium | Theft deterrence |
 
-### Localization
+### Operational Efficiency
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| Multi-language templates | Thai customers get Thai, tourists get English | Medium | Same content, different language versions |
-| Thai/English toggle in designer | Quick preview in both languages | Low | UI toggle |
-| Currency formatting per locale | THB for Thai, USD for international display | Low | Already supported in .NET |
+| Till Dashboard Widget | Show current till status in main dashboard | Low | Staff awareness |
+| Quick Actions Panel | Common operations in one click | Low | Speed at checkout |
+| Shift Handover Report | Summary document for shift change | Low | Communication tool |
+| Safe Reconciliation | Track safe balance alongside tills | Medium | Complete cash picture |
+
+### Reporting & Analytics
+
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| Cash Flow Report | Daily/weekly/monthly cash movement | Medium | Owner visibility |
+| Payment Method Breakdown | % cash vs card vs PromptPay | Low | Business insights |
+| Currency Mix Report | Which currencies customers pay with | Low | Inventory planning |
+| Staff Performance Report | Transaction counts, variance history | Medium | HR tool |
+
+### Mobile-First Operations
+
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| Mobile Till Access | Open/close till from mobile device | Medium | Flexibility for staff |
+| Barcode/QR Receipt Lookup | Scan to find receipt | Low | Fast retrieval |
+| Push Notification for Variance | Alert manager on mobile | Medium | Immediate awareness |
+
+---
 
 ## Anti-Features
 
 Features to explicitly NOT build. Common mistakes in this domain.
 
+### Over-Engineering
+
 | Anti-Feature | Why Avoid | What to Do Instead |
 |--------------|-----------|-------------------|
-| Full WYSIWYG rich text editor | Massive complexity (TinyMCE, CKEditor). Overkill for template text blocks | Simple formatting: bold, italic, size, alignment only |
-| Custom CSS input | Security risk, maintenance nightmare, breaks print | Predefined style options (colors, fonts from brand) |
-| Drag anywhere on canvas (pixel positioning) | Frustrating precision, bad print results | Grid/column-based layout system |
-| Real-time collaboration | Massive infrastructure complexity | Single-editor model, last-save-wins |
-| Complex conditional logic (if/else) | UI complexity explosion, debugging nightmare | Simple show/hide based on data presence (v2) |
-| Email template sending | Different delivery mechanism, HTML email is complex | Separate email feature, export PDF to attach |
-| Template versioning/history | Database and UI complexity | v2 feature, start with simple overwrite |
-| Programmatic template API | Overkill for this use case | UI-only template management |
-| Arbitrary page sizes | Increases complexity, A4 covers 99% of needs | A4 only for v1, Letter optional |
-| Invoice templates | Receipts cover payment confirmation. Invoices have tax/accounting complexity | Receipts for v1, invoices for v2 |
+| Complex Split-Till Sharing | Multiple staff sharing one till creates accountability nightmare | Enforce one-staff-per-session |
+| Automatic Rate Fetching | External API dependency, rates change too frequently for cash business | Operator manually sets rates daily |
+| Complex Tip Pooling | Accounting complexity, regulatory issues | Out of scope - operators handle tips offline |
+| Integrated Accounting | Creates tight coupling, operators have existing accounting systems | Export data, don't replace accounting |
 
----
+### Security Theater
 
-## Rental Document Field Requirements
+| Anti-Feature | Why Avoid | What to Do Instead |
+|--------------|-----------|-------------------|
+| Biometric Authentication | Hardware dependency, privacy concerns, overkill for rental shops | PIN + username is sufficient |
+| Cash Drawer Sensors | Hardware complexity, most rental shops use simple drawers | Manual count is fine |
+| Video Integration | Complex, privacy laws, storage costs | Recommend security cameras but don't integrate |
 
-### Rental Agreement Required Fields
+### Unnecessary Complexity
 
-Based on standard rental industry practice and legal requirements.
+| Anti-Feature | Why Avoid | What to Do Instead |
+|--------------|-----------|-------------------|
+| Multiple Till Per Staff | Creates confusion, reconciliation nightmare | One till per staff at a time |
+| Complex Cash Pooling | Pooled tills lose individual accountability | Keep tills separate |
+| Detailed Change Tracking | Tracking every bill/coin is tedious | Track by denomination group at most |
+| POS Inventory Management | Rental business doesn't need retail inventory POS | Focus on rental-specific flows |
 
-#### Header Section
-| Field | Source | Required | Notes |
-|-------|--------|----------|-------|
-| Company Name | `Organization.Name` | Yes | Legal entity name |
-| Company Logo | `Organization.LogoStoreId` | Yes | Branding |
-| Company Address | `Organization.Address.*` | Yes | Full address |
-| Tax ID | `Organization.TaxNo` | Yes | For Thai tax compliance |
-| Company Phone | `Organization.Phone` | Yes | Contact info |
-| Shop Name | `Shop.Name` | Yes | Location identifier |
-| Shop Address | `Shop.Address` | Yes | Pickup location |
-| Agreement Number | `Rental.RentalId` or generated | Yes | Unique reference |
-| Agreement Date | Generated (DateTime.Now) | Yes | When signed |
+### Scope Creep
 
-#### Renter Section
-| Field | Source | Required | Notes |
-|-------|--------|----------|-------|
-| Renter Full Name | `Renter.FullName` | Yes | Legal name |
-| Nationality | `Renter.Nationality` | Yes | For foreigners |
-| Passport Number | `Renter.PassportNo` | Conditional | Required for foreigners |
-| National ID | `Renter.NationalIdNo` | Conditional | For Thai nationals |
-| Driving License Number | `Renter.DrivingLicenseNo` | Yes | Must have valid license |
-| License Country | `Renter.DrivingLicenseCountry` | Yes | License jurisdiction |
-| License Expiry | `Renter.DrivingLicenseExpiry` | Yes | Must be valid |
-| Phone Number | `Renter.Phone` | Yes | Emergency contact |
-| Email | `Renter.Email` | Recommended | For receipts |
-| Hotel/Address | `Renter.HotelName`, `HotelAddress` | Recommended | Where staying |
-| Emergency Contact | `Renter.EmergencyContact` | Recommended | In case of accident |
-
-#### Vehicle Section
-| Field | Source | Required | Notes |
-|-------|--------|----------|-------|
-| Vehicle Type | `Vehicle.VehicleType` | Yes | Motorbike/Car/etc |
-| Brand | `Vehicle.Brand` | Yes | Honda, Yamaha, etc |
-| Model | `Vehicle.Model` | Yes | Click, PCX, etc |
-| License Plate | `Vehicle.LicensePlate` | Yes | Registration number |
-| Color | `Vehicle.Color` | Recommended | Identification |
-| Year | `Vehicle.Year` | Recommended | Model year |
-| Engine Size | `Vehicle.EngineCC` or `EngineLiters` | Recommended | 125cc, 1.5L |
-| Starting Mileage | `Rental.MileageStart` | Recommended | Odometer reading |
-
-#### Rental Terms Section
-| Field | Source | Required | Notes |
-|-------|--------|----------|-------|
-| Rental Start Date | `Rental.StartDate` | Yes | When rental begins |
-| Rental End Date | `Rental.ExpectedEndDate` | Yes | When due back |
-| Rental Duration | Calculated (days) | Yes | Number of days |
-| Daily Rate | `Rental.RentalRate` | Yes | Price per day |
-| Total Rental Amount | `Rental.TotalAmount` | Yes | Subtotal |
-| Pickup Location | `Rental.PickupLocationName` or Shop | Conditional | If not at shop |
-| Dropoff Location | `Rental.DropoffLocationName` or Shop | Conditional | If not at shop |
-
-#### Insurance Section
-| Field | Source | Required | Notes |
-|-------|--------|----------|-------|
-| Insurance Package | `Insurance.Name` | Conditional | If insurance selected |
-| Insurance Description | `Insurance.Description` | Recommended | Coverage details |
-| Insurance Daily Rate | `Insurance.DailyRate` | Conditional | Price |
-| Deductible Amount | `Insurance.Deductible` | Conditional | Excess amount |
-| Maximum Coverage | `Insurance.MaxCoverage` | Conditional | Cap |
-
-#### Deposit Section
-| Field | Source | Required | Notes |
-|-------|--------|----------|-------|
-| Deposit Amount | `Deposit.Amount` | Yes | Security deposit |
-| Deposit Type | `Deposit.DepositType` | Yes | Cash/Card/Passport |
-| Card Last 4 Digits | `Deposit.CardLast4` | Conditional | For card deposits |
-
-#### Financial Summary
-| Field | Source | Required | Notes |
-|-------|--------|----------|-------|
-| Rental Subtotal | Calculated | Yes | Days x Rate |
-| Insurance Subtotal | Calculated | Conditional | Days x Insurance Rate |
-| Accessories Total | Calculated | Conditional | Sum of accessories |
-| Location Fees | Calculated | Conditional | Pickup/dropoff fees |
-| Total Amount | `Rental.TotalAmount` | Yes | Grand total |
-| Deposit Held | `Deposit.Amount` | Yes | Security deposit |
-| Amount Paid | Payment sum | Yes | What customer paid |
-| Balance Due | Calculated | Conditional | If not fully paid |
-
-#### Signature Section
-| Field | Source | Required | Notes |
-|-------|--------|----------|-------|
-| Renter Signature | Signature capture | Yes | Digital signature image |
-| Date Signed | DateTime.Now | Yes | When signed |
-| Staff Name | Current user | Recommended | Who processed |
-
----
-
-### Receipt Required Fields
-
-#### Header
-| Field | Source | Required |
-|-------|--------|----------|
-| Company Name | `Organization.Name` | Yes |
-| Company Logo | `Organization.LogoStoreId` | Yes |
-| Company Address | `Organization.Address.*` | Yes |
-| Tax ID | `Organization.TaxNo` | Yes |
-| Receipt Number | `Payment.PaymentId` or generated | Yes |
-| Receipt Date | `Payment.PaidOn` or DateTime.Now | Yes |
-
-#### Customer
-| Field | Source | Required |
-|-------|--------|----------|
-| Customer Name | `Renter.FullName` | Yes |
-| Phone | `Renter.Phone` | Recommended |
-
-#### Rental Reference
-| Field | Source | Required |
-|-------|--------|----------|
-| Rental ID | `Rental.RentalId` | Yes |
-| Vehicle | `Vehicle.Brand` + `Model` + `LicensePlate` | Yes |
-| Rental Period | `StartDate` - `EndDate` | Yes |
-
-#### Payment Details
-| Field | Source | Required |
-|-------|--------|----------|
-| Payment Method | `Payment.PaymentMethod` | Yes |
-| Transaction Reference | `Payment.TransactionRef` | Conditional |
-| Amount Paid | `Payment.Amount` | Yes |
-
-#### Line Items (Repeater)
-| Field | Source | Required |
-|-------|--------|----------|
-| Description | Various | Yes |
-| Quantity/Days | Calculated | Yes |
-| Unit Price | Rate | Yes |
-| Line Total | Calculated | Yes |
-
-#### Totals
-| Field | Source | Required |
-|-------|--------|----------|
-| Subtotal | Calculated | Yes |
-| Deposit Held | `Deposit.Amount` | Conditional |
-| Total Paid | Sum of payments | Yes |
-
-#### Footer
-| Field | Source | Required |
-|-------|--------|----------|
-| Thank you message | Static | Recommended |
-| Contact info | `Shop.Phone` | Recommended |
-
----
-
-### Booking Confirmation Required Fields
-
-#### Header
-| Field | Source | Required |
-|-------|--------|----------|
-| Company Name | `Organization.Name` | Yes |
-| Company Logo | `Organization.LogoStoreId` | Yes |
-| Confirmation Title | Static ("Booking Confirmation") | Yes |
-
-#### Booking Reference
-| Field | Source | Required |
-|-------|--------|----------|
-| Booking Reference | `Booking.BookingRef` | Yes |
-| Booking Status | `Booking.Status` | Yes |
-| Booking Date | `Booking.CreatedTimestamp` | Yes |
-
-#### Customer
-| Field | Source | Required |
-|-------|--------|----------|
-| Customer Name | `Booking.CustomerName` | Yes |
-| Email | `Booking.CustomerEmail` | Yes |
-| Phone | `Booking.CustomerPhone` | Yes |
-
-#### Reservation Details
-| Field | Source | Required |
-|-------|--------|----------|
-| Pickup Date | `Booking.StartDate` | Yes |
-| Return Date | `Booking.EndDate` | Yes |
-| Pickup Time | `Booking.PickupTime` | Conditional |
-| Pickup Location | `Booking.PickupLocationName` | Conditional |
-| Dropoff Location | `Booking.DropoffLocationName` | Conditional |
-| Number of Days | Calculated | Yes |
-
-#### Vehicle(s) - Repeater for multi-vehicle bookings
-| Field | Source | Required |
-|-------|--------|----------|
-| Vehicle Type | `BookingItem.VehicleGroupKey` or specific vehicle | Yes |
-| Daily Rate | `BookingItem.DailyRate` | Yes |
-| Subtotal | Calculated | Yes |
-
-#### Pricing Summary
-| Field | Source | Required |
-|-------|--------|----------|
-| Vehicle Total | Calculated | Yes |
-| Insurance Total | Calculated | Conditional |
-| Location Fees | Calculated | Conditional |
-| Total Amount | `Booking.TotalAmount` | Yes |
-| Deposit Required | `Booking.DepositRequired` | Yes |
-| Amount Paid | `Booking.AmountPaid` | Conditional |
-| Balance Due | Calculated | Conditional |
-
-#### Instructions
-| Field | Source | Required |
-|-------|--------|----------|
-| What to bring | Static (passport, license, etc) | Yes |
-| Shop address | `Shop.Address` | Yes |
-| Shop phone | `Shop.Phone` | Yes |
-| Map link/QR | Generated | Recommended |
-
----
-
-## Standard Rental Agreement Clauses
-
-These clauses should be available in the AI Clause Suggester and/or included in default templates.
-
-### Liability and Responsibility
-
-**Renter Responsibility Clause**
-> The Renter agrees to be fully responsible for the rented vehicle during the rental period. The Renter shall return the vehicle in the same condition as received, normal wear and tear excepted.
-
-**Age and License Requirement**
-> The Renter confirms they are at least 18 years of age (21 for cars/vans) and hold a valid driving license appropriate for the vehicle type being rented. International Driving Permit required for non-Thai licenses.
-
-**Insurance Responsibility**
-> If the Renter declines optional insurance coverage, the Renter assumes full financial responsibility for any damage to, loss of, or theft of the vehicle up to the full replacement value.
-
-### Vehicle Use Restrictions
-
-**Permitted Use**
-> The vehicle shall be used solely for personal transportation within Thailand. The Renter shall not use the vehicle for racing, towing, off-road driving, or any illegal purpose.
-
-**Prohibited Actions**
-> The Renter shall NOT: (1) Allow anyone other than the registered renter to operate the vehicle, (2) Operate the vehicle under the influence of alcohol or drugs, (3) Transport the vehicle outside Thailand, (4) Use the vehicle for commercial purposes including ride-sharing services.
-
-**Helmet Requirement (Motorbikes)**
-> Both rider and passenger must wear helmets at all times when operating or riding on the motorbike. Failure to wear helmets voids any insurance coverage.
-
-### Damage and Loss
-
-**Damage Liability**
-> In case of damage to the vehicle, the Renter is liable for repair costs up to the deductible amount stated in this agreement. With Full Coverage Insurance, liability is limited to the deductible. Without insurance, the Renter is liable for full repair or replacement costs.
-
-**Theft and Total Loss**
-> In case of theft or total loss, the Renter must immediately notify the rental shop and file a police report. The Renter is liable for the full replacement value of the vehicle minus any insurance coverage.
-
-**Damage Assessment**
-> All damage will be assessed upon return. The rental shop reserves the right to deduct repair costs from the deposit. Any costs exceeding the deposit must be paid before the Renter leaves.
-
-### Financial Terms
-
-**Deposit Terms**
-> A deposit is required at the start of the rental. The deposit will be returned upon satisfactory return of the vehicle. The deposit may be held for up to 7 days for credit card deposits pending final charges.
-
-**Late Return Fee**
-> Vehicles must be returned by the agreed time. Late returns will be charged at 1.5x the daily rate per day, plus any incurred fees (re-booking costs, missed rentals, etc.).
-
-**Fuel Policy**
-> The vehicle is provided with [FULL/SPECIFIC] tank of fuel and must be returned with the same level. A refueling charge plus service fee will be applied if returned with less fuel.
-
-### Insurance Coverage
-
-**Basic Coverage Included**
-> Basic third-party liability insurance is included, covering injury to others and damage to third-party property. This does NOT cover damage to the rental vehicle.
-
-**Optional Full Coverage**
-> Full Coverage Insurance is available for an additional daily fee. This covers damage to the rental vehicle subject to a deductible of [AMOUNT]. Coverage excludes negligent or prohibited use.
-
-**Insurance Exclusions**
-> Insurance does NOT cover: (1) Damage from prohibited use, (2) Driving under the influence, (3) Unlicensed operation, (4) Single-vehicle accidents caused by negligence, (5) Damage to wheels, tires, or undercarriage from improper use.
-
-### Accident Procedures
-
-**In Case of Accident**
-> In the event of an accident: (1) Ensure safety of all persons, (2) Call emergency services if needed, (3) Do NOT admit fault, (4) Take photos of all vehicles and damage, (5) Obtain contact details of other parties and witnesses, (6) Contact the rental shop immediately.
-
-**Police Report Required**
-> A police report is required for all accidents, thefts, or losses. Failure to obtain a police report may void insurance coverage and result in full liability to the Renter.
-
-### General Terms
-
-**Reservation Cancellation**
-> Reservations may be cancelled up to 24 hours before the pickup time for a full refund. Cancellations within 24 hours are subject to a cancellation fee of one day's rental.
-
-**Modification of Terms**
-> The rental shop reserves the right to modify these terms with notice. The terms in effect at the time of rental apply to that rental.
-
-**Governing Law**
-> This agreement is governed by the laws of Thailand. Any disputes shall be resolved in the courts of [Province], Thailand.
-
-**Agreement Acceptance**
-> By signing below, the Renter acknowledges having read, understood, and agreed to all terms and conditions of this rental agreement.
+| Anti-Feature | Why Avoid | What to Do Instead |
+|--------------|-----------|-------------------|
+| Full Accounting System | Operators have QuickBooks, Xero, etc. | Export-friendly reports |
+| Payroll Integration | Complex labor laws vary by country | Out of scope |
+| Customer Loyalty Program | Different product entirely | Focus on till operations |
+| Invoice Financing | Financial product, not POS feature | Out of scope |
 
 ---
 
 ## Feature Dependencies
 
 ```
-Core Elements
+Multi-Currency Float Tracking
     |
-    v
-Data Binding System --> Property Picker UI
+    +-- Currency-Specific Cash Count (requires knowing what currencies to count)
     |
-    v
-Document Context Models (Agreement/Receipt/Booking)
-    |
-    v
-Template Storage (Database)
-    |
-    v
-Rendering Engine
-    |
-    +---> HTML View (Browser Print)
-    |
-    +---> PDF Generation
-```
+    +-- Multi-Currency Variance (requires currency-specific expected vs actual)
 
-**Critical Path:**
-1. Element palette and canvas (core designer)
-2. Data binding system with property picker
-3. Context models for each document type
-4. Template save/load
-5. Rendering with sample data
-6. Browser print support
-7. PDF generation
+Exchange Rate Configuration
+    |
+    +-- Change Calculation in THB (requires rates to calculate)
+    |
+    +-- Multi-Currency Receipt (requires rates for display)
+
+Session Management (EXISTING)
+    |
+    +-- All transaction recording flows through sessions
+    |
+    +-- Manager verification depends on closed sessions
+```
 
 ---
 
 ## MVP Recommendation
 
-For MVP, prioritize:
+For the cashier till milestone, prioritize in this order:
 
-### Must Have (Table Stakes)
-1. **Drag-and-drop designer** with text, image, two-column, divider elements
-2. **Data binding** with property picker showing available fields
-3. **Three document types**: Agreement, Receipt, Booking Confirmation
-4. **Browser print** (Ctrl+P)
-5. **Template CRUD** in Organization Settings
+### Phase 1: Multi-Currency Core (HIGH Priority)
 
-### Should Have (High Value, Low Complexity)
-6. **Professional default templates** per document type
-7. **Live preview** with sample data
-8. **Date/currency formatting** options
+1. **Multi-Currency Float Tracking** - Essential for real-world operation
+2. **Exchange Rate Configuration** - Operators need to set their rates
+3. **Currency-Specific Cash Count** - Proper reconciliation by currency
+4. **Change Calculation Display** - Help staff give correct change
 
-### Could Have (Differentiators)
-9. **AI Clause Suggester** for agreements
-10. **PDF download**
+### Phase 2: Operational Polish (MEDIUM Priority)
+
+5. **Denomination Counting UI** - Better accuracy at close
+6. **Quick Payment Reception** - Non-rental cash handling
+7. **Manager Override** - Flexibility for edge cases
+8. **Variance Alerts** - Proactive management
 
 ### Defer to Post-MVP
-- Repeater element for line items (complex)
-- Multi-page support with headers/footers
-- Template approval workflow
-- Multi-language template variants
-- Conditional show/hide based on data
-- Template versioning/history
+
+- Cross-border payment integration (Alipay/WeChat)
+- Photo-based cash counting
+- Variance trend analysis
+- Safe reconciliation
+- Mobile till access
+- Advanced reporting beyond daily summary
+
+---
+
+## Existing Implementation Analysis
+
+Based on codebase review, here's what already exists:
+
+### Well-Implemented
+- TillSession entity with full lifecycle (Open -> Close -> Verify)
+- TillTransaction with comprehensive transaction types
+- TillService with session management, transaction recording, reconciliation
+- Receipt entity with multi-currency payment support
+- ReceiptPayment with Currency, ExchangeRate, AmountInBaseCurrency
+- SupportedCurrencies constant (THB, USD, EUR, GBP, CNY, JPY, AUD, RUB)
+- Daily summary and manager verification workflows
+
+### Gap: Multi-Currency Till Tracking
+The current implementation tracks:
+- `TillSession.TotalCashIn` - single THB amount
+- `TillSession.TotalCashOut` - single THB amount
+- `TillSession.ActualCash` - single THB amount
+- `TillSession.ExpectedCash` - calculated THB
+
+But real-world operation needs:
+- Per-currency cash tracking in the till
+- Per-currency opening and closing float
+- Per-currency variance calculation
+- Exchange rate lookup when accepting foreign cash
+
+**Recommended Addition:** Add `TillCurrencyBalance` embedded collection to track per-currency amounts in the till.
 
 ---
 
 ## Sources
 
-- MotoRent existing entity definitions (Rental.cs, Renter.cs, Payment.cs, Booking.cs, Vehicle.cs, Shop.cs, Organization.cs)
-- MotoRent PROJECT.md requirements document
-- Domain expertise in rental industry practices
-- Standard WYSIWYG document editor patterns
+### POS System Features
+- [SelectHub: Top 16 POS System Features 2025](https://www.selecthub.com/pos/pos-system-features/)
+- [Shopify: Cash Register vs POS System](https://www.shopify.com/retail/cash-register-pos)
+- [Business.com: Guide to Choosing a POS Cash Register](https://www.business.com/articles/pos-cash-register/)
 
-**Confidence Note:** Rental document field requirements and standard clauses are based on industry domain knowledge. WebSearch was unavailable to verify against Avis/Hertz/Sixt specific documents. Recommend validation with actual rental company agreements if available.
+### Cash Drawer Management
+- [Star Micronics: How to Balance Cash Drawers](https://starmicronics.com/blog/how-to-balance-cash-drawers-quickly-and-accurately/)
+- [Lightspeed: Opening and Closing a Register](https://x-series-support.lightspeedhq.com/hc/en-us/articles/25534185400347-Opening-and-closing-a-register)
+- [Microsoft Learn: Shift and Cash Drawer Management](https://learn.microsoft.com/en-us/dynamics365/commerce/shift-drawer-management)
+- [Retail Dogma: Balancing a Cash Drawer Best Practices](https://www.retaildogma.com/balancing-a-cash-drawer/)
+- [Shopify: Tips for Balancing a Cash Drawer](https://www.shopify.com/retail/balancing-a-cash-drawer)
+
+### Multi-Currency POS
+- [Posytude: How Does a POS Machine Handle Multiple Currency Transactions](https://posytude.com/multi-currency-pos-system/)
+- [ERPLY: Feature Friday Multi Currency Sales](https://erply.com/feature-friday-multi-currency-sales/)
+- [ConnectPOS: Going Global with Multi Currency POS](https://www.connectpos.com/going-global-you-need-multi-currency-operation/)
+- [Core Payment Solutions: How to Choose POS for Multi-Currency Business](https://corepaymentsolutions.com/how-to-choose-a-pos-system-for-a-multi-currency-business/)
+
+### Vehicle Rental POS
+- [ARM Software: Cash Management for Rental Companies](https://www.armsoftware.com/features/cash-management/)
+- [RentMy: POS System for Rental Business](https://rentmy.co/blog/pos-system-for-rental-business/)
+- [Booqable: Equipment Rental Security Deposits](https://booqable.com/blog/authorize-credit-card-holds/)
+
+### Thailand Payments Context
+- [ConnectPOS: 5 POS Systems in Thailand](https://www.connectpos.com/top-5-pos-systems-in-thailand/)
+- [Statista: Biggest POS Payment Methods Thailand](https://www.statista.com/statistics/1296919/preferred-payment-methods-thailand/)
+- [ConnectPOS: How to Manage Cash Float in POS Systems](https://www.connectpos.com/how-to-manage-cash-float-in-pos/)
+
+### Petty Cash & Payouts
+- [DizLog: Pay-in/Pay-out Petty Cash Tracker](https://helpcenter.dizlog.com/en/articles/6939831-pay-in-pay-out-petty-cash-and-expenses-tracker-cash-management)
+- [Lightspeed: Tracking Float, Petty Cash, and Cash Back](https://o-series-support.lightspeedhq.com/hc/en-us/articles/31329389716251-Tracking-your-float-petty-cash-and-cash-back-with-Money-In-Out)
+
+### Thailand Motorbike Rental Practices
+- [Thailand Holiday Group: How to Rent a Motorbike in Thailand](https://www.thailandholidaygroup.com/infocentre/motorcycle-rental-thailand/)
+- [Traveltomtom: Tips on How to Rent a Motorbike in Thailand](https://www.traveltomtom.net/destinations/asia/thailand/tips-on-how-to-rent-a-motorbike-in-thailand)

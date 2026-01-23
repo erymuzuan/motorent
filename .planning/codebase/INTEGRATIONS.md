@@ -1,211 +1,198 @@
 # External Integrations
 
-**Analysis Date:** 2026-01-23
+**Analysis Date:** 2026-01-19
 
 ## APIs & External Services
 
 **AI/ML:**
-- Google Gemini API - Document OCR (passport, ID, driving license extraction)
-  - SDK/Client: HttpClient via `IHttpClientFactory`
+- Google Gemini API - Document OCR and vehicle recognition
+  - SDK/Client: `IHttpClientFactory` named "Gemini"
   - Auth: `MOTO_GeminiApiKey` env var
   - Model: `MOTO_GeminiModel` (default: `gemini-3-flash-preview`)
   - Implementation: `src/MotoRent.Services/DocumentOcrService.cs`
-  - Endpoint: `https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent`
+  - Implementation: `src/MotoRent.Services/VehicleRecognitionService.cs`
 
 **Mapping:**
-- Google Maps API - Location picking, GPS coordinates
+- Google Maps - Location services
+  - Client: JS Interop via `GoogleMapJsInterop.cs`
   - Auth: `MOTO_GoogleMapKey` env var
-  - Implementation: `src/MotoRent.Client/Interops/GoogleMapJsInterop.cs`
+
+**Search:**
+- OpenSearch - Full-text search (optional)
+  - SDK/Client: `IHttpClientFactory` named "OpenSearchHost"
+  - Auth: `MOTO_OpenSearchBasicAuth` env var (Basic Auth)
+  - Host: `MOTO_OpenSearchHost` env var
+  - Implementation: `src/MotoRent.Services/Search/OpenSearchService.cs`
+  - Multi-tenant indexes: `{accountNo}_{EntityType}` pattern
 
 ## Data Storage
 
-**Databases:**
-- Microsoft SQL Server
+**Primary Database:**
+- Microsoft SQL Server 2019+
   - Connection: `MOTO_SqlConnectionString` env var
-  - Client: Microsoft.Data.SqlClient (custom repository pattern)
-  - Schema: Multi-tenant with `[Core]` schema + tenant-specific `[AccountNo]` schemas
-  - Pattern: JSON columns with computed columns for indexing
-  - Schema files: `database/*.sql`
+  - ORM: Custom Repository Pattern (`RentalDataContext`)
+  - JSON columns with computed columns for indexing
+  - Multi-tenant via schema separation (`[Core]`, `[AccountNo]`)
+  - Schema scripts: `database/*.sql`
 
 **File Storage:**
-- AWS S3 - Binary file storage (images, documents)
-  - Connection: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`
+- AWS S3 - Binary/document storage
+  - SDK: `AWSSDK.S3 4.0.17`
+  - Client: `S3BinaryStore` (`src/MotoRent.Services/Storage/S3BinaryStore.cs`)
+  - Auth: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` env vars
+  - Region: `AWS_REGION` (default: `ap-southeast-1`)
   - Private bucket: `MOTO_AwsBucket` (default: `motorent.private`)
   - Public bucket: `MOTO_AwsPublicBucket` (default: `motorent.public`)
-  - Implementation: `src/MotoRent.Services/Storage/S3BinaryStore.cs`
-  - Features: Pre-signed URLs, public/private access, metadata storage
+  - Pre-signed URLs for private access
+  - TTL: `MOTO_AwsS3Ttl` (default: 5 minutes)
+
+**Local File Storage:**
+- Fallback for development
+  - Path: `MOTO_FileStorageBasePath` (default: `uploads`)
+  - Max size: `MOTO_FileStorageMaxSizeMb` (default: 10MB)
 
 **Caching:**
-- Microsoft.Extensions.Caching.Hybrid - In-memory + distributed caching
-  - Configuration: `builder.Services.AddHybridCache()`
-  - Used by: Core Repository for query result caching
-
-**Search (Optional):**
-- OpenSearch - Full-text search engine
-  - Connection: `MOTO_OpenSearchHost` env var (optional)
-  - Auth: `MOTO_OpenSearchBasicAuth` env var
-  - Implementation: `src/MotoRent.Services/Search/OpenSearchService.cs`
-  - Used for: Entity search, fuzzy matching, code item lookup
+- None detected (no Redis/Memcached)
 
 ## Authentication & Identity
 
-**Auth Providers:**
-- Google OAuth 2.0
-  - Config: `MOTO_GoogleClientId`, `MOTO_GoogleClientSecret`
-  - Callback: `/signin-google`
-  - Implementation: `Microsoft.AspNetCore.Authentication.Google`
+**OAuth 2.0 Providers:**
 
-- Microsoft Account OAuth 2.0
-  - Config: `MOTO_MicrosoftClientId`, `MOTO_MicrosoftClientSecret`
-  - Callback: `/signin-microsoft`
-  - Implementation: `Microsoft.AspNetCore.Authentication.MicrosoftAccount`
+1. Google OAuth
+   - SDK: `Microsoft.AspNetCore.Authentication.Google`
+   - Client ID: `MOTO_GoogleClientId`
+   - Client Secret: `MOTO_GoogleClientSecret`
+   - Callback: `/signin-google`
 
-- LINE OAuth 2.0 (Thai market)
-  - Config: `MOTO_LineChannelId`, `MOTO_LineChannelSecret`
-  - Callback: `/signin-line`
-  - Scopes: `profile`, `openid`
-  - Implementation: `AspNet.Security.OAuth.Line`
+2. Microsoft OAuth
+   - SDK: `Microsoft.AspNetCore.Authentication.MicrosoftAccount`
+   - Client ID: `MOTO_MicrosoftClientId`
+   - Client Secret: `MOTO_MicrosoftClientSecret`
+   - Callback: `/signin-microsoft`
+
+3. LINE OAuth (Thailand market)
+   - SDK: `AspNet.Security.OAuth.Line`
+   - Channel ID: `MOTO_LineChannelId`
+   - Channel Secret: `MOTO_LineChannelSecret`
+   - Callback: `/signin-line`
+   - Scopes: `profile`, `openid`
 
 **Session Management:**
-- Cookie Authentication - 14-day sliding expiration
-  - Cookie name: `MotoRent.Auth`
+- Cookie-based authentication
+  - Name: `MotoRent.Auth`
+  - Expiration: 14 days sliding
   - External auth cookie: `MotoRent.External` (10 min)
-  - Implementation: `src/MotoRent.Server/Program.cs`
 
-**API Authentication:**
-- JWT Bearer Tokens
+**JWT Tokens:**
+- For API access tokens
   - Secret: `MOTO_JwtSecret`
   - Issuer: `MOTO_JwtIssuer` (default: `motorent`)
   - Audience: `MOTO_JwtAudience` (default: `motorent-api`)
   - Expiration: `MOTO_JwtExpirationMonths` (default: 6 months)
-  - Implementation: `System.IdentityModel.Tokens.Jwt`
+  - SDK: `System.IdentityModel.Tokens.Jwt`
 
 **Super Admin:**
-- Config: `MOTO_SuperAdmin` - Comma-separated email list
-- Claim: `SuperAdmin` added to authenticated users
+- Configured via `MOTO_SuperAdmin` (comma-separated emails)
 
-## Messaging & Real-time
-
-**Message Broker (Optional):**
-- RabbitMQ - Async message processing
-  - Host: `appsettings.json` > `RabbitMQ:Host`
-  - Enabled: `RabbitMQ:Enabled` (default: false)
-  - Virtual Host: `motorent`
-  - Exchange: `motorent.topics`
-  - Dead Letter: `motorent.dead-letter`
-  - Implementation: `src/MotoRent.Messaging/RabbitMqMessageBroker.cs`
-  - Consumer: `src/MotoRent.Worker/`
-
-**Real-time (SignalR):**
-- Comment Hub - Real-time comment notifications
-  - Endpoint: `/hub-comments`
-  - Implementation: `src/MotoRent.Server/Hubs/CommentHub.cs`
-  - Used for: Broadcasting new comments to connected clients
-
-## Notifications
+## Messaging & Notifications
 
 **Email (SMTP):**
-- Generic SMTP support
+- Standard SMTP with TLS
   - Host: `MOTO_SmtpHost`
   - Port: `MOTO_SmtpPort` (default: 587)
-  - Credentials: `MOTO_SmtpUser`, `MOTO_SmtpPassword`
+  - User: `MOTO_SmtpUser`
+  - Password: `MOTO_SmtpPassword`
   - From: `MOTO_SmtpFromEmail`, `MOTO_SmtpFromName`
   - Implementation: `src/MotoRent.Services/NotificationService.cs`
-  - Templates: Booking confirmation, payment receipt, reminders, cancellation
 
 **LINE Notify:**
-- LINE Notify API - Push notifications to LINE users
-  - Token: `MOTO_LineNotifyToken` (for shop staff)
-  - Endpoint: `https://notify-api.line.me/api/notify`
+- Push notifications to LINE users
+  - API: `https://notify-api.line.me/api/notify`
+  - Token: Per-shop or `MOTO_LineNotifyToken` global
   - Implementation: `src/MotoRent.Services/NotificationService.cs`
-  - Used for: Booking confirmations, payment receipts, staff alerts
+
+**Message Queue (Optional):**
+- RabbitMQ for async processing
+  - SDK: `RabbitMQ.Client 7.2.0`
+  - Config: `RabbitMQ` section in `appsettings.json`
+  - Enabled flag: `RabbitMQ:Enabled`
+  - Implementation: `src/MotoRent.Messaging/RabbitMqMessageBroker.cs`
+  - Subscribers: `src/MotoRent.Worker/Subscribers/`
+
+## Real-Time Communication
+
+**SignalR:**
+- Real-time comment notifications
+  - Hub: `/hub-comments`
+  - Implementation: `src/MotoRent.Server/Hubs/CommentHub.cs`
+  - Worker client: `src/MotoRent.Worker/Subscribers/CommentSignalRSubscriber.cs`
 
 ## Monitoring & Observability
 
 **Error Tracking:**
-- Custom SQL Logger
+- Custom SQL-based logging
   - Implementation: `SqlLogger` class
-  - Storage: `[Core].[LogEntry]` table
-  - Middleware: `UseExceptionLogging()` in Program.cs
-  - Service: `src/MotoRent.Services/Core/LogEntryService.cs`
+  - Service: `LogEntryService`
+  - Table: `[Core].[LogEntry]`
 
 **Logs:**
-- Microsoft.Extensions.Logging
-  - Console logging for development
-  - Configurable log levels in `appsettings.json`
+- Microsoft.Extensions.Logging (console + structured)
+- Log levels configured in `appsettings.json`
 
 ## CI/CD & Deployment
 
 **Hosting:**
-- Self-hosted or cloud (Azure App Service compatible)
-- Docker support via `containers/` directory (inherited from main forex project)
+- Not specified (no Dockerfile detected)
+- PowerShell build scripts present
 
 **CI Pipeline:**
 - GitHub repository: `https://github.com/erymuzuan/motorent`
-- Build scripts: PowerShell (`build.web.ps1`)
+- GitHub Actions: `.github/` directory present
 
 ## Environment Configuration
 
 **Required env vars (minimum):**
 ```
-MOTO_SqlConnectionString    # SQL Server connection
-MOTO_JwtSecret              # JWT signing key (change from default!)
-MOTO_SuperAdmin             # Admin email addresses
-```
-
-**Recommended for production:**
-```
-MOTO_GoogleClientId         # Google OAuth
+MOTO_SqlConnectionString     # Database
+MOTO_GoogleClientId          # Or another OAuth provider
 MOTO_GoogleClientSecret
-MOTO_MicrosoftClientId      # Microsoft OAuth
-MOTO_MicrosoftClientSecret
-MOTO_GeminiApiKey           # Document OCR
-AWS_ACCESS_KEY_ID           # S3 storage
-AWS_SECRET_ACCESS_KEY
-AWS_REGION
-MOTO_SmtpHost               # Email notifications
-MOTO_SmtpUser
-MOTO_SmtpPassword
 ```
 
-**Thai market specific:**
+**Required for full functionality:**
 ```
-MOTO_LineChannelId          # LINE OAuth
-MOTO_LineChannelSecret
-MOTO_LineNotifyToken        # LINE Notify for staff
+AWS_ACCESS_KEY_ID            # File storage
+AWS_SECRET_ACCESS_KEY
+MOTO_GeminiApiKey            # OCR features
+MOTO_SmtpHost                # Email notifications
 ```
 
 **Secrets location:**
 - Environment variables (recommended)
-- `appsettings.json` (development only, not for production secrets)
-- PowerShell script: `env.motorent.ps1` (local development)
+- `appsettings.Development.json` (local only, gitignored)
+- `env.motorent.local.ps1` (PowerShell script, gitignored)
 
 ## Webhooks & Callbacks
 
 **Incoming:**
-- `/signin-google` - Google OAuth callback
-- `/signin-microsoft` - Microsoft OAuth callback
-- `/signin-line` - LINE OAuth callback
-- `/hub-comments` - SignalR WebSocket endpoint
+- OAuth callbacks: `/signin-google`, `/signin-microsoft`, `/signin-line`
+- No external webhook endpoints detected
 
 **Outgoing:**
-- Google Gemini API (document OCR)
-- LINE Notify API (push notifications)
-- SMTP (email)
-- OpenSearch (if configured)
+- LINE Notify API calls
+- OpenSearch indexing (if enabled)
+- SMTP email sending
 
 ## Multi-Tenant Architecture
 
 **Tenant Resolution:**
-- URL-based: `/tourist/{accountNo}/` paths use `TouristRequestContext`
-- Claims-based: Authenticated pages use `MotoRentRequestContext`
-- Domain-based: Custom domain/subdomain resolution via `UseTenantDomainResolution()` middleware
+- Claims-based for authenticated users (`MotoRentRequestContext`)
+- URL-based for tourist pages (`TouristRequestContext`)
+- AccountNo claim identifies tenant
 
-**Tenant Data Isolation:**
-- Core entities: `[Core]` schema (shared)
-- Tenant entities: `[{AccountNo}]` schema (isolated)
-- Implementation: `src/MotoRent.Services/Core/SqlSubscriptionService.cs`
+**Schema Separation:**
+- `[Core]` - Shared entities (Organization, User, Setting, AccessToken, LogEntry)
+- `[{AccountNo}]` - Tenant-specific operational data
 
 ---
 
-*Integration audit: 2026-01-23*
+*Integration audit: 2026-01-19*

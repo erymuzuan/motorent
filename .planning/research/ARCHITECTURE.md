@@ -1,889 +1,635 @@
-# Architecture Patterns: Document Template Editor
+# Architecture Patterns: Cashier Till System
 
-**Domain:** Document template designer for SaaS rental system
-**Researched:** 2026-01-23
-**Overall Confidence:** HIGH (based on existing codebase patterns and established document editor practices)
+**Domain:** Point-of-sale cashier till for multi-tenant motorbike rental
+**Researched:** 2026-01-19
+**Context:** Existing MotoRent system with Blazor Server + SQL Server JSON columns
 
 ## Executive Summary
 
-This document defines the architecture for a document template editor that integrates with the existing MotoRent Blazor application. The design follows established patterns from the codebase (Entity base class, Repository pattern, JSON columns) while introducing template-specific concerns: element models, data binding, and rendering pipelines.
+The MotoRent system already has a well-architected cashier till implementation that follows established patterns. This document analyzes the existing architecture, identifies its strengths, and recommends enhancements based on the current state of the codebase.
 
-## Recommended Architecture
+The architecture follows a **session-based till model** where staff members open individual sessions tied to shops, record transactions (cash in/out), and close with reconciliation. The implementation integrates cleanly with the existing rental, deposit, and receipt workflows.
+
+---
+
+## Existing Architecture Overview
+
+### Entity Model
+
+The till system uses three primary entities:
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              Presentation Layer                              │
-│  ┌──────────────────────┐  ┌──────────────────┐  ┌──────────────────────┐  │
-│  │   Template Designer  │  │  Template List   │  │   Print/Render View  │  │
-│  │   (Canvas + Panels)  │  │  (CRUD UI)       │  │   (Document Output)  │  │
-│  └──────────┬───────────┘  └────────┬─────────┘  └──────────┬───────────┘  │
-└─────────────┼──────────────────────┼─────────────────────────┼──────────────┘
-              │                      │                         │
-┌─────────────┼──────────────────────┼─────────────────────────┼──────────────┐
-│             │         Services Layer                         │              │
-│  ┌──────────▼───────────┐  ┌───────▼────────┐  ┌────────────▼───────────┐  │
-│  │  DesignerStateService│  │ TemplateService│  │  DocumentRenderService │  │
-│  │  (State Management)  │  │ (CRUD + Query) │  │  (Template → Output)   │  │
-│  └──────────────────────┘  └────────────────┘  └────────────────────────┘  │
-│                                                                              │
-│  ┌──────────────────────┐  ┌────────────────┐  ┌────────────────────────┐  │
-│  │ DataModelService     │  │ ClauseService  │  │  PdfExportService      │  │
-│  │ (Context Resolution) │  │ (AI Suggester) │  │  (HTML → PDF)          │  │
-│  └──────────────────────┘  └────────────────┘  └────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────────────────┘
-              │                      │                         │
-┌─────────────┼──────────────────────┼─────────────────────────┼──────────────┐
-│             │            Domain Layer                        │              │
-│  ┌──────────▼───────────┐  ┌───────▼────────┐  ┌────────────▼───────────┐  │
-│  │  DocumentTemplate    │  │ TemplateElement│  │  DataModel Classes     │  │
-│  │  (Entity)            │  │ (Polymorphic)  │  │  (AgreementModel, etc) │  │
-│  └──────────────────────┘  └────────────────┘  └────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────────────────┘
-              │
-┌─────────────┼───────────────────────────────────────────────────────────────┐
-│             │                  Data Layer                                    │
-│  ┌──────────▼────────────────────────────────────────────────────────────┐  │
-│  │  [AccountNo].[DocumentTemplate] - JSON Column Storage                 │  │
-│  │  Follows existing Repository pattern with RentalDataContext           │  │
-│  └───────────────────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────────────────┘
+TillSession (1) -----> (*) TillTransaction
+     |
+     v
+     (*) Receipt
 ```
+
+| Entity | Purpose | Key Relationships |
+|--------|---------|-------------------|
+| `TillSession` | Represents a staff member's shift at a shop | Links to Shop, Staff, Transactions |
+| `TillTransaction` | Individual cash/non-cash movements | Links to Session, Payment, Deposit, Rental |
+| `Receipt` | Formal document for customer transactions | Links to Session, Rental, Booking, Renter |
+
+### Current Entity Structure
+
+#### TillSession
+
+```csharp
+public class TillSession : Entity
+{
+    public int TillSessionId { get; set; }
+    public int ShopId { get; set; }
+    public string StaffUserName { get; set; }
+    public string StaffDisplayName { get; set; }
+    public TillSessionStatus Status { get; set; }
+
+    // Opening
+    public decimal OpeningFloat { get; set; }
+    public DateTimeOffset OpenedAt { get; set; }
+
+    // Running totals (denormalized for quick display)
+    public decimal TotalCashIn { get; set; }
+    public decimal TotalCashOut { get; set; }
+    public decimal TotalDropped { get; set; }
+    public decimal TotalToppedUp { get; set; }
+
+    // Non-cash totals
+    public decimal TotalCardPayments { get; set; }
+    public decimal TotalBankTransfers { get; set; }
+    public decimal TotalPromptPay { get; set; }
+
+    // Closing & verification
+    public decimal ActualCash { get; set; }
+    public decimal Variance { get; set; }
+    public DateTimeOffset? ClosedAt { get; set; }
+    public string? VerifiedByUserName { get; set; }
+
+    // Computed
+    public decimal ExpectedCash => OpeningFloat + TotalCashIn - TotalCashOut - TotalDropped + TotalToppedUp;
+}
+```
+
+**Design Rationale:**
+- **Denormalized totals** on session enable fast UI rendering without aggregating transactions
+- **Expected vs Actual** supports end-of-day variance tracking
+- **Status workflow** enables manager verification process
+
+#### TillTransaction
+
+```csharp
+public class TillTransaction : Entity
+{
+    public int TillTransactionId { get; set; }
+    public int TillSessionId { get; set; }
+
+    public TillTransactionType TransactionType { get; set; }
+    public TillTransactionDirection Direction { get; set; }
+
+    public decimal Amount { get; set; }
+    public string? Category { get; set; }
+    public string? Description { get; set; }
+
+    // Cross-references
+    public int? PaymentId { get; set; }
+    public int? DepositId { get; set; }
+    public int? RentalId { get; set; }
+
+    // Payout details
+    public string? RecipientName { get; set; }
+    public string? ReceiptNumber { get; set; }
+
+    // Attachments (photos of receipts)
+    public List<TillAttachment> Attachments { get; set; }
+
+    // Computed
+    public bool AffectsCash => TransactionType switch
+    {
+        TillTransactionType.CardPayment => false,
+        TillTransactionType.BankTransfer => false,
+        TillTransactionType.PromptPay => false,
+        _ => true
+    };
+}
+```
+
+**Design Rationale:**
+- **Optional cross-references** link till transactions back to business entities
+- **AffectsCash computed property** distinguishes cash vs electronic payments
+- **Attachment support** for petty cash receipt photos
+
+#### Receipt
+
+```csharp
+public class Receipt : Entity
+{
+    public int ReceiptId { get; set; }
+    public string ReceiptNo { get; set; }  // RCP-YYMMDD-XXXXX
+    public string ReceiptType { get; set; } // BookingDeposit, CheckIn, Settlement
+    public string Status { get; set; }      // Issued, Voided
+
+    // References
+    public int? BookingId { get; set; }
+    public int? RentalId { get; set; }
+    public int? TillSessionId { get; set; }
+    public int ShopId { get; set; }
+
+    // Denormalized customer info
+    public string CustomerName { get; set; }
+    public string? CustomerPhone { get; set; }
+
+    // Line items and payments
+    public List<ReceiptItem> Items { get; set; }
+    public List<ReceiptPayment> Payments { get; set; }
+
+    // Totals
+    public decimal Subtotal { get; set; }
+    public decimal GrandTotal { get; set; }
+}
+```
+
+**Design Rationale:**
+- **Denormalized customer/shop info** enables printing without joins
+- **Embedded Items/Payments** stored in JSON column for flexibility
+- **Multi-currency support** via `ReceiptPayment.Currency` and `ExchangeRate`
+
+---
 
 ## Component Boundaries
 
-| Component | Responsibility | Communicates With |
-|-----------|---------------|-------------------|
-| **Template Designer** | Canvas UI, drag-drop, element selection | DesignerStateService, TemplateService |
-| **Designer Canvas** | Visual rendering of elements, click/drag handling | DesignerStateService (selection, position) |
-| **Elements Palette** | Available element types for drag-drop | DesignerStateService (add element) |
-| **Properties Panel** | Element configuration, data binding UI | DesignerStateService (update element) |
-| **DesignerStateService** | In-memory editor state, undo/redo stack | N/A (holds state) |
-| **TemplateService** | CRUD operations for templates | RentalDataContext, Repository |
-| **DocumentRenderService** | Merge template + data model → HTML | DataModelService |
-| **DataModelService** | Build context models from entities | RentalDataContext (loads entities) |
-| **PdfExportService** | Convert rendered HTML → PDF | External library |
-| **ClauseService** | AI-suggested agreement clauses | Gemini API |
+### Service Layer
+
+```
+TillService
+    - Session lifecycle (Open, Close, Verify)
+    - Transaction recording (CashIn, CashOut, Drop, TopUp)
+    - Integration methods (link to rental payments)
+    - EOD reports and summaries
+
+ReceiptService
+    - Receipt generation (CheckIn, Settlement, BookingDeposit)
+    - Receipt queries and filtering
+    - Void/reprint operations
+    - Statistics
+
+ShopService
+    - Shop context for till operations
+```
+
+### Current TillService Responsibilities
+
+```csharp
+public class TillService(RentalDataContext context)
+{
+    // Session Management
+    OpenSessionAsync(shopId, staffUserName, openingFloat)
+    GetActiveSessionAsync(shopId, staffUserName)
+    GetActiveSessionForUserAsync(staffUserName)
+    CanOpenSessionAsync(shopId, staffUserName)
+    CloseSessionAsync(sessionId, actualCash, notes)
+
+    // Transaction Recording
+    RecordCashInAsync(sessionId, type, amount, description, ...)
+    RecordPayoutAsync(sessionId, type, amount, description, ...)
+    RecordDropAsync(sessionId, amount)
+    RecordTopUpAsync(sessionId, amount)
+
+    // Integration (link to rental workflow)
+    RecordRentalPaymentToTillAsync(tillSessionId, paymentMethod, ...)
+    RecordDepositToTillAsync(tillSessionId, depositId, ...)
+    RecordDepositRefundFromTillAsync(shopId, staffUserName, ...)
+
+    // Manager EOD
+    GetSessionsForVerificationAsync(shopId, date)
+    GetDailySummaryAsync(shopId, date)
+    VerifySessionAsync(sessionId, managerUserName)
+    VerifyTransactionAsync(transactionId, managerUserName)
+
+    // Reports
+    GetSessionHistoryAsync(shopId, filters)
+    GetSessionsWithVarianceAsync(shopId, dateRange)
+}
+```
+
+---
 
 ## Data Flow
 
-### 1. Template Design Flow
+### Flow 1: Staff Opens Till Session
 
 ```
-User Action (drag element)
-       │
-       ▼
-┌─────────────────┐
-│ Elements Palette│ ──drag──▶ ┌─────────────────┐
-└─────────────────┘           │  Designer Canvas │
-                              └────────┬────────┘
-                                       │ drop event
-                                       ▼
-                         ┌─────────────────────────┐
-                         │  DesignerStateService   │
-                         │  • AddElement()         │
-                         │  • Updates ElementList  │
-                         │  • Pushes to UndoStack  │
-                         └────────────┬────────────┘
-                                      │ StateChanged event
-                                      ▼
-              ┌───────────────────────┴───────────────────────┐
-              │                                               │
-              ▼                                               ▼
-     ┌────────────────┐                           ┌────────────────────┐
-     │ Designer Canvas│ re-renders elements       │ Properties Panel   │ shows
-     └────────────────┘                           │ selected element   │
-                                                  └────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│ Till.razor → TillOpenSessionDialog                                  │
+│     ↓                                                               │
+│ TillService.OpenSessionAsync(shopId, staffUserName, openingFloat)   │
+│     ↓                                                               │
+│ Create TillSession {Status: Open, OpeningFloat: X}                  │
+│     ↓                                                               │
+│ PersistenceSession.SubmitChanges() → SQL INSERT                     │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-### 2. Template Storage Flow
+### Flow 2: Receive Rental Payment (Quick Payment)
 
 ```
-Save Button Click
-       │
-       ▼
-┌─────────────────────────┐
-│  DesignerStateService   │
-│  • GetTemplateSnapshot()│
-└────────────┬────────────┘
-             │ DocumentTemplate entity
-             ▼
-┌─────────────────────────┐
-│    TemplateService      │
-│  • ValidateTemplate()   │
-│  • SaveTemplateAsync()  │
-└────────────┬────────────┘
-             │
-             ▼
-┌─────────────────────────┐
-│   RentalDataContext     │
-│   • OpenSession()       │
-│   • Attach(template)    │
-│   • SubmitChanges()     │
-└────────────┬────────────┘
-             │ JSON serialization
-             ▼
-┌─────────────────────────────────────────────────┐
-│  [AccountNo].[DocumentTemplate]                 │
-│  Json column stores full template definition    │
-└─────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│ Till.razor → TillReceivePaymentDialog                               │
+│     ↓                                                               │
+│ Select active rental                                                │
+│ Enter amount, select payment method (Cash/Card/PromptPay)           │
+│     ↓                                                               │
+│ TillService.RecordRentalPaymentToTillAsync(sessionId, method, ...)  │
+│     ↓                                                               │
+│ Determine TransactionType from paymentMethod:                       │
+│   - Cash → TillTransactionType.RentalPayment (AffectsCash = true)   │
+│   - Card → TillTransactionType.CardPayment (AffectsCash = false)    │
+│   - PromptPay → TillTransactionType.PromptPay (AffectsCash = false) │
+│     ↓                                                               │
+│ Create TillTransaction                                              │
+│ Update TillSession totals (TotalCashIn or TotalCardPayments, etc.)  │
+│     ↓                                                               │
+│ Generate Receipt if applicable                                      │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-### 3. Document Rendering Flow
+### Flow 3: Close Till Session (EOD)
 
 ```
-Print/Preview Request
-       │
-       ▼
-┌─────────────────────────┐     ┌─────────────────────────┐
-│  Rental Detail Page     │────▶│    DocumentRenderService │
-│  (Print button)         │     │    • RenderAsync()       │
-└─────────────────────────┘     └────────────┬────────────┘
-                                             │
-        ┌────────────────────────────────────┼─────────────────────────────┐
-        │                                    │                             │
-        ▼                                    ▼                             ▼
-┌───────────────────┐          ┌─────────────────────────┐    ┌──────────────────┐
-│  TemplateService  │          │   DataModelService      │    │ Render Template  │
-│  • LoadTemplate() │          │   • BuildAgreementModel │    │ • Merge elements │
-└────────┬──────────┘          │   • Load related entities│    │ • Resolve bindings│
-         │                     └────────────┬────────────┘    └─────────┬────────┘
-         │                                  │                           │
-         │  DocumentTemplate                │ AgreementModel            │ HTML string
-         │                                  │                           │
-         └──────────────────────────────────┴───────────────────────────┘
-                                             │
-                                             ▼
-                               ┌─────────────────────────┐
-                               │      Output Options     │
-                               │  • HTML Preview         │
-                               │  • Browser Print (Ctrl+P)│
-                               │  • PDF Download         │
-                               └─────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│ Till.razor → TillCloseSessionDialog                                 │
+│     ↓                                                               │
+│ Display ExpectedCash: OpeningFloat + CashIn - CashOut - Dropped     │
+│ Staff enters ActualCash (physical count)                            │
+│     ↓                                                               │
+│ TillService.CloseSessionAsync(sessionId, actualCash, notes)         │
+│     ↓                                                               │
+│ Calculate Variance = ActualCash - ExpectedCash                      │
+│ Set Status:                                                         │
+│   - Variance == 0 → Closed                                          │
+│   - Variance != 0 → ClosedWithVariance                              │
+│     ↓                                                               │
+│ PersistenceSession.SubmitChanges()                                  │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-## Entity Design
+### Flow 4: Manager Verification
 
-### DocumentTemplate Entity
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│ Manager EOD Page (not yet implemented)                              │
+│     ↓                                                               │
+│ TillService.GetSessionsForVerificationAsync(shopId, date)           │
+│ TillService.GetDailySummaryAsync(shopId, date)                      │
+│     ↓                                                               │
+│ Review sessions with variances                                      │
+│ Review unverified cash drops                                        │
+│     ↓                                                               │
+│ TillService.VerifySessionAsync(sessionId, managerUserName)          │
+│     ↓                                                               │
+│ Set Status → Verified, record VerifiedByUserName, VerifiedAt        │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Integration Points
+
+### 1. Rental Check-In Integration
+
+The existing rental check-in workflow should integrate with the till:
+
+```
+Check-In Wizard (Step 5: Payment)
+    ↓
+Record payment → TillService.RecordRentalPaymentToTillAsync()
+Record deposit → TillService.RecordDepositToTillAsync()
+    ↓
+Generate receipt → ReceiptService.GenerateCheckInReceiptAsync()
+    ↓
+Link receipt to TillSession via Receipt.TillSessionId
+```
+
+**Current Integration Point:**
+- `Rental.TillSessionId` - Links rental to the till session that processed it
+- `Receipt.TillSessionId` - Links receipt to till session for reconciliation
+
+### 2. Rental Check-Out Integration
+
+```
+Check-Out Process
+    ↓
+Calculate settlement (deposit - damages - late fees)
+    ↓
+If refund needed:
+    TillService.RecordDepositRefundFromTillAsync()
+    ↓
+Generate settlement receipt → ReceiptService.GenerateSettlementReceiptAsync()
+```
+
+### 3. Booking Deposit Integration
+
+```
+TillBookingDepositDialog
+    ↓
+Select pending booking
+Enter payment amount/method
+    ↓
+TillService.RecordCashInAsync(sessionId, TillTransactionType.BookingDeposit, ...)
+    ↓
+ReceiptService.GenerateBookingDepositReceiptAsync()
+```
+
+---
+
+## Multi-Currency Support
+
+### Current Implementation
+
+Multi-currency is supported at the **receipt payment level**:
 
 ```csharp
-public class DocumentTemplate : Entity
+public class ReceiptPayment
 {
-    public int DocumentTemplateId { get; set; }
-
-    // Identity
-    public string Name { get; set; } = string.Empty;
-    public string DocumentType { get; set; } = "RentalAgreement"; // RentalAgreement, Receipt, BookingConfirmation
-
-    // State
-    public bool IsDefault { get; set; }
-    public bool IsApproved { get; set; } // Staff can only use approved templates
-    public string Status { get; set; } = "Draft"; // Draft, Approved, Archived
-
-    // Page Settings
-    public PageSettings Page { get; set; } = new();
-
-    // Template Definition (main content)
-    public List<TemplateElement> Elements { get; set; } = [];
-
-    // Multi-page support
-    public List<TemplatePage> Pages { get; set; } = [];
-
-    public override int GetId() => DocumentTemplateId;
-    public override void SetId(int value) => DocumentTemplateId = value;
-}
-
-public class PageSettings
-{
-    public string Size { get; set; } = "A4"; // A4, Letter
-    public string Orientation { get; set; } = "Portrait"; // Portrait, Landscape
-    public decimal MarginTop { get; set; } = 20; // mm
-    public decimal MarginBottom { get; set; } = 20;
-    public decimal MarginLeft { get; set; } = 15;
-    public decimal MarginRight { get; set; } = 15;
-}
-
-public class TemplatePage
-{
-    public int PageNumber { get; set; }
-    public List<TemplateElement> Elements { get; set; } = [];
+    public string Method { get; set; }        // Cash, Card, PromptPay
+    public decimal Amount { get; set; }        // Amount in payment currency
+    public string Currency { get; set; }       // THB, USD, EUR, etc.
+    public decimal ExchangeRate { get; set; }  // Rate to THB
+    public decimal AmountInBaseCurrency { get; set; } // THB equivalent
 }
 ```
 
-### Element Model (Polymorphic JSON)
+**Supported Currencies:**
+- THB (base), USD, EUR, GBP, CNY, JPY, AUD, RUB
 
+### Till Session Currency Strategy
+
+The `TillSession` totals are in **base currency (THB)** only. Multi-currency cash receipts are converted at point of entry.
+
+**Recommendation:** This is the correct approach for a Thai business. Foreign currency accepted as cash should be immediately converted to THB equivalent for till tracking purposes.
+
+---
+
+## Session Status Workflow
+
+```
+Open
+  ↓ (staff counting)
+Reconciling (optional intermediate state)
+  ↓ (close)
+Closed (variance = 0) ──or── ClosedWithVariance (variance != 0)
+  ↓ (manager review)
+PendingVerification (optional)
+  ↓ (manager approves)
+Verified
+```
+
+**Status Enum:**
 ```csharp
-[JsonPolymorphic(TypeDiscriminatorPropertyName = "$elementType")]
-[JsonDerivedType(typeof(TextElement), "Text")]
-[JsonDerivedType(typeof(ImageElement), "Image")]
-[JsonDerivedType(typeof(TwoColumnElement), "TwoColumn")]
-[JsonDerivedType(typeof(DividerElement), "Divider")]
-[JsonDerivedType(typeof(SignatureElement), "Signature")]
-[JsonDerivedType(typeof(DateElement), "Date")]
-[JsonDerivedType(typeof(ContainerElement), "Container")]
-[JsonDerivedType(typeof(RepeaterElement), "Repeater")]
-public abstract class TemplateElement
+public enum TillSessionStatus
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString("N")[..8];
-
-    // Layout
-    public decimal X { get; set; }
-    public decimal Y { get; set; }
-    public decimal Width { get; set; }
-    public decimal? Height { get; set; } // null = auto
-
-    // Common styling
-    public string? BackgroundColor { get; set; }
-    public string? BorderColor { get; set; }
-    public decimal? BorderWidth { get; set; }
-    public decimal? Padding { get; set; }
-    public decimal? Margin { get; set; }
-}
-
-public class TextElement : TemplateElement
-{
-    public string Content { get; set; } = string.Empty;
-    public string? DataBinding { get; set; } // e.g., "Rental.RenterName"
-    public string? Format { get; set; } // e.g., "d" for short date, "C" for currency
-
-    // Typography
-    public string FontFamily { get; set; } = "Arial";
-    public decimal FontSize { get; set; } = 12;
-    public string FontWeight { get; set; } = "Normal"; // Normal, Bold
-    public string FontStyle { get; set; } = "Normal"; // Normal, Italic
-    public string TextAlign { get; set; } = "Left"; // Left, Center, Right
-    public string? Color { get; set; }
-}
-
-public class ImageElement : TemplateElement
-{
-    public string? Src { get; set; } // Static image path
-    public string? DataBinding { get; set; } // Dynamic: "Organization.LogoStoreId"
-    public string ObjectFit { get; set; } = "Contain"; // Contain, Cover, Fill
-}
-
-public class TwoColumnElement : TemplateElement
-{
-    public decimal LeftRatio { get; set; } = 0.5m; // 50% default
-    public List<TemplateElement> LeftColumn { get; set; } = [];
-    public List<TemplateElement> RightColumn { get; set; } = [];
-    public decimal? Gap { get; set; } // Space between columns
-}
-
-public class DividerElement : TemplateElement
-{
-    public string Style { get; set; } = "Solid"; // Solid, Dashed, Dotted
-    public decimal Thickness { get; set; } = 1;
-    public string? Color { get; set; }
-}
-
-public class SignatureElement : TemplateElement
-{
-    public string Label { get; set; } = "Signature";
-    public bool ShowDateLine { get; set; } = true;
-}
-
-public class DateElement : TemplateElement
-{
-    public string? DataBinding { get; set; } // "DateTime.Now" or "Rental.StartDate"
-    public string Format { get; set; } = "dd MMMM yyyy";
-}
-
-public class ContainerElement : TemplateElement
-{
-    public List<TemplateElement> Children { get; set; } = [];
-    public string Layout { get; set; } = "Vertical"; // Vertical, Horizontal
-    public decimal? Gap { get; set; }
-}
-
-public class RepeaterElement : TemplateElement
-{
-    public string DataSource { get; set; } = string.Empty; // e.g., "Rental.Accessories"
-    public List<TemplateElement> ItemTemplate { get; set; } = [];
-    public decimal? ItemSpacing { get; set; }
+    Open,              // Active, accepting transactions
+    Reconciling,       // Staff counting (optional)
+    Closed,            // Closed with no variance
+    ClosedWithVariance,// Closed but had variance
+    PendingVerification, // Awaiting manager
+    Verified           // Manager approved
 }
 ```
 
-### Data Context Models
+---
 
-```csharp
-/// <summary>
-/// Context model for Rental Agreement documents.
-/// Flattens related entities for easy data binding.
-/// </summary>
-public class AgreementModel
-{
-    // Document metadata
-    public DateTimeOffset GeneratedOn { get; set; } = DateTimeOffset.Now;
-    public string AgreementNumber { get; set; } = string.Empty;
+## SQL Schema Pattern
 
-    // Organization (tenant)
-    public OrganizationInfo Organization { get; set; } = new();
-
-    // Shop
-    public ShopInfo Shop { get; set; } = new();
-
-    // Renter
-    public RenterInfo Renter { get; set; } = new();
-
-    // Vehicle
-    public VehicleInfo Vehicle { get; set; } = new();
-
-    // Rental details
-    public RentalInfo Rental { get; set; } = new();
-
-    // Collections for repeaters
-    public List<AccessoryInfo> Accessories { get; set; } = [];
-    public List<ClauseInfo> Clauses { get; set; } = [];
-
-    // Computed/convenience
-    public string FormattedTotal => Rental.TotalAmount.ToString("C");
-    public int RentalDays => Math.Max(1, (int)(Rental.EndDate - Rental.StartDate).TotalDays + 1);
-}
-
-public class OrganizationInfo
-{
-    public string Name { get; set; } = string.Empty;
-    public string? LogoUrl { get; set; }
-    public string? Phone { get; set; }
-    public string? Email { get; set; }
-    public string? TaxNo { get; set; }
-    public string FullAddress { get; set; } = string.Empty;
-}
-
-public class ShopInfo
-{
-    public string Name { get; set; } = string.Empty;
-    public string Address { get; set; } = string.Empty;
-    public string Phone { get; set; } = string.Empty;
-    public string? Email { get; set; }
-}
-
-public class RenterInfo
-{
-    public string FullName { get; set; } = string.Empty;
-    public string Phone { get; set; } = string.Empty;
-    public string? Email { get; set; }
-    public string? PassportNo { get; set; }
-    public string? NationalIdNo { get; set; }
-    public string? Nationality { get; set; }
-    public string? DrivingLicenseNo { get; set; }
-    public string? HotelName { get; set; }
-}
-
-public class VehicleInfo
-{
-    public string Type { get; set; } = string.Empty; // "Motorbike", "Car", etc.
-    public string Brand { get; set; } = string.Empty;
-    public string Model { get; set; } = string.Empty;
-    public string LicensePlate { get; set; } = string.Empty;
-    public string? Color { get; set; }
-    public int Year { get; set; }
-    public int? Mileage { get; set; }
-    public string DisplayName => $"{Brand} {Model}".Trim();
-}
-
-public class RentalInfo
-{
-    public DateTimeOffset StartDate { get; set; }
-    public DateTimeOffset EndDate { get; set; }
-    public decimal DailyRate { get; set; }
-    public decimal TotalAmount { get; set; }
-    public decimal DepositAmount { get; set; }
-    public string DepositType { get; set; } = string.Empty;
-    public string? Notes { get; set; }
-}
-
-public class AccessoryInfo
-{
-    public string Name { get; set; } = string.Empty;
-    public int Quantity { get; set; }
-    public decimal DailyRate { get; set; }
-}
-
-public class ClauseInfo
-{
-    public int Order { get; set; }
-    public string Title { get; set; } = string.Empty;
-    public string Text { get; set; } = string.Empty;
-}
-```
-
-## Designer State Management
-
-### DesignerStateService Pattern
-
-```csharp
-/// <summary>
-/// Manages in-memory state for the template designer.
-/// Scoped service - one instance per SignalR circuit/user session.
-/// </summary>
-public class DesignerStateService
-{
-    // Current template being edited
-    public DocumentTemplate? Template { get; private set; }
-    public TemplatePage CurrentPage { get; private set; } = new();
-    public int CurrentPageIndex { get; private set; }
-
-    // Selection
-    public TemplateElement? SelectedElement { get; private set; }
-    public List<string> SelectedElementIds { get; } = []; // For multi-select
-
-    // Undo/Redo stacks
-    private readonly Stack<DesignerAction> m_undoStack = new();
-    private readonly Stack<DesignerAction> m_redoStack = new();
-
-    // Clipboard
-    public List<TemplateElement>? Clipboard { get; private set; }
-
-    // Dirty tracking
-    public bool IsDirty { get; private set; }
-
-    // Events for component reactivity
-    public event Action? OnStateChanged;
-    public event Action<TemplateElement?>? OnSelectionChanged;
-
-    // Actions
-    public void LoadTemplate(DocumentTemplate template) { ... }
-    public void SelectElement(string? elementId) { ... }
-    public void AddElement(TemplateElement element) { ... }
-    public void UpdateElement(string elementId, Action<TemplateElement> update) { ... }
-    public void DeleteElement(string elementId) { ... }
-    public void MoveElement(string elementId, decimal x, decimal y) { ... }
-    public void ResizeElement(string elementId, decimal width, decimal? height) { ... }
-
-    // Undo/Redo
-    public void Undo() { ... }
-    public void Redo() { ... }
-    public bool CanUndo => m_undoStack.Count > 0;
-    public bool CanRedo => m_redoStack.Count > 0;
-
-    // Multi-page
-    public void AddPage() { ... }
-    public void DeletePage(int pageIndex) { ... }
-    public void GoToPage(int pageIndex) { ... }
-
-    // Clipboard
-    public void Copy() { ... }
-    public void Paste() { ... }
-    public void Cut() { ... }
-
-    // Snapshot for save
-    public DocumentTemplate GetTemplateSnapshot() { ... }
-
-    private void NotifyStateChanged() => OnStateChanged?.Invoke();
-}
-
-public abstract class DesignerAction
-{
-    public abstract void Execute(DesignerStateService state);
-    public abstract void Undo(DesignerStateService state);
-}
-```
-
-## Rendering Pipeline
-
-### DocumentRenderService
-
-```csharp
-public class DocumentRenderService
-{
-    private readonly DataModelService m_dataModelService;
-
-    public async Task<string> RenderAgreementAsync(int rentalId, int templateId)
-    {
-        // 1. Load template
-        var template = await LoadTemplateAsync(templateId);
-
-        // 2. Build data model
-        var model = await m_dataModelService.BuildAgreementModelAsync(rentalId);
-
-        // 3. Render to HTML
-        var html = RenderTemplate(template, model);
-
-        return html;
-    }
-
-    private string RenderTemplate(DocumentTemplate template, object dataModel)
-    {
-        var sb = new StringBuilder();
-
-        // Page wrapper with CSS for print
-        sb.AppendLine(RenderPageStyles(template.Page));
-
-        foreach (var page in template.Pages)
-        {
-            sb.AppendLine("<div class=\"page\">");
-            foreach (var element in page.Elements)
-            {
-                sb.AppendLine(RenderElement(element, dataModel));
-            }
-            sb.AppendLine("</div>");
-        }
-
-        return sb.ToString();
-    }
-
-    private string RenderElement(TemplateElement element, object dataModel)
-    {
-        return element switch
-        {
-            TextElement text => RenderTextElement(text, dataModel),
-            ImageElement img => RenderImageElement(img, dataModel),
-            TwoColumnElement cols => RenderTwoColumnElement(cols, dataModel),
-            RepeaterElement rep => RenderRepeaterElement(rep, dataModel),
-            DividerElement div => RenderDividerElement(div),
-            SignatureElement sig => RenderSignatureElement(sig),
-            ContainerElement container => RenderContainerElement(container, dataModel),
-            _ => $"<!-- Unknown element type: {element.GetType().Name} -->"
-        };
-    }
-
-    private string RenderTextElement(TextElement text, object dataModel)
-    {
-        var content = text.Content;
-
-        // Resolve data binding
-        if (!string.IsNullOrEmpty(text.DataBinding))
-        {
-            var value = ResolveBinding(dataModel, text.DataBinding);
-            content = FormatValue(value, text.Format);
-        }
-
-        // Apply styles
-        var style = BuildTextStyle(text);
-
-        return $"<div style=\"{style}\">{HtmlEncode(content)}</div>";
-    }
-
-    private string RenderRepeaterElement(RepeaterElement repeater, object dataModel)
-    {
-        var collection = ResolveBinding(dataModel, repeater.DataSource) as IEnumerable;
-        if (collection == null) return "";
-
-        var sb = new StringBuilder();
-        sb.AppendLine("<div class=\"repeater\">");
-
-        foreach (var item in collection)
-        {
-            sb.AppendLine("<div class=\"repeater-item\">");
-            foreach (var child in repeater.ItemTemplate)
-            {
-                sb.AppendLine(RenderElement(child, item));
-            }
-            sb.AppendLine("</div>");
-        }
-
-        sb.AppendLine("</div>");
-        return sb.ToString();
-    }
-
-    private object? ResolveBinding(object dataModel, string binding)
-    {
-        // Handle special bindings
-        if (binding == "DateTime.Now") return DateTimeOffset.Now;
-        if (binding == "DateTime.Today") return DateOnly.FromDateTime(DateTime.Today);
-
-        // Navigate property path: "Rental.RenterName" -> dataModel.Rental.RenterName
-        var parts = binding.Split('.');
-        object? current = dataModel;
-
-        foreach (var part in parts)
-        {
-            if (current == null) return null;
-            var prop = current.GetType().GetProperty(part);
-            if (prop == null) return null;
-            current = prop.GetValue(current);
-        }
-
-        return current;
-    }
-}
-```
-
-## PDF Generation Strategy
-
-### Recommended Approach: HTML + Browser Print (Phase 1)
-
-For v1, use browser print (CSS `@media print`) - no external library needed:
-
-```csharp
-// DocumentRenderService.cs
-public string RenderForPrint(DocumentTemplate template, object dataModel)
-{
-    return $@"
-<!DOCTYPE html>
-<html>
-<head>
-    <style>
-        @page {{ size: {template.Page.Size} {template.Page.Orientation.ToLower()}; margin: 0; }}
-        @media print {{
-            .no-print {{ display: none !important; }}
-            body {{ margin: 0; padding: 0; }}
-        }}
-        .page {{
-            width: {GetPageWidth(template.Page)}mm;
-            min-height: {GetPageHeight(template.Page)}mm;
-            padding: {template.Page.MarginTop}mm {template.Page.MarginRight}mm
-                     {template.Page.MarginBottom}mm {template.Page.MarginLeft}mm;
-            box-sizing: border-box;
-            page-break-after: always;
-        }}
-        /* Element styles... */
-    </style>
-</head>
-<body>
-    {RenderTemplate(template, dataModel)}
-    <script>window.print();</script>
-</body>
-</html>";
-}
-```
-
-### PDF Library Options (Phase 2/3)
-
-| Library | Pros | Cons | Recommendation |
-|---------|------|------|----------------|
-| **QuestPDF** | .NET native, fluent API, free | Learning curve, different from HTML | Good for simple invoices |
-| **PuppeteerSharp** | True HTML→PDF, exact rendering | Heavy (Chromium), slower | Best fidelity, complex setup |
-| **wkhtmltopdf** | Fast, mature | Binary dependency, security updates | Legacy, avoid |
-| **IronPDF** | Easy, good support | Commercial license | If budget allows |
-
-**Recommendation:** Start with browser print (Phase 1). Add PuppeteerSharp in Phase 3 for true PDF download.
-
-## Database Schema
+Following existing MotoRent patterns with JSON columns:
 
 ```sql
--- Template storage in tenant schema
-CREATE TABLE [<schema>].[DocumentTemplate]
+CREATE TABLE [<schema>].[TillSession]
 (
-    [DocumentTemplateId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
-    [Name] AS CAST(JSON_VALUE([Json], '$.Name') AS NVARCHAR(100)),
-    [DocumentType] AS CAST(JSON_VALUE([Json], '$.DocumentType') AS NVARCHAR(50)),
-    [Status] AS CAST(JSON_VALUE([Json], '$.Status') AS NVARCHAR(20)),
-    [IsDefault] AS CAST(JSON_VALUE([Json], '$.IsDefault') AS BIT),
-    [IsApproved] AS CAST(JSON_VALUE([Json], '$.IsApproved') AS BIT),
+    [TillSessionId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
+    -- Computed columns for indexing
+    [ShopId] AS CAST(JSON_VALUE([Json], '$.ShopId') AS INT),
+    [StaffUserName] AS CAST(JSON_VALUE([Json], '$.StaffUserName') AS NVARCHAR(100)),
+    [Status] AS CAST(JSON_VALUE([Json], '$.Status') AS NVARCHAR(30)),
+    [OpenedAt] AS CONVERT(DATETIMEOFFSET, JSON_VALUE([Json], '$.OpenedAt'), 127) PERSISTED,
+    [ClosedAt] AS CONVERT(DATETIMEOFFSET, JSON_VALUE([Json], '$.ClosedAt'), 127) PERSISTED,
+    -- JSON storage
     [Json] NVARCHAR(MAX) NOT NULL,
+    -- Audit columns
     [CreatedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
     [ChangedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
     [CreatedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
     [ChangedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
 )
-
-CREATE INDEX IX_DocumentTemplate_Type_Status
-    ON [<schema>].[DocumentTemplate]([DocumentType], [Status])
-
-CREATE INDEX IX_DocumentTemplate_Default
-    ON [<schema>].[DocumentTemplate]([DocumentType], [IsDefault])
-    WHERE [IsDefault] = 1
 ```
 
-## Patterns to Follow
-
-### Pattern 1: Polymorphic Element Serialization
-
-**What:** Use System.Text.Json polymorphism for element types.
-**When:** Serializing/deserializing template elements.
-**Example:**
-```csharp
-// Already configured in Entity.cs pattern
-[JsonPolymorphic(TypeDiscriminatorPropertyName = "$elementType")]
-[JsonDerivedType(typeof(TextElement), "Text")]
-// ... other types
-public abstract class TemplateElement { }
-
-// Serialization includes type discriminator
-// {"$elementType":"Text","Content":"Hello","DataBinding":"Renter.FullName",...}
-```
-
-### Pattern 2: Scoped Designer State
-
-**What:** One DesignerStateService per user session.
-**When:** Managing editor state across components.
-**Example:**
-```csharp
-// Registration in Program.cs
-builder.Services.AddScoped<DesignerStateService>();
-
-// Component injection
-@inject DesignerStateService Designer
-
-// Subscribe to changes
-protected override void OnInitialized()
-{
-    Designer.OnStateChanged += StateHasChanged;
-    Designer.OnSelectionChanged += OnSelectionChanged;
-}
-```
-
-### Pattern 3: Command Pattern for Undo/Redo
-
-**What:** Encapsulate actions as reversible commands.
-**When:** Any user action that modifies template state.
-**Example:**
-```csharp
-public class MoveElementAction : DesignerAction
-{
-    private readonly string m_elementId;
-    private readonly decimal m_oldX, m_oldY;
-    private readonly decimal m_newX, m_newY;
-
-    public override void Execute(DesignerStateService state)
-    {
-        state.SetElementPosition(m_elementId, m_newX, m_newY);
-    }
-
-    public override void Undo(DesignerStateService state)
-    {
-        state.SetElementPosition(m_elementId, m_oldX, m_oldY);
-    }
-}
-```
-
-## Anti-Patterns to Avoid
-
-### Anti-Pattern 1: Component-Level State
-
-**What:** Storing template state in individual Blazor components.
-**Why bad:** State lost on re-render, hard to coordinate undo/redo.
-**Instead:** Use centralized DesignerStateService.
-
-### Anti-Pattern 2: Rendering in Designer
-
-**What:** Using DocumentRenderService inside the designer canvas.
-**Why bad:** Different rendering needs - designer needs interactive elements, print needs static HTML.
-**Instead:** Separate designer rendering (interactive) from document rendering (static).
-
-### Anti-Pattern 3: Deep Entity Nesting
-
-**What:** Loading entire entity graph (Rental→Renter→Documents→...) for rendering.
-**Why bad:** Performance, over-fetching, circular references in JSON.
-**Instead:** Use flat DataModel classes (AgreementModel) that cherry-pick needed fields.
-
-### Anti-Pattern 4: String Concatenation for HTML
-
-**What:** Building HTML with string concatenation in render service.
-**Why bad:** XSS vulnerabilities, messy code.
-**Instead:** Use proper HTML encoding, consider Razor templating for complex layouts.
-
-## Suggested Build Order
-
-Based on dependencies, build in this order:
-
-```
-Phase 1: Foundation (No dependencies)
-├── 1.1 TemplateElement classes (polymorphic JSON)
-├── 1.2 DocumentTemplate entity
-├── 1.3 Database schema
-├── 1.4 Repository registration
-└── 1.5 TemplateService (CRUD)
-
-Phase 2: Data Binding Models (Depends on Phase 1)
-├── 2.1 AgreementModel, ReceiptModel, BookingConfirmationModel
-├── 2.2 DataModelService (builds models from entities)
-└── 2.3 Binding path resolution
-
-Phase 3: Designer Core (Depends on Phase 1, 2)
-├── 3.1 DesignerStateService (state management)
-├── 3.2 Designer Canvas (element rendering)
-├── 3.3 Elements Palette (drag source)
-└── 3.4 Properties Panel (element configuration)
-
-Phase 4: Designer UX (Depends on Phase 3)
-├── 4.1 Drag-and-drop (JS interop)
-├── 4.2 Element selection and resize
-├── 4.3 Undo/Redo
-├── 4.4 Multi-page navigation
-└── 4.5 Data binding picker UI
-
-Phase 5: Rendering (Depends on Phase 2)
-├── 5.1 DocumentRenderService (template → HTML)
-├── 5.2 Print preview page
-├── 5.3 Browser print integration
-└── 5.4 Template selector in print dialogs
-
-Phase 6: AI Features (Depends on Phase 1, existing Gemini integration)
-├── 6.1 ClauseService (AI clause suggestions)
-└── 6.2 Clause picker UI in designer
-
-Phase 7: PDF Export (Depends on Phase 5)
-├── 7.1 PuppeteerSharp integration
-└── 7.2 PDF download endpoint
-```
-
-## Integration Points
-
-### Existing Codebase Integration
-
-| Integration Point | Location | Change Required |
-|-------------------|----------|-----------------|
-| **Entity.cs** | `src/MotoRent.Domain/Entities/Entity.cs` | Add `[JsonDerivedType(typeof(DocumentTemplate), nameof(DocumentTemplate))]` |
-| **Repository Registration** | `src/MotoRent.Server/Program.cs` | Add `services.AddSingleton<IRepository<DocumentTemplate>, ...>()` |
-| **Organization Settings** | `Pages/Settings/` | Add "Document Templates" menu item |
-| **Print Dialogs** | `Pages/Rentals/`, `Pages/InvoiceDialog.razor` | Add template selector dropdown |
-| **RentalService** | `src/MotoRent.Services/RentalService.cs` | No change - accessed via DataModelService |
-
-### New Files to Create
-
-```
-src/MotoRent.Domain/
-├── Entities/
-│   ├── DocumentTemplate.cs
-│   └── TemplateElements/
-│       ├── TemplateElement.cs
-│       ├── TextElement.cs
-│       ├── ImageElement.cs
-│       ├── TwoColumnElement.cs
-│       ├── RepeaterElement.cs
-│       └── ... (other elements)
-├── Models/
-│   └── Documents/
-│       ├── AgreementModel.cs
-│       ├── ReceiptModel.cs
-│       └── BookingConfirmationModel.cs
-
-src/MotoRent.Services/
-├── TemplateService.cs
-├── DataModelService.cs
-├── DocumentRenderService.cs
-└── ClauseService.cs
-
-src/MotoRent.Client/
-├── Pages/
-│   └── Settings/
-│       ├── TemplateList.razor
-│       └── TemplateDesigner.razor
-├── Components/
-│   └── Designer/
-│       ├── DesignerCanvas.razor
-│       ├── ElementsPalette.razor
-│       ├── PropertiesPanel.razor
-│       ├── PageNavigator.razor
-│       └── DataBindingPicker.razor
-├── Services/
-│   └── DesignerStateService.cs
-
-database/
-└── tables/
-    └── MotoRent.DocumentTemplate.sql
-```
-
-## Scalability Considerations
-
-| Concern | At 10 Templates | At 100 Templates | At 1000 Templates |
-|---------|-----------------|------------------|-------------------|
-| Query performance | N/A | Index on DocumentType | Pagination, search |
-| JSON size | ~10KB each | ~100KB total | Split large templates |
-| Render time | Instant | <100ms | Cache rendered HTML |
-| Memory (designer) | ~1MB | ~10MB | Virtualized element list |
-
-## Sources
-
-- Existing MotoRent codebase patterns (Entity, Repository, DataContext)
-- PROJECT.md requirements
-- PrintAgreement.razor (existing hardcoded template pattern)
-- InvoiceService.cs (data model building pattern)
-- System.Text.Json polymorphism documentation
+**Key Indexes:**
+- `IX_TillSession_ShopId_Status` - Active session lookups
+- `IX_TillSession_StaffUserName` - User's sessions
+- `IX_TillSession_OpenedAt` - Date range queries
 
 ---
 
-*Architecture research: 2026-01-23*
+## Patterns to Follow
+
+### Pattern 1: Denormalized Totals with Transaction Source of Truth
+
+**What:** Store running totals on session for fast reads; transactions are source of truth
+
+**When:** High-frequency reads (till balance display), moderate-frequency writes
+
+**Implementation:**
+```csharp
+// On RecordCashInAsync:
+if (transaction.AffectsCash)
+    session.TotalCashIn += amount;
+
+// On session display:
+public decimal ExpectedCash => OpeningFloat + TotalCashIn - TotalCashOut - TotalDropped + TotalToppedUp;
+```
+
+**Validation:** If totals get out of sync, can recalculate from transactions:
+```csharp
+var transactions = await GetTransactionsAsync(sessionId);
+var recalculatedCashIn = transactions
+    .Where(t => t.Direction == In && t.AffectsCash)
+    .Sum(t => t.Amount);
+```
+
+### Pattern 2: Cross-Reference Linking
+
+**What:** Link till transactions to source entities without tight coupling
+
+**Implementation:**
+```csharp
+public class TillTransaction
+{
+    public int? PaymentId { get; set; }  // Optional link to Payment
+    public int? DepositId { get; set; }  // Optional link to Deposit
+    public int? RentalId { get; set; }   // Optional link to Rental
+}
+```
+
+**Why:** Enables audit trail and reconciliation without requiring all transactions to have sources.
+
+### Pattern 3: Embedded Collections in JSON
+
+**What:** Store related items (ReceiptItem, ReceiptPayment, TillAttachment) as JSON arrays
+
+**When:** Items are always loaded/saved with parent; no independent querying needed
+
+**Implementation:**
+```csharp
+public class Receipt : Entity
+{
+    public List<ReceiptItem> Items { get; set; } = [];
+    public List<ReceiptPayment> Payments { get; set; } = [];
+}
+```
+
+**SQL:** Single row, JSON column contains serialized lists.
+
+---
+
+## Anti-Patterns to Avoid
+
+### Anti-Pattern 1: Session Per Transaction
+
+**What:** Creating a new TillSession for each transaction
+
+**Why bad:** Defeats purpose of shift-based cash tracking; no meaningful EOD reconciliation
+
+**Instead:** One session per staff per shop per shift
+
+### Anti-Pattern 2: Real-Time Transaction Aggregation
+
+**What:** Calculating totals by summing all transactions on every display
+
+**Why bad:** Performance degrades as transaction count grows
+
+**Instead:** Denormalize running totals on session; update atomically with each transaction
+
+### Anti-Pattern 3: Tight Coupling to Payment Entity
+
+**What:** Requiring all till transactions to have a Payment entity
+
+**Why bad:** Petty cash, fuel reimbursements, agent commissions have no Payment entity
+
+**Instead:** Optional references; TillTransaction stands alone when needed
+
+---
+
+## Scalability Considerations
+
+| Concern | At 100 tx/day | At 1K tx/day | At 10K tx/day |
+|---------|---------------|--------------|---------------|
+| Session queries | No issue | No issue | Consider index on (ShopId, OpenedAt) |
+| Transaction list | Load all in memory | Pagination | Pagination + lazy loading |
+| Daily summary | Calculate on demand | Calculate on demand | Pre-aggregate nightly |
+| Receipt search | Full-text search | Add filters | Consider separate search index |
+
+**Current Implementation:** Suitable for small-to-medium shops (up to 1K transactions/day per shop).
+
+---
+
+## Gaps and Enhancement Opportunities
+
+### Gap 1: Manager EOD Dashboard
+
+**Status:** Service methods exist; UI not implemented
+
+**Needed:**
+- `/manager/till-verification` page
+- View all sessions for a date
+- Review variances
+- Verify sessions and drops
+- Daily summary report
+
+### Gap 2: Multi-Currency Balance Tracking
+
+**Current:** Till tracks THB only; foreign currency converted at receipt level
+
+**If Needed:** Add per-currency balances to TillSession:
+```csharp
+public class CurrencyBalance
+{
+    public string Currency { get; set; }
+    public decimal OpeningBalance { get; set; }
+    public decimal CurrentBalance { get; set; }
+}
+
+public List<CurrencyBalance> CurrencyBalances { get; set; }
+```
+
+**Recommendation:** Only implement if business requirement exists. Current THB-only is simpler.
+
+### Gap 3: Safe/Bank Deposit Tracking
+
+**Current:** Cash drops recorded but no centralized safe tracking
+
+**If Needed:** Add `Safe` entity to track total cash dropped from all sessions:
+```csharp
+public class Safe : Entity
+{
+    public int ShopId { get; set; }
+    public decimal Balance { get; set; }
+    public List<SafeTransaction> Transactions { get; set; }
+}
+```
+
+### Gap 4: Historical Exchange Rates
+
+**Current:** Exchange rate captured at payment time on ReceiptPayment
+
+**If Needed:** Add ExchangeRate entity for historical rate lookups:
+```csharp
+public class ExchangeRate : Entity
+{
+    public string FromCurrency { get; set; }
+    public string ToCurrency { get; set; }
+    public decimal Rate { get; set; }
+    public DateTimeOffset EffectiveDate { get; set; }
+}
+```
+
+---
+
+## Recommended Phase Structure
+
+Based on the existing implementation, suggested roadmap phases:
+
+### Phase 1: Core Integration Verification
+- Verify TillSession links in rental check-in/check-out flows
+- Ensure all payment methods route through till
+- Test variance calculation accuracy
+
+### Phase 2: Manager EOD Dashboard
+- Build verification UI
+- Daily summary report
+- Variance investigation workflow
+
+### Phase 3: Reporting Enhancements
+- Cash flow reports by date range
+- Staff performance (variance history)
+- Payment method breakdown
+
+### Phase 4: Multi-Currency (If Required)
+- Per-currency balance tracking
+- Exchange rate management
+- Multi-currency reconciliation
+
+---
+
+## Sources
+
+- Existing codebase analysis:
+  - `src/MotoRent.Domain/Entities/TillSession.cs`
+  - `src/MotoRent.Domain/Entities/TillTransaction.cs`
+  - `src/MotoRent.Domain/Entities/Receipt.cs`
+  - `src/MotoRent.Services/TillService.cs`
+  - `src/MotoRent.Services/ReceiptService.cs`
+  - `src/MotoRent.Client/Pages/Staff/Till.razor`
+  - `database/tables/MotoRent.TillSession.sql`
+  - `database/tables/MotoRent.TillTransaction.sql`
+  - `database/tables/MotoRent.Receipt.sql`
+
+**Confidence Level:** HIGH - Based on direct analysis of existing implementation.

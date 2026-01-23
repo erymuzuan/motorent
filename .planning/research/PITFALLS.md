@@ -1,374 +1,441 @@
-# Domain Pitfalls
+# Domain Pitfalls: Cashier Till with Multi-Currency Support
 
-**Domain:** Document Template Editor for Rental SaaS
-**Researched:** 2026-01-23
-**Confidence:** MEDIUM (based on training data patterns, existing codebase analysis, and domain knowledge)
+**Domain:** Cashier Till / POS Cash Management for Vehicle Rental
+**Context:** Thailand tourism (Phuket, Krabi), accepting THB/USD/EUR/CNY, staff turnover, offline PWA
+**Researched:** 2026-01-19
+**Confidence:** HIGH (team has forex expertise + common patterns well-documented)
+
+---
 
 ## Critical Pitfalls
 
-Mistakes that cause rewrites or major issues.
+Mistakes that cause rewrites, financial loss, or major operational failures.
+
+### Pitfall 1: Single-Currency Till Tracking for Multi-Currency Cash
+
+**What goes wrong:** The current `TillSession` entity tracks `TotalCashIn`, `TotalCashOut`, `ExpectedCash`, and `ActualCash` as single `decimal` values in THB. When staff receive USD 100 + EUR 50 + THB 1,500 in cash during a shift, they cannot accurately reconcile because:
+- Exchange rates used at transaction time may differ from rates at reconciliation
+- Physical cash in drawer is in multiple currencies, but expected is single-currency
+- Staff cannot prove they have "correct" USD count vs THB count
+
+**Why it happens:** Initial design treats multi-currency as a payment-level concern (which `ReceiptPayment` handles correctly) but not as a till-management concern. Developers assume conversion to THB at transaction time is sufficient.
+
+**Consequences:**
+- Reconciliation variances that are not real shortages (exchange rate drift)
+- Impossible to track which currency is short/over
+- Audit trail breaks down ("I had the right amount of USD!")
+- Potential for gaming the system by manipulating which currency to count
+
+**Prevention:**
+- Add per-currency tracking to `TillSession`:
+  - `CurrencyBalances: Dictionary<string, TillCurrencyBalance>` or separate `TillCurrencyBalance` collection
+  - Track opening float, cash in, cash out, actual count PER currency
+- Reconciliation compares per-currency, THEN converts to THB for variance reporting
+- Store exchange rate snapshot at session close for historical accuracy
+
+**Detection (Warning Signs):**
+- Till variance explanations frequently mention "but the USD was correct"
+- Staff reluctant to accept foreign currency payments
+- Increasing variance amounts correlating with foreign tourist season
+
+**Phase to Address:** Phase 1 - Core domain model must support this from the start
 
 ---
 
-### Pitfall 1: Blazor/JavaScript State Synchronization in Drag-and-Drop
+### Pitfall 2: Exchange Rate at Transaction vs. Reconciliation Mismatch
 
-**What goes wrong:** The Blazor component state and JavaScript DOM state diverge during drag operations. User drags an element, JS updates positions, but Blazor doesn't know. Or worse: Blazor re-renders mid-drag and loses the drag operation entirely.
+**What goes wrong:** Customer pays USD 50 at 10:00 AM (rate: 35.20). Session closes at 6:00 PM (rate: 35.45). System uses different rate for:
+- Recording the payment (transaction rate)
+- Calculating expected cash (may use current rate or transaction rate)
+- Converting actual cash count to THB (current rate)
+
+Result: 50 USD shows as 1,760 THB expected but converts to 1,772.50 THB actual = apparent 12.50 THB overage.
 
 **Why it happens:**
-- Blazor Server re-renders on SignalR events, can interrupt JS operations
-- JS interop is async - race conditions between Blazor state updates and JS DOM manipulation
-- Touch events on mobile behave differently than mouse events
-- Browser-native drag-and-drop API has quirky behavior across browsers
+- No clear policy on which rate applies when
+- Multiple rate sources (manual entry, auto-fetch, cached)
+- Developers assume "just convert everything to THB" solves the problem
 
 **Consequences:**
-- Elements "snap back" unexpectedly after drop
-- Drag operations lost on slow connections (SignalR latency)
-- Touch drag doesn't work on mobile PWA
-- Undo/redo breaks because state was never captured
+- False variances (over/short) that are purely exchange rate artifacts
+- Inability to determine if actual shortage occurred
+- Disputes between staff and management
+- Gaming: staff could time foreign currency acceptance based on rate movements
 
 **Prevention:**
-1. **Use JS as source of truth during drag** - Blazor only learns final position on drop
-2. **Debounce position updates** - Don't sync every pixel movement to Blazor
-3. **Implement drag state machine** - IDLE -> DRAGGING -> DROPPED, prevent re-renders during DRAGGING
-4. **Use `@key` directives** - Prevent Blazor from recreating elements during re-render
-5. **Test on SignalR with artificial latency** - Simulate slow mobile connections
+- **Lock rate at transaction time:** Store `ExchangeRate` on each `TillTransaction` involving foreign currency
+- **Track physical currency units:** Expected USD = 50, Actual USD = 50 = balanced, regardless of THB conversion
+- **Report variances per-currency:** USD variance, EUR variance, then aggregate THB equivalent
+- **Snapshot rates at session close:** Store rates used for reconciliation calculations
 
-**Detection (warning signs):**
-- Elements flicker or jump during drag
-- Drag works in dev but fails intermittently in production
-- Touch users report drag "not working"
-- Console shows "interop failed" during drag operations
+**Detection (Warning Signs):**
+- Variance amounts cluster around typical exchange rate spread values (10-30 THB)
+- Variances increase on volatile forex days
+- Staff complaints about "the rate changed on me"
 
-**Which phase should address:** Phase 1 (Designer Core) - Must be solved before building element palette
+**Phase to Address:** Phase 1 (core model) and Phase 2 (reconciliation flows)
 
 ---
 
-### Pitfall 2: WYSIWYG Preview vs. PDF Rendering Mismatch
+### Pitfall 3: Shared Till Access in Chaotic Environment
 
-**What goes wrong:** The template looks perfect in the browser preview, but the generated PDF has different fonts, broken layouts, missing images, or wrong page breaks.
+**What goes wrong:** In tourist shop environments:
+- Multiple staff share one physical cash drawer
+- Staff forget to log out, colleague uses their session
+- Handover happens without proper count
+- "Just put it in the drawer, I'll record later"
+
+Result: Accountability breaks down. When variance found, 3 people worked that drawer.
 
 **Why it happens:**
-- Browser CSS is pixel-based; PDF is point-based (1pt = 1/72 inch)
-- Web fonts don't embed in PDF unless explicitly configured
-- CSS Grid/Flexbox don't translate to PDF layout engines
-- Browser print styles (@media print) differ from PDF generation
-- Page break logic in PDF libraries differs from CSS `page-break-*`
-- Thai text requires specific TrueType font files with Thai glyph support
+- Pressure to serve customers quickly (tourist rush)
+- Staff turnover means training gaps
+- Physical drawer sharing is convenient
+- System allows session sharing by not enforcing controls
 
 **Consequences:**
-- Users design templates that can't be reproduced in PDF
-- Legal documents (rental agreements) look unprofessional
-- Thai text renders as boxes or question marks
-- Hours spent designing, result unusable
+- Cannot identify who caused shortage
+- Honest staff blamed for others' mistakes/theft
+- Management cannot take corrective action
+- Culture of "drawer problems are nobody's problem"
 
 **Prevention:**
-1. **Render preview using same engine as PDF** - Generate PDF first, show as preview
-2. **Or use CSS-to-PDF library** (like Puppeteer) - Browser renders, PDF captures exactly
-3. **Limit layout to PDF-safe patterns** - No CSS Grid in template elements, use absolute positioning
-4. **Embed fonts explicitly** - Include Thai fonts (TH Sarabun, Noto Sans Thai) in PDF bundle
-5. **Test page breaks early** - Multi-page templates in Phase 1, not as afterthought
-6. **Show "PDF Preview" button** - Users see actual PDF before saving template
+- **One session per staff per shift:** Already enforced in `CanOpenSessionAsync()` - keep this
+- **Require session handover:** If staff A hands drawer to staff B mid-shift, force:
+  - A performs mid-shift reconciliation (counts drawer)
+  - A's session closes with that count
+  - B opens new session with that count as opening float
+- **UI enforcement:** Make it HARD to transact without active session
+- **Quick handover workflow:** If count takes too long, staff skip it. Design for 2-minute count.
 
-**Detection (warning signs):**
-- "It looks different when I print" complaints
-- Thai characters display as squares in PDF
-- Images missing in PDF but visible in browser
-- Content overflows page boundaries in PDF
+**Detection (Warning Signs):**
+- Same session open for 10+ hours
+- Transactions recorded by user different from session owner
+- High variance correlating with multi-staff shifts
 
-**Which phase should address:** Phase 2 (PDF Rendering) - But preview architecture must be designed in Phase 1
+**Phase to Address:** Phase 2 (session lifecycle and handover flows)
 
 ---
 
-### Pitfall 3: Over-Engineering the Element Model
+### Pitfall 4: Offline Transactions Without Conflict Resolution
 
-**What goes wrong:** Building a generic "element tree" with deep nesting, multiple inheritance, plugin system, or extensible element types before understanding what users actually need.
+**What goes wrong:** Shop has 2 devices. Both go offline. Both record transactions. Both come online:
+- Device A recorded USD 50 payment
+- Device B recorded the same customer's THB payment (customer paid at both counters?)
+- Or: Device A drop of 5,000 THB, Device B sees balance and does another drop
+
+With cash, duplicates cause real money problems - either drawer is short or bank deposit doesn't match.
 
 **Why it happens:**
-- Developer sees "similar to HTML/React" and builds DOM-like tree
-- Premature abstraction: "What if they want tables inside tables inside columns?"
-- Fear of "what if we need to add more element types later?"
-- Copying enterprise document builder patterns without the same requirements
+- Offline-first PWA design doesn't plan for multi-device scenarios
+- Cash transactions seem "safe" because no authorization needed
+- Developers assume single-device usage
 
 **Consequences:**
-- Complex serialization/deserialization with JSON polymorphism edge cases
-- Performance issues rendering deeply nested elements
-- Users confused by too many options
-- Months of work on features no one uses
-- Maintenance burden for abstract base classes
+- Double-counted revenue
+- Missing cash (drop recorded twice, only one physical drop)
+- Reconciliation nightmare
+- Customer disputes (charged twice)
 
 **Prevention:**
-1. **Start with flat list + containers only** - Elements at root level, only Container/TwoColumn can have children
-2. **No inheritance beyond Element base** - Composition over inheritance
-3. **Maximum 2 levels of nesting** - Template -> Container -> Elements (no deeper)
-4. **Hardcode v1 element types** - Text, Image, TwoColumns, Divider, Signature, Date, Repeater - that's it
-5. **Defer plugin/extension system** - If needed, add in v2 when usage patterns are clear
-6. **JSON serialization without $type** - Use discriminated union pattern with explicit `Type` property
+- **Optimistic UI with pending status:** Offline transactions show as "pending sync"
+- **Unique transaction IDs (WebId):** Already in `Entity` base class - ensure used for deduplication
+- **Sync conflict detection:** On sync, check for:
+  - Same RentalId + similar amount + similar time = potential duplicate
+  - Multiple drops in quick succession = needs verification
+- **Require confirmation for large cash movements:** Drops > 10,000 THB require manager code (which needs online validation)
+- **Device affinity for sessions:** One session = one device. Second device cannot transact on that session.
 
-**Detection (warning signs):**
-- Template JSON is deeply nested (3+ levels)
-- "ElementFactory" or "ElementRegistry" classes appearing
-- Abstract base classes with 5+ virtual methods
-- Developers debating element inheritance hierarchies
+**Detection (Warning Signs):**
+- Duplicate transactions appearing after sync
+- Revenue totals don't match receipts
+- "I only did one drop" complaints
 
-**Which phase should address:** Phase 1 (Designer Core) - Define element model before building UI
+**Phase to Address:** Phase 3 (offline architecture and sync)
 
 ---
 
-### Pitfall 4: Thai Text Rendering Failures
+### Pitfall 5: Denomination Tracking Blindness
 
-**What goes wrong:** Thai text displays correctly in browser but fails in PDF: missing tone marks (mai ek, mai tho), incorrect vowel positioning, or complete character substitution (boxes/question marks).
+**What goes wrong:** Till shows "5,000 THB expected" but doesn't know if that's:
+- 5 x 1,000 THB notes
+- 10 x 500 THB notes
+- 50 x 100 THB notes
 
-**Why it happens:**
-- Thai is a complex script with combining characters (vowels, tone marks above/below)
-- Standard PDF fonts don't include Thai glyphs
-- Font subsetting breaks combining character sequences
-- PDF library may not support OpenType Thai shaping
-- UTF-8 encoding issues in data binding
+When customer needs 500 THB change and drawer only has 1,000s, staff gives wrong change or refuses sale. System cannot help because it doesn't track denominations.
 
-**Consequences:**
-- Rental agreements legally questionable if text is unreadable
-- Professional appearance destroyed for Thai market
-- Users resort to English-only, limiting market appeal
-
-**Prevention:**
-1. **Use TH Sarabun PSK or Noto Sans Thai** - Free, comprehensive Thai glyphs
-2. **Embed full font, not subset** - Subsetters often break Thai combining characters
-3. **Test specific Thai patterns:** "กรุงเทพมหานคร", "ไม่มี", "เงินฝาก" - cover all vowel/tone positions
-4. **Use PDF library with OpenType shaping** - QuestPDF, iText7 (with Asian font pack), Puppeteer
-5. **Verify encoding chain** - Database (UTF-8) -> Entity (string) -> JSON (UTF-8) -> PDF (embedded font)
-
-**Detection (warning signs):**
-- Thai tone marks (่ ้ ๊ ๋) appearing in wrong positions
-- Vowels rendering after consonants instead of above/below
-- Square boxes (tofu) in PDF output
-- Different Thai text length in browser vs PDF
-
-**Which phase should address:** Phase 2 (PDF Rendering) - Must validate Thai before declaring PDF complete
-
----
-
-### Pitfall 5: Data Binding Null Reference Cascade
-
-**What goes wrong:** Template references `{{Rental.Vehicle.Owner.Name}}` but Vehicle has no Owner. Entire document generation fails, or outputs "[null]" or crashes.
+For multi-currency this is worse:
+- USD 100 bills vs USD 20 bills have different usefulness
+- EUR/CNY denomination standards differ
+- Change-making across currencies is complex
 
 **Why it happens:**
-- Deeply nested property chains without null checks at each level
-- Optional relationships in data model (not every Rental has a Booking)
-- Test data always complete, production data has gaps
-- Template designer doesn't know which fields are optional
+- Denomination tracking seen as "nice to have"
+- Adds complexity to every transaction
+- Staff resist entering denomination counts
 
 **Consequences:**
-- Staff can't print agreement because one customer missing data
-- Entire batch of receipts fails due to one bad record
-- Users see cryptic error messages or blank documents
-- Support burden for "why won't it print?"
+- Cannot provide optimal change
+- Staff make incorrect change (loss)
+- Cannot determine correct float composition
+- Bank deposit verification harder
 
 **Prevention:**
-1. **Null-safe property access in binding engine** - Return empty string for any null in chain
-2. **Show field optionality in picker** - "Vehicle.Owner.Name (optional)" vs "Rental.RenterName (required)"
-3. **Template validation on save** - Warn about bindings to optional chains
-4. **Default values per field** - "[Not Specified]" rather than empty
-5. **Graceful degradation** - Generate document with placeholders rather than failing entirely
-6. **Test with minimal data** - Create test models with only required fields populated
+- **Opening float by denomination:** At session start, count each denomination
+- **Optional denomination tracking on close:** At minimum, require denomination count at reconciliation
+- **Denomination alerts:** Warn when low on small denominations
+- **Suggested float composition:** Based on typical transaction patterns
 
-**Detection (warning signs):**
-- "Object reference not set" errors during rendering
-- Documents print for some rentals but not others
-- Template works in preview but fails with real data
-- Empty spaces where data should appear
+**But be pragmatic:**
+- Don't require denomination on every transaction (too slow)
+- Make it quick (button grid, not number entry)
+- Focus on open/close, not mid-shift
 
-**Which phase should address:** Phase 3 (Data Binding) - Core requirement of binding engine
+**Detection (Warning Signs):**
+- Staff frequently going to safe for change
+- Customer complaints about "no change"
+- Large denomination accumulation in drawer
+
+**Phase to Address:** Phase 4 (reconciliation enhancement - not critical path)
 
 ---
 
 ## Moderate Pitfalls
 
-Mistakes that cause delays or technical debt.
+Mistakes that cause delays, technical debt, or user friction.
+
+### Pitfall 6: Receipt-Till Linkage Without Transaction Mapping
+
+**What goes wrong:** `Receipt` has `Payments[]` with multi-currency support. `TillSession` has aggregate totals. No entity explicitly links "this receipt payment affected the till this way."
+
+When investigating a variance:
+- "Show me all transactions that added to TillCashIn" - need to query Receipts
+- "What receipt is this TillTransaction from?" - only have loose references
+
+**Prevention:**
+- `TillTransaction` already has `PaymentId`, `DepositId`, `RentalId` - ensure these are always populated
+- Consider adding `ReceiptId` to `TillTransaction` for direct lookup
+- Build variance investigation UI that can drill from session -> transaction -> receipt
+
+**Phase to Address:** Phase 2 (ensure all payment flows create proper TillTransaction links)
 
 ---
 
-### Pitfall 6: Template Storage Without Tenant Isolation Enforcement
+### Pitfall 7: Manager Override Without Audit Trail
 
-**What goes wrong:** Template ID alone used for queries, allowing cross-tenant access if IDs guessable or URL manipulated.
+**What goes wrong:** Manager can:
+- Verify sessions with variance without explanation
+- Adjust totals "to make it balance"
+- Approve suspicious transactions
+
+If no audit trail, abuse goes undetected.
 
 **Prevention:**
-1. **Always filter by AccountNo** - `WHERE AccountNo = @tenant AND TemplateId = @id`
-2. **Don't expose raw TemplateId in URLs** - Use WebId (GUID) or Hashids
-3. **Repository pattern enforces schema** - `[{AccountNo}].[DocumentTemplate]` automatic per existing pattern
-4. **Unit test tenant isolation** - Attempt cross-tenant access, verify 404/403
+- Current design has `VerifiedByUserName`, `VerifiedAt`, `VerificationNotes` - good
+- Add: `VarianceAcknowledgementReason` (required if variance > threshold)
+- Add: Adjustment transactions (cannot edit amounts, must create offsetting entry)
+- Report: Manager override frequency and variance acceptance patterns
 
-**Which phase should address:** Phase 4 (Template Management) - Storage layer design
+**Phase to Address:** Phase 2 (reconciliation) and Phase 5 (reporting)
 
 ---
 
-### Pitfall 7: Print Workflow Breaking for Staff
+### Pitfall 8: Exchange Rate Source Unreliability
 
-**What goes wrong:** New template system requires staff to learn new flow. Existing print buttons stop working. Staff under time pressure abandon new feature.
+**What goes wrong:** System fetches rates from API. API is down, returns stale rate, or has different rate than tourist shop's posted rates.
+
+Result: Customer sees "35.00" on shop board, system uses "35.20" from API, dispute ensues.
 
 **Prevention:**
-1. **Drop-in replacement first** - Enhanced print button, same location, same primary action
-2. **Default template auto-selected** - Staff clicks Print, gets default, done
-3. **Optional template selection** - Dropdown secondary to primary print action
-4. **Parallel operation period** - Old hardcoded templates still available during rollout
-5. **Staff testing before launch** - Validate with actual rental desk users
+- **Primary: Manual rate entry:** Shop sets today's rates each morning
+- **Secondary: API fetch with manual override:** Can auto-fetch but staff reviews/adjusts
+- **Store rate source:** "Manual", "API", "Adjusted"
+- **Rate validity period:** Rates expire after X hours, require refresh
+- **Allow per-transaction rate override:** For customer disputes, manager can approve different rate
 
-**Which phase should address:** Phase 6 (Integration) - Critical for adoption
+**Phase to Address:** Phase 1 (rate infrastructure) and Phase 2 (UI for rate management)
 
 ---
 
-### Pitfall 8: Canvas Positioning Without Pixel/Point Conversion
+### Pitfall 9: Insufficient Offline Data Retention
 
-**What goes wrong:** Designer canvas uses CSS pixels (1px), PDF uses points (1pt = 1.333px at 96dpi). Element positions don't match between preview and output.
+**What goes wrong:** PWA offline storage fills up or gets cleared:
+- Browser storage quota exceeded
+- User clears browser data
+- Device switch without sync
+
+Unsynced transactions lost permanently.
 
 **Prevention:**
-1. **Internal model uses points** - Canvas scales to pixels for display only
-2. **Explicit DPI configuration** - 72dpi for PDF-native, 96dpi for web preview
-3. **Round-trip test** - Save template, load, verify positions unchanged
-4. **Display measurements in real units** - "1 inch", "25mm", not "96px"
+- **Mandatory sync before closing session:** Cannot close session while offline transactions pending
+- **Visual indicators:** Show number of unsynced transactions prominently
+- **Storage monitoring:** Warn when approaching quota
+- **Critical transaction prioritization:** Payments sync first, metadata later
+- **Export fallback:** If sync fails repeatedly, export to file for manual recovery
 
-**Which phase should address:** Phase 1 (Designer Core) - Coordinate system design
+**Phase to Address:** Phase 3 (offline architecture)
 
 ---
 
-### Pitfall 9: Repeater Performance with Large Collections
+### Pitfall 10: Mid-Session Rate Changes
 
-**What goes wrong:** Template has repeater for line items. Invoice with 200 items takes 30 seconds to render or times out.
-
-**Prevention:**
-1. **Limit repeater item count** - Cap at 50 items, paginate larger collections
-2. **Lazy render in preview** - Show first 10, "[... and 190 more items]"
-3. **Background PDF generation** - Generate async, notify when ready for large documents
-4. **Virtualization in designer preview** - Don't render off-screen repeater items
-
-**Which phase should address:** Phase 3 (Data Binding) or Phase 5 (Repeater Elements)
-
----
-
-### Pitfall 10: Image Embedding Without Size Limits
-
-**What goes wrong:** User uploads 5MB logo, template JSON becomes 7MB. Every load/save takes 10+ seconds. PDF generation fails on memory limits.
+**What goes wrong:** Session opens at 9 AM with USD rate 35.00. At 2 PM, shop changes rate to 34.50. Transactions before 2 PM used old rate, transactions after use new rate. At close:
+- Expected cash calculation uses... which rate?
+- Historical transactions show... which rate?
 
 **Prevention:**
-1. **Max image size 500KB** - Compress on upload
-2. **Store images as references (S3 URL)** - Don't embed base64 in template JSON
-3. **Image dimensions limit** - Max 2000x2000px, resize on upload
-4. **Lazy image loading in designer** - Show placeholder until scrolled into view
+- **Rate at transaction is immutable:** Each `TillTransaction` stores its rate
+- **Session expected calculation uses transaction rates:** Sum of (amount * rate at transaction time)
+- **Rate change creates audit entry:** "Rate changed from X to Y at time T"
+- **Report shows rate used for each transaction**
 
-**Which phase should address:** Phase 1 (Designer Core) - Image element design
+**Phase to Address:** Phase 1 (ensure rate stored on transaction) and Phase 2 (reconciliation logic)
 
 ---
 
 ## Minor Pitfalls
 
-Mistakes that cause annoyance but are fixable.
+Annoyances that are fixable but waste time if not anticipated.
 
----
+### Pitfall 11: Receipt Reprint Without Control
 
-### Pitfall 11: Undo/Redo Stack Memory Leak
-
-**What goes wrong:** Every change stores full template state. After 50 edits, browser consuming 500MB memory.
+**What goes wrong:** Staff reprint receipts freely. Customer claims didn't receive receipt, gets reprint, uses both for expense claims or disputes.
 
 **Prevention:**
-1. **Store diffs, not full state** - Calculate delta between states
-2. **Limit undo depth** - Max 20 operations
-3. **Compress undo stack** - Coalesce rapid position changes into single entry
+- `ReprintCount` already exists on `Receipt` - good
+- Add: Require reason for reprint
+- Add: "REPRINT" watermark on reprinted receipts
+- Limit: Max reprints without manager override
 
-**Which phase should address:** Phase 1 (Designer Core)
+**Phase to Address:** Phase 4 (receipt management polish)
 
 ---
 
-### Pitfall 12: Mobile Touch Designer Unusable
+### Pitfall 12: Time Zone Confusion
 
-**What goes wrong:** Designer built for mouse. Touch targets too small, pinch-zoom conflicts with element resize.
+**What goes wrong:** Tourist from China makes payment at 23:30 Thailand time. Their receipt shows their timezone (00:30 next day). Reconciliation date mismatches.
+
+Shop operates across midnight; which day does 00:30 transaction belong to?
 
 **Prevention:**
-1. **Minimum touch target 44x44px** - Apple HIG guideline
-2. **Separate resize handles from drag** - Long-press vs tap
-3. **Test on actual tablet** - iPad/Android tablet, not just Chrome DevTools
+- **All times in Thailand timezone (UTC+7):** `DateTimeOffset` with explicit timezone
+- **Day boundary at shop close, not midnight:** If shop closes at 2 AM, that's still "yesterday's" business day
+- **Session defines the date:** Transaction belongs to session's opening date, not transaction timestamp
 
-**Which phase should address:** Phase 1 (Designer Core) - If mobile OrgAdmin use case exists
+**Phase to Address:** Phase 1 (ensure `DateTimeOffset` used consistently, define day boundary rules)
 
 ---
 
-### Pitfall 13: Localization Hardcoded in Element Labels
+### Pitfall 13: Currency Rounding Accumulation
 
-**What goes wrong:** Element labels like "Two Columns" hardcoded in English. Thai OrgAdmins confused by designer UI.
+**What goes wrong:**
+- USD payment of $14.99 at rate 35.123 = 526.49277 THB, rounded to 526.49
+- 100 such transactions = 0.00277 * 100 = 0.277 THB lost to rounding
+- Over a month with high volume, rounding errors accumulate
+
+Thailand also has no coins below 25 satang (0.25 THB), so cash rounding applies.
 
 **Prevention:**
-1. **All UI strings in resx files** - Per existing MotoRent pattern
-2. **Element type enum** - Localize display name, not internal identifier
-3. **Property labels localized** - "Width" -> "ความกว้าง"
+- **Standard rounding rules:** Define and document (e.g., banker's rounding)
+- **Track rounding as separate line:** Small "rounding adjustment" entry keeps books clean
+- **Accept rounding variance:** Configure acceptable rounding tolerance (e.g., 5 THB per day)
 
-**Which phase should address:** Phase 1 (Designer Core) - Follow existing LocalizedComponentBase pattern
+**Phase to Address:** Phase 2 (calculation precision) and Phase 4 (reconciliation tolerance configuration)
 
 ---
 
-### Pitfall 14: Missing Template Preview Data
+### Pitfall 14: Void/Refund Without Till Impact
 
-**What goes wrong:** Template preview shows "{{Rental.StartDate}}" text instead of actual sample data.
+**What goes wrong:** Receipt voided, but TillTransaction already recorded. Cash balance now wrong.
+
+Or: Refund issued but not recorded as cash out. Drawer shows over.
 
 **Prevention:**
-1. **Sample data models** - AgreementModel.CreateSample() with realistic fake data
-2. **Use Thai names in samples** - "สมชาย ใจดี", not "John Smith"
-3. **Toggle mode** - "Show placeholders" vs "Show sample data"
+- **Void creates reversing transaction:** Voiding receipt X creates TillTransaction "Void of Receipt X" as cash out
+- **Refund workflow enforces till recording:** Cannot complete refund without TillTransaction
+- **Cross-reference validation:** Reconciliation report flags receipts without matching till entries
 
-**Which phase should address:** Phase 3 (Data Binding)
+**Phase to Address:** Phase 2 (transaction lifecycle, ensure void/refund flows update till)
 
 ---
 
-### Pitfall 15: No Template Validation Before Save
+## Thailand/Tourism-Specific Pitfalls
 
-**What goes wrong:** User saves template with broken bindings, discovers problem when trying to print real document.
+### Pitfall 15: Counterfeit Currency Detection Not Tracked
+
+**What goes wrong:** Staff accepts counterfeit note (common with USD/EUR in tourist areas). At reconciliation, authentic cash is short by that amount. No record that counterfeit was received.
 
 **Prevention:**
-1. **Validate on save** - Check all bindings resolve
-2. **Warning vs error** - Warn for optional fields, error for required
-3. **Generate preview as validation** - If preview fails, save blocked
+- **Counterfeit transaction type:** Record suspected counterfeits immediately (removed from drawer)
+- **Counterfeit flag on foreign currency transactions:** Checkbox for "verified with UV/pen"
+- **Training record:** Track which staff completed counterfeit detection training
 
-**Which phase should address:** Phase 4 (Template Management)
-
----
-
-## Phase-Specific Warnings
-
-| Phase Topic | Likely Pitfall | Mitigation |
-|-------------|----------------|------------|
-| Designer Core | State sync (Pitfall 1) | JS source of truth during drag, Blazor on drop |
-| Designer Core | Over-engineering (Pitfall 3) | Flat element list, max 2 nesting levels |
-| Designer Core | Canvas coordinates (Pitfall 8) | Use points internally, scale to pixels for display |
-| PDF Rendering | WYSIWYG mismatch (Pitfall 2) | Same engine for preview and output, or Puppeteer |
-| PDF Rendering | Thai text (Pitfall 4) | TH Sarabun font embedded, test combining characters |
-| Data Binding | Null cascade (Pitfall 5) | Null-safe property access, graceful degradation |
-| Data Binding | Repeater performance (Pitfall 9) | Limit item count, background generation for large docs |
-| Template Management | Tenant isolation (Pitfall 6) | AccountNo in all queries, repository pattern |
-| Integration | Staff workflow (Pitfall 7) | Drop-in replacement, default template auto-select |
-| Default Templates | Missing preview data (Pitfall 14) | Sample data models with Thai content |
+**Phase to Address:** Phase 4 (operational polish, not critical for MVP)
 
 ---
 
-## Summary for Roadmap
+### Pitfall 16: Tourist Season Float Management
 
-**Phase 1 must solve:**
-- Drag-and-drop state synchronization (Critical)
-- Element model simplicity (Critical)
-- Coordinate system (points vs pixels)
-- Touch targets if mobile supported
+**What goes wrong:** During high season, need more USD/EUR float. During low season, excess foreign currency sits idle.
 
-**Phase 2 must solve:**
-- PDF-browser rendering parity (Critical)
-- Thai font embedding (Critical)
+**Prevention:**
+- **Float recommendation engine:** Based on historical currency mix by season
+- **Cross-shop currency transfer:** If Shop A has excess USD, transfer to Shop B
+- **Bank exchange planning:** Schedule currency exchanges based on forecast
 
-**Phase 3 must solve:**
-- Null-safe binding engine (Critical)
-- Repeater performance limits
-
-**Phase 4 must solve:**
-- Tenant isolation enforcement
-- Template validation
-
-**Phase 6 must solve:**
-- Staff workflow preservation (adoption blocker)
+**Phase to Address:** Phase 5 (reporting and analytics, post-MVP)
 
 ---
 
-*Research based on: Existing MotoRent codebase patterns, document editor domain knowledge, Blazor Server JS interop patterns, PDF generation domain knowledge, Thai typography requirements. Confidence: MEDIUM - limited external verification available.*
+## Phase-Specific Warnings Summary
+
+| Phase | Topic | Likely Pitfall | Mitigation |
+|-------|-------|----------------|------------|
+| Phase 1 | Core Domain Model | Single-currency till (#1) | Design per-currency tracking from start |
+| Phase 1 | Exchange Rates | Rate storage (#2) | Store rate on every foreign currency transaction |
+| Phase 1 | Time Handling | Timezone confusion (#12) | Use `DateTimeOffset`, define day boundary |
+| Phase 2 | Session Lifecycle | Shared access (#3) | Enforce handover workflow |
+| Phase 2 | Reconciliation | Rate mismatch (#2) | Per-currency reconciliation, snapshot rates |
+| Phase 2 | Void/Refund | Till not updated (#14) | Reversing transactions |
+| Phase 3 | Offline Sync | Duplicate transactions (#4) | WebId deduplication, conflict detection |
+| Phase 3 | Data Retention | Lost transactions (#9) | Mandatory sync before close |
+| Phase 4 | Denomination | Change problems (#5) | Optional denomination tracking on close |
+| Phase 4 | Receipts | Reprint abuse (#11) | Watermark, reason required |
+| Phase 5 | Reporting | Variance patterns (#7) | Manager override audit reports |
+
+---
+
+## Sources
+
+### Cash Handling & POS Best Practices
+- [APG Cash Handling Best Practices](https://apgsolutions.com/cash-handling-best-practices/)
+- [Star Micronics: How to Balance Cash Drawers](https://starmicronics.com/blog/how-to-balance-cash-drawers-quickly-and-accurately/)
+- [Appriss Retail: Cash Register Discrepancies](https://apprissretail.com/blog/getting-to-the-bottom-of-register-discrepancies/)
+- [Solink: Top 19 Cash Handling Procedures](https://solink.com/resources/cash-handling-procedures/)
+- [Ramp: Cash Handling Policy Template](https://ramp.com/blog/cash-handling-policy-template)
+
+### Multi-Currency and Forex
+- [Cloudbeds: Multi-Currency FAQ](https://myfrontdesk.cloudbeds.com/hc/en-us/articles/360058997873-Multi-Currency-FAQ)
+- [Cloudbeds: Currency Rounding](https://myfrontdesk.cloudbeds.com/hc/en-us/articles/6662923736859-Currency-Rounding-Everything-you-need-to-know)
+- [HedgeStar: 5 Best Practices to Avoid Foreign Currency Transaction Errors](https://hedgestar.com/single-post/2024/12/19/5-best-practices-to-avoid-errors-in-foreign-currency-transactions/)
+- [Controllers Council: Multi-Currency Financial Management Challenges](https://controllerscouncil.org/navigating-the-challenges-of-multi-currency-financial-management/)
+
+### Thailand POS Context
+- [ConnectPOS: POS Systems in Thailand](https://www.connectpos.com/top-5-pos-systems-in-thailand/)
+- [ConnectPOS: Essential Features for Thai Retail](https://www.connectpos.com/essential-features-of-pos-for-retail-chains-in-thailand/)
+
+### Offline POS & PWA Sync
+- [Tillpoint: POS System Offline Transactions](https://www.tillpoint.com/pos-system-offline-transactions/)
+- [ConnectPOS: How Offline POS Works](https://www.connectpos.com/how-does-offline-pos-work-a-simple-explanation/)
+- [MDN: Offline and Background Operation](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Guides/Offline_and_background_operation)
+- [Bits and Pieces: Design Patterns for Offline First Web Apps](https://blog.bitsrc.io/design-patterns-for-offline-first-web-apps-5891a4b06f3a)
+
+### Cash Float & Denomination
+- [RetailDogma: Cash Float in Retail](https://www.retaildogma.com/cash-float/)
+- [KORONA POS: How to Count the Till](https://koronapos.com/blog/count-the-till-cash-handling/)
+- [PayComplete: What is a Cash Float](https://paycomplete.com/what-is-a-cash-float-in-retail/)
+
+### Staff Accountability
+- [OneHub POS: POS Fraud Prevention](https://www.onehubpos.com/blog/pos-fraud-prevention-how-to-stop-employee-theft-before-profits-disappear)
+- [Xenia: Mastering Cash Handling Procedures](https://www.xenia.team/articles/cash-handling-procedures-retail)
+- [ZZap: Cash Handling Policies and Procedures](https://www.zzap.com/cash-handling-policies-and-procedures-with-a-policy-example/)

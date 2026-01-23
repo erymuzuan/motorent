@@ -1,194 +1,225 @@
 # Architecture
 
-**Analysis Date:** 2026-01-23
+**Analysis Date:** 2026-01-19
 
 ## Pattern Overview
 
-**Overall:** Clean Architecture with Multi-Tenant SaaS Pattern
+**Overall:** Layered Architecture with Multi-Tenant Support
 
 **Key Characteristics:**
-- Layered architecture separating Domain, Services, and Presentation
-- Multi-tenant data isolation using SQL Server schemas (AccountNo = schema name)
-- Repository pattern with Unit of Work for data access
-- JSON column storage with computed columns for indexing
-- Server-side Blazor with WASM PWA client capability
-- Event-driven background processing via RabbitMQ message broker
+- Blazor Server + WebAssembly hybrid with server-side rendering
+- Custom Repository Pattern with JSON storage in SQL Server
+- Multi-tenant architecture using schema-per-tenant isolation
+- Service-oriented business logic layer
+- Claims-based authentication with OAuth providers
 
 ## Layers
 
-**Presentation Layer (MotoRent.Server + MotoRent.Client):**
-- Purpose: HTTP request handling, Blazor components, API controllers
-- Location: `src/MotoRent.Server/`, `src/MotoRent.Client/`
-- Contains: Razor components, layouts, API controllers, middleware, SignalR hubs
-- Depends on: Services, Domain
-- Used by: End users (browser/PWA), Tourist portal
+**Presentation Layer (MotoRent.Client):**
+- Purpose: UI components, pages, and user interaction
+- Location: `src/MotoRent.Client/`
+- Contains: Razor components, layouts, dialogs, controls
+- Depends on: MotoRent.Domain, MotoRent.Services
+- Used by: MotoRent.Server (hosts the Blazor components)
 
-**Application/Services Layer (MotoRent.Services):**
-- Purpose: Business logic, orchestration, external integrations
+**Host Layer (MotoRent.Server):**
+- Purpose: ASP.NET Core host, authentication, API controllers, SignalR hubs
+- Location: `src/MotoRent.Server/`
+- Contains: Program.cs (DI setup), controllers, middleware, request context
+- Depends on: All other projects
+- Used by: External clients (browsers)
+
+**Services Layer (MotoRent.Services):**
+- Purpose: Business logic, workflows, external integrations
 - Location: `src/MotoRent.Services/`
-- Contains: Service classes (RentalService, VehicleService, etc.), OCR service, search service
-- Depends on: Domain
-- Used by: Presentation layer, Worker, Scheduler
+- Contains: Service classes (RentalService, VehicleService, etc.), OCR, search
+- Depends on: MotoRent.Domain
+- Used by: MotoRent.Client, MotoRent.Server
 
 **Domain Layer (MotoRent.Domain):**
-- Purpose: Core entities, data context, repository interfaces, value objects
+- Purpose: Entities, data context, repository interfaces, core abstractions
 - Location: `src/MotoRent.Domain/`
-- Contains: Entity classes, DataContext (RentalDataContext, CoreDataContext), IRepository interface
-- Depends on: None (pure domain)
-- Used by: All other layers
+- Contains: Entity classes, RentalDataContext, Query/Repository, IRequestContext
+- Depends on: None (core layer)
+- Used by: All other projects
 
-**Infrastructure Layer (MotoRent.Core.Repository + MotoRent.Messaging):**
-- Purpose: Data access implementation, message broker integration
-- Location: `src/MotoRent.Core.Repository/`, `src/MotoRent.Messaging/`
-- Contains: SQL JSON repository, LINQ expression tree translation, RabbitMQ broker
-- Depends on: Domain
-- Used by: Server (via DI registration)
+**Messaging Layer (MotoRent.Messaging):**
+- Purpose: RabbitMQ message broker integration
+- Location: `src/MotoRent.Messaging/`
+- Contains: RabbitMqMessageBroker implementation
+- Depends on: MotoRent.Domain (IMessageBroker interface)
+- Used by: MotoRent.Server (optional, enabled via config)
 
-**Background Processing Layer (MotoRent.Worker + MotoRent.Scheduler):**
-- Purpose: Async message processing, scheduled tasks
-- Location: `src/MotoRent.Worker/`, `src/MotoRent.Scheduler/`
-- Contains: Subscribers (event handlers), task runners (scheduled jobs)
-- Depends on: Services, Domain, Messaging
-- Used by: Runs as separate processes
+**Background Processing:**
+- **MotoRent.Scheduler:** Scheduled jobs (e.g., maintenance alerts)
+  - Location: `src/MotoRent.Scheduler/`
+- **MotoRent.Worker:** Background worker processes
+  - Location: `src/MotoRent.Worker/`
 
 ## Data Flow
 
 **Web Request Flow:**
 
-1. HTTP request arrives at `MotoRent.Server`
-2. `TenantDomainMiddleware` resolves tenant from URL/domain for tourist pages
+1. HTTP request arrives at MotoRent.Server
+2. TenantDomainMiddleware resolves tenant from domain/subdomain
 3. Authentication middleware validates cookie/claims
-4. `IRequestContext` (MotoRentRequestContext or TouristRequestContext) extracts AccountNo from claims
-5. Blazor component loads, injects services
-6. Service uses `RentalDataContext` to query data
-7. Repository builds SQL with tenant schema `[{AccountNo}].[TableName]`
-8. JSON deserialized to entity, returned to component
+4. IRequestContext (MotoRentRequestContext) provides tenant info via claims
+5. Blazor component renders, injecting services
+6. Services use RentalDataContext to query/persist data
+7. Repository determines schema from IRequestContext.GetSchema()
+8. SQL Server returns data from tenant-specific schema
 
-**Data Persistence Flow:**
+**Entity Persistence Flow:**
 
-1. Component calls service method with entity
-2. Service opens `PersistenceSession` from DataContext
-3. Entities attached to session for insert/update/delete
-4. `SubmitChanges()` executes SQL per entity
-5. JSON serialized to `[Json]` column
-6. If RabbitMQ enabled, `BrokeredMessage` published with entity change
-7. Worker subscribers receive message for async processing
+1. Component loads entity via service (e.g., `RentalService.GetRentalByIdAsync()`)
+2. Service calls `RentalDataContext.LoadOneAsync<T>(predicate)`
+3. DataContext uses `ObjectBuilder.GetObject<IRepository<T>>()` to get repository
+4. Repository builds SQL query with tenant schema: `[AccountNo].[Rental]`
+5. Entity deserialized from JSON column via `JsonSerializerService`
+6. Entity modified in component
+7. Component calls service save method
+8. Service opens `PersistenceSession`, attaches entity, calls `SubmitChanges()`
+9. DataContext serializes entity to JSON, calls repository insert/update
+10. Optional: Message published to RabbitMQ for async processing
 
 **State Management:**
-- Server-side: Scoped services per SignalR circuit
-- Client state: Component fields with `@code` blocks
-- Shared state: `IRequestContext` provides user/tenant context via DI
-- Caching: HybridCache for Core schema entities
+- No client-side state management library
+- Data loaded in `OnInitializedAsync()` or `OnParametersSetAsync()`
+- Component state in `@code` block private fields (m_ prefix)
+- Cross-component communication via service injection or cascading parameters
 
 ## Key Abstractions
 
 **Entity (Base Class):**
-- Purpose: Base class for all domain entities with polymorphic JSON serialization
-- Examples: `src/MotoRent.Domain/Entities/Entity.cs`
-- Pattern: JSON discriminator (`$type`) for polymorphism, abstract `GetId()`/`SetId()` methods
-- Key properties: `WebId` (GUID), audit fields (`CreatedBy`, `ChangedBy`, timestamps)
+- Purpose: Base for all persistable domain objects
+- Examples: `src/MotoRent.Domain/Entities/Rental.cs`, `src/MotoRent.Domain/Entities/Vehicle.cs`
+- Pattern: JSON polymorphism with `[JsonDerivedType]` attributes, abstract `GetId()`/`SetId()`
 
 **RentalDataContext:**
-- Purpose: Data access facade for tenant-scoped entities
+- Purpose: Unit of Work for queries and persistence sessions
 - Examples: `src/MotoRent.Domain/DataContext/RentalDataContext.cs`
-- Pattern: Query builder with LINQ-like API, session-based persistence
-- Key methods: `CreateQuery<T>()`, `LoadAsync()`, `LoadOneAsync()`, `OpenSession()`
-
-**CoreDataContext:**
-- Purpose: Data access facade for shared Core schema entities (Organization, User, Setting)
-- Examples: `src/MotoRent.Domain/DataContext/CoreDataContext.cs`
-- Pattern: Same as RentalDataContext but uses `[Core]` schema
-- Key entities: Organization, User, Setting, AccessToken, LogEntry
+- Pattern: Provides `CreateQuery<T>()`, `LoadAsync<T>()`, `OpenSession()` for transactions
 
 **IRepository<T>:**
-- Purpose: Generic repository interface for entity persistence
-- Examples: `src/MotoRent.Domain/DataContext/IRepository.cs`
-- Pattern: CRUD + aggregate queries (count, sum, distinct, group by)
-- Implementations: `Repository<T>` (tenant-scoped), `CoreSqlJsonRepository<T>` (Core schema)
+- Purpose: Data access abstraction per entity type
+- Examples: `src/MotoRent.Domain/DataContext/Repository.cs`
+- Pattern: Generic repository with LINQ-to-SQL translation, tenant schema resolution
 
 **IRequestContext:**
-- Purpose: Provides current user, tenant, and timezone context per-request
-- Examples: `src/MotoRent.Domain/Core/IRequestContext.cs`
-- Pattern: Claims-based identity extraction
-- Key methods: `GetUserName()`, `GetAccountNo()`, `GetSchema()`, `GetShopId()`
+- Purpose: Current user/tenant context provider
+- Examples: `src/MotoRent.Domain/Core/IRequestContext.cs`, `src/MotoRent.Server/Services/MotoRentRequestContext.cs`
+- Pattern: Provides `GetAccountNo()` for schema, `GetUserName()` for audit, timezone for dates
 
-**PersistenceSession:**
-- Purpose: Unit of Work for batch entity operations
-- Examples: `src/MotoRent.Domain/DataContext/PersistenceSession.cs`
-- Pattern: Attach entities, submit changes atomically
-- Key methods: `Attach()`, `Delete()`, `SubmitChanges()`
+**ObjectBuilder:**
+- Purpose: Service locator for repositories (used by DataContext)
+- Examples: `src/MotoRent.Domain/DataContext/ObjectBuilder.cs`
+- Pattern: Static service locator configured at startup, resolves from HttpContext scope
 
 ## Entry Points
 
-**Web Application (MotoRent.Server):**
+**Web Application:**
 - Location: `src/MotoRent.Server/Program.cs`
 - Triggers: HTTP requests, SignalR connections
-- Responsibilities: DI registration, middleware pipeline, authentication, Blazor hosting
+- Responsibilities: DI configuration, middleware pipeline, authentication setup, service registration
 
-**Background Worker (MotoRent.Worker):**
-- Location: `src/MotoRent.Worker/Program.cs`
-- Triggers: RabbitMQ messages
-- Responsibilities: Subscribe to entity changes, process async tasks (notifications, search indexing)
-
-**Scheduler (MotoRent.Scheduler):**
-- Location: `src/MotoRent.Scheduler/Program.cs`
-- Triggers: Timer/cron schedule
-- Responsibilities: Run periodic tasks (maintenance alerts, rental expiry, depreciation)
+**Blazor Pages:**
+- Location: `src/MotoRent.Client/Pages/`
+- Triggers: Route navigation
+- Responsibilities: UI rendering, user interaction, service orchestration
 
 **API Controllers:**
 - Location: `src/MotoRent.Server/Controllers/`
 - Triggers: HTTP API requests
-- Key controllers: `AccountController` (auth), `DocumentsController` (OCR), `DamagePhotosController`
+- Responsibilities: Authentication callbacks, file uploads, culture switching
+
+**SignalR Hubs:**
+- Location: `src/MotoRent.Server/Hubs/CommentHub.cs`
+- Triggers: WebSocket connections
+- Responsibilities: Real-time comments/notifications
+
+**Background Workers:**
+- Location: `src/MotoRent.Scheduler/Runners/`
+- Triggers: Scheduled timers
+- Responsibilities: Maintenance alerts, periodic tasks
 
 ## Error Handling
 
-**Strategy:** Middleware-based exception logging + graceful component error boundaries
+**Strategy:** Try-catch with logging and user-friendly messages
 
 **Patterns:**
-- `ExceptionLoggingMiddleware` captures all unhandled exceptions to LogEntry table
-- `ErrorBoundary` in layouts catches component render errors with fallback UI
-- Repository auto-creates missing tables on first SqlException (schema migration)
-- `SubmitOperation` returns success/failure with message for persistence operations
+- Services return result objects (e.g., `CheckInResult`, `SubmitOperation`) with Success/Message
+- Repository catches `SqlException`, auto-creates missing tables/schemas
+- Components catch exceptions in lifecycle methods, call `Logger.LogError()` and `ShowError()`
+- Global middleware (`ExceptionLoggingMiddleware`) logs unhandled exceptions to `LogEntry` table
 
-**Error Logging:**
-- `ILogger` interface (custom) with `SqlLogger` implementation
-- Logs to `[Core].[LogEntry]` table with severity, message, stack trace
-- `LogEntryService` for querying/displaying errors in Super Admin pages
+**Example Service Pattern:**
+```csharp
+public async Task<CheckInResult> CheckInAsync(CheckInRequest request, string username)
+{
+    try
+    {
+        // Business logic...
+        return CheckInResult.CreateSuccess(rentalId);
+    }
+    catch (Exception ex)
+    {
+        return CheckInResult.CreateFailure($"Check-in error: {ex.Message}");
+    }
+}
+```
+
+**Example Component Pattern:**
+```csharp
+try
+{
+    m_loading = true;
+    await LoadDataAsync();
+}
+catch (Exception ex)
+{
+    Logger.LogError(ex, "Error loading data");
+    ShowError("Failed to load data");
+}
+finally
+{
+    m_loading = false;
+}
+```
 
 ## Cross-Cutting Concerns
 
 **Logging:**
-- Microsoft.Extensions.Logging for infrastructure
-- Custom `ILogger` interface in Domain with `SqlLogger` for application errors
+- Framework: `ILogger<T>` injection + custom `ILogger` (SqlLogger) for audit
+- Stored in: `[Core].[LogEntry]` table
+- Access: `LogEntryService`, `/super-admin/system-logs` page
 
 **Validation:**
-- Model validation in service layer before persistence
-- MudBlazor form validation in components
+- Component-level validation in form handlers
+- Service-level business rule validation (return failure results)
+- No centralized validation framework (manual checks)
 
 **Authentication:**
-- Cookie-based auth with 14-day sliding expiration
 - OAuth providers: Google, Microsoft, LINE
-- Claims store AccountNo, ShopId, roles
+- Cookie authentication with 14-day sliding expiration
+- Claims: `AccountNo`, `ShopId`, roles via `IRequestContext`
+- Super admin impersonation via `/account/impersonate`
 
 **Authorization:**
-- Role-based: SuperAdmin, OrgAdmin, ShopManager, Staff, Mechanic
-- Policy-based: `RequireTenantStaff`, `RequireTenantManager` (requires AccountNo claim)
-- Super admin impersonation via special claims
-
-**Multi-Tenancy:**
-- `IRequestContext.GetAccountNo()` extracts tenant from claims
-- Repository uses `[{AccountNo}]` as SQL schema for data isolation
-- `[Core]` schema for shared entities (Organization, User)
+- Policies: `RequireTenantStaff`, `RequireTenantManager`, `RequireTenantOrgAdmin`
+- Component attributes: `@attribute [Authorize(Policy = "...")]`
+- Role groups defined in `UserAccount` class
 
 **Localization:**
-- Resource files per component in `Resources/` folder
-- `IStringLocalizer<T>` injection
-- Supported cultures: en, th
+- Framework: `IStringLocalizer<T>` via `LocalizedComponentBase<T>`
+- Resource files: `src/MotoRent.Client/Resources/` (en, th, ms)
+- Pattern: `@Localizer["Key"]` in Razor
 
-**Caching:**
-- `HybridCache` for Core entities
-- Per-request scoped services eliminate need for most caching
+**Multi-Tenancy:**
+- Tenant identifier: `AccountNo` claim
+- Data isolation: Schema-per-tenant in SQL Server
+- Schema resolution: `IRequestContext.GetSchema()` -> `Repository.GetTableName()`
+- Core shared data: `[Core]` schema (Organizations, Users, Settings)
 
 ---
 
-*Architecture analysis: 2026-01-23*
+*Architecture analysis: 2026-01-19*

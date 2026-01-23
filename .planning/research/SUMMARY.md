@@ -1,195 +1,216 @@
-# Research Summary: Document Template Editor
+# Research Summary: Multi-Currency Cashier Till
 
-**Project:** MotoRent Document Template Editor
-**Synthesized:** 2026-01-23
-**Overall Confidence:** MEDIUM-HIGH
+**Project:** MotoRent Cashier Till Enhancement
+**Synthesized:** 2026-01-19
+**Research Files:** STACK.md, FEATURES.md, ARCHITECTURE.md, PITFALLS.md
+**Overall Confidence:** HIGH
 
 ---
 
 ## Executive Summary
 
-The document template editor for MotoRent requires a visual drag-and-drop designer that produces professional rental agreements, receipts, and booking confirmations in both HTML (browser print) and PDF formats. The research confirms this is a well-understood problem domain with established patterns, but several critical challenges must be addressed: Blazor/JavaScript state synchronization during drag operations, Thai text rendering in PDF output, and the WYSIWYG-to-PDF fidelity gap.
+MotoRent requires multi-currency cash management for its vehicle rental POS system serving Thailand's tourist market. The existing codebase has a **well-architected till system** with TillSession, TillTransaction, and Receipt entities, plus a comprehensive TillService. Multi-currency support is **partially implemented** at the receipt level (ReceiptPayment tracks Currency, ExchangeRate, AmountInBaseCurrency), but the critical gap is that **TillSession tracks only aggregate THB amounts**.
 
-The recommended approach leverages existing project patterns (Entity base class, JSON columns, Repository pattern) with minimal new dependencies: SortableJS for drag-and-drop enhancement and QuestPDF for PDF generation. The project has already migrated away from MudBlazor to Tabler CSS, so the designer will use custom Blazor components rather than MudBlazor extensions.
+The recommended approach is to **extend the existing architecture** rather than rebuild. The core enhancement is adding per-currency balance tracking to TillSession and storing exchange rates on each TillTransaction. No external libraries are needed - the existing .NET 10, Blazor Server, and SQL Server JSON column patterns fully support all requirements. The `SupportedCurrencies` class already defines THB, USD, EUR, GBP, CNY, JPY, AUD, and RUB.
 
-Key success factors are: (1) solving drag-and-drop state sync early in Phase 1, (2) keeping the element model simple with maximum 2 levels of nesting, (3) testing Thai font rendering before declaring PDF complete, and (4) ensuring the print workflow is a drop-in replacement for staff adoption.
-
----
-
-## Key Recommendations
-
-### 1. Use SortableJS + Native HTML5 Drag for Designer Interaction
-**Rationale:** Project already uses native drag events (VehicleRecognitionPanel.razor). SortableJS (10KB) handles edge cases like touch support and scroll zones. Avoids MudBlazor which the project migrated away from.
-
-### 2. Use QuestPDF for PDF Generation
-**Rationale:** Pure .NET, no browser dependency (unlike Puppeteer at 300MB+). MIT licensed for revenue under $1M. Fluent C# API integrates cleanly with existing patterns.
-
-### 3. Keep Element Model Flat (Max 2 Nesting Levels)
-**Rationale:** Prevents over-engineering. Template -> Container -> Elements is sufficient for all document types. Avoids complex JSON serialization edge cases and performance issues.
-
-### 4. Implement Null-Safe Data Binding from Day One
-**Rationale:** Production data has gaps. Template references to `Rental.Vehicle.Owner.Name` must gracefully return empty string if any part is null. Critical for staff usability.
-
-### 5. Browser Print First, PDF Download Later
-**Rationale:** Browser print (Ctrl+P) requires no external library and covers 90% of use cases. PDF download can be Phase 3 addition. Reduces initial scope and risk.
+The primary risks are exchange rate mismatches between transaction time and reconciliation time (causing false variances), and shared till access in chaotic tourist environments breaking accountability. Both are addressed by per-currency tracking with immutable transaction-level rates and strict session ownership enforcement.
 
 ---
 
-## Technology Choices
+## Key Findings
 
-| Category | Choice | Rationale |
-|----------|--------|-----------|
-| **Drag-and-Drop** | SortableJS 1.15.x + Native HTML5 | Lightweight, touch support, matches existing interop patterns |
-| **PDF Generation** | QuestPDF 2024.12.x | .NET native, fluent API, MIT licensed |
-| **Template Storage** | JSON column (existing pattern) | Matches Entity/Repository pattern, no new infrastructure |
-| **Template Engine** | Custom expression evaluator | Simple path resolution (`Rental.RenterName`), no overkill libraries |
-| **Canvas/Designer** | Custom Blazor components | Full control, matches Tabler CSS styling |
-| **State Management** | Scoped DesignerStateService | Command pattern for undo/redo, event-driven reactivity |
+### From STACK.md: Technology Decisions
 
-### Dependencies to Add
-```xml
-<!-- MotoRent.Services.csproj -->
-<PackageReference Include="QuestPDF" Version="2024.12.0" />
+| Technology | Decision | Rationale |
+|------------|----------|-----------|
+| External currency libraries | DO NOT USE | `ReceiptPayment` already implements decimal + currency code pattern |
+| External exchange rate APIs | DO NOT USE | Shops set their own buy/sell rates with margin; internet dependency risky |
+| Event sourcing/CQRS | DO NOT USE | `TillTransaction` is already append-only; overkill complexity |
+| SignalR real-time updates | EXTEND | `CommentHub.cs` pattern exists; apply same for till balance updates |
+| `decimal` type | CONTINUE | Native .NET type with 28-29 significant digits; no floating-point errors |
+
+**New entities required:**
+- `ExchangeRate` - Organization-scoped with BuyRate/SellRate and effective dates
+- `CurrencyBalance` - Embedded class for per-currency tracking in TillSession
+
+### From FEATURES.md: Feature Priorities
+
+**Table Stakes (Must Have):**
+| Feature | Status | Priority |
+|---------|--------|----------|
+| Multi-Currency Float Tracking | GAP | HIGH |
+| Exchange Rate Configuration | GAP | HIGH |
+| Currency-Specific Cash Count at Close | GAP | HIGH |
+| Change Calculation Display (foreign to THB) | GAP | HIGH |
+| Multi-Currency Variance Tracking | GAP | HIGH |
+| Session Management (open/close/verify) | IMPLEMENTED | - |
+| Cash-In/Cash-Out Operations | IMPLEMENTED | - |
+| Reconciliation (expected vs actual) | IMPLEMENTED | - |
+| Receipt Generation (multi-currency payments) | IMPLEMENTED | - |
+
+**Differentiators (Should Have):**
+- Real-time rate display at payment
+- Multi-currency receipt with THB equivalent
+- Variance alerts for managers
+- Till dashboard widget
+
+**Anti-Features (Do NOT Build):**
+- Complex split-till sharing (keep one-staff-per-session)
+- Automatic rate fetching from external APIs
+- Integrated accounting system
+- Biometric authentication
+- Cash drawer sensors
+
+### From ARCHITECTURE.md: System Design
+
+**Existing Architecture Strengths:**
+- Session-based till model with clear lifecycle (Open -> Close -> Verify)
+- Denormalized totals on TillSession for fast UI reads
+- Cross-reference linking (TillTransaction -> Payment/Deposit/Rental)
+- Embedded collections in JSON (ReceiptItem, ReceiptPayment)
+- Computed `ExpectedCash` property
+
+**Required Extensions:**
+
+```csharp
+// Add to TillSession
+public List<CurrencyBalance> CurrencyBalances { get; set; } = [];
+public List<CurrencyBalance> OpeningFloatByCurrency { get; set; } = [];
+public List<CurrencyBalance> ActualCashByCurrency { get; set; } = [];
+
+// Add to TillTransaction
+public string Currency { get; set; } = SupportedCurrencies.THB;
+public decimal ExchangeRate { get; set; } = 1.0m;
+public decimal AmountInBaseCurrency { get; set; }
 ```
 
-```html
-<!-- wwwroot -->
-<script src="lib/sortablejs/Sortable.min.js"></script>
-```
+**Service Layer Additions:**
+- `ExchangeRateService` - Rate management (get current buy/sell, set new rates, history)
+- Extend `TillService` - Multi-currency transaction recording, per-currency reconciliation
 
-### Thai Fonts Required
-- TH Sarabun PSK (government standard)
-- Noto Sans Thai (Google fallback)
+### From PITFALLS.md: Critical Risks
+
+| Pitfall | Severity | Mitigation |
+|---------|----------|------------|
+| Single-currency till tracking | CRITICAL | Per-currency balances on TillSession from Phase 1 |
+| Exchange rate mismatch (transaction vs reconciliation) | CRITICAL | Store rate on every TillTransaction; per-currency reconciliation |
+| Shared till access in chaotic environment | CRITICAL | Enforce handover workflow with mid-shift count |
+| Offline duplicate transactions | CRITICAL | WebId deduplication; sync before session close |
+| Denomination tracking blindness | MODERATE | Optional denomination count at close |
+| Receipt-till linkage gaps | MODERATE | Ensure all payments create linked TillTransaction |
+| Manager override without audit | MODERATE | Require reason for variance acceptance |
 
 ---
 
-## Build Order (Recommended Phases)
+## Implications for Roadmap
 
-### Phase 1: Foundation and Designer Core
-**Delivers:** Element models, database schema, basic canvas with drag-and-drop
-**Duration:** 3-4 days
-**Key Files:**
-- `DocumentTemplate.cs` entity with polymorphic elements
-- `TemplateService.cs` for CRUD
-- `DesignerCanvas.razor` with SortableJS interop
-- `ElementsPalette.razor` with draggable elements
-- `PropertiesPanel.razor` for element configuration
+Based on combined research, the recommended phase structure:
 
-**Must Solve:**
-- Blazor/JS state sync during drag (Critical Pitfall 1)
-- Coordinate system (points internal, pixels display)
-- Element model simplicity (max 2 nesting levels)
+### Phase 1: Multi-Currency Core (Foundation)
+
+**Rationale:** The domain model must support per-currency tracking from the start. Retrofitting is expensive and error-prone.
+
+**Delivers:**
+- `ExchangeRate` entity with buy/sell rates
+- `CurrencyBalance` embedded class
+- Extended `TillSession` with per-currency tracking
+- Extended `TillTransaction` with currency/rate fields
+- `ExchangeRateService` for rate management
+- SQL migration scripts
+
+**Features from FEATURES.md:** Multi-currency float tracking, exchange rate configuration
+
+**Pitfalls to Avoid:**
+- #1: Single-currency till tracking (address directly)
+- #2: Exchange rate mismatch (store rate on transactions)
+- #12: Timezone confusion (use `DateTimeOffset` consistently)
 
 **Research Flag:** Standard patterns - no additional research needed
 
 ---
 
-### Phase 2: Data Binding System
-**Delivers:** Property picker, context models, binding resolution
-**Duration:** 2-3 days
-**Key Files:**
-- `AgreementModel.cs`, `ReceiptModel.cs`, `BookingConfirmationModel.cs`
-- `DataModelService.cs` for building models from entities
-- `DataBindingPicker.razor` UI component
+### Phase 2: Multi-Currency Operations
 
-**Must Solve:**
-- Null-safe property access (Critical Pitfall 5)
-- Format specifiers (date, currency)
+**Rationale:** With the domain model in place, build the operational workflows.
+
+**Delivers:**
+- Exchange rate management UI (`/settings/exchange-rates`)
+- Multi-currency payment dialog (extend `TillReceivePaymentDialog.razor`)
+- Currency drawer display on Till page
+- Per-currency reconciliation at close (`TillCloseSessionDialog.razor`)
+- Change calculation helper (accept foreign, show THB change)
+
+**Features from FEATURES.md:** Currency-specific cash count, change calculation display, multi-currency variance tracking
+
+**Pitfalls to Avoid:**
+- #3: Shared access (enforce handover workflow)
+- #10: Mid-session rate changes (rates immutable on transactions)
+- #14: Void/refund without till impact (reversing transactions)
+
+**Research Flag:** Standard patterns - UI extensions follow existing MudBlazor patterns
+
+---
+
+### Phase 3: Session Lifecycle Hardening
+
+**Rationale:** Ensure accountability and handle edge cases.
+
+**Delivers:**
+- Session handover workflow (count + transfer)
+- Manager verification dashboard (`/manager/till-verification`)
+- Variance investigation drill-down
+- Daily summary report with per-currency breakdown
+
+**Features from FEATURES.md:** Manager override, variance alerts, shift handover report
+
+**Pitfalls to Avoid:**
+- #3: Shared access (handover flow)
+- #6: Receipt-till linkage (ensure all flows link properly)
+- #7: Manager override without audit (require variance reason)
+
+**Research Flag:** May need `/gsd:research-phase` for manager dashboard UX patterns
+
+---
+
+### Phase 4: Offline Resilience (If PWA Required)
+
+**Rationale:** Critical for shops with unreliable internet, but adds complexity.
+
+**Delivers:**
+- Offline transaction queuing
+- Sync conflict detection
+- Visual pending transaction indicators
+- Mandatory sync before session close
+
+**Features from FEATURES.md:** (PWA infrastructure)
+
+**Pitfalls to Avoid:**
+- #4: Offline duplicates (WebId deduplication)
+- #9: Insufficient offline retention (mandatory sync)
+
+**Research Flag:** NEEDS `/gsd:research-phase` - offline sync patterns require careful design
+
+---
+
+### Phase 5: Polish and Reporting (Post-MVP)
+
+**Rationale:** Operational polish once core flows are stable.
+
+**Delivers:**
+- Denomination counting UI (optional)
+- Currency mix reports
+- Staff variance trend analysis
+- Receipt reprint controls with watermark
+- Counterfeit tracking
+
+**Features from FEATURES.md:** Denomination counting, variance trend analysis, currency mix report
+
+**Pitfalls to Avoid:**
+- #5: Denomination blindness (address if needed)
+- #11: Reprint abuse (watermark, reason)
+- #15: Counterfeit tracking
 
 **Research Flag:** Standard patterns
-
----
-
-### Phase 3: Rendering and Browser Print
-**Delivers:** Template-to-HTML rendering, live preview, browser print
-**Duration:** 2-3 days
-**Key Files:**
-- `DocumentRenderService.cs`
-- Print preview page
-- CSS print media styles
-
-**Must Solve:**
-- Preview accuracy
-- Page sizing (A4)
-
-**Research Flag:** Standard patterns
-
----
-
-### Phase 4: Template Management
-**Delivers:** Template CRUD, default templates, approval workflow
-**Duration:** 2 days
-**Key Files:**
-- `TemplateList.razor` page
-- Database seed with default templates
-
-**Must Solve:**
-- Tenant isolation (filter by AccountNo)
-- Template validation on save
-
-**Research Flag:** Standard patterns
-
----
-
-### Phase 5: PDF Export
-**Delivers:** PDF download button, QuestPDF integration
-**Duration:** 2-3 days
-**Key Files:**
-- `PdfExportService.cs`
-- Thai font embedding
-
-**Must Solve:**
-- Thai text rendering (Critical Pitfall 4)
-- WYSIWYG-to-PDF fidelity (Critical Pitfall 2)
-
-**Research Flag:** NEEDS RESEARCH - Thai font embedding verification, QuestPDF .NET 10 compatibility
-
----
-
-### Phase 6: Integration and Staff Workflow
-**Delivers:** Print buttons in rental/receipt dialogs, template selector
-**Duration:** 1-2 days
-**Key Files:**
-- Updated `RentalDetail.razor` print flow
-- Updated `PaymentDialog.razor` receipt print
-
-**Must Solve:**
-- Staff workflow preservation (adoption blocker)
-- Default template auto-selection
-
-**Research Flag:** Standard patterns - but needs staff testing
-
----
-
-### Phase 7 (Optional): Advanced Features
-**Delivers:** Repeater elements, multi-page, AI clause suggester
-**Duration:** 3-4 days
-
-**Research Flag:** NEEDS RESEARCH if implemented - Repeater performance, page break handling
-
----
-
-## Critical Risks and Mitigations
-
-### Risk 1: Blazor/JavaScript State Desync During Drag
-**Impact:** HIGH - Elements snap back, drag fails on mobile
-**Mitigation:** JavaScript is source of truth during drag; Blazor only learns final position on drop. Use `@key` directives. Test with artificial SignalR latency.
-
-### Risk 2: Thai Text Rendering Failures in PDF
-**Impact:** HIGH - Legal documents unreadable for Thai market
-**Mitigation:** Embed TH Sarabun font (not subset). Test specific patterns: "กรุงเทพมหานคร", "ไม่มี". Validate in Phase 5 before declaring complete.
-
-### Risk 3: WYSIWYG Preview Does Not Match PDF Output
-**Impact:** MEDIUM-HIGH - User frustration, wasted design time
-**Mitigation:** Start with browser print only. When adding PDF, use same layout approach (absolute positioning). Show "PDF Preview" button before save.
-
-### Risk 4: Staff Abandon Feature Due to Workflow Change
-**Impact:** MEDIUM - Feature built but not used
-**Mitigation:** Drop-in replacement strategy. Same print button location, default template auto-selected, template selection optional.
-
-### Risk 5: Over-Engineered Element Model
-**Impact:** MEDIUM - Development delays, maintenance burden
-**Mitigation:** Hardcode element types for v1 (Text, Image, TwoColumns, Container, Divider, Signature, Date). No element registry or plugin system. Maximum 2 levels of nesting.
 
 ---
 
@@ -197,54 +218,60 @@ Key success factors are: (1) solving drag-and-drop state sync early in Phase 1, 
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| **Stack** | MEDIUM | QuestPDF .NET 10 compatibility unverified. SortableJS touch behavior needs testing. |
-| **Features** | MEDIUM | Field requirements based on domain knowledge. Recommend validation against actual rental company agreements. |
-| **Architecture** | HIGH | Follows established MotoRent patterns. Entity, Repository, JSON columns all proven. |
-| **Pitfalls** | MEDIUM | Based on training data and domain knowledge. Limited external verification. |
+| Stack | HIGH | Codebase analysis shows all required patterns exist; no external dependencies needed |
+| Features | MEDIUM-HIGH | Industry research + codebase gap analysis; Thailand-specific context well-documented |
+| Architecture | HIGH | Existing architecture is sound; extensions are additive, not disruptive |
+| Pitfalls | HIGH | Team has forex expertise; common POS pitfalls well-documented in sources |
 
 ### Gaps to Address During Planning
 
-1. **QuestPDF .NET 10 Compatibility** - Check NuGet for net10.0 target before Phase 5
-2. **Thai Font Embedding** - Prototype early in Phase 2 with test document
-3. **Touch Device Testing** - Test SortableJS on actual tablet before Phase 1 completion
-4. **Staff Workflow Validation** - Demo to actual rental desk users before Phase 6 deployment
+1. **Day boundary definition:** Does business day end at midnight or shop close? Affects which date transactions belong to.
+
+2. **Float currency composition:** Which currencies should shops stock? Is there a default recommendation?
+
+3. **Rate refresh frequency:** How often should shops update rates? Daily? Per-shift?
+
+4. **Offline scope:** Is PWA offline support required for MVP, or can it be deferred?
+
+5. **Denomination granularity:** Do shops need full denomination tracking, or just total per currency?
 
 ---
 
-## Quick Reference
+## Open Questions for User
 
-| Topic | One-Liner |
-|-------|-----------|
-| **Drag-and-Drop** | SortableJS + native HTML5, JS source of truth during drag |
-| **PDF Engine** | QuestPDF (pure .NET, MIT license) |
-| **Storage** | JSON column in tenant schema, existing Repository pattern |
-| **Binding** | Custom expression evaluator, null-safe property paths |
-| **Elements** | 8 types: Text, Image, TwoColumns, Container, Divider, Signature, Date, Repeater |
-| **Nesting** | Max 2 levels (Template -> Container -> Elements) |
-| **Critical Phase** | Phase 1 (drag sync) and Phase 5 (Thai PDF) |
-| **Adoption Risk** | Staff workflow - must be drop-in replacement |
+1. **Is offline/PWA support critical for MVP?** This significantly impacts Phase 4 scope and overall complexity.
+
+2. **What is the variance tolerance?** Should small variances (e.g., 5-10 THB rounding) be auto-accepted?
+
+3. **Do shops need denomination tracking at open/close?** Or is per-currency total sufficient?
+
+4. **Should exchange rates expire automatically?** e.g., require daily refresh vs. rates valid until changed.
+
+5. **Is multi-device till access needed?** Current design assumes one device per session; multi-device adds sync complexity.
 
 ---
 
 ## Aggregated Sources
 
-### High Confidence
-- Existing MotoRent codebase patterns (Entity, Repository, DataContext)
-- `VehicleRecognitionPanel.razor` - native drag events working
-- `GoogleMapJsInterop.cs` - ES module interop pattern
-- `mudblazor-to-tabler-migration.md` - confirms MudBlazor removal
+### From STACK.md
+- Existing codebase: TillSession.cs, TillTransaction.cs, ReceiptPayment.cs, CommentHub.cs
+- .NET decimal precision documentation
 
-### Medium Confidence
-- QuestPDF recommendation (training data 2024-2025)
-- SortableJS recommendation (stable library, wide adoption)
-- Thai font requirements (domain knowledge)
-- Rental document field requirements (industry practice)
+### From FEATURES.md
+- POS System Features: SelectHub, Shopify, Business.com
+- Cash Drawer Management: Star Micronics, Lightspeed, Microsoft Dynamics
+- Multi-Currency POS: Posytude, ERPLY, ConnectPOS
+- Thailand Payments: ConnectPOS, Statista
 
-### Verification Needed
-- QuestPDF .NET 10 compatibility (NuGet check)
-- SortableJS touch support (device testing)
-- Thai combining character rendering (prototype test)
+### From ARCHITECTURE.md
+- Existing codebase: TillService.cs, ReceiptService.cs, Till.razor, SQL schemas
+
+### From PITFALLS.md
+- Cash Handling: APG, Solink, Ramp
+- Multi-Currency: Cloudbeds, HedgeStar, Controllers Council
+- Offline POS: Tillpoint, ConnectPOS, MDN PWA docs
+- Staff Accountability: OneHub POS, Xenia, ZZap
 
 ---
 
-*Synthesis complete. Ready for roadmap creation.*
+**Synthesis Complete.** Ready for roadmap creation.

@@ -1,6 +1,6 @@
 # Testing Patterns
 
-**Analysis Date:** 2026-01-23
+**Analysis Date:** 2026-01-19
 
 ## Test Framework
 
@@ -11,26 +11,26 @@
 **Assertion Library:**
 - xUnit built-in assertions (`Assert.Equal`, `Assert.True`, etc.)
 
-**Coverage:**
-- Coverlet.collector 6.0.2 included
+**Coverage Tool:**
+- coverlet.collector 6.0.2
 
 **Run Commands:**
 ```bash
 dotnet test                                    # Run all tests
-dotnet test --filter "FullyQualifiedName~Tests"  # Run specific tests
-dotnet test --collect:"XPlat Code Coverage"    # With coverage
+dotnet test --filter "FullyQualifiedName~Tests"  # Run filtered tests
+dotnet test --collect:"XPlat Code Coverage"   # Run with coverage
 ```
 
 ## Test File Organization
 
 **Location:**
-- Separate `tests/` directory at solution root
-- Project naming: `MotoRent.{Layer}.Tests` (e.g., `MotoRent.Domain.Tests`)
+- Separate test project: `tests/MotoRent.Domain.Tests/`
+- Mirrors source structure
 
 **Naming:**
-- Test files: `{EntityName}Tests.cs` (e.g., `MaintenanceAlertTests.cs`)
-- Test classes: `{EntityName}Tests`
-- Test methods: `{Method}_Should{Behavior}` or descriptive names
+- Test files: `{Entity}Tests.cs` (e.g., `MaintenanceAlertTests.cs`)
+- Test classes: `{Entity}Tests`
+- Test methods: `{Method}_Should{ExpectedBehavior}` or descriptive names
 
 **Structure:**
 ```
@@ -69,11 +69,7 @@ public class MaintenanceAlertTests
         // Assert
         Assert.Equal(1, alert.MaintenanceAlertId);
         Assert.Equal(10, alert.VehicleId);
-        Assert.Equal(5, alert.ServiceTypeId);
         Assert.Equal(MaintenanceStatus.Overdue, alert.Status);
-        Assert.Equal(1000, alert.TriggerMileage);
-        Assert.Equal("Honda Click", alert.VehicleName);
-        Assert.Equal("ABC-123", alert.LicensePlate);
         Assert.False(alert.IsRead);
     }
 
@@ -104,44 +100,40 @@ public class MaintenanceAlertTests
 ```
 
 **Patterns:**
-- AAA Pattern: Arrange-Act-Assert
-- Single assertion focus per test when possible
-- Descriptive test method names
+- Arrange-Act-Assert (AAA) pattern
+- One assertion per concept (multiple related assertions OK)
+- Descriptive test names
 
 ## Mocking
 
-**Framework:** Not currently configured
+**Framework:** Not currently used
 
-**Current Approach:**
-- Direct entity instantiation for unit tests
-- No mock framework references in test project
+**Current State:**
+- Tests focus on domain entity behavior (pure unit tests)
+- No service layer tests with mocking detected
+- No integration tests detected
 
-**Recommended Setup (if needed):**
+**Recommended Pattern (if adding mocks):**
 ```csharp
-// Add to test project: Moq or NSubstitute
-<PackageReference Include="Moq" Version="4.20.0" />
-
-// Example mock pattern
-var mockContext = new Mock<RentalDataContext>();
-mockContext.Setup(c => c.LoadOneAsync<Rental>(It.IsAny<Expression<Func<Rental, bool>>>()))
-    .ReturnsAsync(new Rental { RentalId = 1 });
+// Would use Moq or NSubstitute for service testing
+// Currently not implemented in codebase
 ```
 
 **What to Mock:**
-- External services (Gemini API, RabbitMQ)
-- Database context for service tests
-- IHttpClientFactory
+- External services (database, APIs)
+- `IRepository<T>` implementations
+- `RentalDataContext` for service tests
 
 **What NOT to Mock:**
-- Entity objects (instantiate directly)
-- Simple value objects
-- LINQ expressions for query tests
+- Entity classes
+- Value objects
+- Pure domain logic
 
 ## Fixtures and Factories
 
 **Test Data:**
 ```csharp
-// Direct instantiation with object initializers
+// Currently inline in tests
 var alert = new MaintenanceAlert
 {
     MaintenanceAlertId = 1,
@@ -152,128 +144,105 @@ var alert = new MaintenanceAlert
 ```
 
 **Location:**
-- Test data created inline in test methods
-- No shared fixture files detected
+- No dedicated fixture/factory files
+- Test data created inline in each test
 
-**Recommended Pattern (for expansion):**
+**Recommended Pattern (if needed):**
 ```csharp
-// Create TestData directory with builders
-public class RentalBuilder
+// Create test builders or factories in:
+// tests/MotoRent.Domain.Tests/Builders/
+public static class VehicleBuilder
 {
-    private int m_rentalId = 1;
-    private string m_status = "Active";
-
-    public RentalBuilder WithId(int id) { m_rentalId = id; return this; }
-    public RentalBuilder WithStatus(string status) { m_status = status; return this; }
-    public Rental Build() => new() { RentalId = m_rentalId, Status = m_status };
+    public static Vehicle CreateDefault() => new Vehicle
+    {
+        VehicleId = 1,
+        Brand = "Honda",
+        Model = "Click",
+        Status = VehicleStatus.Available
+    };
 }
 ```
 
 ## Coverage
 
-**Requirements:** Not enforced (no coverage thresholds configured)
+**Requirements:** None enforced
 
 **View Coverage:**
 ```bash
-# Generate coverage report
 dotnet test --collect:"XPlat Code Coverage"
-
-# Results in TestResults directory
-# Use ReportGenerator for HTML reports
+# Results in: tests/MotoRent.Domain.Tests/TestResults/*/coverage.cobertura.xml
 ```
+
+**Current State:**
+- Coverage tool configured but no enforced thresholds
+- Limited test coverage (only `MaintenanceAlertTests.cs` exists)
 
 ## Test Types
 
 **Unit Tests:**
-- Entity property tests (currently implemented)
-- Entity method tests (GetId/SetId)
-- Focus on domain logic
+- Focus: Domain entity behavior
+- Location: `tests/MotoRent.Domain.Tests/`
+- Examples: Entity property tests, `GetId()`/`SetId()` contract tests
 
 **Integration Tests:**
 - Not currently implemented
-- Would test: Repository operations, Service workflows
+- Would test: Service + Repository + Database
 
 **E2E Tests:**
-- Playwright directory exists (`qa.tests/`) but contains documentation, not tests
-- No automated E2E test framework detected
+- Not implemented
+- No Playwright or Selenium configuration detected
 
 ## Common Patterns
 
-**Entity Testing:**
+**Entity Contract Testing:**
 ```csharp
 [Fact]
-public void Entity_ShouldSetAndGetId()
+public void GetId_ShouldReturnEntityId()
 {
-    // Arrange
-    var entity = new Vehicle();
-
-    // Act
-    entity.SetId(42);
-
-    // Assert
+    var entity = new Entity { EntityId = 42 };
     Assert.Equal(42, entity.GetId());
-    Assert.Equal(42, entity.VehicleId);
+}
+
+[Fact]
+public void SetId_ShouldSetEntityId()
+{
+    var entity = new Entity();
+    entity.SetId(99);
+    Assert.Equal(99, entity.GetId());
 }
 ```
 
-**Property Testing:**
+**Property Initialization Testing:**
 ```csharp
 [Fact]
-public void Entity_ShouldInitializeWithDefaults()
+public void Entity_ShouldSetProperties()
 {
-    // Arrange & Act
-    var rental = new Rental();
+    var entity = new Entity
+    {
+        Property1 = value1,
+        Property2 = value2
+    };
 
-    // Assert
-    Assert.Equal(0, rental.RentalId);
-    Assert.Null(rental.Notes);
-    Assert.Equal(string.Empty, rental.Status);
+    Assert.Equal(value1, entity.Property1);
+    Assert.Equal(value2, entity.Property2);
 }
 ```
 
-**Enum Testing:**
+**Default Value Testing:**
 ```csharp
 [Fact]
-public void Entity_ShouldAcceptEnumValues()
+public void Entity_ShouldHaveDefaultValues()
 {
-    // Arrange
-    var alert = new MaintenanceAlert();
+    var entity = new Entity();
 
-    // Act
-    alert.Status = MaintenanceStatus.Overdue;
-
-    // Assert
-    Assert.Equal(MaintenanceStatus.Overdue, alert.Status);
+    Assert.False(entity.IsRead);
+    Assert.Equal(0, entity.EntityId);
 }
 ```
 
-## Test Coverage Gaps
+## Test Project Configuration
 
-**Untested Areas:**
-- Services (`MotoRent.Services/*`) - No service tests
-- Repository operations - No integration tests
-- Blazor components - No component tests
-- API endpoints - No endpoint tests
-- Most entities - Only `MaintenanceAlert` has tests
-
-**Files Without Tests:**
-- `src/MotoRent.Services/RentalService.cs`
-- `src/MotoRent.Services/VehicleService.cs`
-- `src/MotoRent.Services/DocumentOcrService.cs`
-- `src/MotoRent.Domain/DataContext/RentalDataContext.cs`
-- `src/MotoRent.Domain/DataContext/Repository.cs`
-
-**Risk:** Critical business logic (check-in, check-out workflows) has no automated tests
-
-**Priority:**
-- High: Service layer tests for RentalService workflows
-- High: Repository integration tests
-- Medium: Entity tests for all domain objects
-- Low: Blazor component tests
-
-## Project Reference
-
-**Test Project Configuration:**
+**Project File:** `tests/MotoRent.Domain.Tests/MotoRent.Domain.Tests.csproj`
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
@@ -286,8 +255,14 @@ public void Entity_ShouldAcceptEnumValues()
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageReference Include="xunit" Version="2.9.2" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
-    <PackageReference Include="coverlet.collector" Version="6.0.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="coverlet.collector" Version="6.0.2">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
   </ItemGroup>
 
   <ItemGroup>
@@ -296,23 +271,60 @@ public void Entity_ShouldAcceptEnumValues()
 </Project>
 ```
 
-## Recommendations for New Tests
+## Testing Gaps
 
-**Adding Entity Tests:**
-1. Create file: `tests/MotoRent.Domain.Tests/{EntityName}Tests.cs`
-2. Follow existing pattern from `MaintenanceAlertTests.cs`
-3. Test: Property initialization, GetId/SetId, default values
+**Not Covered:**
+- Service layer tests (`VehicleService`, `RentalService`, etc.)
+- Repository layer tests
+- Blazor component tests
+- Integration tests with database
+- API endpoint tests
+- Authentication/authorization tests
 
-**Adding Service Tests:**
-1. Create project: `tests/MotoRent.Services.Tests/`
-2. Add mock framework (Moq recommended)
-3. Test: CRUD operations, workflow methods, error handling
+**Recommended Additions:**
+1. Add service tests with mocked repositories
+2. Add bUnit tests for Blazor components
+3. Add integration tests for critical workflows (rental check-in/check-out)
 
-**Adding Integration Tests:**
-1. Create project: `tests/MotoRent.Integration.Tests/`
-2. Use test database or SQL Server LocalDB
-3. Test: Repository operations, data context, multi-entity workflows
+## Adding New Tests
+
+**For Domain Entities:**
+1. Create `{Entity}Tests.cs` in `tests/MotoRent.Domain.Tests/`
+2. Test `GetId()`, `SetId()` contract
+3. Test property initialization
+4. Test computed properties and helper methods
+
+**For Services (recommended pattern):**
+```csharp
+public class VehicleServiceTests
+{
+    private readonly Mock<RentalDataContext> m_contextMock;
+    private readonly VehicleService m_service;
+
+    public VehicleServiceTests()
+    {
+        m_contextMock = new Mock<RentalDataContext>();
+        m_service = new VehicleService(m_contextMock.Object, null);
+    }
+
+    [Fact]
+    public async Task GetVehicleByIdAsync_WithValidId_ReturnsVehicle()
+    {
+        // Arrange
+        var expected = new Vehicle { VehicleId = 1 };
+        m_contextMock.Setup(c => c.LoadOneAsync<Vehicle>(It.IsAny<Expression<Func<Vehicle, bool>>>()))
+            .ReturnsAsync(expected);
+
+        // Act
+        var result = await m_service.GetVehicleByIdAsync(1);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(1, result.VehicleId);
+    }
+}
+```
 
 ---
 
-*Testing analysis: 2026-01-23*
+*Testing analysis: 2026-01-19*

@@ -1,255 +1,216 @@
 # Codebase Structure
 
-**Analysis Date:** 2026-01-23
+**Analysis Date:** 2026-01-19
 
 ## Directory Layout
 
 ```
-motorent.document-template-editor/
-├── .claude/                    # Claude AI skills and plans
+motorent.cashier-till/
+├── .claude/                    # Claude Code skills and plans
 │   ├── plans/                  # Implementation plans
 │   └── skills/                 # Pattern documentation
 ├── .planning/                  # GSD planning documents
 │   └── codebase/               # Codebase analysis (this file)
-├── database/                   # SQL Server scripts
-│   ├── migrations/             # Schema migration scripts
+├── database/                   # SQL Server schema
+│   ├── migrations/             # Schema migrations
 │   ├── seed/                   # Seed data scripts
-│   └── tables/                 # Table DDL scripts
+│   └── tables/                 # Table definitions
 ├── src/                        # Source code
-│   ├── MotoRent.Client/        # Blazor WASM client (PWA)
-│   ├── MotoRent.Core.Repository/ # LINQ expression tree to SQL
-│   ├── MotoRent.Domain/        # Core entities and data context
-│   ├── MotoRent.Messaging/     # RabbitMQ message broker
-│   ├── MotoRent.Scheduler/     # Scheduled task runners
-│   ├── MotoRent.Server/        # Blazor Server host
+│   ├── MotoRent.Client/        # Blazor WebAssembly client
+│   ├── MotoRent.Domain/        # Domain entities and data context
+│   ├── MotoRent.Messaging/     # RabbitMQ integration
+│   ├── MotoRent.Scheduler/     # Background scheduler
+│   ├── MotoRent.Server/        # ASP.NET Core host
 │   ├── MotoRent.Services/      # Business logic services
-│   └── MotoRent.Worker/        # Background message subscribers
-├── tests/                      # Unit tests
-│   └── MotoRent.Domain.Tests/  # Domain layer tests
-├── qa.tests/                   # QA test assets
+│   └── MotoRent.Worker/        # Background worker
+├── tests/                      # Test projects
+│   └── MotoRent.Domain.Tests/  # Domain unit tests
+├── qa.tests/                   # QA test data and scripts
 ├── MotoRent.sln                # Solution file
 └── CLAUDE.md                   # AI assistant instructions
 ```
 
 ## Directory Purposes
 
-**src/MotoRent.Server/**
-- Purpose: ASP.NET Core Blazor Server host, API controllers, middleware
-- Contains: `Program.cs`, Controllers/, Middleware/, Services/, Hubs/, Components/
-- Key files:
-  - `Program.cs`: DI registration, middleware pipeline, authentication config
-  - `Controllers/AccountController.cs`: OAuth callback handlers
-  - `Services/MotoRentRequestContext.cs`: Claims-based tenant/user context
-  - `Services/TouristRequestContext.cs`: URL-based tenant context for tourist pages
-  - `Middleware/TenantDomainMiddleware.cs`: Custom domain resolution
-  - `Hubs/CommentHub.cs`: SignalR hub for real-time comments
+**src/MotoRent.Client/:**
+- Purpose: Blazor WebAssembly application with all UI components
+- Contains: Razor pages, components, layouts, dialogs, controls, resources
+- Key files: `_Imports.razor`, `Routes.razor`
 
-**src/MotoRent.Client/**
-- Purpose: Blazor components, layouts, pages, PWA assets
-- Contains: Pages/, Layout/, Components/, Controls/, Services/, Interops/
-- Key files:
-  - `Layout/MainLayout.razor`: Main authenticated layout with nav
-  - `Layout/TouristLayout.razor`: Tourist-facing pages layout
-  - `Layout/NavMenu.razor`: Role-based navigation menu
-  - `Pages/Rentals/CheckIn.razor`: Multi-step rental wizard
-  - `Pages/SuperAdmin/*.razor`: Platform admin pages
-  - `Services/ModalService.cs`, `ToastService.cs`: UI notification services
+**src/MotoRent.Client/Pages/:**
+- Purpose: Routable Blazor pages (@page directive)
+- Contains: Feature-organized pages (Rentals/, Settings/, SuperAdmin/, etc.)
+- Key files: `Home.razor`, `RentalList.razor`
 
-**src/MotoRent.Domain/**
-- Purpose: Domain entities, data context, repository interfaces
-- Contains: Entities/, Core/, DataContext/, Extensions/, Messaging/, Storage/
-- Key files:
-  - `Entities/Entity.cs`: Base class with JSON polymorphism attributes
-  - `Entities/Rental.cs`, `Vehicle.cs`, `Renter.cs`: Core business entities
-  - `Core/Organization.cs`, `User.cs`: Multi-tenant identity entities
-  - `Core/IRequestContext.cs`: Tenant/user context interface
-  - `DataContext/RentalDataContext.cs`: Tenant-scoped data access
-  - `DataContext/CoreDataContext.cs`: Shared schema data access
-  - `DataContext/Repository.cs`: Generic repository implementation
-  - `DataContext/PersistenceSession.cs`: Unit of Work pattern
+**src/MotoRent.Client/Components/:**
+- Purpose: Reusable UI components without routes
+- Contains: Feature widgets, shared components
+- Key files: `Components/Shared/TablerHeader.razor`, `Components/Vehicles/VehicleImageGallery.razor`
 
-**src/MotoRent.Services/**
-- Purpose: Business logic, external API integrations
-- Contains: Service classes, Search/, Storage/, Core/, Tourist/
-- Key files:
-  - `RentalService.cs`: Rental CRUD and workflow
-  - `VehicleService.cs`: Vehicle management
-  - `BookingService.cs`: Online reservations
-  - `DocumentOcrService.cs`: Gemini API for passport/license OCR
-  - `MaintenanceAlertService.cs`: Automated maintenance scheduling
-  - `DynamicPricingService.cs`: Seasonal pricing rules
-  - `Core/SqlLogger.cs`: Error logging to database
-  - `Search/OpenSearchService.cs`: Full-text search integration
-  - `Storage/S3BinaryStore.cs`: AWS S3 file storage
+**src/MotoRent.Client/Controls/:**
+- Purpose: Low-level UI controls (file upload, dialogs, maps)
+- Contains: Generic controls used across features
+- Key files: `Controls/Dialogs/MessageBoxDialog.razor`, `Controls/FileUpload.razor`
 
-**src/MotoRent.Core.Repository/**
-- Purpose: Advanced LINQ expression tree translation to SQL
-- Contains: QueryProviders/, repository implementations
-- Key files:
-  - `CoreSqlJsonRepository.cs`: Core schema repository with caching
-  - `TsqlQueryFormatter.cs`: Expression tree to T-SQL conversion
-  - `ServiceCollectionExtensions.cs`: DI registration
+**src/MotoRent.Client/Layout/:**
+- Purpose: Application layouts for different user roles
+- Contains: Layouts with navigation, headers, footers
+- Key files: `ManagerLayout.razor`, `StaffLayout.razor`, `TouristLayout.razor`
 
-**src/MotoRent.Messaging/**
-- Purpose: RabbitMQ message broker abstraction
-- Contains: Broker implementation, configuration
-- Key files:
-  - `RabbitMqMessageBroker.cs`: IMessageBroker implementation
-  - `RabbitMqConfigurationManager.cs`: Environment variable config
+**src/MotoRent.Client/Resources/:**
+- Purpose: Localization resource files
+- Contains: .resx files for en, th, ms cultures
+- Key files: Mirror structure of Pages/ and Components/
 
-**src/MotoRent.Worker/**
-- Purpose: Background message processing
-- Contains: Infrastructure/, Subscribers/
-- Key files:
-  - `Program.cs`: Console app entry point
-  - `Subscribers/RentalCheckOutSubscriber.cs`: Post-checkout processing
-  - `Subscribers/OpenSearchIndexerSubscriber.cs`: Search index updates
-  - `Infrastructure/Subscriber.cs`: Base subscriber class
+**src/MotoRent.Client/Services/:**
+- Purpose: Client-side UI services (modal, toast, dialog)
+- Contains: Service classes for UI interactions
+- Key files: `ModalService.cs`, `ToastService.cs`, `DialogService.cs`
 
-**src/MotoRent.Scheduler/**
-- Purpose: Scheduled background tasks
-- Contains: Runners/
-- Key files:
-  - `Program.cs`: Console app with timer scheduling
-  - `Runners/MaintenanceAlertRunner.cs`: Generate maintenance alerts
-  - `Runners/DepreciationRunner.cs`: Calculate asset depreciation
-  - `Runners/RentalExpiryRunner.cs`: Process overdue rentals
+**src/MotoRent.Domain/:**
+- Purpose: Core domain model and data access infrastructure
+- Contains: Entity classes, DataContext, Repository, interfaces
+- Key files: `Entities/Entity.cs`, `DataContext/RentalDataContext.cs`
 
-**database/tables/**
-- Purpose: SQL table DDL scripts with `<schema>` placeholder for multi-tenancy
-- Contains: `MotoRent.*.sql` (tenant tables), `Core.*.sql` (shared tables)
-- Key files:
-  - `MotoRent.Rental.sql`: Rental table with computed columns
-  - `MotoRent.Vehicle.sql`: Vehicle inventory
-  - `Core.VehicleModel.sql`: Shared vehicle model lookup
+**src/MotoRent.Domain/Entities/:**
+- Purpose: All domain entity classes
+- Contains: Entity definitions with JSON serialization attributes
+- Key files: `Rental.cs`, `Vehicle.cs`, `Renter.cs`, `Payment.cs`
+
+**src/MotoRent.Domain/Core/:**
+- Purpose: Core multi-tenant entities and interfaces
+- Contains: Organization, User, Setting, IRequestContext
+- Key files: `IRequestContext.cs`, `Organization.cs`, `User.cs`
+
+**src/MotoRent.Domain/DataContext/:**
+- Purpose: Data access layer implementation
+- Contains: RentalDataContext, Repository, Query, PersistenceSession
+- Key files: `RentalDataContext.cs`, `Repository.cs`, `ObjectBuilder.cs`
+
+**src/MotoRent.Services/:**
+- Purpose: Business logic and external integrations
+- Contains: Service classes for each domain area
+- Key files: `RentalService.cs`, `VehicleService.cs`, `PaymentService.cs`
+
+**src/MotoRent.Services/Core/:**
+- Purpose: Core infrastructure services
+- Contains: Logging, settings, directory services
+- Key files: `SqlLogger.cs`, `SettingConfigService.cs`
+
+**src/MotoRent.Server/:**
+- Purpose: ASP.NET Core web host
+- Contains: Program.cs, controllers, middleware, SignalR hubs
+- Key files: `Program.cs`, `Services/MotoRentRequestContext.cs`
+
+**src/MotoRent.Server/Controllers/:**
+- Purpose: API endpoints (authentication, file uploads)
+- Contains: MVC controllers
+- Key files: `AccountController.cs`, `DocumentsController.cs`
+
+**database/tables/:**
+- Purpose: SQL Server table definitions
+- Contains: CREATE TABLE scripts with `<schema>` placeholder
+- Key files: `MotoRent.Rental.sql`, `MotoRent.Vehicle.sql`
 
 ## Key File Locations
 
 **Entry Points:**
-- `src/MotoRent.Server/Program.cs`: Web app startup, DI, middleware
-- `src/MotoRent.Worker/Program.cs`: Background worker console app
-- `src/MotoRent.Scheduler/Program.cs`: Scheduled tasks console app
+- `src/MotoRent.Server/Program.cs`: Application startup, DI configuration
+- `src/MotoRent.Client/Routes.razor`: Blazor routing configuration
+- `src/MotoRent.Server/Components/App.razor`: Root Blazor component
 
 **Configuration:**
-- `src/MotoRent.Server/appsettings.json`: Web app settings
-- `src/MotoRent.Domain/Core/MotoConfig.cs`: Environment variable config
-- Environment variables: `MOTO_SqlConnectionString`, `MOTO_GoogleClientId`, etc.
+- `src/MotoRent.Server/appsettings.json`: App configuration
+- `src/MotoRent.Domain/Settings/MotoConfig.cs`: Environment variable config
+- `.env` or environment variables: Secrets (connection strings, OAuth keys)
 
 **Core Logic:**
-- `src/MotoRent.Domain/Entities/*.cs`: Domain entity classes
-- `src/MotoRent.Services/*Service.cs`: Business logic services
-- `src/MotoRent.Domain/DataContext/*.cs`: Data access layer
+- `src/MotoRent.Services/RentalService.cs`: Rental check-in/check-out workflows
+- `src/MotoRent.Domain/DataContext/RentalDataContext.cs`: Data access facade
+- `src/MotoRent.Domain/DataContext/Repository.cs`: Generic repository implementation
 
 **Testing:**
-- `tests/MotoRent.Domain.Tests/`: Domain unit tests
-- `qa.tests/`: Integration test assets
+- `tests/MotoRent.Domain.Tests/`: Domain layer unit tests
+- `qa.tests/`: QA test data and validation scripts
 
-**Layouts:**
-- `src/MotoRent.Client/Layout/MainLayout.razor`: Authenticated pages
-- `src/MotoRent.Client/Layout/TouristLayout.razor`: Tourist portal
-- `src/MotoRent.Client/Layout/StaffLayout.razor`: Staff-specific UI
-
-**Resources/Localization:**
-- `src/MotoRent.Client/Resources/`: Localization .resx files
-- Pattern: `Resources/Pages/[PageName].en.resx`, `*.th.resx`
+**Authentication:**
+- `src/MotoRent.Server/Controllers/AccountController.cs`: OAuth callbacks, login/logout
+- `src/MotoRent.Server/Services/MotoRentRequestContext.cs`: Claims-based user context
 
 ## Naming Conventions
 
 **Files:**
-- Entities: `{EntityName}.cs` (PascalCase, singular)
-- Services: `{Entity}Service.cs`
-- Pages: `{PageName}.razor` with optional `{PageName}.razor.cs` code-behind
-- Dialogs: `{Action}Dialog.razor` (e.g., `RenterDialog.razor`)
-- SQL Tables: `{Schema}.{Entity}.sql`
+- Entity classes: `{EntityName}.cs` (e.g., `Rental.cs`)
+- Service classes: `{EntityName}Service.cs` (e.g., `RentalService.cs`)
+- Razor pages: `{PageName}.razor` (PascalCase)
+- Razor code-behind: `{PageName}.razor.cs` (auto-generated or explicit)
+- Resource files: `{ComponentPath}/{ComponentName}.{culture}.resx`
+- SQL tables: `{Schema}.{EntityName}.sql` (e.g., `MotoRent.Rental.sql`)
 
 **Directories:**
-- Feature folders in Pages: `Pages/Rentals/`, `Pages/SuperAdmin/`
-- Component grouping: `Components/Shared/`, `Components/Vehicles/`
-- Service subfolders: `Services/Core/`, `Services/Search/`, `Services/Tourist/`
+- Feature folders: PascalCase (e.g., `Pages/Rentals/`, `Pages/Settings/`)
+- Nested components: Match page structure (e.g., `Components/Vehicles/`)
 
-**Entity Properties:**
-- Primary key: `{EntityName}Id` (int)
-- Foreign keys: `{RelatedEntity}Id` (int)
-- Status fields: `Status` (string enum name)
-- Dates: `{Action}Date` (DateOnly), `{Action}Timestamp` (DateTimeOffset)
-
-**CSS Classes:**
-- Use Tabler/Bootstrap conventions
-- Prefix custom: `mr-` (e.g., `mr-navbar-gradient`)
+**Code:**
+- Private fields: `m_` prefix (e.g., `m_loading`, `m_context`)
+- Static fields: `s_` prefix (e.g., `s_serviceProvider`)
+- Constants: `c_` prefix or PascalCase (e.g., `c_thailandTimezone`)
 
 ## Where to Add New Code
 
-**New Entity:**
-1. Create entity class: `src/MotoRent.Domain/Entities/{Entity}.cs`
-2. Add `[JsonDerivedType]` attribute to `Entity.cs` base class
-3. Create SQL table: `database/tables/MotoRent.{Entity}.sql`
-4. Optionally create service: `src/MotoRent.Services/{Entity}Service.cs`
-5. Register service in `src/MotoRent.Server/Program.cs`
+**New Feature (e.g., "Invoicing"):**
+- Entity: `src/MotoRent.Domain/Entities/Invoice.cs`
+- Service: `src/MotoRent.Services/InvoiceService.cs`
+- Pages: `src/MotoRent.Client/Pages/Finance/InvoiceList.razor`
+- Dialog: `src/MotoRent.Client/Pages/Finance/InvoiceDialog.razor`
+- Resources: `src/MotoRent.Client/Resources/Pages/Finance/InvoiceList.resx`
+- SQL Table: `database/tables/MotoRent.Invoice.sql`
+- Register: Add `services.AddScoped<InvoiceService>()` to `Program.cs`
 
-**New Feature Page:**
-1. Create page: `src/MotoRent.Client/Pages/{Feature}/{PageName}.razor`
-2. Add `@page "/route"` directive
-3. Add localization: `src/MotoRent.Client/Resources/Pages/{Feature}/{PageName}.resx`
-4. Add navigation entry in `src/MotoRent.Client/Layout/NavMenu.razor` if needed
+**New Component (reusable):**
+- Shared widget: `src/MotoRent.Client/Components/Shared/{Name}.razor`
+- Feature-specific: `src/MotoRent.Client/Components/{Feature}/{Name}.razor`
+- Control: `src/MotoRent.Client/Controls/{Name}.razor`
 
-**New Service:**
-1. Create class: `src/MotoRent.Services/{Name}Service.cs`
-2. Inject `RentalDataContext` for data access
-3. Register in `src/MotoRent.Server/Program.cs`: `builder.Services.AddScoped<{Name}Service>()`
+**New Page:**
+- Staff-facing: `src/MotoRent.Client/Pages/{Feature}/{PageName}.razor`
+- Manager analytics: `src/MotoRent.Client/Pages/Manager/{PageName}.razor`
+- Super admin: `src/MotoRent.Client/Pages/SuperAdmin/{PageName}.razor`
+- Tourist portal: `src/MotoRent.Client/Pages/Tourist/{PageName}.razor`
 
-**New Dialog:**
-1. Create: `src/MotoRent.Client/Pages/{Feature}/{Name}Dialog.razor`
-2. Use pattern from existing dialogs (e.g., `RenterDialog.razor`)
-3. Inject via `IModalService.ShowAsync<T>()`
-
-**New API Controller:**
-1. Create: `src/MotoRent.Server/Controllers/{Name}Controller.cs`
-2. Inherit from `ControllerBase`
-3. Add `[Authorize]` attribute as needed
-4. Use constructor injection for services
-
-**New Background Subscriber:**
-1. Create: `src/MotoRent.Worker/Subscribers/{Name}Subscriber.cs`
-2. Inherit from `Subscriber<TMessage>`
-3. Implement `OnMessageAsync()` handler
-4. Subscriber auto-discovered at runtime
-
-**New Scheduled Task:**
-1. Create: `src/MotoRent.Scheduler/Runners/{Name}Runner.cs`
-2. Implement `ITaskRunner` interface
-3. Register in scheduler's DI and schedule configuration
-
-**Utilities/Extensions:**
+**Utilities:**
 - Domain extensions: `src/MotoRent.Domain/Extensions/`
-- Client helpers: `src/MotoRent.Client/Services/`
+- JSON converters: `src/MotoRent.Domain/JsonSupports/`
+- Service helpers: Within the service class or as private methods
 
 ## Special Directories
 
-**.claude/skills/**
-- Purpose: AI assistant pattern documentation
-- Generated: Manually maintained
+**.claude/skills/:**
+- Purpose: Pattern documentation for AI assistants
+- Generated: No
 - Committed: Yes
 
-**.planning/**
-- Purpose: GSD planning and analysis documents
-- Generated: By GSD commands
+**.planning/codebase/:**
+- Purpose: Codebase analysis documents
+- Generated: By GSD map-codebase command
 - Committed: Yes
 
-**database/migrations/**
-- Purpose: Schema migration scripts
-- Generated: Manually created for production
+**database/tables/:**
+- Purpose: SQL table CREATE scripts
+- Generated: No (manual)
+- Committed: Yes
+- Note: Use `<schema>` placeholder for tenant schema
+
+**src/MotoRent.Client/wwwroot/:**
+- Purpose: Static web assets (CSS, JS, images)
+- Generated: No
 - Committed: Yes
 
-**src/*/obj/, src/*/bin/**
-- Purpose: Build output
-- Generated: Yes
-- Committed: No (in .gitignore)
-
-**qa.tests/**
-- Purpose: QA automation test data and fixtures
-- Generated: Manually maintained
+**qa.tests/:**
+- Purpose: QA test data and scripts
+- Generated: Partially (test data)
 - Committed: Yes
 
 ---
 
-*Structure analysis: 2026-01-23*
+*Structure analysis: 2026-01-19*

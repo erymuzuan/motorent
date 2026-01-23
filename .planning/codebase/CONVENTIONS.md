@@ -1,123 +1,155 @@
 # Coding Conventions
 
-**Analysis Date:** 2026-01-23
+**Analysis Date:** 2026-01-19
 
 ## Naming Patterns
 
 **Files:**
-- Entities: PascalCase singular noun (e.g., `Rental.cs`, `Vehicle.cs`)
-- Services: PascalCase with `Service` suffix (e.g., `RentalService.cs`, `VehicleService.cs`)
-- Razor pages: PascalCase (e.g., `CheckIn.razor`, `AccessoryDialog.razor`)
-- Razor code-behind: Same name with `.razor.cs` extension
-- Resource files: Same name as Razor file with culture suffix (e.g., `Home.resx`, `Home.th.resx`)
+- Entity classes: PascalCase (`Vehicle.cs`, `Rental.cs`, `MaintenanceAlert.cs`)
+- Partial entity files: `{Entity}.{Aspect}.cs` (e.g., `Vehicle.search.cs`, `Rental.Calculated.cs`)
+- Services: `{Entity}Service.cs` (e.g., `VehicleService.cs`, `RentalService.cs`)
+- Razor pages: PascalCase (`VehicleDialog.razor`, `BookingList.razor`)
+- Razor code-behind: `{Component}.razor.cs` (if needed, most use `@code` blocks)
+- Resource files: `{Component}.{culture}.resx` (e.g., `Home.th.resx`, `Home.en.resx`)
 
-**Functions:**
-- PascalCase for all methods
-- Async methods: Always use `Async` suffix (e.g., `LoadRentalAsync`, `SaveAsync`)
-- Event handlers: Prefixed with `On` (e.g., `OnIncludedChanged`)
+**Private Fields:**
+- Use `m_` prefix for instance members: `m_context`, `m_loading`, `m_owners`
+- Example from `PersistenceSession.cs`: `private RentalDataContext? m_context;`
+
+**Private Static Fields:**
+- Use `s_` prefix (documented convention, though less common in codebase)
+
+**Constants:**
+- Use SCREAMING_SNAKE_CASE for role constants: `SUPER_ADMIN`, `OrgAdmin`
+- PascalCase for other constants within classes
+
+**Functions/Methods:**
+- PascalCase: `GetVehicleByIdAsync`, `LoadDashboardDataAsync`
+- Async methods: Always suffix with `Async`
+- Query methods: Prefix with `Get`, `Load`, or `Create`
 
 **Variables:**
-- Private instance fields: `m_` prefix (e.g., `m_loading`, `m_activeRentals`, `m_context`)
-- Static fields: `s_` prefix (e.g., `s_defaultOptions`, `s_jsonOptions`)
-- Constants: `UPPERCASE_WITH_UNDERSCORES` or PascalCase
-- Local variables: camelCase
-- Parameters: camelCase
+- camelCase for local variables: `vehicleStats`, `rentalStats`
+- Private backing fields in Razor: `m_` prefix
 
-**Types:**
-- Classes: PascalCase
-- Interfaces: `I` prefix (e.g., `IRepository<T>`, `IRequestContext`, `IModalService`)
-- Entities: PascalCase, inherit from `Entity` base class
-- DTOs/Records: PascalCase (e.g., `CheckInRequest`, `CheckOutResult`)
+**Types/Classes:**
+- PascalCase: `Vehicle`, `RentalDataContext`, `SubmitOperation`
+- Interfaces: `I` prefix: `IRepository<T>`, `IRequestContext`, `IModalService`
+- Generic type parameters: Single uppercase letter: `T`, `TEntity`, `TResult`
 
 ## Code Style
 
 **Formatting:**
-- Nullable reference types: Enabled
-- Implicit usings: Enabled
-- File-scoped namespaces: Used (single line `namespace X;`)
+- Implicit usings enabled (`<ImplicitUsings>enable</ImplicitUsings>`)
+- File-scoped namespaces used throughout
+- Nullable reference types enabled
 
-**Linting:**
-- No formal .editorconfig detected
-- Code standards documented in `.claude/skills/code-standards/SKILL.md`
+**Braces:**
+- Allman style (braces on new line) for classes and methods
+- Single-line expression-bodied members for simple getters/methods
 
-**Key Rules:**
-- Always use `this` keyword when referencing instance members
-- Use `base` keyword when referencing base class members
-- Prefer modern C# features (pattern matching, records, collection expressions)
+**Expression-Bodied Members:**
+```csharp
+// Preferred for simple members
+public override int GetId() => this.VehicleId;
+public override void SetId(int value) => this.VehicleId = value;
+protected string UserName => this.RequestContext.GetUserName() ?? "system";
+```
+
+**Primary Constructors:**
+```csharp
+// Used for service classes (.NET 10)
+public class VehicleService(RentalDataContext context, VehiclePoolService poolService)
+{
+    private RentalDataContext Context { get; } = context;
+    private VehiclePoolService PoolService { get; } = poolService;
+}
+```
+
+**Collection Expressions:**
+```csharp
+// Use [] syntax for empty collections
+public List<UserAccount> AccountCollection { get; } = [];
+private List<VehicleOwner> m_owners = [];
+```
 
 ## Import Organization
 
 **Order:**
-1. System namespaces
-2. Microsoft namespaces
+1. System namespaces (implicit with `ImplicitUsings`)
+2. Microsoft namespaces (`Microsoft.AspNetCore.Components`, etc.)
 3. Third-party packages
-4. Project namespaces (e.g., `MotoRent.Domain.Entities`, `MotoRent.Services`)
+4. Project namespaces (`MotoRent.Domain.*`, `MotoRent.Services.*`)
 
 **Path Aliases:**
-- None detected - uses standard namespace imports
+- None used; direct project references
 
 ## Error Handling
 
-**Patterns:**
+**Service Layer Pattern:**
+```csharp
+public async Task<SubmitOperation> CreateVehicleAsync(Vehicle vehicle, string username)
+{
+    using var session = this.Context.OpenSession(username);
+    session.Attach(vehicle);
+    return await session.SubmitChanges("Create");
+}
+```
 
-**Try-Catch with Logging:**
+**SubmitOperation Result Type:**
+```csharp
+// Success case
+return SubmitOperation.CreateSuccess(inserted, updated, deleted);
+
+// Failure case
+return SubmitOperation.CreateFailure($"Cannot delete vehicle with {activeRentals} active rental(s).");
+```
+
+**Blazor Component Error Handling:**
 ```csharp
 try
 {
-    await this.ProcessAsync();
+    m_loading = true;
+    // operation
 }
 catch (Exception ex)
 {
-    this.Logger.LogError(ex, "Failed to process {EntityId}", entity.Id);
-    this.ShowError("An error occurred");
+    Logger.LogError(ex, "Error loading dashboard data");
+    ShowError("Failed to load dashboard data");
+}
+finally
+{
+    m_loading = false;
 }
 ```
 
-**Result Pattern (SubmitOperation):**
+**Dialog Save Pattern:**
 ```csharp
-// Services return SubmitOperation for CRUD results
-public static SubmitOperation CreateSuccess(int inserted = 0, int updated = 0, int deleted = 0);
-public static SubmitOperation CreateFailure(string message, Exception? exception = null);
-
-// Check result in calling code
-var result = await this.Service.CreateAsync(entity, this.UserName);
-if (result.Success)
+private async Task SaveAsync()
 {
-    this.ShowSuccess("Saved");
-    this.Close();
-}
-else
-{
-    this.ShowError(result.Message ?? "Save failed");
-}
-```
-
-**Workflow Results (CheckInResult, CheckOutResult):**
-```csharp
-// Static factory methods for success/failure
-public static CheckInResult CreateSuccess(int rentalId);
-public static CheckInResult CreateFailure(string message);
-```
-
-**Loading State Pattern:**
-```csharp
-private bool m_loading;
-
-protected override async Task OnInitializedAsync()
-{
-    this.m_loading = true;
+    this.Saving = true;
     try
     {
-        await this.LoadDataAsync();
+        var result = this.IsNew
+            ? await this.VehicleService.CreateVehicleAsync(this.Entity, this.UserName)
+            : await this.VehicleService.UpdateVehicleAsync(this.Entity, this.UserName);
+
+        if (result.Success)
+        {
+            this.Close();
+        }
+        else
+        {
+            this.ShowError(Localizer["SaveFailed", result.Message ?? ""]);
+        }
     }
     catch (Exception ex)
     {
-        this.Logger.LogError(ex, "Error loading data");
-        this.ShowError("Failed to load data");
+        this.ShowError(Localizer["Error", ex.Message]);
     }
     finally
     {
-        this.m_loading = false;
+        this.Saving = false;
     }
 }
 ```
@@ -128,187 +160,176 @@ protected override async Task OnInitializedAsync()
 
 **Patterns:**
 ```csharp
-// Inject logger in components
+// Inject logger in component base
 [Inject] protected ILogger<MotoRentComponentBase> Logger { get; set; } = null!;
 
-// Structured logging with templates
-this.Logger.LogInformation("Processing rental {RentalId}", rentalId);
-this.Logger.LogError(ex, "Failed to extract document data from Gemini API");
-this.Logger.LogWarning("Gemini API key not configured, returning empty extraction");
+// Log errors with exception
+Logger.LogError(ex, "Error loading dashboard data");
 ```
 
 ## Comments
 
 **When to Comment:**
-- XML docs for public APIs and service methods
-- Brief explanations for non-obvious logic
-- TODO comments for incomplete features
+- XML documentation on public entities and service methods
+- Inline comments for complex business logic
 
-**JSDoc/TSDoc:**
-- XML documentation comments used for C# public APIs
-
+**XML Documentation:**
 ```csharp
 /// <summary>
-/// Creates a new query for the specified entity type.
-/// Preferred pattern over using Query properties directly.
+/// Represents a user in the system. Users can belong to multiple organizations
+/// via their AccountCollection.
 /// </summary>
-public Query<T> CreateQuery<T>() where T : Entity, new()
+public class User : Entity
+{
+    /// <summary>
+    /// Gets the roles for a specific account.
+    /// </summary>
+    public IEnumerable<string> GetRoles(string accountNo) { ... }
+}
+```
+
+**Region Usage:**
+```csharp
+#region Query Methods
+// ... methods
+#endregion
+
+#region CRUD Operations
+// ... methods
+#endregion
 ```
 
 ## Function Design
 
 **Size:**
-- Single responsibility principle
-- Extract complex logic to private helper methods
-- Use partial classes instead of #region/#endregion for organizing large classes
+- Methods typically 10-30 lines
+- Complex operations split into helper methods
 
 **Parameters:**
-- Use named parameters for clarity when calling methods with many parameters
-- Use default parameter values where appropriate
-- Prefer object parameters for methods with many inputs (e.g., `CheckInRequest`, `CheckOutRequest`)
+- Use optional parameters with defaults for filtering:
+```csharp
+public async Task<LoadOperation<Vehicle>> GetVehiclesAsync(
+    int shopId,
+    VehicleType? vehicleType = null,
+    string? status = null,
+    string? searchTerm = null,
+    bool includePooled = false,
+    int page = 1,
+    int pageSize = 20)
+```
 
 **Return Values:**
 - Use `Task<T>` for async operations
-- Use nullable return types when entity may not exist (e.g., `Task<Rental?>`)
-- Use result objects for operations that can fail (e.g., `SubmitOperation`, `CheckInResult`)
+- Return `SubmitOperation` for CRUD operations
+- Return `LoadOperation<T>` for paginated queries
+- Return nullable for single-entity lookups: `Task<T?>`
 
 ## Module Design
 
 **Exports:**
-- Services registered via DI in `ServicesExtensions.cs`
-- Repositories registered as singletons
+- One primary class per file
+- Related helper classes/DTOs in same file for services
 
-**Barrel Files:**
-- Not used - explicit imports preferred
-
-## Service Injection Pattern
-
+**Entity Pattern:**
 ```csharp
-// Primary constructor injection (modern C# pattern)
-public class RentalService(
-    RentalDataContext context,
-    VehiclePoolService? poolService = null,
-    BookingService? bookingService = null)
+public partial class Vehicle : Entity
+{
+    public int VehicleId { get; set; }
+    // ... properties
+
+    public override int GetId() => this.VehicleId;
+    public override void SetId(int value) => this.VehicleId = value;
+}
+```
+
+**Service Pattern:**
+```csharp
+public class VehicleService(RentalDataContext context, VehiclePoolService poolService)
 {
     private RentalDataContext Context { get; } = context;
-    private VehiclePoolService? PoolService { get; } = poolService;
+
+    public async Task<Vehicle?> GetVehicleByIdAsync(int vehicleId)
+    {
+        return await this.Context.LoadOneAsync<Vehicle>(v => v.VehicleId == vehicleId);
+    }
 }
 ```
 
-## Entity Pattern
-
-```csharp
-public class Accessory : Entity
-{
-    public int AccessoryId { get; set; }
-    public int ShopId { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public decimal DailyRate { get; set; }
-    public int QuantityAvailable { get; set; }
-    public bool IsIncluded { get; set; }
-
-    public override int GetId() => this.AccessoryId;
-    public override void SetId(int value) => this.AccessoryId = value;
-}
-```
-
-## Blazor Component Patterns
+## Blazor Component Conventions
 
 **Base Classes:**
-- `MotoRentComponentBase`: Core services (DataContext, Logger, ToastService, DialogService)
-- `LocalizedComponentBase<T>`: Adds type-safe localization
-- `MotoRentDialogBase<TEntity>`: Dialog handling
-- `LocalizedDialogBase<TEntity, TLocalizer>`: Localized dialogs
+- Pages/Components: Inherit from `LocalizedComponentBase<T>` or `MotoRentComponentBase`
+- Dialogs: Inherit from `LocalizedDialogBase<TEntity, TComponent>` or `MotoRentDialogBase<TEntity>`
 
-**Component Declaration:**
+**Component Structure:**
 ```razor
-@page "/rentals/checkin"
-@inherits LocalizedComponentBase<CheckIn>
-@inject RentalService RentalService
-```
+@page "/path"
+@using MotoRent.Domain.Entities
+@attribute [Authorize(Policy = "RequireTenantStaff")]
+@inherits LocalizedComponentBase<ComponentName>
+@inject ServiceType ServiceName
 
-**Private Fields in @code:**
-```csharp
+<MotoRentPageTitle>@Localizer["Title"]</MotoRentPageTitle>
+<TablerHeader Title="@Localizer["Title"]" PreTitle="@Localizer["Subtitle"]" />
+
+@* Content *@
+
 @code {
     private bool m_loading = true;
-    private int m_activeRentals;
-    private List<Rental> m_recentRentals = [];
+    private List<Entity> m_items = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
 }
 ```
 
-## Localization
+**Localization:**
+- Use `@Localizer["Key"]` for all user-facing text
+- Resource files at: `Resources/{Path}/{Component}.{culture}.resx`
+- Cultures: default `.resx`, `.en.resx`, `.th.resx`, `.ms.resx`
 
-**Pattern:**
-- Use `@Localizer["Key"]` in Razor files
-- Resource files in `Resources/` mirroring page structure
-- Cultures: `.resx` (default), `.en.resx`, `.th.resx`, `.ms.resx`
+**Form Patterns:**
+```razor
+<form id="@FormId" @onsubmit="SaveAsync" @onsubmit:preventDefault>
+    @* Form content *@
+</form>
 
-**Shared Localizer:**
-- `CommonResources` for commonly used text
-- Access via `@CommonLocalizer["Key"]`
+<div class="modal-footer">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
+        @Localizer["Cancel"]
+    </button>
+    <button type="submit" form="@FormId" class="btn btn-primary" disabled="@Saving">
+        @if (Saving)
+        {
+            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+        }
+        @SaveButtonText
+    </button>
+</div>
+```
 
 ## JSON Serialization
 
-**Framework:** System.Text.Json with custom configuration
-
-**Configuration (`JsonSerializerService.cs`):**
-```csharp
-var options = new JsonSerializerOptions
-{
-    PropertyNameCaseInsensitive = true,
-    WriteIndented = pretty,
-    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-    PreferredObjectCreationHandling = JsonObjectCreationHandling.Populate
-};
-```
-
-**Polymorphic Serialization:**
+**Polymorphism:**
 ```csharp
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "$type")]
-[JsonDerivedType(typeof(Rental), nameof(Rental))]
 [JsonDerivedType(typeof(Vehicle), nameof(Vehicle))]
-public abstract class Entity { }
+[JsonDerivedType(typeof(Rental), nameof(Rental))]
+// ... all entity types
+public abstract class Entity { ... }
 ```
 
-## Repository Pattern
-
-**Usage:**
+**Conditional Serialization:**
 ```csharp
-// Load data
-var context = new RentalDataContext();
-var query = context.CreateQuery<Rental>()
-    .Where(r => r.Status == "Active")
-    .OrderByDescending(r => r.RentalId);
-var result = await context.LoadAsync(query, page: 1, size: 20, includeTotalRows: true);
+[JsonIgnore]
+public bool IsThirdPartyOwned => this is { VehicleOwnerId: > 0 };
 
-// Save data
-using var session = context.OpenSession("username");
-session.Attach(rental);
-await session.SubmitChanges("Create");
+[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+public string? VehiclePoolName { get; set; }
 ```
-
-## The `this` Keyword Rule (CRITICAL)
-
-**Always use `this` when referencing instance members:**
-
-```csharp
-// WRONG - missing this keyword
-m_loading = true;
-DataContext.LoadAsync(query);
-ShowSuccess("Saved");
-
-// CORRECT - always use this
-this.m_loading = true;
-this.DataContext.LoadAsync(query);
-this.ShowSuccess("Saved");
-```
-
-This applies to:
-- Private fields (`this.m_field`)
-- Properties (`this.PropertyName`)
-- Methods (`this.MethodName()`)
-- Injected services (`this.DataContext`, `this.DialogService`)
 
 ---
 
-*Convention analysis: 2026-01-23*
+*Convention analysis: 2026-01-19*

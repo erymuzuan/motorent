@@ -1,23 +1,22 @@
 # Technology Stack
 
-**Analysis Date:** 2026-01-23
+**Analysis Date:** 2026-01-19
 
 ## Languages
 
 **Primary:**
-- C# 14 (latest) - All backend services, domain, and Blazor components
-- SQL - Database schema, stored procedures, JSON queries
+- C# 14 / .NET 10 - All application code (server, client, services, domain, workers)
 
 **Secondary:**
-- JavaScript - Browser interop (`src/MotoRent.Client/Interops/`)
-- CSS - Component styling, Bootstrap/Tabler themes
-- HTML - Razor component markup
+- SQL - Database schema and queries (`database/*.sql`)
+- JavaScript - Browser interop (`src/MotoRent.Client/wwwroot/*.js`)
+- PowerShell - Build and environment scripts (`*.ps1`)
 
 ## Runtime
 
 **Environment:**
-- .NET 10.0 - All projects target `net10.0`
-- Blazor Server + WebAssembly (PWA hybrid)
+- .NET 10 (net10.0 target framework)
+- ASP.NET Core 10
 
 **Package Manager:**
 - NuGet
@@ -26,104 +25,99 @@
 ## Frameworks
 
 **Core:**
-- ASP.NET Core 10 - Web host, authentication, middleware
-- Blazor Server - Primary rendering mode (`src/MotoRent.Server/`)
-- Blazor WebAssembly - PWA client (`src/MotoRent.Client/`)
+- Blazor Server + WebAssembly Hybrid - Full-stack web framework
+  - Server: `src/MotoRent.Server/MotoRent.Server.csproj` (Microsoft.NET.Sdk.Web)
+  - Client: `src/MotoRent.Client/MotoRent.Client.csproj` (Microsoft.NET.Sdk.BlazorWebAssembly)
+- ASP.NET Core 10 - Backend framework with MVC controllers
 
 **Testing:**
-- xUnit 2.9.2 - Test framework
-- Microsoft.NET.Test.Sdk 17.11.1 - Test runner
+- xUnit 2.9.2 - Unit testing framework
+- Microsoft.NET.Test.Sdk 17.11.1 - Test platform
 - coverlet.collector 6.0.2 - Code coverage
 
 **Build/Dev:**
-- PowerShell - Build scripts (`build.web.ps1`, `StartMotoRentWeb.ps1`)
-- Visual Studio / VS Code - IDE configuration present
+- MSBuild / dotnet CLI - Build tooling
+- Visual Studio 2022 (v17+) - IDE
 
 ## Key Dependencies
 
 **Critical:**
-- Microsoft.AspNetCore.Authentication.Google 10.0.1 - OAuth provider
-- Microsoft.AspNetCore.Authentication.MicrosoftAccount 10.0.1 - OAuth provider
-- AspNet.Security.OAuth.Line 10.0.0 - LINE OAuth for Thai market
-- Microsoft.Data.SqlClient 6.0.1 - SQL Server connectivity
-- System.Text.Json - JSON serialization with polymorphism
-- System.IdentityModel.Tokens.Jwt 8.15.0 - JWT handling
+- `Microsoft.Data.SqlClient 5.2.2/6.0.1` - SQL Server connectivity
+- `System.Text.Json` (built-in) - JSON serialization with polymorphism
+- `Microsoft.AspNetCore.Components.WebAssembly 10.0.1` - Blazor WASM runtime
+- `Microsoft.AspNetCore.Components.Authorization 10.0.1` - Auth state management
+
+**Authentication:**
+- `Microsoft.AspNetCore.Authentication.Google 10.0.1` - Google OAuth
+- `Microsoft.AspNetCore.Authentication.MicrosoftAccount 10.0.1` - Microsoft OAuth
+- `AspNet.Security.OAuth.Line 10.0.0` - LINE OAuth (Thailand-specific)
+- `System.IdentityModel.Tokens.Jwt 8.15.0` - JWT token handling
+- `Microsoft.IdentityModel.Tokens 8.15.0` - Token validation
 
 **Infrastructure:**
-- AWSSDK.S3 4.0.17 - File storage on AWS S3
-- RabbitMQ.Client 7.2.0 - Message broker (optional)
-- Microsoft.Extensions.Caching.Hybrid 9.3.0 - Distributed caching
-- Polly 8.6.5 - Resilience and retry policies
-- Microsoft.AspNetCore.SignalR.Client 10.0.0 - Real-time communications
+- `AWSSDK.S3 4.0.17` - AWS S3 file storage
+- `RabbitMQ.Client 7.2.0` - Message broker (optional)
+- `Polly 8.6.5` - Resilience and retry policies
 
-**UI:**
-- Microsoft.Extensions.Localization 10.0.1 - Multi-language support (en, th, ms)
-- Hashids.net 1.7.0 - URL-safe ID encoding
+**Utilities:**
+- `Hashids.net 1.7.0` - URL-safe ID encoding
+- `Microsoft.Extensions.Localization 10.0.1` - Multi-language support
+- `Spectre.Console 0.54.0` - Console formatting (workers)
+- `CommandLineParser 2.9.1` - CLI argument parsing (workers)
 
-**CLI/Worker:**
-- CommandLineParser 2.9.1 - Worker CLI arguments
-- Spectre.Console 0.54.0 - Rich console output
+**Real-Time:**
+- `Microsoft.AspNetCore.SignalR.Client 10.0.0` - Real-time client (workers)
+- ASP.NET Core SignalR (built-in) - Real-time server
 
 ## Configuration
 
 **Environment:**
-- Environment variables with `MOTO_` prefix (see `MotoConfig.cs`)
-- Configuration manager: `src/MotoRent.Domain/Core/MotoConfig.cs`
+- Environment variables with `MOTO_` prefix
+- Managed via `MotoConfig.cs` static class
 - Template: `env.motorent.template.ps1`
+- Override: `env.motorent.local.ps1` (gitignored)
 
-**Key Environment Variables:**
-| Variable | Purpose |
-|----------|---------|
-| `MOTO_SqlConnectionString` | SQL Server connection |
-| `MOTO_GoogleClientId/Secret` | Google OAuth |
-| `MOTO_MicrosoftClientId/Secret` | Microsoft OAuth |
-| `MOTO_LineChannelId/Secret` | LINE OAuth |
-| `MOTO_JwtSecret` | JWT signing key |
-| `MOTO_GeminiApiKey` | Google Gemini OCR |
-| `MOTO_SuperAdmin` | Comma-separated admin emails |
-| `AWS_ACCESS_KEY_ID` | S3 credentials (no prefix) |
-| `AWS_SECRET_ACCESS_KEY` | S3 credentials (no prefix) |
-| `AWS_REGION` | S3 region (default: ap-southeast-1) |
+**Key configs required:**
+- `MOTO_SqlConnectionString` - Database connection
+- `MOTO_GoogleClientId` / `MOTO_GoogleClientSecret` - Google OAuth
+- `MOTO_MicrosoftClientId` / `MOTO_MicrosoftClientSecret` - Microsoft OAuth
+- `MOTO_LineChannelId` / `MOTO_LineChannelSecret` - LINE OAuth
+- `MOTO_GeminiApiKey` - OCR functionality
+- `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` - S3 storage
 
 **Build:**
-- `MotoRent.sln` - Solution file (8 projects + 1 test project)
-- `src/MotoRent.Server/appsettings.json` - Runtime configuration
-- `src/MotoRent.Server/Properties/launchSettings.json` - Development launch settings
+- `MotoRent.sln` - Solution file
+- `build.web.ps1` - Web build script
+- `appsettings.json` / `appsettings.Development.template.json` - ASP.NET configuration
 
 ## Project Structure
 
 | Project | Type | Purpose |
 |---------|------|---------|
-| `MotoRent.Server` | Web (Blazor Server) | Main web host, authentication |
-| `MotoRent.Client` | Blazor WASM | PWA client, UI components |
-| `MotoRent.Domain` | Class Library | Entities, DataContext, interfaces |
-| `MotoRent.Services` | Class Library | Business logic services |
-| `MotoRent.Core.Repository` | Class Library | LINQ query translation, caching |
+| `MotoRent.Server` | Blazor Server | Web host, authentication, API controllers |
+| `MotoRent.Client` | Blazor WASM | PWA client components, interop |
+| `MotoRent.Domain` | Class Library | Entities, data context, core abstractions |
+| `MotoRent.Services` | Class Library | Business logic, external integrations |
 | `MotoRent.Messaging` | Class Library | RabbitMQ message broker |
-| `MotoRent.Worker` | Console App | Background message processor |
-| `MotoRent.Scheduler` | Console App | Scheduled tasks runner |
-| `MotoRent.Domain.Tests` | Test | Unit tests for Domain |
+| `MotoRent.Worker` | Console App | Background message subscribers |
+| `MotoRent.Scheduler` | Console App | Scheduled task runners |
+| `MotoRent.Domain.Tests` | Test Project | Unit tests |
 
 ## Platform Requirements
 
 **Development:**
+- Windows (PowerShell scripts)
 - .NET 10 SDK
-- SQL Server (local or remote)
-- Visual Studio 2022 / VS Code with C# extension
-- PowerShell (for build scripts)
+- SQL Server (local instance `.\DEV2022` or Docker)
+- Visual Studio 2022 or VS Code with C# extension
 
 **Production:**
-- Windows Server or Linux with .NET 10 runtime
-- SQL Server (Azure SQL supported)
-- AWS S3 access (for file storage)
-- RabbitMQ (optional, for async messaging)
-- OpenSearch (optional, for full-text search)
-
-**Supported Cultures:**
-- English (en) - Default
-- Thai (th) - Primary market
-- Bahasa Melayu (ms) - Secondary market
+- Windows Server / Linux with .NET 10 runtime
+- SQL Server 2019+
+- AWS S3 buckets (public + private)
+- Optional: RabbitMQ server
+- Optional: OpenSearch for full-text search
 
 ---
 
-*Stack analysis: 2026-01-23*
+*Stack analysis: 2026-01-19*

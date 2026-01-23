@@ -1,114 +1,76 @@
-# Project State: Document Template Editor
+# State: MotoRent
 
-**Project:** MotoRent Document Template Editor
-**Last Updated:** 2026-01-23
+**Last Milestone:** v1.0 Cashier Till & End of Day Reconciliation
+**Shipped:** 2026-01-21
 
 ---
 
 ## Project Reference
 
-**Core Value:** Tenants can design their own branded documents without code changes - their receipts, agreements, and confirmations look professional and match their business identity.
+See: .planning/PROJECT.md (updated 2026-01-21)
 
-**Current Focus:** Project initialization complete. Ready to begin Phase 1 planning.
+**Core value:** Business visibility and cash control — owners can see if their assets are profitable, where cash is leaking, and whether staff are handling money correctly.
+
+**Current focus:** Planning next milestone
 
 ---
 
 ## Current Position
 
-**Milestone:** Document Template Editor v1
-**Phase:** 1 - Designer Foundation (Not Started)
-**Plan:** None active
-**Status:** Planning
+**Phase:** N/A — between milestones
+**Plan:** N/A
+**Status:** Milestone complete, ready to plan next
 
-**Progress:**
 ```
-Phase 1 [..........] 0%
-Phase 2 [..........] 0%
-Phase 3 [..........] 0%
-Phase 4 [..........] 0%
-Phase 5 [..........] 0% (Optional)
-Overall [..........] 0%
+v1.0 Progress: [##########] 100% SHIPPED
+Next Milestone: Not yet defined
 ```
+
+**Last Activity:** 2026-01-21 — v1.0 milestone shipped
+
+**Next Action:** `/gsd:new-milestone` to define v1.1 or v2.0 scope
 
 ---
 
-## Performance Metrics
+## v1.0 Summary
 
-| Metric | Value |
-|--------|-------|
-| Plans Completed | 0 |
-| Plans Failed | 0 |
-| Requirements Delivered | 0/15 |
-| Phases Completed | 0/5 |
+**Delivered:**
+- 9 phases, 29 plans, ~150 tasks
+- 40/40 requirements satisfied
+- 30,215 LOC (C#, Razor, SQL)
+- 405 commits
 
----
+**Key Features:**
+- Multi-currency till operations (THB, USD, EUR, CNY)
+- Denomination counting at open/close
+- Transaction search and item confirmation
+- Split payment terminal
+- Refunds and voids with manager PIN approval
+- Manager oversight dashboard
+- End of day operations with daily close locking
 
-## Accumulated Context
-
-### Key Decisions
-
-| Decision | Rationale | Date |
-|----------|-----------|------|
-| SortableJS for drag-and-drop | Lightweight, touch support, matches existing interop patterns | 2026-01-23 |
-| QuestPDF for PDF generation | Pure .NET, MIT licensed, fluent API | 2026-01-23 |
-| Browser print before PDF | Covers 90% of use cases, reduces initial scope | 2026-01-23 |
-| Max 2 levels element nesting | Prevents over-engineering, simpler JSON serialization | 2026-01-23 |
-| OrgAdmin only for v1 | Simpler access control, can expand later | 2026-01-23 |
-
-### Technical Notes
-
-- Project migrated from MudBlazor to Tabler CSS - use custom Blazor components
-- Existing interop pattern: ES modules (see GoogleMapJsInterop.cs)
-- Existing drag pattern: native HTML5 events (see VehicleRecognitionPanel.razor)
-- Entity pattern: JSON column with computed columns for indexing
-- Multi-tenant: schema per tenant `[AccountNo].[EntityName]`
-
-### Research Flags
-
-| Topic | Status | Notes |
-|-------|--------|-------|
-| QuestPDF .NET 10 | Needs verification | Check NuGet before Phase 5 |
-| Thai font embedding | Needs testing | TH Sarabun PSK, prototype early |
-| SortableJS touch | Needs testing | Test on tablet before Phase 1 completion |
-
-### TODOs
-
-- [ ] Verify QuestPDF .NET 10 compatibility before Phase 5
-- [ ] Test Thai font rendering with prototype document
-- [ ] Demo to actual rental desk users before Phase 4 deployment
-
-### Blockers
-
-None currently.
+**Archives:**
+- `.planning/milestones/v1.0-ROADMAP.md`
+- `.planning/milestones/v1.0-REQUIREMENTS.md`
+- `.planning/milestones/v1.0-MILESTONE-AUDIT.md`
+- `.planning/MILESTONES.md` — summary entry
 
 ---
 
 ## Session Continuity
 
-### What Just Happened
+**Last Session:** 2026-01-21 — Milestone completion
 
-- Project initialized with `/gsd:new-project`
-- Requirements captured from conversation
-- Research completed analyzing technology choices and risks
-- Roadmap created with 4 core phases + 1 optional phase
-
-### What Happens Next
-
-1. User approves roadmap
-2. Run `/gsd:plan-phase 1` to create detailed plan for Designer Foundation
-3. Begin implementation of Phase 1
-
-### Active Files
-
-| File | Purpose |
-|------|---------|
-| `.planning/PROJECT.md` | Project definition and constraints |
-| `.planning/REQUIREMENTS.md` | All requirements with IDs and acceptance criteria |
-| `.planning/ROADMAP.md` | Phase structure and success criteria |
-| `.planning/STATE.md` | This file - project memory |
-| `.planning/research/SUMMARY.md` | Technology research and recommendations |
-| `.planning/config.json` | GSD configuration (mode: yolo, depth: quick) |
+**Context for Next Session:**
+- v1.0 milestone is SHIPPED
+- Run `/gsd:new-milestone` to start v1.1 or v2.0
+- Deferred ideas from v1.0:
+  - Receipt designer (A4 layout customization)
+  - Walk-in sales mode (general POS without booking/rental)
+  - Configurable currencies per organization
+  - GBP and JPY currency support
+  - Quick payments for non-rental income
 
 ---
 
-*State file maintains project continuity across sessions.*
+*Last updated: 2026-01-21*

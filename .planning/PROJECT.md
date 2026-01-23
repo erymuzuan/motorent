@@ -1,122 +1,113 @@
-# Document Template Editor
+# MotoRent
 
 ## What This Is
 
-A drag-and-drop document template designer for MotoRent that lets tenant admins (OrgAdmin) create custom layouts for rental agreements, receipts, and booking confirmations. Templates use data binding to pull live rental/customer/payment data when rendered. Staff use existing print flows with template selection. Replaces hardcoded document templates with tenant-customizable designs.
+A SaaS platform for vehicle rental operators in Thailand's tourist areas (Phuket, Pattaya, Bangkok, etc.). Targets small-to-mid size operators still running on carbon copies and spreadsheets. Handles the complete rental lifecycle — from tourist check-in with document verification, through the rental period, to check-out with damage assessment and settlement. Beyond operations, it gives owners visibility into business profitability: asset depreciation, maintenance costs, cash flow, and staff accountability.
 
 ## Core Value
 
-Tenants can design their own branded documents without code changes — their receipts, agreements, and confirmations look professional and match their business identity.
+**Business visibility and cash control** — owners can see if their assets are profitable, where cash is leaking, and whether staff are handling money correctly. The rental workflow is table stakes; the profitability intelligence is the differentiator.
+
+## Current State
+
+**v1.0 Shipped:** 2026-01-21
+
+The Cashier Till & End of Day Reconciliation milestone is complete. Staff can open/close tills with multi-currency support, process payments in THB/USD/EUR/CNY with denomination counting, and managers have full oversight with variance alerts and daily close operations.
+
+**Tech Stack:**
+- Blazor Server + WASM hybrid (PWA)
+- .NET 10
+- SQL Server with JSON columns
+- 30,215 LOC (C#, Razor, SQL)
 
 ## Requirements
 
 ### Validated
 
-Existing MotoRent capabilities this feature builds upon:
+<!-- Shipped and confirmed working -->
 
-- ✓ Multi-tenant architecture with schema-based data isolation — existing
-- ✓ OrgAdmin role with organization settings access — existing
-- ✓ Rental, Renter, Booking, Payment entities with full data — existing
-- ✓ Print functionality for documents (hardcoded templates) — existing
-- ✓ Blazor component architecture with MudBlazor — existing
-- ✓ Gemini API integration (for AI features) — existing
+**Pre-existing capabilities:**
+- Multi-tenant architecture with schema-per-tenant isolation — existing
+- OAuth authentication (Google, Microsoft, LINE) with role-based access — existing
+- Super admin impersonation for support — existing
+- Multi-shop management with vehicle pooling across locations — existing
+- Vehicle inventory management (motorbikes, scooters, cars, boats, jet skis, vans) — existing
+- Insurance packages and accessories management — existing
+- Renter management with passport/license OCR verification (Gemini Flash) — existing
+- Rental check-in wizard (5 steps: vehicle, documents, deposit, insurance, accessories) — existing
+- Rental check-out with damage assessment — existing
+- Active rentals dashboard — existing
+- Payment processing (Cash, Card, PromptPay, BankTransfer) — existing
+- Invoice generation — existing
+- Deposit tracking and refunds — existing
+- Daily/weekly/monthly financial reports — existing
+- Owner payments tracking — existing
+- Accident/incident reporting — existing
+- Maintenance tracking and scheduling — existing
+- Service locations with drop-off fees — existing
+- Tourist portal with online reservations — existing
+- PWA with offline support and camera access — existing
+
+**v1.0 Cashier Till & End of Day Reconciliation:**
+- Cashier till opening with starting float per currency — v1.0
+- Multi-currency payment acceptance (THB, USD, EUR, CNY) with operator-set exchange rates — v1.0
+- Change calculation in THB when paying with foreign currency — v1.0
+- Till payment receiving linked to rental transactions — v1.0
+- Till payouts (deposit refunds, expenses) with reason tracking — v1.0
+- Cash drops to safe during shift — v1.0
+- End of day till closing and reconciliation — v1.0
+- Per-currency balance tracking (expected vs actual) — v1.0
+- Cash shortage/overage logging against staff member — v1.0
+- Till receipts and transaction history — v1.0
+- Manager oversight of all tills and shifts — v1.0
+- Denomination counting at open and close — v1.0
+- Transaction voids with manager PIN approval — v1.0
+- Daily close with day locking — v1.0
 
 ### Active
 
-**Designer Core:**
-- [ ] Canvas with drag-and-drop element placement
-- [ ] Elements palette: Text, Image, Two Columns, Divider, Signature, Date, Container
-- [ ] Repeater element for collections (line items, clauses)
-- [ ] Multi-page support with page navigation
-- [ ] Properties panel for element configuration
-- [ ] Page settings (margins, size, orientation)
+<!-- Next milestone scope - define in /gsd:new-milestone -->
 
-**Data Binding:**
-- [ ] Property picker showing available fields per document type
-- [ ] Visual binding display: `[....]` unbound, `[Rental.RenterName]` bound
-- [ ] Context models: AgreementModel, ReceiptModel, BookingConfirmationModel
-- [ ] Per-field formatting options for dates and currency
-- [ ] Global values (DateTime.Now, DateTime.Today)
-
-**Document Types (v1):**
-- [ ] Rental Agreement templates
-- [ ] Receipt templates
-- [ ] Booking Confirmation templates
-
-**AI Features:**
-- [ ] Clause Suggester for agreements
-- [ ] Suggests industry-standard rental clauses based on context
-
-**Default Templates:**
-- [ ] Professional default templates per document type
-- [ ] Based on Avis/Hertz/Sixt document research
-- [ ] Standard rental agreement clauses included
-
-**Template Management:**
-- [ ] Template list in Organization Settings
-- [ ] Create/edit/delete templates
-- [ ] Set default template per document type
-- [ ] Approve templates for staff use
-- [ ] Multiple templates per document type
-
-**Document Generation:**
-- [ ] Render template with live data model
-- [ ] HTML view with browser print (Ctrl+P)
-- [ ] PDF download option
-- [ ] Print button shows default template
-- [ ] Dropdown to select alternative approved templates
-
-**Integration:**
-- [ ] Designer accessible from Organization Settings (OrgAdmin only)
-- [ ] Enhanced print button on rental/booking detail pages
-- [ ] Template storage per tenant schema
+(No active requirements - run `/gsd:new-milestone` to define v1.1 or v2.0 scope)
 
 ### Out of Scope
 
-- Invoice templates — deferred, receipts cover payment confirmation for v1
-- ShopManager template design access — OrgAdmin only for v1
-- Conditional show/hide based on data values — v2 feature
-- Template versioning/history — v2 feature
-- Template sharing between tenants — each tenant designs their own
-- Email templates — separate feature, different delivery mechanism
+- Currency conversion between till currencies — handled by separate forex department
+- Real-time currency rate feeds — operators set their own rates
+- Credit card terminal integration — record payments only, no POS hardware integration
+- Accounting system export (QuickBooks, Xero) — future milestone
+- Push notifications — infrastructure ready but deferred
+- Alipay/WeChat Pay integration — future milestone for Chinese tourists
 
 ## Context
 
-**Existing System:**
-MotoRent is a motorbike rental SaaS for Thai tourist areas. Currently has hardcoded Razor templates for printing receipts and agreements. Tenants cannot customize document appearance.
+**Existing business:** We already serve money changers in Thai tourist areas with a forex POS system. Vehicle rental is an adjacent market opportunity using the same relationships and geographic presence.
 
-**Target Users:**
-- OrgAdmin: Designs templates in Organization Settings
-- Staff: Uses existing print flow, can select from approved templates
+**Target market:** Small-to-mid size rental operators. Large operators have existing software. Our sweet spot is digitizing paper-based operations.
 
-**Reference Design:**
-Sample designer UI with left sidebar (pages + elements), center canvas, right sidebar (properties/page/data). Similar to contract/document builders.
+**Multi-currency expertise:** Our forex background means multi-currency cash handling is a natural fit. Most rental software doesn't handle this well.
 
-**Data Models Available:**
-- Renter: FullName, Telephone, Email, PassportNo, Nationality, Address
-- Rental: StartDate, EndDate, DailyRate, TotalAmount, Status, Notes
-- Vehicle: Make, Model, Year, LicensePlate, Color
-- Booking: ReservationNo, Status, PickupDate, DropoffDate
-- Payment: Amount, Method, Reference, Date
-- Organization: Name, Logo, Address, TaxId, Phone
-- Shop: Name, Location, Phone
-- User (Staff): Name processing the transaction
+**Current codebase:** Blazor Server + WASM hybrid, .NET 10, SQL Server with JSON columns, custom repository pattern. v1.0 milestone complete.
 
 ## Constraints
 
-- **Tech Stack**: Blazor Server + WASM (existing MotoRent architecture) — must integrate seamlessly
-- **Multi-tenant**: Templates stored in tenant schema `[AccountNo].[DocumentTemplate]`
-- **PDF Generation**: Need PDF library compatible with .NET 10 (research required)
-- **Drag-and-drop**: Need Blazor-compatible drag-and-drop library or JS interop
+- **Tech stack**: Blazor Server + WASM, .NET 10, SQL Server — must integrate with existing architecture
+- **Multi-tenancy**: Schema-per-tenant isolation — till tables must follow this pattern
+- **Localization**: English/Thai/Malay — all new UI must be localized
+- **Mobile-first**: PWA already supports offline/camera — till UI should work on tablets at desk
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Repeater over Dynamic Table | More flexible — can repeat any layout, not just rows | — Pending |
-| Per-field formatting | Users need control over date/currency display | — Pending |
-| OrgAdmin only for v1 | Simpler access control, can expand later | — Pending |
-| AI clause suggester included | High value for agreements, Gemini API already integrated | — Pending |
+| Base currency THB | Thailand market, rental rates always in THB | Good |
+| Change always in THB | Simplifies till reconciliation, matches tourist expectations | Good |
+| Per-currency till tracking | Matches forex expertise, enables accurate reconciliation | Good |
+| Shortage logged, not enforced | Policy decision left to manager, system just provides visibility | Good |
+| Scoped cart (1 booking/rental per receipt) | Not general POS, focused on rental workflow | Good |
+| Manager PIN for void approval | Quick authorization without full login swap | Good |
+| Denomination counting at open/close | Accurate verification, reduces counting errors | Good |
+| Daily close locking | Prevents backdating transactions | Good |
 
 ---
-*Last updated: 2026-01-23 after initialization*
+*Last updated: 2026-01-21 after v1.0 milestone*
