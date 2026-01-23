@@ -109,7 +109,7 @@ public class AgentCommissionService
 
         using var session = m_context.OpenSession(username);
         session.Attach(commission);
-        await session.SubmitChanges("Create");
+        await session.SubmitChanges("CreateAgentCommission");
 
         return commission;
     }

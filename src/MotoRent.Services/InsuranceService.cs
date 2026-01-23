@@ -33,14 +33,14 @@ public class InsuranceService(RentalDataContext context)
     {
         using var session = this.Context.OpenSession(username);
         session.Attach(insurance);
-        return await session.SubmitChanges("Create");
+        return await session.SubmitChanges("CreateInsurance");
     }
 
     public async Task<SubmitOperation> UpdateInsuranceAsync(Insurance insurance, string username)
     {
         using var session = this.Context.OpenSession(username);
         session.Attach(insurance);
-        return await session.SubmitChanges("Update");
+        return await session.SubmitChanges("UpdateInsurance");
     }
 
     public async Task<SubmitOperation> DeleteInsuranceAsync(Insurance insurance, string username)
@@ -56,7 +56,7 @@ public class InsuranceService(RentalDataContext context)
 
         using var session = this.Context.OpenSession(username);
         session.Delete(insurance);
-        return await session.SubmitChanges("Delete");
+        return await session.SubmitChanges("DeleteInsurance");
     }
 
     public async Task<SubmitOperation> ToggleActiveAsync(int insuranceId, string username)

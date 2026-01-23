@@ -1,5 +1,6 @@
 using MotoRent.Domain.DataContext;
 using MotoRent.Domain.Entities;
+using MotoRent.Domain.Extensions;
 
 namespace MotoRent.Services;
 
@@ -21,67 +22,47 @@ public class PaymentService(RentalDataContext context)
         int pageSize = 20)
     {
         // Get rental IDs for this shop first
-        var rentals = await this.Context.LoadAsync(
-            this.Context.CreateQuery<Rental>().Where(r => r.ShopId == shopId),
-            page: 1, size: 10000, includeTotalRows: false);
+        var rentalIds = await this.Context.GetDistinctAsync<Rental, int>(
+            r => r.ShopId == shopId,
+            r => r.RentalId);
 
-        var rentalIds = rentals.ItemCollection.Select(r => r.RentalId).ToHashSet();
+        // Build query with all filters applied at SQL level
+        var query = this.Context.CreateQuery<Payment>()
+            .Where(p => rentalIds.IsInList(p.RentalId));
 
-        // Load all payments and filter in memory (since Contains isn't supported in expression trees)
-        var allPaymentsResult = await this.Context.LoadAsync(
-            this.Context.CreateQuery<Payment>().OrderByDescending(p => p.PaymentId),
-            page: 1, size: 10000, includeTotalRows: false);
-
-        var payments = allPaymentsResult.ItemCollection
-            .Where(p => rentalIds.Contains(p.RentalId));
-
-        // Apply filters
         if (!string.IsNullOrWhiteSpace(status))
         {
-            payments = payments.Where(p => p.Status == status);
+            query = query.Where(p => p.Status == status);
         }
 
         if (!string.IsNullOrWhiteSpace(paymentType))
         {
-            payments = payments.Where(p => p.PaymentType == paymentType);
+            query = query.Where(p => p.PaymentType == paymentType);
         }
 
         if (!string.IsNullOrWhiteSpace(paymentMethod))
         {
-            payments = payments.Where(p => p.PaymentMethod == paymentMethod);
+            query = query.Where(p => p.PaymentMethod == paymentMethod);
         }
 
         if (rentalId.HasValue)
         {
-            payments = payments.Where(p => p.RentalId == rentalId.Value);
+            query = query.Where(p => p.RentalId == rentalId.Value);
         }
 
         if (fromDate.HasValue)
         {
-            payments = payments.Where(p => p.PaidOn >= fromDate.Value);
+            query = query.Where(p => p.PaidOn >= fromDate.Value);
         }
 
         if (toDate.HasValue)
         {
-            payments = payments.Where(p => p.PaidOn <= toDate.Value);
+            query = query.Where(p => p.PaidOn <= toDate.Value);
         }
 
-        var filteredList = payments.ToList();
-        var totalCount = filteredList.Count;
+        query = query.OrderByDescending(p => p.PaymentId);
 
-        // Apply pagination
-        var pagedList = filteredList
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToList();
-
-        return new LoadOperation<Payment>
-        {
-            ItemCollection = pagedList,
-            TotalRows = totalCount,
-            Page = page,
-            PageSize = pageSize
-        };
+        return await this.Context.LoadAsync(query, page, pageSize, includeTotalRows: true);
     }
 
     public async Task<List<Payment>> GetPaymentsByRentalIdAsync(int rentalId)
@@ -102,21 +83,21 @@ public class PaymentService(RentalDataContext context)
     {
         using var session = this.Context.OpenSession(username);
         session.Attach(payment);
-        return await session.SubmitChanges("Create");
+        return await session.SubmitChanges("CreatePayment");
     }
 
     public async Task<SubmitOperation> UpdatePaymentAsync(Payment payment, string username)
     {
         using var session = this.Context.OpenSession(username);
         session.Attach(payment);
-        return await session.SubmitChanges("Update");
+        return await session.SubmitChanges("UpdatePayment");
     }
 
     public async Task<SubmitOperation> DeletePaymentAsync(Payment payment, string username)
     {
         using var session = this.Context.OpenSession(username);
         session.Delete(payment);
-        return await session.SubmitChanges("Delete");
+        return await session.SubmitChanges("DeletePayment");
     }
 
     #endregion

@@ -93,7 +93,7 @@ public class AgentService
 
         using var session = m_context.OpenSession(username);
         session.Attach(agent);
-        return await session.SubmitChanges("Create");
+        return await session.SubmitChanges("CreateAgent");
     }
 
     /// <summary>
@@ -103,7 +103,7 @@ public class AgentService
     {
         using var session = m_context.OpenSession(username);
         session.Attach(agent);
-        return await session.SubmitChanges("Update");
+        return await session.SubmitChanges("UpdateAgent");
     }
 
     /// <summary>
@@ -153,7 +153,7 @@ public class AgentService
 
         using var session = m_context.OpenSession(username);
         session.Delete(agent);
-        return await session.SubmitChanges("Delete");
+        return await session.SubmitChanges("DeleteAgent");
     }
 
     /// <summary>

@@ -87,7 +87,7 @@ public class BookingService
 
         using var session = m_context.OpenSession(username);
         session.Attach(booking);
-        var result = await session.SubmitChanges("Create");
+        var result = await session.SubmitChanges("CreateBooking");
 
         if (result.Success)
         {
@@ -1160,7 +1160,7 @@ public class BookingService
     {
         using var session = m_context.OpenSession(username);
         session.Attach(booking);
-        return await session.SubmitChanges("Update");
+        return await session.SubmitChanges("UpdateBooking");
     }
 
     #endregion

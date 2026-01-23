@@ -46,20 +46,20 @@ public partial class RentalService
     {
         using var session = this.Context.OpenSession(username);
         session.Attach(rental);
-        return await session.SubmitChanges("Create");
+        return await session.SubmitChanges("CreateRental");
     }
 
     public async Task<SubmitOperation> UpdateRentalAsync(Rental rental, string username)
     {
         using var session = this.Context.OpenSession(username);
         session.Attach(rental);
-        return await session.SubmitChanges("Update");
+        return await session.SubmitChanges("UpdateRental");
     }
 
     public async Task<SubmitOperation> DeleteRentalAsync(Rental rental, string username)
     {
         using var session = this.Context.OpenSession(username);
         session.Delete(rental);
-        return await session.SubmitChanges("Delete");
+        return await session.SubmitChanges("DeleteRental");
     }
 }

@@ -56,14 +56,14 @@ public class ShopService(RentalDataContext context)
     {
         using var session = this.Context.OpenSession(username);
         session.Attach(shop);
-        return await session.SubmitChanges("Create");
+        return await session.SubmitChanges("CreateShop");
     }
 
     public async Task<SubmitOperation> UpdateShopAsync(Shop shop, string username)
     {
         using var session = this.Context.OpenSession(username);
         session.Attach(shop);
-        return await session.SubmitChanges("Update");
+        return await session.SubmitChanges("UpdateShop");
     }
 
     public async Task<SubmitOperation> DeleteShopAsync(Shop shop, string username)
@@ -88,7 +88,7 @@ public class ShopService(RentalDataContext context)
 
         using var session = this.Context.OpenSession(username);
         session.Delete(shop);
-        return await session.SubmitChanges("Delete");
+        return await session.SubmitChanges("DeleteShop");
     }
 
     public async Task<SubmitOperation> SetActiveStatusAsync(int shopId, bool isActive, string username)

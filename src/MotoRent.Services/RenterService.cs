@@ -56,14 +56,14 @@ public class RenterService(RentalDataContext context)
     {
         using var session = this.Context.OpenSession(username);
         session.Attach(renter);
-        return await session.SubmitChanges("Update");
+        return await session.SubmitChanges("UpdateRenter");
     }
 
     public async Task<SubmitOperation> DeleteRenterAsync(Renter renter, string username)
     {
         using var session = this.Context.OpenSession(username);
         session.Delete(renter);
-        return await session.SubmitChanges("Delete");
+        return await session.SubmitChanges("DeleteRenter");
     }
 
     public async Task<List<Document>> GetRenterDocumentsAsync(int renterId)

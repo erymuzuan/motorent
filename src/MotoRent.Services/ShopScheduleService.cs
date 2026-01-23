@@ -184,7 +184,7 @@ public class ShopScheduleService(RentalDataContext context)
     {
         using var session = this.Context.OpenSession(username);
         session.Attach(schedule);
-        return await session.SubmitChanges("Update");
+        return await session.SubmitChanges("UpdateShopSchedule");
     }
 
     /// <summary>

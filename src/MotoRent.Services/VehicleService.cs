@@ -328,7 +328,7 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
 
         using var session = this.Context.OpenSession(username);
         session.Attach(vehicle);
-        return await session.SubmitChanges("Create");
+        return await session.SubmitChanges("CreateVehicle");
     }
 
     /// <summary>
@@ -338,7 +338,7 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
     {
         using var session = this.Context.OpenSession(username);
         session.Attach(vehicle);
-        return await session.SubmitChanges("Update");
+        return await session.SubmitChanges("UpdateVehicle");
     }
 
     /// <summary>
@@ -360,7 +360,7 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
 
         using var session = this.Context.OpenSession(username);
         session.Delete(vehicle);
-        return await session.SubmitChanges("Delete");
+        return await session.SubmitChanges("DeleteVehicle");
     }
 
     /// <summary>

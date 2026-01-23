@@ -50,14 +50,14 @@ public class AccessoryService(RentalDataContext context)
     {
         using var session = this.Context.OpenSession(username);
         session.Attach(accessory);
-        return await session.SubmitChanges("Create");
+        return await session.SubmitChanges("CreateAccessory");
     }
 
     public async Task<SubmitOperation> UpdateAccessoryAsync(Accessory accessory, string username)
     {
         using var session = this.Context.OpenSession(username);
         session.Attach(accessory);
-        return await session.SubmitChanges("Update");
+        return await session.SubmitChanges("UpdateAccessory");
     }
 
     public async Task<SubmitOperation> DeleteAccessoryAsync(Accessory accessory, string username)
@@ -73,7 +73,7 @@ public class AccessoryService(RentalDataContext context)
 
         using var session = this.Context.OpenSession(username);
         session.Delete(accessory);
-        return await session.SubmitChanges("Delete");
+        return await session.SubmitChanges("DeleteAccessory");
     }
 
     public async Task<(int Total, int IncludedFree)> GetAccessoryCountsAsync(int shopId)

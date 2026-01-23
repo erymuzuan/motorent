@@ -116,7 +116,7 @@ public class VehiclePoolService(RentalDataContext context)
     {
         using var session = this.Context.OpenSession(username);
         session.Attach(pool);
-        return await session.SubmitChanges("Create");
+        return await session.SubmitChanges("CreateVehiclePool");
     }
 
     /// <summary>
@@ -126,7 +126,7 @@ public class VehiclePoolService(RentalDataContext context)
     {
         using var session = this.Context.OpenSession(username);
         session.Attach(pool);
-        return await session.SubmitChanges("Update");
+        return await session.SubmitChanges("UpdateVehiclePool");
     }
 
     /// <summary>
@@ -146,7 +146,7 @@ public class VehiclePoolService(RentalDataContext context)
 
         using var session = this.Context.OpenSession(username);
         session.Delete(pool);
-        return await session.SubmitChanges("Delete");
+        return await session.SubmitChanges("DeleteVehiclePool");
     }
 
     /// <summary>
