@@ -1,5 +1,5 @@
 param (
-    [Parameter(Mandatory=$true)]
+    [Parameter(Mandatory = $true)]
     [string]$WorktreeName
 )
 
@@ -19,7 +19,12 @@ if ($LASTEXITCODE -eq 0) {
     
     # Copy env files
     Copy-Item "$OriginalDir\env.motorent.*" -Destination $WorktreePath -Force
-    Write-Host "Copied env.motorent.* files."
+    Write-Host "Copied env.motorent.* files."    
+
+    # Update launchSettings.json
+    $launchSettingsPath = Join-Path $WorktreePath "src\MotoRent.Server\Properties\launchSettings.json"
+    Copy-Item ".\src\MotoRent.Server\Properties\launchSettings.json" -Destination "$WorktreePath\src\MotoRent.Server\Properties\" -Force
+    Copy-Item ".\.vscode\settings.json" -Destination "$WorktreePath\.vscode\" -Force
 
     # Find available port starting from 7104
     $port = 7104
@@ -29,14 +34,15 @@ if ($LASTEXITCODE -eq 0) {
             $listener.Start()
             $listener.Stop()
             break
-        } catch {
+        }
+        catch {
             $port++
         }
     }
     Write-Host "Found available port: $port"
 
     # Update env files
-    foreach ($file in @("env.motorent.template.ps1", "env.motorent.ps1")) {
+    foreach ($file in @("env.motorent.local.ps1")) {
         $path = Join-Path $WorktreePath $file
         if (Test-Path $path) {
             $content = Get-Content $path -Raw
@@ -47,8 +53,6 @@ if ($LASTEXITCODE -eq 0) {
         }
     }
 
-    # Update launchSettings.json
-    $launchSettingsPath = Join-Path $WorktreePath "src\MotoRent.Server\Properties\launchSettings.json"
     if (Test-Path $launchSettingsPath) {
         $content = Get-Content $launchSettingsPath -Raw
         # Regex to replace the applicationUrl
@@ -100,7 +104,8 @@ if ($LASTEXITCODE -eq 0) {
     if ([int]::TryParse($selection, [ref]$null) -and $selection -ge 1 -and $selection -le $colors.Count) {
         $selectedColor = $colors[$selection - 1].Hex
         Write-Host "Selected: $($colors[$selection - 1].Name) ($selectedColor)" -ForegroundColor Green
-    } else {
+    }
+    else {
         $selectedColor = "#{0:X6}" -f (Get-Random -Maximum 0xFFFFFF)
         Write-Host "Using Random Color: $selectedColor" -ForegroundColor Yellow
     }
@@ -134,7 +139,8 @@ if ($LASTEXITCODE -eq 0) {
     # Peacock compatibility (if previously used or to support it)
     if ($null -eq $json."peacock.color") {
         $json | Add-Member -NotePropertyName "peacock.color" -NotePropertyValue $selectedColor -Force
-    } else {
+    }
+    else {
         $json."peacock.color" = $selectedColor
     }
 
@@ -145,7 +151,8 @@ if ($LASTEXITCODE -eq 0) {
     # Start VS Code
     Write-Host "Opening VS Code..."
     code .
-} else {
+}
+else {
     Write-Error "Failed to create worktree."
 }
 
