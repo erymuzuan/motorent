@@ -105,6 +105,16 @@ public class User : Entity
     public string? NameIdentifier { get; set; }
 
     /// <summary>
+    /// Explicit Google Subject ID.
+    /// </summary>
+    public string? GoogleId { get; set; }
+
+    /// <summary>
+    /// Explicit LINE User ID.
+    /// </summary>
+    public string? LineId { get; set; }
+
+    /// <summary>
     /// Collection of accounts (organizations) this user belongs to.
     /// </summary>
     public List<UserAccount> AccountCollection { get; } = [];

@@ -42,6 +42,26 @@ public class Organization : Entity
     public DayOfWeek? FirstDay { get; set; } = DayOfWeek.Monday;
 
     /// <summary>
+    /// Current subscription plan (Free/Pro/Ultra).
+    /// </summary>
+    public SubscriptionPlan SubscriptionPlan { get; set; } = SubscriptionPlan.Free;
+
+    /// <summary>
+    /// End date for the trial period.
+    /// </summary>
+    public DateTimeOffset? TrialEndDate { get; set; }
+
+    /// <summary>
+    /// Whether the organization is currently in an active trial.
+    /// </summary>
+    public bool IsTrialActive => TrialEndDate.HasValue && TrialEndDate.Value > DateTimeOffset.UtcNow;
+
+    /// <summary>
+    /// Preferred language for the organization (th/en).
+    /// </summary>
+    public string? PreferredLanguage { get; set; }
+
+    /// <summary>
     /// Feature subscriptions enabled for this organization.
     /// </summary>
     public string[] Subscriptions { get; set; } = [];
