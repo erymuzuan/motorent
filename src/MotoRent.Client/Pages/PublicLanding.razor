@@ -1,0 +1,147 @@
+@page "/"
+@using Microsoft.AspNetCore.Authorization
+@attribute [AllowAnonymous]
+@layout Layout.MainLayout
+@inherits LocalizedComponentBase<PublicLanding>
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>MotoRent - The Smartest Way to Manage Your Rental Fleet</PageTitle>
+
+<div class="public-landing">
+    @* Hero Section *@
+    <section class="section section-lg bg-primary-lt">
+        <div class="container-xl">
+            <div class="row align-items-center g-5">
+                <div class="col-lg-6">
+                    <h1 class="display-3 fw-bold mb-4">
+                        Zero Paperwork.<br />
+                        <span class="text-primary">Instant Check-In.</span>
+                    </h1>
+                    <p class="fs-2 text-secondary mb-5">
+                        The all-in-one platform built for modern vehicle rental businesses in Thailand. 
+                        Powered by AI to stop manual paperwork.
+                    </p>
+                    <div class="d-flex gap-3">
+                        <AuthorizeView>
+                            <Authorized>
+                                <a href="/dashboard" class="btn btn-primary btn-lg px-5 py-3">
+                                    Go to Dashboard <i class="ti ti-arrow-right ms-2"></i>
+                                </a>
+                            </Authorized>
+                            <NotAuthorized>
+                                <a href="/account/login" class="btn btn-primary btn-lg px-5 py-3">
+                                    Start Free Trial <i class="ti ti-rocket ms-2"></i>
+                                </a>
+                                <a href="#features" class="btn btn-outline-primary btn-lg px-5 py-3">
+                                    Learn More
+                                </a>
+                            </NotAuthorized>
+                        </AuthorizeView>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="position-relative">
+                        <img src="images/marketing/hero-ocr.png" alt="Gemini AI OCR" class="img-fluid rounded-4 shadow-lg" />
+                        <div class="position-absolute bottom-0 start-0 m-4 p-3 glass-card rounded-3 d-none d-md-block">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="avatar bg-success-lt">
+                                    <i class="ti ti-check text-success"></i>
+                                </div>
+                                <div>
+                                    <div class="fw-bold">Passport Scanned</div>
+                                    <div class="text-secondary small">3 seconds remaining</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    @* Features Grid *@
+    <section id="features" class="section py-6">
+        <div class="container-xl">
+            <div class="text-center mb-6">
+                <h2 class="display-5 fw-bold mb-3">Transform Your Shop in Minutes</h2>
+                <p class="fs-3 text-secondary">Everything you need to scale your rental business.</p>
+            </div>
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm p-4 text-center">
+                        <div class="avatar avatar-xl bg-primary-lt rounded-circle mb-4 mx-auto">
+                            <i class="ti ti-scan text-primary fs-1"></i>
+                        </div>
+                        <h3>Instant OCR</h3>
+                        <p class="text-secondary">Scan passports and licenses automatically with Gemini AI. No more manual data entry errors.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm p-4 text-center">
+                        <div class="avatar avatar-xl bg-success-lt rounded-circle mb-4 mx-auto">
+                            <i class="ti ti-device-mobile text-success fs-1"></i>
+                        </div>
+                        <h3>PWA Mobile First</h3>
+                        <p class="text-secondary">Full control from your smartphone. Take photos, sign contracts, and manage fleet on the go.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm p-4 text-center">
+                        <div class="avatar avatar-xl bg-info-lt rounded-circle mb-4 mx-auto">
+                            <i class="ti ti-chart-dots text-info fs-1"></i>
+                        </div>
+                        <h3>Smart Analytics</h3>
+                        <p class="text-secondary">Track revenue, deposits, and maintenance in real-time. data-driven decisions for your business.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    @* Call to Action *@
+    <section class="section section-lg bg-dark text-white text-center">
+        <div class="container-xl">
+            <h2 class="display-4 fw-bold mb-4">Ready to Modernize Your Rental Shop?</h2>
+            <p class="fs-2 mb-5 opacity-75">Join successful rental businesses in Thailand already scaling with MotoRent.</p>
+            <a href="/account/login" class="btn btn-primary btn-xl px-6 py-3 fs-3">
+                Get Started for Free
+            </a>
+            <div class="mt-4 opacity-50">
+                14-day free trial | No credit card required | Setup in 5 minutes
+            </div>
+        </div>
+    </section>
+</div>
+
+<style>
+    .public-landing .section {
+        padding: 5rem 0;
+    }
+    .public-landing .glass-card {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+    }
+    .public-landing img {
+        transition: transform 0.3s ease;
+    }
+    .public-landing img:hover {
+        transform: translateY(-5px);
+    }
+    .btn-xl {
+        border-radius: 50px;
+    }
+</style>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (authState.User.Identity?.IsAuthenticated == true)
+        {
+            Navigation.NavigateTo("/dashboard");
+        }
+    }
+}

@@ -20,11 +20,11 @@ This plan outlines the conversion of the static marketing website into a functio
 
 ## Phase 2: Onboarding Wizard Backend & API [checkpoint: ]
 
-### Task 1: Create Organization Setup Service
-- [ ] Task: Implement a service to handle the multi-step onboarding logic.
-    - [ ] Write unit tests for organization/shop creation with initial fleet data.
-    - [ ] Implement `IOnboardingService` to create `Organization`, `Shop`, and initial `Vehicle` records.
-    - [ ] Implement logic to automatically grant a 30-day Pro trial upon successful signup.
+### Task 1: Create Organization Setup Service (COMPLETED) c460073
+- [x] Task: Implement a service to handle the multi-step onboarding logic. c460073
+    - [x] Write unit tests for organization/shop creation with initial fleet data.
+    - [x] Implement `IOnboardingService` to create `Organization`, `Shop`, and initial `Vehicle` records.
+    - [x] Implement logic to automatically grant a 30-day Pro trial upon successful signup.
 
 ### Task 2: Onboarding API Endpoints
 - [ ] Task: Create REST endpoints for the onboarding wizard.
