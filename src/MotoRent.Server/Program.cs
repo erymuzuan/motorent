@@ -159,7 +159,7 @@ builder.Services.AddCoreRepository(builder.Configuration);
 
 // Add Core services
 builder.Services.AddScoped<IDirectoryService, SqlDirectoryService>();
-builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
+builder.Services.AddScoped<MotoRent.Domain.Core.IAuthenticationService, MotoRent.Services.Core.AuthenticationService>();
 builder.Services.AddScoped<ISubscriptionService, SqlSubscriptionService>();
 builder.Services.AddScoped<OrganizationService>();
 builder.Services.AddScoped<ISettingConfig, SettingConfigService>();

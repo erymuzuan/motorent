@@ -20,13 +20,13 @@ namespace MotoRent.Server.Controllers;
 [Authorize]
 public class AccountController(
     IDirectoryService directoryService,
-    IAuthenticationService authenticationService,
+    MotoRent.Domain.Core.IAuthenticationService authenticationService,
     IRequestContext requestContext,
     CoreDataContext coreDataContext,
     RentalDataContext rentalDataContext) : Controller
 {
     private IDirectoryService DirectoryService { get; } = directoryService;
-    private IAuthenticationService AuthenticationService { get; } = authenticationService;
+    private MotoRent.Domain.Core.IAuthenticationService AuthenticationService { get; } = authenticationService;
     private IRequestContext RequestContext { get; } = requestContext;
     private CoreDataContext CoreDataContext { get; } = coreDataContext;
     private RentalDataContext RentalDataContext { get; } = rentalDataContext;
@@ -135,9 +135,6 @@ public class AccountController(
         var email = externalUser.FindFirst(ClaimTypes.Email)?.Value;
         var displayName = externalUser.FindFirst(ClaimTypes.Name)?.Value
             ?? externalUser.FindFirst("name")?.Value;
-
-        // For LINE users, email may be null - use nameIdentifier as username
-        CoreUser? user = null;
 
         // Determine username based on provider
         // LINE users: username = LINE userId (nameIdentifier)
