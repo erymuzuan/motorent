@@ -59,6 +59,15 @@ public class CoreDataContext
     }
 
     /// <summary>
+    /// Checks if any entity matches the predicate.
+    /// </summary>
+    public async Task<bool> ExistAsync<T>(Expression<Func<T, bool>> predicate) where T : Entity, new()
+    {
+        var query = this.CreateQuery<T>().Where(predicate);
+        return await this.ExistAsync<T>(query);
+    }
+
+    /// <summary>
     /// Opens a persistence session for batch operations.
     /// </summary>
     public CorePersistenceSession OpenSession(string username = "system")

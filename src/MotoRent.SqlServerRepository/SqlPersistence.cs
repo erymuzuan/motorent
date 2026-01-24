@@ -49,7 +49,7 @@ public class SqlPersistence(
         if (itemList.Count + deleteList.Count > MAX_ITEMS_PER_BATCH)
             return SubmitOperation.CreateFailure($"Batch exceeds {MAX_ITEMS_PER_BATCH} items");
 
-        var schema = context.GetSchema() ?? "MotoRent";
+        var schema = session.OverriddenAccountNo ?? context.GetSchema() ?? "MotoRent";
         var username = session.Username;
         var now = DateTimeOffset.Now;
         int inserted = 0, updated = 0, deleted = 0;

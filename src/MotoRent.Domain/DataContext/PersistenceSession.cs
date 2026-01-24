@@ -20,10 +20,23 @@ public sealed class PersistenceSession : IDisposable
     /// </summary>
     public string? Operation { get; private set; }
 
+    /// <summary>
+    /// Gets or sets an explicit AccountNo to use for this session, overriding the context.
+    /// </summary>
+    public string? OverriddenAccountNo { get; private set; }
+
     public PersistenceSession(RentalDataContext context, string username = "system")
     {
         m_context = context;
         m_username = username;
+    }
+
+    /// <summary>
+    /// Sets an explicit AccountNo for this session to override the default context schema.
+    /// </summary>
+    public void SetAccountNo(string accountNo)
+    {
+        this.OverriddenAccountNo = accountNo;
     }
 
     public void Attach<T>(params T[] items) where T : Entity
