@@ -26,10 +26,10 @@ This plan outlines the conversion of the static marketing website into a functio
     - [x] Implement `IOnboardingService` to create `Organization`, `Shop`, and initial `Vehicle` records.
     - [x] Implement logic to automatically grant a 30-day Pro trial upon successful signup.
 
-### Task 2: Onboarding API Endpoints
-- [ ] Task: Create REST endpoints for the onboarding wizard.
-    - [ ] Write unit tests for the onboarding controller (validation, success/error cases).
-    - [ ] Implement POST endpoints for each step of the wizard (Shop Info, Fleet, Plan).
+### Task 2: Onboarding API Endpoints (COMPLETED) a87c1b8
+- [x] Task: Create REST endpoints for the onboarding wizard. a87c1b8
+    - [x] Write unit tests for the onboarding controller (validation, success/error cases).
+    - [x] Implement POST endpoints for each step of the wizard (Shop Info, Fleet, Plan).
 
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Onboarding Wizard Backend & API' (Protocol in workflow.md)
 
