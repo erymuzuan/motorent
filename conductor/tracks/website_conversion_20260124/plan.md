@@ -10,11 +10,11 @@ This plan outlines the conversion of the static marketing website into a functio
     - [x] Add `TrialEndDate`, `SubscriptionPlan` (Free/Pro/Ultra), and `PreferredLanguage` to `Organization`.
     - [x] Add OAuth provider fields to the `User` entity for Google and LINE.
 
-### Task 2: Implement OAuth Authentication Services
-- [ ] Task: Configure and implement Google and LINE authentication.
-    - [ ] Write unit tests for the OAuth response handling and user mapping.
-    - [ ] Implement `IAuthenticationService` methods for Google and LINE.
-    - [ ] Setup API endpoints to handle OAuth callbacks and initiate session creation.
+### Task 2: Implement OAuth Authentication Services (COMPLETED) a3c80bc
+- [x] Task: Configure and implement Google and LINE authentication. a3c80bc
+    - [x] Write unit tests for the OAuth response handling and user mapping.
+    - [x] Implement `IAuthenticationService` methods for Google and LINE.
+    - [x] Setup API endpoints to handle OAuth callbacks and initiate session creation.
 
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Authentication & Domain Extensions' (Protocol in workflow.md)
 
