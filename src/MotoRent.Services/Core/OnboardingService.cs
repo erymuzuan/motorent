@@ -61,11 +61,12 @@ public class OnboardingService(
         var account = user.AccountCollection.FirstOrDefault(a => a.AccountNo == accountNo);
         if (account == null)
         {
-            user.AccountCollection.Add(new UserAccount
+            account = new UserAccount
             {
-                AccountNo = accountNo,
-                Roles = [UserAccount.ORG_ADMIN]
-            });
+                AccountNo = accountNo
+            };
+            account.Roles.Add(UserAccount.ORG_ADMIN);
+            user.AccountCollection.Add(account);
         }
 
         // Save Org and User in Core context
@@ -99,13 +100,18 @@ public class OnboardingService(
             // 5. Create Initial Vehicles
             foreach (var fleet in request.Fleet)
             {
+                if (!Enum.TryParse<VehicleType>(fleet.VehicleType, true, out var vehicleType))
+                {
+                    vehicleType = VehicleType.Motorbike;
+                }
+
                 for (int i = 0; i < fleet.Quantity; i++)
                 {
                     var vehicle = new Vehicle
                     {
                         HomeShopId = shop.ShopId,
                         CurrentShopId = shop.ShopId,
-                        VehicleType = fleet.VehicleType,
+                        VehicleType = vehicleType,
                         Brand = fleet.Brand ?? "",
                         Model = fleet.Model ?? "",
                         Status = "Available",

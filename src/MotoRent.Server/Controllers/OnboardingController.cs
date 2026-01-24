@@ -49,18 +49,20 @@ public class OnboardingController(
             this.Logger.LogInformation("Successfully onboarded new organization {AccountNo} ({ShopName})", 
                 org.AccountNo, request.ShopName);
             
-            return this.Ok(new { 
-                success = true, 
-                accountNo = org.AccountNo,
-                message = "Welcome to MotoRent! Your shop is being prepared."
+            return this.Ok(new OnboardingResponse
+            { 
+                Success = true, 
+                AccountNo = org.AccountNo,
+                Message = "Welcome to MotoRent! Your shop is being prepared."
             });
         }
         catch (Exception ex)
         {
             this.Logger.LogError(ex, "Failed to complete onboarding for {ShopName}", request.ShopName);
-            return this.StatusCode(500, new { 
-                success = false, 
-                error = "An internal error occurred during onboarding. Please contact support." 
+            return this.StatusCode(500, new OnboardingResponse
+            { 
+                Success = false, 
+                Error = "An internal error occurred during onboarding. Please contact support." 
             });
         }
     }

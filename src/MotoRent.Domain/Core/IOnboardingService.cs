@@ -34,6 +34,17 @@ public class OnboardingRequest
 }
 
 /// <summary>
+/// Data transfer object for onboarding response.
+/// </summary>
+public class OnboardingResponse
+{
+    public bool Success { get; set; }
+    public string AccountNo { get; set; } = "";
+    public string Message { get; set; } = "";
+    public string? Error { get; set; }
+}
+
+/// <summary>
 /// Service for handling the multi-step onboarding and initial setup of a new organization.
 /// </summary>
 public interface IOnboardingService
