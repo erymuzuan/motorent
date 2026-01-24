@@ -104,7 +104,7 @@
                 <div class="card">
                     <div class="card-header">
                         <div class="d-flex align-items-center">
-                            <span class="me-2" style="font-size: 1.5rem;">@GetCurrencyFlag(currency)</span>
+                            <img src="@GetFlagUrl(currency)" alt="@currency" width="32" height="24" class="me-2 rounded" style="object-fit: cover;" />
                             <div>
                                 <h3 class="card-title mb-0">@currency</h3>
                                 <span class="text-muted small">@GetCurrencyName(currency)</span>
@@ -388,18 +388,31 @@
         _ => currency
     };
 
-    private static string GetCurrencyFlag(string currency) => currency switch
+    private static string GetFlagUrl(string currency)
     {
-        "THB" => "\U0001F1F9\U0001F1ED",
-        "USD" => "\U0001F1FA\U0001F1F8",
-        "EUR" => "\U0001F1EA\U0001F1FA",
-        "GBP" => "\U0001F1EC\U0001F1E7",
-        "CNY" => "\U0001F1E8\U0001F1F3",
-        "JPY" => "\U0001F1EF\U0001F1F5",
-        "AUD" => "\U0001F1E6\U0001F1FA",
-        "RUB" => "\U0001F1F7\U0001F1FA",
-        _ => "\U0001F4B0"
-    };
+        var countryCode = currency switch
+        {
+            "THB" => "th",
+            "USD" => "us",
+            "EUR" => "eu",
+            "GBP" => "gb",
+            "CNY" => "cn",
+            "JPY" => "jp",
+            "AUD" => "au",
+            "RUB" => "ru",
+            "SGD" => "sg",
+            "MYR" => "my",
+            "KRW" => "kr",
+            "INR" => "in",
+            "HKD" => "hk",
+            "TWD" => "tw",
+            "NZD" => "nz",
+            "CAD" => "ca",
+            "CHF" => "ch",
+            _ => "xx"
+        };
+        return $"https://flagcdn.com/w40/{countryCode}.png";
+    }
 
     private static string GetProviderIcon(string provider) => provider switch
     {

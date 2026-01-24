@@ -5,7 +5,7 @@
 
 <div class="mr-closing-count-panel">
     @* Currency Sections *@
-    <div class="mr-count-sections">
+    <div class="mr-count-sections mr-count-grid">
         @foreach (var currency in m_visibleCurrencies)
         {
             var denominations = CurrencyDenominations.GetDenominations(currency);
@@ -44,7 +44,7 @@
                                    step="1"
                                    value="@count"
                                    disabled="@Disabled"
-                                   @oninput="@(() => OnCountChanged(currency, denomination, count))" />
+                                   @oninput="@(e => this.OnCountChanged(currency, denomination, e))" />
                             <button type="button" class="mr-denom-btn" @onclick="() => Increment(currency, denomination)" disabled="@Disabled">
                                 <i class="ti ti-plus"></i>
                             </button>
@@ -385,25 +385,26 @@
 
     private void Increment(string currency, decimal denomination)
     {
-        var breakdown = GetOrCreateBreakdown(currency);
+        var breakdown = this.GetOrCreateBreakdown(currency);
         breakdown[denomination] = breakdown.TryGetValue(denomination, out var count) ? count + 1 : 1;
-        NotifyChanged();
+        this.NotifyChanged();
     }
 
     private void Decrement(string currency, decimal denomination)
     {
-        var breakdown = GetOrCreateBreakdown(currency);
+        var breakdown = this.GetOrCreateBreakdown(currency);
         if (breakdown.TryGetValue(denomination, out var count) && count > 0)
         {
             breakdown[denomination] = count - 1;
-            NotifyChanged();
+            this.NotifyChanged();
         }
     }
 
-    private void OnCountChanged(string currency, decimal denomination, int count)
+    private void OnCountChanged(string currency, decimal denomination, ChangeEventArgs e)
     {
-        var breakdown = GetOrCreateBreakdown(currency);
-        if (count >= 0)
+        var breakdown = this.GetOrCreateBreakdown(currency);
+
+        if (int.TryParse(e.Value?.ToString(), out var count) && count >= 0)
         {
             breakdown[denomination] = count;
         }
@@ -411,16 +412,20 @@
         {
             breakdown[denomination] = 0;
         }
-        NotifyChanged();
+
+        this.NotifyChanged();
     }
 
     private void NotifyChanged()
     {
-        var breakdowns = BuildBreakdowns();
-        OnBreakdownsChanged.InvokeAsync(breakdowns);
+        var breakdowns = this.BuildBreakdowns();
+        this.OnBreakdownsChanged.InvokeAsync(breakdowns);
 
         // Schedule debounced auto-save
-        ScheduleAutoSave();
+        this.ScheduleAutoSave();
+
+        // Trigger UI update
+        this.StateHasChanged();
     }
 
     /// <summary>

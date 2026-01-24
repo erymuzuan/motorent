@@ -86,23 +86,23 @@
 </div>
 
 @code {
-    /// <summary>
-    /// The vehicle ID to record maintenance for.
-    /// </summary>
     [Parameter]
     public int VehicleId { get; set; }
 
-    /// <summary>
-    /// The vehicle name for display.
-    /// </summary>
     [Parameter]
     public string VehicleName { get; set; } = "";
 
-    /// <summary>
-    /// Current mileage of the vehicle.
-    /// </summary>
     [Parameter]
     public int CurrentMileage { get; set; }
+
+    [Parameter]
+    public VehicleType VehicleType { get; set; }
+
+    [Parameter]
+    public string? VehicleBrand { get; set; }
+
+    [Parameter]
+    public string? VehicleModel { get; set; }
 
     private List<ServiceType> m_serviceTypes = [];
     private bool m_loadingServiceTypes = true;
@@ -114,22 +114,26 @@
 
     protected override async Task OnInitializedAsync()
     {
-        m_serviceMileage = CurrentMileage;
-        FormValid = true;
-        await LoadServiceTypesAsync();
+        this.m_serviceMileage = this.CurrentMileage;
+        this.FormValid = true;
+        await this.LoadServiceTypesAsync();
     }
 
     private async Task LoadServiceTypesAsync()
     {
-        m_loadingServiceTypes = true;
+        this.m_loadingServiceTypes = true;
         try
         {
-            var result = await MaintenanceService.GetServiceTypesAsync(activeOnly: true);
-            m_serviceTypes = result.ItemCollection.ToList();
+            var result = await this.MaintenanceService.GetServiceTypesForVehicleAsync(
+                this.VehicleType,
+                this.VehicleBrand,
+                this.VehicleModel,
+                activeOnly: true);
+            this.m_serviceTypes = result.ItemCollection.ToList();
         }
         finally
         {
-            m_loadingServiceTypes = false;
+            this.m_loadingServiceTypes = false;
         }
     }
 

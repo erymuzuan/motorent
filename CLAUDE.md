@@ -113,23 +113,7 @@ CREATE TABLE [MotoRent].[Entity]
 | Renter | Tourist/customer information |
 | Vehicle | Inventory with status tracking |
 | Rental | Rental transactions |
-| Deposit | Cash/card deposits |
-| Insurance | Insurance packages |
-| Accessory | Helmets, phone holders, etc. |
-| Payment | Payment records |
-| DamageReport | Damage documentation |
-| Document | Passport/license OCR data |
-
-## Vehicle Status Values
-- `Available` - Ready for rental
-- `Rented` - Currently rented out
-- `Maintenance` - Under repair/service
-
-## Rental Status Values
-- `Reserved` - Booking confirmed
-- `Active` - Currently rented
-- `Completed` - Returned successfully
-- `Cancelled` - Booking cancelled
+// and others
 
 ## User Roles
 
@@ -152,18 +136,6 @@ CREATE TABLE [MotoRent].[Entity]
 - **RentalRoles**: OrgAdmin, ShopManager, Staff
 - **MaintenanceRoles**: OrgAdmin, ShopManager, Mechanic
 
-## Navigation Menu Visibility
-
-The NavMenu shows **tenant menus only** - SuperAdmin without impersonation sees no menus (uses dropdown to access `/super-admin/start-page`).
-
-| Menu | Visible To | Role Group |
-|------|------------|------------|
-| Dashboard | All tenant users | AllRoles |
-| Rentals | OrgAdmin, ShopManager, Staff | RentalRoles |
-| Finance | OrgAdmin, ShopManager | ManagementRoles |
-| Inventory | OrgAdmin, ShopManager, Mechanic | MaintenanceRoles |
-| Customers | OrgAdmin, ShopManager, Staff | RentalRoles |
-| Settings | OrgAdmin, ShopManager | ManagementRoles |
 
 ### SuperAdmin Access
 - **Not impersonating**: Access only `/super-admin/*` pages via user dropdown menu
@@ -194,64 +166,7 @@ The NavMenu shows **tenant menus only** - SuperAdmin without impersonation sees 
 - **AccountNo**: Unique tenant identifier stored in Organization
 - **IRequestContext**: Provides current tenant/user context from claims
 
-## Current Implementation Status
 
-### Core Infrastructure
-- [x] Solution structure
-- [x] Domain entities with JSON polymorphism
-- [x] Database schema (SQL scripts)
-- [x] Repository pattern
-- [x] Core multi-tenant module
-- [x] Google/Microsoft OAuth authentication
-- [x] Super admin impersonation
-
-### Shop Management
-- [x] Vehicle CRUD pages
-- [x] Insurance packages management
-- [x] Accessories management
-- [x] Daily rate configuration (embedded in entity dialogs)
-
-### Customer Management
-- [x] Renter management pages
-- [x] Document OCR (Gemini Flash API - DocumentOcrService.cs)
-- [x] Document verification UI
-
-### Rental Operations
-- [x] Rental check-in (5-step wizard)
-- [x] Rental check-out with damage assessment
-- [x] Active rentals dashboard
-
-### Finance
-- [x] Payment processing (Cash, Card, PromptPay, BankTransfer)
-- [x] Invoice generation
-- [x] Deposit tracking and refunds
-- [x] Daily/weekly/monthly reports
-- [x] Owner payments
-
-### Super Admin
-- [x] Organization management pages
-- [x] User management pages
-- [x] Registration invites
-- [x] System logs
-
-### Tourist Portal
-- [x] Landing page with tenant branding
-- [x] Browse available vehicles
-- [x] Online reservation wizard
-- [x] Rental history
-
-### PWA Features
-- [x] Service worker for offline support
-- [x] Install manifest with shortcuts
-- [x] Camera access for document capture
-- [ ] Push notifications (infrastructure ready)
-
-### Additional Features
-- [x] Accident/incident reporting
-- [x] Vehicle pool (cross-shop sharing)
-- [x] Service locations with drop-off fees
-- [x] Maintenance tracking
-- [x] Vehicle images gallery
 
 ## Skills Reference
 See `.claude/skills/` for detailed patterns:
@@ -269,3 +184,7 @@ Configure in env `MOTO_SqlConnectionString`
 
 ## GitHub Repository
 https://github.com/erymuzuan/motorent
+
+## Important rules
+**database-repository** skill MUST be observed in all data access patterns.
+**code-standard** skill MUST be observed when editing .cs and .razor.cs file

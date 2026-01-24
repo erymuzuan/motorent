@@ -13,7 +13,7 @@
 
 @* Stats Cards *@
 <div class="mr-summary-cards">
-    <div class="mr-stat-card mr-stat-card-primary">
+    <a href="/rentals" class="mr-stat-card mr-stat-card-primary">
         <div class="mr-stat-icon">
             <i class="ti ti-receipt"></i>
         </div>
@@ -22,9 +22,9 @@
             <div class="mr-stat-value">@m_activeRentals</div>
             <div class="mr-stat-description">@Localizer["CurrentlyRentedOut"]</div>
         </div>
-    </div>
+    </a>
 
-    <div class="mr-stat-card mr-stat-card-success">
+    <a href="/vehicles" class="mr-stat-card mr-stat-card-success">
         <div class="mr-stat-icon">
             <i class="ti ti-car"></i>
         </div>
@@ -33,9 +33,9 @@
             <div class="mr-stat-value">@m_availableVehicles</div>
             <div class="mr-stat-description">@Localizer["OutOfTotal", m_totalVehicles]</div>
         </div>
-    </div>
+    </a>
 
-    <div class="mr-stat-card mr-stat-card-warning">
+    <a href="/rentals?show=due-today" class="mr-stat-card mr-stat-card-warning">
         <div class="mr-stat-icon">
             <i class="ti ti-clock"></i>
         </div>
@@ -44,9 +44,9 @@
             <div class="mr-stat-value">@m_dueToday</div>
             <div class="mr-stat-description">@Localizer["ReturnsScheduled"]</div>
         </div>
-    </div>
+    </a>
 
-    <div class="mr-stat-card mr-stat-card-teal">
+    <a href="/payments" class="mr-stat-card mr-stat-card-teal">
         <div class="mr-stat-icon">
             <i class="ti ti-currency-baht"></i>
         </div>
@@ -55,89 +55,26 @@
             <div class="mr-stat-value">@m_todayRevenue.ToString("N0")</div>
             <div class="mr-stat-description">@Localizer["ThbCollectedToday"]</div>
         </div>
-    </div>
+    </a>
 </div>
 
-@* Recent Rentals & Quick Actions *@
-<div class="row row-deck row-cards">
-    <div class="col-lg-8">
+@* Dashboard Panels *@
+<div class="row g-3 mb-3">
+    <div class="col-lg-4 col-md-6">
         <ExpectedArrivalsWidget />
-
-        <div class="mt-3">
-            <MaintenanceAlertWidget />
-        </div>
-
-        <div class="mr-card mt-3">
-            <div class="mr-card-header">
-                <div class="mr-card-title">
-                    <i class="ti ti-receipt me-2"></i>@Localizer["RecentRentals"]
-                </div>
-                <a href="/rentals" class="btn btn-sm btn-outline-primary">
-                    @Localizer["ViewAll"] <i class="ti ti-arrow-right ms-1"></i>
-                </a>
-            </div>
-            <div class="mr-card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-vcenter card-table mb-0">
-                        <thead>
-                            <tr>
-                                <th>@Localizer["Renter"]</th>
-                                <th>@Localizer["Vehicle"]</th>
-                                <th>@Localizer["StartDate"]</th>
-                                <th class="text-center">@Localizer["Status"]</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @if (m_recentRentals.Count == 0)
-                            {
-                                <tr>
-                                    <td colspan="4" class="text-center text-secondary py-4">
-                                        <i class="ti ti-receipt-off fs-1 d-block mb-2 opacity-50"></i>
-                                        @Localizer["NoRecentRentals"]
-                                    </td>
-                                </tr>
-                            }
-                            else
-                            {
-                                @foreach (var rental in m_recentRentals)
-                                {
-                                    <tr>
-                                        <td>
-                                            <div class="d-flex align-items-center">
-                                                <span class="avatar avatar-sm bg-primary-lt me-2">
-                                                    <i class="ti ti-user"></i>
-                                                </span>
-                                                @rental.RenterName
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <span class="text-secondary">@rental.VehicleName</span>
-                                        </td>
-                                        <td>@rental.StartDate.ToString("dd MMM yyyy")</td>
-                                        <td class="text-center">
-                                            <span class="mr-badge @(rental.Status == "Active" ? "mr-badge-success" : "mr-badge-secondary")">
-                                                @Localizer[rental.Status]
-                                            </span>
-                                        </td>
-                                    </tr>
-                                }
-                            }
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
     </div>
-
+    <div class="col-lg-4 col-md-6">
+        <MaintenanceAlertWidget />
+    </div>
     <div class="col-lg-4">
-        <div class="mr-card">
+        <div class="mr-card h-100">
             <div class="mr-card-header">
                 <div class="mr-card-title">
                     <i class="ti ti-bolt me-2"></i>@Localizer["QuickActions"]
                 </div>
             </div>
             <div class="mr-card-body">
-                <div class="d-grid gap-3">
+                <div class="d-grid gap-2">
                     <a href="/rentals/checkin" class="mr-action-button mr-action-button-primary">
                         <div class="mr-action-icon">
                             <i class="ti ti-login"></i>
@@ -180,6 +117,68 @@
                     </a>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+@* Recent Rentals *@
+<div class="mr-card">
+    <div class="mr-card-header">
+        <div class="mr-card-title">
+            <i class="ti ti-receipt me-2"></i>@Localizer["RecentRentals"]
+        </div>
+        <a href="/rentals" class="mr-btn-card-action">
+            @Localizer["ViewAll"] <i class="ti ti-arrow-right"></i>
+        </a>
+    </div>
+    <div class="mr-card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-vcenter card-table mb-0">
+                <thead>
+                    <tr>
+                        <th>@Localizer["Renter"]</th>
+                        <th>@Localizer["Vehicle"]</th>
+                        <th>@Localizer["StartDate"]</th>
+                        <th class="text-center">@Localizer["Status"]</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (m_recentRentals.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="4" class="text-center text-secondary py-4">
+                                <i class="ti ti-receipt-off fs-1 d-block mb-2 opacity-50"></i>
+                                @Localizer["NoRecentRentals"]
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var rental in m_recentRentals)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <span class="avatar avatar-sm bg-primary-lt me-2">
+                                            <i class="ti ti-user"></i>
+                                        </span>
+                                        @rental.RenterName
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="text-secondary">@rental.VehicleName</span>
+                                </td>
+                                <td>@rental.StartDate.ToString("dd MMM yyyy")</td>
+                                <td class="text-center">
+                                    <span class="mr-badge @(rental.Status == "Active" ? "mr-badge-success" : "mr-badge-secondary")">
+                                        @Localizer[rental.Status]
+                                    </span>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
         </div>
     </div>
 </div>

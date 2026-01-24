@@ -11,13 +11,15 @@ public class BookingService
 {
     private readonly RentalDataContext m_context;
     private readonly VehicleService m_vehicleService;
+    private readonly AgentCommissionService m_agentCommissionService;
     private static readonly Random s_random = new();
     private const string c_bookingRefChars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // Avoiding confusing chars: 0,O,1,I
 
-    public BookingService(RentalDataContext context, VehicleService vehicleService)
+    public BookingService(RentalDataContext context, VehicleService vehicleService, AgentCommissionService agentCommissionService)
     {
         m_context = context;
         m_vehicleService = vehicleService;
+        m_agentCommissionService = agentCommissionService;
     }
 
     #region Core Methods
@@ -76,13 +78,37 @@ public class BookingService
         // Calculate totals
         RecalculateTotals(booking);
 
+        // Apply agent data if present
+        if (request.AgentId.HasValue)
+        {
+            booking.AgentId = request.AgentId;
+            booking.AgentCode = request.AgentCode;
+            booking.AgentName = request.AgentName;
+            booking.IsAgentBooking = true;
+            booking.AgentCommission = request.AgentCommission;
+            booking.AgentSurcharge = request.AgentSurcharge;
+            booking.SurchargeHidden = request.SurchargeHidden;
+            booking.AgentPaymentFlow = request.AgentPaymentFlow;
+            booking.BookingSource = "Agent";
+
+            // Calculate customer visible total and shop receivable
+            booking.CustomerVisibleTotal = request.SurchargeHidden
+                ? booking.TotalAmount + request.AgentSurcharge
+                : booking.TotalAmount;
+            booking.ShopReceivableAmount = booking.TotalAmount - request.AgentCommission;
+        }
+
         // Add creation history
+        var historyDescription = request.AgentId.HasValue
+            ? $"Booking created via Agent ({request.AgentName})"
+            : $"Booking created via {request.BookingSource}";
+
         booking.ChangeHistory.Add(new BookingChange
         {
             ChangedAt = DateTimeOffset.UtcNow,
             ChangedBy = username,
             ChangeType = BookingChangeType.Created,
-            Description = $"Booking created via {request.BookingSource}"
+            Description = historyDescription
         });
 
         using var session = m_context.OpenSession(username);
@@ -91,6 +117,21 @@ public class BookingService
 
         if (result.Success)
         {
+            // Create AgentCommission record if agent booking
+            if (request.AgentId.HasValue && booking.BookingId > 0)
+            {
+                await m_agentCommissionService.CreateCommissionAsync(
+                    request.AgentId.Value,
+                    booking.BookingId,
+                    booking.BookingRef,
+                    booking.CustomerName,
+                    booking.TotalAmount,
+                    request.AgentCommission,
+                    "FromBooking",
+                    request.AgentCommission,
+                    username);
+            }
+
             return CreateBookingResult.CreateSuccess(booking);
         }
 
@@ -1190,6 +1231,15 @@ public class CreateBookingRequest
     public decimal DropoffLocationFee { get; set; }
     public string BookingSource { get; set; } = "Staff";
     public List<BookingItemRequest> Items { get; set; } = [];
+
+    // Agent fields
+    public int? AgentId { get; set; }
+    public string? AgentCode { get; set; }
+    public string? AgentName { get; set; }
+    public decimal AgentCommission { get; set; }
+    public decimal AgentSurcharge { get; set; }
+    public bool SurchargeHidden { get; set; }
+    public string AgentPaymentFlow { get; set; } = PaymentFlow.CustomerPaysShop;
 }
 
 public class BookingItemRequest

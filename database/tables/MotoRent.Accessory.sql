@@ -8,6 +8,7 @@ CREATE TABLE [<schema>].[Accessory]
     [QuantityAvailable] AS CAST(JSON_VALUE([Json], '$.QuantityAvailable') AS INT),
     [DailyRate] AS CAST(JSON_VALUE([Json], '$.DailyRate') AS DECIMAL(10,2)),
     [IsActive] AS CAST(JSON_VALUE([Json], '$.IsActive') AS BIT),
+    [IsIncluded] AS CAST(JSON_VALUE([Json], '$.IsIncluded') AS BIT),
     -- JSON storage
     [Json] NVARCHAR(MAX) NOT NULL,
     -- Audit columns

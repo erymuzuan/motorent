@@ -36,6 +36,7 @@ namespace MotoRent.Domain.Entities;
 [JsonDerivedType(typeof(ServiceType), nameof(ServiceType))]
 [JsonDerivedType(typeof(MaintenanceSchedule), nameof(MaintenanceSchedule))]
 [JsonDerivedType(typeof(MaintenanceAlert), nameof(MaintenanceAlert))]
+[JsonDerivedType(typeof(MaintenanceRecord), nameof(MaintenanceRecord))]
 // Dynamic pricing entities
 [JsonDerivedType(typeof(PricingRule), nameof(PricingRule))]
 // Accident entities

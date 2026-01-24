@@ -107,7 +107,7 @@ public class DocumentTemplateService(RentalDataContext context, IBinaryStore bin
         
         if (shopId > 0) query = query.Where(t => t.ShopId == null || t.ShopId == 0 || t.ShopId == shopId);
 
-        var result = await this.Context.LoadAsync(query.OrderByDescending(t => t.CreatedTimestamp), page: 1, size: 1);
+        var result = await this.Context.LoadAsync(query.OrderByDescending(t => t.DocumentTemplateId), page: 1, size: 1);
         return result.ItemCollection.FirstOrDefault();
     }
 
@@ -124,9 +124,9 @@ public class DocumentTemplateService(RentalDataContext context, IBinaryStore bin
             query = query.Where(t => t.ShopId == null || t.ShopId == 0 || t.ShopId == shopId);
         }
 
-        query = query.OrderByDescending(t => t.IsDefault)
-            .ThenByDescending(t => t.ShopId > 0)
-            .ThenBy(t => t.Name);
+        query = query.OrderByDescending(t => t.IsDefault);
+            // .ThenByDescending(t => t.ShopId > 0)
+            // .ThenBy(t => t.Name);
 
         return await this.Context.LoadAsync(query, page, size, includeTotalRows: true);
     }
@@ -143,7 +143,7 @@ public class DocumentTemplateService(RentalDataContext context, IBinaryStore bin
             query = query.Where(t => t.Type == type.Value);
         }
 
-        query = query.OrderByDescending(t => t.CreatedTimestamp);
+        query = query.OrderByDescending(t => t.DocumentTemplateId);
 
         return await this.Context.LoadAsync(query, page, size, includeTotalRows: true);
     }

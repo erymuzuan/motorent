@@ -25,6 +25,39 @@ public class MaintenanceService(RentalDataContext context)
         return await this.Context.LoadAsync(query, page: 1, size: 100, includeTotalRows: false);
     }
 
+    public async Task<LoadOperation<ServiceType>> GetServiceTypesForVehicleAsync(
+        VehicleType vehicleType,
+        string? brand = null,
+        string? model = null,
+        bool activeOnly = true)
+    {
+        var query = this.Context.CreateQuery<ServiceType>();
+
+        if (activeOnly)
+            query = query.Where(st => st.IsActive);
+
+        query = query.OrderBy(st => st.SortOrder);
+
+        var result = await this.Context.LoadAsync(query, page: 1, size: 100, includeTotalRows: false);
+
+        var vehicleModel = !string.IsNullOrEmpty(brand) && !string.IsNullOrEmpty(model)
+            ? $"{brand} {model}"
+            : model ?? "";
+
+        var filtered = result.ItemCollection
+            .Where(st => st.ApplicableVehicleTypes.Count == 0 || st.ApplicableVehicleTypes.Contains(vehicleType))
+            .Where(st => st.ApplicableModels.Count == 0 ||
+                         st.ApplicableModels.Any(m => m.Equals(vehicleModel, StringComparison.OrdinalIgnoreCase) ||
+                                                      m.Equals(model, StringComparison.OrdinalIgnoreCase)))
+            .ToList();
+
+        return new LoadOperation<ServiceType>
+        {
+            ItemCollection = filtered,
+            TotalRows = filtered.Count
+        };
+    }
+
     public async Task<ServiceType?> GetServiceTypeByIdAsync(int serviceTypeId)
     {
         return await this.Context.LoadOneAsync<ServiceType>(st => st.ServiceTypeId == serviceTypeId);

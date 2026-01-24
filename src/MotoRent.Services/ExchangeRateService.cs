@@ -154,8 +154,9 @@ public partial class ExchangeRateService(
     /// </summary>
     /// <param name="currency">Source currency code</param>
     /// <param name="foreignAmount">Amount in foreign currency</param>
+    /// <param name="shopId">Optional shop ID for shop-specific rates (null = use org defaults)</param>
     /// <returns>Conversion result with THB amount and rate details, or null if no rate configured</returns>
-    public async Task<ExchangeConversionResult?> ConvertToThbAsync(string currency, decimal foreignAmount)
+    public async Task<ExchangeConversionResult?> ConvertToThbAsync(string currency, decimal foreignAmount, int? shopId = null)
     {
         // If already THB, return as-is
         if (currency == SupportedCurrencies.THB)
@@ -163,15 +164,19 @@ public partial class ExchangeRateService(
             return new ExchangeConversionResult(foreignAmount, 1.0m, "Base", null);
         }
 
-        // Get current rate for currency
-        var rate = await this.GetCurrentRateAsync(currency);
-        if (rate == null)
+        // Get all denomination rates for this currency (with shop fallback)
+        var rates = await this.GetEffectiveRatesForCurrencyAsync(currency, shopId);
+
+        if (rates.Count == 0)
             return null;
+
+        // Use the lowest buy rate (most conservative - protects business from overpaying)
+        var rate = rates.OrderBy(r => r.BuyRate).First();
 
         // Calculate THB amount
         var thbAmount = foreignAmount * rate.BuyRate;
 
-        return new ExchangeConversionResult(thbAmount, rate.BuyRate, rate.Source, rate.ExchangeRateId);
+        return new ExchangeConversionResult(thbAmount, rate.BuyRate, rate.ProviderCode, rate.DenominationRateId);
     }
 
     // API Integration

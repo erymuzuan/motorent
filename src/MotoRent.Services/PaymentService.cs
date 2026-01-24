@@ -23,7 +23,7 @@ public class PaymentService(RentalDataContext context)
     {
         // Get rental IDs for this shop first
         var rentalIds = await this.Context.GetDistinctAsync<Rental, int>(
-            r => r.ShopId == shopId,
+            r => r.RentedFromShopId == shopId,
             r => r.RentalId);
 
         // Build query with all filters applied at SQL level

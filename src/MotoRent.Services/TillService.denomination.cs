@@ -57,8 +57,8 @@ public partial class TillService
             }
             else
             {
-                // Convert foreign currency to THB
-                var conversion = await this.ExchangeRateService.ConvertToThbAsync(breakdown.Currency, breakdown.Total);
+                // Convert foreign currency to THB (with shop fallback to org defaults)
+                var conversion = await this.ExchangeRateService.ConvertToThbAsync(breakdown.Currency, breakdown.Total, session.ShopId);
                 if (conversion is not null)
                 {
                     totalInThb += conversion.ThbAmount;

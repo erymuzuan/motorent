@@ -108,10 +108,10 @@
                                 @* Mileage at Service *@
                                 <div class="col-md-4">
                                     <label class="mr-form-label">@Localizer["MileageAtService"]</label>
-                                    <div class="input-group">
+                                    <div class="mr-input-group">
                                         <input type="number" class="mr-form-control" @bind="m_record.ServiceMileage"
                                                min="0" placeholder="@((m_vehicle.Mileage ?? 0).ToString("N0"))" />
-                                        <span class="input-group-text">km</span>
+                                        <span class="mr-input-group-text">km</span>
                                     </div>
                                     <div class="mr-form-hint">
                                         @Localizer["CurrentMileage", (m_vehicle.Mileage ?? 0).ToString("N0")]
@@ -121,8 +121,8 @@
                                 @* Cost *@
                                 <div class="col-md-4">
                                     <label class="mr-form-label">@Localizer["Cost"]</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text">฿</span>
+                                    <div class="mr-input-group">
+                                        <span class="mr-input-group-text">฿</span>
                                         <input type="number" class="mr-form-control" @bind="m_record.Cost"
                                                step="0.01" min="0" placeholder="0.00" />
                                     </div>
@@ -362,11 +362,15 @@
                     ServiceMileage = m_vehicle.Mileage ?? 0
                 };
 
-                // Load service types
+                // Load service types filtered by vehicle type and model
                 m_loadingServiceTypes = true;
                 StateHasChanged();
 
-                var serviceTypesResult = await MaintenanceService.GetServiceTypesAsync(activeOnly: true);
+                var serviceTypesResult = await MaintenanceService.GetServiceTypesForVehicleAsync(
+                    m_vehicle.VehicleType,
+                    m_vehicle.Brand,
+                    m_vehicle.Model,
+                    activeOnly: true);
                 m_serviceTypes = serviceTypesResult.ItemCollection.ToList();
                 m_loadingServiceTypes = false;
             }

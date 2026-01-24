@@ -5,55 +5,86 @@
 @inject TillService TillService
 @inject ExchangeRateService ExchangeRateService
 
-<form id="closeSessionForm" @onsubmit="this.SaveAsync" @onsubmit:preventDefault>
-    <div class="modal-body" style="max-height: calc(100vh - 200px); overflow-y: auto;">
-        @if (!m_showSummary)
+<div class="mr-till-close-fullscreen">
+    @* Main Content Area *@
+    <div class="mr-till-main-area">
+        @* Header *@
+        <div class="mr-till-header">
+            <div class="mr-till-greeting">
+                <h2 class="mb-1">
+                    @this.GetTimeEmoji() @Localizer["CloseYourShift"]
+                </h2>
+                <p class="text-muted mb-0">@Localizer["CountCashAndCloseSession"]</p>
+            </div>
+            <div class="mr-session-info">
+                <span class="badge bg-primary-lt text-primary">
+                    <i class="ti ti-cash-register me-1"></i>
+                    @Localizer["Till"] #@this.Entity.TillSessionId
+                </span>
+                <span class="badge bg-azure-lt text-azure ms-2">
+                    <i class="ti ti-clock me-1"></i>
+                    @Localizer["Started"] @this.Entity.OpenedAt.ToLocalTime().ToString("HH:mm")
+                </span>
+            </div>
+        </div>
+
+        @if (!this.m_showSummary)
         {
             @* Step 1: Denomination Entry *@
-            @* Session Summary (compact) *@
-            <div class="card bg-muted-lt mb-3">
-                <div class="card-body py-2">
-                    <div class="row text-center small">
-                        <div class="col-4 border-end">
-                            <small class="text-secondary d-block">@Localizer["Opening"]</small>
-                            <span class="fw-semibold">@this.FormatCurrency(this.Entity.OpeningFloat)</span>
-                        </div>
-                        <div class="col-4 border-end">
-                            <small class="text-success d-block">@Localizer["CashIn"]</small>
-                            <span class="fw-semibold text-success">+@this.FormatCurrency(this.Entity.TotalCashIn)</span>
-                        </div>
-                        <div class="col-4">
-                            <small class="text-danger d-block">@Localizer["CashOut"]</small>
-                            <span class="fw-semibold text-danger">-@this.FormatCurrency(this.Entity.TotalCashOut + this.Entity.TotalDropped)</span>
-                        </div>
+
+            @* Session Summary Bar *@
+            <div class="mr-session-summary-bar mb-4">
+                <div class="mr-summary-item">
+                    <i class="ti ti-wallet text-muted"></i>
+                    <div class="mr-summary-content">
+                        <span class="mr-summary-label">@Localizer["Opening"]</span>
+                        <span class="mr-summary-value">@this.FormatCurrency(this.Entity.OpeningFloat)</span>
+                    </div>
+                </div>
+                <div class="mr-summary-item mr-summary-in">
+                    <i class="ti ti-trending-up text-success"></i>
+                    <div class="mr-summary-content">
+                        <span class="mr-summary-label">@Localizer["CashIn"]</span>
+                        <span class="mr-summary-value text-success">+@this.FormatCurrency(this.Entity.TotalCashIn)</span>
+                    </div>
+                </div>
+                <div class="mr-summary-item mr-summary-out">
+                    <i class="ti ti-trending-down text-danger"></i>
+                    <div class="mr-summary-content">
+                        <span class="mr-summary-label">@Localizer["CashOut"]</span>
+                        <span class="mr-summary-value text-danger">-@this.FormatCurrency(this.Entity.TotalCashOut + this.Entity.TotalDropped)</span>
                     </div>
                 </div>
             </div>
 
             @* Denomination Count Panel *@
             <ClosingCountPanel
-                TillSessionId="@Entity.TillSessionId"
-                ExpectedBalances="@GetExpectedBalances()"
-                OnBreakdownsChanged="@OnBreakdownsChanged"
-                Disabled="@Saving" />
+                TillSessionId="@this.Entity.TillSessionId"
+                ExpectedBalances="@this.GetExpectedBalances()"
+                OnBreakdownsChanged="@this.OnBreakdownsChanged"
+                Disabled="@this.Saving" />
 
             @* Closing Notes *@
-            <div class="mb-0 mt-3">
-                <label class="form-label">@Localizer["ClosingNotes"]</label>
+            <div class="mt-4">
+                <label class="form-label text-muted">
+                    <i class="ti ti-notes me-1"></i>
+                    @Localizer["ClosingNotesOptional"]
+                </label>
                 <textarea class="form-control" @bind="this.Notes" rows="2"
-                          placeholder="@Localizer["ClosingNotesPlaceholder"]"></textarea>
+                          placeholder="@Localizer["ClosingNotesPlaceholder"]" disabled="@this.Saving"></textarea>
             </div>
         }
         else
         {
             @* Step 2: Summary Review *@
-            <div class="card border-primary mb-3">
-                <div class="card-header bg-primary text-white">
-                    <i class="ti ti-list-check me-2"></i>
-                    @Localizer["ClosingSummary"]
-                </div>
-                <div class="card-body">
-                    <table class="table table-sm mb-0">
+            <div class="mr-review-section">
+                <h4 class="mb-3">
+                    <i class="ti ti-list-check text-primary me-2"></i>
+                    @Localizer["ReviewYourCount"]
+                </h4>
+
+                <div class="table-responsive">
+                    <table class="table table-vcenter">
                         <thead>
                             <tr>
                                 <th>@Localizer["Currency"]</th>
@@ -63,14 +94,15 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var breakdown in m_currencyBreakdowns)
+                            @foreach (var breakdown in this.m_currencyBreakdowns)
                             {
                                 var variance = breakdown.Variance ?? 0;
-                                var symbol = GetCurrencySymbol(breakdown.Currency);
                                 <tr>
-                                    <td>@breakdown.Currency</td>
-                                    <td class="text-end">@FormatCurrencyAmount(breakdown.ExpectedBalance ?? 0, breakdown.Currency)</td>
-                                    <td class="text-end">@FormatCurrencyAmount(breakdown.Total, breakdown.Currency)</td>
+                                    <td>
+                                        <span class="fw-medium">@breakdown.Currency</span>
+                                    </td>
+                                    <td class="text-end text-muted">@FormatCurrencyAmount(breakdown.ExpectedBalance ?? 0, breakdown.Currency)</td>
+                                    <td class="text-end fw-medium">@FormatCurrencyAmount(breakdown.Total, breakdown.Currency)</td>
                                     <td class="text-end @GetVarianceClass(variance)">
                                         <strong>@FormatVariance(variance, breakdown.Currency)</strong>
                                     </td>
@@ -79,79 +111,124 @@
                         </tbody>
                     </table>
                 </div>
-            </div>
 
-            @* Overall Variance in THB *@
-            <div class="alert @GetOverallVarianceAlertClass() mb-3">
-                <div class="d-flex justify-content-between align-items-center">
-                    <span>
-                        <i class="ti @GetOverallVarianceIcon() me-2"></i>
-                        @Localizer["OverallVarianceThb"]
-                    </span>
-                    <strong>@FormatVariance(GetOverallVarianceThb(), SupportedCurrencies.THB)</strong>
-                </div>
-            </div>
-
-            @* Variance Acknowledgment *@
-            @if (this.HasVariance)
-            {
-                <div class="mb-3">
-                    <label class="form-check">
-                        <input type="checkbox" class="form-check-input" @bind="this.AcknowledgeVariance" />
-                        <span class="form-check-label">
-                            @Localizer["AcknowledgeVariance"]
-                        </span>
-                    </label>
-                </div>
-            }
-
-            @* Show closing notes if entered *@
-            @if (!string.IsNullOrWhiteSpace(this.Notes))
-            {
-                <div class="card bg-muted-lt">
-                    <div class="card-body py-2">
-                        <small class="text-secondary d-block mb-1">@Localizer["ClosingNotes"]</small>
-                        <span>@this.Notes</span>
+                @* Variance Acknowledgment *@
+                @if (this.HasVariance)
+                {
+                    <div class="alert alert-warning mt-4">
+                        <label class="form-check mb-0">
+                            <input type="checkbox" class="form-check-input" @bind="this.AcknowledgeVariance" />
+                            <span class="form-check-label">
+                                <i class="ti ti-alert-triangle me-1"></i>
+                                @Localizer["AcknowledgeVariance"]
+                            </span>
+                        </label>
                     </div>
-                </div>
-            }
+                }
+
+                @* Show closing notes if entered *@
+                @if (!string.IsNullOrWhiteSpace(this.Notes))
+                {
+                    <div class="card bg-muted-lt mt-4">
+                        <div class="card-body py-2">
+                            <small class="text-secondary d-block mb-1">
+                                <i class="ti ti-notes me-1"></i>
+                                @Localizer["ClosingNotes"]
+                            </small>
+                            <span>@this.Notes</span>
+                        </div>
+                    </div>
+                }
+            </div>
         }
     </div>
-</form>
 
-<div class="modal-footer">
-    @if (!m_showSummary)
-    {
-        <button type="button" class="btn btn-ghost-warning me-auto" @onclick="ForceCloseAsync" disabled="@Saving">
-            <i class="ti ti-shield-lock me-1"></i>
-            @Localizer["ManagerForceClose"]
-        </button>
-        <button type="button" class="btn btn-ghost-secondary" @onclick="this.Cancel">
-            @Localizer["Cancel"]
-        </button>
-        <button type="button" class="btn btn-primary" @onclick="ReviewSummary" disabled="@(!CanReviewSummary)">
-            <i class="ti ti-list-check me-1"></i>
-            @Localizer["ReviewSummary"]
-        </button>
-    }
-    else
-    {
-        <button type="button" class="btn btn-ghost-secondary me-auto" @onclick="BackToCount">
-            <i class="ti ti-arrow-left me-1"></i>
-            @Localizer["BackToCount"]
-        </button>
-        <button type="button" class="btn btn-ghost-secondary" @onclick="this.Cancel">
-            @Localizer["Cancel"]
-        </button>
-        <button type="submit" form="closeSessionForm" class="btn btn-primary" disabled="@(!this.CanClose)">
-            @if (this.Saving)
+    @* Right Sidebar *@
+    <div class="mr-till-sidebar">
+        @* Total Card *@
+        <div class="mr-total-card">
+            <span class="mr-total-label">@Localizer["TotalCounted"]</span>
+            <div class="mr-total-amount">
+                <span class="mr-currency-symbol">฿</span>
+                <span class="mr-amount-value">@this.GetTotalCountedThb().ToString("N0")</span>
+            </div>
+        </div>
+
+        @* Comparison Card *@
+        <div class="mr-comparison-card mt-3">
+            <div class="mr-comparison-row">
+                <span class="text-muted">@Localizer["Expected"]</span>
+                <span class="fw-medium">฿@this.GetExpectedTotalThb().ToString("N0")</span>
+            </div>
+            <div class="mr-comparison-row mr-comparison-variance @this.GetOverallVarianceAlertClass()">
+                <span>
+                    <i class="ti @this.GetOverallVarianceIcon() me-1"></i>
+                    @Localizer["Variance"]
+                </span>
+                <span class="fw-bold">@this.FormatVarianceAmount(this.GetOverallVarianceThb())</span>
+            </div>
+        </div>
+
+        @* Per-Currency Summary *@
+        @if (this.m_currencyBreakdowns.Count > 1)
+        {
+            <div class="mr-currency-summary mt-3">
+                @foreach (var breakdown in this.m_currencyBreakdowns)
+                {
+                    var variance = breakdown.Variance ?? 0;
+                    var symbol = GetCurrencySymbol(breakdown.Currency);
+                    <div class="mr-currency-row @(variance != 0 ? GetVarianceClass(variance) : "")">
+                        <span class="mr-currency-name">@breakdown.Currency</span>
+                        <span class="mr-currency-amount">
+                            @symbol@breakdown.Total.ToString("N0")
+                            @if (variance != 0)
+                            {
+                                <small class="ms-1">(@(variance >= 0 ? "+" : "")@variance.ToString("N0"))</small>
+                            }
+                        </span>
+                    </div>
+                }
+            </div>
+        }
+
+        @* Action Buttons *@
+        <div class="mr-sidebar-actions">
+            @if (!this.m_showSummary)
             {
-                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                <button type="button" class="btn btn-primary btn-lg w-100 mb-2"
+                        @onclick="this.ReviewSummary"
+                        disabled="@(!this.CanReviewSummary)">
+                    <i class="ti ti-list-check me-2"></i>
+                    @Localizer["ReviewSummary"]
+                </button>
+                <button type="button" class="btn btn-ghost-secondary w-100 mb-2" @onclick="this.Cancel">
+                    @Localizer["Cancel"]
+                </button>
+                <button type="button" class="btn btn-ghost-warning w-100" @onclick="this.ForceCloseAsync" disabled="@this.Saving">
+                    <i class="ti ti-shield-lock me-1"></i>
+                    @Localizer["ManagerForceClose"]
+                </button>
             }
-            <i class="ti ti-logout me-1"></i>
-            @Localizer["CloseSession"]
-        </button>
-    }
+            else
+            {
+                <form id="closeSessionForm" @onsubmit="this.SaveAsync" @onsubmit:preventDefault>
+                    <button type="submit" class="btn btn-primary btn-lg w-100 mb-2"
+                            disabled="@(!this.CanClose)">
+                        @if (this.Saving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        }
+                        <i class="ti ti-logout me-2"></i>
+                        @Localizer["CloseSession"]
+                    </button>
+                </form>
+                <button type="button" class="btn btn-ghost-secondary w-100" @onclick="this.BackToCount">
+                    <i class="ti ti-arrow-left me-1"></i>
+                    @Localizer["BackToCount"]
+                </button>
+            }
+        </div>
+    </div>
 </div>
 
 @code {
@@ -164,13 +241,89 @@
     private Dictionary<string, decimal> m_exchangeRates = new();
 
     private bool HasEnteredAmount => this.ActualCash > 0 ||
-        m_currencyBreakdowns.Any(b => b.Currency == SupportedCurrencies.THB && b.Total > 0);
+        this.m_currencyBreakdowns.Any(b => b.Currency == SupportedCurrencies.THB && b.Total > 0);
 
-    private bool HasVariance => m_currencyBreakdowns.Any(b => b.Variance.HasValue && b.Variance.Value != 0);
+    private bool HasVariance => this.m_currencyBreakdowns.Any(b => b.Variance.HasValue && b.Variance.Value != 0);
 
     private bool CanReviewSummary => !this.Saving && this.HasEnteredAmount;
 
-    private bool CanClose => !this.Saving && m_showSummary && (!this.HasVariance || this.AcknowledgeVariance);
+    private bool CanClose => !this.Saving && this.m_showSummary && (!this.HasVariance || this.AcknowledgeVariance);
+
+    /// <summary>
+    /// Returns an emoji based on the current time of day.
+    /// </summary>
+    private string GetTimeEmoji()
+    {
+        var hour = DateTime.Now.Hour;
+        return hour switch
+        {
+            >= 5 and < 12 => "☀️",
+            >= 12 and < 17 => "🌤️",
+            >= 17 and < 21 => "🌅",
+            _ => "🌙"
+        };
+    }
+
+    /// <summary>
+    /// Gets the total counted amount converted to THB.
+    /// </summary>
+    private decimal GetTotalCountedThb()
+    {
+        decimal total = 0;
+        foreach (var breakdown in this.m_currencyBreakdowns)
+        {
+            if (breakdown.Currency == SupportedCurrencies.THB)
+            {
+                total += breakdown.Total;
+            }
+            else if (this.m_exchangeRates.TryGetValue(breakdown.Currency, out var rate) && rate > 0)
+            {
+                total += breakdown.Total * rate;
+            }
+            else
+            {
+                total += breakdown.Total;
+            }
+        }
+        return total;
+    }
+
+    /// <summary>
+    /// Gets the expected total converted to THB.
+    /// </summary>
+    private decimal GetExpectedTotalThb()
+    {
+        decimal total = 0;
+        foreach (var breakdown in this.m_currencyBreakdowns)
+        {
+            var expected = breakdown.ExpectedBalance ?? 0;
+            if (breakdown.Currency == SupportedCurrencies.THB)
+            {
+                total += expected;
+            }
+            else if (this.m_exchangeRates.TryGetValue(breakdown.Currency, out var rate) && rate > 0)
+            {
+                total += expected * rate;
+            }
+            else
+            {
+                total += expected;
+            }
+        }
+        return total;
+    }
+
+    /// <summary>
+    /// Formats variance amount with +/- prefix.
+    /// </summary>
+    private string FormatVarianceAmount(decimal variance)
+    {
+        if (variance >= 0)
+        {
+            return $"+฿{variance:N0}";
+        }
+        return $"-฿{Math.Abs(variance):N0}";
+    }
 
     protected override async Task OnParametersSetAsync()
     {
