@@ -53,10 +53,20 @@
                         </div>
 
                         <div>
-                            <label class="form-label">Account No (Schema)</label>
-                            <input type="text" class="form-control bg-light" @bind="m_accountNo"
-                                   placeholder="Auto-generated" readonly />
-                            <small class="form-hint">Unique identifier for database schema</small>
+                            <label class="form-label required">Account No (Schema)</label>
+                            <input type="text" class="form-control @(m_accountNoError != null ? "is-invalid" : "")"
+                                   @bind="m_accountNo" @bind:event="oninput"
+                                   @onblur="ValidateAccountNo"
+                                   pattern="[A-Za-z0-9]+" required
+                                   placeholder="e.g., PhuketMotors" />
+                            @if (m_accountNoError != null)
+                            {
+                                <div class="invalid-feedback">@m_accountNoError</div>
+                            }
+                            else
+                            {
+                                <small class="form-hint">English letters and numbers only, no spaces or special characters</small>
+                            }
                         </div>
                     </div>
                 </div>
@@ -86,8 +96,47 @@
                             </select>
                         </div>
                         <div>
-                            <label class="form-label">Timezone (UTC offset)</label>
-                            <input type="number" class="form-control" @bind="m_timezone" min="-12" max="14" />
+                            <label class="form-label">Timezone</label>
+                            <select class="form-select" @bind="m_timezone">
+                                <option value="-12">(GMT -12:00) International Date Line West</option>
+                                <option value="-11">(GMT -11:00) Midway Island, Samoa</option>
+                                <option value="-10">(GMT -10:00) Hawaii</option>
+                                <option value="-9">(GMT -9:00) Alaska</option>
+                                <option value="-8">(GMT -8:00) Pacific Time (US & Canada)</option>
+                                <option value="-7">(GMT -7:00) Mountain Time (US & Canada)</option>
+                                <option value="-6">(GMT -6:00) Central Time (US & Canada), Mexico City</option>
+                                <option value="-5">(GMT -5:00) Eastern Time (US & Canada), Bogota</option>
+                                <option value="-4">(GMT -4:00) Atlantic Time (Canada), Caracas</option>
+                                <option value="-3.5">(GMT -3:30) Newfoundland</option>
+                                <option value="-3">(GMT -3:00) Brasilia, Buenos Aires</option>
+                                <option value="-2">(GMT -2:00) Mid-Atlantic</option>
+                                <option value="-1">(GMT -1:00) Azores, Cape Verde Islands</option>
+                                <option value="0">(GMT) Western Europe Time, London, Lisbon, Casablanca</option>
+                                <option value="1">(GMT +1:00) Brussels, Copenhagen, Madrid, Paris</option>
+                                <option value="2">(GMT +2:00) Kaliningrad, South Africa</option>
+                                <option value="3">(GMT +3:00) Baghdad, Riyadh, Moscow, St. Petersburg</option>
+                                <option value="3.5">(GMT +3:30) Tehran</option>
+                                <option value="4">(GMT +4:00) Abu Dhabi, Muscat, Baku, Tbilisi</option>
+                                <option value="4.5">(GMT +4:30) Kabul</option>
+                                <option value="5">(GMT +5:00) Ekaterinburg, Islamabad, Karachi, Tashkent</option>
+                                <option value="5.5">(GMT +5:30) Bombay, Calcutta, Madras, New Delhi</option>
+                                <option value="5.75">(GMT +5:45) Kathmandu, Pokhara</option>
+                                <option value="6">(GMT +6:00) Almaty, Dhaka, Colombo</option>
+                                <option value="6.5">(GMT +6:30) Yangon, Mandalay</option>
+                                <option value="7">(GMT +7:00) Bangkok, Hanoi, Jakarta</option>
+                                <option value="8">(GMT +8:00) Kuala Lumpur, Perth, Singapore, Hong Kong</option>
+                                <option value="8.75">(GMT +8:45) Eucla</option>
+                                <option value="9">(GMT +9:00) Tokyo, Seoul, Osaka, Sapporo, Yakutsk</option>
+                                <option value="9.5">(GMT +9:30) Adelaide, Darwin</option>
+                                <option value="10">(GMT +10:00) Eastern Australia, Guam, Vladivostok</option>
+                                <option value="10.5">(GMT +10:30) Lord Howe Island</option>
+                                <option value="11">(GMT +11:00) Magadan, Solomon Islands, New Caledonia</option>
+                                <option value="11.5">(GMT +11:30) Norfolk Island</option>
+                                <option value="12">(GMT +12:00) Auckland, Wellington, Fiji, Kamchatka</option>
+                                <option value="12.75">(GMT +12:45) Chatham Islands</option>
+                                <option value="13">(GMT +13:00) Apia, Nukualofa</option>
+                                <option value="14">(GMT +14:00) Line Islands, Tokelau</option>
+                            </select>
                         </div>
                     </div>
                 </div>
@@ -244,6 +293,7 @@
         Address = new Address { Country = "Thailand" }
     };
     private string m_accountNo = "";
+    private string? m_accountNoError;
     private double m_timezone = 7;
     private bool m_isCreating;
     private string m_progressMessage = "";
@@ -253,12 +303,42 @@
     private string m_adminEmail = "";
     private string m_adminProvider = User.GOOGLE;
 
+    // Regex for valid AccountNo: English letters and numbers only
+    private static readonly System.Text.RegularExpressions.Regex s_accountNoRegex =
+        new(@"^[A-Za-z0-9]+$", System.Text.RegularExpressions.RegexOptions.Compiled);
+
     private async Task GenerateAccountNo()
     {
         if (!string.IsNullOrWhiteSpace(this.m_organization.Name))
         {
-            this.m_accountNo = await this.SubscriptionService.CreateAccountNoAsync(this.m_organization.Name);
+            var generated = await this.SubscriptionService.CreateAccountNoAsync(this.m_organization.Name);
+            // Sanitize: keep only English letters and numbers
+            this.m_accountNo = System.Text.RegularExpressions.Regex.Replace(generated, @"[^A-Za-z0-9]", "");
+            this.ValidateAccountNo();
         }
+    }
+
+    private void ValidateAccountNo()
+    {
+        if (string.IsNullOrWhiteSpace(this.m_accountNo))
+        {
+            this.m_accountNoError = "Account No is required";
+            return;
+        }
+
+        if (this.m_accountNo.Contains(' '))
+        {
+            this.m_accountNoError = "Spaces are not allowed";
+            return;
+        }
+
+        if (!s_accountNoRegex.IsMatch(this.m_accountNo))
+        {
+            this.m_accountNoError = "Only English letters (A-Z, a-z) and numbers (0-9) are allowed";
+            return;
+        }
+
+        this.m_accountNoError = null;
     }
 
     private void CopyAdminToContact()
@@ -289,17 +369,19 @@
             return;
         }
 
+        // Validate AccountNo
+        this.ValidateAccountNo();
+        if (this.m_accountNoError != null)
+        {
+            this.ShowError(this.m_accountNoError);
+            return;
+        }
+
         this.m_isCreating = true;
         this.m_progressMessage = "Initializing...";
 
         try
         {
-            // Generate AccountNo if not already generated
-            if (string.IsNullOrWhiteSpace(this.m_accountNo))
-            {
-                this.m_accountNo = await this.SubscriptionService.CreateAccountNoAsync(
-                    this.m_organization.Name.Replace(" ", ""));
-            }
 
             // Check if AccountNo is available
             if (!await this.SubscriptionService.IsAccountNoAvailableAsync(this.m_accountNo))
