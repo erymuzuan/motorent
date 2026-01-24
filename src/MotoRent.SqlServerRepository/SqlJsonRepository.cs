@@ -64,10 +64,7 @@ public class SqlJsonRepository<T>(
 public async Task<LoadOperation<T>> LoadAsync(IQueryable<T> query, int page = 1, int size = 40, bool includeTotalRows = false)
     {
         var schema = this.GetSchema();
-        var queryString = query.ToString();
-        Console.WriteLine($"⨸ {typeof(T).Name} query.ToString(): {queryString}");
         var sql = this.GenerateSqlWithComputedColumns(query);
-        Console.WriteLine($"⨸ {typeof(T).Name} GeneratedSQL: {sql}");
         var pagedSql = string.Empty;
 
         var pr = await Policy.Handle<SqlException>(HasNetworkError)
@@ -92,15 +89,13 @@ public async Task<LoadOperation<T>> LoadAsync(IQueryable<T> query, int page = 1,
                     var orderByIndex = countSql.IndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase);
                     if (orderByIndex >= 0)
                         countSql = countSql.Substring(0, orderByIndex).TrimEnd();
-                    Console.WriteLine($"⨸ {typeof(T).Name} CountSQL: {countSql}");
                     await using var countCmd = new SqlCommand(countSql, conn);
                     result.TotalRows = (int)(await countCmd.ExecuteScalarAsync() ?? 0);
-                    Console.WriteLine($"⨸ {typeof(T).Name} TotalRows: {result.TotalRows}");
                 }
 
 // Apply paging
                 pagedSql = this.ApplyPagingWithComputedColumns(sql, page, size);
-                Console.WriteLine($"⨸ {typeof(T).Name} PagedSQL: {pagedSql}");
+               // Console.WriteLine($"⨸ {typeof(T).Name} PagedSQL: {pagedSql}");
 
                 await using var cmd = new SqlCommand(pagedSql, conn);
                 await using var reader = await cmd.ExecuteReaderAsync();
