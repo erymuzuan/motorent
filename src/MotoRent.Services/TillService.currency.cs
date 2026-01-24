@@ -49,8 +49,8 @@ public partial class TillService
         if (session.Status != TillSessionStatus.Open)
             return SubmitOperation.CreateFailure("Session is not open");
 
-        // Convert to THB using current exchange rate
-        var conversion = await this.ExchangeRateService.ConvertToThbAsync(currency, foreignAmount);
+        // Convert to THB using current exchange rate (with shop fallback to org defaults)
+        var conversion = await this.ExchangeRateService.ConvertToThbAsync(currency, foreignAmount, session.ShopId);
         if (conversion is null)
             return SubmitOperation.CreateFailure($"No exchange rate configured for {currency}");
 
@@ -147,7 +147,7 @@ public partial class TillService
             }
             else
             {
-                var conversion = await this.ExchangeRateService.ConvertToThbAsync(drop.Currency, drop.Amount);
+                var conversion = await this.ExchangeRateService.ConvertToThbAsync(drop.Currency, drop.Amount, session.ShopId);
                 if (conversion is null)
                     return SubmitOperation.CreateFailure($"No exchange rate configured for {drop.Currency}");
 
