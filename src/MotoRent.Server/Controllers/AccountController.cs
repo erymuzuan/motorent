@@ -20,11 +20,13 @@ namespace MotoRent.Server.Controllers;
 [Authorize]
 public class AccountController(
     IDirectoryService directoryService,
+    IAuthenticationService authenticationService,
     IRequestContext requestContext,
     CoreDataContext coreDataContext,
     RentalDataContext rentalDataContext) : Controller
 {
     private IDirectoryService DirectoryService { get; } = directoryService;
+    private IAuthenticationService AuthenticationService { get; } = authenticationService;
     private IRequestContext RequestContext { get; } = requestContext;
     private CoreDataContext CoreDataContext { get; } = coreDataContext;
     private RentalDataContext RentalDataContext { get; } = rentalDataContext;
@@ -149,37 +151,46 @@ public class AccountController(
             return this.RedirectToAction(nameof(this.Login));
         }
 
-        // Primary lookup: by username
-        user = await this.DirectoryService.GetUserAsync(userName);
-
-        // Fallback: by NameIdentifier (for existing LINE users with line_ prefix)
-        if (user == null && !string.IsNullOrWhiteSpace(userName))
+        // Use AuthenticationService to handle provider-specific logic and linking
+        CoreUser? user = null;
+        if (provider == CoreUser.GOOGLE && !string.IsNullOrWhiteSpace(nameIdentifier) && !string.IsNullOrWhiteSpace(email))
         {
-            user = await this.DirectoryService.GetUserByProviderIdAsync(provider, userName);
+            user = await this.AuthenticationService.AuthenticateGoogleAsync(nameIdentifier, email, displayName ?? userName);
+        }
+        else if (provider == CoreUser.LINE && !string.IsNullOrWhiteSpace(nameIdentifier))
+        {
+            user = await this.AuthenticationService.AuthenticateLineAsync(nameIdentifier, displayName);
+        }
+        else
+        {
+            // Fallback to legacy lookup for other providers (Microsoft) or incomplete data
+            user = await this.DirectoryService.GetUserAsync(userName);
         }
 
-        // User must be pre-registered, EXCEPT SuperAdmins (identified by env var only)
+        // User not found in system - check if they are SuperAdmin or need to sign up
         if (user == null)
         {
             // Check if this user is a configured SuperAdmin
             if (MotoConfig.SuperAdmins.Contains(userName, StringComparer.OrdinalIgnoreCase))
             {
-                // SuperAdmin can self-register (they exist only in env var, not database)
+                // SuperAdmin can self-register
                 user = new CoreUser
                 {
                     UserName = userName,
                     Email = email ?? "",
                     FullName = displayName ?? userName,
                     CredentialProvider = provider,
-                    NameIdentifier = nameIdentifier
+                    NameIdentifier = nameIdentifier,
+                    GoogleId = provider == CoreUser.GOOGLE ? nameIdentifier : null,
+                    LineId = provider == CoreUser.LINE ? nameIdentifier : null
                 };
                 await this.DirectoryService.SaveUserProfileAsync(user);
             }
             else
             {
-                // Not a SuperAdmin and not pre-registered - redirect to not-registered page
-                await this.HttpContext.SignOutAsync("ExternalAuth");
-                return this.RedirectToAction(nameof(this.NotRegistered));
+                // New SaaS User - Redirect to Onboarding Wizard
+                // We keep them authenticated with ExternalAuth so the onboarding page can read their claims (email, name, provider id)
+                return this.LocalRedirect($"/onboarding/start?provider={provider}&id={nameIdentifier}&email={WebUtility.UrlEncode(email)}&name={WebUtility.UrlEncode(displayName)}");
             }
         }
         else
