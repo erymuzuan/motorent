@@ -18,6 +18,29 @@
                           placeholder="@base.Localizer["DescriptionPlaceholder"]"></textarea>
             </div>
 
+            <div class="col-12">
+                <label class="form-label">@base.Localizer["ApplicableVehicleTypes"]</label>
+                <div class="d-flex flex-wrap gap-3">
+                    @foreach (var vt in Enum.GetValues<VehicleType>())
+                    {
+                        <label class="form-check form-check-inline m-0">
+                            <input type="checkbox" class="form-check-input"
+                                   checked="@base.Entity.ApplicableVehicleTypes.Contains(vt)"
+                                   @onchange="@(e => this.ToggleVehicleType(vt, (bool)e.Value!))" />
+                            <span class="form-check-label">@base.Localizer[vt.ToString()]</span>
+                        </label>
+                    }
+                </div>
+                <small class="form-hint">@base.Localizer["ApplicableVehicleTypesHint"]</small>
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">@base.Localizer["ApplicableModels"]</label>
+                <input type="text" class="form-control" @bind="this.m_modelsText"
+                       placeholder="@base.Localizer["ApplicableModelsPlaceholder"]" />
+                <small class="form-hint">@base.Localizer["ApplicableModelsHint"]</small>
+            </div>
+
             <div class="col-md-6">
                 <label class="form-label required">@base.Localizer["DaysInterval"]</label>
                 <div class="input-group">
@@ -67,9 +90,25 @@
 </div>
 
 @code {
+    private string m_modelsText = "";
+
     protected override void OnInitialized()
     {
         base.FormValid = true;
+    }
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        this.m_modelsText = string.Join(", ", base.Entity.ApplicableModels);
+    }
+
+    private void ToggleVehicleType(VehicleType vt, bool isChecked)
+    {
+        if (isChecked && !base.Entity.ApplicableVehicleTypes.Contains(vt))
+            base.Entity.ApplicableVehicleTypes.Add(vt);
+        else if (!isChecked)
+            base.Entity.ApplicableVehicleTypes.Remove(vt);
     }
 
     private async Task SaveAsync()
@@ -78,6 +117,10 @@
 
         try
         {
+            base.Entity.ApplicableModels = this.m_modelsText
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .ToList();
+
             var result = base.IsNew
                 ? await this.MaintenanceService.CreateServiceTypeAsync(base.Entity, base.UserName)
                 : await this.MaintenanceService.UpdateServiceTypeAsync(base.Entity, base.UserName);

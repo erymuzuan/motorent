@@ -362,11 +362,15 @@
                     ServiceMileage = m_vehicle.Mileage ?? 0
                 };
 
-                // Load service types
+                // Load service types filtered by vehicle type and model
                 m_loadingServiceTypes = true;
                 StateHasChanged();
 
-                var serviceTypesResult = await MaintenanceService.GetServiceTypesAsync(activeOnly: true);
+                var serviceTypesResult = await MaintenanceService.GetServiceTypesForVehicleAsync(
+                    m_vehicle.VehicleType,
+                    m_vehicle.Brand,
+                    m_vehicle.Model,
+                    activeOnly: true);
                 m_serviceTypes = serviceTypesResult.ItemCollection.ToList();
                 m_loadingServiceTypes = false;
             }
