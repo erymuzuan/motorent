@@ -3,51 +3,51 @@
 @inherits MotoRent.Client.Controls.LocalizedDialogBase<ServiceType, ServiceTypeDialog>
 @inject MaintenanceService MaintenanceService
 
-<form id="@this.FormId" @onsubmit="this.SaveAsync" @onsubmit:preventDefault>
+<form id="@base.FormId" @onsubmit="this.SaveAsync" @onsubmit:preventDefault>
     <div class="modal-body">
         <div class="row g-3">
             <div class="col-12">
-                <label class="form-label required">@this.Localizer["ServiceName"]</label>
-                <input type="text" class="form-control" @bind="this.Entity.Name" required
-                       placeholder="@this.Localizer["ServiceNamePlaceholder"]" />
+                <label class="form-label required">@base.Localizer["ServiceName"]</label>
+                <input type="text" class="form-control" @bind="base.Entity.Name" required
+                       placeholder="@base.Localizer["ServiceNamePlaceholder"]" />
             </div>
 
             <div class="col-12">
-                <label class="form-label">@this.Localizer["Description"]</label>
-                <textarea class="form-control" @bind="this.Entity.Description" rows="2"
-                          placeholder="@this.Localizer["DescriptionPlaceholder"]"></textarea>
+                <label class="form-label">@base.Localizer["Description"]</label>
+                <textarea class="form-control" @bind="base.Entity.Description" rows="2"
+                          placeholder="@base.Localizer["DescriptionPlaceholder"]"></textarea>
             </div>
 
             <div class="col-md-6">
-                <label class="form-label required">@this.Localizer["DaysInterval"]</label>
+                <label class="form-label required">@base.Localizer["DaysInterval"]</label>
                 <div class="input-group">
-                    <input type="number" class="form-control" @bind="this.Entity.DaysInterval" required
+                    <input type="number" class="form-control" @bind="base.Entity.DaysInterval" required
                            min="1" max="365" />
-                    <span class="input-group-text">@this.Localizer["DaysSuffix"]</span>
+                    <span class="input-group-text">@base.Localizer["DaysSuffix"]</span>
                 </div>
-                <small class="form-hint">@this.Localizer["DaysIntervalHint"]</small>
+                <small class="form-hint">@base.Localizer["DaysIntervalHint"]</small>
             </div>
 
             <div class="col-md-6">
-                <label class="form-label required">@this.Localizer["MileageInterval"]</label>
+                <label class="form-label required">@base.Localizer["MileageInterval"]</label>
                 <div class="input-group">
-                    <input type="number" class="form-control" @bind="this.Entity.KmInterval" required
+                    <input type="number" class="form-control" @bind="base.Entity.KmInterval" required
                            min="100" max="50000" step="100" />
-                    <span class="input-group-text">@this.Localizer["KmSuffix"]</span>
+                    <span class="input-group-text">@base.Localizer["KmSuffix"]</span>
                 </div>
-                <small class="form-hint">@this.Localizer["MileageIntervalHint"]</small>
+                <small class="form-hint">@base.Localizer["MileageIntervalHint"]</small>
             </div>
 
             <div class="col-md-6">
-                <label class="form-label">@this.Localizer["SortOrder"]</label>
-                <input type="number" class="form-control" @bind="this.Entity.SortOrder" min="1" />
+                <label class="form-label">@base.Localizer["SortOrder"]</label>
+                <input type="number" class="form-control" @bind="base.Entity.SortOrder" min="1" />
             </div>
 
             <div class="col-md-6">
                 <label class="form-label d-block">&nbsp;</label>
                 <label class="form-check">
-                    <input type="checkbox" class="form-check-input" @bind="this.Entity.IsActive" />
-                    <span class="form-check-label">@this.Localizer["IsActive"]</span>
+                    <input type="checkbox" class="form-check-input" @bind="base.Entity.IsActive" />
+                    <span class="form-check-label">@base.Localizer["IsActive"]</span>
                 </label>
             </div>
         </div>
@@ -55,49 +55,49 @@
 </form>
 
 <div class="modal-footer">
-    <button type="button" class="btn btn-ghost-secondary" @onclick="this.Cancel">@this.CommonLocalizer["Cancel"]</button>
-    <button type="submit" form="@this.FormId" class="btn btn-primary" disabled="@this.Saving">
-        @if (this.Saving)
+    <button type="button" class="btn btn-ghost-secondary" @onclick="base.Cancel">@base.CommonLocalizer["Cancel"]</button>
+    <button type="submit" form="@base.FormId" class="btn btn-primary" disabled="@base.Saving">
+        @if (base.Saving)
         {
             <span class="spinner-border spinner-border-sm me-2" role="status"></span>
         }
         <i class="ti ti-device-floppy me-1"></i>
-        @this.SaveButtonText
+        @base.SaveButtonText
     </button>
 </div>
 
 @code {
     protected override void OnInitialized()
     {
-        this.FormValid = true;
+        base.FormValid = true;
     }
 
     private async Task SaveAsync()
     {
-        this.Saving = true;
+        base.Saving = true;
 
         try
         {
-            var result = this.IsNew
-                ? await this.MaintenanceService.CreateServiceTypeAsync(this.Entity, this.UserName)
-                : await this.MaintenanceService.UpdateServiceTypeAsync(this.Entity, this.UserName);
+            var result = base.IsNew
+                ? await this.MaintenanceService.CreateServiceTypeAsync(base.Entity, base.UserName)
+                : await this.MaintenanceService.UpdateServiceTypeAsync(base.Entity, base.UserName);
 
             if (result.Success)
             {
-                this.Close();
+                base.Close();
             }
             else
             {
-                this.ShowError(this.Localizer["SaveFailed", result.Message ?? ""]);
+                base.ShowError(base.Localizer["SaveFailed", result.Message ?? ""]);
             }
         }
         catch (Exception ex)
         {
-            this.ShowError(this.Localizer["SaveError", ex.Message]);
+            base.ShowError(base.Localizer["SaveError", ex.Message]);
         }
         finally
         {
-            this.Saving = false;
+            base.Saving = false;
         }
     }
 }

@@ -3,20 +3,20 @@
 @inject MaintenanceService MaintenanceService
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "RequireTenantManager")]
 
-<MotoRentPageTitle>@this.Localizer["PageTitle"]</MotoRentPageTitle>
+<MotoRentPageTitle>@base.Localizer["PageTitle"]</MotoRentPageTitle>
 
-<TablerHeader Title="@this.Localizer["Header"]" PreTitle="@this.Localizer["PreTitle"]">
+<TablerHeader Title="@base.Localizer["Header"]" PreTitle="@base.Localizer["PreTitle"]">
     <div class="btn-list">
         @if (this.m_serviceTypes.Count == 0 && !this.m_loading)
         {
             <button type="button" class="btn btn-outline-success" @onclick="this.CreateDefaultTypesAsync">
                 <i class="ti ti-wand me-1"></i>
-                @this.Localizer["CreateDefaults"]
+                @base.Localizer["CreateDefaults"]
             </button>
         }
         <button type="button" class="btn btn-primary" @onclick="this.OpenAddDialogAsync">
             <i class="ti ti-plus me-1"></i>
-            @this.Localizer["AddServiceType"]
+            @base.Localizer["AddServiceType"]
         </button>
     </div>
 </TablerHeader>
@@ -27,13 +27,13 @@
         <div class="card">
             <div class="card-body text-center py-5">
                 <i class="ti ti-tool mb-3" style="font-size: 3rem; color: var(--tblr-secondary);"></i>
-                <h3>@this.Localizer["NoServiceTypesDefined"]</h3>
+                <h3>@base.Localizer["NoServiceTypesDefined"]</h3>
                 <p class="text-secondary">
-                    @this.Localizer["NoServiceTypesDescription"]
+                    @base.Localizer["NoServiceTypesDescription"]
                 </p>
                 <button type="button" class="btn btn-success" @onclick="this.CreateDefaultTypesAsync">
                     <i class="ti ti-wand me-1"></i>
-                    @this.Localizer["CreateDefaultTypes"]
+                    @base.Localizer["CreateDefaultTypes"]
                 </button>
             </div>
         </div>
@@ -45,12 +45,12 @@
                 <table class="table table-vcenter card-table">
                     <thead>
                         <tr>
-                            <th>@this.Localizer["Name"]</th>
-                            <th>@this.Localizer["Description"]</th>
-                            <th class="text-center">@this.Localizer["Days"]</th>
-                            <th class="text-center">@this.Localizer["Kilometers"]</th>
-                            <th class="text-center">@this.Localizer["Status"]</th>
-                            <th class="w-1">@this.CommonLocalizer["Actions"]</th>
+                            <th>@base.Localizer["Name"]</th>
+                            <th>@base.Localizer["Description"]</th>
+                            <th class="text-center">@base.Localizer["Days"]</th>
+                            <th class="text-center">@base.Localizer["Kilometers"]</th>
+                            <th class="text-center">@base.Localizer["Status"]</th>
+                            <th class="w-1">@base.CommonLocalizer["Actions"]</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -59,24 +59,24 @@
                             <tr class="@(st.IsActive ? "" : "text-secondary")">
                                 <td>
                                     <strong>@st.Name</strong>
-                                    <small class="d-block text-secondary">@this.Localizer["Order"]: @st.SortOrder</small>
+                                    <small class="d-block text-secondary">@base.Localizer["Order"]: @st.SortOrder</small>
                                 </td>
                                 <td>@(st.Description ?? "-")</td>
-                                <td class="text-center">@this.Localizer["DaysCount", st.DaysInterval]</td>
-                                <td class="text-center">@this.Localizer["KmCount", st.KmInterval.ToString("N0")]</td>
+                                <td class="text-center">@base.Localizer["DaysCount", st.DaysInterval]</td>
+                                <td class="text-center">@base.Localizer["KmCount", st.KmInterval.ToString("N0")]</td>
                                 <td class="text-center">
                                     <span class="badge @(st.IsActive ? "bg-success" : "bg-secondary")">
-                                        @(st.IsActive ? this.Localizer["StatusActive"] : this.Localizer["StatusInactive"])
+                                        @(st.IsActive ? base.Localizer["StatusActive"] : base.Localizer["StatusInactive"])
                                     </span>
                                 </td>
                                 <td>
                                     <div class="btn-list flex-nowrap">
                                         <button type="button" class="btn btn-icon btn-ghost-primary"
-                                                title="@this.CommonLocalizer["Edit"]" @onclick="@(() => this.OpenEditDialogAsync(st))">
+                                                title="@base.CommonLocalizer["Edit"]" @onclick="@(() => this.OpenEditDialogAsync(st))">
                                             <i class="ti ti-edit"></i>
                                         </button>
                                         <button type="button" class="btn btn-icon btn-ghost-danger"
-                                                title="@this.CommonLocalizer["Delete"]" @onclick="@(() => this.ConfirmDeleteAsync(st))">
+                                                title="@base.CommonLocalizer["Delete"]" @onclick="@(() => this.ConfirmDeleteAsync(st))">
                                             <i class="ti ti-trash"></i>
                                         </button>
                                     </div>
@@ -123,8 +123,8 @@
             SortOrder = this.m_serviceTypes.Count + 1
         };
 
-        var result = await this.DialogService
-            .Create<ServiceTypeDialog>(this.Localizer["AddServiceType"])
+        var result = await base.DialogService
+            .Create<ServiceTypeDialog>(base.Localizer["AddServiceType"])
             .WithParameter(x => x.Entity, serviceType)
             .WithParameter(x => x.IsNew, true)
             .ShowDialogAsync();
@@ -132,7 +132,7 @@
         if (!result.Cancelled)
         {
             await this.LoadDataAsync();
-            this.ShowSuccess(this.Localizer["ServiceTypeAdded"]);
+            base.ShowSuccess(base.Localizer["ServiceTypeAdded"]);
         }
     }
 
@@ -140,8 +140,8 @@
     {
         var clone = st.Clone();
 
-        var result = await this.DialogService
-            .Create<ServiceTypeDialog>(this.Localizer["EditServiceType"])
+        var result = await base.DialogService
+            .Create<ServiceTypeDialog>(base.Localizer["EditServiceType"])
             .WithParameter(x => x.Entity, clone)
             .WithParameter(x => x.IsNew, false)
             .ShowDialogAsync();
@@ -149,25 +149,25 @@
         if (!result.Cancelled)
         {
             await this.LoadDataAsync();
-            this.ShowSuccess(this.Localizer["ServiceTypeUpdated"]);
+            base.ShowSuccess(base.Localizer["ServiceTypeUpdated"]);
         }
     }
 
     private async Task ConfirmDeleteAsync(ServiceType st)
     {
-        if (!await this.ConfirmAsync(this.Localizer["DeleteConfirmation", st.Name],
-            this.Localizer["DeleteWarning"]))
+        if (!await base.ConfirmAsync(base.Localizer["DeleteConfirmation", st.Name],
+            base.Localizer["DeleteWarning"]))
             return;
 
-        var result = await this.MaintenanceService.DeleteServiceTypeAsync(st, this.UserName);
+        var result = await this.MaintenanceService.DeleteServiceTypeAsync(st, base.UserName);
         if (result.Success)
         {
             await this.LoadDataAsync();
-            this.ShowSuccess(this.Localizer["ServiceTypeDeleted"]);
+            base.ShowSuccess(base.Localizer["ServiceTypeDeleted"]);
         }
         else
         {
-            this.ShowError(this.Localizer["DeleteFailed", result.Message ?? ""]);
+            base.ShowError(base.Localizer["DeleteFailed", result.Message ?? ""]);
         }
     }
 
@@ -176,15 +176,15 @@
         this.m_loading = true;
         try
         {
-            var result = await this.MaintenanceService.CreateDefaultServiceTypesAsync(this.UserName);
+            var result = await this.MaintenanceService.CreateDefaultServiceTypesAsync(base.UserName);
             if (result.Success)
             {
                 await this.LoadDataAsync();
-                this.ShowSuccess(this.Localizer["DefaultServiceTypesCreated"]);
+                base.ShowSuccess(base.Localizer["DefaultServiceTypesCreated"]);
             }
             else
             {
-                this.ShowError(this.Localizer["CreateDefaultsFailed", result.Message ?? ""]);
+                base.ShowError(base.Localizer["CreateDefaultsFailed", result.Message ?? ""]);
             }
         }
         finally
