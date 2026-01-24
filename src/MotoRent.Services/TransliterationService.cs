@@ -45,26 +45,27 @@ public partial class TransliterationService(
         }
 
         var prompt = $"""
-            Convert Thai company name to English identifier. Follow these rules EXACTLY:
+            Convert Thai company name to English identifier.
 
+            CRITICAL: Output MUST be PascalCase - EVERY word starts with UPPERCASE letter.
+            - "Co" not "co", "Ltd" not "ltd", "Plc" not "plc"
+
+            Rules:
             1. บริษัท → "Co" (place after brand name)
-            2. จำกัด → "Ltd" (place at end)
+            2. จำกัด → "Ltd" (at end)
             3. ห้างหุ้นส่วน → "Partnership"
             4. (มหาชน) → "Plc"
-            5. All other Thai words → transliterate phonetically to English
-            6. Output format: PascalCase, no spaces, no punctuation
-            7. Return ONLY the final identifier, nothing else
+            5. Thai words → transliterate phonetically, capitalize first letter
+            6. NO spaces, NO punctuation
+            7. Return ONLY the identifier
 
-            Examples:
+            Examples (note the capitalization):
             - "บริษัท สตาฟี จำกัด" → "StaffyCoLtd"
             - "บริษัท อาดัม มันนี่ จำกัด" → "AdamMoneyCoLtd"
-            - "บริษัท โมโตเรนท์ จำกัด" → "MotorentCoLtd"
-            - "บริษัท ไทยพาณิชย์ จำกัด (มหาชน)" → "ThaiPanitCoLtdPlc"
             - "ห้างหุ้นส่วน สยาม" → "SiamPartnership"
-            - "Phuket Motor Rentals Co., Ltd." → "PhuketMotorRentalsCoLtd"
+            - "Phuket Motor Rentals" → "PhuketMotorRentals"
 
             Input: {text}
-            Output:
             """;
 
         var request = new
@@ -100,6 +101,9 @@ public partial class TransliterationService(
             // Sanitize: keep only ASCII letters and numbers
             result = SanitizeRegex().Replace(result, "");
 
+            // Fix common suffixes that Gemini might not capitalize correctly
+            result = FixCompanySuffixes(result);
+
             this.Logger.LogInformation("Transliterated '{Original}' to '{Result}'", text, result);
 
             return string.IsNullOrWhiteSpace(result) ? text : result;
@@ -114,6 +118,54 @@ public partial class TransliterationService(
     private static bool ContainsNonAscii(string text)
     {
         return text.Any(c => c > 127);
+    }
+
+    /// <summary>
+    /// Fix common company suffixes to proper PascalCase.
+    /// Handles cases where Gemini returns lowercase suffixes.
+    /// </summary>
+    private static string FixCompanySuffixes(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return text;
+
+        // Fix common patterns (case-insensitive replacement at end or before other suffixes)
+        // Order matters: longer patterns first
+        var replacements = new (string pattern, string replacement)[]
+        {
+            ("coltdplc", "CoLtdPlc"),
+            ("coltd", "CoLtd"),
+            ("colimited", "CoLimited"),
+            ("partnership", "Partnership"),
+            ("ltd", "Ltd"),
+            ("plc", "Plc"),
+        };
+
+        foreach (var (pattern, replacement) in replacements)
+        {
+            var index = text.IndexOf(pattern, StringComparison.OrdinalIgnoreCase);
+            if (index > 0) // Must have something before the suffix
+            {
+                var before = text[..index];
+                var after = text[(index + pattern.Length)..];
+
+                // Ensure first letter of brand name is uppercase
+                if (before.Length > 0 && char.IsLower(before[0]))
+                {
+                    before = char.ToUpper(before[0]) + before[1..];
+                }
+
+                text = before + replacement + after;
+                break; // Only fix one pattern to avoid double-fixing
+            }
+        }
+
+        // Ensure first character is uppercase
+        if (text.Length > 0 && char.IsLower(text[0]))
+        {
+            text = char.ToUpper(text[0]) + text[1..];
+        }
+
+        return text;
     }
 
     [GeneratedRegex(@"[^A-Za-z0-9]")]

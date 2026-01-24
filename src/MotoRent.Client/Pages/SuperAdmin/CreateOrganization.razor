@@ -7,6 +7,7 @@
 @inherits MotoRentComponentBase
 @inject ISubscriptionService SubscriptionService
 @inject TransliterationService TransliterationService
+@inject IJSRuntime JS
 
 <PageTitle>Create Organization - MotoRent</PageTitle>
 
@@ -50,19 +51,36 @@
                             <label class="form-label required">Organization Name</label>
                             <input type="text" class="form-control" @bind="m_organization.Name"
                                    @bind:event="oninput" @onblur="GenerateAccountNo" required
+                                   id="org-name-input"
                                    placeholder="e.g., Phuket Motor Rentals" />
                         </div>
 
                         <div>
                             <label class="form-label required">Account No (Schema)</label>
-                            <input type="text" class="form-control @(m_accountNoError != null ? "is-invalid" : "")"
-                                   @bind="m_accountNo" @bind:event="oninput"
-                                   @onblur="ValidateAccountNo"
-                                   pattern="[A-Za-z0-9]+" required
-                                   placeholder="e.g., PhuketMotors" />
-                            @if (m_accountNoError != null)
+                            <div class="input-group">
+                                <input type="text" class="form-control @(m_accountNoError != null && !m_generatingAccountNo ? "is-invalid" : "")"
+                                       @bind="m_accountNo" @bind:event="oninput"
+                                       @onblur="ValidateAccountNo"
+                                       pattern="[A-Za-z0-9]+" required
+                                       disabled="@m_generatingAccountNo"
+                                       tabindex="@(m_generatingAccountNo ? -1 : 0)"
+                                       placeholder="@(m_generatingAccountNo ? "Generating..." : "e.g., PhuketMotors")" />
+                                @if (m_generatingAccountNo)
+                                {
+                                    <span class="input-group-text">
+                                        <span class="spinner-border spinner-border-sm text-primary"></span>
+                                    </span>
+                                }
+                            </div>
+                            @if (m_accountNoError != null && !m_generatingAccountNo)
                             {
-                                <div class="invalid-feedback">@m_accountNoError</div>
+                                <div class="invalid-feedback d-block">@m_accountNoError</div>
+                            }
+                            else if (m_generatingAccountNo)
+                            {
+                                <small class="form-hint text-primary">
+                                    <i class="ti ti-loader-2 ti-spin me-1"></i>Converting to English identifier...
+                                </small>
                             }
                             else
                             {
@@ -297,6 +315,7 @@
     private string? m_accountNoError;
     private double m_timezone = 7;
     private bool m_isCreating;
+    private bool m_generatingAccountNo;
     private string m_progressMessage = "";
 
     // Admin fields
@@ -304,20 +323,46 @@
     private string m_adminEmail = "";
     private string m_adminProvider = User.GOOGLE;
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Use JavaScript setTimeout to focus after all rendering completes
+            await this.JS.InvokeVoidAsync("eval", "setTimeout(() => document.getElementById('org-name-input')?.focus(), 300)");
+        }
+    }
+
     // Regex for valid AccountNo: English letters and numbers only
     private static readonly System.Text.RegularExpressions.Regex s_accountNoRegex =
         new(@"^[A-Za-z0-9]+$", System.Text.RegularExpressions.RegexOptions.Compiled);
 
     private async Task GenerateAccountNo()
     {
-        if (!string.IsNullOrWhiteSpace(this.m_organization.Name))
+        if (string.IsNullOrWhiteSpace(this.m_organization.Name))
+            return;
+
+        this.m_generatingAccountNo = true;
+        this.StateHasChanged();
+
+        try
         {
-            // Transliterate non-English text to English first
+            // Transliterate non-English text to English (Gemini returns PascalCase)
             var transliterated = await this.TransliterationService.TransliterateToEnglishAsync(this.m_organization.Name);
-            var generated = await this.SubscriptionService.CreateAccountNoAsync(transliterated);
-            // Sanitize: keep only English letters and numbers
-            this.m_accountNo = System.Text.RegularExpressions.Regex.Replace(generated, @"[^A-Za-z0-9]", "");
+
+            // Sanitize: keep only English letters and numbers, preserve casing from Gemini
+            this.m_accountNo = System.Text.RegularExpressions.Regex.Replace(transliterated, @"[^A-Za-z0-9]", "");
+
+            // Ensure first letter is uppercase
+            if (this.m_accountNo.Length > 0 && char.IsLower(this.m_accountNo[0]))
+            {
+                this.m_accountNo = char.ToUpper(this.m_accountNo[0]) + this.m_accountNo[1..];
+            }
+
             this.ValidateAccountNo();
+        }
+        finally
+        {
+            this.m_generatingAccountNo = false;
         }
     }
 

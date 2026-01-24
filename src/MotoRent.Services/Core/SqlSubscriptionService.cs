@@ -179,6 +179,17 @@ public partial class SqlSubscriptionService(
         var chars = word.Where(c => char.IsAsciiLetterOrDigit(c)).ToArray();
         if (chars.Length == 0) return "";
 
+        // If word already has mixed case (PascalCase), preserve it
+        // e.g., "StaffyCoLtd" should stay as-is
+        var hasUpperAfterFirst = chars.Skip(1).Any(char.IsUpper);
+        var hasLower = chars.Any(char.IsLower);
+        if (hasUpperAfterFirst && hasLower)
+        {
+            // Already PascalCase - just ensure first letter is uppercase
+            chars[0] = char.ToUpperInvariant(chars[0]);
+            return new string(chars);
+        }
+
         // Capitalize first letter, lowercase the rest
         chars[0] = char.ToUpperInvariant(chars[0]);
         for (var i = 1; i < chars.Length; i++)

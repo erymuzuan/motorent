@@ -10,17 +10,17 @@
     <!-- Tabs for Add mode -->
     <ul class="nav nav-tabs mb-3">
         <li class="nav-item">
-            <a class="nav-link @(this.m_activeTab == "existing" ? "active" : "")"
-               href="#" @onclick="@(() => this.m_activeTab = "existing")" @onclick:preventDefault>
-                <i class="ti ti-user-search me-1"></i>
-                @Localizer["TabAddExisting"]
-            </a>
-        </li>
-        <li class="nav-item">
             <a class="nav-link @(this.m_activeTab == "new" ? "active" : "")"
                href="#" @onclick="@(() => this.m_activeTab = "new")" @onclick:preventDefault>
                 <i class="ti ti-user-plus me-1"></i>
                 @Localizer["TabCreateNew"]
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(this.m_activeTab == "existing" ? "active" : "")"
+               href="#" @onclick="@(() => this.m_activeTab = "existing")" @onclick:preventDefault>
+                <i class="ti ti-user-search me-1"></i>
+                @Localizer["TabAddExisting"]
             </a>
         </li>
     </ul>
@@ -84,52 +84,77 @@
         </div>
     }
 
-    <!-- Organization Selection with Individual Roles -->
+    <!-- Organization Selection Section -->
     <div class="mb-3">
-        <label class="form-label required">@Localizer["SelectOrganizations"]</label>
+        <div class="d-flex align-items-center justify-content-between mb-2">
+            <label class="form-label required mb-0">
+                <i class="ti ti-building me-1"></i>
+                @Localizer["SelectOrganizations"]
+            </label>
+            @if (this.m_selectedOrgs.Count > 0)
+            {
+                <span class="badge bg-primary">@this.m_selectedOrgs.Count @Localizer["Selected"]</span>
+            }
+        </div>
+
+        <!-- Search Filter -->
+        <div class="input-icon mb-2">
+            <span class="input-icon-addon">
+                <i class="ti ti-search"></i>
+            </span>
+            <input type="text" class="form-control" placeholder="@Localizer["SearchOrganizations"]"
+                   @bind="this.m_orgSearch" @bind:event="oninput" />
+        </div>
+
+        <!-- Organizations List -->
         <div class="card">
-            <div class="list-group list-group-flush" style="max-height: 300px; overflow-y: auto;">
-                @foreach (var org in this.m_organizations)
+            <div class="org-list" style="max-height: 280px; overflow-y: auto;">
+                @foreach (var org in this.FilteredOrganizations)
                 {
                     var isSelected = this.m_selectedOrgs.ContainsKey(org.AccountNo);
                     var isExistingOrg = this.m_existingUserOrgs.Contains(org.AccountNo);
-                    <div class="list-group-item @(isExistingOrg ? "bg-light" : "")">
-                        <div class="d-flex align-items-start">
-                            <label class="form-check mb-0 me-3">
+                    <div class="org-item @(isSelected ? "selected" : "") @(isExistingOrg ? "existing" : "")"
+                         @onclick="@(() => { if (!isExistingOrg) this.ToggleOrg(org.AccountNo, !isSelected); })">
+                        <div class="org-header">
+                            <div class="form-check">
                                 <input type="checkbox" class="form-check-input"
-                                       checked="@isSelected"
+                                       checked="@(isSelected || isExistingOrg)"
                                        disabled="@isExistingOrg"
+                                       @onclick:stopPropagation="true"
                                        @onchange="@(e => this.ToggleOrg(org.AccountNo, (bool)(e.Value ?? false)))" />
-                            </label>
-                            <div class="flex-fill">
-                                <div class="d-flex align-items-center mb-1">
-                                    <strong class="me-2">@org.Name</strong>
-                                    <span class="badge bg-secondary-lt">@org.AccountNo</span>
-                                    @if (isExistingOrg)
-                                    {
-                                        <span class="badge bg-info-lt ms-2">@Localizer["AlreadyMember"]</span>
-                                    }
-                                </div>
-                                @if (isSelected || isExistingOrg)
+                            </div>
+                            <div class="org-info">
+                                <span class="org-name">@org.Name</span>
+                                <span class="badge bg-secondary-lt">@org.AccountNo</span>
+                                @if (isExistingOrg)
                                 {
-                                    <div class="d-flex flex-wrap gap-2 mt-2">
-                                        @foreach (var role in UserAccount.AllRoles)
-                                        {
-                                            var isRoleSelected = this.IsRoleSelected(org.AccountNo, role);
-                                            <label class="form-check form-check-inline mb-0">
-                                                <input type="checkbox" class="form-check-input"
-                                                       checked="@isRoleSelected"
-                                                       disabled="@isExistingOrg"
-                                                       @onchange="@(e => this.ToggleOrgRole(org.AccountNo, role, (bool)(e.Value ?? false)))" />
-                                                <span class="form-check-label">
-                                                    <span class="badge @GetRoleBadgeClass(role)">@this.GetRoleDisplayName(role)</span>
-                                                </span>
-                                            </label>
-                                        }
-                                    </div>
+                                    <span class="badge bg-info-lt">@Localizer["AlreadyMember"]</span>
                                 }
                             </div>
                         </div>
+                        <div class="org-roles">
+                            @foreach (var role in UserAccount.AllRoles)
+                            {
+                                var isRoleSelected = this.IsRoleSelected(org.AccountNo, role);
+                                var canToggle = !isExistingOrg;
+                                <span class="role-badge @(isRoleSelected ? GetRoleBadgeClass(role) + " text-white" : "bg-secondary-lt") @(canToggle ? "clickable" : "")"
+                                      @onclick="@(e => { if (canToggle) this.ToggleOrgRole(org.AccountNo, role, !isRoleSelected); })"
+                                      @onclick:stopPropagation="true">
+                                    @if (isRoleSelected)
+                                    {
+                                        <i class="ti ti-check me-1" style="font-size: 10px;"></i>
+                                    }
+                                    @this.GetRoleDisplayName(role)
+                                </span>
+                            }
+                        </div>
+                    </div>
+                }
+                @if (!this.FilteredOrganizations.Any())
+                {
+                    <div class="p-3 text-center text-secondary">
+                        <i class="ti ti-search-off me-1"></i>
+                        @Localizer["NoOrganizationsFound"]
                     </div>
                 }
             </div>
@@ -158,12 +183,90 @@
     </button>
 </div>
 
+<style>
+    .org-list {
+        padding: 0;
+    }
+
+    .org-item {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--tblr-border-color);
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+
+    .org-item:last-child {
+        border-bottom: none;
+    }
+
+    .org-item:hover:not(.existing) {
+        background-color: var(--tblr-bg-surface-secondary);
+    }
+
+    .org-item.selected {
+        background-color: rgba(var(--tblr-primary-rgb), 0.08);
+        border-left: 3px solid var(--tblr-primary);
+    }
+
+    .org-item.existing {
+        background-color: var(--tblr-bg-surface-secondary);
+        cursor: default;
+        opacity: 0.7;
+    }
+
+    .org-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .org-info {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .org-name {
+        font-weight: 600;
+    }
+
+    .org-roles {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+        margin-left: 1.75rem;
+    }
+
+    .role-badge {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        transition: all 0.15s ease;
+        user-select: none;
+    }
+
+    .role-badge.clickable {
+        cursor: pointer;
+        border: 1px solid transparent;
+    }
+
+    .role-badge.clickable:hover {
+        transform: scale(1.05);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+        border-color: var(--tblr-primary);
+        background-color: rgba(var(--tblr-primary-rgb), 0.15) !important;
+    }
+</style>
+
 @code {
-    private string m_activeTab = "existing";
+    private string m_activeTab = "new";
     private string? m_selectedUserName;
     private string m_newProvider = User.GOOGLE;
     private string? m_newUserName;
     private string? m_newFullName;
+    private string? m_orgSearch;
 
     private string? m_emailError;
     private string? m_nameError;
@@ -174,6 +277,13 @@
     private HashSet<string> m_existingUserOrgs = new();
     private List<User> m_availableUsers = [];
     private List<Organization> m_organizations = [];
+
+    private IEnumerable<Organization> FilteredOrganizations =>
+        string.IsNullOrWhiteSpace(this.m_orgSearch)
+            ? this.m_organizations
+            : this.m_organizations.Where(o =>
+                o.Name.Contains(this.m_orgSearch, StringComparison.OrdinalIgnoreCase) ||
+                o.AccountNo.Contains(this.m_orgSearch, StringComparison.OrdinalIgnoreCase));
 
     protected override async Task OnInitializedAsync()
     {
@@ -262,6 +372,7 @@
                 this.m_selectedOrgs.Remove(accountNo);
             }
         }
+        this.m_orgError = null;
     }
 
     private bool IsRoleSelected(string accountNo, string role)
