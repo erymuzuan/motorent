@@ -4,11 +4,11 @@ This plan outlines the conversion of the static marketing website into a functio
 
 ## Phase 1: Authentication & Domain Extensions [checkpoint: ]
 
-### Task 1: Update Domain Models for Subscription & Onboarding
-- [ ] Task: Extend `Organization` and `User` entities for SaaS signup.
-    - [ ] Write unit tests for trial period calculation and subscription status logic.
-    - [ ] Add `TrialEndDate`, `SubscriptionPlan` (Free/Pro/Ultra), and `PreferredLanguage` to `Organization`.
-    - [ ] Add OAuth provider fields to the `User` entity for Google and LINE.
+### Task 1: Update Domain Models for Subscription & Onboarding (COMPLETED) 1456ace
+- [x] Task: Extend `Organization` and `User` entities for SaaS signup. 1456ace
+    - [x] Write unit tests for trial period calculation and subscription status logic.
+    - [x] Add `TrialEndDate`, `SubscriptionPlan` (Free/Pro/Ultra), and `PreferredLanguage` to `Organization`.
+    - [x] Add OAuth provider fields to the `User` entity for Google and LINE.
 
 ### Task 2: Implement OAuth Authentication Services
 - [ ] Task: Configure and implement Google and LINE authentication.
