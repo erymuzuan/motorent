@@ -6,6 +6,7 @@
 @attribute [Authorize(Roles = UserAccount.SUPER_ADMIN)]
 @inherits MotoRentComponentBase
 @inject ISubscriptionService SubscriptionService
+@inject TransliterationService TransliterationService
 
 <PageTitle>Create Organization - MotoRent</PageTitle>
 
@@ -311,7 +312,9 @@
     {
         if (!string.IsNullOrWhiteSpace(this.m_organization.Name))
         {
-            var generated = await this.SubscriptionService.CreateAccountNoAsync(this.m_organization.Name);
+            // Transliterate non-English text to English first
+            var transliterated = await this.TransliterationService.TransliterateToEnglishAsync(this.m_organization.Name);
+            var generated = await this.SubscriptionService.CreateAccountNoAsync(transliterated);
             // Sanitize: keep only English letters and numbers
             this.m_accountNo = System.Text.RegularExpressions.Regex.Replace(generated, @"[^A-Za-z0-9]", "");
             this.ValidateAccountNo();
