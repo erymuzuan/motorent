@@ -303,7 +303,7 @@ catch (ValidationException ex)
 catch (Exception ex)
 {
     this.Logger.LogError(ex, "Failed to process rental {RentalId}", rental.RentalId);
-    this.ToastService.ShowError("An error occurred");
+    throw;
 }
 
 // Throw for programming errors

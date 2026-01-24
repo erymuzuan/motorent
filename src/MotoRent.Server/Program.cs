@@ -72,6 +72,7 @@ builder.Services.AddScoped<ServiceLocationService>();
 builder.Services.AddScoped<DocumentOcrService>();
 builder.Services.AddScoped<DocumentTemplateService>();
 builder.Services.AddScoped<DocumentTemplateAiService>();
+builder.Services.AddScoped<TransliterationService>();
 builder.Services.AddScoped<DesignerState>();
 builder.Services.AddScoped<ITemplateDataResolver, TemplateDataResolver>();
 builder.Services.AddScoped<IQuestPdfGenerator, QuestPdfGenerator>();

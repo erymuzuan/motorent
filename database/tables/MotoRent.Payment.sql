@@ -10,6 +10,7 @@ CREATE TABLE [<schema>].[Payment]
     -- JSON storage
     [Json] NVARCHAR(MAX) NOT NULL,
     -- Audit columns
+    [PaidOn] DATETIMEOFFSET NULL,
     [CreatedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
     [ChangedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
     [CreatedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
