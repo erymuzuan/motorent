@@ -1,42 +1,39 @@
 @page "/manager/service-types"
-@using MotoRent.Domain.Entities
-@using MotoRent.Services
-@using MotoRent.Client.Components.Shared
 @inherits MotoRent.Client.Controls.LocalizedComponentBase<ServiceTypes>
 @inject MaintenanceService MaintenanceService
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "RequireTenantManager")]
 
-<MotoRentPageTitle>@Localizer["PageTitle"]</MotoRentPageTitle>
+<MotoRentPageTitle>@this.Localizer["PageTitle"]</MotoRentPageTitle>
 
-<TablerHeader Title="@Localizer["Header"]" PreTitle="@Localizer["PreTitle"]">
+<TablerHeader Title="@this.Localizer["Header"]" PreTitle="@this.Localizer["PreTitle"]">
     <div class="btn-list">
-        @if (m_serviceTypes.Count == 0 && !m_loading)
+        @if (this.m_serviceTypes.Count == 0 && !this.m_loading)
         {
-            <button type="button" class="btn btn-outline-success" @onclick="CreateDefaultTypesAsync">
+            <button type="button" class="btn btn-outline-success" @onclick="this.CreateDefaultTypesAsync">
                 <i class="ti ti-wand me-1"></i>
-                @Localizer["CreateDefaults"]
+                @this.Localizer["CreateDefaults"]
             </button>
         }
-        <button type="button" class="btn btn-primary" @onclick="OpenAddDialogAsync">
+        <button type="button" class="btn btn-primary" @onclick="this.OpenAddDialogAsync">
             <i class="ti ti-plus me-1"></i>
-            @Localizer["AddServiceType"]
+            @this.Localizer["AddServiceType"]
         </button>
     </div>
 </TablerHeader>
 
-<LoadingSkeleton Loading="@m_loading" Mode="LoadingSkeleton.PlaceholderMode.Table" Rows="5" Columns="5">
-    @if (m_serviceTypes.Count == 0)
+<LoadingSkeleton Loading="@this.m_loading" Mode="LoadingSkeleton.PlaceholderMode.Table" Rows="5" Columns="5">
+    @if (this.m_serviceTypes.Count == 0)
     {
         <div class="card">
             <div class="card-body text-center py-5">
                 <i class="ti ti-tool mb-3" style="font-size: 3rem; color: var(--tblr-secondary);"></i>
-                <h3>@Localizer["NoServiceTypesDefined"]</h3>
+                <h3>@this.Localizer["NoServiceTypesDefined"]</h3>
                 <p class="text-secondary">
-                    @Localizer["NoServiceTypesDescription"]
+                    @this.Localizer["NoServiceTypesDescription"]
                 </p>
-                <button type="button" class="btn btn-success" @onclick="CreateDefaultTypesAsync">
+                <button type="button" class="btn btn-success" @onclick="this.CreateDefaultTypesAsync">
                     <i class="ti ti-wand me-1"></i>
-                    @Localizer["CreateDefaultTypes"]
+                    @this.Localizer["CreateDefaultTypes"]
                 </button>
             </div>
         </div>
@@ -48,38 +45,38 @@
                 <table class="table table-vcenter card-table">
                     <thead>
                         <tr>
-                            <th>@Localizer["Name"]</th>
-                            <th>@Localizer["Description"]</th>
-                            <th class="text-center">@Localizer["Days"]</th>
-                            <th class="text-center">@Localizer["Kilometers"]</th>
-                            <th class="text-center">@Localizer["Status"]</th>
-                            <th class="w-1">@CommonLocalizer["Actions"]</th>
+                            <th>@this.Localizer["Name"]</th>
+                            <th>@this.Localizer["Description"]</th>
+                            <th class="text-center">@this.Localizer["Days"]</th>
+                            <th class="text-center">@this.Localizer["Kilometers"]</th>
+                            <th class="text-center">@this.Localizer["Status"]</th>
+                            <th class="w-1">@this.CommonLocalizer["Actions"]</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var st in m_serviceTypes)
+                        @foreach (var st in this.m_serviceTypes)
                         {
                             <tr class="@(st.IsActive ? "" : "text-secondary")">
                                 <td>
                                     <strong>@st.Name</strong>
-                                    <small class="d-block text-secondary">@Localizer["Order"]: @st.SortOrder</small>
+                                    <small class="d-block text-secondary">@this.Localizer["Order"]: @st.SortOrder</small>
                                 </td>
                                 <td>@(st.Description ?? "-")</td>
-                                <td class="text-center">@Localizer["DaysCount", st.DaysInterval]</td>
-                                <td class="text-center">@Localizer["KmCount", st.KmInterval.ToString("N0")]</td>
+                                <td class="text-center">@this.Localizer["DaysCount", st.DaysInterval]</td>
+                                <td class="text-center">@this.Localizer["KmCount", st.KmInterval.ToString("N0")]</td>
                                 <td class="text-center">
                                     <span class="badge @(st.IsActive ? "bg-success" : "bg-secondary")">
-                                        @(st.IsActive ? Localizer["StatusActive"] : Localizer["StatusInactive"])
+                                        @(st.IsActive ? this.Localizer["StatusActive"] : this.Localizer["StatusInactive"])
                                     </span>
                                 </td>
                                 <td>
                                     <div class="btn-list flex-nowrap">
                                         <button type="button" class="btn btn-icon btn-ghost-primary"
-                                                title="@CommonLocalizer["Edit"]" @onclick="@(() => OpenEditDialogAsync(st))">
+                                                title="@this.CommonLocalizer["Edit"]" @onclick="@(() => this.OpenEditDialogAsync(st))">
                                             <i class="ti ti-edit"></i>
                                         </button>
                                         <button type="button" class="btn btn-icon btn-ghost-danger"
-                                                title="@CommonLocalizer["Delete"]" @onclick="@(() => ConfirmDeleteAsync(st))">
+                                                title="@this.CommonLocalizer["Delete"]" @onclick="@(() => this.ConfirmDeleteAsync(st))">
                                             <i class="ti ti-trash"></i>
                                         </button>
                                     </div>
@@ -99,20 +96,20 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadDataAsync();
+        await this.LoadDataAsync();
     }
 
     private async Task LoadDataAsync()
     {
-        m_loading = true;
+        this.m_loading = true;
         try
         {
-            var result = await MaintenanceService.GetServiceTypesAsync(activeOnly: false);
-            m_serviceTypes = result.ItemCollection.ToList();
+            var result = await this.MaintenanceService.GetServiceTypesAsync(activeOnly: false);
+            this.m_serviceTypes = result.ItemCollection.ToList();
         }
         finally
         {
-            m_loading = false;
+            this.m_loading = false;
         }
     }
 
@@ -123,19 +120,19 @@
             IsActive = true,
             DaysInterval = 30,
             KmInterval = 3000,
-            SortOrder = m_serviceTypes.Count + 1
+            SortOrder = this.m_serviceTypes.Count + 1
         };
 
-        var result = await DialogService
-            .Create<ServiceTypeDialog>(Localizer["AddServiceType"])
+        var result = await this.DialogService
+            .Create<ServiceTypeDialog>(this.Localizer["AddServiceType"])
             .WithParameter(x => x.Entity, serviceType)
             .WithParameter(x => x.IsNew, true)
             .ShowDialogAsync();
 
         if (!result.Cancelled)
         {
-            await LoadDataAsync();
-            ShowSuccess(Localizer["ServiceTypeAdded"]);
+            await this.LoadDataAsync();
+            this.ShowSuccess(this.Localizer["ServiceTypeAdded"]);
         }
     }
 
@@ -143,56 +140,56 @@
     {
         var clone = st.Clone();
 
-        var result = await DialogService
-            .Create<ServiceTypeDialog>(Localizer["EditServiceType"])
+        var result = await this.DialogService
+            .Create<ServiceTypeDialog>(this.Localizer["EditServiceType"])
             .WithParameter(x => x.Entity, clone)
             .WithParameter(x => x.IsNew, false)
             .ShowDialogAsync();
 
         if (!result.Cancelled)
         {
-            await LoadDataAsync();
-            ShowSuccess(Localizer["ServiceTypeUpdated"]);
+            await this.LoadDataAsync();
+            this.ShowSuccess(this.Localizer["ServiceTypeUpdated"]);
         }
     }
 
     private async Task ConfirmDeleteAsync(ServiceType st)
     {
-        if (!await ConfirmAsync(Localizer["DeleteConfirmation", st.Name],
-            Localizer["DeleteWarning"]))
+        if (!await this.ConfirmAsync(this.Localizer["DeleteConfirmation", st.Name],
+            this.Localizer["DeleteWarning"]))
             return;
 
-        var result = await MaintenanceService.DeleteServiceTypeAsync(st, UserName);
+        var result = await this.MaintenanceService.DeleteServiceTypeAsync(st, this.UserName);
         if (result.Success)
         {
-            await LoadDataAsync();
-            ShowSuccess(Localizer["ServiceTypeDeleted"]);
+            await this.LoadDataAsync();
+            this.ShowSuccess(this.Localizer["ServiceTypeDeleted"]);
         }
         else
         {
-            ShowError(Localizer["DeleteFailed", result.Message ?? ""]);
+            this.ShowError(this.Localizer["DeleteFailed", result.Message ?? ""]);
         }
     }
 
     private async Task CreateDefaultTypesAsync()
     {
-        m_loading = true;
+        this.m_loading = true;
         try
         {
-            var result = await MaintenanceService.CreateDefaultServiceTypesAsync(UserName);
+            var result = await this.MaintenanceService.CreateDefaultServiceTypesAsync(this.UserName);
             if (result.Success)
             {
-                await LoadDataAsync();
-                ShowSuccess(Localizer["DefaultServiceTypesCreated"]);
+                await this.LoadDataAsync();
+                this.ShowSuccess(this.Localizer["DefaultServiceTypesCreated"]);
             }
             else
             {
-                ShowError(Localizer["CreateDefaultsFailed", result.Message ?? ""]);
+                this.ShowError(this.Localizer["CreateDefaultsFailed", result.Message ?? ""]);
             }
         }
         finally
         {
-            m_loading = false;
+            this.m_loading = false;
         }
     }
 }
