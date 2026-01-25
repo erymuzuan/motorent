@@ -163,11 +163,19 @@
     [Parameter]
     public EventCallback<VehicleRecognitionResult> OnApply { get; set; }
 
+    /// <summary>
+    /// Callback to pass the captured image data (base64) when applying.
+    /// </summary>
+    [Parameter]
+    public EventCallback<RecognitionImageData> OnImageCaptured { get; set; }
+
     private InputFile? m_fileInput;
     private VehicleRecognitionResult? m_recognitionResult;
     private bool m_analyzing;
     private bool m_isDragOver;
     private string? m_previewImageUrl;
+    private string? m_imageBase64;
+    private string? m_imageContentType;
     private ElementReference m_dropZoneRef;
     private IJSObjectReference? m_jsModule;
     private DotNetObjectReference<VehicleRecognitionPanel>? m_dotNetRef;
@@ -283,6 +291,10 @@
 
         try
         {
+            // Store image data for later use
+            m_imageBase64 = base64;
+            m_imageContentType = contentType;
+
             // Create preview URL
             m_previewImageUrl = $"data:{contentType};base64,{base64}";
 
@@ -327,6 +339,17 @@
         if (this.m_recognitionResult != null)
         {
             await this.OnApply.InvokeAsync(this.m_recognitionResult);
+
+            // Also pass the captured image data
+            if (!string.IsNullOrEmpty(m_imageBase64) && !string.IsNullOrEmpty(m_imageContentType))
+            {
+                await this.OnImageCaptured.InvokeAsync(new RecognitionImageData
+                {
+                    Base64Data = m_imageBase64,
+                    ContentType = m_imageContentType
+                });
+            }
+
             this.ShowInfo("Recognition results applied to form.");
         }
     }
@@ -335,6 +358,17 @@
     {
         this.m_recognitionResult = null;
         this.m_previewImageUrl = null;
+        this.m_imageBase64 = null;
+        this.m_imageContentType = null;
+    }
+
+    /// <summary>
+    /// Data class for passing captured image to parent component.
+    /// </summary>
+    public class RecognitionImageData
+    {
+        public string Base64Data { get; set; } = string.Empty;
+        public string ContentType { get; set; } = string.Empty;
     }
 
     public async ValueTask DisposeAsync()

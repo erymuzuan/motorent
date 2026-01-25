@@ -11,7 +11,8 @@
         @if (IsNew)
         {
             <VehicleRecognitionPanel SuggestedVehicleType="@Entity.VehicleType"
-                                     OnApply="ApplyRecognitionResult" />
+                                     OnApply="ApplyRecognitionResult"
+                                     OnImageCaptured="OnRecognitionImageCaptured" />
         }
 
         @* Basic Info Card *@
@@ -124,17 +125,41 @@
                         <i class="ti ti-photo"></i>
                     </div>
                     <h3 class="mr-form-panel-title">@Localizer["VehicleImages"]</h3>
+                    @if (PendingRecognitionImage != null)
+                    {
+                        <span class="badge bg-success ms-2">1 รูป</span>
+                    }
                 </div>
                 <div class="mr-form-panel-body">
-                    <div class="mr-info-panel">
-                        <div class="mr-info-panel-icon">
-                            <i class="ti ti-info-circle"></i>
+                    @if (PendingRecognitionImage != null)
+                    {
+                        @* Show preview of pending image *@
+                        <div class="position-relative mb-2">
+                            <img src="data:@PendingRecognitionImage.ContentType;base64,@PendingRecognitionImage.Base64Data"
+                                 alt="Vehicle preview"
+                                 class="rounded w-100"
+                                 style="max-height: 200px; object-fit: cover;" />
+                            <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-2"
+                                    @onclick="ClearPendingImage">
+                                <i class="ti ti-x"></i>
+                            </button>
                         </div>
-                        <div>
-                            <div class="mr-info-panel-title">@Localizer["SaveToAddImages"]</div>
-                            <p class="mr-info-panel-text">@Localizer["SaveToAddImagesHint"]</p>
+                        <div class="text-success small">
+                            <i class="ti ti-check me-1"></i>รูปจะถูกอัปโหลดอัตโนมัติเมื่อบันทึก
                         </div>
-                    </div>
+                    }
+                    else
+                    {
+                        <div class="mr-info-panel">
+                            <div class="mr-info-panel-icon">
+                                <i class="ti ti-info-circle"></i>
+                            </div>
+                            <div>
+                                <div class="mr-info-panel-title">@Localizer["SaveToAddImages"]</div>
+                                <p class="mr-info-panel-text">ใช้ Quick Recognition ด้านบนเพื่อถ่ายรูปและเพิ่มอัตโนมัติ</p>
+                            </div>
+                        </div>
+                    }
                 </div>
             </div>
         }
@@ -278,7 +303,7 @@
                             <div class="mr-input-group">
                                 <span class="mr-input-group-text">฿</span>
                                 <input type="number" class="mr-form-control mr-mono" @bind="Entity.Rate1Hour" required
-                                       min="0" step="100" placeholder="1500" />
+                                       min="100" step="100" placeholder="1500" />
                             </div>
                         </div>
                     }
@@ -290,7 +315,7 @@
                             <div class="mr-input-group">
                                 <span class="mr-input-group-text">฿</span>
                                 <input type="number" class="mr-form-control mr-mono" @bind="Entity.DailyRate" required
-                                       min="0" step="50" placeholder="@GetDailyRatePlaceholder()" />
+                                       min="50" step="50" placeholder="@GetDailyRatePlaceholder()" />
                                 <span class="mr-input-group-text">/ @Localizer["Day"]</span>
                             </div>
                         </div>
@@ -301,7 +326,7 @@
                         <div class="mr-input-group">
                             <span class="mr-input-group-text">฿</span>
                             <input type="number" class="mr-form-control mr-mono" @bind="Entity.DepositAmount" required
-                                   min="0" step="500" placeholder="@GetDepositPlaceholder()" />
+                                   min="500" step="500" placeholder="@GetDepositPlaceholder()" />
                         </div>
                     </div>
                 </div>
@@ -451,6 +476,21 @@
     /// </summary>
     [Parameter]
     public EventCallback<VehicleType> VehicleTypeChanged { get; set; }
+
+    /// <summary>
+    /// Stores pending image data from Quick Recognition to be uploaded after save.
+    /// </summary>
+    public VehicleRecognitionPanel.RecognitionImageData? PendingRecognitionImage { get; private set; }
+
+    private void OnRecognitionImageCaptured(VehicleRecognitionPanel.RecognitionImageData imageData)
+    {
+        this.PendingRecognitionImage = imageData;
+    }
+
+    private void ClearPendingImage()
+    {
+        this.PendingRecognitionImage = null;
+    }
 
     private async Task OnVehicleTypeChanged(VehicleType type)
     {

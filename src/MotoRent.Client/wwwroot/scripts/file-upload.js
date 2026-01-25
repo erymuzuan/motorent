@@ -252,6 +252,47 @@ export function setDropZoneOptions(element, dotNet, options) {
 }
 
 /**
+ * Uploads a base64 image to the server and returns the result
+ * @param {string} base64Data - The base64 encoded image data (without data:mime;base64, prefix)
+ * @param {string} contentType - The MIME type (e.g., "image/jpeg")
+ * @param {string} fileName - The filename to use
+ * @returns {Promise<{storeId: string, url: string} | null>}
+ */
+export async function uploadBase64Image(base64Data, contentType, fileName) {
+    try {
+        // Convert base64 to blob
+        const byteCharacters = atob(base64Data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: contentType });
+
+        // Create FormData
+        const formData = new FormData();
+        formData.append('file', blob, fileName);
+
+        // Upload
+        const response = await fetch('/api/stores/upload-single', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            console.error('Upload failed:', response.status, response.statusText);
+            return { error: `Upload failed: ${response.status}` };
+        }
+
+        const result = await response.json();
+        return result;
+    } catch (error) {
+        console.error('Error uploading base64 image:', error);
+        return { error: error.message };
+    }
+}
+
+/**
  * Registers a drop zone that reads dropped files as base64 and sends to Blazor
  * Used for components that need to process files directly rather than upload them
  */

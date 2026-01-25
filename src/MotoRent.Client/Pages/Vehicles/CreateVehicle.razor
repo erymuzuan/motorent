@@ -5,6 +5,8 @@
 @page "/vehicles/van/new"
 @inherits LocalizedComponentBase<CreateVehicle>
 @inject VehicleService VehicleService
+@inject VehicleImageService VehicleImageService
+@inject IJSRuntime JsRuntime
 
 <MotoRentPageTitle>@Localizer["AddVehicle"] - @GetVehicleTypeLabel(m_vehicleType)</MotoRentPageTitle>
 
@@ -38,7 +40,8 @@
 
 <div class="container-xl">
     <form id="create-vehicle-form" @onsubmit="SaveAsync" @onsubmit:preventDefault>
-        <VehicleForm Entity="@m_vehicle"
+        <VehicleForm @ref="m_vehicleForm"
+                     Entity="@m_vehicle"
                      IsNew="true"
                      LastServiceDate="@m_lastServiceDate"
                      LastServiceDateChanged="@((d) => m_lastServiceDate = d)"
@@ -72,6 +75,7 @@
     private VehicleType m_vehicleType;
     private DateTime? m_lastServiceDate;
     private bool m_saving;
+    private VehicleForm? m_vehicleForm;
 
     protected override void OnInitialized()
     {
@@ -127,8 +131,19 @@
 
             if (result.Success)
             {
-                this.ShowSuccess(Localizer["VehicleCreatedSuccess"]);
-                // Navigate to edit page to add images
+                // Upload recognition image if captured
+                var imageUploaded = await UploadRecognitionImageAsync();
+
+                if (imageUploaded)
+                {
+                    this.ShowSuccess("สร้างยานพาหนะและอัปโหลดรูปสำเร็จ");
+                }
+                else
+                {
+                    this.ShowSuccess(Localizer["VehicleCreatedSuccess"]);
+                }
+
+                // Navigate to edit page
                 this.NavigationManager.NavigateTo($"/vehicles/{EncodeId(this.m_vehicle.VehicleId)}/edit");
             }
             else
@@ -145,6 +160,68 @@
             this.m_saving = false;
         }
     }
+
+    private async Task<bool> UploadRecognitionImageAsync()
+    {
+        var pendingImage = m_vehicleForm?.PendingRecognitionImage;
+        if (pendingImage == null || string.IsNullOrEmpty(pendingImage.Base64Data))
+        {
+            return false;
+        }
+
+        try
+        {
+            // Determine file extension from content type
+            var extension = pendingImage.ContentType switch
+            {
+                "image/jpeg" => ".jpg",
+                "image/png" => ".png",
+                "image/webp" => ".webp",
+                _ => ".jpg"
+            };
+            var fileName = $"vehicle-{m_vehicle.VehicleId}{extension}";
+
+            // Use JS interop to upload (includes auth cookies)
+            var module = await this.JsRuntime.InvokeAsync<IJSObjectReference>("import", "./scripts/file-upload.js");
+            var result = await module.InvokeAsync<UploadResult>("uploadBase64Image",
+                pendingImage.Base64Data,
+                pendingImage.ContentType,
+                fileName);
+
+            if (!string.IsNullOrEmpty(result?.Error))
+            {
+                this.ShowError($"อัปโหลดรูปไม่สำเร็จ: {result.Error}");
+                return false;
+            }
+
+            if (string.IsNullOrEmpty(result?.StoreId))
+            {
+                this.ShowError("อัปโหลดรูปไม่สำเร็จ: ไม่ได้รับ StoreId");
+                return false;
+            }
+
+            // Add as vehicle image
+            var addResult = await this.VehicleImageService.AddImageAsync(
+                m_vehicle.VehicleId,
+                result.StoreId,
+                "Quick Recognition",
+                this.UserName);
+
+            if (!addResult.Success)
+            {
+                this.ShowError($"บันทึกรูปไม่สำเร็จ: {addResult.Message}");
+            }
+
+            return addResult.Success;
+        }
+        catch (Exception ex)
+        {
+            this.ShowError($"เกิดข้อผิดพลาด: {ex.Message}");
+            return false;
+        }
+    }
+
+    private record UploadResult(string? StoreId, string? Url, string? Error);
 
     private static string GetVehicleTypeIcon(VehicleType type) => type switch
     {
