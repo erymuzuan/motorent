@@ -1,6 +1,6 @@
 -- Comment Table (Tenant-specific)
 -- Comments associated with any entity type within a tenant
-CREATE TABLE [MotoRent].[Comment]
+CREATE TABLE [<schema>].[Comment]
 (
     [CommentId]         INT            NOT NULL PRIMARY KEY IDENTITY(1,1),
     -- Computed columns from JSON
@@ -24,11 +24,11 @@ CREATE TABLE [MotoRent].[Comment]
 )
 --
 
-CREATE CLUSTERED INDEX [IX_Comment_EntityId] ON [MotoRent].[Comment]([EntityId] DESC)
+CREATE CLUSTERED INDEX [IX_Comment_EntityId] ON [<schema>].[Comment]([EntityId] DESC)
 --
 
-CREATE INDEX [IX_Comment_Type] ON [MotoRent].[Comment]([Type], [Root])
+CREATE INDEX [IX_Comment_Type] ON [<schema>].[Comment]([Type], [Root])
 --
 
-CREATE INDEX [IX_Comment_ObjectWebId] ON [MotoRent].[Comment]([ObjectWebId])
+CREATE INDEX [IX_Comment_ObjectWebId] ON [<schema>].[Comment]([ObjectWebId])
 --

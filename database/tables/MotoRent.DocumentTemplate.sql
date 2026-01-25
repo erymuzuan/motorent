@@ -1,4 +1,4 @@
-CREATE TABLE [MotoRent].[DocumentTemplate]
+CREATE TABLE [<schema>].[DocumentTemplate]
 (
     [DocumentTemplateId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
     [WebId] VARCHAR(50) NULL,
@@ -14,8 +14,8 @@ CREATE TABLE [MotoRent].[DocumentTemplate]
     [CreatedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
     [ChangedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
 )
-CREATE INDEX [IX_DocumentTemplate_ShopId] ON [MotoRent].[DocumentTemplate] ([ShopId])
+CREATE INDEX [IX_DocumentTemplate_ShopId] ON [<schema>].[DocumentTemplate] ([ShopId])
 
-CREATE INDEX [IX_DocumentTemplate_Type] ON [MotoRent].[DocumentTemplate] ([Type])
+CREATE INDEX [IX_DocumentTemplate_Type] ON [<schema>].[DocumentTemplate] ([Type])
 
-CREATE INDEX [IX_DocumentTemplate_Status] ON [MotoRent].[DocumentTemplate] ([Status])
+CREATE INDEX [IX_DocumentTemplate_Status] ON [<schema>].[DocumentTemplate] ([Status])
