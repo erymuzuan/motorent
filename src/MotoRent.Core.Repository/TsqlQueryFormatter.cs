@@ -443,6 +443,12 @@ internal class TsqlQueryFormatter : DbExpressionVisitor
 
     protected override Expression VisitColumn(ColumnExpression column)
     {
+        if (column.Type == typeof(bool))
+        {
+            m_sb.Append($"([{column.Name}] = 1)");
+            return column;
+        }
+
         m_sb.AppendFormat("[{0}]", column.Name);
         return column;
     }
