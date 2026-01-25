@@ -123,7 +123,7 @@
                     {
                         <div class="form-group">
                             <label class="form-label">@Localizer["ActualReturnDate"]</label>
-                            <input type="date" class="form-control form-control-lg" @bind="m_actualReturnDate" />
+                            <input type="date" class="form-control form-control-lg" lang="en" @bind="m_actualReturnDate" />
                         </div>
                     }
                     @if (m_showMileage)
@@ -243,13 +243,7 @@
                 </div>
             }
 
-            <div class="form-section">
-                <label class="form-label">@Localizer["ReturnNotes"]</label>
-                <textarea class="form-control" @bind="m_notes" rows="2"
-                          placeholder="@Localizer["ReturnNotesPlaceholder"]"></textarea>
-            </div>
-
-            @* Post-rental Inspection *@
+            @* Post-rental Inspection - moved up for better UX *@
             <div class="form-section">
                 <h5 class="section-title">
                     <i class="ti ti-clipboard-check text-teal"></i>
@@ -273,10 +267,18 @@
                 </div>
             }
 
+            <div class="form-section">
+                <label class="form-label">@Localizer["ReturnNotes"]</label>
+                <textarea class="form-control" @bind="m_notes" rows="2"
+                          placeholder="@Localizer["ReturnNotesPlaceholder"]"></textarea>
+            </div>
+
             @* Navigation Buttons *@
             <div class="step-nav">
                 <div></div>
-                <button type="button" class="btn btn-primary btn-lg" @onclick="@(() => m_activeTab = 1)">
+                <button type="button" class="btn btn-primary btn-lg"
+                        disabled="@(!CanProceedToStep2)"
+                        @onclick="@(() => m_activeTab = 1)">
                     @Localizer["NextDamageCheck"]
                     <i class="ti ti-arrow-right ms-2"></i>
                 </button>
@@ -1423,11 +1425,13 @@
         this.m_dropoffTotalFees;
     private decimal m_refundAmount => Math.Max(0, this.m_depositAmount - this.m_totalAdditional);
 
-    private bool CanComplete => (this.m_actualReturnDate.HasValue || this.m_isIntervalRental) &&
-                                (!this.m_showMileage || this.m_mileageEnd >= this.Entity.MileageStart) &&
+    private bool CanProceedToStep2 => (this.m_actualReturnDate.HasValue || this.m_isIntervalRental) &&
+                                      (!this.m_showMileage || this.m_mileageEnd >= this.Entity.MileageStart) &&
+                                      this.m_postInspection != null;
+
+    private bool CanComplete => this.CanProceedToStep2 &&
                                 (this.m_refundAmount == 0 || this.m_refundProcessed) &&
-                                (!this.m_hasMaintenanceWarning || this.m_acknowledgeMaintenanceWarning) &&
-                                this.m_postInspection != null;
+                                (!this.m_hasMaintenanceWarning || this.m_acknowledgeMaintenanceWarning);
 
     private string GetVehicleTypeLabel() => this.m_vehicle?.VehicleType switch
     {

@@ -18,7 +18,7 @@ public class DepositService(RentalDataContext context)
     {
         // Get rental IDs for this shop
         var rentalIds = await this.Context.GetDistinctAsync<Rental, int>(
-            r => r.ShopId == shopId,
+            r => r.RentedFromShopId == shopId,
             r => r.RentalId);
 
         var query = this.Context.CreateQuery<Deposit>()
@@ -58,7 +58,7 @@ public class DepositService(RentalDataContext context)
     {
         // Get rental IDs for this shop
         var rentalIds = await this.Context.GetDistinctAsync<Rental, int>(
-            r => r.ShopId == shopId,
+            r => r.RentedFromShopId == shopId,
             r => r.RentalId);
 
         // Get status counts via SQL GROUP BY
@@ -74,7 +74,7 @@ public class DepositService(RentalDataContext context)
     {
         // Get rental IDs for this shop
         var rentalIds = await this.Context.GetDistinctAsync<Rental, int>(
-            r => r.ShopId == shopId,
+            r => r.RentedFromShopId == shopId,
             r => r.RentalId);
 
         // Sum held deposits via SQL SUM
@@ -139,12 +139,15 @@ public class DepositService(RentalDataContext context)
         int page = 1,
         int pageSize = 20)
     {
-        // Get all rentals for the shop
-        var rentals = await this.Context.LoadAsync(
-            this.Context.CreateQuery<Rental>().Where(r => r.ShopId == shopId),
-            page: 1, size: 10000, includeTotalRows: false);
+        // Get rental IDs for this shop using GetDistinctAsync (same pattern as other working methods)
+        var rentalIds = await this.Context.GetDistinctAsync<Rental, int>(
+            r => r.RentedFromShopId == shopId,
+            r => r.RentalId);
 
-        var rentalIds = rentals.ItemCollection.Select(r => r.RentalId).ToList();
+        if (!rentalIds.Any())
+        {
+            return [];
+        }
 
         // Get deposits
         var depositQuery = this.Context.CreateQuery<Deposit>()
@@ -159,34 +162,47 @@ public class DepositService(RentalDataContext context)
 
         var deposits = await this.Context.LoadAsync(depositQuery, page, pageSize, includeTotalRows: false);
 
+        if (!deposits.ItemCollection.Any())
+        {
+            return [];
+        }
+
+        // Get related rental IDs from deposits
+        var depositRentalIds = deposits.ItemCollection.Select(d => d.RentalId).Distinct().ToList();
+
+        // Load rentals for these deposits
+        var rentalsResult = await this.Context.LoadAsync(
+            this.Context.CreateQuery<Rental>().Where(r => depositRentalIds.IsInList(r.RentalId)),
+            page: 1, size: 10000, includeTotalRows: false);
+
         // Get renter info
-        var renterIds = rentals.ItemCollection.Select(r => r.RenterId).Distinct().ToList();
+        var renterIds = rentalsResult.ItemCollection.Select(r => r.RenterId).Distinct().ToList();
         var rentersResult = await this.Context.LoadAsync(
             this.Context.CreateQuery<Renter>().Where(r => renterIds.IsInList(r.RenterId)),
             page: 1, size: 10000, includeTotalRows: false);
 
-        // Get motorbike info
-        var motorbikeIds = rentals.ItemCollection.Select(r => r.MotorbikeId).Distinct().ToList();
-        var motorbikesResult = await this.Context.LoadAsync(
-            this.Context.CreateQuery<Motorbike>().Where(m => motorbikeIds.IsInList(m.MotorbikeId)),
+        // Get vehicle info
+        var vehicleIds = rentalsResult.ItemCollection.Select(r => r.VehicleId).Distinct().ToList();
+        var vehiclesResult = await this.Context.LoadAsync(
+            this.Context.CreateQuery<Vehicle>().Where(v => vehicleIds.IsInList(v.VehicleId)),
             page: 1, size: 10000, includeTotalRows: false);
 
         var rentersDict = rentersResult.ItemCollection.ToDictionary(r => r.RenterId);
-        var motorbikesDict = motorbikesResult.ItemCollection.ToDictionary(m => m.MotorbikeId);
-        var rentalsDict = rentals.ItemCollection.ToDictionary(r => r.RentalId);
+        var vehiclesDict = vehiclesResult.ItemCollection.ToDictionary(v => v.VehicleId);
+        var rentalsDict = rentalsResult.ItemCollection.ToDictionary(r => r.RentalId);
 
         return deposits.ItemCollection.Select(d =>
         {
             var rental = rentalsDict.GetValueOrDefault(d.RentalId);
             var renter = rental != null ? rentersDict.GetValueOrDefault(rental.RenterId) : null;
-            var motorbike = rental != null ? motorbikesDict.GetValueOrDefault(rental.MotorbikeId) : null;
+            var vehicle = rental != null ? vehiclesDict.GetValueOrDefault(rental.VehicleId) : null;
 
             return new DepositWithRentalInfo
             {
                 Deposit = d,
                 Rental = rental,
                 RenterName = renter?.FullName ?? "Unknown",
-                MotorbikeName = motorbike != null ? $"{motorbike.Brand} {motorbike.Model} ({motorbike.LicensePlate})" : "Unknown"
+                MotorbikeName = vehicle != null ? $"{vehicle.Brand} {vehicle.Model} ({vehicle.LicensePlate})" : "Unknown"
             };
         }).ToList();
     }

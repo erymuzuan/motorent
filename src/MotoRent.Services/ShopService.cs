@@ -116,7 +116,7 @@ public class ShopService(RentalDataContext context)
 
         // Count active rentals
         var rentals = await this.Context.LoadAsync(
-            this.Context.CreateQuery<Rental>().Where(r => r.ShopId == shopId && r.Status == "Active"),
+            this.Context.CreateQuery<Rental>().Where(r => r.RentedFromShopId == shopId && r.Status == "Active"),
             page: 1, size: 1000, includeTotalRows: true);
         stats["ActiveRentals"] = rentals.TotalRows;
 

@@ -99,7 +99,8 @@
             case 3:
                 <CollectDepositStep RequiredAmount="@(m_selectedVehicle?.DepositAmount ?? 0)"
                                     RentalAmount="@GetRentalTotalAmount()"
-                                    @bind-DepositInfo="m_depositInfo" />
+                                    DepositInfo="@m_depositInfo"
+                                    DepositInfoChanged="OnDepositInfoChanged" />
                 break;
             case 4:
                 <PreInspectionStep @bind-InspectionInfo="m_preInspection" />
@@ -350,6 +351,12 @@
         // Only allow going back to previous steps
         if (step < this.m_activeStep)
             this.m_activeStep = step;
+    }
+
+    private void OnDepositInfoChanged(DepositInfo info)
+    {
+        this.m_depositInfo = info;
+        StateHasChanged(); // Force re-render to update Next button state
     }
 
     private async Task OpenCreateRenterDialog()

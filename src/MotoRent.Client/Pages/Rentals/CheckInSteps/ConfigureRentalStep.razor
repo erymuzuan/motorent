@@ -34,12 +34,12 @@
                     <div class="row g-3 align-items-end">
                         <div class="col-12 col-sm-5">
                             <label class="form-label">@Localizer["StartDate"]</label>
-                            <input type="date" class="form-control"
+                            <input type="date" class="form-control" lang="en"
                                    @bind="m_startDate" min="@DateTime.Today.ToString("yyyy-MM-dd")" />
                         </div>
                         <div class="col-12 col-sm-5">
                             <label class="form-label">@Localizer["EndDate"]</label>
-                            <input type="date" class="form-control"
+                            <input type="date" class="form-control" lang="en"
                                    @bind="m_endDate" min="@((m_startDate ?? DateTime.Today).ToString("yyyy-MM-dd"))" />
                         </div>
                         <div class="col-12 col-sm-2 text-center">
@@ -489,7 +489,7 @@
     protected override async Task OnInitializedAsync()
     {
         this.m_startDate = DateTime.Today;
-        this.m_endDate = DateTime.Today.AddDays(3);
+        this.m_endDate = DateTime.Today.AddDays(1); // Default: 1 day rental (return tomorrow)
 
         await Task.WhenAll(
             this.LoadInsurances(),
@@ -574,7 +574,7 @@
     private async Task SetDays(int days)
     {
         this.m_startDate = DateTime.Today;
-        this.m_endDate = DateTime.Today.AddDays(days - 1);
+        this.m_endDate = DateTime.Today.AddDays(days); // End date = start + days (e.g., 1 day = return tomorrow)
         await this.UpdateConfigAsync();
     }
 
