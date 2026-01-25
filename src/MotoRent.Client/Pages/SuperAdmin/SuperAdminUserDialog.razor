@@ -50,36 +50,50 @@
     {
         <!-- Create New User Tab -->
         <div class="row g-3 mb-3">
-            <div class="col-md-6">
-                <ProviderPicker Label="@Localizer["Provider"]"
-                                @bind-Value="this.m_newProvider"
-                                ShowLineProvider="true"
-                                ShowCustomProvider="true"
-                                Required="true" />
+            <!-- Left Column: Form Fields -->
+            <div class="col-md-8">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label required">@Localizer["UsernameEmail"]</label>
+                        <input type="text" class="form-control @(this.m_emailError != null ? "is-invalid" : "")"
+                               placeholder="@Localizer["UsernamePlaceholder"]"
+                               @bind="this.m_newUserName" />
+                        @if (this.m_emailError != null)
+                        {
+                            <div class="invalid-feedback">@this.m_emailError</div>
+                        }
+                    </div>
+                    <div class="col-md-6">
+                        <ProviderPicker Label="@Localizer["Provider"]"
+                                        @bind-Value="this.m_newProvider"
+                                        ShowLineProvider="true"
+                                        ShowCustomProvider="true"
+                                        Required="true" />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label required">@Localizer["FullName"]</label>
+                        <input type="text" class="form-control @(this.m_nameError != null ? "is-invalid" : "")"
+                               placeholder="@Localizer["FullNamePlaceholder"]"
+                               @bind="this.m_newFullName" />
+                        @if (this.m_nameError != null)
+                        {
+                            <div class="invalid-feedback">@this.m_nameError</div>
+                        }
+                        <small class="form-hint">
+                            <i class="ti ti-info-circle me-1"></i>
+                            @Localizer["CreateUserNote"]
+                        </small>
+                    </div>
+                </div>
             </div>
-            <div class="col-md-6">
-                <label class="form-label required">@Localizer["FullName"]</label>
-                <input type="text" class="form-control @(this.m_nameError != null ? "is-invalid" : "")"
-                       placeholder="@Localizer["FullNamePlaceholder"]"
-                       @bind="this.m_newFullName" />
-                @if (this.m_nameError != null)
-                {
-                    <div class="invalid-feedback">@this.m_nameError</div>
-                }
-            </div>
-            <div class="col-12">
-                <label class="form-label required">@Localizer["UsernameEmail"]</label>
-                <input type="text" class="form-control @(this.m_emailError != null ? "is-invalid" : "")"
-                       placeholder="@Localizer["UsernamePlaceholder"]"
-                       @bind="this.m_newUserName" />
-                @if (this.m_emailError != null)
-                {
-                    <div class="invalid-feedback">@this.m_emailError</div>
-                }
-                <small class="form-hint">
-                    <i class="ti ti-info-circle me-1"></i>
-                    @Localizer["CreateUserNote"]
-                </small>
+            <!-- Right Column: Profile Photo -->
+            <div class="col-md-4">
+                <label class="form-label">@Localizer["ProfilePhoto"]</label>
+                <ImageUpload StoreId="@this.m_newPhotoStoreId"
+                             StoreIdChanged="@(id => this.m_newPhotoStoreId = id)"
+                             Title="@Localizer["ProfilePhoto"]"
+                             HelpHint="@Localizer["ProfilePhotoHint"]"
+                             Capture="ImageUpload.CameraCapture.User" />
             </div>
         </div>
     }
@@ -266,6 +280,7 @@
     private string m_newProvider = User.GOOGLE;
     private string? m_newUserName;
     private string? m_newFullName;
+    private string? m_newPhotoStoreId;
     private string? m_orgSearch;
 
     private string? m_emailError;
@@ -493,6 +508,7 @@
                 Email = normalizedUserName,
                 FullName = this.m_newFullName.Trim(),
                 CredentialProvider = this.m_newProvider,
+                PhotoStoreId = this.m_newPhotoStoreId,
                 IsLockedOut = false
             };
 
