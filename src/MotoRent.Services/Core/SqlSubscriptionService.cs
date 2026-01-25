@@ -15,24 +15,23 @@ public partial class SqlSubscriptionService(
     IRequestContext requestContext,
     SqlQueryProvider queryProvider) : ISubscriptionService
 {
-    // Static readonly for table creation order
-    private static readonly string[] s_tableOrder =
+    // Tables that should be created first (no dependencies or are depended upon by others)
+    private static readonly HashSet<string> s_priorityTables =
     [
         "MotoRent.Shop.sql",
         "MotoRent.Renter.sql",
         "MotoRent.Document.sql",
-        "MotoRent.Motorbike.sql",
-        "MotoRent.Insurance.sql",
-        "MotoRent.Accessory.sql",
         "MotoRent.ServiceType.sql",
-        "MotoRent.MaintenanceSchedule.sql",
-        "MotoRent.Rental.sql",
-        "MotoRent.RentalAccessory.sql",
-        "MotoRent.Deposit.sql",
-        "MotoRent.Payment.sql",
-        "MotoRent.DamageReport.sql",
-        "MotoRent.DamagePhoto.sql",
-        "MotoRent.RentalAgreement.sql"
+        "MotoRent.VehicleOwner.sql",
+        "MotoRent.VehiclePool.sql",
+        "MotoRent.Agent.sql",
+        "MotoRent.DenominationGroup.sql",
+        "MotoRent.DenominationRate.sql",
+        "MotoRent.ExchangeRate.sql",
+        "MotoRent.DocumentTemplate.sql",
+        "MotoRent.ServiceLocation.sql",
+        "MotoRent.PricingRule.sql",
+        "MotoRent.RateDelta.sql"
     ];
 
     // Private get properties from constructor injection
@@ -264,21 +263,27 @@ public partial class SqlSubscriptionService(
 
         progressCallback?.Invoke(new ProvisioningProgress { Message = $"Reading table scripts from {tablesFolder}..." });
 
-        foreach (var tableFile in s_tableOrder)
+        // Dynamically discover all table files (MotoRent.*.sql, excluding .seed.sql)
+        var tableFiles = Directory.GetFiles(tablesFolder, "MotoRent.*.sql")
+            .Select(Path.GetFileName)
+            .Where(f => f != null && !f.Contains(".seed.", StringComparison.OrdinalIgnoreCase))
+            .Cast<string>()
+            .OrderBy(f => s_priorityTables.Contains(f) ? 0 : 1) // Priority tables first
+            .ThenBy(f => f) // Then alphabetically
+            .ToList();
+
+        progressCallback?.Invoke(new ProvisioningProgress { Message = $"Found {tableFiles.Count} table scripts to execute..." });
+
+        foreach (var tableFile in tableFiles)
         {
             var filePath = Path.Combine(tablesFolder, tableFile);
-            if (!File.Exists(filePath))
-            {
-                progressCallback?.Invoke(new ProvisioningProgress
-                {
-                    Message = $"Skipping missing table file: {tableFile}",
-                    Status = ProgressStatus.InProgress
-                });
-                continue;
-            }
 
             var sqlTemplate = await File.ReadAllTextAsync(filePath);
-            var sql = sqlTemplate.Replace("<schema>", accountNo);
+
+            // Replace <schema> placeholder and also handle hardcoded [MotoRent] schema references
+            var sql = sqlTemplate
+                .Replace("<schema>", accountNo)
+                .Replace("[MotoRent].", $"[{accountNo}].");
 
             // Split by GO statements and execute each batch
             var batches = SplitSqlBatches(sql);
@@ -294,9 +299,13 @@ public partial class SqlSubscriptionService(
                     await conn.OpenAsync();
                     await cmd.ExecuteNonQueryAsync();
                 }
+                catch (SqlException ex) when (ex.Number == 2714) // Object already exists
+                {
+                    // Silently skip - table already exists
+                }
                 catch (SqlException ex)
                 {
-                    // Log but continue (table might already exist)
+                    // Log but continue
                     progressCallback?.Invoke(new ProvisioningProgress
                     {
                         Message = $"Warning ({tableFile}): {ex.Message}",
