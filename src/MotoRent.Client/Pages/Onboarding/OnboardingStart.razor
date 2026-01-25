@@ -1,0 +1,54 @@
+@page "/onboarding/start"
+@using Microsoft.AspNetCore.WebUtilities
+@inherits LocalizedComponentBase<OnboardingStart>
+
+<MotoRentPageTitle>@Localizer["PageTitle"]</MotoRentPageTitle>
+
+@* This page receives OAuth callback data and stores it for the wizard *@
+<div class="page-wrapper">
+    <div class="container-xl py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-6 text-center">
+                <div class="spinner-border mb-3" style="width: 3rem; height: 3rem; color: var(--mr-accent-primary);" role="status"></div>
+                <h3 class="mr-text-primary">@Localizer["Redirecting"]</h3>
+                <p class="text-secondary">@Localizer["PleaseWait"]</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "provider")]
+    public string? Provider { get; set; }
+
+    [SupplyParameterFromQuery(Name = "id")]
+    public string? ProviderId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "email")]
+    public string? Email { get; set; }
+
+    [SupplyParameterFromQuery(Name = "name")]
+    public string? Name { get; set; }
+
+    protected override void OnInitialized()
+    {
+        // Build redirect URL with parameters for the wizard
+        var uri = new UriBuilder(NavigationManager.BaseUri)
+        {
+            Path = "/signup"
+        };
+
+        var query = new Dictionary<string, string?>();
+        if (!string.IsNullOrWhiteSpace(Provider))
+            query["provider"] = Provider;
+        if (!string.IsNullOrWhiteSpace(ProviderId))
+            query["id"] = ProviderId;
+        if (!string.IsNullOrWhiteSpace(Email))
+            query["email"] = Email;
+        if (!string.IsNullOrWhiteSpace(Name))
+            query["name"] = Name;
+
+        var url = QueryHelpers.AddQueryString("/signup", query!);
+        NavigationManager.NavigateTo(url, forceLoad: false);
+    }
+}

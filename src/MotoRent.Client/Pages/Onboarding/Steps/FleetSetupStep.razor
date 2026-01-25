@@ -1,0 +1,200 @@
+@using MotoRent.Domain.Core
+@using MotoRent.Domain.Entities
+@inherits LocalizedComponentBase<FleetSetupStep>
+
+<div class="mr-animate-in">
+    <div class="text-center mb-4">
+        <div class="mb-3">
+            <div class="mr-icon-circle mx-auto" style="width: 64px; height: 64px; font-size: 1.5rem;">
+                <i class="ti ti-motorbike"></i>
+            </div>
+        </div>
+        <h3 class="mb-2">@Localizer["StepTitle"]</h3>
+        <p class="text-secondary">@Localizer["StepDescription"]</p>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            @* Vehicle Type Quick Select *@
+            <div class="mb-4">
+                <label class="mr-form-label">@Localizer["VehicleType"]</label>
+                <div class="mr-quick-select">
+                    @foreach (VehicleType type in Enum.GetValues<VehicleType>())
+                    {
+                        <button type="button"
+                                class="mr-quick-select-btn @(m_selectedType == type ? "active" : "")"
+                                @onclick="@(() => m_selectedType = type)">
+                            <i class="ti @GetVehicleTypeIcon(type) me-1"></i>
+                            @GetVehicleTypeLabel(type)
+                        </button>
+                    }
+                </div>
+            </div>
+
+            @* Add Fleet Item Form *@
+            <div class="mr-form-panel mb-4">
+                <div class="mr-form-panel-body">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-3">
+                            <label class="mr-form-label">@Localizer["Brand"]</label>
+                            <input type="text" class="mr-form-control" @bind="m_newFleetItem.Brand"
+                                   list="brandSuggestions" placeholder="@Localizer["BrandPlaceholder"]" />
+                            <datalist id="brandSuggestions">
+                                @foreach (var brand in GetBrandSuggestions())
+                                {
+                                    <option value="@brand" />
+                                }
+                            </datalist>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="mr-form-label">@Localizer["Model"]</label>
+                            <input type="text" class="mr-form-control" @bind="m_newFleetItem.Model"
+                                   placeholder="@Localizer["ModelPlaceholder"]" />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="mr-form-label">@Localizer["Quantity"] <span class="required">*</span></label>
+                            <input type="number" class="mr-form-control" @bind="m_newFleetItem.Quantity"
+                                   min="1" max="100" />
+                        </div>
+                        <div class="col-md-3">
+                            <button type="button" class="mr-btn-primary-action w-100"
+                                    disabled="@(m_newFleetItem.Quantity <= 0)"
+                                    @onclick="AddFleetItem">
+                                <i class="ti ti-plus me-1"></i>
+                                @Localizer["Add"]
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* Fleet Summary *@
+            @if (Request.Fleet.Count > 0)
+            {
+                <div class="mr-form-panel">
+                    <div class="mr-form-panel-header">
+                        <div class="mr-form-panel-header-icon">
+                            <i class="ti ti-list"></i>
+                        </div>
+                        <h3 class="mr-form-panel-title">@Localizer["FleetSummary"]</h3>
+                        <span class="badge bg-primary ms-2">@GetTotalVehicles() @Localizer["Vehicles"]</span>
+                    </div>
+                    <div class="mr-form-panel-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-vcenter mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>@Localizer["Type"]</th>
+                                        <th>@Localizer["Brand"]</th>
+                                        <th>@Localizer["Model"]</th>
+                                        <th class="text-end">@Localizer["Quantity"]</th>
+                                        <th style="width: 60px;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in Request.Fleet)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <i class="ti @GetVehicleTypeIcon(ParseVehicleType(item.VehicleType)) me-1"></i>
+                                                @GetVehicleTypeLabel(ParseVehicleType(item.VehicleType))
+                                            </td>
+                                            <td>@(string.IsNullOrEmpty(item.Brand) ? "-" : item.Brand)</td>
+                                            <td>@(string.IsNullOrEmpty(item.Model) ? "-" : item.Model)</td>
+                                            <td class="text-end">@item.Quantity</td>
+                                            <td class="text-end">
+                                                <button type="button" class="btn btn-icon btn-ghost-danger btn-sm"
+                                                        @onclick="@(() => RemoveFleetItem(item))">
+                                                    <i class="ti ti-trash"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="mr-info-panel">
+                    <div class="mr-info-panel-icon">
+                        <i class="ti ti-info-circle"></i>
+                    </div>
+                    <div>
+                        <div class="mr-info-panel-title">@Localizer["NoFleetYet"]</div>
+                        <p class="mr-info-panel-text">@Localizer["NoFleetYetHint"]</p>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public OnboardingRequest Request { get; set; } = new();
+    [Parameter] public EventCallback<OnboardingRequest> RequestChanged { get; set; }
+
+    private VehicleType m_selectedType = VehicleType.Motorbike;
+    private InitialFleetDto m_newFleetItem = new() { Quantity = 1, VehicleType = "Motorbike" };
+
+    private void AddFleetItem()
+    {
+        if (m_newFleetItem.Quantity <= 0)
+            return;
+
+        var item = new InitialFleetDto
+        {
+            VehicleType = m_selectedType.ToString(),
+            Brand = m_newFleetItem.Brand,
+            Model = m_newFleetItem.Model,
+            Quantity = m_newFleetItem.Quantity
+        };
+
+        Request.Fleet.Add(item);
+
+        // Reset form
+        m_newFleetItem = new InitialFleetDto { Quantity = 1, VehicleType = m_selectedType.ToString() };
+    }
+
+    private void RemoveFleetItem(InitialFleetDto item)
+    {
+        Request.Fleet.Remove(item);
+    }
+
+    private int GetTotalVehicles() => Request.Fleet.Sum(f => f.Quantity);
+
+    private static string GetVehicleTypeIcon(VehicleType type) => type switch
+    {
+        VehicleType.Motorbike => "ti-motorbike",
+        VehicleType.Car => "ti-car",
+        VehicleType.JetSki => "ti-sailboat",
+        VehicleType.Boat => "ti-ship",
+        VehicleType.Van => "ti-bus",
+        _ => "ti-car"
+    };
+
+    private string GetVehicleTypeLabel(VehicleType type) => type switch
+    {
+        VehicleType.Motorbike => Localizer["Motorbike"],
+        VehicleType.Car => Localizer["Car"],
+        VehicleType.JetSki => Localizer["JetSki"],
+        VehicleType.Boat => Localizer["Boat"],
+        VehicleType.Van => Localizer["Van"],
+        _ => Localizer["Vehicle"]
+    };
+
+    private static VehicleType ParseVehicleType(string type) =>
+        Enum.TryParse<VehicleType>(type, out var result) ? result : VehicleType.Motorbike;
+
+    private List<string> GetBrandSuggestions() => m_selectedType switch
+    {
+        VehicleType.Motorbike => ["Honda", "Yamaha", "Suzuki", "Kawasaki", "Vespa", "GPX"],
+        VehicleType.Car => ["Toyota", "Honda", "Mazda", "Nissan", "Mitsubishi", "Isuzu"],
+        VehicleType.JetSki => ["Yamaha", "Sea-Doo", "Kawasaki", "Honda"],
+        VehicleType.Boat => ["Yamaha", "Bayliner", "Sea Ray", "Boston Whaler"],
+        VehicleType.Van => ["Toyota", "Hyundai", "Mercedes", "Ford", "Nissan"],
+        _ => []
+    };
+}

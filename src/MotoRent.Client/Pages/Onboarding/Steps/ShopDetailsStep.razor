@@ -1,0 +1,112 @@
+@using MotoRent.Domain.Core
+@inherits LocalizedComponentBase<ShopDetailsStep>
+
+<div class="mr-animate-in">
+    <div class="text-center mb-4">
+        <div class="mb-3">
+            <div class="mr-icon-circle mx-auto" style="width: 64px; height: 64px; font-size: 1.5rem;">
+                <i class="ti ti-building-store"></i>
+            </div>
+        </div>
+        <h3 class="mb-2">@Localizer["StepTitle"]</h3>
+        <p class="text-secondary">@Localizer["StepDescription"]</p>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="row g-3">
+                @* Shop Name *@
+                <div class="col-12">
+                    <label class="mr-form-label">@Localizer["ShopName"] <span class="required">*</span></label>
+                    <input type="text" class="mr-form-control" @bind="Request.ShopName" required
+                           placeholder="@Localizer["ShopNamePlaceholder"]" />
+                    <div class="mr-form-hint">
+                        <i class="ti ti-info-circle"></i>
+                        @Localizer["ShopNameHint"]
+                    </div>
+                </div>
+
+                @* Location Area *@
+                <div class="col-md-6">
+                    <label class="mr-form-label">@Localizer["Location"] <span class="required">*</span></label>
+                    <select class="mr-form-control" @bind="Request.Location" required>
+                        <option value="">@Localizer["SelectLocation"]</option>
+                        <optgroup label="Phuket">
+                            <option value="Phuket - Patong">Phuket - Patong</option>
+                            <option value="Phuket - Kata">Phuket - Kata</option>
+                            <option value="Phuket - Karon">Phuket - Karon</option>
+                            <option value="Phuket - Kamala">Phuket - Kamala</option>
+                            <option value="Phuket - Rawai">Phuket - Rawai</option>
+                            <option value="Phuket - Chalong">Phuket - Chalong</option>
+                            <option value="Phuket Town">Phuket Town</option>
+                        </optgroup>
+                        <optgroup label="Krabi">
+                            <option value="Krabi - Ao Nang">Krabi - Ao Nang</option>
+                            <option value="Krabi - Railay">Krabi - Railay</option>
+                            <option value="Krabi Town">Krabi Town</option>
+                        </optgroup>
+                        <optgroup label="Islands">
+                            <option value="Koh Samui">Koh Samui</option>
+                            <option value="Koh Phangan">Koh Phangan</option>
+                            <option value="Koh Tao">Koh Tao</option>
+                            <option value="Koh Lanta">Koh Lanta</option>
+                            <option value="Koh Chang">Koh Chang</option>
+                        </optgroup>
+                        <optgroup label="North">
+                            <option value="Chiang Mai">Chiang Mai</option>
+                            <option value="Chiang Rai">Chiang Rai</option>
+                            <option value="Pai">Pai</option>
+                        </optgroup>
+                        <optgroup label="Central">
+                            <option value="Bangkok">Bangkok</option>
+                            <option value="Pattaya">Pattaya</option>
+                            <option value="Hua Hin">Hua Hin</option>
+                        </optgroup>
+                        <option value="Other">@Localizer["Other"]</option>
+                    </select>
+                </div>
+
+                @* Phone Number *@
+                <div class="col-md-6">
+                    <label class="mr-form-label">@Localizer["Phone"]</label>
+                    <input type="tel" class="mr-form-control" @bind="Request.Phone"
+                           placeholder="+66 XX XXX XXXX" />
+                </div>
+
+                @* Preferred Language *@
+                <div class="col-12">
+                    <label class="mr-form-label">@Localizer["PreferredLanguage"]</label>
+                    <div class="mr-quick-select">
+                        <button type="button"
+                                class="mr-quick-select-btn @(Request.PreferredLanguage == "th-TH" ? "active" : "")"
+                                @onclick="@(() => Request.PreferredLanguage = "th-TH")">
+                            <span class="me-1">🇹🇭</span>
+                            ไทย
+                        </button>
+                        <button type="button"
+                                class="mr-quick-select-btn @(Request.PreferredLanguage == "en-US" ? "active" : "")"
+                                @onclick="@(() => Request.PreferredLanguage = "en-US")">
+                            <span class="me-1">🇬🇧</span>
+                            English
+                        </button>
+                        <button type="button"
+                                class="mr-quick-select-btn @(Request.PreferredLanguage == "ms-MY" ? "active" : "")"
+                                @onclick="@(() => Request.PreferredLanguage = "ms-MY")">
+                            <span class="me-1">🇲🇾</span>
+                            Bahasa
+                        </button>
+                    </div>
+                    <div class="mr-form-hint">
+                        <i class="ti ti-info-circle"></i>
+                        @Localizer["LanguageHint"]
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public OnboardingRequest Request { get; set; } = new();
+    [Parameter] public EventCallback<OnboardingRequest> RequestChanged { get; set; }
+}

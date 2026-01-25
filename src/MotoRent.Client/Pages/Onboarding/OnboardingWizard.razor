@@ -1,0 +1,114 @@
+@page "/signup"
+@page "/onboarding"
+@using MotoRent.Client.Pages.Onboarding.Steps
+@using MotoRent.Domain.Core
+@inherits LocalizedComponentBase<OnboardingWizard>
+@inject IOnboardingService OnboardingService
+
+<MotoRentPageTitle>@Localizer["PageTitle"]</MotoRentPageTitle>
+
+<div class="page-wrapper">
+    <div class="container-xl py-4">
+        <div class="row justify-content-center">
+            <div class="col-lg-10 col-xl-8">
+                @* Header *@
+                <div class="text-center mb-4 mr-animate-in">
+                    <div class="mb-3">
+                        <img src="/images/motorent-logo.svg" alt="MotoRent" height="48" onerror="this.style.display='none'" />
+                    </div>
+                    <h1 class="mr-page-title mb-2">@Localizer["WelcomeTitle"]</h1>
+                    <p class="mr-page-subtitle">@Localizer["WelcomeSubtitle"]</p>
+                </div>
+
+                @* Wizard Card *@
+                <div class="mr-card mr-animate-in mr-animate-delay-1">
+                    <div class="mr-card-body p-4">
+                        @* Step indicators *@
+                        <div class="mr-filter-tabs mb-4" style="justify-content: center;">
+                            @for (int i = 0; i < m_stepKeys.Length; i++)
+                            {
+                                var stepIndex = i;
+                                var isActive = m_activeStep == stepIndex;
+                                var isCompleted = m_activeStep > stepIndex;
+                                <button type="button"
+                                        class="mr-filter-tab @(isActive ? "active" : "") @(isCompleted ? "text-success" : "")"
+                                        disabled="@(stepIndex > m_activeStep)"
+                                        @onclick="@(() => GoToStep(stepIndex))">
+                                    @if (isCompleted)
+                                    {
+                                        <i class="ti ti-check me-1"></i>
+                                    }
+                                    else
+                                    {
+                                        <span class="me-1">@(stepIndex + 1).</span>
+                                    }
+                                    @Localizer[m_stepKeys[stepIndex]]
+                                </button>
+                            }
+                        </div>
+
+                        <hr class="my-4" style="border-color: var(--mr-border-light);" />
+
+                        @* Step content *@
+                        @switch (m_activeStep)
+                        {
+                            case 0:
+                                <AuthStep @bind-Request="m_request"
+                                          OnAuthenticatedChanged="OnAuthenticatedChanged" />
+                                break;
+                            case 1:
+                                <ShopDetailsStep @bind-Request="m_request" />
+                                break;
+                            case 2:
+                                <FleetSetupStep @bind-Request="m_request" />
+                                break;
+                            case 3:
+                                <PlanSelectionStep @bind-Request="m_request"
+                                                   OnComplete="CompleteOnboarding" />
+                                break;
+                        }
+
+                        @* Navigation buttons *@
+                        <div class="d-flex justify-content-between mt-4 pt-3" style="border-top: 1px solid var(--mr-border-light);">
+                            <button type="button" class="mr-btn-cancel"
+                                    disabled="@(m_activeStep == 0)"
+                                    @onclick="PreviousStep">
+                                <i class="ti ti-arrow-left"></i>
+                                @CommonLocalizer["Previous"]
+                            </button>
+
+                            @if (m_activeStep < 3)
+                            {
+                                <button type="button" class="mr-btn-primary-action"
+                                        disabled="@(!CanProceedToNextStep())"
+                                        @onclick="NextStep">
+                                    @CommonLocalizer["Next"]
+                                    <i class="ti ti-arrow-right"></i>
+                                </button>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                @* Footer *@
+                <div class="text-center mt-4 mr-animate-in mr-animate-delay-2">
+                    <p class="text-secondary small">
+                        @Localizer["AlreadyHaveAccount"]
+                        <a href="/account/login" class="text-primary">@Localizer["SignIn"]</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (m_processing)
+{
+    <div class="modal-backdrop show" style="opacity: 0.8;"></div>
+    <div class="d-flex flex-column align-items-center justify-content-center position-fixed top-50 start-50 translate-middle" style="z-index: 1060;">
+        <div class="mr-card p-4 text-center" style="min-width: 200px;">
+            <div class="spinner-border mb-3" style="width: 3rem; height: 3rem; color: var(--mr-accent-primary);" role="status"></div>
+            <h5 class="mr-text-primary mb-0">@Localizer["CreatingAccount"]</h5>
+        </div>
+    </div>
+}

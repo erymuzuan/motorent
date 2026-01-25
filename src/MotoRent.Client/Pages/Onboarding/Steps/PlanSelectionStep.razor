@@ -1,0 +1,228 @@
+@using MotoRent.Domain.Core
+@inherits LocalizedComponentBase<PlanSelectionStep>
+
+<div class="mr-animate-in">
+    <div class="text-center mb-4">
+        <div class="mb-3">
+            <div class="mr-icon-circle mx-auto" style="width: 64px; height: 64px; font-size: 1.5rem;">
+                <i class="ti ti-crown"></i>
+            </div>
+        </div>
+        <h3 class="mb-2">@Localizer["StepTitle"]</h3>
+        <p class="text-secondary">@Localizer["StepDescription"]</p>
+        <span class="badge bg-success-lt">
+            <i class="ti ti-gift me-1"></i>
+            @Localizer["FreeTrial"]
+        </span>
+    </div>
+
+    @* Pricing Cards *@
+    <div class="row g-4 justify-content-center mb-4">
+        @* Free Plan *@
+        <div class="col-md-4">
+            <div class="mr-card h-100 @(Request.Plan == SubscriptionPlan.Free ? "border-primary" : "")"
+                 style="cursor: pointer; @(Request.Plan == SubscriptionPlan.Free ? "border-width: 2px;" : "")"
+                 @onclick="@(() => SelectPlan(SubscriptionPlan.Free))">
+                <div class="mr-card-body p-4 text-center">
+                    <h4 class="mb-3">@Localizer["FreePlan"]</h4>
+                    <div class="mb-3">
+                        <span class="display-5 fw-bold">฿0</span>
+                        <span class="text-secondary">/@Localizer["Month"]</span>
+                    </div>
+                    <ul class="list-unstyled text-start mb-4">
+                        <li class="mb-2">
+                            <i class="ti ti-check text-success me-2"></i>
+                            @Localizer["Feature1Shop"]
+                        </li>
+                        <li class="mb-2">
+                            <i class="ti ti-check text-success me-2"></i>
+                            @Localizer["Feature10Vehicles"]
+                        </li>
+                        <li class="mb-2">
+                            <i class="ti ti-check text-success me-2"></i>
+                            @Localizer["FeatureBasicReports"]
+                        </li>
+                        <li class="mb-2 text-secondary">
+                            <i class="ti ti-x me-2"></i>
+                            @Localizer["FeatureOcr"]
+                        </li>
+                        <li class="mb-2 text-secondary">
+                            <i class="ti ti-x me-2"></i>
+                            @Localizer["FeatureApi"]
+                        </li>
+                    </ul>
+                    @if (Request.Plan == SubscriptionPlan.Free)
+                    {
+                        <button type="button" class="mr-btn-primary-action w-100" disabled>
+                            <i class="ti ti-check me-1"></i>
+                            @Localizer["Selected"]
+                        </button>
+                    }
+                    else
+                    {
+                        <button type="button" class="mr-btn-cancel w-100"
+                                @onclick="@(() => SelectPlan(SubscriptionPlan.Free))">
+                            @Localizer["SelectPlan"]
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+
+        @* Pro Plan (Recommended) *@
+        <div class="col-md-4">
+            <div class="mr-card h-100 @(Request.Plan == SubscriptionPlan.Pro ? "border-primary" : "")"
+                 style="cursor: pointer; position: relative; @(Request.Plan == SubscriptionPlan.Pro ? "border-width: 2px;" : "")"
+                 @onclick="@(() => SelectPlan(SubscriptionPlan.Pro))">
+                <div class="ribbon ribbon-top ribbon-bookmark bg-primary">
+                    <i class="ti ti-star"></i>
+                </div>
+                <div class="mr-card-body p-4 text-center">
+                    <h4 class="mb-3">@Localizer["ProPlan"]</h4>
+                    <div class="mb-3">
+                        <span class="display-5 fw-bold">฿999</span>
+                        <span class="text-secondary">/@Localizer["Month"]</span>
+                    </div>
+                    <ul class="list-unstyled text-start mb-4">
+                        <li class="mb-2">
+                            <i class="ti ti-check text-success me-2"></i>
+                            @Localizer["Feature3Shops"]
+                        </li>
+                        <li class="mb-2">
+                            <i class="ti ti-check text-success me-2"></i>
+                            @Localizer["Feature50Vehicles"]
+                        </li>
+                        <li class="mb-2">
+                            <i class="ti ti-check text-success me-2"></i>
+                            @Localizer["FeatureFullReports"]
+                        </li>
+                        <li class="mb-2">
+                            <i class="ti ti-check text-success me-2"></i>
+                            @Localizer["FeatureOcr"]
+                        </li>
+                        <li class="mb-2 text-secondary">
+                            <i class="ti ti-x me-2"></i>
+                            @Localizer["FeatureApi"]
+                        </li>
+                    </ul>
+                    @if (Request.Plan == SubscriptionPlan.Pro)
+                    {
+                        <button type="button" class="mr-btn-primary-action w-100" disabled>
+                            <i class="ti ti-check me-1"></i>
+                            @Localizer["Selected"]
+                        </button>
+                    }
+                    else
+                    {
+                        <button type="button" class="mr-btn-primary-action w-100"
+                                @onclick="@(() => SelectPlan(SubscriptionPlan.Pro))">
+                            @Localizer["SelectPlan"]
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+
+        @* Ultra Plan *@
+        <div class="col-md-4">
+            <div class="mr-card h-100 @(Request.Plan == SubscriptionPlan.Ultra ? "border-primary" : "")"
+                 style="cursor: pointer; @(Request.Plan == SubscriptionPlan.Ultra ? "border-width: 2px;" : "")"
+                 @onclick="@(() => SelectPlan(SubscriptionPlan.Ultra))">
+                <div class="mr-card-body p-4 text-center">
+                    <h4 class="mb-3">@Localizer["UltraPlan"]</h4>
+                    <div class="mb-3">
+                        <span class="display-5 fw-bold">฿1,499</span>
+                        <span class="text-secondary">/@Localizer["Month"]</span>
+                    </div>
+                    <ul class="list-unstyled text-start mb-4">
+                        <li class="mb-2">
+                            <i class="ti ti-check text-success me-2"></i>
+                            @Localizer["FeatureUnlimitedShops"]
+                        </li>
+                        <li class="mb-2">
+                            <i class="ti ti-check text-success me-2"></i>
+                            @Localizer["FeatureUnlimitedVehicles"]
+                        </li>
+                        <li class="mb-2">
+                            <i class="ti ti-check text-success me-2"></i>
+                            @Localizer["FeatureFullReports"]
+                        </li>
+                        <li class="mb-2">
+                            <i class="ti ti-check text-success me-2"></i>
+                            @Localizer["FeatureOcr"]
+                        </li>
+                        <li class="mb-2">
+                            <i class="ti ti-check text-success me-2"></i>
+                            @Localizer["FeatureApi"]
+                        </li>
+                    </ul>
+                    @if (Request.Plan == SubscriptionPlan.Ultra)
+                    {
+                        <button type="button" class="mr-btn-primary-action w-100" disabled>
+                            <i class="ti ti-check me-1"></i>
+                            @Localizer["Selected"]
+                        </button>
+                    }
+                    else
+                    {
+                        <button type="button" class="mr-btn-cancel w-100"
+                                @onclick="@(() => SelectPlan(SubscriptionPlan.Ultra))">
+                            @Localizer["SelectPlan"]
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Terms Acceptance *@
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="mb-4">
+                <label class="form-check">
+                    <input type="checkbox" class="form-check-input" @bind="m_termsAccepted" />
+                    <span class="form-check-label">
+                        @Localizer["AcceptTerms"]
+                        <a href="/terms" target="_blank">@Localizer["TermsOfService"]</a>
+                        @Localizer["And"]
+                        <a href="/privacy" target="_blank">@Localizer["PrivacyPolicy"]</a>
+                    </span>
+                </label>
+            </div>
+
+            @* Complete Button *@
+            <div class="text-center">
+                <button type="button" class="mr-btn-primary-action btn-lg"
+                        disabled="@(!m_termsAccepted)"
+                        @onclick="Complete">
+                    <i class="ti ti-rocket me-2"></i>
+                    @Localizer["CompleteSignup"]
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public OnboardingRequest Request { get; set; } = new();
+    [Parameter] public EventCallback<OnboardingRequest> RequestChanged { get; set; }
+    [Parameter] public EventCallback OnComplete { get; set; }
+
+    private bool m_termsAccepted;
+
+    private void SelectPlan(SubscriptionPlan plan)
+    {
+        Request.Plan = plan;
+    }
+
+    private async Task Complete()
+    {
+        if (!m_termsAccepted)
+        {
+            ShowWarning(Localizer["PleaseAcceptTerms"]);
+            return;
+        }
+
+        await OnComplete.InvokeAsync();
+    }
+}
