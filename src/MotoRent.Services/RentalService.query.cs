@@ -8,9 +8,15 @@ public partial class RentalService
     public async Task<Dictionary<string, int>> GetStatusCountsAsync(int shopId)
     {
         // Use database-side grouping instead of loading all rentals
-        var groups = await this.Context.GetGroupByCountAsync<Rental, string?>(
-            r => r.RentedFromShopId == shopId,
-            r => r.Status);
+        // When shopId is 0, get organization-wide stats (all shops)
+        var query = this.Context.CreateQuery<Rental>();
+
+        if (shopId > 0)
+        {
+            query = query.Where(r => r.RentedFromShopId == shopId);
+        }
+
+        var groups = await this.Context.GetGroupByCountAsync(query, r => r.Status);
 
         // Handle null keys by converting to "Unknown"
         return groups.ToDictionary(g => g.Key ?? "Unknown", g => g.Count);
@@ -72,14 +78,18 @@ public partial class RentalService
         var todayStart = today.Date;
         var todayEnd = todayStart.AddDays(1);
 
-        var rentals = await this.Context.LoadAsync(
-            this.Context.CreateQuery<Rental>()
-                .Where(r => r.RentedFromShopId == shopId)
-                .Where(r => r.Status == "Active")
-                .Where(r => r.ExpectedEndDate >= todayStart)
-                .Where(r => r.ExpectedEndDate < todayEnd),
-            page: 1, size: 1000, includeTotalRows: false);
+        var query = this.Context.CreateQuery<Rental>()
+            .Where(r => r.Status == "Active")
+            .Where(r => r.ExpectedEndDate >= todayStart)
+            .Where(r => r.ExpectedEndDate < todayEnd);
 
+        // When shopId is 0, get organization-wide data (all shops)
+        if (shopId > 0)
+        {
+            query = query.Where(r => r.RentedFromShopId == shopId);
+        }
+
+        var rentals = await this.Context.LoadAsync(query, page: 1, size: 1000, includeTotalRows: false);
         return rentals.ItemCollection.ToList();
     }
 
@@ -87,13 +97,17 @@ public partial class RentalService
     {
         var todayStart = today.Date;
 
-        var rentals = await this.Context.LoadAsync(
-            this.Context.CreateQuery<Rental>()
-                .Where(r => r.RentedFromShopId == shopId)
-                .Where(r => r.Status == "Active")
-                .Where(r => r.ExpectedEndDate < todayStart),
-            page: 1, size: 1000, includeTotalRows: false);
+        var query = this.Context.CreateQuery<Rental>()
+            .Where(r => r.Status == "Active")
+            .Where(r => r.ExpectedEndDate < todayStart);
 
+        // When shopId is 0, get organization-wide data (all shops)
+        if (shopId > 0)
+        {
+            query = query.Where(r => r.RentedFromShopId == shopId);
+        }
+
+        var rentals = await this.Context.LoadAsync(query, page: 1, size: 1000, includeTotalRows: false);
         return rentals.ItemCollection.ToList();
     }
 

@@ -257,23 +257,55 @@
             <div class="tab-pane fade @(m_activeTab == "terms" ? "show active" : "")">
                 <div class="row g-3">
                     <div class="col-12">
-                        <h6 class="mb-2">@Localizer["RentalTerms"]</h6>
-                        <p class="text-secondary small mb-3">
-                            @Localizer["TermsHint"]
-                        </p>
-                        <textarea class="form-control" @bind="Entity.TermsAndConditions" rows="15"
-                                  placeholder="@Localizer["TermsPlaceholder"]"></textarea>
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div>
+                                <h6 class="mb-1">@Localizer["RentalTerms"]</h6>
+                                <p class="text-secondary small mb-0">
+                                    @Localizer["TermsHint"]
+                                </p>
+                            </div>
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn @(m_termsLanguage == "en" ? "btn-primary" : "btn-outline-primary")"
+                                        @onclick="@(() => m_termsLanguage = "en")">
+                                    English
+                                </button>
+                                <button type="button" class="btn @(m_termsLanguage == "th" ? "btn-primary" : "btn-outline-primary")"
+                                        @onclick="@(() => m_termsLanguage = "th")">
+                                    ไทย
+                                </button>
+                            </div>
+                        </div>
+
+                        @if (m_termsLanguage == "en")
+                        {
+                            <textarea class="form-control" @bind="Entity.TermsAndConditionsEn" rows="15"
+                                      placeholder="@Localizer["TermsPlaceholderEn"]"></textarea>
+                        }
+                        else
+                        {
+                            <textarea class="form-control" @bind="Entity.TermsAndConditionsTh" rows="15"
+                                      placeholder="@Localizer["TermsPlaceholderTh"]"></textarea>
+                        }
                     </div>
 
-                    @if (string.IsNullOrEmpty(Entity.TermsAndConditions))
-                    {
-                        <div class="col-12">
-                            <button type="button" class="btn btn-outline-primary" @onclick="InsertDefaultTerms">
-                                <i class="ti ti-file-plus me-1"></i>
-                                @Localizer["InsertDefaultTerms"]
-                            </button>
+                    <div class="col-12">
+                        <div class="btn-list">
+                            @if (m_termsLanguage == "en" && string.IsNullOrEmpty(Entity.TermsAndConditionsEn))
+                            {
+                                <button type="button" class="btn btn-outline-primary" @onclick="InsertDefaultTermsEn">
+                                    <i class="ti ti-file-plus me-1"></i>
+                                    @Localizer["InsertDefaultTerms"]
+                                </button>
+                            }
+                            @if (m_termsLanguage == "th" && string.IsNullOrEmpty(Entity.TermsAndConditionsTh))
+                            {
+                                <button type="button" class="btn btn-outline-primary" @onclick="InsertDefaultTermsTh">
+                                    <i class="ti ti-file-plus me-1"></i>
+                                    @Localizer["InsertDefaultTerms"]
+                                </button>
+                            }
                         </div>
-                    }
+                    </div>
                 </div>
             </div>
 
@@ -320,10 +352,11 @@
     [Parameter] public bool IsNew { get; set; }
 
     private string m_activeTab = "basic";
+    private string m_termsLanguage = "en";
 
-    private void InsertDefaultTerms()
+    private void InsertDefaultTermsEn()
     {
-        this.Entity.TermsAndConditions = """
+        this.Entity.TermsAndConditionsEn = """
             RENTAL AGREEMENT TERMS AND CONDITIONS
 
             1. RENTAL PERIOD
@@ -367,6 +400,55 @@
             - Inspection will be conducted upon return.
 
             By signing this agreement, the renter acknowledges having read and accepted these terms.
+            """;
+    }
+
+    private void InsertDefaultTermsTh()
+    {
+        this.Entity.TermsAndConditionsTh = """
+            ข้อกำหนดและเงื่อนไขการเช่ารถ
+
+            1. ระยะเวลาการเช่า
+            - ระยะเวลาการเช่าเริ่มต้นจากเวลารับรถและสิ้นสุดตามเวลาคืนรถที่ตกลงไว้
+            - การคืนรถล่าช้าอาจมีค่าใช้จ่ายเพิ่มเติมรายวัน
+            - การขยายเวลาเช่าต้องแจ้งล่วงหน้าอย่างน้อย 24 ชั่วโมงก่อนกำหนดคืน
+
+            2. คุณสมบัติผู้เช่า
+            - ผู้เช่าต้องมีใบอนุญาตขับขี่ที่ถูกต้องตามประเภทของรถ
+            - ใบอนุญาตขับขี่สากล (IDP) จำเป็นสำหรับใบอนุญาตต่างประเทศ
+            - ผู้เช่าต้องมีอายุอย่างน้อย 18 ปี
+
+            3. การใช้งานรถ
+            - รถมีไว้สำหรับการเดินทางส่วนตัวเท่านั้น
+            - ห้ามให้เช่าช่วงหรือใช้งานโดยไม่ได้รับอนุญาต
+            - ห้ามใช้รถสำหรับการแข่งขัน ขับออฟโรด หรือวัตถุประสงค์ที่ผิดกฎหมาย
+
+            4. นโยบายน้ำมัน
+            - รถจะถูกส่งมอบพร้อมน้ำมันเต็มถัง
+            - ต้องคืนรถพร้อมน้ำมันเต็มถัง
+            - มีค่าใช้จ่ายเติมน้ำมันหากคืนรถโดยมีน้ำมันไม่เต็ม
+
+            5. ประกันภัยและความรับผิดชอบ
+            - ประกันภัยพื้นฐานรวมอยู่ในค่าเช่า
+            - ผู้เช่ารับผิดชอบความเสียหายที่ไม่ครอบคลุมโดยประกัน
+            - มีค่าเสียหายส่วนแรกในกรณีเกิดอุบัติเหตุหรือความเสียหาย
+
+            6. เงินมัดจำ
+            - ต้องวางเงินมัดจำในขณะเช่ารถ
+            - เงินมัดจำจะคืนเมื่อส่งคืนรถอย่างปลอดภัย
+            - อาจมีการหักเงินสำหรับความเสียหาย ค่าปรับจราจร หรือน้ำมัน
+
+            7. รถเสียและอุบัติเหตุ
+            - ติดต่อร้านทันทีในกรณีรถเสียหรือเกิดอุบัติเหตุ
+            - แจ้งความกับตำรวจในกรณีเกิดอุบัติเหตุ
+            - ห้ามซ่อมแซมเองโดยไม่ได้รับอนุญาต
+
+            8. เงื่อนไขการคืนรถ
+            - รถต้องคืนในสภาพสะอาดและสภาพเดียวกับที่รับมา
+            - คืนรถตามสถานที่และเวลาที่ตกลงไว้
+            - จะมีการตรวจสอบรถเมื่อคืน
+
+            โดยการลงนามในสัญญานี้ ผู้เช่ายอมรับว่าได้อ่านและยอมรับข้อกำหนดเหล่านี้แล้ว
             """;
     }
 

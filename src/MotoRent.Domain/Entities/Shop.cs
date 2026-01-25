@@ -45,7 +45,15 @@ public partial class Shop : Entity
     public string Phone { get; set; } = string.Empty;
     public string? Email { get; set; }
     public string? LogoPath { get; set; }
-    public string? TermsAndConditions { get; set; }
+    /// <summary>
+    /// Rental terms and conditions in English.
+    /// </summary>
+    public string? TermsAndConditionsEn { get; set; }
+
+    /// <summary>
+    /// Rental terms and conditions in Thai.
+    /// </summary>
+    public string? TermsAndConditionsTh { get; set; }
     public bool IsActive { get; set; } = true;
 
     /// <summary>

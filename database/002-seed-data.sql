@@ -9,7 +9,8 @@ VALUES (N'{
     "Address": "123 Beach Road, Patong, Phuket 83150",
     "Phone": "076-123-456",
     "Email": "info@phuketbikerentals.com",
-    "TermsAndConditions": "Standard rental terms apply. Helmet required. Valid license required.",
+    "TermsAndConditionsEn": "Standard rental terms apply. Helmet required. Valid license required.",
+    "TermsAndConditionsTh": "เงื่อนไขการเช่ามาตรฐานใช้บังคับ ต้องสวมหมวกกันน็อก ต้องมีใบขับขี่ที่ถูกต้อง",
     "IsActive": true
 }')
 GO

@@ -14,8 +14,13 @@ public partial class RentalService
         int page = 1,
         int pageSize = 20)
     {
-        var query = this.Context.CreateQuery<Rental>()
-            .Where(r => r.RentedFromShopId == shopId || r.ReturnedToShopId == shopId);
+        var query = this.Context.CreateQuery<Rental>();
+
+        // When shopId is 0, get organization-wide data (all shops)
+        if (shopId > 0)
+        {
+            query = query.Where(r => r.RentedFromShopId == shopId || r.ReturnedToShopId == shopId);
+        }
 
         if (!string.IsNullOrWhiteSpace(status))
         {
