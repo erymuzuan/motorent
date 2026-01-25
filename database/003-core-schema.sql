@@ -21,7 +21,7 @@ CREATE TABLE [Core].[Organization]
 (
     [OrganizationId]    INT            NOT NULL PRIMARY KEY IDENTITY(1,1),
     -- Computed columns from JSON
-    [AccountNo]         AS CAST(JSON_VALUE([Json], '$.AccountNo') AS VARCHAR(20)) PERSISTED,
+    [AccountNo]         AS CAST(JSON_VALUE([Json], '$.AccountNo') AS VARCHAR(50)) PERSISTED,
     [Name]              AS CAST(JSON_VALUE([Json], '$.Name') AS NVARCHAR(200)),
     [Currency]          AS CAST(JSON_VALUE([Json], '$.Currency') AS VARCHAR(10)),
     [Timezone]          AS CAST(JSON_VALUE([Json], '$.Timezone') AS FLOAT),
