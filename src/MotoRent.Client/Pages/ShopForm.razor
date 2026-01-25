@@ -52,30 +52,27 @@
                     </div>
 
                     <div class="col-md-6">
-                        <label class="form-label required">@Localizer["LocationArea"]</label>
-                        <select class="form-select" @bind="Entity.Location" required>
-                            <option value="">@Localizer["SelectLocation"]</option>
-                            <option value="Phuket - Patong">Phuket - Patong</option>
-                            <option value="Phuket - Kata">Phuket - Kata</option>
-                            <option value="Phuket - Karon">Phuket - Karon</option>
-                            <option value="Phuket - Kamala">Phuket - Kamala</option>
-                            <option value="Phuket - Rawai">Phuket - Rawai</option>
-                            <option value="Krabi - Ao Nang">Krabi - Ao Nang</option>
-                            <option value="Krabi - Railay">Krabi - Railay</option>
-                            <option value="Koh Samui">Koh Samui</option>
-                            <option value="Koh Phangan">Koh Phangan</option>
-                            <option value="Chiang Mai">Chiang Mai</option>
-                            <option value="Pai">Pai</option>
-                            <option value="Bangkok">Bangkok</option>
-                            <option value="Pattaya">Pattaya</option>
-                            <option value="Other">Other</option>
-                        </select>
+                        <label class="form-label required">@Localizer["FullAddress"]</label>
+                        <input type="text" class="form-control" @bind="Entity.Address" required
+                               placeholder="@Localizer["AddressPlaceholder"]" />
                     </div>
 
                     <div class="col-12">
-                        <label class="form-label required">@Localizer["FullAddress"]</label>
-                        <textarea class="form-control" @bind="Entity.Address" required rows="2"
-                                  placeholder="@Localizer["AddressPlaceholder"]"></textarea>
+                        <ThaiAddressSelector @bind-Province="Entity.Province"
+                                             @bind-District="Entity.District"
+                                             @bind-Subdistrict="Entity.Subdistrict"
+                                             @bind-PostalCode="Entity.PostalCode"
+                                             Required="true"
+                                             ProvinceColumnClass="col-md-3"
+                                             DistrictColumnClass="col-md-3"
+                                             SubdistrictColumnClass="col-md-3"
+                                             PostalCodeColumnClass="col-md-3" />
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">@Localizer["Area"]</label>
+                        <input type="text" class="form-control" @bind="Entity.Location"
+                               placeholder="@Localizer["AreaPlaceholder"]" />
                     </div>
 
                     <div class="col-md-6">
@@ -123,38 +120,43 @@
                 else
                 {
                     <div class="table-responsive">
-                        <table class="table table-vcenter table-sm">
+                        <table class="table table-vcenter">
                             <thead>
                                 <tr>
-                                    <th style="width: 120px;">@Localizer["Day"]</th>
-                                    <th style="width: 80px;">@Localizer["Open"]</th>
-                                    <th style="width: 120px;">@Localizer["From"]</th>
-                                    <th style="width: 120px;">@Localizer["To"]</th>
+                                    <th style="width: 150px;">@Localizer["Day"]</th>
+                                    <th style="width: 120px;"></th>
+                                    <th>@Localizer["OpensAt"]</th>
+                                    <th>@Localizer["ClosesAt"]</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach (var dayHours in Entity.DefaultHours.OrderBy(d => ((int)d.DayOfWeek + 6) % 7))
                                 {
-                                    <tr class="@(dayHours.IsOpen ? "" : "text-secondary")">
-                                        <td>@dayHours.DayOfWeek.ToString()</td>
+                                    <tr class="@(!dayHours.IsOpen ? "text-secondary" : "")">
+                                        <td class="fw-medium">@Localizer[$"Day_{dayHours.DayOfWeek}"]</td>
                                         <td>
-                                            <label class="form-check form-switch mb-0">
+                                            <label class="form-check mb-0">
                                                 <input type="checkbox" class="form-check-input"
-                                                       checked="@dayHours.IsOpen"
-                                                       @onchange="@(e => dayHours.IsOpen = (bool)(e.Value ?? false))" />
+                                                       checked="@(!dayHours.IsOpen)"
+                                                       @onchange="@(e => dayHours.IsOpen = !(bool)(e.Value ?? false))" />
+                                                <span class="form-check-label">@Localizer["Closed"]</span>
                                             </label>
                                         </td>
                                         <td>
-                                            <input type="time" class="form-control form-control-sm"
-                                                   value="@dayHours.OpenTime.ToString(@"hh\:mm")"
-                                                   disabled="@(!dayHours.IsOpen)"
-                                                   @onchange="@(e => dayHours.OpenTime = TimeSpan.Parse(e.Value?.ToString() ?? "08:00"))" />
+                                            @if (dayHours.IsOpen)
+                                            {
+                                                <input type="time" class="form-control" style="max-width: 140px;"
+                                                       value="@dayHours.OpenTime.ToString(@"hh\:mm")"
+                                                       @onchange="@(e => dayHours.OpenTime = TimeSpan.Parse(e.Value?.ToString() ?? "08:00"))" />
+                                            }
                                         </td>
                                         <td>
-                                            <input type="time" class="form-control form-control-sm"
-                                                   value="@dayHours.CloseTime.ToString(@"hh\:mm")"
-                                                   disabled="@(!dayHours.IsOpen)"
-                                                   @onchange="@(e => dayHours.CloseTime = TimeSpan.Parse(e.Value?.ToString() ?? "18:00"))" />
+                                            @if (dayHours.IsOpen)
+                                            {
+                                                <input type="time" class="form-control" style="max-width: 140px;"
+                                                       value="@dayHours.CloseTime.ToString(@"hh\:mm")"
+                                                       @onchange="@(e => dayHours.CloseTime = TimeSpan.Parse(e.Value?.ToString() ?? "18:00"))" />
+                                            }
                                         </td>
                                     </tr>
                                 }
@@ -176,14 +178,14 @@
                 @if (Entity.OutOfHoursBands.Count > 0)
                 {
                     <div class="table-responsive mb-3">
-                        <table class="table table-vcenter table-sm">
+                        <table class="table table-vcenter">
                             <thead>
                                 <tr>
-                                    <th style="width: 150px;">@Localizer["Name"]</th>
-                                    <th style="width: 120px;">@Localizer["From"]</th>
-                                    <th style="width: 120px;">@Localizer["To"]</th>
-                                    <th style="width: 120px;">@Localizer["Fee"]</th>
-                                    <th style="width: 60px;"></th>
+                                    <th>@Localizer["Name"]</th>
+                                    <th>@Localizer["From"]</th>
+                                    <th>@Localizer["To"]</th>
+                                    <th>@Localizer["Fee"]</th>
+                                    <th style="width: 50px;"></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -191,25 +193,25 @@
                                 {
                                     <tr>
                                         <td>
-                                            <input type="text" class="form-control form-control-sm"
+                                            <input type="text" class="form-control"
                                                    @bind="band.Name" placeholder="@Localizer["BandNamePlaceholder"]" />
                                         </td>
                                         <td>
-                                            <input type="time" class="form-control form-control-sm"
+                                            <input type="time" class="form-control" style="max-width: 140px;"
                                                    value="@band.StartTime.ToString(@"hh\:mm")"
                                                    @onchange="@(e => band.StartTime = TimeSpan.Parse(e.Value?.ToString() ?? "18:00"))" />
                                         </td>
                                         <td>
-                                            <input type="time" class="form-control form-control-sm"
+                                            <input type="time" class="form-control" style="max-width: 140px;"
                                                    value="@band.EndTime.ToString(@"hh\:mm")"
                                                    @onchange="@(e => band.EndTime = TimeSpan.Parse(e.Value?.ToString() ?? "20:00"))" />
                                         </td>
                                         <td>
-                                            <input type="number" class="form-control form-control-sm"
+                                            <input type="number" class="form-control" style="max-width: 120px;"
                                                    @bind="band.Fee" min="0" step="50" />
                                         </td>
-                                        <td class="text-end">
-                                            <button type="button" class="btn btn-icon btn-ghost-danger btn-sm"
+                                        <td>
+                                            <button type="button" class="btn btn-icon btn-ghost-danger"
                                                     @onclick="@(() => RemoveBand(band))">
                                                 <i class="ti ti-trash"></i>
                                             </button>
@@ -229,13 +231,13 @@
                 }
 
                 <div class="btn-list">
-                    <button type="button" class="btn btn-outline-primary btn-sm" @onclick="AddBand">
+                    <button type="button" class="btn btn-outline-primary" @onclick="AddBand">
                         <i class="ti ti-plus me-1"></i>
                         @Localizer["AddBand"]
                     </button>
                     @if (Entity.OutOfHoursBands.Count == 0)
                     {
-                        <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="InsertDefaultBands">
+                        <button type="button" class="btn btn-outline-secondary" @onclick="InsertDefaultBands">
                             <i class="ti ti-template me-1"></i>
                             @Localizer["InsertDefaultBands"]
                         </button>
