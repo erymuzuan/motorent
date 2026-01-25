@@ -101,7 +101,7 @@ public partial class TillService
 
         // Check for same-day session at this shop (one till per staff per shop per day)
         var today = DateTimeOffset.Now.Date;
-        var todayStart = new DateTimeOffset(today, TimeSpan.Zero);
+        var todayStart = new DateTimeOffset(DateTime.SpecifyKind(today, DateTimeKind.Utc), TimeSpan.Zero);
         var todayEnd = todayStart.AddDays(1);
 
         var sameDayQuery = this.Context.CreateQuery<TillSession>()
