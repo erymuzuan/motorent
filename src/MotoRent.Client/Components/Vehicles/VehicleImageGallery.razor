@@ -6,97 +6,119 @@
 @inject VehicleImageService VehicleImageService
 @inject IBinaryStore BinaryStore
 
-<div class="card mb-3">
-    <div class="card-header d-flex flex-wrap align-items-center">
-        <h3 class="card-title mb-0">
-            <i class="ti ti-photo me-2"></i>@Localizer["VehicleImages"]
-        </h3>
-        <div class="ms-auto">
-            <span class="badge bg-secondary">@m_images.Count / @VehicleImageService.MaxImagesPerVehicle</span>
+<div class="mr-form-panel mb-3">
+    <div class="mr-form-panel-header">
+        <div class="mr-form-panel-header-icon">
+            <i class="ti ti-photo"></i>
         </div>
+        <h3 class="mr-form-panel-title">@Localizer["VehicleImages"]</h3>
+        <span class="badge bg-secondary ms-2">@m_images.Count / @MaxImages</span>
     </div>
-    <div class="card-body">
+    <div class="mr-form-panel-body p-0">
         @if (m_loading)
         {
-            <div class="d-flex justify-content-center py-3">
+            <div class="d-flex justify-content-center py-5">
                 <div class="spinner-border text-primary" role="status">
                     <span class="visually-hidden">Loading...</span>
                 </div>
             </div>
         }
-        else if (m_images.Count == 0)
-        {
-            <ImageUpload StoreId="@m_newImageStoreId"
-                         StoreIdChanged="OnImageUploaded"
-                         Title="@Localizer["UploadVehicleImage"]"
-                         HelpHint="@Localizer["DropImageHere"]" />
-        }
         else
         {
-            <div class="row g-3">
-                @foreach (var image in m_images)
-                {
-                    <div class="col-6 col-sm-4 col-md-3">
-                        <div class="card card-sm position-relative @(image.IsPrimary ? "border-primary border-2" : "")">
-                            <div class="card-img-top img-responsive img-responsive-1x1"
-                                 style="background-image: url('@GetImageUrl(image)'); background-size: cover; background-position: center;">
+            @if (m_images.Count == 0)
+            {
+                @* Empty state - nice upload area *@
+                <div class="empty-state">
+                    <ImageUpload StoreId="@m_newImageStoreId"
+                                 StoreIdChanged="OnImageUploaded"
+                                 HideImage="true">
+                        <div class="empty-state-content">
+                            <div class="empty-state-icon">
+                                <i class="ti ti-camera-plus"></i>
                             </div>
-                            @* Primary star button *@
-                            <div class="position-absolute top-0 start-0 m-1">
-                                <button type="button"
-                                        class="btn btn-icon btn-sm @(image.IsPrimary ? "btn-primary" : "btn-ghost-secondary bg-white")"
-                                        @onclick="@(() => SetPrimaryAsync(image))"
-                                        @onclick:stopPropagation="true"
-                                        title="@(image.IsPrimary ? Localizer["PrimaryImage"] : Localizer["SetAsPrimary"])"
-                                        disabled="@(image.IsPrimary || m_saving)">
-                                    <i class="ti ti-star@(image.IsPrimary ? "-filled" : "")"></i>
-                                </button>
-                            </div>
-                            @* Delete button *@
-                            <div class="position-absolute top-0 end-0 m-1">
-                                <button type="button"
-                                        class="btn btn-icon btn-sm btn-ghost-danger bg-white"
-                                        @onclick="@(() => DeleteImageAsync(image))"
-                                        @onclick:stopPropagation="true"
-                                        title="@Localizer["DeleteImage"]"
-                                        disabled="@m_saving">
-                                    <i class="ti ti-trash"></i>
-                                </button>
-                            </div>
-                            @* Primary badge *@
-                            @if (image.IsPrimary)
-                            {
-                                <div class="position-absolute bottom-0 start-0 m-1">
-                                    <span class="badge bg-primary">@Localizer["Primary"]</span>
-                                </div>
-                            }
+                            <div class="empty-state-title">เพิ่มรูปยานพาหนะ</div>
+                            <div class="empty-state-hint">คลิกหรือลากไฟล์มาวาง</div>
                         </div>
-                    </div>
-                }
-                @* Upload placeholder if under limit *@
-                @if (m_images.Count < VehicleImageService.MaxImagesPerVehicle)
-                {
-                    <div class="col-6 col-sm-4 col-md-3">
-                        <div class="upload-placeholder-card">
-                            <div class="upload-placeholder-content">
+                    </ImageUpload>
+                </div>
+            }
+            else
+            {
+                @* Main large image *@
+                <div class="main-image-container">
+                    @if (m_selectedImage != null)
+                    {
+                        <div class="main-image-wrapper">
+                            <img src="@GetImageUrl(m_selectedImage)"
+                                 alt="@m_selectedImage.Caption"
+                                 class="main-image" />
+                        </div>
+                        @* Action buttons *@
+                        <div class="main-image-actions">
+                            @if (!m_selectedImage.IsPrimary)
+                            {
+                                <button type="button"
+                                        class="btn btn-sm btn-light"
+                                        @onclick="@(() => SetPrimaryAsync(m_selectedImage))"
+                                        disabled="@m_saving">
+                                    <i class="ti ti-star"></i>
+                                </button>
+                            }
+                            else
+                            {
+                                <span class="badge bg-primary">
+                                    <i class="ti ti-star-filled me-1"></i>รูปหลัก
+                                </span>
+                            }
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-danger"
+                                    @onclick="@(() => DeleteImageAsync(m_selectedImage))"
+                                    disabled="@m_saving">
+                                <i class="ti ti-trash"></i>
+                            </button>
+                        </div>
+                    }
+                </div>
+
+                @* Thumbnail row *@
+                <div class="p-3 border-top">
+                    <div class="d-flex gap-2 flex-wrap">
+                        @foreach (var image in m_images)
+                        {
+                            var isSelected = m_selectedImage?.VehicleImageId == image.VehicleImageId;
+                            <div class="vehicle-thumb @(isSelected ? "selected" : "")"
+                                 @onclick="@(() => SelectImage(image))">
+                                <img src="@GetImageUrl(image)" alt="@image.Caption" />
+                                @if (image.IsPrimary)
+                                {
+                                    <span class="thumb-badge">รูปหลัก</span>
+                                }
+                            </div>
+                        }
+                        @* Add more button *@
+                        @if (m_images.Count < MaxImages)
+                        {
+                            <div class="vehicle-thumb-add">
                                 <ImageUpload StoreId="@m_newImageStoreId"
                                              StoreIdChanged="OnImageUploaded"
                                              HideImage="true">
-                                    <div class="d-flex flex-column align-items-center justify-content-center h-100">
-                                        <i class="ti ti-photo-plus text-secondary"></i>
-                                        <div class="small text-secondary mt-2">@Localizer["AddMore"]</div>
+                                    <div class="add-content">
+                                        <i class="ti ti-camera-plus"></i>
+                                        <span>เพิ่มรูป</span>
                                     </div>
                                 </ImageUpload>
                             </div>
-                        </div>
+                        }
                     </div>
-                }
-            </div>
+                </div>
+            }
         }
     </div>
 </div>
 
 @code {
+    private const int MaxImages = 6;
+
     /// <summary>
     /// The vehicle ID to show images for.
     /// </summary>
@@ -116,6 +138,7 @@
     public EventCallback ImagesChanged { get; set; }
 
     private List<VehicleImage> m_images = [];
+    private VehicleImage? m_selectedImage;
     private bool m_loading = true;
     private bool m_saving;
     private string? m_newImageStoreId;
@@ -138,6 +161,8 @@
         try
         {
             this.m_images = await this.VehicleImageService.GetImagesForVehicleAsync(this.VehicleId);
+            // Select primary image by default, or first image
+            this.m_selectedImage = this.m_images.FirstOrDefault(i => i.IsPrimary) ?? this.m_images.FirstOrDefault();
         }
         catch (Exception ex)
         {
@@ -147,6 +172,11 @@
         {
             this.m_loading = false;
         }
+    }
+
+    private void SelectImage(VehicleImage image)
+    {
+        this.m_selectedImage = image;
     }
 
     private async Task OnImageUploaded(string? storeId)
@@ -212,7 +242,7 @@
 
     private async Task DeleteImageAsync(VehicleImage image)
     {
-        if (!await this.ConfirmDeleteAsync("this image"))
+        if (!await this.ConfirmDeleteAsync("รูปนี้"))
             return;
 
         this.m_saving = true;
@@ -225,7 +255,7 @@
             {
                 await LoadImagesAsync();
                 await NotifyChanges();
-                this.ShowSuccess("Image deleted");
+                this.ShowSuccess("ลบรูปแล้ว");
             }
             else
             {

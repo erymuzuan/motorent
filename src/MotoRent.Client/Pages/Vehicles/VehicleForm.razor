@@ -15,6 +15,14 @@
                                      OnImageCaptured="OnRecognitionImageCaptured" />
         }
 
+        @* Vehicle Images (for existing vehicles - at top like Quick Recognition) *@
+        @if (!IsNew && Entity.VehicleId > 0)
+        {
+            <VehicleImageGallery VehicleId="@Entity.VehicleId"
+                                 PrimaryImageChanged="OnPrimaryImageChanged"
+                                 ImagesChanged="OnImagesChanged" />
+        }
+
         @* Basic Info Card *@
         <div class="mr-form-panel mb-3">
             <div class="mr-form-panel-header">
@@ -110,14 +118,8 @@
             </div>
         </div>
 
-        @* Vehicle Images *@
-        @if (!IsNew && Entity.VehicleId > 0)
-        {
-            <VehicleImageGallery VehicleId="@Entity.VehicleId"
-                                 PrimaryImageChanged="OnPrimaryImageChanged"
-                                 ImagesChanged="OnImagesChanged" />
-        }
-        else if (IsNew)
+        @* Vehicle Images (pending upload for new vehicles) *@
+        @if (IsNew)
         {
             <div class="mr-form-panel mb-3">
                 <div class="mr-form-panel-header">
