@@ -51,6 +51,11 @@ public partial class Vehicle : Entity
     public string LicensePlate { get; set; } = string.Empty;
 
     /// <summary>
+    /// Province where the vehicle is registered (Thai province name).
+    /// </summary>
+    public string? LicensePlateProvince { get; set; }
+
+    /// <summary>
     /// Vehicle brand/manufacturer (Honda, Yamaha, Toyota, Kawasaki, etc.).
     /// </summary>
     public string Brand { get; set; } = string.Empty;
