@@ -127,7 +127,7 @@
             @if (m_activeStep < 5)
             {
                 <button type="button" class="mr-btn-primary-action"
-                        disabled="@(!CanProceedToNextStep())"
+                        disabled="@(m_activeStep != 3 && m_activeStep != 4 && !CanProceedToNextStep())"
                         @onclick="NextStep">
                     @CommonLocalizer["Next"]
                     <i class="ti ti-arrow-right"></i>
@@ -337,7 +337,19 @@
     private void NextStep()
     {
         if (this.m_activeStep < 5 && this.CanProceedToNextStep())
+        {
             this.m_activeStep++;
+        }
+        else if (this.m_activeStep == 3 && !this.m_depositInfo.IsCollected)
+        {
+            // Show alert when deposit is not confirmed
+            this.ShowWarning(this.Localizer["DepositConfirmationRequired"]);
+        }
+        else if (this.m_activeStep == 4 && this.m_preInspection == null)
+        {
+            // Show alert when inspector is not selected
+            this.ShowWarning(this.Localizer["InspectorNotSelected"]);
+        }
     }
 
     private void PreviousStep()

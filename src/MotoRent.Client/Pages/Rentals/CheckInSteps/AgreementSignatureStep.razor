@@ -233,8 +233,7 @@
 
     <div class="d-flex justify-content-end mt-4 pt-3" style="border-top: 1px solid var(--mr-border-light);">
         <button type="button" class="mr-btn-action success" style="padding: 0.75rem 1.5rem; font-size: 1rem;"
-                disabled="@(!CanComplete)"
-                @onclick="@(() => this.OnComplete.InvokeAsync())">
+                @onclick="OnCompleteClicked">
             <i class="ti ti-circle-check"></i>
             @Localizer["CompleteCheckIn"]
         </button>
@@ -292,15 +291,52 @@
         m_agreementPrinted = true;
     }
 
+    private async Task OnCompleteClicked()
+    {
+        if (!m_termsAccepted)
+        {
+            this.ShowWarning(this.Localizer["TermsNotAccepted"]);
+            return;
+        }
+
+        if (!m_agreementPrinted)
+        {
+            this.ShowWarning(this.Localizer["PrintAgreementRequired"]);
+            return;
+        }
+
+        await this.OnComplete.InvokeAsync();
+    }
+
     private string BuildPrintAgreementUrl(int? templateId = null)
     {
         var queryParams = new List<string>();
 
         if (Renter != null)
+        {
             queryParams.Add($"RenterId={Renter.RenterId}");
+            // Pass renter data directly for unsaved renters
+            if (Renter.RenterId == 0)
+            {
+                queryParams.Add($"RenterName={Uri.EscapeDataString(Renter.FullName ?? "")}");
+                queryParams.Add($"RenterPhone={Uri.EscapeDataString(Renter.Phone ?? "")}");
+                queryParams.Add($"RenterPassport={Uri.EscapeDataString(Renter.PassportNo ?? Renter.NationalIdNo ?? "")}");
+                queryParams.Add($"RenterNationality={Uri.EscapeDataString(Renter.Nationality ?? "")}");
+            }
+        }
 
         if (Vehicle != null)
+        {
             queryParams.Add($"VehicleId={Vehicle.VehicleId}");
+            // Pass vehicle data directly for fallback
+            if (Vehicle.VehicleId == 0)
+            {
+                queryParams.Add($"VehicleBrand={Uri.EscapeDataString(Vehicle.Brand ?? "")}");
+                queryParams.Add($"VehicleModel={Uri.EscapeDataString(Vehicle.Model ?? "")}");
+                queryParams.Add($"VehiclePlate={Uri.EscapeDataString(Vehicle.LicensePlate ?? "")}");
+                queryParams.Add($"VehicleColor={Uri.EscapeDataString(Vehicle.Color ?? "")}");
+            }
+        }
 
         if (templateId.HasValue)
             queryParams.Add($"TemplateId={templateId.Value}");

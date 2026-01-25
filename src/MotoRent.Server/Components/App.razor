@@ -65,6 +65,38 @@
                     });
             });
         }
+
+        // MotoRent global functions
+        window.MotoRent = window.MotoRent || {};
+        window.MotoRent.printReceipt = function(elementId) {
+            var content = document.getElementById(elementId);
+            if (!content) {
+                console.error('Print content not found:', elementId);
+                return;
+            }
+
+            var printWindow = window.open('', '_blank', 'width=800,height=600');
+            if (!printWindow) {
+                alert('Please allow pop-ups to print the receipt.');
+                return;
+            }
+
+            printWindow.document.write('<!DOCTYPE html><html><head>');
+            printWindow.document.write('<title>Receipt</title>');
+            printWindow.document.write('<link rel="stylesheet" href="/lib/tabler-1.4.0/css/tabler.min.css"/>');
+            printWindow.document.write('<link rel="stylesheet" href="/css/site.css"/>');
+            printWindow.document.write('<link rel="stylesheet" href="/app.css"/>');
+            printWindow.document.write('<style>body { padding: 20px; } @@media print { body { padding: 0; } }</style>');
+            printWindow.document.write('</head><body>');
+            printWindow.document.write(content.innerHTML);
+            printWindow.document.write('</body></html>');
+            printWindow.document.close();
+
+            // Wait for styles to load before printing
+            setTimeout(function() {
+                printWindow.print();
+            }, 500);
+        };
     </script>
 </body>
 

@@ -1,7 +1,10 @@
 @inherits LocalizedComponentBase<CheckIn>
 @using MotoRent.Domain.Entities
+@using MotoRent.Domain.Storage
 @using MotoRent.Services
 @inject VehicleService VehicleService
+@inject VehicleImageService VehicleImageService
+@inject IBinaryStore BinaryStore
 
 <div class="d-flex flex-column gap-4">
     <div>
@@ -80,11 +83,23 @@
                 <div class="mr-card h-100"
                      style="cursor: pointer; @(isSelected ? "border: 2px solid var(--mr-accent-primary); background: var(--mr-accent-bg);" : "")"
                      @onclick="@(() => SelectVehicleItem(vehicle))">
+                    @* Vehicle Image or Placeholder *@
+                    @{
+                        var vehicleImageUrl = GetVehicleImage(vehicle);
+                    }
+                    <div style="aspect-ratio: 1; overflow: hidden; border-radius: 8px 8px 0 0; background: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%); display: flex; align-items: center; justify-content: center;">
+                        @if (!string.IsNullOrEmpty(vehicleImageUrl))
+                        {
+                            <img src="@vehicleImageUrl" alt="@vehicle.Brand @vehicle.Model"
+                                 style="width: 100%; height: 100%; object-fit: cover;" />
+                        }
+                        else
+                        {
+                            <i class="ti @GetVehicleTypeIcon(vehicle.VehicleType)" style="font-size: 3rem; color: var(--mr-accent-primary); opacity: 0.6;"></i>
+                        }
+                    </div>
                     <div class="p-3" style="border-bottom: 1px solid var(--mr-border-light);">
-                        <div class="d-flex align-items-center gap-3">
-                            <span class="avatar" style="background: var(--mr-accent-gradient); color: white;">
-                                <i class="ti @GetVehicleTypeIcon(vehicle.VehicleType)"></i>
-                            </span>
+                        <div class="d-flex align-items-center gap-2">
                             <div class="flex-grow-1">
                                 <div class="mr-text-primary" style="font-weight: 600;">@vehicle.Brand @vehicle.Model</div>
                                 <div class="d-flex align-items-center gap-1">
@@ -272,6 +287,7 @@
     private List<VehicleAvailability> m_filteredVehicles = [];
     private List<string> m_brands = [];
     private List<VehicleType> m_availableTypes = [];
+    private Dictionary<int, string> m_vehiclePrimaryImages = new();
     private bool m_loading;
     private string? m_searchTerm;
     private string? m_brandFilter;
@@ -305,6 +321,17 @@
                 .Distinct()
                 .OrderBy(t => t)
                 .ToList();
+
+            // Load primary images for all vehicles
+            this.m_vehiclePrimaryImages.Clear();
+            foreach (var availability in this.m_allVehicles)
+            {
+                var primaryImage = await this.VehicleImageService.GetPrimaryImageAsync(availability.Vehicle.VehicleId);
+                if (primaryImage != null && !string.IsNullOrEmpty(primaryImage.StoreId))
+                {
+                    this.m_vehiclePrimaryImages[availability.Vehicle.VehicleId] = this.BinaryStore.GetImageUrl(primaryImage.StoreId);
+                }
+            }
 
             this.ApplyFilters();
         }
@@ -367,6 +394,20 @@
     {
         this.SelectedVehicle = vehicle;
         await this.SelectedVehicleChanged.InvokeAsync(vehicle);
+    }
+
+    private string GetVehicleImage(Vehicle vehicle)
+    {
+        // First check loaded primary images
+        if (this.m_vehiclePrimaryImages.TryGetValue(vehicle.VehicleId, out var imageUrl))
+            return imageUrl;
+
+        // Fall back to ImagePath on entity
+        if (!string.IsNullOrEmpty(vehicle.ImagePath))
+            return vehicle.ImagePath;
+
+        // Return empty to show placeholder icon
+        return string.Empty;
     }
 
     private static string GetVehicleTypeIcon(VehicleType type) => type switch
