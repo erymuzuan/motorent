@@ -1,0 +1,194 @@
+@page "/learn/{DocName?}"
+@using MotoRent.Client.Services
+@using System.Net.Http.Json
+@inherits LocalizedComponentBase<Learn>
+@inject MarkdownService MarkdownService
+@inject HttpClient HttpClient
+
+<MotoRentPageTitle>@Localizer["Learn"]</MotoRentPageTitle>
+
+<div class="page-header d-print-none">
+    <div class="container-xl">
+        <div class="row g-2 align-items-center">
+            <div class="col">
+                <h2 class="page-title">
+                    @Localizer["HelpAndDocumentation"]
+                </h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="page-body">
+    <div class="container-xl">
+        <div class="row g-4">
+            @* Sidebar Navigation *@
+            <div class="col-md-3 d-none d-md-block">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">@Localizer["Documentation"]</h3>
+                    </div>
+                    <div class="list-group list-group-flush">
+                        @foreach (var doc in m_manifest)
+                        {
+                            <a href="/learn/@doc.FileName" 
+                               class="list-group-item list-group-item-action @(DocName == doc.FileName ? "active" : "")">
+                                @doc.Title
+                            </a>
+                        }
+                    </div>
+                </div>
+
+                <div class="card mt-3">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="avatar avatar-sm bg-primary-lt me-2">
+                                <i class="ti ti-robot"></i>
+                            </span>
+                            <h4 class="m-0">@Localizer["AskGemini"]</h4>
+                        </div>
+                        <p class="text-secondary small">
+                            @Localizer["GeminiSearchDescription"]
+                        </p>
+                        <div class="input-icon">
+                            <input type="text" class="form-control" placeholder="@Localizer["SearchDocs"]..." @bind="m_searchQuery" @onkeyup="HandleSearchKeyUp" />
+                            <span class="input-icon-addon">
+                                <i class="ti ti-search"></i>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* Main Content *@
+            <div class="col-md-9">
+                <div class="card">
+                    <div class="card-body markdown">
+                        @if (m_loading)
+                        {
+                            <div class="text-center py-5">
+                                <div class="spinner-border text-primary" role="status"></div>
+                                <div class="mt-2">@Localizer["LoadingDocumentation"]...</div>
+                            </div>
+                        }
+                        else
+                        {
+                            @((MarkupString)m_htmlContent)
+                        }
+                    </div>
+                </div>
+                
+                @if (m_manifest.Any())
+                {
+                    var currentIndex = m_manifest.FindIndex(d => d.FileName == DocName);
+                    <div class="d-flex justify-content-between mt-4">
+                        @if (currentIndex > 0)
+                        {
+                            <a href="/learn/@m_manifest[currentIndex - 1].FileName" class="btn btn-outline-primary">
+                                <i class="ti ti-chevron-left me-1"></i> @m_manifest[currentIndex - 1].Title
+                            </a>
+                        }
+                        else
+                        {
+                            <div></div>
+                        }
+
+                        @if (currentIndex >= 0 && currentIndex < m_manifest.Count - 1)
+                        {
+                            <a href="/learn/@m_manifest[currentIndex + 1].FileName" class="btn btn-outline-primary">
+                                @m_manifest[currentIndex + 1].Title <i class="ti ti-chevron-right ms-1"></i>
+                            </a>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .markdown h1 { margin-top: 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--tblr-border-color); margin-bottom: 1.5rem; }
+    .markdown h2 { margin-top: 2rem; margin-bottom: 1rem; }
+    .markdown h3 { margin-top: 1.5rem; margin-bottom: 0.75rem; }
+    .markdown p { margin-bottom: 1rem; line-height: 1.6; }
+    .markdown ul, .markdown ol { margin-bottom: 1rem; }
+    .markdown li { margin-bottom: 0.25rem; }
+    .markdown img { max-width: 100%; height: auto; border-radius: 4px; border: 1px solid var(--tblr-border-color); margin: 1rem 0; }
+    .markdown table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
+    .markdown th, .markdown td { border: 1px solid var(--tblr-border-color); padding: 0.5rem 0.75rem; }
+    .markdown th { background-color: var(--tblr-bg-surface-secondary); }
+    .markdown pre { background-color: var(--tblr-bg-surface-secondary); padding: 1rem; border-radius: 4px; overflow-x: auto; margin-bottom: 1rem; }
+    .markdown code { font-family: var(--tblr-font-monospace); font-size: 0.875rem; background-color: rgba(var(--tblr-primary-rgb), 0.1); padding: 0.1rem 0.3rem; border-radius: 3px; }
+</style>
+
+@code {
+    [Parameter] public string? DocName { get; set; }
+
+    private List<DocItem> m_manifest = new();
+    private string m_htmlContent = "";
+    private string m_searchQuery = "";
+    private bool m_loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadManifestAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrEmpty(DocName) && m_manifest.Any())
+        {
+            DocName = m_manifest.First().fileName;
+        }
+
+        if (!string.IsNullOrEmpty(DocName))
+        {
+            await LoadDocumentAsync();
+        }
+        else
+        {
+            m_loading = false;
+        }
+    }
+
+    private async Task LoadManifestAsync()
+    {
+        try
+        {
+            m_manifest = await HttpClient.GetFromJsonAsync<List<DocItem>>("user.guides/manifest.json") ?? new();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading documentation manifest");
+        }
+    }
+
+    private async Task LoadDocumentAsync()
+    {
+        m_loading = true;
+        StateHasChanged();
+        
+        try
+        {
+            m_htmlContent = await MarkdownService.RenderMarkdownAsync($"user.guides/{DocName}");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading document: {DocName}", DocName);
+            m_htmlContent = "<h1>Error</h1><p>Failed to load documentation.</p>";
+        }
+        finally
+        {
+            m_loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void HandleSearchKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            // TODO: Navigate to search or open chat
+        }
+    }
+}

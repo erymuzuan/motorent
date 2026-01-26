@@ -35,3 +35,5 @@ public class MarkdownService
         return Markdown.ToHtml(markdown, m_pipeline);
     }
 }
+
+public record DocItem(string Title, string FileName, int Order);
