@@ -112,7 +112,8 @@
         
         try
         {
-            var response = await HttpClient.GetFromJsonAsync<AskResponse>($"api/help/ask?q={Uri.EscapeDataString(question)}");
+            var absoluteUri = NavigationManager.ToAbsoluteUri($"api/help/ask?q={Uri.EscapeDataString(question)}").ToString();
+            var response = await HttpClient.GetFromJsonAsync<AskResponse>(absoluteUri);
             aiMsg.Text = response?.Answer ?? "Sorry, I couldn't get an answer.";
             aiMsg.IsLoading = false;
         }
