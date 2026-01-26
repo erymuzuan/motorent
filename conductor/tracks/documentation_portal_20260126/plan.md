@@ -26,16 +26,16 @@ This plan covers the audit of existing user guides, the creation of the static d
     - [x] Configure the build script/project file to copy `user.guides/*.md` to `wwwroot/user.guides/`.
     - [x] Create a `manifest.json` generation task to list available documentation for the sidebar.
 
-### Task 2: Documentation Portal Layout (/learn)
-- [~] Task: Build the Blazor UI for the documentation portal.
-    - [ ] Write unit tests for the documentation navigation component.
-    - [ ] Implement the `Learn.razor` page that dynamically loads `.md` content based on the URL route.
-    - [ ] Implement responsive CSS to ensure readability on mobile.
-    - [ ] Add breadcrumbs and "Next/Previous" navigation buttons.
+### Task 2: Documentation Portal Layout (/learn) (COMPLETED) 2652d91
+- [x] Task: Build the Blazor UI for the documentation portal. 2652d91
+    - [x] Write unit tests for the documentation navigation component.
+    - [x] Implement the `Learn.razor` page that dynamically loads `.md` content based on the URL route.
+    - [x] Implement responsive CSS to ensure readability on mobile.
+    - [x] Add breadcrumbs and "Next/Previous" navigation buttons.
 
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Static Rendering Engine & Portal UI' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Static Rendering Engine & Portal UI' (Protocol in workflow.md) 2652d91
 
-## Phase 3: Gemini Search & Chat Integration [checkpoint: ]
+## Phase 3: Gemini Search & Chat Integration [checkpoint: 2652d91]
 
 ### Task 1: Knowledge Base Indexing for RAG
 - [ ] Task: Prepare the documentation content for Gemini context injection.
