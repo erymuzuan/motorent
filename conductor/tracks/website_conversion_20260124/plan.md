@@ -18,7 +18,7 @@ This plan outlines the conversion of the static marketing website into a functio
 
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Authentication & Domain Extensions' (Protocol in workflow.md) a81a7f9
 
-## Phase 2: Onboarding Wizard Backend & API [checkpoint: ]
+## Phase 2: Onboarding Wizard Backend & API [checkpoint: ddb44cd]
 
 ### Task 1: Create Organization Setup Service (COMPLETED) c460073
 - [x] Task: Implement a service to handle the multi-step onboarding logic. c460073
@@ -31,7 +31,7 @@ This plan outlines the conversion of the static marketing website into a functio
     - [x] Write unit tests for the onboarding controller (validation, success/error cases).
     - [x] Implement POST endpoints for each step of the wizard (Shop Info, Fleet, Plan).
 
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Onboarding Wizard Backend & API' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Onboarding Wizard Backend & API' (Protocol in workflow.md) ddb44cd
 
 ## Phase 3: Blazor Onboarding UI & Localization [checkpoint: ]
 
