@@ -4,8 +4,9 @@
 - **Core Framework:** .NET 10.0 (ASP.NET Core)
 - **Architecture:** Clean Architecture with distinct projects for Domain, Services, Messaging, and Workers.
 - **Messaging:** RabbitMQ for asynchronous processing and event-driven communication.
-- **Utilities:** Hashids.net for generating short, unique, and non-sequential IDs from numbers (ideal for obfuscating database IDs in URLs).
+- **Utilities:** Hashids.net for generating short, unique, and non-sequential IDs from numbers; Markdig for high-performance, runtime Markdown-to-HTML rendering.
 - **Document Generation:** QuestPDF for high-fidelity, code-based PDF generation from template layouts.
+- **AI Integration:** Google Gemini Flash API for automated document OCR and natural language documentation search/chat.
 
 ## Frontend
 - **Framework:** Blazor WebAssembly (hosted on the ASP.NET Core server).

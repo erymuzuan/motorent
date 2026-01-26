@@ -22,6 +22,7 @@ MotoRent aims to be the leading platform for motorbike rentals, providing a robu
 - **Real-time Inventory & Booking:** A live system to track vehicle availability and manage reservations dynamically.
 - **Automated Maintenance Alerts:** Proactive notifications for scheduled maintenance based on time or vehicle usage, ensuring the fleet remains in top condition.
 - **Visual Document Template Designer:** A drag-and-drop tool for creating and customizing professional document templates (Booking Confirmations, Rental Agreements, Receipts) with dynamic data binding.
+- **AI-Powered Documentation Portal:** A public-facing help center at `/learn` featuring comprehensive guides and a Gemini-powered chat assistant for natural language search and support.
 
 ## Branding & Visual Identity
 - **Professional & Trustworthy:** The interface conveys reliability and stability, essential for managing business operations and building customer trust.
