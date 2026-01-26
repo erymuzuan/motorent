@@ -197,6 +197,7 @@ builder.Services.AddScoped<VehicleInspectorJsInterop>();
 builder.Services.AddScoped<IModalService, ModalService>();
 builder.Services.AddScoped<ToastService>();
 builder.Services.AddScoped<DialogService>();
+builder.Services.AddScoped<MarkdownService>();
 
 // Configure Authentication
 var authBuilder = builder.Services.AddAuthentication(options =>

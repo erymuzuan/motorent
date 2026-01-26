@@ -23,4 +23,12 @@
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.1" />
   </ItemGroup>
 
+  <Target Name="CopyUserGuides" AfterTargets="AfterBuild">
+    <ItemGroup>
+      <UserGuides Include="$(ProjectDir)..\..\user.guides\**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(UserGuides)" DestinationFiles="@(UserGuides->'$(ProjectDir)wwwroot\user.guides\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File $(ProjectDir)..\..\scripts\generate-docs-manifest.ps1 -SourceDir $(ProjectDir)..\..\user.guides -OutFile $(ProjectDir)wwwroot\user.guides\manifest.json" />
+  </Target>
+
 </Project>
