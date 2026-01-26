@@ -2,31 +2,34 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Markdig;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Logging;
 
 namespace MotoRent.Client.Services;
 
-public class MarkdownService
+public class MarkdownService(HttpClient httpClient, NavigationManager navigationManager, ILogger<MarkdownService> logger)
 {
-    private readonly HttpClient m_httpClient;
-    private readonly NavigationManager m_navigationManager;
-    private readonly MarkdownPipeline m_pipeline;
-
-    public MarkdownService(HttpClient httpClient, NavigationManager navigationManager)
-    {
-        m_httpClient = httpClient;
-        m_navigationManager = navigationManager;
-        m_pipeline = new MarkdownPipelineBuilder()
+    private HttpClient HttpClient { get; } = httpClient;
+    private NavigationManager NavigationManager { get; } = navigationManager;
+    private ILogger<MarkdownService> Logger { get; } = logger;
+    private MarkdownPipeline Pipeline { get; } = new MarkdownPipelineBuilder()
             .UseAdvancedExtensions()
             .Build();
-    }
 
+    /// <summary>
+    /// Gets the documentation folder path based on language.
+    /// </summary>
+    public static string GetDocsFolder(string lang) => lang == "th" ? "user.guides.th" : "user.guides";
+
+    /// <summary>
+    /// Renders a markdown file to HTML with optional language fallback.
+    /// </summary>
     public async Task<string> RenderMarkdownAsync(string path)
     {
         try
         {
-            var absoluteUri = m_navigationManager.ToAbsoluteUri(path).ToString();
-            var markdown = await m_httpClient.GetStringAsync(absoluteUri);
-            return Markdown.ToHtml(markdown, m_pipeline);
+            var absoluteUri = this.NavigationManager.ToAbsoluteUri(path).ToString();
+            var markdown = await this.HttpClient.GetStringAsync(absoluteUri);
+            return Markdown.ToHtml(markdown, this.Pipeline);
         }
         catch (HttpRequestException)
         {
@@ -34,9 +37,48 @@ public class MarkdownService
         }
     }
 
+    /// <summary>
+    /// Renders a markdown document with language awareness and fallback to English.
+    /// </summary>
+    public async Task<(string Html, bool UsedFallback)> RenderMarkdownWithFallbackAsync(string fileName, string lang)
+    {
+        var docsFolder = GetDocsFolder(lang);
+        var path = $"{docsFolder}/{fileName}";
+
+        try
+        {
+            var absoluteUri = this.NavigationManager.ToAbsoluteUri(path).ToString();
+            var markdown = await this.HttpClient.GetStringAsync(absoluteUri);
+            return (Markdown.ToHtml(markdown, this.Pipeline), false);
+        }
+        catch (HttpRequestException ex)
+        {
+            // If Thai doesn't exist, fall back to English
+            if (lang == "th")
+            {
+                this.Logger.LogInformation("Thai version not found for {FileName}, falling back to English", fileName);
+                var englishPath = $"user.guides/{fileName}";
+                try
+                {
+                    var absoluteUri = this.NavigationManager.ToAbsoluteUri(englishPath).ToString();
+                    var markdown = await this.HttpClient.GetStringAsync(absoluteUri);
+                    return (Markdown.ToHtml(markdown, this.Pipeline), true);
+                }
+                catch (HttpRequestException)
+                {
+                    this.Logger.LogError("English fallback also failed for {FileName}", fileName);
+                    return ("<h1>Error</h1><p>Failed to load documentation file.</p>", false);
+                }
+            }
+
+            this.Logger.LogError(ex, "Failed to load document: {Path}", path);
+            return ("<h1>Error</h1><p>Failed to load documentation file.</p>", false);
+        }
+    }
+
     public string ToHtml(string markdown)
     {
-        return Markdown.ToHtml(markdown, m_pipeline);
+        return Markdown.ToHtml(markdown, this.Pipeline);
     }
 }
 

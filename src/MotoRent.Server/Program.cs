@@ -72,13 +72,21 @@ builder.Services.AddScoped<ServiceLocationService>();
 builder.Services.AddScoped<DocumentOcrService>();
 builder.Services.AddScoped<DocumentTemplateService>();
 builder.Services.AddScoped<DocumentTemplateAiService>();
-builder.Services.AddScoped<DocumentationSearchService>(sp => 
+builder.Services.AddScoped<DocumentationSearchService>(sp =>
 {
     var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
     var logger = sp.GetRequiredService<ILogger<DocumentationSearchService>>();
     var env = sp.GetRequiredService<IWebHostEnvironment>();
     var docsPath = Path.Combine(env.WebRootPath, "user.guides");
     return new DocumentationSearchService(httpClientFactory, logger, docsPath);
+});
+builder.Services.AddScoped<DocumentationTranslationService>(sp =>
+{
+    var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+    var logger = sp.GetRequiredService<ILogger<DocumentationTranslationService>>();
+    var env = sp.GetRequiredService<IWebHostEnvironment>();
+    var docsPath = Path.Combine(env.WebRootPath, "user.guides");
+    return new DocumentationTranslationService(httpClientFactory, logger, docsPath);
 });
 builder.Services.AddScoped<TransliterationService>();
 builder.Services.AddScoped<DesignerState>();

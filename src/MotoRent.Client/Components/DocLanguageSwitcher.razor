@@ -1,0 +1,24 @@
+@using Microsoft.AspNetCore.Components
+
+<div class="btn-group btn-group-sm mr-doc-language-switcher" role="group" aria-label="Language">
+    <a href="@GetUrl("en")" class="btn @(CurrentLang == "en" ? "btn-primary" : "btn-outline-primary")">
+        EN
+    </a>
+    <a href="@GetUrl("th")" class="btn @(CurrentLang == "th" ? "btn-primary" : "btn-outline-primary")">
+        TH
+    </a>
+</div>
+
+@code {
+    [Parameter] public string CurrentLang { get; set; } = "en";
+    [Parameter] public string? CurrentDoc { get; set; }
+
+    private string GetUrl(string lang)
+    {
+        if (string.IsNullOrEmpty(CurrentDoc))
+        {
+            return $"/learn/{lang}";
+        }
+        return $"/learn/{lang}/{CurrentDoc}";
+    }
+}

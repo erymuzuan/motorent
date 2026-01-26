@@ -1,5 +1,6 @@
 using MotoRent.Client.Services;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Logging;
 using System.Net.Http;
 using Moq;
 using Moq.Protected;
@@ -25,6 +26,12 @@ public class MarkdownServiceTests
         }
     }
 
+    private static MarkdownService CreateService(HttpClient httpClient, NavigationManager nav)
+    {
+        var logger = Mock.Of<ILogger<MarkdownService>>();
+        return new MarkdownService(httpClient, nav, logger);
+    }
+
     [Fact]
     public async Task RenderMarkdownAsync_ShouldReturnHtml()
     {
@@ -48,9 +55,9 @@ public class MarkdownServiceTests
         {
             BaseAddress = new System.Uri("https://localhost/")
         };
-        
+
         var nav = new TestNavigationManager();
-        var service = new MarkdownService(httpClient, nav);
+        var service = CreateService(httpClient, nav);
 
         // Act
         var result = await service.RenderMarkdownAsync("test.md");
@@ -66,7 +73,7 @@ public class MarkdownServiceTests
         // Arrange
         var httpClient = new HttpClient();
         var nav = new TestNavigationManager();
-        var service = new MarkdownService(httpClient, nav);
+        var service = CreateService(httpClient, nav);
 
         // Act
         var result = service.ToHtml("**bold**");

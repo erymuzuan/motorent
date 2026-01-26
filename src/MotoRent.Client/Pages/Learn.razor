@@ -1,12 +1,18 @@
-@page "/learn/{DocName?}"
+@page "/learn"
+@page "/learn/{Lang}"
+@page "/learn/{Lang}/{DocName}"
+@using Microsoft.AspNetCore.Authorization
 @using MotoRent.Client.Services
 @using MotoRent.Client.Components
+@using MotoRent.Client.Controls
 @using System.Net.Http.Json
+@attribute [AllowAnonymous]
+@layout Layout.PublicLayout
 @inherits LocalizedComponentBase<Learn>
 @inject MarkdownService MarkdownService
 @inject HttpClient HttpClient
 
-<MotoRentPageTitle>@(m_currentDocTitle != null ? $"{m_currentDocTitle} - {Localizer["Learn"]}" : Localizer["Learn"])</MotoRentPageTitle>
+<MotoRentPageTitle>@(this.m_currentDocTitle != null ? $"{this.m_currentDocTitle} - {Localizer["Learn"]}" : Localizer["Learn"])</MotoRentPageTitle>
 
 <div class="page-header d-print-none">
     <div class="container-xl">
@@ -15,6 +21,9 @@
                 <h2 class="page-title">
                     @Localizer["HelpAndDocumentation"]
                 </h2>
+            </div>
+            <div class="col-auto">
+                <DocLanguageSwitcher CurrentLang="@this.CurrentLang" CurrentDoc="@this.DocName" />
             </div>
         </div>
     </div>
@@ -26,14 +35,18 @@
             @* Sidebar Navigation *@
             <div class="col-md-3 d-none d-md-block">
                 <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">@Localizer["Documentation"]</h3>
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h3 class="card-title mb-0">@Localizer["Documentation"]</h3>
+                        @if (this.CurrentLang == "th")
+                        {
+                            <span class="badge bg-primary-lt">TH</span>
+                        }
                     </div>
                     <div class="list-group list-group-flush">
-                        @foreach (var doc in m_manifest)
+                        @foreach (var doc in this.m_manifest.OrderBy(d => d.Order))
                         {
-                            <a href="/learn/@doc.FileName" 
-                               class="list-group-item list-group-item-action @(DocName == doc.FileName ? "active" : "")">
+                            <a href="@GetDocUrl(doc.FileName)"
+                               class="list-group-item list-group-item-action @(this.DocName == doc.FileName ? "active" : "")">
                                 @doc.Title
                             </a>
                         }
@@ -52,7 +65,7 @@
                             @Localizer["GeminiSearchDescription"]
                         </p>
                         <div class="input-icon">
-                            <input type="text" class="form-control" placeholder="@Localizer["SearchDocs"]..." @bind="m_searchQuery" @onkeyup="HandleSearchKeyUp" />
+                            <input type="text" class="form-control" placeholder="@Localizer["SearchDocs"]..." @bind="this.m_searchQuery" @onkeyup="this.HandleSearchKeyUp" />
                             <span class="input-icon-addon">
                                 <i class="ti ti-search"></i>
                             </span>
@@ -63,30 +76,34 @@
 
             @* Main Content *@
             <div class="col-md-9">
+                @if (this.m_usedFallback)
+                {
+                    <div class="alert alert-info mb-3">
+                        <div class="d-flex align-items-center">
+                            <i class="ti ti-info-circle me-2"></i>
+                            <span>@Localizer["TranslationNotAvailable"]</span>
+                        </div>
+                    </div>
+                }
                 <div class="card">
-                    <div class="card-body markdown">
-                        @if (m_loading)
-                        {
-                            <div class="text-center py-5">
-                                <div class="spinner-border text-primary" role="status"></div>
-                                <div class="mt-2">@Localizer["LoadingDocumentation"]...</div>
+                    <div class="card-body">
+                        <LoadingSkeleton Loading="@this.Loading" Mode="LoadingSkeleton.PlaceholderMode.Card">
+                            <div class="markdown">
+                                @((MarkupString)this.m_htmlContent)
                             </div>
-                        }
-                        else
-                        {
-                            @((MarkupString)m_htmlContent)
-                        }
+                        </LoadingSkeleton>
                     </div>
                 </div>
-                
-                @if (m_manifest.Any())
+
+                @if (this.m_manifest.Any())
                 {
-                    var currentIndex = m_manifest.FindIndex(d => d.FileName == DocName);
+                    var sortedManifest = this.m_manifest.OrderBy(d => d.Order).ToList();
+                    var currentIndex = sortedManifest.FindIndex(d => d.FileName == this.DocName);
                     <div class="d-flex justify-content-between mt-4">
                         @if (currentIndex > 0)
                         {
-                            <a href="/learn/@m_manifest[currentIndex - 1].FileName" class="btn btn-outline-primary">
-                                <i class="ti ti-chevron-left me-1"></i> @m_manifest[currentIndex - 1].Title
+                            <a href="@GetDocUrl(sortedManifest[currentIndex - 1].FileName)" class="btn btn-outline-primary">
+                                <i class="ti ti-chevron-left me-1"></i> @sortedManifest[currentIndex - 1].Title
                             </a>
                         }
                         else
@@ -94,10 +111,10 @@
                             <div></div>
                         }
 
-                        @if (currentIndex >= 0 && currentIndex < m_manifest.Count - 1)
+                        @if (currentIndex >= 0 && currentIndex < sortedManifest.Count - 1)
                         {
-                            <a href="/learn/@m_manifest[currentIndex + 1].FileName" class="btn btn-outline-primary">
-                                @m_manifest[currentIndex + 1].Title <i class="ti ti-chevron-right ms-1"></i>
+                            <a href="@GetDocUrl(sortedManifest[currentIndex + 1].FileName)" class="btn btn-outline-primary">
+                                @sortedManifest[currentIndex + 1].Title <i class="ti ti-chevron-right ms-1"></i>
                             </a>
                         }
                     </div>
@@ -109,50 +126,45 @@
 
 <DocumentationChat />
 
-<style>
-    .markdown h1 { margin-top: 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--tblr-border-color); margin-bottom: 1.5rem; }
-    .markdown h2 { margin-top: 2rem; margin-bottom: 1rem; }
-    .markdown h3 { margin-top: 1.5rem; margin-bottom: 0.75rem; }
-    .markdown p { margin-bottom: 1rem; line-height: 1.6; }
-    .markdown ul, .markdown ol { margin-bottom: 1rem; }
-    .markdown li { margin-bottom: 0.25rem; }
-    .markdown img { max-width: 100%; height: auto; border-radius: 4px; border: 1px solid var(--tblr-border-color); margin: 1rem 0; }
-    .markdown table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
-    .markdown th, .markdown td { border: 1px solid var(--tblr-border-color); padding: 0.5rem 0.75rem; }
-    .markdown th { background-color: var(--tblr-bg-surface-secondary); }
-    .markdown pre { background-color: var(--tblr-bg-surface-secondary); padding: 1rem; border-radius: 4px; overflow-x: auto; margin-bottom: 1rem; }
-    .markdown code { font-family: var(--tblr-font-monospace); font-size: 0.875rem; background-color: rgba(var(--tblr-primary-rgb), 0.1); padding: 0.1rem 0.3rem; border-radius: 3px; }
-</style>
-
 @code {
+    [Parameter] public string? Lang { get; set; }
     [Parameter] public string? DocName { get; set; }
 
-    private List<DocItem> m_manifest = new();
+    private List<DocItem> m_manifest = [];
     private string m_htmlContent = "";
     private string? m_currentDocTitle = null;
     private string m_searchQuery = "";
-    private bool m_loading = true;
+    private bool m_usedFallback = false;
+    private string m_lastLoadedLang = "";
+    private bool Loading { get; set; } = true;
 
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadManifestAsync();
-    }
+    private string CurrentLang => ValidateLang(this.Lang);
+
+    private static string ValidateLang(string? lang) => lang is "th" or "en" ? lang : "en";
 
     protected override async Task OnParametersSetAsync()
     {
-        if (string.IsNullOrEmpty(DocName) && m_manifest.Any())
+        // Load manifest for the current language if changed
+        if (this.m_lastLoadedLang != this.CurrentLang || this.m_manifest.Count == 0)
         {
-            DocName = m_manifest.First().FileName;
+            await this.LoadManifestAsync();
+            this.m_lastLoadedLang = this.CurrentLang;
         }
 
-        if (!string.IsNullOrEmpty(DocName))
+        // Default to first doc if not specified
+        if (string.IsNullOrEmpty(this.DocName) && this.m_manifest.Any())
         {
-            m_currentDocTitle = m_manifest.FirstOrDefault(d => d.FileName == DocName)?.Title;
-            await LoadDocumentAsync();
+            this.DocName = this.m_manifest.OrderBy(d => d.Order).First().FileName;
+        }
+
+        if (!string.IsNullOrEmpty(this.DocName))
+        {
+            this.m_currentDocTitle = this.m_manifest.FirstOrDefault(d => d.FileName == this.DocName)?.Title;
+            await this.LoadDocumentAsync();
         }
         else
         {
-            m_loading = false;
+            this.Loading = false;
         }
     }
 
@@ -160,34 +172,53 @@
     {
         try
         {
-            var absoluteUri = NavigationManager.ToAbsoluteUri("user.guides/manifest.json").ToString();
-            m_manifest = await HttpClient.GetFromJsonAsync<List<DocItem>>(absoluteUri) ?? new();
+            var docsFolder = MarkdownService.GetDocsFolder(this.CurrentLang);
+            var absoluteUri = this.NavigationManager.ToAbsoluteUri($"{docsFolder}/manifest.json").ToString();
+            this.m_manifest = await this.HttpClient.GetFromJsonAsync<List<DocItem>>(absoluteUri) ?? [];
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error loading documentation manifest");
+            this.Logger.LogWarning(ex, "Error loading manifest for {Lang}, falling back to English", this.CurrentLang);
+            // Fall back to English manifest
+            try
+            {
+                var absoluteUri = this.NavigationManager.ToAbsoluteUri("user.guides/manifest.json").ToString();
+                this.m_manifest = await this.HttpClient.GetFromJsonAsync<List<DocItem>>(absoluteUri) ?? [];
+            }
+            catch
+            {
+                this.m_manifest = [];
+            }
         }
     }
 
     private async Task LoadDocumentAsync()
     {
-        m_loading = true;
-        StateHasChanged();
-        
+        this.Loading = true;
+        this.StateHasChanged();
+
         try
         {
-            m_htmlContent = await MarkdownService.RenderMarkdownAsync($"user.guides/{DocName}");
+            var (html, usedFallback) = await this.MarkdownService.RenderMarkdownWithFallbackAsync(this.DocName!, this.CurrentLang);
+            this.m_htmlContent = html;
+            this.m_usedFallback = usedFallback;
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error loading document: {DocName}", DocName);
-            m_htmlContent = "<h1>Error</h1><p>Failed to load documentation.</p>";
+            this.Logger.LogError(ex, "Error loading document: {DocName} ({Lang})", this.DocName, this.CurrentLang);
+            this.m_htmlContent = "<h1>Error</h1><p>Failed to load documentation.</p>";
+            this.m_usedFallback = false;
         }
         finally
         {
-            m_loading = false;
-            StateHasChanged();
+            this.Loading = false;
+            this.StateHasChanged();
         }
+    }
+
+    private string GetDocUrl(string fileName)
+    {
+        return $"/learn/{this.CurrentLang}/{fileName}";
     }
 
     private void HandleSearchKeyUp(KeyboardEventArgs e)
