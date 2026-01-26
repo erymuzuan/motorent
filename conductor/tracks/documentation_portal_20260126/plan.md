@@ -35,12 +35,12 @@ This plan covers the audit of existing user guides, the creation of the static d
 
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Static Rendering Engine & Portal UI' (Protocol in workflow.md) 2652d91
 
-## Phase 3: Gemini Search & Chat Integration [checkpoint: 2652d91]
+## Phase 3: Gemini Search & Chat Integration [checkpoint: d6c4294]
 
-### Task 1: Knowledge Base Indexing for RAG
-- [~] Task: Prepare the documentation content for Gemini context injection.
-    - [ ] Write unit tests for the document chunking and indexing logic.
-    - [ ] Implement a service to flatten documentation into searchable text chunks suitable for Gemini prompts.
+### Task 1: Knowledge Base Indexing for RAG (COMPLETED) d6c4294
+- [x] Task: Prepare the documentation content for Gemini context injection. d6c4294
+    - [x] Write unit tests for the document chunking and indexing logic.
+    - [x] Implement a service to flatten documentation into searchable text chunks suitable for Gemini prompts.
 
 ### Task 2: Natural Language Search & AI Chat (COMPLETED) d6c4294
 - [x] Task: Implement the search bar and chat interface. d6c4294
@@ -51,7 +51,7 @@ This plan covers the audit of existing user guides, the creation of the static d
 
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Gemini Search & Chat Integration' (Protocol in workflow.md) d6c4294
 
-## Phase 4: Final Integration & SEO [checkpoint: d6c4294]
+## Phase 4: Final Integration & SEO [checkpoint: 45de22f]
 
 ### Task 1: Navigation & Sitemap Integration (COMPLETED) 45de22f
 - [x] Task: Link the `/learn` page to the main navigation (footer/header). 45de22f

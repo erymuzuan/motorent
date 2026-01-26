@@ -26,7 +26,7 @@
                             }
                             else
                             {
-                                @((MarkupString)msg.Text)
+                                @((MarkupString)FormatMessage(msg.Text))
                             }
                         </div>
                     </div>
@@ -64,6 +64,32 @@
 
     private void ToggleExpand() => m_expanded = !m_expanded;
 
+    private string FormatMessage(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return "";
+
+        // Look for "Sources: [file1.md, file2.md]"
+        var parts = text.Split("Sources:", StringSplitOptions.TrimEntries);
+        var content = parts[0];
+        
+        if (parts.Length > 1)
+        {
+            var sourcesPart = parts[1].Trim('[', ']', ' ');
+            var files = sourcesPart.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            
+            var sourcesHtml = "<div class='mt-2 small text-secondary'><strong>Sources:</strong> ";
+            foreach (var file in files)
+            {
+                sourcesHtml += $"<a href='/learn/{file}' class='badge bg-blue-lt me-1'>{file}</a> ";
+            }
+            sourcesHtml += "</div>";
+            
+            return content + sourcesHtml;
+        }
+
+        return content;
+    }
+
     private async Task HandleKeyUp(KeyboardEventArgs e)
     {
         if (e.Key == "Enter")
@@ -90,7 +116,7 @@
             aiMsg.Text = response?.Answer ?? "Sorry, I couldn't get an answer.";
             aiMsg.IsLoading = false;
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             aiMsg.Text = "Error communicating with AI.";
             aiMsg.IsLoading = false;

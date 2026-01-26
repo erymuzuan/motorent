@@ -19,11 +19,12 @@ public class DocumentationSearchService
 
     public DocumentationSearchService(
         IHttpClientFactory httpClientFactory,
-        ILogger<DocumentationSearchService> logger)
+        ILogger<DocumentationSearchService> logger,
+        string? docsPath = null)
     {
         m_httpClientFactory = httpClientFactory;
         m_logger = logger;
-        m_docsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "wwwroot", "user.guides");
+        m_docsPath = docsPath ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "wwwroot", "user.guides");
     }
 
     public async Task<string> AskGeminiAsync(string question, CancellationToken cancellationToken = default)
@@ -42,6 +43,8 @@ public class DocumentationSearchService
             If the answer is not in the documentation, say "I'm sorry, I couldn't find information about that in our guides."
             Provide clear, step-by-step instructions when applicable.
             You can answer in English or Thai, matching the user's language.
+
+            CRITICAL: At the end of your answer, list the files you used as sources in the format: "Sources: [filename1, filename2]".
 
             Documentation Context:
             {context}

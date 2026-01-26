@@ -1,11 +1,12 @@
 @page "/learn/{DocName?}"
 @using MotoRent.Client.Services
+@using MotoRent.Client.Components
 @using System.Net.Http.Json
 @inherits LocalizedComponentBase<Learn>
 @inject MarkdownService MarkdownService
 @inject HttpClient HttpClient
 
-<MotoRentPageTitle>@Localizer["Learn"]</MotoRentPageTitle>
+<MotoRentPageTitle>@(m_currentDocTitle != null ? $"{m_currentDocTitle} - {Localizer["Learn"]}" : Localizer["Learn"])</MotoRentPageTitle>
 
 <div class="page-header d-print-none">
     <div class="container-xl">
@@ -128,6 +129,7 @@
 
     private List<DocItem> m_manifest = new();
     private string m_htmlContent = "";
+    private string? m_currentDocTitle = null;
     private string m_searchQuery = "";
     private bool m_loading = true;
 
@@ -140,11 +142,12 @@
     {
         if (string.IsNullOrEmpty(DocName) && m_manifest.Any())
         {
-            DocName = m_manifest.First().fileName;
+            DocName = m_manifest.First().FileName;
         }
 
         if (!string.IsNullOrEmpty(DocName))
         {
+            m_currentDocTitle = m_manifest.FirstOrDefault(d => d.FileName == DocName)?.Title;
             await LoadDocumentAsync();
         }
         else
