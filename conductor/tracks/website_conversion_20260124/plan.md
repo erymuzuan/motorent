@@ -2,7 +2,7 @@
 
 This plan outlines the conversion of the static marketing website into a functional SaaS onboarding flow for MotoRent, including authentication, multi-step onboarding, and payment integration.
 
-## Phase 1: Authentication & Domain Extensions [checkpoint: 1e4b7b3]
+## Phase 1: Authentication & Domain Extensions [checkpoint: a81a7f9]
 
 ### Task 1: Update Domain Models for Subscription & Onboarding (COMPLETED) 1456ace
 - [x] Task: Extend `Organization` and `User` entities for SaaS signup. 1456ace
@@ -16,7 +16,7 @@ This plan outlines the conversion of the static marketing website into a functio
     - [x] Implement `IAuthenticationService` methods for Google and LINE.
     - [x] Setup API endpoints to handle OAuth callbacks and initiate session creation.
 
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Authentication & Domain Extensions' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Authentication & Domain Extensions' (Protocol in workflow.md) a81a7f9
 
 ## Phase 2: Onboarding Wizard Backend & API [checkpoint: ]
 
