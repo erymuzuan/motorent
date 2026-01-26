@@ -1,0 +1,119 @@
+@using System.Net.Http.Json
+@inherits LocalizedComponentBase<DocumentationChat>
+@inject HttpClient HttpClient
+
+<div class="card @(m_expanded ? "chat-expanded" : "chat-collapsed")">
+    <div class="card-header cursor-pointer" @onclick="ToggleExpand">
+        <h3 class="card-title">
+            <i class="ti ti-robot me-2"></i>@Localizer["AskGemini"]
+        </h3>
+        <div class="card-actions">
+            <i class="ti @(m_expanded ? "ti-chevron-down" : "ti-chevron-up")"></i>
+        </div>
+    </div>
+    
+    @if (m_expanded)
+    {
+        <div class="card-body chat-body d-flex flex-column">
+            <div class="messages flex-fill overflow-auto mb-3" @ref="m_messagesRef">
+                @foreach (var msg in m_messages)
+                {
+                    <div class="chat-message @(msg.IsUser ? "message-user" : "message-ai") mb-2">
+                        <div class="message-content p-2 rounded shadow-sm">
+                            @if (msg.IsLoading)
+                            {
+                                <div class="animated-dots">@Localizer["Thinking"]</div>
+                            }
+                            else
+                            {
+                                @((MarkupString)msg.Text)
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+            
+            <div class="input-group">
+                <input type="text" class="form-control" placeholder="@Localizer["AskQuestion"]..." 
+                       @bind="m_currentInput" @onkeyup="HandleKeyUp" disabled="@m_loading" />
+                <button class="btn btn-primary" @onclick="SendMessageAsync" disabled="@(m_loading || string.IsNullOrWhiteSpace(m_currentInput))">
+                    <i class="ti ti-send"></i>
+                </button>
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .chat-collapsed { position: fixed; bottom: 1rem; right: 1rem; width: 300px; z-index: 1050; }
+    .chat-expanded { position: fixed; bottom: 1rem; right: 1rem; width: 400px; height: 500px; z-index: 1050; }
+    .chat-body { height: calc(100% - 50px); }
+    .message-user { text-align: right; }
+    .message-user .message-content { background-color: var(--tblr-primary); color: white; display: inline-block; }
+    .message-ai .message-content { background-color: var(--tblr-bg-surface-secondary); display: inline-block; }
+    .cursor-pointer { cursor: pointer; }
+    .messages { max-height: 100%; }
+</style>
+
+@code {
+    private bool m_expanded = false;
+    private string m_currentInput = "";
+    private bool m_loading = false;
+    private List<ChatMessage> m_messages = new();
+    private ElementReference m_messagesRef;
+
+    private void ToggleExpand() => m_expanded = !m_expanded;
+
+    private async Task HandleKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await SendMessageAsync();
+        }
+    }
+
+    private async Task SendMessageAsync()
+    {
+        if (string.IsNullOrWhiteSpace(m_currentInput) || m_loading) return;
+
+        var question = m_currentInput;
+        m_currentInput = "";
+        m_messages.Add(new ChatMessage(question, true));
+        
+        m_loading = true;
+        var aiMsg = new ChatMessage("", false, true);
+        m_messages.Add(aiMsg);
+        
+        try
+        {
+            var response = await HttpClient.GetFromJsonAsync<AskResponse>($"api/help/ask?q={Uri.EscapeDataString(question)}");
+            aiMsg.Text = response?.Answer ?? "Sorry, I couldn't get an answer.";
+            aiMsg.IsLoading = false;
+        }
+        catch (Exception ex)
+        {
+            aiMsg.Text = "Error communicating with AI.";
+            aiMsg.IsLoading = false;
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private class ChatMessage
+    {
+        public string Text { get; set; }
+        public bool IsUser { get; set; }
+        public bool IsLoading { get; set; }
+
+        public ChatMessage(string text, bool isUser, bool isLoading = false)
+        {
+            Text = text;
+            IsUser = isUser;
+            IsLoading = isLoading;
+        }
+    }
+
+    private record AskResponse(string Answer);
+}

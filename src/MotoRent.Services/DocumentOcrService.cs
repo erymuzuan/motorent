@@ -385,27 +385,6 @@ public class ExtractedDocumentData
     public string? Restrictions { get; set; }
 }
 
-// Gemini API response models
-internal class GeminiResponse
-{
-    public List<GeminiCandidate>? Candidates { get; set; }
-}
-
-internal class GeminiCandidate
-{
-    public GeminiContent? Content { get; set; }
-}
-
-internal class GeminiContent
-{
-    public List<GeminiPart>? Parts { get; set; }
-}
-
-internal class GeminiPart
-{
-    public string? Text { get; set; }
-}
-
 // DTO for document upload result (used by Blazor components)
 public class DocumentUploadResult
 {
