@@ -1,12 +1,12 @@
-# Safe & Go Quick Start Guide - Super Admin
+# MotoRent Quick Start Guide - Super Admin
 
-Welcome to Safe & Go! This guide covers the Super Admin (Platform Administrator) role.
+Welcome to MotoRent! This guide covers the Super Admin (Platform Administrator) role.
 
 ![Impersonate User](images/01-impersonate.png)
 
 ## Your Role
 
-As a Super Admin, you manage the entire Safe & Go platform:
+As a Super Admin, you manage the entire MotoRent platform:
 - Manage Organizations (tenants)
 - Manage System Users
 - Impersonate users for support
@@ -300,5 +300,5 @@ If you detect suspicious activity:
 
 ---
 
-*Safe & Go - Vehicle Rental Management System*
+*MotoRent - Vehicle Rental Management System*
 *Platform Administration Guide*

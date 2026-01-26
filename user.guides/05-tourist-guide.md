@@ -1,6 +1,6 @@
-# Safe & Go Tourist Portal Guide
+# MotoRent Tourist Portal Guide
 
-Welcome to Safe & Go! This guide will help you browse and rent vehicles during your vacation in Thailand.
+Welcome to MotoRent! This guide will help you browse and rent vehicles during your vacation in Thailand.
 
 ## Getting Started
 
@@ -219,5 +219,5 @@ Need help? Contact your rental shop:
 
 ---
 
-*Safe & Go - Vehicle Rental Management System*
+*MotoRent - Vehicle Rental Management System*
 *Enjoy your trip safely!*

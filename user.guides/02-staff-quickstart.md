@@ -1,6 +1,6 @@
-# Safe & Go Quick Start Guide - Staff
+# MotoRent Quick Start Guide - Staff
 
-Welcome to Safe & Go! This guide will help you get started as a Staff member.
+Welcome to MotoRent! This guide will help you get started as a Staff member.
 
 ![Staff Dashboard](images/09-staff-dashboard.png)
 
@@ -118,21 +118,14 @@ The **Rentals** page shows all rentals with filters:
 ### 5. Reporting Accidents
 
 If a customer reports damage or an accident:
-
 1. Go to **Accidents**
 2. Click "Report Accident"
-3. Fill in details:
-   - Select the rental/vehicle
-   - Describe what happened
-   - Set severity level:
-     - **Minor** - Scratches, small dents
-     - **Moderate** - Visible damage, needs repair
-     - **Major** - Significant damage
-     - **Injury** - Personal injury involved
-4. Upload photos if available
-5. Submit the report
-
-Your manager will handle the follow-up and cost tracking.
+3. Fill in the incident details:
+   - **Details**: Vehicle, rental, date, and description.
+   - **Parties**: Add any other people or vehicles involved.
+   - **Photos**: Upload photos of the damage.
+4. If there are repair costs, enter them in the **Costs** tab.
+5. Save the report. The vehicle status will automatically change to **Maintenance** if the damage is severe.
 
 ### 6. Registering New Customers
 
@@ -188,4 +181,4 @@ To add a new renter:
 
 ---
 
-*Safe & Go - Vehicle Rental Management System*
+*MotoRent - Vehicle Rental Management System*

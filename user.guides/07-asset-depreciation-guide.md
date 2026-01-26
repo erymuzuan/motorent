@@ -1,4 +1,4 @@
-# Safe & Go Asset Depreciation Guide - Financial Management
+# MotoRent Asset Depreciation Guide - Financial Management
 
 Welcome to the Asset Depreciation module! This guide helps Organization Admins and Shop Managers track vehicle value, depreciation, expenses, and profitability.
 
@@ -441,7 +441,7 @@ For vehicles with no resale value (theft, total loss):
 
 ## Pre-Existing Vehicles
 
-For vehicles acquired before implementing Safe & Go:
+For vehicles acquired before implementing MotoRent:
 
 1. Create asset with **"Pre-existing vehicle"** checked
 2. Enter **Initial Book Value** (current estimated value)
@@ -496,4 +496,4 @@ A: Create the asset without a loan. Track lease payments as regular expenses und
 
 ---
 
-*Safe & Go - Vehicle Rental Management System*
+*MotoRent - Vehicle Rental Management System*

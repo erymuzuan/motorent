@@ -1,12 +1,12 @@
-# Safe & Go Quick Start Guide - Organization Admin
+# MotoRent Quick Start Guide - Organization Admin
 
-Welcome to Safe & Go! This guide will help you get started as an Organization Admin (OrgAdmin).
+Welcome to MotoRent! This guide will help you get started as an Organization Admin (OrgAdmin).
 
 ![Dashboard](images/02-dashboard.png)
 
 ## Your Role
 
-As an OrgAdmin, you have **full access** to all features in Safe & Go. You can manage:
+As an OrgAdmin, you have **full access** to all features in MotoRent. You can manage:
 - Rentals and check-ins/check-outs
 - Fleet (vehicles and accessories)
 - Finance (payments, deposits, reports)
@@ -22,11 +22,12 @@ Your navigation menu includes:
 |------|-------------|
 | **Dashboard** | Overview of active rentals, available vehicles, and quick actions |
 | **Rentals** | Manage active rentals, check-in new customers, check-out returns |
+| **Agents** | Register and track third-party partners and commissions |
 | **Finance** | Track payments, deposits, owner payments, and generate reports |
 | **Fleet** | Manage all vehicle types (motorbikes, cars, boats, jet skis, vans) |
 | **Accidents** | Report and track vehicle accidents and incidents |
 | **Customers** | Manage renter records and history |
-| **Settings** | Configure shops, insurance packages, vehicle pools, and branding |
+| **Settings** | Configure shops, insurance, templates, and pricing rules |
 
 ## Getting Started
 
@@ -50,7 +51,7 @@ When you log in, you'll see your Dashboard with:
 
 1. Click **Rentals > Check-In** or the "New Check-In" button
 2. Follow the 5-step wizard:
-   - **Step 1: Renter** - Search for existing renter or create new
+   - **Step 1: Renter** - Search for existing renter or create new (includes OCR for passport/ID)
    - **Step 2: Vehicle** - Select an available vehicle
    - **Step 3: Configure** - Set rental dates, insurance, accessories
    - **Step 4: Deposit** - Record deposit (cash or card)
@@ -71,10 +72,19 @@ Navigate to **Fleet > All Vehicles** to:
 - **Blue (Rented)** - Currently out with a customer
 - **Orange (Maintenance)** - Being serviced
 
-### 4. Finance Management
+### 4. Agent Management
+
+Connect with hotels and travel agencies to grow your business:
+- **Register Agents**: Track contact info and commission rates.
+- **Link Bookings**: Automatically calculate commissions when agents refer customers.
+- **Track Payouts**: Record and manage payments to agents via the Till.
+
+See the [Agent Management Guide](10-agent-management-guide.md) for more details.
+
+### 5. Finance Management
 
 #### Payments
-- Track all rental payments
+- Track all rental payments (Cash, Card, PromptPay, Bank Transfer)
 - Filter by status, method, and date range
 - Record manual payments
 
@@ -83,35 +93,54 @@ Navigate to **Fleet > All Vehicles** to:
 - Process refunds when rentals complete
 - Track forfeited deposits
 
-### 5. Accident Management
+#### Owner Payments
+- If you manage vehicles for third-party owners, track their earnings and process monthly payouts.
+
+### 6. Accident Management
 
 ![Accident Management](images/06-accidents.png)
 
 When an accident occurs:
 1. Go to **Accidents**
 2. Click "Report Accident"
-3. Fill in incident details:
-   - Select the vehicle and rental
-   - Describe the incident
-   - Set severity (Minor, Moderate, Major, Injury)
-   - Upload photos and documents
-4. Track resolution progress
+3. Fill in incident details across the new tabs:
+   - **Details**: Date, time, location, and description.
+   - **Parties**: Register other vehicles or persons involved.
+   - **Costs**: Track repair estimates and actual expenses.
+   - **Documents**: Upload police reports, insurance claims, and photos.
+4. Track resolution progress and insurance payouts.
 
-### 6. Shop Settings
+### 7. Customizing Your Documents
 
-![Shop Locations](images/08-shops.png)
+Use the **Document Template Designer** to make MotoRent look like your own brand:
+- **Visual Editor**: Drag-and-drop blocks to design your own headers and footers.
+- **Dynamic Data**: Use tokens like `{{CustomerName}}` to auto-fill rental info.
+- **Standard Templates**: Create custom versions of Booking Confirmations, Rental Agreements, and Receipts.
 
-Configure your rental shops under **Settings > Shop Settings**:
-- Add new shop locations
-- Update contact information
-- Set operating hours
-- Activate/deactivate locations
+See the [Document Template Designer Guide](09-template-designer-guide.md) for more details.
 
-### 7. Dynamic Pricing
+### 8. Shop & Service Locations
+
+Configure your rental network under **Settings**:
+
+#### Shop Settings
+- Add new physical shop locations.
+- Set operating hours and contact info.
+
+#### Service Locations
+- Manage pickup and drop-off points (Hotels, Airports).
+- Set **Drop-off Fees** for one-way rentals.
+
+See the [Service Locations Guide](11-service-locations-guide.md) for more details.
+
+### 9. Dynamic Pricing & Calendar
 
 Adjust rental rates automatically based on seasons, events, and days of the week.
 
 Navigate to **Settings > Pricing Rules** to manage dynamic pricing:
+
+#### Pricing Calendar
+Use the visual **Pricing Calendar** to see exactly which rules are active for any given date and vehicle type.
 
 #### Creating Pricing Rules
 1. Click "+ Add Rule"
@@ -167,4 +196,4 @@ The dialog shows a live preview of how the multiplier affects pricing:
 
 ---
 
-*Safe & Go - Vehicle Rental Management System*
+*MotoRent - Vehicle Rental Management System*

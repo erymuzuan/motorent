@@ -1,6 +1,6 @@
-# Safe & Go Quick Start Guide - Shop Manager
+# MotoRent Quick Start Guide - Shop Manager
 
-Welcome to Safe & Go! This guide will help you get started as a Shop Manager.
+Welcome to MotoRent! This guide will help you get started as a Shop Manager.
 
 ![Dashboard](images/02-dashboard.png)
 
@@ -19,13 +19,53 @@ Your navigation menu includes:
 
 | Menu | Description |
 |------|-------------|
-| **Dashboard** | Overview of shop performance |
-| **Rentals** | Manage all rentals, check-ins, check-outs |
+| **Dashboard** | Shop overview and quick actions |
+| **Rentals** | Active rentals and check-in/out |
+| **Agents** | Manage partner bookings and commissions |
 | **Finance** | Payments, deposits, owner payments, reports |
-| **Fleet** | Vehicle and accessory management |
+| **Fleet** | Vehicle inventory and maintenance |
 | **Accidents** | Incident tracking and resolution |
-| **Customers** | Renter management |
+| **Customers** | Renter database |
 | **Settings** | Shop configuration, insurance, vehicle pools |
+
+## Key Responsibilities
+
+### 1. Daily Operations
+- Monitor the dashboard for today's pickups and returns
+- Ensure staff are opening and closing their Tills correctly
+- Review and approve check-in documents
+
+### 2. Agent Management
+- Register new local partners (hotels, agencies).
+- Track bookings referred by agents.
+- Process commission payouts through the Till.
+- See the [Agent Management Guide](10-agent-management-guide.md).
+
+### 3. Service Locations
+- Configure pickup and drop-off points for your shop.
+- Set drop-off fees for one-way rentals.
+- See the [Service Locations Guide](11-service-locations-guide.md).
+
+### 4. Fleet & Maintenance
+- Monitor vehicle status (Available, Rented, Maintenance)
+- Schedule routine servicing
+- Manage **Vehicle Pools** (sharing inventory between your shops)
+
+#### Vehicle Pools
+1. Go to **Settings > Vehicle Pools**
+2. Create or join a pool with other shops in your organization.
+3. This allows you to rent out vehicles belonging to other shops if your own inventory is low.
+
+### 5. Finance & Pricing
+- Review daily revenue and payment methods
+- Process **Owner Payments** for managed vehicles
+- Manage **Pricing Rules** to stay competitive
+
+#### Pricing Rules
+Manage dynamic pricing for your shop under **Settings > Pricing Rules**:
+- Use the **Pricing Calendar** to visualize active rates.
+- Create holiday or weekend premiums.
+- Set discounts for long-term rentals.
 
 ## Getting Started
 
@@ -255,4 +295,4 @@ Access reports through **Finance > Reports**:
 
 ---
 
-*Safe & Go - Vehicle Rental Management System*
+*MotoRent - Vehicle Rental Management System*

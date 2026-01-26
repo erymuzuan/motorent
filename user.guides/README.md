@@ -1,6 +1,6 @@
-# Safe & Go User Guides
+# MotoRent User Guides
 
-Quick start guides for all Safe & Go user roles.
+Quick start guides for all MotoRent user roles.
 
 ![Dashboard Overview](images/02-dashboard.png)
 
@@ -92,5 +92,5 @@ Tourist/Renter
 
 ---
 
-*Safe & Go - Vehicle Rental Management System*
+*MotoRent - Vehicle Rental Management System*
 *Last Updated: January 2026*

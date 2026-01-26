@@ -23,14 +23,17 @@ Track the money flow under the **Finance** menu:
 
 ## 4. Operational Settings
 Configure your shop's "Rules of the Game" under the **Settings** menu:
-- **Insurance**: Group and manage insurance packages (Basic, Premium, Full Coverage) with coverage limits and deductibles.
+- **Insurance**: Group and manage insurance packages (Basic, Premium, Full Coverage).
+- **Document Templates**: Use the visual designer to customize agreements and receipts.
+- **Service Locations**: Manage pickup/drop-off points and one-way fees.
 - **Shop Settings**: Update your shop's contact info, logo, and terms & conditions.
-- **Operating Schedule**: Define your weekly opening hours and out-of-hours fee bands.
+- **Operating Schedule**: Define your weekly opening hours.
 - **Vehicle Pools**: Configure shared inventory between multiple shop locations.
 
-## 5. Handling Incidents
-- **Accidents**: Monitor accident reports submitted by staff. Review document photos, costs, and notes related to any fleet damage.
-- **Damage Reports**: Review damage documented during check-outs and track recovery costs.
+## 5. Partners & Incidents
+- **Agents**: Register hotels and agencies, track referred bookings, and manage commissions.
+- **Accidents**: Monitor accident reports including parties involved and repair costs.
+- **Damage Reports**: Review damage documented during check-outs.
 
 ---
 *Tip: Use the "Export Report" button on the dashboard to download data for offline analysis.*
