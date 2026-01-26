@@ -29,6 +29,7 @@ public class CoreDataContext
     public IQueryable<LogEntry> LogEntries => CreateQuery<LogEntry>();
     public IQueryable<SupportRequest> SupportRequests => CreateQuery<SupportRequest>();
     public IQueryable<VehicleModel> VehicleModels => CreateQuery<VehicleModel>();
+    public IQueryable<SalesLead> SalesLeads => CreateQuery<SalesLead>();
 
     /// <summary>
     /// Creates a queryable for the specified Core entity type.

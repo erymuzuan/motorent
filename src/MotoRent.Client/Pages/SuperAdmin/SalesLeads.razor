@@ -1,0 +1,344 @@
+@page "/super-admin/sales-leads"
+@rendermode InteractiveServer
+@inherits LocalizedComponentBase<SalesLeads>
+@implements IDisposable
+@using Microsoft.AspNetCore.Authorization
+@using MotoRent.Domain.Core
+@using MotoRent.Domain.DataContext
+@attribute [Authorize(Roles = UserAccount.SUPER_ADMIN)]
+@inject CoreDataContext CoreContext
+
+<PageTitle>@Localizer["PageTitle"]</PageTitle>
+
+<!-- Page Header -->
+<div class="mr-page-header">
+    <div class="container-xl">
+        <nav class="mr-breadcrumb">
+            <span class="mr-breadcrumb-item"><a href="#"><i class="ti ti-home"></i></a></span>
+            <i class="ti ti-chevron-right mr-breadcrumb-separator"></i>
+            <span class="mr-breadcrumb-item"><a href="/super-admin/start-page">@Localizer["BreadcrumbSuperAdmin"]</a></span>
+            <i class="ti ti-chevron-right mr-breadcrumb-separator"></i>
+            <span class="mr-breadcrumb-item active">@Localizer["BreadcrumbSalesLeads"]</span>
+        </nav>
+        <div class="d-flex justify-content-between align-items-center pb-3">
+            <div>
+                <h1 class="mr-page-title"><i class="ti ti-user-plus"></i> @Localizer["HeaderTitle"]</h1>
+                <p class="mr-page-subtitle mb-0">@Localizer["HeaderSubtitle"]</p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="/super-admin/start-page" class="mr-btn-header-action btn">
+                    <i class="ti ti-arrow-left me-2"></i>
+                    @Localizer["BackToDashboard"]
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container-xl py-4">
+    <!-- Summary Statistics Cards -->
+    <div class="row row-deck row-cards mb-4">
+        <div class="col-6 col-sm-3">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="subheader">@Localizer["TotalLeads"]</div>
+                    </div>
+                    <div class="h1 mb-0">@m_leads.Count</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-sm-3">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="subheader text-blue">@Localizer["NewLeads"]</div>
+                    </div>
+                    <div class="h1 mb-0 text-blue">@m_leads.Count(l => l.Status == LeadStatus.Lead)</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-sm-3">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="subheader text-yellow">@Localizer["InTrial"]</div>
+                    </div>
+                    <div class="h1 mb-0 text-yellow">@m_leads.Count(l => l.Status == LeadStatus.Trial)</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-sm-3">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="subheader text-green">@Localizer["Customers"]</div>
+                    </div>
+                    <div class="h1 mb-0 text-green">@m_leads.Count(l => l.Status == LeadStatus.Customer)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search and Filter -->
+    <div class="card mb-4 mr-card">
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-12 col-md-4">
+                    <label class="form-label mr-field-label">@Localizer["Search"]</label>
+                    <div class="input-icon">
+                        <span class="input-icon-addon">
+                            <i class="ti ti-search"></i>
+                        </span>
+                        <input type="text" class="form-control" placeholder="@Localizer["SearchPlaceholder"]"
+                               @bind="m_searchTerm" @bind:event="oninput" @onkeyup="OnSearchKeyup" />
+                    </div>
+                </div>
+
+                <div class="col-12 col-md-3">
+                    <label class="form-label mr-field-label">@Localizer["Status"]</label>
+                    <select class="form-select" @bind="m_statusFilter" @bind:after="ApplyFilters">
+                        <option value="">@Localizer["AllStatuses"]</option>
+                        <option value="Lead">@Localizer["StatusLead"]</option>
+                        <option value="Trial">@Localizer["StatusTrial"]</option>
+                        <option value="Customer">@Localizer["StatusCustomer"]</option>
+                        <option value="Lost">@Localizer["StatusLost"]</option>
+                    </select>
+                </div>
+
+                <div class="col-12 col-md-3">
+                    <label class="form-label mr-field-label">@Localizer["PlanInterested"]</label>
+                    <select class="form-select" @bind="m_planFilter" @bind:after="ApplyFilters">
+                        <option value="">@Localizer["AllPlans"]</option>
+                        <option value="Free">Free</option>
+                        <option value="Pro">Pro</option>
+                        <option value="Ultra">Ultra</option>
+                        <option value="Customized">@Localizer["Customized"]</option>
+                    </select>
+                </div>
+
+                <div class="col-12 col-md-2">
+                    <label class="form-label mr-field-label">@Localizer["Source"]</label>
+                    <select class="form-select" @bind="m_sourceFilter" @bind:after="ApplyFilters">
+                        <option value="">@Localizer["AllSources"]</option>
+                        <option value="ContactForm">@Localizer["SourceContactForm"]</option>
+                        <option value="Website">@Localizer["SourceWebsite"]</option>
+                        <option value="Referral">@Localizer["SourceReferral"]</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (m_loading)
+    {
+        <div class="progress progress-sm mb-4">
+            <div class="progress-bar progress-bar-indeterminate"></div>
+        </div>
+    }
+
+    <!-- Leads Table -->
+    <div class="card mr-card">
+        <div class="card-header">
+            <h3 class="card-title">@m_filteredLeads.Count @Localizer["Leads"]</h3>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-vcenter card-table table-striped">
+                <thead>
+                    <tr>
+                        <th class="mr-field-label">@Localizer["No"]</th>
+                        <th class="mr-field-label">@Localizer["Name"]</th>
+                        <th class="mr-field-label">@Localizer["Email"]</th>
+                        <th class="mr-field-label">@Localizer["Company"]</th>
+                        <th class="mr-field-label">@Localizer["Plan"]</th>
+                        <th class="mr-field-label">@Localizer["Status"]</th>
+                        <th class="mr-field-label">@Localizer["Source"]</th>
+                        <th class="mr-field-label">@Localizer["CreatedAt"]</th>
+                        <th class="w-1"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var lead in m_filteredLeads)
+                    {
+                        <tr>
+                            <td><span class="mr-field-value text-muted">@lead.No</span></td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <span class="avatar avatar-sm me-2 bg-green-lt">
+                                        @(lead.Name?.FirstOrDefault().ToString().ToUpperInvariant() ?? "?")
+                                    </span>
+                                    <span class="mr-field-value">@lead.Name</span>
+                                </div>
+                            </td>
+                            <td><span class="mr-field-value">@lead.Email</span></td>
+                            <td><span class="mr-field-value">@(lead.Company ?? "-")</span></td>
+                            <td>
+                                <span class="badge @GetPlanBadgeClass(lead.PlanInterested)">
+                                    @(lead.PlanInterested?.ToString() ?? "-")
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge @GetStatusBadgeClass(lead.Status)">
+                                    @Localizer[$"Status{lead.Status}"]
+                                </span>
+                            </td>
+                            <td>
+                                <span class="mr-field-value text-muted">@lead.Source</span>
+                            </td>
+                            <td>
+                                <span class="mr-field-value text-muted">
+                                    @lead.CreatedTimestamp.LocalDateTime.ToString("dd MMM yyyy HH:mm")
+                                </span>
+                            </td>
+                            <td>
+                                <button type="button" class="btn btn-ghost-secondary btn-icon"
+                                        @onclick="@(() => ViewLeadDetails(lead))">
+                                    <i class="ti ti-eye"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        @if (m_filteredLeads.Count == 0 && !m_loading)
+        {
+            <div class="card-body">
+                <div class="empty">
+                    <p class="empty-title">@Localizer["NoLeadsFound"]</p>
+                    <p class="empty-subtitle text-secondary">
+                        @Localizer["NoLeadsFoundSubtitle"]
+                    </p>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<SalesLead> m_leads = [];
+    private List<SalesLead> m_filteredLeads = [];
+    private bool m_loading = true;
+    private string? m_searchTerm;
+    private string? m_statusFilter;
+    private string? m_planFilter;
+    private string? m_sourceFilter;
+    private System.Timers.Timer? m_debounceTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    public void Dispose()
+    {
+        m_debounceTimer?.Stop();
+        m_debounceTimer?.Dispose();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        m_loading = true;
+        try
+        {
+            var query = CoreContext.SalesLeads.OrderByDescending(x => x.SalesLeadId);
+            var result = await CoreContext.LoadAsync(query, page: 1, size: 500);
+            m_leads = result.ItemCollection.ToList();
+            ApplyFilters();
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error loading leads: {ex.Message}");
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private void OnSearchKeyup()
+    {
+        m_debounceTimer?.Stop();
+        m_debounceTimer?.Dispose();
+
+        m_debounceTimer = new System.Timers.Timer(300);
+        m_debounceTimer.Elapsed += (sender, args) =>
+        {
+            m_debounceTimer?.Stop();
+            _ = InvokeAsync(() =>
+            {
+                ApplyFilters();
+                StateHasChanged();
+            });
+        };
+        m_debounceTimer.Start();
+    }
+
+    private void ApplyFilters()
+    {
+        m_filteredLeads = m_leads
+            .Where(MatchesSearch)
+            .Where(MatchesStatus)
+            .Where(MatchesPlan)
+            .Where(MatchesSource)
+            .ToList();
+    }
+
+    private bool MatchesSearch(SalesLead lead)
+    {
+        if (string.IsNullOrWhiteSpace(m_searchTerm)) return true;
+        var term = m_searchTerm.ToLowerInvariant();
+        return (lead.Name?.ToLowerInvariant().Contains(term) ?? false) ||
+               (lead.Email?.ToLowerInvariant().Contains(term) ?? false) ||
+               (lead.Company?.ToLowerInvariant().Contains(term) ?? false) ||
+               (lead.No?.ToLowerInvariant().Contains(term) ?? false);
+    }
+
+    private bool MatchesStatus(SalesLead lead)
+    {
+        if (string.IsNullOrWhiteSpace(m_statusFilter)) return true;
+        return lead.Status.ToString() == m_statusFilter;
+    }
+
+    private bool MatchesPlan(SalesLead lead)
+    {
+        if (string.IsNullOrWhiteSpace(m_planFilter)) return true;
+        return lead.PlanInterested?.ToString() == m_planFilter;
+    }
+
+    private bool MatchesSource(SalesLead lead)
+    {
+        if (string.IsNullOrWhiteSpace(m_sourceFilter)) return true;
+        return lead.Source.ToString() == m_sourceFilter;
+    }
+
+    private async Task ViewLeadDetails(SalesLead lead)
+    {
+        await DialogService
+            .Create<SalesLeadDetailsDialog>(Localizer["LeadDetails"])
+            .WithParameter(x => x.Entity, lead)
+            .WithSize(ModalSize.Large)
+            .ShowDialogAsync();
+
+        // Refresh counts in case status was changed
+        StateHasChanged();
+    }
+
+    private static string GetStatusBadgeClass(LeadStatus status) => status switch
+    {
+        LeadStatus.Lead => "bg-blue text-white",
+        LeadStatus.Trial => "bg-yellow text-dark",
+        LeadStatus.Customer => "bg-green text-white",
+        LeadStatus.Lost => "bg-secondary text-white",
+        _ => "bg-secondary text-white"
+    };
+
+    private static string GetPlanBadgeClass(SubscriptionPlan? plan) => plan switch
+    {
+        SubscriptionPlan.Free => "bg-secondary-lt",
+        SubscriptionPlan.Pro => "bg-blue-lt",
+        SubscriptionPlan.Ultra => "bg-purple-lt",
+        SubscriptionPlan.Customized => "bg-orange-lt",
+        _ => "bg-secondary-lt"
+    };
+}

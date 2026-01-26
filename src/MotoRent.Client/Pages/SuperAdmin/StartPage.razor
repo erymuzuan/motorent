@@ -72,6 +72,15 @@
                 <div class="mr-value">@m_openSupportCount</div>
             </div>
         </div>
+        <div class="mr-summary-card">
+            <div class="mr-summary-icon success">
+                <i class="ti ti-user-plus"></i>
+            </div>
+            <div class="mr-summary-content">
+                <h4>@Localizer["StatNewLeads"]</h4>
+                <div class="mr-value">@m_newLeadsCount</div>
+            </div>
+        </div>
     </div>
 
     <!-- Main Management Cards -->
@@ -208,6 +217,25 @@
                 </div>
             </a>
         </div>
+
+        <!-- Sales Leads Card -->
+        <div class="col-12 col-md-6 col-lg-4 mr-animate-in mr-animate-delay-3">
+            <a href="/super-admin/sales-leads" class="mr-management-card">
+                <div class="mr-management-card-icon bg-green">
+                    <i class="ti ti-user-plus"></i>
+                </div>
+                <div class="mr-management-card-body">
+                    <h3 class="mr-management-card-title">@Localizer["CardLeadsTitle"]</h3>
+                    <p class="mr-management-card-text">
+                        @Localizer["CardLeadsText"]
+                    </p>
+                </div>
+                <div class="mr-management-card-footer">
+                    <span>@Localizer["CardLeadsFooter"]</span>
+                    <i class="ti ti-arrow-right"></i>
+                </div>
+            </a>
+        </div>
     </div>
 
     <!-- Quick Actions Section -->
@@ -229,6 +257,10 @@
                 <i class="ti ti-user-search"></i>
                 @Localizer["ActionQuickImpersonate"]
             </a>
+            <a href="/super-admin/sales-leads" class="mr-btn-action success">
+                <i class="ti ti-user-plus"></i>
+                @Localizer["ActionViewLeads"]
+            </a>
         </div>
     </div>
 </div>
@@ -238,6 +270,7 @@
     private int m_userCount;
     private int m_recentErrorCount;
     private int m_openSupportCount;
+    private int m_newLeadsCount;
 
     protected override async Task OnInitializedAsync()
     {
@@ -256,5 +289,12 @@
             this.CoreDataContext.SupportRequests
                 .Where(x => x.Status != MotoRent.Domain.Helps.TaskStatus.Done)
                 .Where(x => x.Status != MotoRent.Domain.Helps.TaskStatus.Cancelled));
+
+        // Count new sales leads (status = Lead)
+        var leadsResult = await this.CoreDataContext.LoadAsync(
+            this.CoreDataContext.SalesLeads.OrderByDescending(x => x.SalesLeadId),
+            page: 1, size: 100, includeTotalRows: false);
+        this.m_newLeadsCount = leadsResult.ItemCollection
+            .Count(x => x.Status == LeadStatus.Lead);
     }
 }

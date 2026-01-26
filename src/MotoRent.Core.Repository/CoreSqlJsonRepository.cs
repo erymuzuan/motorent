@@ -33,7 +33,7 @@ public partial class CoreSqlJsonRepository<T>(
     public async Task<T?> LoadOneAsync(IQueryable<T> query)
     {
         var elementType = typeof(T);
-        var sql = query.ToString()!.Replace("[Data]", $"[{elementType.Name}Id],[Json]");
+        var sql = query.ToString()!.Replace("[Data]", $"[{elementType.Name}Id],[Json],[CreatedBy],[ChangedBy],[CreatedTimestamp],[ChangedTimestamp]");
 
         if (elementType.Name is "Organization" or "User")
         {
@@ -79,6 +79,13 @@ public partial class CoreSqlJsonRepository<T>(
         {
             var json = reader.GetString(1);
             var t = DeserializeFromJsonWithId(json, reader.GetInt32(0));
+            if (t != null)
+            {
+                t.CreatedBy = reader.GetString(2);
+                t.ChangedBy = reader.GetString(3);
+                t.CreatedTimestamp = reader.GetDateTimeOffset(4);
+                t.ChangedTimestamp = reader.GetDateTimeOffset(5);
+            }
             return t;
         }
 
@@ -91,7 +98,7 @@ public partial class CoreSqlJsonRepository<T>(
 
         var sql = new StringBuilder(query.ToString());
         var sqlCountRows = sql.ToString().Replace("[Data]", "COUNT(*)");
-        sql.Replace("[Data]", $"[{elementType.Name}Id],[Json]");
+        sql.Replace("[Data]", $"[{elementType.Name}Id],[Json],[CreatedBy],[ChangedBy],[CreatedTimestamp],[ChangedTimestamp]");
         if (!sql.ToString().Contains("ORDER"))
         {
             sql.AppendLine();
@@ -114,7 +121,13 @@ public partial class CoreSqlJsonRepository<T>(
                     var json = reader.GetString(1);
                     var t = DeserializeFromJsonWithId(json, reader.GetInt32(0));
                     if (t != null)
+                    {
+                        t.CreatedBy = reader.GetString(2);
+                        t.ChangedBy = reader.GetString(3);
+                        t.CreatedTimestamp = reader.GetDateTimeOffset(4);
+                        t.ChangedTimestamp = reader.GetDateTimeOffset(5);
                         list.Add(t);
+                    }
                 }
 
                 return list;

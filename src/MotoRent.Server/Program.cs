@@ -119,6 +119,8 @@ builder.Services.AddScoped<ManagerPinService>();
 // Error logging services
 builder.Services.AddScoped<MotoRent.Domain.Core.ILogger, SqlLogger>();
 builder.Services.AddScoped<LogEntryService>();
+// Sales lead tracking
+builder.Services.AddScoped<SalesLeadService>();
 
 // Add HttpClient for external API calls (Gemini)
 builder.Services.AddHttpClient("Gemini", client => { client.Timeout = TimeSpan.FromSeconds(60); });

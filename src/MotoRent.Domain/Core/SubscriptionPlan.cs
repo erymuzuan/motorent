@@ -18,5 +18,10 @@ public enum SubscriptionPlan
     /// <summary>
     /// Ultra tier with full feature set and white-labeling.
     /// </summary>
-    Ultra = 2
+    Ultra = 2,
+
+    /// <summary>
+    /// Customized enterprise tier with custom infrastructure, branding, SSO, etc.
+    /// </summary>
+    Customized = 3
 }

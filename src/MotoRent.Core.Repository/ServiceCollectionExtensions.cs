@@ -36,6 +36,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IRepository<LogEntry>, CoreSqlJsonRepository<LogEntry>>();
         services.AddScoped<IRepository<SupportRequest>, CoreSqlJsonRepository<SupportRequest>>();
         services.AddScoped<IRepository<VehicleModel>, CoreSqlJsonRepository<VehicleModel>>();
+        services.AddScoped<IRepository<SalesLead>, CoreSqlJsonRepository<SalesLead>>();
 
         // Register CoreDataContext (uses DI-injected repositories)
         services.AddScoped<CoreDataContext>();

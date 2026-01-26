@@ -56,6 +56,8 @@ namespace MotoRent.Domain.Entities;
 [JsonDerivedType(typeof(Comment), nameof(Comment))]
 [JsonDerivedType(typeof(Follow), nameof(Follow))]
 [JsonDerivedType(typeof(SupportRequest), nameof(SupportRequest))]
+// Sales lead tracking
+[JsonDerivedType(typeof(SalesLead), nameof(SalesLead))]
 // Global lookup entities
 [JsonDerivedType(typeof(VehicleModel), nameof(VehicleModel))]
 // Asset depreciation entities
