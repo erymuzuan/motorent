@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Http;
@@ -32,8 +33,11 @@ public class DocumentationSearchServiceTests
     public async Task AskGeminiAsync_ShouldIncludeDocContextInPrompt()
     {
         // Arrange
+        var docsDir = Path.Combine(m_testDocsPath, "user.guides");
+        Directory.CreateDirectory(docsDir);
+
         var docContent = "How to rent a bike: Step 1...";
-        await File.WriteAllTextAsync(Path.Combine(m_testDocsPath, "test-guide.md"), docContent);
+        await File.WriteAllTextAsync(Path.Combine(docsDir, "test-guide.md"), docContent);
 
         var geminiResponse = new GeminiResponse
         {
@@ -66,15 +70,12 @@ public class DocumentationSearchServiceTests
         var httpClient = new HttpClient(handlerMock.Object);
         m_httpClientFactoryMock.Setup(f => f.CreateClient("Gemini")).Returns(httpClient);
 
-        // We need to set the API key so it doesn't return early
-        // MotoConfig is static, so we might need to set it if it's not set
         if (string.IsNullOrEmpty(MotoConfig.GeminiApiKey))
         {
-            // This is a bit hacky since MotoConfig uses env vars, but let's see if we can set it via env var
             Environment.SetEnvironmentVariable("MOTO_GeminiApiKey", "test-key");
         }
 
-        var service = new DocumentationSearchService(m_httpClientFactoryMock.Object, m_loggerMock.Object, m_testDocsPath);
+        var service = new DocumentationSearchService(m_httpClientFactoryMock.Object, m_loggerMock.Object, Path.Combine(m_testDocsPath, "user.guides"));
 
         // Act
         var result = await service.AskGeminiAsync("How do I rent?");

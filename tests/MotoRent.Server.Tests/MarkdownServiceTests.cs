@@ -1,4 +1,5 @@
 using MotoRent.Client.Services;
+using Microsoft.AspNetCore.Components;
 using System.Net.Http;
 using Moq;
 using Moq.Protected;
@@ -11,6 +12,19 @@ namespace MotoRent.Server.Tests;
 
 public class MarkdownServiceTests
 {
+    private class TestNavigationManager : NavigationManager
+    {
+        public TestNavigationManager()
+        {
+            Initialize("https://localhost/", "https://localhost/");
+        }
+
+        protected override void NavigateToCore(string uri, NavigationOptions options)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
     [Fact]
     public async Task RenderMarkdownAsync_ShouldReturnHtml()
     {
@@ -34,7 +48,9 @@ public class MarkdownServiceTests
         {
             BaseAddress = new System.Uri("https://localhost/")
         };
-        var service = new MarkdownService(httpClient);
+        
+        var nav = new TestNavigationManager();
+        var service = new MarkdownService(httpClient, nav);
 
         // Act
         var result = await service.RenderMarkdownAsync("test.md");
@@ -49,7 +65,8 @@ public class MarkdownServiceTests
     {
         // Arrange
         var httpClient = new HttpClient();
-        var service = new MarkdownService(httpClient);
+        var nav = new TestNavigationManager();
+        var service = new MarkdownService(httpClient, nav);
 
         // Act
         var result = service.ToHtml("**bold**");

@@ -20,11 +20,11 @@ public class DocumentationSearchService
     public DocumentationSearchService(
         IHttpClientFactory httpClientFactory,
         ILogger<DocumentationSearchService> logger,
-        string? docsPath = null)
+        string docsPath)
     {
         m_httpClientFactory = httpClientFactory;
         m_logger = logger;
-        m_docsPath = docsPath ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "wwwroot", "user.guides");
+        m_docsPath = docsPath;
     }
 
     public async Task<string> AskGeminiAsync(string question, CancellationToken cancellationToken = default)
@@ -94,8 +94,8 @@ public class DocumentationSearchService
 
     private async Task<string> GetDocumentationContextAsync()
     {
-        // For now, we'll just read all .md files and combine them.
-        // In a more advanced version, we would use embeddings/RAG to select only relevant chunks.
+        m_logger.LogInformation("Gathering documentation context from: {Path}", m_docsPath);
+
         if (!Directory.Exists(m_docsPath))
         {
             m_logger.LogWarning("Documentation path does not exist: {Path}", m_docsPath);
@@ -103,6 +103,8 @@ public class DocumentationSearchService
         }
 
         var files = Directory.GetFiles(m_docsPath, "*.md");
+        m_logger.LogInformation("Found {Count} documentation files.", files.Length);
+
         var contextBuilder = new System.Text.StringBuilder();
 
         foreach (var file in files)
@@ -118,7 +120,3 @@ public class DocumentationSearchService
         return contextBuilder.ToString();
     }
 }
-
-// Re-using internal models if they were accessible, but since they are in DocumentOcrService as internal, 
-// I might need to define them again or move them to a shared location.
-// For now, I'll define them here or move them.
