@@ -20,14 +20,14 @@ This plan covers the audit of existing user guides, the creation of the static d
 
 ## Phase 2: Markdown Rendering Engine & Portal UI [checkpoint: f59d3de]
 
-### Task 1: Markdown Retrieval and Rendering Logic
-- [ ] Task: Implement a service to fetch and render `.md` files in Blazor.
-    - [ ] Write unit tests for the `MarkdownService` (fetching from `wwwroot` and rendering via Markdig).
-    - [ ] Configure the build script/project file to copy `user.guides/*.md` to `wwwroot/user.guides/`.
-    - [ ] Create a `manifest.json` generation task to list available documentation for the sidebar.
+### Task 1: Markdown Retrieval and Rendering Logic (COMPLETED) 6f42506
+- [x] Task: Implement a service to fetch and render `.md` files in Blazor. 6f42506
+    - [x] Write unit tests for the `MarkdownService` (fetching from `wwwroot` and rendering via Markdig).
+    - [x] Configure the build script/project file to copy `user.guides/*.md` to `wwwroot/user.guides/`.
+    - [x] Create a `manifest.json` generation task to list available documentation for the sidebar.
 
 ### Task 2: Documentation Portal Layout (/learn)
-- [ ] Task: Build the Blazor UI for the documentation portal.
+- [~] Task: Build the Blazor UI for the documentation portal.
     - [ ] Write unit tests for the documentation navigation component.
     - [ ] Implement the `Learn.razor` page that dynamically loads `.md` content based on the URL route.
     - [ ] Implement responsive CSS to ensure readability on mobile.
