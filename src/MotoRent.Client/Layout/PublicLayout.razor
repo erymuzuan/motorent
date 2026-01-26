@@ -1,0 +1,478 @@
+@inherits LayoutComponentBase
+@using System.Globalization
+@using Microsoft.Extensions.Localization
+@inject IJSRuntime Js
+@inject NavigationManager Navigation
+@inject IStringLocalizer<PublicLayout> Localizer
+@inject AuthenticationStateProvider AuthStateProvider
+
+<div class="public-site">
+    @* Marketing Navigation *@
+    <header class="public-header">
+        <div class="container-xl">
+            <nav class="public-nav">
+                @* Logo *@
+                <a href="/" class="public-logo">
+                    <img src="images/icons/ios/40.png" alt="MotoRent" width="32" height="32" />
+                    <span>MotoRent</span>
+                </a>
+
+                @* Desktop Navigation *@
+                <div class="public-nav-links d-none d-md-flex">
+                    <a href="/#features" class="nav-link @(IsActive("/#features") ? "active" : "")">
+                        @Localizer["Features"]
+                    </a>
+                    <a href="/pricing" class="nav-link @(IsActive("/pricing") ? "active" : "")">
+                        @Localizer["Pricing"]
+                    </a>
+                    <a href="/learn" class="nav-link @(IsActive("/learn") ? "active" : "")">
+                        @Localizer["Learn"]
+                    </a>
+                </div>
+
+                @* Right Side Actions *@
+                <div class="public-nav-actions">
+                    @* Language Toggle *@
+                    <div class="dropdown d-none d-md-block">
+                        <button class="btn btn-link nav-link px-2" data-bs-toggle="dropdown" aria-label="@Localizer["SelectLanguage"]">
+                            <i class="ti ti-language"></i>
+                            <span class="ms-1 text-uppercase small fw-medium">@CultureInfo.CurrentCulture.TwoLetterISOLanguageName</span>
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end">
+                            <a href="#" class="dropdown-item @(CultureInfo.CurrentCulture.TwoLetterISOLanguageName == "en" ? "active" : "")"
+                               @onclick='() => SetCulture("en")' @onclick:preventDefault>
+                                <span class="me-2">🇬🇧</span> English
+                            </a>
+                            <a href="#" class="dropdown-item @(CultureInfo.CurrentCulture.TwoLetterISOLanguageName == "th" ? "active" : "")"
+                               @onclick='() => SetCulture("th")' @onclick:preventDefault>
+                                <span class="me-2">🇹🇭</span> ไทย
+                            </a>
+                        </div>
+                    </div>
+
+                    @* Auth Buttons *@
+                    <AuthorizeView>
+                        <Authorized>
+                            <a href="/dashboard" class="btn btn-primary">
+                                @Localizer["Dashboard"]
+                                <i class="ti ti-arrow-right ms-1"></i>
+                            </a>
+                        </Authorized>
+                        <NotAuthorized>
+                            <a href="/account/login" class="btn btn-link nav-link d-none d-md-inline-flex">
+                                @Localizer["SignIn"]
+                            </a>
+                            <a href="/account/login" class="btn btn-primary">
+                                @Localizer["StartFreeTrial"]
+                                <i class="ti ti-rocket ms-1"></i>
+                            </a>
+                        </NotAuthorized>
+                    </AuthorizeView>
+
+                    @* Mobile Menu Toggle *@
+                    <button class="btn btn-link d-md-none mobile-menu-btn" @onclick="ToggleMobileMenu">
+                        <i class="ti @(m_mobileMenuOpen ? "ti-x" : "ti-menu-2") fs-2"></i>
+                    </button>
+                </div>
+            </nav>
+        </div>
+
+        @* Mobile Menu *@
+        @if (m_mobileMenuOpen)
+        {
+            <div class="mobile-menu">
+                <div class="container-xl">
+                    <a href="/#features" class="mobile-nav-link" @onclick="CloseMobileMenu">
+                        <i class="ti ti-bolt me-2"></i>@Localizer["Features"]
+                    </a>
+                    <a href="/pricing" class="mobile-nav-link" @onclick="CloseMobileMenu">
+                        <i class="ti ti-receipt me-2"></i>@Localizer["Pricing"]
+                    </a>
+                    <a href="/learn" class="mobile-nav-link" @onclick="CloseMobileMenu">
+                        <i class="ti ti-school me-2"></i>@Localizer["Learn"]
+                    </a>
+                    <div class="mobile-menu-divider"></div>
+                    <div class="mobile-lang-switch">
+                        <span class="text-muted small">@Localizer["Language"]:</span>
+                        <button class="btn btn-sm @(CultureInfo.CurrentCulture.TwoLetterISOLanguageName == "en" ? "btn-primary" : "btn-outline-secondary")"
+                                @onclick='() => SetCulture("en")'>EN</button>
+                        <button class="btn btn-sm @(CultureInfo.CurrentCulture.TwoLetterISOLanguageName == "th" ? "btn-primary" : "btn-outline-secondary")"
+                                @onclick='() => SetCulture("th")'>TH</button>
+                    </div>
+                    <AuthorizeView>
+                        <NotAuthorized>
+                            <a href="/account/login" class="mobile-nav-link">
+                                <i class="ti ti-login me-2"></i>@Localizer["SignIn"]
+                            </a>
+                        </NotAuthorized>
+                    </AuthorizeView>
+                </div>
+            </div>
+        }
+    </header>
+
+    @* Page Content *@
+    <main class="public-main">
+        @Body
+    </main>
+
+    @* Marketing Footer *@
+    <footer class="public-footer">
+        <div class="container-xl">
+            <div class="row g-4">
+                @* Brand Column *@
+                <div class="col-lg-4 col-md-6">
+                    <div class="footer-brand">
+                        <img src="images/icons/ios/40.png" alt="MotoRent" width="40" height="40" />
+                        <span>MotoRent</span>
+                    </div>
+                    <p class="footer-tagline">@Localizer["FooterTagline"]</p>
+                    <div class="footer-social">
+                        <a href="#" class="social-link" aria-label="Facebook"><i class="ti ti-brand-facebook"></i></a>
+                        <a href="#" class="social-link" aria-label="Line"><i class="ti ti-brand-line"></i></a>
+                        <a href="#" class="social-link" aria-label="Instagram"><i class="ti ti-brand-instagram"></i></a>
+                    </div>
+                </div>
+
+                @* Product Links *@
+                <div class="col-lg-2 col-md-6 col-6">
+                    <h6 class="footer-heading">@Localizer["Product"]</h6>
+                    <ul class="footer-links">
+                        <li><a href="/#features">@Localizer["Features"]</a></li>
+                        <li><a href="/pricing">@Localizer["Pricing"]</a></li>
+                        <li><a href="/learn">@Localizer["Learn"]</a></li>
+                    </ul>
+                </div>
+
+                @* Company Links *@
+                <div class="col-lg-2 col-md-6 col-6">
+                    <h6 class="footer-heading">@Localizer["Company"]</h6>
+                    <ul class="footer-links">
+                        <li><a href="/about">@Localizer["About"]</a></li>
+                        <li><a href="/contact">@Localizer["Contact"]</a></li>
+                        <li><a href="/careers">@Localizer["Careers"]</a></li>
+                    </ul>
+                </div>
+
+                @* Legal Links *@
+                <div class="col-lg-2 col-md-6 col-6">
+                    <h6 class="footer-heading">@Localizer["Legal"]</h6>
+                    <ul class="footer-links">
+                        <li><a href="/terms">@Localizer["Terms"]</a></li>
+                        <li><a href="/privacy">@Localizer["Privacy"]</a></li>
+                    </ul>
+                </div>
+
+                @* Contact *@
+                <div class="col-lg-2 col-md-6 col-6">
+                    <h6 class="footer-heading">@Localizer["Support"]</h6>
+                    <ul class="footer-links">
+                        <li><a href="/help">@Localizer["HelpCenter"]</a></li>
+                        <li><a href="mailto:support@motorent.app">support@motorent.app</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <p>&copy; @DateTime.Now.Year MotoRent. @Localizer["AllRightsReserved"]</p>
+            </div>
+        </div>
+    </footer>
+</div>
+
+<style>
+    /* ============================================
+       PUBLIC LAYOUT - Marketing Site Styles
+       ============================================ */
+
+    .public-site {
+        --public-bg: #ffffff;
+        --public-header-bg: rgba(255, 255, 255, 0.95);
+        --public-text: #1e293b;
+        --public-text-muted: #64748b;
+        --public-primary: #00897B;
+        --public-primary-dark: #00695C;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        font-family: "Kanit", -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    /* Header */
+    .public-header {
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        background: var(--public-header-bg);
+        backdrop-filter: blur(12px);
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    .public-nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem 0;
+        gap: 2rem;
+    }
+
+    .public-logo {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        text-decoration: none;
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--public-primary);
+    }
+
+    .public-logo:hover {
+        color: var(--public-primary-dark);
+        text-decoration: none;
+    }
+
+    .public-nav-links {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .public-nav-links .nav-link {
+        padding: 0.5rem 1rem;
+        color: var(--public-text);
+        font-weight: 500;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+    }
+
+    .public-nav-links .nav-link:hover,
+    .public-nav-links .nav-link.active {
+        color: var(--public-primary);
+        background: rgba(0, 137, 123, 0.08);
+        text-decoration: none;
+    }
+
+    .public-nav-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .public-nav-actions .nav-link {
+        color: var(--public-text);
+        font-weight: 500;
+    }
+
+    .public-nav-actions .nav-link:hover {
+        color: var(--public-primary);
+        text-decoration: none;
+    }
+
+    .public-nav-actions .btn-primary {
+        background: linear-gradient(135deg, var(--public-primary) 0%, var(--public-primary-dark) 100%);
+        border: none;
+        padding: 0.5rem 1.25rem;
+        font-weight: 600;
+        border-radius: 8px;
+    }
+
+    .public-nav-actions .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 137, 123, 0.3);
+    }
+
+    .mobile-menu-btn {
+        color: var(--public-text);
+        padding: 0.25rem;
+    }
+
+    /* Mobile Menu */
+    .mobile-menu {
+        background: var(--public-bg);
+        border-top: 1px solid rgba(0, 0, 0, 0.05);
+        padding: 1rem 0;
+        animation: slideDown 0.2s ease;
+    }
+
+    @@keyframes slideDown {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .mobile-nav-link {
+        display: flex;
+        align-items: center;
+        padding: 0.875rem 0;
+        color: var(--public-text);
+        font-weight: 500;
+        text-decoration: none;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    .mobile-nav-link:hover {
+        color: var(--public-primary);
+        text-decoration: none;
+    }
+
+    .mobile-menu-divider {
+        height: 1px;
+        background: rgba(0, 0, 0, 0.1);
+        margin: 0.5rem 0;
+    }
+
+    .mobile-lang-switch {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 0;
+    }
+
+    /* Main Content */
+    .public-main {
+        flex: 1;
+    }
+
+    /* Footer */
+    .public-footer {
+        background: #0f172a;
+        color: rgba(255, 255, 255, 0.8);
+        padding: 4rem 0 2rem;
+    }
+
+    .footer-brand {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: white;
+        margin-bottom: 1rem;
+    }
+
+    .footer-tagline {
+        color: rgba(255, 255, 255, 0.6);
+        font-size: 0.9375rem;
+        line-height: 1.6;
+        margin-bottom: 1.5rem;
+        max-width: 300px;
+    }
+
+    .footer-social {
+        display: flex;
+        gap: 0.75rem;
+    }
+
+    .social-link {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        transition: all 0.2s ease;
+    }
+
+    .social-link:hover {
+        background: var(--public-primary);
+        color: white;
+        transform: translateY(-2px);
+    }
+
+    .footer-heading {
+        color: white;
+        font-weight: 600;
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 1.25rem;
+    }
+
+    .footer-links {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .footer-links li {
+        margin-bottom: 0.75rem;
+    }
+
+    .footer-links a {
+        color: rgba(255, 255, 255, 0.6);
+        text-decoration: none;
+        font-size: 0.9375rem;
+        transition: color 0.2s ease;
+    }
+
+    .footer-links a:hover {
+        color: var(--public-primary);
+    }
+
+    .footer-bottom {
+        margin-top: 3rem;
+        padding-top: 2rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        text-align: center;
+    }
+
+    .footer-bottom p {
+        color: rgba(255, 255, 255, 0.4);
+        font-size: 0.875rem;
+        margin: 0;
+    }
+
+    /* Responsive */
+    @@media (max-width: 767px) {
+        .public-footer {
+            padding: 3rem 0 1.5rem;
+        }
+
+        .footer-brand {
+            justify-content: center;
+        }
+
+        .footer-tagline {
+            text-align: center;
+            max-width: none;
+        }
+
+        .footer-social {
+            justify-content: center;
+            margin-bottom: 2rem;
+        }
+
+        .footer-heading {
+            margin-top: 1.5rem;
+        }
+    }
+</style>
+
+@code {
+    private bool m_mobileMenuOpen;
+
+    private bool IsActive(string path)
+    {
+        var currentPath = new Uri(Navigation.Uri).AbsolutePath;
+        return currentPath.Equals(path, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void ToggleMobileMenu()
+    {
+        m_mobileMenuOpen = !m_mobileMenuOpen;
+    }
+
+    private void CloseMobileMenu()
+    {
+        m_mobileMenuOpen = false;
+    }
+
+    private void SetCulture(string culture)
+    {
+        var uri = new Uri(Navigation.Uri).GetComponents(UriComponents.PathAndQuery, UriFormat.Unescaped);
+        var query = $"?culture={Uri.EscapeDataString(culture)}&redirectUri={Uri.EscapeDataString(uri)}";
+        Navigation.NavigateTo("/Culture/Set" + query, forceLoad: true);
+    }
+}
