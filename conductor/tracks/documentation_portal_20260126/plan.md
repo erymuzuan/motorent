@@ -38,20 +38,20 @@ This plan covers the audit of existing user guides, the creation of the static d
 ## Phase 3: Gemini Search & Chat Integration [checkpoint: 2652d91]
 
 ### Task 1: Knowledge Base Indexing for RAG
-- [ ] Task: Prepare the documentation content for Gemini context injection.
+- [~] Task: Prepare the documentation content for Gemini context injection.
     - [ ] Write unit tests for the document chunking and indexing logic.
     - [ ] Implement a service to flatten documentation into searchable text chunks suitable for Gemini prompts.
 
-### Task 2: Natural Language Search & AI Chat
-- [ ] Task: Implement the search bar and chat interface.
-    - [ ] Write unit tests for the `DocumentationSearchService` (mocking Gemini API).
-    - [ ] Implement a search bar that sends queries to Gemini for natural language processing.
-    - [ ] Build the `DocumentationChat` component for interactive Q&A.
-    - [ ] Implement logic to display "Source Links" alongside AI responses.
+### Task 2: Natural Language Search & AI Chat (COMPLETED) d6c4294
+- [x] Task: Implement the search bar and chat interface. d6c4294
+    - [x] Write unit tests for the `DocumentationSearchService` (mocking Gemini API).
+    - [x] Implement a search bar that sends queries to Gemini for natural language processing.
+    - [x] Build the `DocumentationChat` component for interactive Q&A.
+    - [x] Implement logic to display "Source Links" alongside AI responses.
 
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Gemini Search & Chat Integration' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Gemini Search & Chat Integration' (Protocol in workflow.md) d6c4294
 
-## Phase 4: Final Integration & SEO [checkpoint: ]
+## Phase 4: Final Integration & SEO [checkpoint: d6c4294]
 
 ### Task 1: Navigation & Sitemap Integration
 - [ ] Task: Link the `/learn` page to the main navigation (footer/header).
