@@ -43,11 +43,11 @@ CREATE INDEX IX_Vehicle_HomeShopId_Status ON [<schema>].[Vehicle]([HomeShopId], 
 --
 CREATE INDEX IX_Vehicle_CurrentShopId_Status ON [<schema>].[Vehicle]([CurrentShopId], [Status])
 --
-CREATE INDEX IX_Vehicle_VehiclePoolId_Status ON [<schema>].[Vehicle]([VehiclePoolId], [Status]) WHERE [VehiclePoolId] IS NOT NULL
+CREATE INDEX IX_Vehicle_VehiclePoolId_Status ON [<schema>].[Vehicle]([VehiclePoolId], [Status])
 --
 CREATE INDEX IX_Vehicle_VehicleType_Status ON [<schema>].[Vehicle]([VehicleType], [Status])
 --
 CREATE UNIQUE INDEX IX_Vehicle_LicensePlate ON [<schema>].[Vehicle]([LicensePlate])
 --
-CREATE INDEX IX_Vehicle_VehicleOwnerId ON [<schema>].[Vehicle]([VehicleOwnerId]) WHERE [VehicleOwnerId] IS NOT NULL
+CREATE INDEX IX_Vehicle_VehicleOwnerId ON [<schema>].[Vehicle]([VehicleOwnerId])
 --

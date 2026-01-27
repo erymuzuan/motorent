@@ -402,6 +402,14 @@ internal class TsqlQueryFormatter : DbExpressionVisitor
         }
         else
         {
+            // Handle enums - serialize as string name to match JSON storage
+            if (c.Value.GetType().IsEnum)
+            {
+                var enumName = Enum.GetName(c.Value.GetType(), c.Value);
+                m_sb.Append($"'{enumName}'");
+                return c;
+            }
+
             switch (Type.GetTypeCode(c.Value.GetType()))
             {
                 case TypeCode.Boolean:

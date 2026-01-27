@@ -20,28 +20,36 @@ BEGIN
 END
 GO
 
--- Add LogSeverity computed column (maps to entity property name)
-IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Core].[LogEntry]') AND name = 'LogSeverity')
+-- Recreate LogSeverity as VARCHAR (enums stored as strings in JSON)
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Core].[LogEntry]') AND name = 'LogSeverity')
 BEGIN
-    ALTER TABLE [Core].[LogEntry]
-    ADD [LogSeverity] AS CAST(JSON_VALUE([Json], '$.LogSeverity') AS VARCHAR(20));
+    IF EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID('[Core].[LogEntry]') AND name = 'IX_LogEntry_LogSeverity')
+        DROP INDEX [IX_LogEntry_LogSeverity] ON [Core].[LogEntry];
+    ALTER TABLE [Core].[LogEntry] DROP COLUMN [LogSeverity];
 END
+ALTER TABLE [Core].[LogEntry] ADD [LogSeverity] AS CAST(JSON_VALUE([Json], '$.LogSeverity') AS VARCHAR(20));
 GO
 
--- Add Status computed column for filtering by resolution status
-IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Core].[LogEntry]') AND name = 'Status')
+-- Recreate Status as VARCHAR (enums stored as strings in JSON)
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Core].[LogEntry]') AND name = 'Status')
 BEGIN
-    ALTER TABLE [Core].[LogEntry]
-    ADD [Status] AS CAST(JSON_VALUE([Json], '$.Status') AS VARCHAR(20));
+    IF EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID('[Core].[LogEntry]') AND name = 'IX_LogEntry_Status')
+        DROP INDEX [IX_LogEntry_Status] ON [Core].[LogEntry];
+    IF EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID('[Core].[LogEntry]') AND name = 'IX_LogEntry_Status_DateTime')
+        DROP INDEX [IX_LogEntry_Status_DateTime] ON [Core].[LogEntry];
+    ALTER TABLE [Core].[LogEntry] DROP COLUMN [Status];
 END
+ALTER TABLE [Core].[LogEntry] ADD [Status] AS CAST(JSON_VALUE([Json], '$.Status') AS VARCHAR(20));
 GO
 
--- Add Log (EventLog) computed column for filtering by log type (Web, Api, Background, Security)
-IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Core].[LogEntry]') AND name = 'Log')
+-- Recreate Log as VARCHAR (enums stored as strings in JSON)
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Core].[LogEntry]') AND name = 'Log')
 BEGIN
-    ALTER TABLE [Core].[LogEntry]
-    ADD [Log] AS CAST(JSON_VALUE([Json], '$.Log') AS VARCHAR(20));
+    IF EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID('[Core].[LogEntry]') AND name = 'IX_LogEntry_Log')
+        DROP INDEX [IX_LogEntry_Log] ON [Core].[LogEntry];
+    ALTER TABLE [Core].[LogEntry] DROP COLUMN [Log];
 END
+ALTER TABLE [Core].[LogEntry] ADD [Log] AS CAST(JSON_VALUE([Json], '$.Log') AS VARCHAR(20));
 GO
 
 -- Add IncidentHash computed column for grouping similar errors
@@ -77,7 +85,7 @@ GO
 -- Create composite index for common query patterns (status + datetime for dashboard)
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID('[Core].[LogEntry]') AND name = 'IX_LogEntry_Status_DateTime')
 BEGIN
-    CREATE INDEX [IX_LogEntry_Status_DateTime] ON [Core].[LogEntry]([Status], [DateTime]);
+    CREATE INDEX [IX_LogEntry_Status_DateTime] ON [Core].[LogEntry]([Status], [CreatedTimestamp]);
 END
 GO
 
