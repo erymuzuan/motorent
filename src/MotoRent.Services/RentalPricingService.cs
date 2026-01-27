@@ -38,6 +38,10 @@ public class RentalPricingService(
         {
             CalculateDailyPricing(pricing, vehicle, startDate, endDate, includeDriver, includeGuide, insurance, accessories);
         }
+        else if (durationType == RentalDurationType.Hourly)
+        {
+            CalculateHourlyPricing(pricing, vehicle, startDate, endDate, includeDriver, includeGuide, insurance, accessories);
+        }
         else // FixedInterval
         {
             CalculateIntervalPricing(pricing, vehicle, intervalMinutes ?? 60);
@@ -72,6 +76,10 @@ public class RentalPricingService(
         if (durationType == RentalDurationType.Daily)
         {
             await CalculateDailyPricingAsync(pricing, shopId, vehicle, startDate, endDate, includeDriver, includeGuide, insurance, accessories);
+        }
+        else if (durationType == RentalDurationType.Hourly)
+        {
+            CalculateHourlyPricing(pricing, vehicle, startDate, endDate, includeDriver, includeGuide, insurance, accessories);
         }
         else // FixedInterval
         {
@@ -275,6 +283,60 @@ public class RentalPricingService(
     }
 
     /// <summary>
+    /// Calculates pricing for hourly rentals.
+    /// </summary>
+    private void CalculateHourlyPricing(
+        RentalPricing pricing,
+        Vehicle vehicle,
+        DateTimeOffset startDate,
+        DateTimeOffset endDate,
+        bool includeDriver,
+        bool includeGuide,
+        Insurance? insurance,
+        List<AccessoryWithQuantity>? accessories)
+    {
+        int hours = Math.Max(1, (int)Math.Ceiling((endDate - startDate).TotalHours));
+        pricing.RentalHours = hours;
+        pricing.RentalDays = 0;
+        pricing.RentalRate = vehicle.HourlyRate ?? 0;
+        pricing.VehicleTotal = pricing.RentalRate * hours;
+
+        // Driver fee (prorated from daily)
+        if (includeDriver && vehicle.DriverDailyFee.HasValue && vehicle.DriverDailyFee > 0)
+        {
+            pricing.DriverFee = Math.Ceiling(vehicle.DriverDailyFee.Value / 8 * hours);
+            pricing.IncludeDriver = true;
+        }
+
+        // Guide fee (prorated from daily)
+        if (includeGuide && vehicle.GuideDailyFee.HasValue && vehicle.GuideDailyFee > 0)
+        {
+            pricing.GuideFee = Math.Ceiling(vehicle.GuideDailyFee.Value / 8 * hours);
+            pricing.IncludeGuide = true;
+        }
+
+        // Insurance (prorated from daily)
+        if (insurance != null)
+        {
+            pricing.InsuranceTotal = Math.Ceiling(insurance.DailyRate / 8 * hours);
+            pricing.InsuranceName = insurance.Name;
+        }
+
+        // Accessories (prorated from daily)
+        if (accessories != null && accessories.Count > 0)
+        {
+            pricing.AccessoriesTotal = accessories
+                .Where(a => !a.Accessory.IsIncluded)
+                .Sum(a => Math.Ceiling(a.Accessory.DailyRate / 8 * a.Quantity * hours));
+        }
+
+        pricing.SubTotal = pricing.VehicleTotal + pricing.InsuranceTotal +
+                           pricing.AccessoriesTotal + pricing.DriverFee + pricing.GuideFee;
+        pricing.DepositAmount = vehicle.DepositAmount;
+        pricing.Total = pricing.SubTotal;
+    }
+
+    /// <summary>
     /// Validates rental configuration based on vehicle type.
     /// </summary>
     public ValidationResult ValidateRental(
@@ -335,7 +397,21 @@ public class RentalPricingService(
             }
         }
 
-        // Rule 4: Daily rentals must have valid date range
+        // Rule 4: Hourly rentals must have hourly rate configured
+        if (durationType == RentalDurationType.Hourly)
+        {
+            if (vehicle.HourlyRate == null || vehicle.HourlyRate <= 0)
+            {
+                errors.Add("This vehicle does not have an hourly rate configured");
+            }
+
+            if (endDate <= startDate)
+            {
+                errors.Add("End time must be after start time");
+            }
+        }
+
+        // Rule 5: Daily rentals must have valid date range
         if (durationType == RentalDurationType.Daily)
         {
             if (endDate <= startDate)
@@ -363,12 +439,14 @@ public class RentalPricingService(
     }
 
     /// <summary>
-    /// Calculates extra day charges for late returns.
+    /// Calculates extra charges for late returns.
     /// </summary>
+    /// <param name="dailyLateFeeMode">Organization setting: "Daily" or "Hourly" for daily rental late fees.</param>
     public decimal CalculateExtraDayCharges(
         Rental rental,
         Vehicle vehicle,
-        DateTimeOffset actualEndDate)
+        DateTimeOffset actualEndDate,
+        string dailyLateFeeMode = "Daily")
     {
         if (rental.DurationType == RentalDurationType.FixedInterval)
         {
@@ -383,12 +461,39 @@ public class RentalPricingService(
             return (decimal)(extraMinutes / 60) * hourlyRate;
         }
 
+        if (rental.DurationType == RentalDurationType.Hourly)
+        {
+            // Hourly rental: charge per extra hour
+            if (actualEndDate <= rental.ExpectedEndDate)
+                return 0;
+
+            int extraHours = (int)Math.Ceiling((actualEndDate - rental.ExpectedEndDate).TotalHours);
+            return extraHours * rental.RentalRate;
+        }
+
         // Daily rental
         if (actualEndDate.Date <= rental.ExpectedEndDate.Date)
             return 0;
 
+        // Check org setting for hourly late fees on daily rentals
+        if (dailyLateFeeMode == "Hourly" && vehicle.HourlyRate.HasValue && vehicle.HourlyRate > 0)
+        {
+            int extraHours = (int)Math.Ceiling((actualEndDate - rental.ExpectedEndDate).TotalHours);
+            return extraHours * vehicle.HourlyRate.Value;
+        }
+
         int extraDays = (int)(actualEndDate.Date - rental.ExpectedEndDate.Date).TotalDays;
         return extraDays * rental.RentalRate;
+    }
+
+    /// <summary>
+    /// Calculates extra hours for hourly rentals or daily late fee in hourly mode.
+    /// </summary>
+    public static int CalculateExtraHours(DateTimeOffset expectedEnd, DateTimeOffset actualEnd)
+    {
+        if (actualEnd <= expectedEnd)
+            return 0;
+        return (int)Math.Ceiling((actualEnd - expectedEnd).TotalHours);
     }
 
     /// <summary>
@@ -550,6 +655,7 @@ public class RentalPricing
     public DateTimeOffset StartDate { get; set; }
     public DateTimeOffset EndDate { get; set; }
     public int RentalDays { get; set; }
+    public int? RentalHours { get; set; }
     public int? IntervalMinutes { get; set; }
     public decimal RentalRate { get; set; }
     public decimal VehicleTotal { get; set; }
@@ -583,9 +689,13 @@ public class RentalPricing
     /// <summary>Per-day pricing breakdown with dynamic adjustments.</summary>
     public List<DayPricing> DayBreakdown { get; set; } = [];
 
-    public string DurationDisplay => DurationType == RentalDurationType.Daily
-        ? $"{RentalDays} day{(RentalDays > 1 ? "s" : "")}"
-        : $"{IntervalMinutes} minutes";
+    public string DurationDisplay => DurationType switch
+    {
+        RentalDurationType.Daily => $"{RentalDays} day{(RentalDays > 1 ? "s" : "")}",
+        RentalDurationType.Hourly => $"{RentalHours} hour{(RentalHours > 1 ? "s" : "")}",
+        RentalDurationType.FixedInterval => $"{IntervalMinutes} minutes",
+        _ => ""
+    };
 
     /// <summary>Formatted percentage change from dynamic pricing.</summary>
     public string PercentageChange

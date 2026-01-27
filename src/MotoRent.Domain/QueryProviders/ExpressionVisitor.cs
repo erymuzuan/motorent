@@ -109,7 +109,17 @@ public abstract class ExpressionVisitor {
         if (left == b.Left && right == b.Right && conversion == b.Conversion) return b;
         if (b.NodeType == ExpressionType.Coalesce)
             return Expression.Coalesce(left!, right!, conversion as LambdaExpression);
-        return Expression.MakeBinary(b.NodeType, left!, right!, b.IsLiftedToNull, b.Method);
+
+        // Align enum/int type mismatch caused by Evaluator preserving enum types
+        if (left!.Type != right!.Type)
+        {
+            if (left.Type.IsEnum && right.Type == Enum.GetUnderlyingType(left.Type))
+                right = Expression.Convert(right, left.Type);
+            else if (right.Type.IsEnum && left.Type == Enum.GetUnderlyingType(right.Type))
+                left = Expression.Convert(left, right.Type);
+        }
+
+        return Expression.MakeBinary(b.NodeType, left, right, b.IsLiftedToNull, b.Method);
     }
 
     protected virtual Expression VisitTypeIs(TypeBinaryExpression b) {

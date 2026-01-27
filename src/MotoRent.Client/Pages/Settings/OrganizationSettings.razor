@@ -133,6 +133,9 @@
     private bool m_enableBoat;
     private bool m_enableVan;
 
+    // Late fee mode setting
+    private string m_dailyLateFeeMode = "Daily";
+
     // Dynamic pricing settings
     private bool m_dynamicPricingEnabled;
     private bool m_showMultiplierOnInvoice = true;
@@ -174,6 +177,7 @@
         m_defaultRentalPeriod = await SettingConfig.GetIntAsync(SettingKeys.Rental_DefaultRentalPeriod, defaultValue: 3);
         m_allowOnlineReservation = await SettingConfig.GetBoolAsync(SettingKeys.Rental_AllowOnlineReservation, defaultValue: true);
         m_requireIdVerification = await SettingConfig.GetBoolAsync(SettingKeys.Rental_RequireIdVerification, defaultValue: true);
+        m_dailyLateFeeMode = await SettingConfig.GetStringAsync(SettingKeys.Rental_DailyLateFeeMode, defaultValue: "Daily") ?? "Daily";
 
         // Notification settings
         m_sendRentalConfirmation = await SettingConfig.GetBoolAsync(SettingKeys.Notification_SendRentalConfirmation, defaultValue: true);
@@ -244,6 +248,7 @@
         await SettingConfig.SetValueAsync(SettingKeys.Rental_DefaultRentalPeriod, m_defaultRentalPeriod);
         await SettingConfig.SetValueAsync(SettingKeys.Rental_AllowOnlineReservation, m_allowOnlineReservation);
         await SettingConfig.SetValueAsync(SettingKeys.Rental_RequireIdVerification, m_requireIdVerification);
+        await SettingConfig.SetValueAsync(SettingKeys.Rental_DailyLateFeeMode, m_dailyLateFeeMode);
 
         // Notification settings
         await SettingConfig.SetValueAsync(SettingKeys.Notification_SendRentalConfirmation, m_sendRentalConfirmation);
@@ -453,6 +458,21 @@
                                     <input type="number" class="form-control" @bind="m_defaultDepositAmount" min="0" step="500" />
                                     <span class="input-group-text">@m_organization!.Currency</span>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <hr />
+                        <h4 class="mb-3">@Localizer["LateFeeSettings"]</h4>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">@Localizer["DailyLateFeeMode"]</label>
+                                <select class="form-select" @bind="m_dailyLateFeeMode">
+                                    <option value="Daily">@Localizer["ChargePerDay"]</option>
+                                    <option value="Hourly">@Localizer["ChargePerHour"]</option>
+                                </select>
+                                <small class="text-secondary">@Localizer["DailyLateFeeModeDescription"]</small>
                             </div>
                         </div>
                     </div>

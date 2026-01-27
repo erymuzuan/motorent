@@ -13,12 +13,24 @@ public partial class Rental
         : 0;
 
     /// <summary>
+    /// Number of rental hours (for Hourly duration type).
+    /// </summary>
+    [JsonIgnore]
+    public int CalculatedRentalHours => DurationType == RentalDurationType.Hourly
+        ? Math.Max(1, (int)Math.Ceiling((ExpectedEndDate - StartDate).TotalHours))
+        : 0;
+
+    /// <summary>
     /// Human-readable duration display.
     /// </summary>
     [JsonIgnore]
-    public string DurationDisplay => DurationType == RentalDurationType.Daily
-        ? $"{RentalDays} day{(RentalDays > 1 ? "s" : "")}"
-        : $"{IntervalMinutes} minutes";
+    public string DurationDisplay => DurationType switch
+    {
+        RentalDurationType.Daily => $"{RentalDays} day{(RentalDays > 1 ? "s" : "")}",
+        RentalDurationType.Hourly => $"{CalculatedRentalHours} hour{(CalculatedRentalHours > 1 ? "s" : "")}",
+        RentalDurationType.FixedInterval => $"{IntervalMinutes} minutes",
+        _ => ""
+    };
 
     /// <summary>
     /// Whether this was a cross-shop return.

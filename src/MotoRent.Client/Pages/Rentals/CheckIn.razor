@@ -92,8 +92,37 @@
                 }
                 else
                 {
-                    <ConfigureRentalStep SelectedVehicle="m_selectedVehicle"
-                                         @bind-Config="m_rentalConfig" />
+                    @* Duration type selector (Daily / Hourly) *@
+                    @if (m_selectedVehicle?.SupportsHourlyRental == true)
+                    {
+                        <div class="d-flex justify-content-center mb-4">
+                            <div class="btn-group" role="group">
+                                <button type="button"
+                                        class="btn @(m_selectedDurationType == RentalDurationType.Daily ? "btn-primary" : "btn-outline-primary")"
+                                        @onclick="@(() => OnDurationTypeChanged(RentalDurationType.Daily))">
+                                    <i class="ti ti-calendar me-1"></i>
+                                    @Localizer["DailyRental"]
+                                </button>
+                                <button type="button"
+                                        class="btn @(m_selectedDurationType == RentalDurationType.Hourly ? "btn-primary" : "btn-outline-primary")"
+                                        @onclick="@(() => OnDurationTypeChanged(RentalDurationType.Hourly))">
+                                    <i class="ti ti-clock me-1"></i>
+                                    @Localizer["HourlyRental"]
+                                </button>
+                            </div>
+                        </div>
+                    }
+
+                    @if (m_selectedDurationType == RentalDurationType.Hourly)
+                    {
+                        <ConfigureHourlyRentalStep SelectedVehicle="m_selectedVehicle"
+                                                    @bind-Config="m_hourlyConfig" />
+                    }
+                    else
+                    {
+                        <ConfigureRentalStep SelectedVehicle="m_selectedVehicle"
+                                             @bind-Config="m_rentalConfig" />
+                    }
                 }
                 break;
             case 3:
@@ -110,8 +139,10 @@
                                         Vehicle="@m_selectedVehicle"
                                         Config="@m_rentalConfig"
                                         IntervalConfig="@m_intervalConfig"
+                                        HourlyConfig="@m_hourlyConfig"
                                         DepositInfo="@m_depositInfo"
                                         IsIntervalRental="@IsIntervalRental"
+                                        IsHourlyRental="@IsHourlyRental"
                                         OnComplete="CompleteCheckIn" />
                 break;
         }
@@ -310,6 +341,12 @@
     // Step 3: Interval configuration (jet skis)
     private IntervalRentalConfig m_intervalConfig = new();
 
+    // Step 3: Hourly configuration
+    private HourlyRentalConfig m_hourlyConfig = new();
+
+    // Duration type selection (Daily or Hourly) for non-JetSki vehicles
+    private RentalDurationType m_selectedDurationType = RentalDurationType.Daily;
+
     // Step 4: Deposit information
     private DepositInfo m_depositInfo = new();
 
@@ -317,9 +354,20 @@
     private InspectionInfo? m_preInspection;
 
     private bool IsIntervalRental => this.m_selectedVehicle?.UsesIntervalPricing == true;
+    private bool IsHourlyRental => !this.IsIntervalRental && this.m_selectedDurationType == RentalDurationType.Hourly;
 
-    private decimal GetRentalTotalAmount() =>
-        this.IsIntervalRental ? this.m_intervalConfig.TotalAmount : this.m_rentalConfig.TotalAmount;
+    private decimal GetRentalTotalAmount()
+    {
+        if (this.IsIntervalRental) return this.m_intervalConfig.TotalAmount;
+        if (this.IsHourlyRental) return this.m_hourlyConfig.TotalAmount;
+        return this.m_rentalConfig.TotalAmount;
+    }
+
+    private void OnDurationTypeChanged(RentalDurationType durationType)
+    {
+        this.m_selectedDurationType = durationType;
+        StateHasChanged();
+    }
 
     private bool CanProceedToNextStep()
     {
@@ -327,7 +375,9 @@
         {
             0 => this.m_selectedRenter != null,
             1 => this.m_selectedVehicle != null,
-            2 => this.IsIntervalRental ? this.m_intervalConfig.IsValid : this.m_rentalConfig.IsValid,
+            2 => this.IsIntervalRental ? this.m_intervalConfig.IsValid
+                 : this.IsHourlyRental ? this.m_hourlyConfig.IsValid
+                 : this.m_rentalConfig.IsValid,
             3 => this.m_depositInfo.IsCollected,
             4 => this.m_preInspection != null, // Pre-rental inspection required
             5 => true, // Completion validation is handled by AgreementSignatureStep
@@ -432,6 +482,29 @@
                 request.RentalRate = this.m_intervalConfig.RentalRate;
                 request.TotalAmount = this.m_intervalConfig.TotalAmount;
             }
+            else if (this.IsHourlyRental)
+            {
+                // Hourly rental
+                request.DurationType = RentalDurationType.Hourly;
+                request.StartDate = this.m_hourlyConfig.StartDateTime;
+                request.ExpectedEndDate = this.m_hourlyConfig.EndDateTime;
+                request.RentalHours = this.m_hourlyConfig.Hours;
+                request.MileageStart = this.m_selectedVehicle.Mileage ?? 0;
+                request.RentalRate = this.m_hourlyConfig.HourlyRate;
+                request.TotalAmount = this.m_hourlyConfig.TotalAmount;
+                request.InsuranceId = this.m_hourlyConfig.SelectedInsuranceId;
+                request.IncludeDriver = this.m_hourlyConfig.IncludeDriver;
+                request.IncludeGuide = this.m_hourlyConfig.IncludeGuide;
+                request.DriverFee = this.m_hourlyConfig.DriverFee;
+                request.GuideFee = this.m_hourlyConfig.GuideFee;
+                request.Accessories = this.m_hourlyConfig.SelectedAccessories
+                    .Select(a => new AccessorySelection
+                    {
+                        AccessoryId = a.Accessory.AccessoryId,
+                        Quantity = a.Quantity,
+                        ChargedAmount = a.TotalAmount
+                    }).ToList();
+            }
             else
             {
                 // Daily rental
@@ -513,9 +586,10 @@
             var rentalNo = $"#{rentalId}";
 
             // Record rental payment to till (all payment methods)
-            if (this.m_rentalConfig.TotalAmount > 0 || this.m_intervalConfig.TotalAmount > 0)
+            var rentalTotal = this.GetRentalTotalAmount();
+            if (rentalTotal > 0)
             {
-                var totalAmount = this.IsIntervalRental ? this.m_intervalConfig.TotalAmount : this.m_rentalConfig.TotalAmount;
+                var totalAmount = rentalTotal;
                 var paymentMethod = this.m_depositInfo.PaymentMethod;
 
                 await this.TillService.RecordRentalPaymentToTillAsync(
@@ -595,7 +669,7 @@
             var payments = new List<ReceiptPayment>();
 
             // Add rental payment
-            var totalAmount = this.IsIntervalRental ? this.m_intervalConfig.TotalAmount : this.m_rentalConfig.TotalAmount;
+            var totalAmount = this.GetRentalTotalAmount();
             if (totalAmount > 0)
             {
                 payments.Add(new ReceiptPayment

@@ -8,6 +8,7 @@ public class CheckInRequest
     public int ShopId { get; set; }
     public int RenterId { get; set; }
     public int VehicleId { get; set; }
+    public int? RentalHours { get; set; }
     public DateTimeOffset StartDate { get; set; }
     public DateTimeOffset ExpectedEndDate { get; set; }
     public int MileageStart { get; set; }

@@ -98,6 +98,11 @@ public partial class Vehicle : Entity
     public decimal DailyRate { get; set; }
 
     /// <summary>
+    /// Hourly rental rate (for DurationType == Hourly).
+    /// </summary>
+    public decimal? HourlyRate { get; set; }
+
+    /// <summary>
     /// Required deposit amount.
     /// </summary>
     public decimal DepositAmount { get; set; }
@@ -281,6 +286,12 @@ public partial class Vehicle : Entity
     /// </summary>
     [JsonIgnore]
     public bool UsesIntervalPricing => this.VehicleType == VehicleType.JetSki;
+
+    /// <summary>
+    /// Whether this vehicle has an hourly rate configured.
+    /// </summary>
+    [JsonIgnore]
+    public bool SupportsHourlyRental => this.HourlyRate.HasValue && this.HourlyRate > 0;
 
     /// <summary>
     /// Whether this vehicle is part of a shared pool.

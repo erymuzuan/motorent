@@ -1,6 +1,7 @@
 @using MotoRent.Domain.Entities
 @using MotoRent.Domain.Models
 @using MotoRent.Domain.Models.VehicleInspection
+@using MotoRent.Domain.Settings
 @using MotoRent.Client.Components.Shared
 @using MotoRent.Client.Controls
 @using MotoRent.Client.Controls.VehicleInspection
@@ -98,9 +99,9 @@
                     <div class="date-box">
                         <span class="date-label">@Localizer["Expected"]</span>
                         <span class="date-value">
-                            @if (m_isIntervalRental)
+                            @if (m_isIntervalRental || m_isHourlyRental)
                             {
-                                @Entity.ExpectedEndDate.ToString("HH:mm")
+                                @Entity.ExpectedEndDate.ToString("dd MMM HH:mm")
                             }
                             else
                             {
@@ -119,7 +120,7 @@
                 </h5>
 
                 <div class="form-grid">
-                    @if (!m_isIntervalRental)
+                    @if (!m_isIntervalRental && !m_isHourlyRental)
                     {
                         <div class="form-group">
                             <label class="form-label">@Localizer["ActualReturnDate"]</label>
@@ -218,7 +219,31 @@
             }
 
             @* Status Alerts *@
-            @if (m_extraDays > 0 && !m_isIntervalRental)
+            @if (m_isHourlyRental && m_extraHours > 0)
+            {
+                <div class="status-alert status-warning">
+                    <div class="status-icon">
+                        <i class="ti ti-alert-triangle"></i>
+                    </div>
+                    <div class="status-content">
+                        <span class="status-title">@Localizer["LateReturn"]</span>
+                        <span class="status-detail">@Localizer["OverdueHoursCharge", m_extraHours, FormatCurrency(m_extraDaysCharge)]</span>
+                    </div>
+                </div>
+            }
+            else if (!m_isHourlyRental && !m_isIntervalRental && m_dailyLateFeeMode == "Hourly" && m_vehicle?.HourlyRate > 0 && m_extraHours > 0)
+            {
+                <div class="status-alert status-warning">
+                    <div class="status-icon">
+                        <i class="ti ti-alert-triangle"></i>
+                    </div>
+                    <div class="status-content">
+                        <span class="status-title">@Localizer["LateReturn"]</span>
+                        <span class="status-detail">@Localizer["OverdueHoursCharge", m_extraHours, FormatCurrency(m_extraDaysCharge)]</span>
+                    </div>
+                </div>
+            }
+            else if (m_extraDays > 0 && !m_isIntervalRental && !m_isHourlyRental)
             {
                 <div class="status-alert status-warning">
                     <div class="status-icon">
@@ -230,7 +255,7 @@
                     </div>
                 </div>
             }
-            else if (m_extraDays < 0 && !m_isIntervalRental)
+            else if (m_extraDays < 0 && !m_isIntervalRental && !m_isHourlyRental)
             {
                 <div class="status-alert status-info">
                     <div class="status-icon">
@@ -580,7 +605,21 @@
                     </div>
                 }
 
-                @if (m_extraDays > 0)
+                @if (m_isHourlyRental && m_extraHours > 0)
+                {
+                    <div class="settlement-row text-warning">
+                        <span>@Localizer["ExtraHours", m_extraHours]</span>
+                        <span>+@FormatCurrency(m_extraDaysCharge)</span>
+                    </div>
+                }
+                else if (!m_isHourlyRental && m_dailyLateFeeMode == "Hourly" && m_vehicle?.HourlyRate > 0 && m_extraHours > 0)
+                {
+                    <div class="settlement-row text-warning">
+                        <span>@Localizer["ExtraHours", m_extraHours]</span>
+                        <span>+@FormatCurrency(m_extraDaysCharge)</span>
+                    </div>
+                }
+                else if (m_extraDays > 0)
                 {
                     <div class="settlement-row text-warning">
                         <span>@Localizer["ExtraDays", m_extraDays]</span>
@@ -1364,6 +1403,8 @@
     private Vehicle? m_vehicle;
     private decimal m_depositAmount;
     private bool m_isIntervalRental;
+    private bool m_isHourlyRental;
+    private string m_dailyLateFeeMode = "Daily";
     private bool m_showMileage;
 
     // Cross-shop return for pooled vehicles
@@ -1413,11 +1454,57 @@
     private OutOfHoursResult? m_dropoffOutOfHoursBand;
 
     // Calculated values
-    private int m_extraDays => this.m_actualReturnDate.HasValue && !this.m_isIntervalRental
+    private int m_extraDays => this.m_actualReturnDate.HasValue && !this.m_isIntervalRental && !this.m_isHourlyRental
         ? Math.Max(0, (int)(this.m_actualReturnDate.Value - this.Entity.ExpectedEndDate.Date).TotalDays)
         : 0;
 
-    private decimal m_extraDaysCharge => this.m_extraDays * this.Entity.RentalRate;
+    private int m_extraHours
+    {
+        get
+        {
+            if (this.m_isHourlyRental)
+            {
+                // Hourly rental: calculate extra hours from expected end
+                var actualEnd = DateTimeOffset.Now;
+                if (actualEnd <= this.Entity.ExpectedEndDate) return 0;
+                return (int)Math.Ceiling((actualEnd - this.Entity.ExpectedEndDate).TotalHours);
+            }
+
+            if (this.m_dailyLateFeeMode == "Hourly" && this.m_vehicle?.HourlyRate > 0
+                && this.m_actualReturnDate.HasValue && !this.m_isIntervalRental)
+            {
+                // Daily rental with hourly late fee mode
+                var expectedEnd = this.Entity.ExpectedEndDate;
+                var actualEnd = new DateTimeOffset(
+                    DateTime.SpecifyKind(this.m_actualReturnDate.Value, DateTimeKind.Utc), TimeSpan.Zero);
+                if (actualEnd <= expectedEnd) return 0;
+                return (int)Math.Ceiling((actualEnd - expectedEnd).TotalHours);
+            }
+
+            return 0;
+        }
+    }
+
+    private decimal m_extraDaysCharge
+    {
+        get
+        {
+            if (this.m_isHourlyRental)
+            {
+                // Hourly rental: charge extra hours at rental rate
+                return this.m_extraHours * this.Entity.RentalRate;
+            }
+
+            if (this.m_dailyLateFeeMode == "Hourly" && this.m_vehicle?.HourlyRate > 0
+                && !this.m_isIntervalRental)
+            {
+                // Daily rental with hourly late fee mode
+                return this.m_extraHours * this.m_vehicle.HourlyRate.Value;
+            }
+
+            return this.m_extraDays * this.Entity.RentalRate;
+        }
+    }
     private decimal m_dropoffTotalFees => this.m_dropoffLocationFee + this.m_dropoffOutOfHoursFee;
     private decimal m_3dInspectionDamageEstimate => this.m_inspectionMarkers.Sum(m => m.EstimatedCost ?? 0);
     private decimal m_totalAdditional => this.m_extraDaysCharge +
@@ -1425,7 +1512,7 @@
         this.m_dropoffTotalFees;
     private decimal m_refundAmount => Math.Max(0, this.m_depositAmount - this.m_totalAdditional);
 
-    private bool CanProceedToStep2 => (this.m_actualReturnDate.HasValue || this.m_isIntervalRental) &&
+    private bool CanProceedToStep2 => (this.m_actualReturnDate.HasValue || this.m_isIntervalRental || this.m_isHourlyRental) &&
                                       (!this.m_showMileage || this.m_mileageEnd >= this.Entity.MileageStart) &&
                                       this.m_postInspection != null;
 
@@ -1467,6 +1554,7 @@
                 this.m_vehicleName = $"{this.m_vehicle.Brand} {this.m_vehicle.Model} ({this.m_vehicle.LicensePlate})";
                 this.m_mileageEnd = this.m_vehicle.Mileage ?? 0;
                 this.m_isIntervalRental = this.Entity.DurationType == RentalDurationType.FixedInterval;
+                this.m_isHourlyRental = this.Entity.DurationType == RentalDurationType.Hourly;
                 this.m_showMileage = this.m_vehicle.VehicleType == VehicleType.Motorbike ||
                                      this.m_vehicle.VehicleType == VehicleType.Car ||
                                      this.m_vehicle.VehicleType == VehicleType.Van;
@@ -1477,6 +1565,13 @@
                     this.m_isPooledVehicle = true;
                     this.m_poolShops = await this.VehiclePoolService.GetShopsInPoolAsync(this.m_vehicle.VehiclePoolId.Value);
                 }
+            }
+
+            // Load daily late fee mode setting for daily rentals
+            if (this.Entity.DurationType == RentalDurationType.Daily)
+            {
+                this.m_dailyLateFeeMode = await this.SettingConfig.GetStringAsync(
+                    SettingKeys.Rental_DailyLateFeeMode, defaultValue: "Daily") ?? "Daily";
             }
 
             // Load deposit
@@ -1574,9 +1669,9 @@
 
     private async Task CalculateDropoffOutOfHoursFeeAsync()
     {
-        if (!this.m_actualReturnDate.HasValue && !this.m_isIntervalRental) return;
+        if (!this.m_actualReturnDate.HasValue && !this.m_isIntervalRental && !this.m_isHourlyRental) return;
 
-        var dropoffDate = this.m_isIntervalRental ? DateTime.Today : this.m_actualReturnDate!.Value;
+        var dropoffDate = (this.m_isIntervalRental || this.m_isHourlyRental) ? DateTime.Today : this.m_actualReturnDate!.Value;
         var dropoffDateTime = new DateTimeOffset(
             DateTime.SpecifyKind(dropoffDate, DateTimeKind.Utc), TimeSpan.Zero)
             .Add(this.m_dropoffTime);
@@ -1587,7 +1682,7 @@
 
     private async Task CompleteCheckOut()
     {
-        if (!this.m_actualReturnDate.HasValue && !this.m_isIntervalRental) return;
+        if (!this.m_actualReturnDate.HasValue && !this.m_isIntervalRental && !this.m_isHourlyRental) return;
 
         this.Saving = true;
         try
@@ -1595,7 +1690,7 @@
             var request = new CheckOutRequest
             {
                 RentalId = this.Entity.RentalId,
-                ActualEndDate = this.m_isIntervalRental
+                ActualEndDate = (this.m_isIntervalRental || this.m_isHourlyRental)
                     ? DateTimeOffset.Now
                     : new DateTimeOffset(DateTime.SpecifyKind(this.m_actualReturnDate!.Value, DateTimeKind.Utc), TimeSpan.Zero),
                 MileageEnd = this.m_showMileage ? this.m_mileageEnd : 0,

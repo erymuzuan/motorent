@@ -48,6 +48,13 @@ public static class SettingKeys
     /// </summary>
     public const string Rental_AutoGenerateAgreement = "Rental.AutoGenerateAgreement";
 
+    /// <summary>
+    /// How late fees are charged for daily rentals: "Daily" or "Hourly".
+    /// "Daily" = charge per extra day, "Hourly" = charge per extra hour using vehicle's hourly rate.
+    /// Default: "Daily".
+    /// </summary>
+    public const string Rental_DailyLateFeeMode = "Rental.DailyLateFeeMode";
+
     #endregion
 
     #region Notification Settings

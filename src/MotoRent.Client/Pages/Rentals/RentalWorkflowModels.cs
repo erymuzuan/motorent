@@ -105,6 +105,32 @@ public class IntervalRentalConfig
 }
 
 /// <summary>
+/// Configuration for hourly rentals.
+/// </summary>
+public class HourlyRentalConfig
+{
+    public DateTimeOffset StartDateTime { get; set; } = DateTimeOffset.Now;
+    public int Hours { get; set; } = 1;
+    public decimal HourlyRate { get; set; }
+    public decimal VehicleTotal => HourlyRate * Hours;
+
+    // Add-ons
+    public int? SelectedInsuranceId { get; set; }
+    public Insurance? SelectedInsurance { get; set; }
+    public List<RentalConfig.AccessorySelection> SelectedAccessories { get; set; } = [];
+    public bool IncludeDriver { get; set; }
+    public bool IncludeGuide { get; set; }
+    public decimal DriverFee { get; set; }
+    public decimal GuideFee { get; set; }
+    public decimal InsuranceTotal { get; set; }
+    public decimal AccessoriesTotal { get; set; }
+
+    public decimal TotalAmount => VehicleTotal + InsuranceTotal + AccessoriesTotal + DriverFee + GuideFee;
+    public DateTimeOffset EndDateTime => StartDateTime.AddHours(Hours);
+    public bool IsValid => Hours > 0 && HourlyRate > 0;
+}
+
+/// <summary>
 /// Information about the deposit collected and rental payment.
 /// </summary>
 public class DepositInfo

@@ -1,6 +1,7 @@
 using MotoRent.Domain.DataContext;
 using MotoRent.Domain.Entities;
 using MotoRent.Domain.Models;
+using MotoRent.Domain.Settings;
 
 namespace MotoRent.Services;
 
@@ -48,6 +49,7 @@ public partial class RentalService
                 VehicleId = request.VehicleId,
                 DurationType = request.DurationType,
                 IntervalMinutes = request.IntervalMinutes,
+                RentalHours = request.RentalHours,
                 StartDate = request.StartDate,
                 ExpectedEndDate = request.ExpectedEndDate,
                 MileageStart = request.MileageStart,
@@ -143,9 +145,12 @@ public partial class RentalService
             // 6. Create payment record for rental amount
             if (request.TotalAmount > 0)
             {
-                var durationNote = request.DurationType == RentalDurationType.FixedInterval
-                    ? $"{request.IntervalMinutes} minutes"
-                    : $"{(request.ExpectedEndDate - request.StartDate).TotalDays:N0} days";
+                var durationNote = request.DurationType switch
+                {
+                    RentalDurationType.FixedInterval => $"{request.IntervalMinutes} minutes",
+                    RentalDurationType.Hourly => $"{(int)Math.Ceiling((request.ExpectedEndDate - request.StartDate).TotalHours)} hours",
+                    _ => $"{(request.ExpectedEndDate - request.StartDate).TotalDays:N0} days"
+                };
 
                 var rentalPayment = new Payment
                 {
@@ -303,13 +308,44 @@ public partial class RentalService
             // 5. Calculate additional charges
             decimal additionalCharges = 0;
             int extraDays = 0;
+            int extraHours = 0;
+
+            // Load daily late fee mode setting (applies to Daily rentals only)
+            string dailyLateFeeMode = "Daily";
+            if (rental.DurationType == RentalDurationType.Daily && SettingConfig != null)
+            {
+                dailyLateFeeMode = await SettingConfig.GetStringAsync(
+                    SettingKeys.Rental_DailyLateFeeMode, defaultValue: "Daily") ?? "Daily";
+            }
 
             if (rental.DurationType == RentalDurationType.Daily)
             {
-                extraDays = CalculateExtraDays(rental.ExpectedEndDate, request.ActualEndDate);
-                if (extraDays > 0)
+                // Check if org uses hourly late fees for daily rentals
+                if (dailyLateFeeMode == "Hourly" && vehicle != null
+                    && vehicle.HourlyRate.HasValue && vehicle.HourlyRate > 0)
                 {
-                    additionalCharges += extraDays * rental.RentalRate;
+                    extraHours = CalculateExtraHours(rental.ExpectedEndDate, request.ActualEndDate);
+                    if (extraHours > 0)
+                    {
+                        additionalCharges += extraHours * vehicle.HourlyRate.Value;
+                    }
+                }
+                else
+                {
+                    extraDays = CalculateExtraDays(rental.ExpectedEndDate, request.ActualEndDate);
+                    if (extraDays > 0)
+                    {
+                        additionalCharges += extraDays * rental.RentalRate;
+                    }
+                }
+            }
+            else if (rental.DurationType == RentalDurationType.Hourly)
+            {
+                // Hourly rental: charge per extra hour at the rental rate
+                extraHours = CalculateExtraHours(rental.ExpectedEndDate, request.ActualEndDate);
+                if (extraHours > 0)
+                {
+                    additionalCharges += extraHours * rental.RentalRate;
                 }
             }
             else
@@ -384,6 +420,34 @@ public partial class RentalService
             // 9. Create payment record for additional charges
             if (additionalCharges > 0)
             {
+                var damageCharges = additionalCharges
+                    - (extraDays * rental.RentalRate)
+                    - (rental.DurationType == RentalDurationType.Hourly
+                        ? extraHours * rental.RentalRate
+                        : 0)
+                    - (rental.DurationType == RentalDurationType.Daily && dailyLateFeeMode == "Hourly"
+                        && vehicle?.HourlyRate > 0
+                        ? extraHours * vehicle.HourlyRate.Value
+                        : 0);
+
+                string paymentNotes;
+                if (rental.DurationType == RentalDurationType.Daily && dailyLateFeeMode == "Hourly" && extraHours > 0)
+                {
+                    paymentNotes = $"Extra hours (late): {extraHours}, Damage charges: {damageCharges}";
+                }
+                else if (rental.DurationType == RentalDurationType.Daily)
+                {
+                    paymentNotes = $"Extra days: {extraDays}, Damage charges: {damageCharges}";
+                }
+                else if (rental.DurationType == RentalDurationType.Hourly)
+                {
+                    paymentNotes = $"Extra hours: {extraHours}, Damage charges: {damageCharges}";
+                }
+                else
+                {
+                    paymentNotes = $"Overtime charges: {additionalCharges}";
+                }
+
                 var payment = new Payment
                 {
                     RentalId = request.RentalId,
@@ -392,9 +456,7 @@ public partial class RentalService
                     Amount = additionalCharges,
                     Status = "Completed",
                     PaidOn = DateTimeOffset.Now,
-                    Notes = rental.DurationType == RentalDurationType.Daily
-                        ? $"Extra days: {extraDays}, Damage charges: {additionalCharges - (extraDays * rental.RentalRate)}"
-                        : $"Overtime charges: {additionalCharges}"
+                    Notes = paymentNotes
                 };
                 session.Attach(payment);
             }
@@ -558,6 +620,14 @@ public partial class RentalService
             return 0;
 
         return (int)Math.Ceiling((actualEnd - expectedEnd).TotalDays);
+    }
+
+    private static int CalculateExtraHours(DateTimeOffset expectedEnd, DateTimeOffset actualEnd)
+    {
+        if (actualEnd <= expectedEnd)
+            return 0;
+
+        return (int)Math.Ceiling((actualEnd - expectedEnd).TotalHours);
     }
 
     private static string GetDefaultAgreementText()

@@ -129,6 +129,12 @@ public partial class Rental : Entity
     public int? IntervalMinutes { get; set; }
 
     /// <summary>
+    /// Number of rental hours (for Hourly duration type).
+    /// Null for Daily and FixedInterval.
+    /// </summary>
+    public int? RentalHours { get; set; }
+
+    /// <summary>
     /// Start date/time of the rental.
     /// For Daily: date portion is significant.
     /// For FixedInterval: full timestamp is significant.
