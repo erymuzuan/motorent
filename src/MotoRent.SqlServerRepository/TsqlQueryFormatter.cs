@@ -528,6 +528,15 @@ internal class TsqlQueryFormatter(string schema) : DbExpressionVisitor
             return b;
         }
 
+        // case for enum ColumnExpression (after query provider maps member to column)
+        if (b.Left is ColumnExpression { Type.IsEnum: true } enumCol
+            && b.Right is ConstantExpression { Value: int colEnumIntValue })
+        {
+            var ev = Enum.GetName(enumCol.Type, colEnumIntValue);
+            this.m_sb.Append($"'{ev}')");
+            return b;
+        }
+
         this.Visit(b.Right);
         if (m_sb is [.., 'A', 'N', 'D', ' '] && b.Right is MemberExpression { Type.Name: "Boolean" } b5)
         {

@@ -387,10 +387,40 @@ internal class TsqlQueryFormatter : DbExpressionVisitor
                 throw new NotSupportedException($"The binary operator '{b.NodeType}' is not supported");
         }
 
-        this.Visit(b.Right);
+        // When comparing an enum column with an int constant, convert to enum string name
+        var right = ResolveEnumConstant(b);
+        this.Visit(right);
 
         m_sb.Append(")");
         return b;
+    }
+
+    /// <summary>
+    /// When C# compiler reduces enum comparison to int (e.g., x.Status == 0 instead of x.Status == LogStatus.New),
+    /// detect the enum column type and convert the int constant back to the enum string name.
+    /// </summary>
+    private static Expression ResolveEnumConstant(BinaryExpression b)
+    {
+        if (b.Right is not ConstantExpression { Value: int intValue } c)
+            return b.Right;
+
+        // Find the enum type from the left side (ColumnExpression or Convert(ColumnExpression))
+        var enumType = GetEnumType(b.Left);
+        if (enumType == null)
+            return b.Right;
+
+        var enumValue = Enum.ToObject(enumType, intValue);
+        return Expression.Constant(enumValue, enumType);
+    }
+
+    private static Type? GetEnumType(Expression expr)
+    {
+        return expr switch
+        {
+            ColumnExpression ce when ce.Type.IsEnum => ce.Type,
+            UnaryExpression { NodeType: ExpressionType.Convert } ue when ue.Operand.Type.IsEnum => ue.Operand.Type,
+            _ => null
+        };
     }
 
     protected override Expression VisitConstant(ConstantExpression c)
