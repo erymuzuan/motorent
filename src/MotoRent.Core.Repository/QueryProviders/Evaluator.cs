@@ -54,6 +54,13 @@ public static class Evaluator {
             if (e.NodeType == ExpressionType.Constant) {
                 return e;
             }
+            // Preserve enum type when C# compiler wraps enum in Convert(enum, Int32)
+            if (e is UnaryExpression { NodeType: ExpressionType.Convert } ue && ue.Operand.Type.IsEnum)
+            {
+                var enumLambda = Expression.Lambda(ue.Operand);
+                var enumValue = enumLambda.Compile().DynamicInvoke();
+                return Expression.Constant(enumValue, ue.Operand.Type);
+            }
             var lambda = Expression.Lambda(e);
             var fn = lambda.Compile();
             try
