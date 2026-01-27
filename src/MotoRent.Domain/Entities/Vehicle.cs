@@ -294,6 +294,18 @@ public partial class Vehicle : Entity
     public bool SupportsHourlyRental => this.HourlyRate.HasValue && this.HourlyRate > 0;
 
     /// <summary>
+    /// Whether this vehicle is hourly-only (no daily rate, only hourly).
+    /// </summary>
+    [JsonIgnore]
+    public bool IsHourlyOnly => this.DailyRate == 0 && this.SupportsHourlyRental;
+
+    /// <summary>
+    /// The display rate for this vehicle (hourly rate if hourly-only, otherwise daily rate).
+    /// </summary>
+    [JsonIgnore]
+    public decimal DisplayRate => this.IsHourlyOnly ? this.HourlyRate!.Value : this.DailyRate;
+
+    /// <summary>
     /// Whether this vehicle is part of a shared pool.
     /// </summary>
     [JsonIgnore]

@@ -211,9 +211,9 @@
                             else
                             {
                                 <div class="d-flex justify-content-between">
-                                    <span class="fw-medium">@Localizer["DailyRate"]</span>
+                                    <span class="fw-medium">@(vehicle.IsHourlyOnly ? Localizer["HourlyRate"] : Localizer["DailyRate"])</span>
                                     <span class="text-primary fw-semibold" style="font-size: 1.1rem;">
-                                        @FormatCurrency(vehicle.DailyRate)
+                                        @FormatCurrency(vehicle.DisplayRate)
                                     </span>
                                 </div>
                             }
@@ -268,6 +268,10 @@
                     @if (this.SelectedVehicle.UsesIntervalPricing)
                     {
                         @FormatCurrency(this.SelectedVehicle.Rate1Hour ?? 0)<text>/hr</text>
+                    }
+                    else if (this.SelectedVehicle.IsHourlyOnly)
+                    {
+                        @FormatCurrency(this.SelectedVehicle.HourlyRate!.Value)<text>/hr</text>
                     }
                     else
                     {

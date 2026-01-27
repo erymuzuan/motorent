@@ -372,7 +372,7 @@ public class NotificationService
                 <p><strong>Payment Details:</strong></p>
                 <p class='amount'>{amount:N0} THB</p>
                 <p>Payment Method: {paymentMethod}</p>
-                <p>Date: {DateTimeOffset.Now:MMMM dd, yyyy HH:mm}</p>
+                <p>Date: {DateTimeOffset.Now:MMMM dd, yyyy h:mm tt}</p>
             </div>
 
             <div class='details'>

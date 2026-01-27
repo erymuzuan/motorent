@@ -277,6 +277,9 @@
         if (IsIntervalRental && IntervalConfig != null)
             return IntervalConfig.RentalRate + (DepositInfo?.Amount ?? 0);
 
+        if (IsHourlyRental && HourlyConfig != null)
+            return HourlyConfig.TotalAmount + (DepositInfo?.Amount ?? 0);
+
         if (Config != null)
         {
             return Config.VehicleTotal + Config.InsuranceTotal + Config.AccessoriesTotal
@@ -348,6 +351,14 @@
             queryParams.Add($"Interval={IntervalConfig.IntervalMinutes}");
             queryParams.Add($"StartTime={Uri.EscapeDataString(IntervalConfig.StartDateTime.ToString("o"))}");
             queryParams.Add($"Rate={IntervalConfig.RentalRate}");
+            queryParams.Add($"Total={GetTotalAmount()}");
+        }
+        else if (IsHourlyRental && HourlyConfig != null)
+        {
+            queryParams.Add($"RentalType=Hourly");
+            queryParams.Add($"Hours={HourlyConfig.Hours}");
+            queryParams.Add($"HourlyRate={HourlyConfig.HourlyRate}");
+            queryParams.Add($"StartTime={Uri.EscapeDataString(HourlyConfig.StartDateTime.ToString("o"))}");
             queryParams.Add($"Total={GetTotalAmount()}");
         }
         else if (Config != null)

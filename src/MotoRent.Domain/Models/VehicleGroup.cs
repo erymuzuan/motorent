@@ -110,6 +110,11 @@ public class VehicleGroup
     public string DisplayName => $"{Brand} {Model} {Year}".Trim();
 
     /// <summary>
+    /// Whether all vehicles in this group are hourly-only (no daily rate).
+    /// </summary>
+    public bool IsHourlyOnly { get; set; }
+
+    /// <summary>
     /// Whether prices vary within the group.
     /// </summary>
     public bool HasPriceRange => MinDailyRate != MaxDailyRate;
@@ -165,8 +170,9 @@ public class VehicleGroup
             RentedUnits = vehicleList.Count(v => v.Status == VehicleStatus.Rented),
             MaintenanceUnits = vehicleList.Count(v => v.Status == VehicleStatus.Maintenance),
             ReservedUnits = vehicleList.Count(v => v.Status == VehicleStatus.Reserved),
-            MinDailyRate = vehicleList.Min(v => v.DailyRate),
-            MaxDailyRate = vehicleList.Max(v => v.DailyRate),
+            IsHourlyOnly = vehicleList.All(v => v.IsHourlyOnly),
+            MinDailyRate = vehicleList.Min(v => v.DisplayRate),
+            MaxDailyRate = vehicleList.Max(v => v.DisplayRate),
             MinDepositAmount = vehicleList.Min(v => v.DepositAmount),
             ImagePath = vehicleList.FirstOrDefault(v => !string.IsNullOrEmpty(v.ImagePath))?.ImagePath,
             AvailableColors = vehicleList

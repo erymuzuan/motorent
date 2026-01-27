@@ -125,8 +125,8 @@ public class SalesLeadService
             return SubmitOperation.CreateFailure("Lead not found");
 
         lead.Notes = string.IsNullOrEmpty(lead.Notes)
-            ? $"[{DateTime.Now:yyyy-MM-dd HH:mm}] {username}: {note}"
-            : $"{lead.Notes}\n[{DateTime.Now:yyyy-MM-dd HH:mm}] {username}: {note}";
+            ? $"[{DateTime.Now:yyyy-MM-dd h:mm tt}] {username}: {note}"
+            : $"{lead.Notes}\n[{DateTime.Now:yyyy-MM-dd h:mm tt}] {username}: {note}";
 
         using var session = m_context.OpenSession(username);
         session.Attach(lead);

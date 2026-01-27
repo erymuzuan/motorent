@@ -313,7 +313,7 @@
                                         {
                                             <span class="h3 text-success mb-0">@FormatCurrency(group.MinDailyRate)</span>
                                         }
-                                        <span class="text-secondary">/day</span>
+                                        <span class="text-secondary">/@(group.IsHourlyOnly ? "hr" : "day")</span>
                                     </div>
                                     <button type="button" class="btn btn-sm @(IsGroupExpanded(group.GroupKey) ? "btn-primary" : "btn-outline-primary")"
                                             @onclick="@(() => ToggleGroupExpanded(group.GroupKey))">
@@ -338,7 +338,7 @@
                                                 {
                                                     <span class="text-secondary">@vehicle.Color</span>
                                                 }
-                                                <span class="ms-auto text-success">@FormatCurrency(vehicle.DailyRate)</span>
+                                                <span class="ms-auto text-success">@FormatCurrency(vehicle.DisplayRate)/@(vehicle.IsHourlyOnly ? "hr" : "day")</span>
                                             </a>
                                         }
                                     </div>
@@ -458,7 +458,7 @@
                                             }
                                             else
                                             {
-                                                <span class="fw-bold text-success">@FormatCurrency(vehicle.DailyRate)/day</span>
+                                                <span class="fw-bold text-success">@FormatCurrency(vehicle.DisplayRate)/@(vehicle.IsHourlyOnly ? "hr" : "day")</span>
                                                 <span class="text-secondary small">@Localizer["DepositAmount"]: @FormatCurrency(vehicle.DepositAmount)</span>
                                             }
                                         </div>
@@ -623,6 +623,11 @@
                                         @if (vehicle.UsesIntervalPricing)
                                         {
                                             <span class="h3 text-success mb-0">@FormatCurrency(vehicle.Rate1Hour ?? 0)</span>
+                                            <span class="text-secondary">/hr</span>
+                                        }
+                                        else if (vehicle.IsHourlyOnly)
+                                        {
+                                            <span class="h3 text-success mb-0">@FormatCurrency(vehicle.HourlyRate!.Value)</span>
                                             <span class="text-secondary">/hr</span>
                                         }
                                         else

@@ -18,6 +18,22 @@
 @if (m_customHtml != null)
 {
     @* Render Custom Template *@
+    <style>
+        @@media print {
+            .no-print { display: none !important; }
+            header, nav, .navbar, .sidebar, footer, .modal-backdrop { display: none !important; }
+            body { margin: 0; padding: 0; background: white !important; }
+            main { padding: 0 !important; margin: 0 !important; }
+            .custom-print-container {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                margin: 0;
+                padding: 0;
+            }
+        }
+    </style>
     <div class="no-print p-3 d-flex justify-content-end" style="position: fixed; top: 80px; right: 20px; z-index: 1100;">
         <button class="btn btn-primary shadow" @onclick="Print">
             <i class="ti ti-printer me-2"></i>
@@ -272,11 +288,30 @@ else
                     </div>
                     <div class="info-item">
                         <span class="info-label">@Localizer["StartTime"]:</span>
-                        <span class="info-value">@m_startTime?.ToString("dd MMM yyyy HH:mm")</span>
+                        <span class="info-value">@m_startTime?.ToString("dd MMM yyyy h:mm tt")</span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">@Localizer["Rate"]:</span>
                         <span class="info-value">@FormatCurrency(m_rate)</span>
+                    </div>
+                }
+                else if (m_isHourlyRental)
+                {
+                    <div class="info-item">
+                        <span class="info-label">@Localizer["Duration"]:</span>
+                        <span class="info-value">@Localizer["HoursCount", m_hours]</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">@Localizer["StartTime"]:</span>
+                        <span class="info-value">@m_startTime?.ToString("dd MMM yyyy h:mm tt")</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">@Localizer["EndTime"]:</span>
+                        <span class="info-value">@m_startTime?.AddHours(m_hours).ToString("dd MMM yyyy h:mm tt")</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">@Localizer["HourlyRate"]:</span>
+                        <span class="info-value">@FormatCurrency(m_hourlyRate)</span>
                     </div>
                 }
                 else
@@ -347,7 +382,7 @@ else
             {
                 <p>@m_shop.Name | @m_shop.Address | @m_shop.Phone</p>
             }
-            <p>@Localizer["AgreementGeneratedOn", DateTime.Now.ToString("dd MMM yyyy HH:mm")]</p>
+            <p>@Localizer["AgreementGeneratedOn", DateTime.Now.ToString("dd MMM yyyy h:mm tt")]</p>
         </div>
     </div>
 }
@@ -365,6 +400,9 @@ else
     [SupplyParameterFromQuery] public string? DepositType { get; set; }
     [SupplyParameterFromQuery] public decimal? DepositAmount { get; set; }
     [SupplyParameterFromQuery] public int? TemplateId { get; set; }
+    [SupplyParameterFromQuery] public string? RentalType { get; set; }
+    [SupplyParameterFromQuery] public int? Hours { get; set; }
+    [SupplyParameterFromQuery] public decimal? HourlyRate { get; set; }
     // Fallback renter data (for unsaved renters)
     [SupplyParameterFromQuery] public string? RenterName { get; set; }
     [SupplyParameterFromQuery] public string? RenterPhone { get; set; }
@@ -383,10 +421,13 @@ else
     private Shop? m_shop;
 
     private bool m_isIntervalRental;
+    private bool m_isHourlyRental;
     private DateTimeOffset? m_startTime;
     private DateTime? m_startDate;
     private DateTime? m_endDate;
     private int m_days;
+    private int m_hours;
+    private decimal m_hourlyRate;
     private decimal m_rate;
     private decimal m_totalAmount;
     private string m_depositType = "-";
@@ -433,10 +474,13 @@ else
 
             // Set rental parameters
             m_isIntervalRental = this.Interval.HasValue && this.Interval > 0;
+            m_isHourlyRental = this.RentalType == "Hourly";
             if (!string.IsNullOrEmpty(this.StartTime) && DateTimeOffset.TryParse(this.StartTime, out var startTime)) m_startTime = startTime;
             if (!string.IsNullOrEmpty(this.StartDate) && DateTime.TryParse(this.StartDate, out var startDate)) m_startDate = startDate;
             if (!string.IsNullOrEmpty(this.EndDate) && DateTime.TryParse(this.EndDate, out var endDate)) m_endDate = endDate;
             m_days = this.Days ?? 1;
+            m_hours = this.Hours ?? 1;
+            m_hourlyRate = this.HourlyRate ?? 0;
             m_rate = this.Rate ?? 0;
             m_totalAmount = this.Total ?? 0;
             m_depositType = this.DepositType ?? "-";

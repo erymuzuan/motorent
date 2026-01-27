@@ -93,8 +93,9 @@
                 else
                 {
                     @* Duration type selector (Daily / Hourly) *@
-                    @if (m_selectedVehicle?.SupportsHourlyRental == true)
+                    @if (m_selectedVehicle?.SupportsHourlyRental == true && m_selectedVehicle.DailyRate > 0)
                     {
+                        @* Both daily and hourly rates - show toggle *@
                         <div class="d-flex justify-content-center mb-4">
                             <div class="btn-group" role="group">
                                 <button type="button"
@@ -389,6 +390,18 @@
     {
         if (this.m_activeStep < 5 && this.CanProceedToNextStep())
         {
+            // Auto-select duration type when moving to rental configuration step
+            if (this.m_activeStep == 1 && this.m_selectedVehicle != null && !this.IsIntervalRental)
+            {
+                var hasDaily = this.m_selectedVehicle.DailyRate > 0;
+                var hasHourly = this.m_selectedVehicle.SupportsHourlyRental;
+
+                if (hasHourly && !hasDaily)
+                    this.m_selectedDurationType = RentalDurationType.Hourly;
+                else
+                    this.m_selectedDurationType = RentalDurationType.Daily;
+            }
+
             this.m_activeStep++;
         }
         else if (this.m_activeStep == 3 && !this.m_depositInfo.IsCollected)

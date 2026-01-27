@@ -183,13 +183,13 @@ public class MotoRentRequestContext : IRequestContext
     public string FormatDateTime(DateTimeOffset dateTimeOffset)
     {
         var localTime = dateTimeOffset.ToUniversalTime().AddHours(this.TimezoneOffset);
-        return $"{localTime:dd/MM/yyyy HH:mm}";
+        return $"{localTime:dd/MM/yyyy h:mm tt}";
     }
 
     public string FormatTime(DateTimeOffset dateTimeOffset)
     {
         var localTime = dateTimeOffset.ToUniversalTime().AddHours(this.TimezoneOffset);
-        return $"{localTime:HH:mm}";
+        return $"{localTime:h:mm tt}";
     }
 
     public Task<bool> IsInRoleAsync(string role)
