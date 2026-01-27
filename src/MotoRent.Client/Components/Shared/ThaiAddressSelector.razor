@@ -1,6 +1,6 @@
 @inherits LocalizedComponentBase<ThaiAddressSelector>
 @using System.Text.Json.Serialization
-@inject HttpClient Http
+@inject IThaiAddressDataProvider AddressDataProvider
 
 <div class="row g-3">
     @* Province *@
@@ -95,8 +95,8 @@
     {
         try
         {
-            var url = this.NavigationManager.ToAbsoluteUri("data/thailand-addresses.json").ToString();
-            this.m_addressData = await this.Http.GetFromJsonAsync<ThaiAddressData>(url);
+            var json = await this.AddressDataProvider.GetAddressDataJsonAsync();
+            this.m_addressData = System.Text.Json.JsonSerializer.Deserialize<ThaiAddressData>(json);
             this.m_provinces = this.m_addressData?.Provinces ?? [];
         }
         catch (Exception ex)

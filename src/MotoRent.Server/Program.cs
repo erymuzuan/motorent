@@ -138,6 +138,9 @@ builder.Services.AddScoped<LogEntryService>();
 // Sales lead tracking
 builder.Services.AddScoped<SalesLeadService>();
 
+// Thai address data provider - reads from wwwroot directly (no self-referencing HTTP)
+builder.Services.AddSingleton<IThaiAddressDataProvider, ThaiAddressDataProvider>();
+
 // Add HttpClient for external API calls (Gemini)
 builder.Services.AddHttpClient("Gemini", client => { client.Timeout = TimeSpan.FromSeconds(60); });
 // Add HttpClient for NotificationService (Email + LINE)
