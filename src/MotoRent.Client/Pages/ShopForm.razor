@@ -52,30 +52,27 @@
                     </div>
 
                     <div class="col-md-6">
-                        <label class="form-label required">@Localizer["LocationArea"]</label>
-                        <select class="form-select" @bind="Entity.Location" required>
-                            <option value="">@Localizer["SelectLocation"]</option>
-                            <option value="Phuket - Patong">Phuket - Patong</option>
-                            <option value="Phuket - Kata">Phuket - Kata</option>
-                            <option value="Phuket - Karon">Phuket - Karon</option>
-                            <option value="Phuket - Kamala">Phuket - Kamala</option>
-                            <option value="Phuket - Rawai">Phuket - Rawai</option>
-                            <option value="Krabi - Ao Nang">Krabi - Ao Nang</option>
-                            <option value="Krabi - Railay">Krabi - Railay</option>
-                            <option value="Koh Samui">Koh Samui</option>
-                            <option value="Koh Phangan">Koh Phangan</option>
-                            <option value="Chiang Mai">Chiang Mai</option>
-                            <option value="Pai">Pai</option>
-                            <option value="Bangkok">Bangkok</option>
-                            <option value="Pattaya">Pattaya</option>
-                            <option value="Other">Other</option>
-                        </select>
+                        <label class="form-label required">@Localizer["FullAddress"]</label>
+                        <input type="text" class="form-control" @bind="Entity.Address" required
+                               placeholder="@Localizer["AddressPlaceholder"]" />
                     </div>
 
                     <div class="col-12">
-                        <label class="form-label required">@Localizer["FullAddress"]</label>
-                        <textarea class="form-control" @bind="Entity.Address" required rows="2"
-                                  placeholder="@Localizer["AddressPlaceholder"]"></textarea>
+                        <ThaiAddressSelector @bind-Province="Entity.Province"
+                                             @bind-District="Entity.District"
+                                             @bind-Subdistrict="Entity.Subdistrict"
+                                             @bind-PostalCode="Entity.PostalCode"
+                                             Required="true"
+                                             ProvinceColumnClass="col-md-3"
+                                             DistrictColumnClass="col-md-3"
+                                             SubdistrictColumnClass="col-md-3"
+                                             PostalCodeColumnClass="col-md-3" />
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">@Localizer["Area"]</label>
+                        <input type="text" class="form-control" @bind="Entity.Location"
+                               placeholder="@Localizer["AreaPlaceholder"]" />
                     </div>
 
                     <div class="col-md-6">
@@ -123,38 +120,43 @@
                 else
                 {
                     <div class="table-responsive">
-                        <table class="table table-vcenter table-sm">
+                        <table class="table table-vcenter">
                             <thead>
                                 <tr>
-                                    <th style="width: 120px;">@Localizer["Day"]</th>
-                                    <th style="width: 80px;">@Localizer["Open"]</th>
-                                    <th style="width: 120px;">@Localizer["From"]</th>
-                                    <th style="width: 120px;">@Localizer["To"]</th>
+                                    <th style="width: 150px;">@Localizer["Day"]</th>
+                                    <th style="width: 120px;"></th>
+                                    <th>@Localizer["OpensAt"]</th>
+                                    <th>@Localizer["ClosesAt"]</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach (var dayHours in Entity.DefaultHours.OrderBy(d => ((int)d.DayOfWeek + 6) % 7))
                                 {
-                                    <tr class="@(dayHours.IsOpen ? "" : "text-secondary")">
-                                        <td>@dayHours.DayOfWeek.ToString()</td>
+                                    <tr class="@(!dayHours.IsOpen ? "text-secondary" : "")">
+                                        <td class="fw-medium">@Localizer[$"Day_{dayHours.DayOfWeek}"]</td>
                                         <td>
-                                            <label class="form-check form-switch mb-0">
+                                            <label class="form-check mb-0">
                                                 <input type="checkbox" class="form-check-input"
-                                                       checked="@dayHours.IsOpen"
-                                                       @onchange="@(e => dayHours.IsOpen = (bool)(e.Value ?? false))" />
+                                                       checked="@(!dayHours.IsOpen)"
+                                                       @onchange="@(e => dayHours.IsOpen = !(bool)(e.Value ?? false))" />
+                                                <span class="form-check-label">@Localizer["Closed"]</span>
                                             </label>
                                         </td>
                                         <td>
-                                            <input type="time" class="form-control form-control-sm"
-                                                   value="@dayHours.OpenTime.ToString(@"hh\:mm")"
-                                                   disabled="@(!dayHours.IsOpen)"
-                                                   @onchange="@(e => dayHours.OpenTime = TimeSpan.Parse(e.Value?.ToString() ?? "08:00"))" />
+                                            @if (dayHours.IsOpen)
+                                            {
+                                                <input type="time" class="form-control" style="max-width: 140px;"
+                                                       value="@dayHours.OpenTime.ToString(@"hh\:mm")"
+                                                       @onchange="@(e => dayHours.OpenTime = TimeSpan.Parse(e.Value?.ToString() ?? "08:00"))" />
+                                            }
                                         </td>
                                         <td>
-                                            <input type="time" class="form-control form-control-sm"
-                                                   value="@dayHours.CloseTime.ToString(@"hh\:mm")"
-                                                   disabled="@(!dayHours.IsOpen)"
-                                                   @onchange="@(e => dayHours.CloseTime = TimeSpan.Parse(e.Value?.ToString() ?? "18:00"))" />
+                                            @if (dayHours.IsOpen)
+                                            {
+                                                <input type="time" class="form-control" style="max-width: 140px;"
+                                                       value="@dayHours.CloseTime.ToString(@"hh\:mm")"
+                                                       @onchange="@(e => dayHours.CloseTime = TimeSpan.Parse(e.Value?.ToString() ?? "18:00"))" />
+                                            }
                                         </td>
                                     </tr>
                                 }
@@ -176,14 +178,14 @@
                 @if (Entity.OutOfHoursBands.Count > 0)
                 {
                     <div class="table-responsive mb-3">
-                        <table class="table table-vcenter table-sm">
+                        <table class="table table-vcenter">
                             <thead>
                                 <tr>
-                                    <th style="width: 150px;">@Localizer["Name"]</th>
-                                    <th style="width: 120px;">@Localizer["From"]</th>
-                                    <th style="width: 120px;">@Localizer["To"]</th>
-                                    <th style="width: 120px;">@Localizer["Fee"]</th>
-                                    <th style="width: 60px;"></th>
+                                    <th>@Localizer["Name"]</th>
+                                    <th>@Localizer["From"]</th>
+                                    <th>@Localizer["To"]</th>
+                                    <th>@Localizer["Fee"]</th>
+                                    <th style="width: 50px;"></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -191,25 +193,25 @@
                                 {
                                     <tr>
                                         <td>
-                                            <input type="text" class="form-control form-control-sm"
+                                            <input type="text" class="form-control"
                                                    @bind="band.Name" placeholder="@Localizer["BandNamePlaceholder"]" />
                                         </td>
                                         <td>
-                                            <input type="time" class="form-control form-control-sm"
+                                            <input type="time" class="form-control" style="max-width: 140px;"
                                                    value="@band.StartTime.ToString(@"hh\:mm")"
                                                    @onchange="@(e => band.StartTime = TimeSpan.Parse(e.Value?.ToString() ?? "18:00"))" />
                                         </td>
                                         <td>
-                                            <input type="time" class="form-control form-control-sm"
+                                            <input type="time" class="form-control" style="max-width: 140px;"
                                                    value="@band.EndTime.ToString(@"hh\:mm")"
                                                    @onchange="@(e => band.EndTime = TimeSpan.Parse(e.Value?.ToString() ?? "20:00"))" />
                                         </td>
                                         <td>
-                                            <input type="number" class="form-control form-control-sm"
+                                            <input type="number" class="form-control" style="max-width: 120px;"
                                                    @bind="band.Fee" min="0" step="50" />
                                         </td>
-                                        <td class="text-end">
-                                            <button type="button" class="btn btn-icon btn-ghost-danger btn-sm"
+                                        <td>
+                                            <button type="button" class="btn btn-icon btn-ghost-danger"
                                                     @onclick="@(() => RemoveBand(band))">
                                                 <i class="ti ti-trash"></i>
                                             </button>
@@ -229,13 +231,13 @@
                 }
 
                 <div class="btn-list">
-                    <button type="button" class="btn btn-outline-primary btn-sm" @onclick="AddBand">
+                    <button type="button" class="btn btn-outline-primary" @onclick="AddBand">
                         <i class="ti ti-plus me-1"></i>
                         @Localizer["AddBand"]
                     </button>
                     @if (Entity.OutOfHoursBands.Count == 0)
                     {
-                        <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="InsertDefaultBands">
+                        <button type="button" class="btn btn-outline-secondary" @onclick="InsertDefaultBands">
                             <i class="ti ti-template me-1"></i>
                             @Localizer["InsertDefaultBands"]
                         </button>
@@ -255,23 +257,55 @@
             <div class="tab-pane fade @(m_activeTab == "terms" ? "show active" : "")">
                 <div class="row g-3">
                     <div class="col-12">
-                        <h6 class="mb-2">@Localizer["RentalTerms"]</h6>
-                        <p class="text-secondary small mb-3">
-                            @Localizer["TermsHint"]
-                        </p>
-                        <textarea class="form-control" @bind="Entity.TermsAndConditions" rows="15"
-                                  placeholder="@Localizer["TermsPlaceholder"]"></textarea>
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div>
+                                <h6 class="mb-1">@Localizer["RentalTerms"]</h6>
+                                <p class="text-secondary small mb-0">
+                                    @Localizer["TermsHint"]
+                                </p>
+                            </div>
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn @(m_termsLanguage == "en" ? "btn-primary" : "btn-outline-primary")"
+                                        @onclick="@(() => m_termsLanguage = "en")">
+                                    English
+                                </button>
+                                <button type="button" class="btn @(m_termsLanguage == "th" ? "btn-primary" : "btn-outline-primary")"
+                                        @onclick="@(() => m_termsLanguage = "th")">
+                                    ไทย
+                                </button>
+                            </div>
+                        </div>
+
+                        @if (m_termsLanguage == "en")
+                        {
+                            <textarea class="form-control" @bind="Entity.TermsAndConditionsEn" rows="15"
+                                      placeholder="@Localizer["TermsPlaceholderEn"]"></textarea>
+                        }
+                        else
+                        {
+                            <textarea class="form-control" @bind="Entity.TermsAndConditionsTh" rows="15"
+                                      placeholder="@Localizer["TermsPlaceholderTh"]"></textarea>
+                        }
                     </div>
 
-                    @if (string.IsNullOrEmpty(Entity.TermsAndConditions))
-                    {
-                        <div class="col-12">
-                            <button type="button" class="btn btn-outline-primary" @onclick="InsertDefaultTerms">
-                                <i class="ti ti-file-plus me-1"></i>
-                                @Localizer["InsertDefaultTerms"]
-                            </button>
+                    <div class="col-12">
+                        <div class="btn-list">
+                            @if (m_termsLanguage == "en" && string.IsNullOrEmpty(Entity.TermsAndConditionsEn))
+                            {
+                                <button type="button" class="btn btn-outline-primary" @onclick="InsertDefaultTermsEn">
+                                    <i class="ti ti-file-plus me-1"></i>
+                                    @Localizer["InsertDefaultTerms"]
+                                </button>
+                            }
+                            @if (m_termsLanguage == "th" && string.IsNullOrEmpty(Entity.TermsAndConditionsTh))
+                            {
+                                <button type="button" class="btn btn-outline-primary" @onclick="InsertDefaultTermsTh">
+                                    <i class="ti ti-file-plus me-1"></i>
+                                    @Localizer["InsertDefaultTerms"]
+                                </button>
+                            }
                         </div>
-                    }
+                    </div>
                 </div>
             </div>
 
@@ -318,10 +352,11 @@
     [Parameter] public bool IsNew { get; set; }
 
     private string m_activeTab = "basic";
+    private string m_termsLanguage = "en";
 
-    private void InsertDefaultTerms()
+    private void InsertDefaultTermsEn()
     {
-        this.Entity.TermsAndConditions = """
+        this.Entity.TermsAndConditionsEn = """
             RENTAL AGREEMENT TERMS AND CONDITIONS
 
             1. RENTAL PERIOD
@@ -365,6 +400,55 @@
             - Inspection will be conducted upon return.
 
             By signing this agreement, the renter acknowledges having read and accepted these terms.
+            """;
+    }
+
+    private void InsertDefaultTermsTh()
+    {
+        this.Entity.TermsAndConditionsTh = """
+            ข้อกำหนดและเงื่อนไขการเช่ารถ
+
+            1. ระยะเวลาการเช่า
+            - ระยะเวลาการเช่าเริ่มต้นจากเวลารับรถและสิ้นสุดตามเวลาคืนรถที่ตกลงไว้
+            - การคืนรถล่าช้าอาจมีค่าใช้จ่ายเพิ่มเติมรายวัน
+            - การขยายเวลาเช่าต้องแจ้งล่วงหน้าอย่างน้อย 24 ชั่วโมงก่อนกำหนดคืน
+
+            2. คุณสมบัติผู้เช่า
+            - ผู้เช่าต้องมีใบอนุญาตขับขี่ที่ถูกต้องตามประเภทของรถ
+            - ใบอนุญาตขับขี่สากล (IDP) จำเป็นสำหรับใบอนุญาตต่างประเทศ
+            - ผู้เช่าต้องมีอายุอย่างน้อย 18 ปี
+
+            3. การใช้งานรถ
+            - รถมีไว้สำหรับการเดินทางส่วนตัวเท่านั้น
+            - ห้ามให้เช่าช่วงหรือใช้งานโดยไม่ได้รับอนุญาต
+            - ห้ามใช้รถสำหรับการแข่งขัน ขับออฟโรด หรือวัตถุประสงค์ที่ผิดกฎหมาย
+
+            4. นโยบายน้ำมัน
+            - รถจะถูกส่งมอบพร้อมน้ำมันเต็มถัง
+            - ต้องคืนรถพร้อมน้ำมันเต็มถัง
+            - มีค่าใช้จ่ายเติมน้ำมันหากคืนรถโดยมีน้ำมันไม่เต็ม
+
+            5. ประกันภัยและความรับผิดชอบ
+            - ประกันภัยพื้นฐานรวมอยู่ในค่าเช่า
+            - ผู้เช่ารับผิดชอบความเสียหายที่ไม่ครอบคลุมโดยประกัน
+            - มีค่าเสียหายส่วนแรกในกรณีเกิดอุบัติเหตุหรือความเสียหาย
+
+            6. เงินมัดจำ
+            - ต้องวางเงินมัดจำในขณะเช่ารถ
+            - เงินมัดจำจะคืนเมื่อส่งคืนรถอย่างปลอดภัย
+            - อาจมีการหักเงินสำหรับความเสียหาย ค่าปรับจราจร หรือน้ำมัน
+
+            7. รถเสียและอุบัติเหตุ
+            - ติดต่อร้านทันทีในกรณีรถเสียหรือเกิดอุบัติเหตุ
+            - แจ้งความกับตำรวจในกรณีเกิดอุบัติเหตุ
+            - ห้ามซ่อมแซมเองโดยไม่ได้รับอนุญาต
+
+            8. เงื่อนไขการคืนรถ
+            - รถต้องคืนในสภาพสะอาดและสภาพเดียวกับที่รับมา
+            - คืนรถตามสถานที่และเวลาที่ตกลงไว้
+            - จะมีการตรวจสอบรถเมื่อคืน
+
+            โดยการลงนามในสัญญานี้ ผู้เช่ายอมรับว่าได้อ่านและยอมรับข้อกำหนดเหล่านี้แล้ว
             """;
     }
 

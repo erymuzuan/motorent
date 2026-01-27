@@ -1,0 +1,234 @@
+@inherits LocalizedComponentBase<ThaiAddressSelector>
+@using System.Text.Json.Serialization
+@inject HttpClient Http
+
+<div class="row g-3">
+    @* Province *@
+    <div class="@ProvinceColumnClass">
+        <label class="form-label @(Required ? "required" : "")">@Localizer["Province"]</label>
+        <select class="form-select" value="@Province" @onchange="OnProvinceChanged" disabled="@m_loading">
+            <option value="">@Localizer["SelectProvince"]...</option>
+            @foreach (var province in m_provinces)
+            {
+                <option value="@province.NameEn">@province.NameTh (@province.NameEn)</option>
+            }
+        </select>
+    </div>
+
+    @* District *@
+    <div class="@DistrictColumnClass">
+        <label class="form-label @(Required ? "required" : "")">@Localizer["District"]</label>
+        <select class="form-select" value="@District" @onchange="OnDistrictChanged"
+                disabled="@(m_loading || string.IsNullOrEmpty(Province))">
+            <option value="">@Localizer["SelectDistrict"]...</option>
+            @foreach (var district in m_districts)
+            {
+                <option value="@district.NameEn">@district.NameTh (@district.NameEn)</option>
+            }
+        </select>
+    </div>
+
+    @* Subdistrict *@
+    <div class="@SubdistrictColumnClass">
+        <label class="form-label @(Required ? "required" : "")">@Localizer["Subdistrict"]</label>
+        <select class="form-select" value="@Subdistrict" @onchange="OnSubdistrictChanged"
+                disabled="@(m_loading || string.IsNullOrEmpty(District))">
+            <option value="">@Localizer["SelectSubdistrict"]...</option>
+            @foreach (var subdistrict in m_subdistricts)
+            {
+                <option value="@subdistrict.NameEn">@subdistrict.NameTh (@subdistrict.NameEn)</option>
+            }
+        </select>
+    </div>
+
+    @* Postal Code *@
+    <div class="@PostalCodeColumnClass">
+        <label class="form-label @(Required ? "required" : "")">@Localizer["PostalCode"]</label>
+        <input type="text" class="form-control" value="@PostalCode"
+               @onchange="OnPostalCodeChanged" placeholder="@Localizer["PostalCodePlaceholder"]"
+               maxlength="5" />
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Province { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> ProvinceChanged { get; set; }
+
+    [Parameter] public string District { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> DistrictChanged { get; set; }
+
+    [Parameter] public string Subdistrict { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> SubdistrictChanged { get; set; }
+
+    [Parameter] public string PostalCode { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> PostalCodeChanged { get; set; }
+
+    [Parameter] public bool Required { get; set; }
+
+    [Parameter] public string ProvinceColumnClass { get; set; } = "col-md-3";
+    [Parameter] public string DistrictColumnClass { get; set; } = "col-md-3";
+    [Parameter] public string SubdistrictColumnClass { get; set; } = "col-md-3";
+    [Parameter] public string PostalCodeColumnClass { get; set; } = "col-md-3";
+
+    private ThaiAddressData? m_addressData;
+    private List<ProvinceData> m_provinces = [];
+    private List<DistrictData> m_districts = [];
+    private List<SubdistrictData> m_subdistricts = [];
+    private bool m_loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAddressDataAsync();
+
+        // Initialize cascading data if values are already set
+        if (!string.IsNullOrEmpty(this.Province))
+        {
+            UpdateDistricts();
+            if (!string.IsNullOrEmpty(this.District))
+            {
+                UpdateSubdistricts();
+            }
+        }
+    }
+
+    private async Task LoadAddressDataAsync()
+    {
+        try
+        {
+            var url = this.NavigationManager.ToAbsoluteUri("data/thailand-addresses.json").ToString();
+            this.m_addressData = await this.Http.GetFromJsonAsync<ThaiAddressData>(url);
+            this.m_provinces = this.m_addressData?.Provinces ?? [];
+        }
+        catch (Exception ex)
+        {
+            this.Logger.LogError(ex, "Failed to load Thailand address data");
+            this.m_provinces = [];
+        }
+        finally
+        {
+            this.m_loading = false;
+        }
+    }
+
+    private async Task OnProvinceChanged(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString() ?? string.Empty;
+        this.Province = value;
+        await this.ProvinceChanged.InvokeAsync(value);
+
+        // Reset dependent fields
+        this.District = string.Empty;
+        this.Subdistrict = string.Empty;
+        this.PostalCode = string.Empty;
+        await this.DistrictChanged.InvokeAsync(string.Empty);
+        await this.SubdistrictChanged.InvokeAsync(string.Empty);
+        await this.PostalCodeChanged.InvokeAsync(string.Empty);
+
+        UpdateDistricts();
+    }
+
+    private async Task OnDistrictChanged(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString() ?? string.Empty;
+        this.District = value;
+        await this.DistrictChanged.InvokeAsync(value);
+
+        // Reset dependent fields
+        this.Subdistrict = string.Empty;
+        this.PostalCode = string.Empty;
+        await this.SubdistrictChanged.InvokeAsync(string.Empty);
+        await this.PostalCodeChanged.InvokeAsync(string.Empty);
+
+        UpdateSubdistricts();
+    }
+
+    private async Task OnSubdistrictChanged(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString() ?? string.Empty;
+        this.Subdistrict = value;
+        await this.SubdistrictChanged.InvokeAsync(value);
+
+        // Auto-fill postal code
+        var subdistrict = this.m_subdistricts.FirstOrDefault(s => s.NameEn == value);
+        if (subdistrict != null && !string.IsNullOrEmpty(subdistrict.PostalCode))
+        {
+            this.PostalCode = subdistrict.PostalCode;
+            await this.PostalCodeChanged.InvokeAsync(subdistrict.PostalCode);
+        }
+    }
+
+    private async Task OnPostalCodeChanged(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString() ?? string.Empty;
+        this.PostalCode = value;
+        await this.PostalCodeChanged.InvokeAsync(value);
+    }
+
+    private void UpdateDistricts()
+    {
+        var province = this.m_provinces.FirstOrDefault(p => p.NameEn == this.Province);
+        this.m_districts = province?.Districts ?? [];
+        this.m_subdistricts = [];
+    }
+
+    private void UpdateSubdistricts()
+    {
+        var district = this.m_districts.FirstOrDefault(d => d.NameEn == this.District);
+        this.m_subdistricts = district?.Subdistricts ?? [];
+    }
+
+    #region Data Models
+
+    private class ThaiAddressData
+    {
+        [JsonPropertyName("provinces")]
+        public List<ProvinceData> Provinces { get; set; } = [];
+    }
+
+    private class ProvinceData
+    {
+        [JsonPropertyName("code")]
+        public string Code { get; set; } = string.Empty;
+
+        [JsonPropertyName("nameEn")]
+        public string NameEn { get; set; } = string.Empty;
+
+        [JsonPropertyName("nameTh")]
+        public string NameTh { get; set; } = string.Empty;
+
+        [JsonPropertyName("districts")]
+        public List<DistrictData> Districts { get; set; } = [];
+    }
+
+    private class DistrictData
+    {
+        [JsonPropertyName("code")]
+        public string Code { get; set; } = string.Empty;
+
+        [JsonPropertyName("nameEn")]
+        public string NameEn { get; set; } = string.Empty;
+
+        [JsonPropertyName("nameTh")]
+        public string NameTh { get; set; } = string.Empty;
+
+        [JsonPropertyName("subdistricts")]
+        public List<SubdistrictData> Subdistricts { get; set; } = [];
+    }
+
+    private class SubdistrictData
+    {
+        [JsonPropertyName("code")]
+        public string Code { get; set; } = string.Empty;
+
+        [JsonPropertyName("nameEn")]
+        public string NameEn { get; set; } = string.Empty;
+
+        [JsonPropertyName("nameTh")]
+        public string NameTh { get; set; } = string.Empty;
+
+        [JsonPropertyName("postalCode")]
+        public string PostalCode { get; set; } = string.Empty;
+    }
+
+    #endregion
+}

@@ -66,29 +66,37 @@
                 <div class="row g-3">
                     <div class="col-md-8">
                         <label class="form-label required">@Localizer["FullName"]</label>
-                        <input type="text" class="form-control" @bind="Entity.FullName" required
-                               placeholder="@Localizer["FullNamePlaceholder"]" />
+                        <input type="text" class="form-control" @bind="Entity.FullName" required />
                     </div>
 
                     <div class="col-md-4">
                         <label class="form-label">@Localizer["Nationality"]</label>
-                        <input type="text" class="form-control" @bind="Entity.Nationality"
-                               placeholder="@Localizer["NationalityPlaceholder"]" />
+                        <select class="form-select" @bind="Entity.Nationality">
+                            <option value="">@Localizer["SelectNationality"]</option>
+                            @foreach (var nationality in m_nationalities)
+                            {
+                                <option value="@nationality">@nationality</option>
+                            }
+                        </select>
                     </div>
                 </div>
 
                 <h6 class="mb-3 mt-4">@Localizer["Identification"]</h6>
                 <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label">@Localizer["PassportNumber"]</label>
-                        <input type="text" class="form-control" @bind="Entity.PassportNo" />
-                    </div>
-
-                    <div class="col-md-6">
-                        <label class="form-label">@Localizer["NationalIdNumber"]</label>
-                        <input type="text" class="form-control" @bind="Entity.NationalIdNo" />
-                        <small class="form-hint">@Localizer["ThaiNationalHint"]</small>
-                    </div>
+                    @if (IsThai)
+                    {
+                        <div class="col-md-6">
+                            <label class="form-label">@Localizer["NationalIdNumber"]</label>
+                            <input type="text" class="form-control" @bind="Entity.NationalIdNo" />
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="col-md-6">
+                            <label class="form-label">@Localizer["PassportNumber"]</label>
+                            <input type="text" class="form-control" @bind="Entity.PassportNo" />
+                        </div>
+                    }
 
                     <div class="col-md-6">
                         <label class="form-label">@Localizer["DrivingLicenseNumber"]</label>
@@ -97,7 +105,13 @@
 
                     <div class="col-md-6">
                         <label class="form-label">@Localizer["LicenseCountry"]</label>
-                        <input type="text" class="form-control" @bind="Entity.DrivingLicenseCountry" />
+                        <select class="form-select" @bind="Entity.DrivingLicenseCountry">
+                            <option value="">@Localizer["SelectCountry"]</option>
+                            @foreach (var nationality in m_nationalities)
+                            {
+                                <option value="@nationality">@nationality</option>
+                            }
+                        </select>
                     </div>
 
                     <div class="col-md-6">
@@ -120,8 +134,7 @@
 
                     <div class="col-md-6">
                         <label class="form-label">@Localizer["HotelName"]</label>
-                        <input type="text" class="form-control" @bind="Entity.HotelName"
-                               placeholder="@Localizer["HotelPlaceholder"]" />
+                        <input type="text" class="form-control" @bind="Entity.HotelName" />
                     </div>
 
                     <div class="col-md-6">
@@ -131,8 +144,7 @@
 
                     <div class="col-12">
                         <label class="form-label">@Localizer["EmergencyContact"]</label>
-                        <input type="text" class="form-control" @bind="Entity.EmergencyContact"
-                               placeholder="@Localizer["EmergencyContactPlaceholder"]" />
+                        <input type="text" class="form-control" @bind="Entity.EmergencyContact" />
                     </div>
                 </div>
             </div>
@@ -159,10 +171,45 @@
     private string m_activeTab = "manual";
     private List<UploadedDocumentInfo> m_uploadedDocuments = [];
 
-    protected override void OnInitialized()
+    private bool IsThai => string.Equals(Entity?.Nationality, "Thai", StringComparison.OrdinalIgnoreCase);
+
+    private static readonly string[] m_nationalities =
+    [
+        "Thai",
+        "American",
+        "Australian",
+        "British",
+        "Canadian",
+        "Chinese",
+        "Dutch",
+        "French",
+        "German",
+        "Indian",
+        "Indonesian",
+        "Italian",
+        "Japanese",
+        "Korean",
+        "Malaysian",
+        "New Zealander",
+        "Russian",
+        "Singaporean",
+        "Spanish",
+        "Swedish",
+        "Swiss",
+        "Taiwanese"
+    ];
+
+    protected override void OnParametersSet()
     {
-        this.m_licenseExpiry = this.Entity.DrivingLicenseExpiry?.DateTime;
+        this.m_licenseExpiry = this.Entity?.DrivingLicenseExpiry?.DateTime;
         this.FormValid = true;
+
+        // Set default values for new renters
+        if (this.IsNew && this.Entity != null)
+        {
+            if (string.IsNullOrEmpty(this.Entity.DrivingLicenseCountry))
+                this.Entity.DrivingLicenseCountry = "Thai";
+        }
     }
 
     private async Task SaveAsync()

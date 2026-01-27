@@ -1,0 +1,254 @@
+@page "/rentals/checkout"
+@page "/rentals/checkout/{RentalRef}"
+@using Microsoft.AspNetCore.Authorization
+@using MotoRent.Domain.Entities
+@attribute [Authorize(Policy = "RequireTenantStaff")]
+@inherits LocalizedComponentBase<CheckOut>
+@inject RentalService RentalService
+@inject RenterService RenterService
+@inject VehicleService VehicleService
+
+<MotoRentPageTitle>@Localizer["PageTitle"]</MotoRentPageTitle>
+
+<div class="mr-page-header mr-animate-in">
+    <div class="container-xl">
+        <nav class="mr-breadcrumb">
+            <span class="mr-breadcrumb-item"><a href="/"><i class="ti ti-home"></i></a></span>
+            <span class="mr-breadcrumb-separator"><i class="ti ti-chevron-right"></i></span>
+            <span class="mr-breadcrumb-item"><a href="/rentals">@Localizer["Rentals"]</a></span>
+            <span class="mr-breadcrumb-separator"><i class="ti ti-chevron-right"></i></span>
+            <span class="mr-breadcrumb-item active">@Localizer["CheckOut"]</span>
+        </nav>
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="mr-page-title">
+                    <i class="ti ti-logout"></i>
+                    @Localizer["Header"]
+                </h1>
+                <p class="mr-page-subtitle">@Localizer["SubHeader"]</p>
+            </div>
+            <a href="/rentals" class="mr-btn-header-action">
+                <i class="ti ti-arrow-left"></i>
+                @CommonLocalizer["BackToList"]
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="container-xl">
+    <div class="mr-card mr-animate-in mr-animate-delay-1">
+        <div class="mr-card-header">
+            <div class="mr-card-title">
+                <i class="ti ti-car me-2"></i>
+                @Localizer["SelectRental"]
+            </div>
+            <div class="ms-auto">
+                <div class="input-icon">
+                    <span class="input-icon-addon">
+                        <i class="ti ti-search"></i>
+                    </span>
+                    <input type="text" class="form-control" placeholder="@Localizer["SearchPlaceholder"]"
+                           @bind="m_searchTerm" @bind:event="oninput" @onkeyup="OnSearchChanged" />
+                </div>
+            </div>
+        </div>
+        <div class="mr-card-body p-0">
+            @if (m_loading)
+            {
+                <div class="d-flex justify-content-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            }
+            else if (m_activeRentals.Count == 0)
+            {
+                <div class="text-center py-5">
+                    <i class="ti ti-car-off text-secondary" style="font-size: 3rem;"></i>
+                    <h4 class="mt-3 text-secondary">@Localizer["NoActiveRentals"]</h4>
+                    <p class="text-secondary">@Localizer["NoActiveRentalsHint"]</p>
+                    <a href="/rentals/checkin" class="btn btn-primary mt-2">
+                        <i class="ti ti-login me-1"></i>
+                        @Localizer["NewCheckIn"]
+                    </a>
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-vcenter card-table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>@Localizer["Renter"]</th>
+                                <th>@Localizer["Vehicle"]</th>
+                                <th>@Localizer["StartDate"]</th>
+                                <th>@Localizer["ExpectedReturn"]</th>
+                                <th class="text-center">@Localizer["Status"]</th>
+                                <th class="text-end" style="width: 120px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var rental in m_filteredRentals)
+                            {
+                                var isOverdue = rental.ExpectedEndDate < DateTimeOffset.Now;
+                                <tr class="@(isOverdue ? "table-warning" : "")">
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <span class="avatar avatar-sm bg-primary-lt me-2">
+                                                <i class="ti ti-user"></i>
+                                            </span>
+                                            <div>
+                                                <div class="fw-medium">@rental.RenterName</div>
+                                                <small class="text-secondary">@rental.RenterPhone</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="fw-medium">@rental.VehicleName</div>
+                                        <small class="text-secondary">@rental.LicensePlate</small>
+                                    </td>
+                                    <td>@rental.StartDate.ToString("dd MMM yyyy")</td>
+                                    <td>
+                                        @rental.ExpectedEndDate.ToString("dd MMM yyyy")
+                                        @if (isOverdue)
+                                        {
+                                            <span class="badge bg-danger ms-1">@Localizer["Overdue"]</span>
+                                        }
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="mr-badge mr-badge-success">@Localizer["Active"]</span>
+                                    </td>
+                                    <td class="text-end">
+                                        <button type="button" class="btn btn-outline-primary btn-sm"
+                                                @onclick="@(() => OpenCheckOutDialog(rental.Rental))">
+                                            <i class="ti ti-logout me-1"></i>
+                                            @Localizer["ReturnVehicle"]
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string? RentalRef { get; set; }
+
+    private bool m_loading = true;
+    private string m_searchTerm = "";
+    private List<ActiveRentalItem> m_activeRentals = [];
+    private List<ActiveRentalItem> m_filteredRentals = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadActiveRentalsAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // If RentalRef is provided, open checkout dialog directly
+        if (!string.IsNullOrEmpty(this.RentalRef) && int.TryParse(this.RentalRef, out var rentalId))
+        {
+            var rental = await this.RentalService.GetRentalByIdAsync(rentalId);
+            if (rental != null && rental.Status == "Active")
+            {
+                await OpenCheckOutDialog(rental);
+            }
+        }
+    }
+
+    private async Task LoadActiveRentalsAsync()
+    {
+        this.m_loading = true;
+        try
+        {
+            // Get all active rentals
+            var result = await this.RentalService.GetRentalsAsync(0, status: "Active", pageSize: 100);
+
+            this.m_activeRentals.Clear();
+            foreach (var rental in result.ItemCollection)
+            {
+                var renter = await this.DataContext.LoadOneAsync<Renter>(r => r.RenterId == rental.RenterId);
+                var vehicle = await this.DataContext.LoadOneAsync<Vehicle>(v => v.VehicleId == rental.VehicleId);
+
+                this.m_activeRentals.Add(new ActiveRentalItem
+                {
+                    Rental = rental,
+                    RenterName = renter?.FullName ?? "Unknown",
+                    RenterPhone = renter?.Phone ?? "",
+                    VehicleName = vehicle != null ? $"{vehicle.Brand} {vehicle.Model}" : "Unknown",
+                    LicensePlate = vehicle?.LicensePlate ?? "",
+                    StartDate = rental.StartDate,
+                    ExpectedEndDate = rental.ExpectedEndDate
+                });
+            }
+
+            // Sort by expected end date (overdue first)
+            this.m_activeRentals = this.m_activeRentals
+                .OrderBy(r => r.ExpectedEndDate)
+                .ToList();
+
+            ApplyFilter();
+        }
+        catch (Exception ex)
+        {
+            this.ShowError(this.Localizer["ErrorLoading", ex.Message]);
+        }
+        finally
+        {
+            this.m_loading = false;
+        }
+    }
+
+    private void OnSearchChanged()
+    {
+        ApplyFilter();
+    }
+
+    private void ApplyFilter()
+    {
+        if (string.IsNullOrWhiteSpace(this.m_searchTerm))
+        {
+            this.m_filteredRentals = this.m_activeRentals;
+        }
+        else
+        {
+            var term = this.m_searchTerm.ToLower();
+            this.m_filteredRentals = this.m_activeRentals
+                .Where(r => r.RenterName.ToLower().Contains(term) ||
+                            r.VehicleName.ToLower().Contains(term) ||
+                            r.LicensePlate.ToLower().Contains(term))
+                .ToList();
+        }
+    }
+
+    private async Task OpenCheckOutDialog(Rental rental)
+    {
+        var result = await this.DialogService
+            .Create<CheckOutDialog>(this.Localizer["CheckOutTitle"])
+            .WithParameter(x => x.Entity, rental)
+            .Large()
+            .ShowDialogAsync();
+
+        if (!result.Cancelled)
+        {
+            this.ShowSuccess(this.Localizer["CheckOutSuccess"]);
+            this.NavigationManager.NavigateTo("/rentals");
+        }
+    }
+
+    private class ActiveRentalItem
+    {
+        public Rental Rental { get; set; } = null!;
+        public string RenterName { get; set; } = "";
+        public string RenterPhone { get; set; } = "";
+        public string VehicleName { get; set; } = "";
+        public string LicensePlate { get; set; } = "";
+        public DateTimeOffset StartDate { get; set; }
+        public DateTimeOffset ExpectedEndDate { get; set; }
+    }
+}

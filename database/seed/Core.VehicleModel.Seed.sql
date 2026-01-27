@@ -24,7 +24,7 @@ VALUES (N'{
     "DisplayOrder": 1,
     "Aliases": ["Click", "Click125", "Click 125i"],
     "SuggestedDailyRate": 250,
-    "SuggestedDeposit": 3000,
+    "SuggestedDeposit": 2000,
     "CountryOfOrigin": "Thailand"
 }')
 
@@ -40,7 +40,7 @@ VALUES (N'{
     "DisplayOrder": 2,
     "Aliases": ["Click160", "Click 160i"],
     "SuggestedDailyRate": 300,
-    "SuggestedDeposit": 3500,
+    "SuggestedDeposit": 2000,
     "CountryOfOrigin": "Thailand"
 }')
 
@@ -56,7 +56,7 @@ VALUES (N'{
     "DisplayOrder": 3,
     "Aliases": ["PCX", "PCX160"],
     "SuggestedDailyRate": 400,
-    "SuggestedDeposit": 5000,
+    "SuggestedDeposit": 2000,
     "CountryOfOrigin": "Thailand"
 }')
 
@@ -72,7 +72,7 @@ VALUES (N'{
     "DisplayOrder": 4,
     "Aliases": ["Scoopy i", "Scoopyi"],
     "SuggestedDailyRate": 250,
-    "SuggestedDeposit": 3000,
+    "SuggestedDeposit": 2000,
     "CountryOfOrigin": "Thailand"
 }')
 
@@ -88,7 +88,7 @@ VALUES (N'{
     "DisplayOrder": 5,
     "Aliases": ["Wave", "Wave110", "Wave 110i"],
     "SuggestedDailyRate": 200,
-    "SuggestedDeposit": 2500,
+    "SuggestedDeposit": 2000,
     "CountryOfOrigin": "Thailand"
 }')
 
@@ -104,7 +104,7 @@ VALUES (N'{
     "DisplayOrder": 6,
     "Aliases": ["NMAX", "N-MAX", "NMAX155"],
     "SuggestedDailyRate": 400,
-    "SuggestedDeposit": 5000,
+    "SuggestedDeposit": 2000,
     "CountryOfOrigin": "Thailand"
 }')
 
@@ -120,7 +120,7 @@ VALUES (N'{
     "DisplayOrder": 7,
     "Aliases": ["Aerox", "Aerox155"],
     "SuggestedDailyRate": 350,
-    "SuggestedDeposit": 4000,
+    "SuggestedDeposit": 2000,
     "CountryOfOrigin": "Thailand"
 }')
 
@@ -136,7 +136,7 @@ VALUES (N'{
     "DisplayOrder": 8,
     "Aliases": ["Filano", "GrandFilano"],
     "SuggestedDailyRate": 300,
-    "SuggestedDeposit": 3500,
+    "SuggestedDeposit": 2000,
     "CountryOfOrigin": "Thailand"
 }')
 
@@ -152,7 +152,7 @@ VALUES (N'{
     "DisplayOrder": 9,
     "Aliases": ["Forza", "Forza350"],
     "SuggestedDailyRate": 800,
-    "SuggestedDeposit": 10000,
+    "SuggestedDeposit": 3500,
     "CountryOfOrigin": "Thailand"
 }')
 
@@ -168,7 +168,7 @@ VALUES (N'{
     "DisplayOrder": 10,
     "Aliases": ["ADV", "ADV160", "ADV 160"],
     "SuggestedDailyRate": 450,
-    "SuggestedDeposit": 5000,
+    "SuggestedDeposit": 2000,
     "CountryOfOrigin": "Thailand"
 }')
 
@@ -190,7 +190,7 @@ VALUES (N'{
     "DisplayOrder": 20,
     "Aliases": ["Vios 1.5"],
     "SuggestedDailyRate": 1200,
-    "SuggestedDeposit": 10000,
+    "SuggestedDeposit": 5000,
     "CountryOfOrigin": "Thailand"
 }')
 
@@ -208,7 +208,7 @@ VALUES (N'{
     "DisplayOrder": 21,
     "Aliases": ["City 1.5"],
     "SuggestedDailyRate": 1300,
-    "SuggestedDeposit": 10000,
+    "SuggestedDeposit": 5000,
     "CountryOfOrigin": "Thailand"
 }')
 
@@ -226,7 +226,7 @@ VALUES (N'{
     "DisplayOrder": 22,
     "Aliases": ["Yaris", "Ativ"],
     "SuggestedDailyRate": 1100,
-    "SuggestedDeposit": 8000,
+    "SuggestedDeposit": 5000,
     "CountryOfOrigin": "Thailand"
 }')
 
@@ -244,7 +244,7 @@ VALUES (N'{
     "DisplayOrder": 23,
     "Aliases": ["Fortuner 2.4"],
     "SuggestedDailyRate": 2500,
-    "SuggestedDeposit": 20000,
+    "SuggestedDeposit": 5000,
     "CountryOfOrigin": "Thailand"
 }')
 
@@ -262,7 +262,7 @@ VALUES (N'{
     "DisplayOrder": 24,
     "Aliases": ["CRV"],
     "SuggestedDailyRate": 2200,
-    "SuggestedDeposit": 18000,
+    "SuggestedDeposit": 5000,
     "CountryOfOrigin": "Thailand"
 }')
 
@@ -280,7 +280,7 @@ VALUES (N'{
     "DisplayOrder": 25,
     "Aliases": ["Camry 2.5"],
     "SuggestedDailyRate": 2800,
-    "SuggestedDeposit": 25000,
+    "SuggestedDeposit": 5000,
     "CountryOfOrigin": "Thailand"
 }')
 
@@ -300,7 +300,7 @@ VALUES (N'{
     "DisplayOrder": 30,
     "Aliases": ["Hiace Commuter"],
     "SuggestedDailyRate": 3500,
-    "SuggestedDeposit": 30000,
+    "SuggestedDeposit": 10000,
     "CountryOfOrigin": "Japan"
 }')
 
@@ -316,7 +316,7 @@ VALUES (N'{
     "DisplayOrder": 31,
     "Aliases": ["Commuter Van"],
     "SuggestedDailyRate": 3200,
-    "SuggestedDeposit": 25000,
+    "SuggestedDeposit": 10000,
     "CountryOfOrigin": "Thailand"
 }')
 
@@ -332,7 +332,7 @@ VALUES (N'{
     "DisplayOrder": 32,
     "Aliases": ["H-1", "Hyundai H-1", "Grand Starex"],
     "SuggestedDailyRate": 3000,
-    "SuggestedDeposit": 25000,
+    "SuggestedDeposit": 10000,
     "CountryOfOrigin": "South Korea"
 }')
 
@@ -348,7 +348,7 @@ VALUES (N'{
     "DisplayOrder": 33,
     "Aliases": ["Ford Transit Van"],
     "SuggestedDailyRate": 3500,
-    "SuggestedDeposit": 30000,
+    "SuggestedDeposit": 10000,
     "CountryOfOrigin": "USA"
 }')
 

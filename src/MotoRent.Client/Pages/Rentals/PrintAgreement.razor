@@ -18,7 +18,7 @@
 @if (m_customHtml != null)
 {
     @* Render Custom Template *@
-    <div class="no-print print-button fixed-top p-3 d-flex justify-content-end">
+    <div class="no-print p-3 d-flex justify-content-end" style="position: fixed; top: 80px; right: 20px; z-index: 1100;">
         <button class="btn btn-primary shadow" @onclick="Print">
             <i class="ti ti-printer me-2"></i>
             @Localizer["PrintAgreement"]
@@ -44,8 +44,16 @@ else
     <style>
         @@media print {
             .no-print { display: none !important; }
-            body { margin: 0; padding: 0; }
-            .print-container { padding: 20px; }
+            body { margin: 0; padding: 0; background: white !important; }
+            .print-container {
+                padding: 20px;
+                display: block !important;
+                visibility: visible !important;
+                color: black !important;
+            }
+            /* Hide site navigation and other elements during print */
+            header, nav, .navbar, .sidebar, footer, .modal-backdrop { display: none !important; }
+            main { padding: 0 !important; margin: 0 !important; }
         }
 
         .print-container {
@@ -55,6 +63,8 @@ else
             font-family: Arial, sans-serif;
             font-size: 12px;
             line-height: 1.4;
+            color: #000;
+            background: white;
         }
 
         .agreement-header {
@@ -176,9 +186,9 @@ else
 
         .print-button {
             position: fixed;
-            top: 20px;
+            top: 80px;
             right: 20px;
-            z-index: 1000;
+            z-index: 1100;
         }
     </style>
 
@@ -355,6 +365,16 @@ else
     [SupplyParameterFromQuery] public string? DepositType { get; set; }
     [SupplyParameterFromQuery] public decimal? DepositAmount { get; set; }
     [SupplyParameterFromQuery] public int? TemplateId { get; set; }
+    // Fallback renter data (for unsaved renters)
+    [SupplyParameterFromQuery] public string? RenterName { get; set; }
+    [SupplyParameterFromQuery] public string? RenterPhone { get; set; }
+    [SupplyParameterFromQuery] public string? RenterPassport { get; set; }
+    [SupplyParameterFromQuery] public string? RenterNationality { get; set; }
+    // Fallback vehicle data
+    [SupplyParameterFromQuery] public string? VehicleBrand { get; set; }
+    [SupplyParameterFromQuery] public string? VehicleModel { get; set; }
+    [SupplyParameterFromQuery] public string? VehiclePlate { get; set; }
+    [SupplyParameterFromQuery] public string? VehicleColor { get; set; }
 
     private bool m_loading = true;
     private string? m_customHtml;
@@ -379,8 +399,36 @@ else
             m_loading = true;
 
             // Load data
-            if (this.RenterId.HasValue) m_renter = await this.RenterService.GetRenterByIdAsync(this.RenterId.Value);
-            if (this.VehicleId.HasValue) m_vehicle = await this.VehicleService.GetVehicleByIdAsync(this.VehicleId.Value);
+            if (this.RenterId.HasValue && this.RenterId.Value > 0)
+                m_renter = await this.RenterService.GetRenterByIdAsync(this.RenterId.Value);
+
+            // Use fallback renter data if lookup failed or ID was 0
+            if (m_renter == null && !string.IsNullOrEmpty(this.RenterName))
+            {
+                m_renter = new Renter
+                {
+                    FullName = this.RenterName,
+                    Phone = this.RenterPhone ?? "",
+                    PassportNo = this.RenterPassport,
+                    Nationality = this.RenterNationality ?? ""
+                };
+            }
+
+            if (this.VehicleId.HasValue && this.VehicleId.Value > 0)
+                m_vehicle = await this.VehicleService.GetVehicleByIdAsync(this.VehicleId.Value);
+
+            // Use fallback vehicle data if lookup failed or ID was 0
+            if (m_vehicle == null && !string.IsNullOrEmpty(this.VehicleBrand))
+            {
+                m_vehicle = new Vehicle
+                {
+                    Brand = this.VehicleBrand,
+                    Model = this.VehicleModel ?? "",
+                    LicensePlate = this.VehiclePlate ?? "",
+                    Color = this.VehicleColor ?? ""
+                };
+            }
+
             m_shop = await this.ShopService.GetShopByIdAsync(this.RequestContext.GetShopId());
 
             // Set rental parameters
@@ -462,5 +510,8 @@ else
         };
     }
 
-    private async Task Print() => await this.JS.InvokeVoidAsync("window.print");
+    private async Task Print()
+    {
+        await this.JS.InvokeVoidAsync("eval", "window.print()");
+    }
 }

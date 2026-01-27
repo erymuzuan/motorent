@@ -11,16 +11,18 @@
 @inject OrganizationService OrganizationService
 
 <div class="modal-body p-0" style="max-height: 70vh; overflow-y: auto;">
-    @if (m_customHtml != null)
-    {
-        <div class="p-4 bg-white shadow-sm mx-auto my-3" style="max-width: 800px; min-height: 600px;">
-            @((MarkupString)m_customHtml)
-        </div>
-    }
-    else
-    {
-        <ReceiptDocument Receipt="@Entity" />
-    }
+    <div id="receipt-print-content">
+        @if (m_customHtml != null)
+        {
+            <div class="p-4 bg-white shadow-sm mx-auto my-3" style="max-width: 800px; min-height: 600px;">
+                @((MarkupString)m_customHtml)
+            </div>
+        }
+        else
+        {
+            <ReceiptDocument Receipt="@Entity" />
+        }
+    </div>
 </div>
 
 <div class="modal-footer d-flex justify-content-between">
@@ -131,6 +133,7 @@
             await ReceiptService.RecordReprintAsync(Entity.ReceiptId, UserName);
         }
 
-        await JSRuntime.InvokeVoidAsync("print");
+        // Print the receipt content in a new window
+        await JSRuntime.InvokeVoidAsync("MotoRent.printReceipt", "receipt-print-content");
     }
 }

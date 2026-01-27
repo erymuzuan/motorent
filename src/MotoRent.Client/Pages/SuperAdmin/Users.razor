@@ -5,8 +5,10 @@
 @using Microsoft.AspNetCore.Authorization
 @using MotoRent.Domain.Core
 @using MotoRent.Domain.DataContext
+@using MotoRent.Domain.Storage
 @attribute [Authorize(Roles = UserAccount.SUPER_ADMIN)]
 @inject CoreDataContext CoreContext
+@inject IBinaryStore BinaryStore
 @inject ISubscriptionService SubscriptionService
 @inject IDirectoryService DirectoryService
 
@@ -32,10 +34,6 @@
                     <i class="ti ti-user-plus me-2"></i>
                     Add User
                 </button>
-                <a href="/super-admin/start-page" class="mr-btn-header-action btn">
-                    <i class="ti ti-arrow-left me-2"></i>
-                    Back to Dashboard
-                </a>
             </div>
         </div>
     </div>
@@ -121,9 +119,16 @@
                         <tr>
                             <td>
                                 <div class="d-flex align-items-center">
-                                    <span class="avatar avatar-sm me-2 bg-primary-lt">
-                                        @(user.FullName?.FirstOrDefault().ToString().ToUpperInvariant() ?? "U")
-                                    </span>
+                                    @if (!string.IsNullOrWhiteSpace(user.PhotoStoreId))
+                                    {
+                                        <span class="avatar avatar-sm me-2" style="background-image: url('@this.BinaryStore.GetImageUrl(user.PhotoStoreId)')"></span>
+                                    }
+                                    else
+                                    {
+                                        <span class="avatar avatar-sm me-2 bg-primary-lt">
+                                            @(user.FullName?.FirstOrDefault().ToString().ToUpperInvariant() ?? "U")
+                                        </span>
+                                    }
                                     <span class="mr-field-value">@user.UserName</span>
                                 </div>
                             </td>
@@ -141,7 +146,7 @@
                                 }
                                 else
                                 {
-                                    <span class="badge bg-success text-white">Active</span>
+                                    <span class="badge bg-azure text-white">Active</span>
                                 }
                             </td>
                             <td>
@@ -167,9 +172,9 @@
                                     </button>
                                     <div class="dropdown-menu dropdown-menu-end @(this.m_openDropdown == user.UserName ? "show" : "")"
                                          style="@(this.m_openDropdown == user.UserName ? "position: absolute; inset: 0px 0px auto auto; margin: 0px; transform: translate(0px, 34px);" : "")">
-                                        <a class="dropdown-item" href="#" @onclick="@(async () => { this.CloseDropdown(); await this.ViewUserDetails(user); })" @onclick:preventDefault>
-                                            <i class="ti ti-eye me-2"></i>
-                                            View Details
+                                        <a class="dropdown-item" href="#" @onclick="@(async () => { this.CloseDropdown(); await this.EditUser(user); })" @onclick:preventDefault>
+                                            <i class="ti ti-edit me-2"></i>
+                                            Edit User
                                         </a>
                                         @if (user.IsLockedOut)
                                         {
@@ -336,23 +341,16 @@
         }
     }
 
-    private async Task ViewUserDetails(User user)
+    private async Task EditUser(User user)
     {
-        var accounts = string.Join("\n", user.AccountCollection.Select(a =>
-            $"  - {a.AccountNo}: {string.Join(", ", a.Roles)}"));
+        var result = await this.DialogService.Create<EditUserDialog>("Edit User")
+            .WithParameter(x => x.Entity, user)
+            .ShowDialogAsync();
 
-        var message = $"""
-            Username: {user.UserName}
-            Full Name: {user.FullName}
-            Email: {user.Email}
-            Provider: {user.CredentialProvider}
-            Locked: {user.IsLockedOut}
-
-            Accounts:
-            {accounts}
-            """;
-
-        await this.DialogService.ShowMessageAsync(message, "User Details");
+        if (result is { Cancelled: false })
+        {
+            await this.LoadDataAsync();
+        }
     }
 
     private async Task LockUser(User user)

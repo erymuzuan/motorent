@@ -16,15 +16,44 @@ public partial class Shop : Entity
     public string Name { get; set; } = string.Empty;
 
     /// <summary>
-    /// Geographic location/area (e.g., Phuket, Krabi, Koh Samui).
+    /// Province where the shop is located (e.g., Phuket, Krabi, Chiang Mai).
+    /// Uses English names from ThaiProvinces lookup.
+    /// </summary>
+    public string Province { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Specific area/neighborhood within the province (e.g., Patong, Ao Nang, Old City).
     /// </summary>
     public string Location { get; set; } = string.Empty;
+
+    /// <summary>
+    /// District (อำเภอ) where the shop is located.
+    /// </summary>
+    public string District { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Subdistrict (ตำบล) where the shop is located.
+    /// </summary>
+    public string Subdistrict { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Postal code (รหัสไปรษณีย์).
+    /// </summary>
+    public string PostalCode { get; set; } = string.Empty;
 
     public string Address { get; set; } = string.Empty;
     public string Phone { get; set; } = string.Empty;
     public string? Email { get; set; }
     public string? LogoPath { get; set; }
-    public string? TermsAndConditions { get; set; }
+    /// <summary>
+    /// Rental terms and conditions in English.
+    /// </summary>
+    public string? TermsAndConditionsEn { get; set; }
+
+    /// <summary>
+    /// Rental terms and conditions in Thai.
+    /// </summary>
+    public string? TermsAndConditionsTh { get; set; }
     public bool IsActive { get; set; } = true;
 
     /// <summary>

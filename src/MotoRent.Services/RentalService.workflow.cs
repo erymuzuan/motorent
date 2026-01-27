@@ -35,12 +35,16 @@ public partial class RentalService
                 }
             }
 
+            // Load renter for denormalized name
+            var renter = await this.Context.LoadOneAsync<Renter>(r => r.RenterId == request.RenterId);
+
             // 1. Create rental with new fields
             var rental = new Rental
             {
                 RentedFromShopId = request.ShopId,
                 VehiclePoolId = vehicle.VehiclePoolId,
                 RenterId = request.RenterId,
+                RenterName = renter?.FullName,
                 VehicleId = request.VehicleId,
                 DurationType = request.DurationType,
                 IntervalMinutes = request.IntervalMinutes,
@@ -78,53 +82,63 @@ public partial class RentalService
                 // Till session
                 TillSessionId = request.TillSessionId
             };
+            // 2. Update vehicle status to "Rented"
+            vehicle.Status = VehicleStatus.Rented;
+            if (vehicle.SupportsMileageTracking)
+                vehicle.Mileage = request.MileageStart;
+            session.Attach(vehicle);
             session.Attach(rental);
 
-            // 2. Create deposit
-            var deposit = new Deposit
-            {
-                RentalId = 0,
-                DepositType = request.DepositType,
-                Amount = request.DepositAmount,
-                Status = "Held",
-                CardLast4 = request.CardLast4,
-                TransactionRef = request.TransactionRef,
-                CollectedOn = DateTimeOffset.Now
-            };
-            session.Attach(deposit);
+            // Submit rental first to get the RentalId
+            var rentalResult = await session.SubmitChanges("CheckIn-Rental");
+            if (!rentalResult.Success)
+                return CheckInResult.CreateFailure(rentalResult.Message ?? "Check-in failed");
 
-            // 3. Create rental accessories
+            // Now create child entities with the actual RentalId
+            using var childSession = this.Context.OpenSession(username);
+
+            // 3. Create deposit
+            if (request.DepositAmount > 0)
+            {
+                var deposit = new Deposit
+                {
+                    RentalId = rental.RentalId,
+                    DepositType = request.DepositType,
+                    Amount = request.DepositAmount,
+                    Status = "Held",
+                    CardLast4 = request.CardLast4,
+                    TransactionRef = request.TransactionRef,
+                    CollectedOn = DateTimeOffset.Now
+                };
+                childSession.Attach(deposit);
+            }
+
+            // 4. Create rental accessories
             foreach (var accessory in request.Accessories)
             {
                 var rentalAccessory = new RentalAccessory
                 {
-                    RentalId = 0,
+                    RentalId = rental.RentalId,
                     AccessoryId = accessory.AccessoryId,
                     Quantity = accessory.Quantity,
                     ChargedAmount = accessory.ChargedAmount
                 };
-                session.Attach(rentalAccessory);
+                childSession.Attach(rentalAccessory);
             }
 
-            // 4. Create rental agreement with signature
+            // 5. Create rental agreement with signature
             if (!string.IsNullOrEmpty(request.SignatureImagePath))
             {
                 var agreement = new RentalAgreement
                 {
-                    RentalId = 0,
+                    RentalId = rental.RentalId,
                     AgreementText = request.AgreementText ?? GetDefaultAgreementText(),
                     SignatureImagePath = request.SignatureImagePath,
                     SignedOn = DateTimeOffset.Now,
                     SignedByIp = request.SignedByIp
                 };
-                session.Attach(agreement);
+                childSession.Attach(agreement);
             }
-
-            // 5. Update vehicle status to "Rented"
-            vehicle.Status = VehicleStatus.Rented;
-            if (vehicle.SupportsMileageTracking)
-                vehicle.Mileage = request.MileageStart;
-            session.Attach(vehicle);
 
             // 6. Create payment record for rental amount
             if (request.TotalAmount > 0)
@@ -135,7 +149,7 @@ public partial class RentalService
 
                 var rentalPayment = new Payment
                 {
-                    RentalId = 0,
+                    RentalId = rental.RentalId,
                     PaymentType = "Rental",
                     PaymentMethod = request.PaymentMethod,
                     Amount = request.TotalAmount,
@@ -144,7 +158,7 @@ public partial class RentalService
                     PaidOn = DateTimeOffset.Now,
                     Notes = $"Rental payment: {durationNote}"
                 };
-                session.Attach(rentalPayment);
+                childSession.Attach(rentalPayment);
             }
 
             // 7. Create payment record for deposit
@@ -152,7 +166,7 @@ public partial class RentalService
             {
                 var depositPayment = new Payment
                 {
-                    RentalId = 0,
+                    RentalId = rental.RentalId,
                     PaymentType = "Deposit",
                     PaymentMethod = request.DepositType == "Cash" ? "Cash" : "Card",
                     Amount = request.DepositAmount,
@@ -161,10 +175,10 @@ public partial class RentalService
                     PaidOn = DateTimeOffset.Now,
                     Notes = $"Security deposit ({request.DepositType})"
                 };
-                session.Attach(depositPayment);
+                childSession.Attach(depositPayment);
             }
 
-            var result = await session.SubmitChanges("CheckIn");
+            var result = await childSession.SubmitChanges("CheckIn-Children");
 
             if (result.Success)
             {
@@ -182,10 +196,13 @@ public partial class RentalService
     private async Task<CheckInResult> CheckInWithMotorbikeAsync(CheckInRequest request, Motorbike motorbike, PersistenceSession session, string username)
     {
         // Legacy path for Motorbike entities
+        var renter = await this.Context.LoadOneAsync<Renter>(r => r.RenterId == request.RenterId);
+
         var rental = new Rental
         {
             RentedFromShopId = request.ShopId,
             RenterId = request.RenterId,
+            RenterName = renter?.FullName,
             VehicleId = request.VehicleId,
             DurationType = RentalDurationType.Daily,
             StartDate = request.StartDate,

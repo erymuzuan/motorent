@@ -1,0 +1,431 @@
+@using MotoRent.Domain.Core
+@using MotoRent.Domain.DataContext
+@using MotoRent.Client.Controls
+@inherits LocalizedDialogBase<User, EditUserDialog>
+@inject CoreDataContext CoreContext
+@inject ISubscriptionService SubscriptionService
+@inject IDirectoryService DirectoryService
+
+<div class="modal-body">
+    @if (this.Entity == null)
+    {
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status"></div>
+        </div>
+    }
+    else
+    {
+        <!-- Editable Fields with Profile Photo (Top) -->
+        <div class="row g-3 mb-4">
+            <!-- Left Column: Form Fields -->
+            <div class="col-md-8">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label required">@Localizer["UsernameEmail"]</label>
+                        <input type="text" class="form-control @(this.m_emailError != null ? "is-invalid" : "")"
+                               placeholder="@Localizer["UsernamePlaceholder"]"
+                               @bind="this.m_email" />
+                        @if (this.m_emailError != null)
+                        {
+                            <div class="invalid-feedback">@this.m_emailError</div>
+                        }
+                    </div>
+                    <div class="col-md-6">
+                        <ProviderPicker Label="@Localizer["Provider"]"
+                                        @bind-Value="this.m_provider"
+                                        ShowLineProvider="true"
+                                        ShowCustomProvider="true"
+                                        Required="true" />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label required">@Localizer["FullName"]</label>
+                        <input type="text" class="form-control @(this.m_nameError != null ? "is-invalid" : "")"
+                               placeholder="@Localizer["FullNamePlaceholder"]"
+                               @bind="this.m_fullName" />
+                        @if (this.m_nameError != null)
+                        {
+                            <div class="invalid-feedback">@this.m_nameError</div>
+                        }
+                    </div>
+                </div>
+            </div>
+            <!-- Right Column: Profile Photo -->
+            <div class="col-md-4">
+                <label class="form-label">@Localizer["ProfilePhoto"]</label>
+                <ImageUpload StoreId="@this.m_photoStoreId"
+                             StoreIdChanged="@(id => this.m_photoStoreId = id)"
+                             Title="@Localizer["ProfilePhoto"]"
+                             HelpHint="@Localizer["ProfilePhotoHint"]"
+                             Capture="ImageUpload.CameraCapture.User" />
+            </div>
+        </div>
+
+        <!-- Organization Memberships (Bottom) -->
+        <div class="mb-3">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <label class="form-label mb-0">
+                    <i class="ti ti-building me-1"></i>
+                    @Localizer["OrganizationMemberships"]
+                </label>
+                <span class="badge bg-primary">@this.m_userAccounts.Count @Localizer["Organizations"]</span>
+            </div>
+
+            <!-- Current Memberships -->
+            @if (this.m_userAccounts.Count > 0)
+            {
+                <div class="card mb-2">
+                    <div class="org-list">
+                        @foreach (var account in this.m_userAccounts)
+                        {
+                            var org = this.m_organizations.FirstOrDefault(o => o.AccountNo == account.AccountNo);
+                            <div class="org-item selected">
+                                <div class="org-header">
+                                    <div class="org-info flex-grow-1">
+                                        <span class="org-name">@(org?.Name ?? account.AccountNo)</span>
+                                        <span class="badge bg-secondary-lt">@account.AccountNo</span>
+                                    </div>
+                                    <button type="button" class="btn btn-ghost-danger btn-icon btn-sm"
+                                            @onclick="@(() => this.RemoveOrg(account.AccountNo))"
+                                            title="@Localizer["Remove"]">
+                                        <i class="ti ti-x"></i>
+                                    </button>
+                                </div>
+                                <div class="org-roles">
+                                    @foreach (var role in UserAccount.AllRoles)
+                                    {
+                                        var isRoleSelected = account.Roles.Contains(role);
+                                        <span class="role-badge @(isRoleSelected ? GetRoleBadgeClass(role) + " text-white" : "bg-secondary-lt") clickable"
+                                              @onclick="@(() => this.ToggleRole(account.AccountNo, role, !isRoleSelected))">
+                                            @if (isRoleSelected)
+                                            {
+                                                <i class="ti ti-check me-1" style="font-size: 10px;"></i>
+                                            }
+                                            @this.GetRoleDisplayName(role)
+                                        </span>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            <!-- Add New Organization -->
+            <div class="input-icon">
+                <span class="input-icon-addon">
+                    <i class="ti ti-search"></i>
+                </span>
+                <input type="text" class="form-control" placeholder="@Localizer["SearchToAddOrg"]"
+                       @bind="this.m_orgSearch" @bind:event="oninput" />
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(this.m_orgSearch))
+            {
+                <div class="card mt-2">
+                    <div class="org-list" style="max-height: 150px; overflow-y: auto;">
+                        @foreach (var org in this.FilteredAvailableOrganizations)
+                        {
+                            <div class="org-item" style="cursor: pointer;"
+                                 @onclick="@(() => this.AddOrg(org.AccountNo))">
+                                <div class="org-header">
+                                    <div class="org-info">
+                                        <span class="org-name">@org.Name</span>
+                                        <span class="badge bg-secondary-lt">@org.AccountNo</span>
+                                    </div>
+                                    <i class="ti ti-plus text-primary"></i>
+                                </div>
+                            </div>
+                        }
+                        @if (!this.FilteredAvailableOrganizations.Any())
+                        {
+                            <div class="p-3 text-center text-secondary">
+                                <i class="ti ti-search-off me-1"></i>
+                                @Localizer["NoOrganizationsFound"]
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            @if (this.m_orgError != null)
+            {
+                <div class="text-danger small mt-2">
+                    <i class="ti ti-alert-circle me-1"></i>
+                    @this.m_orgError
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="this.Cancel">
+        @this.CommonLocalizer["Cancel"]
+    </button>
+    <button type="button" class="btn btn-primary" @onclick="this.SaveAsync" disabled="@this.Saving">
+        @if (this.Saving)
+        {
+            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+        }
+        <i class="ti ti-check me-1"></i>
+        @Localizer["SaveChanges"]
+    </button>
+</div>
+
+<style>
+    .org-list {
+        padding: 0;
+    }
+
+    .org-item {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--tblr-border-color);
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+
+    .org-item:last-child {
+        border-bottom: none;
+    }
+
+    .org-item:hover {
+        background-color: var(--tblr-bg-surface-secondary);
+    }
+
+    .org-item.selected {
+        background-color: rgba(var(--tblr-primary-rgb), 0.08);
+        border-left: 3px solid var(--tblr-primary);
+    }
+
+    .org-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .org-info {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .org-name {
+        font-weight: 600;
+    }
+
+    .org-roles {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+        margin-left: 1.75rem;
+    }
+
+    .role-badge {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        transition: all 0.15s ease;
+        user-select: none;
+    }
+
+    .role-badge.clickable {
+        cursor: pointer;
+        border: 1px solid transparent;
+    }
+
+    .role-badge.clickable:hover {
+        transform: scale(1.05);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+        border-color: var(--tblr-primary);
+        background-color: rgba(var(--tblr-primary-rgb), 0.15) !important;
+    }
+</style>
+
+@code {
+    private string? m_email;
+    private string m_provider = User.GOOGLE;
+    private string? m_fullName;
+    private string? m_photoStoreId;
+    private string? m_orgSearch;
+    private string? m_emailError;
+    private string? m_nameError;
+    private string? m_orgError;
+
+    private List<UserAccount> m_userAccounts = [];
+    private List<Organization> m_organizations = [];
+
+    private IEnumerable<Organization> FilteredAvailableOrganizations =>
+        this.m_organizations
+            .Where(o => !this.m_userAccounts.Any(a => a.AccountNo == o.AccountNo))
+            .Where(o =>
+                o.Name.Contains(this.m_orgSearch ?? "", StringComparison.OrdinalIgnoreCase) ||
+                o.AccountNo.Contains(this.m_orgSearch ?? "", StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        await this.LoadOrganizationsAsync();
+
+        if (this.Entity != null)
+        {
+            this.m_email = this.Entity.Email;
+            this.m_provider = this.Entity.CredentialProvider;
+            this.m_fullName = this.Entity.FullName;
+            this.m_photoStoreId = this.Entity.PhotoStoreId;
+            this.m_userAccounts = this.Entity.AccountCollection
+                .Select(a =>
+                {
+                    var account = new UserAccount
+                    {
+                        AccountNo = a.AccountNo,
+                        IsFavourite = a.IsFavourite
+                    };
+                    account.Roles.AddRange(a.Roles);
+                    return account;
+                })
+                .ToList();
+        }
+    }
+
+    private async Task LoadOrganizationsAsync()
+    {
+        try
+        {
+            var orgs = await this.SubscriptionService.GetAllOrganizationsAsync();
+            this.m_organizations = orgs.ToList();
+        }
+        catch (Exception ex)
+        {
+            this.ShowError($"Error loading organizations: {ex.Message}");
+        }
+    }
+
+    private void AddOrg(string accountNo)
+    {
+        if (this.m_userAccounts.Any(a => a.AccountNo == accountNo))
+            return;
+
+        var newAccount = new UserAccount
+        {
+            AccountNo = accountNo,
+            IsFavourite = this.m_userAccounts.Count == 0
+        };
+        newAccount.Roles.Add(UserAccount.ORG_ADMIN);
+        this.m_userAccounts.Add(newAccount);
+        this.m_orgSearch = null;
+        this.m_orgError = null;
+    }
+
+    private void RemoveOrg(string accountNo)
+    {
+        var existing = this.m_userAccounts.FirstOrDefault(a => a.AccountNo == accountNo);
+        if (existing != null)
+        {
+            this.m_userAccounts.Remove(existing);
+        }
+        this.m_orgError = null;
+    }
+
+    private void ToggleRole(string accountNo, string role, bool selected)
+    {
+        var account = this.m_userAccounts.FirstOrDefault(a => a.AccountNo == accountNo);
+        if (account == null) return;
+
+        if (selected && !account.Roles.Contains(role))
+        {
+            account.Roles.Add(role);
+        }
+        else if (!selected && account.Roles.Contains(role))
+        {
+            account.Roles.Remove(role);
+        }
+
+        this.m_orgError = null;
+    }
+
+    private async Task SaveAsync()
+    {
+        this.m_emailError = null;
+        this.m_nameError = null;
+        this.m_orgError = null;
+
+        if (string.IsNullOrWhiteSpace(this.m_email))
+        {
+            this.m_emailError = this.Localizer["UsernameRequired"];
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(this.m_fullName))
+        {
+            this.m_nameError = this.Localizer["FullNameRequired"];
+            return;
+        }
+
+        if (this.m_userAccounts.Count == 0)
+        {
+            this.m_orgError = this.Localizer["AtLeastOneOrg"];
+            return;
+        }
+
+        foreach (var account in this.m_userAccounts)
+        {
+            if (account.Roles.Count == 0)
+            {
+                var org = this.m_organizations.FirstOrDefault(o => o.AccountNo == account.AccountNo);
+                this.m_orgError = this.Localizer["AtLeastOneRoleForOrg", org?.Name ?? account.AccountNo];
+                return;
+            }
+        }
+
+        this.Saving = true;
+        try
+        {
+            this.Entity!.Email = this.m_email.Trim();
+            this.Entity.CredentialProvider = this.m_provider;
+            this.Entity!.FullName = this.m_fullName.Trim();
+            this.Entity.PhotoStoreId = this.m_photoStoreId;
+            this.Entity.AccountCollection.Clear();
+            this.Entity.AccountCollection.AddRange(this.m_userAccounts);
+
+            await this.DirectoryService.SaveUserProfileAsync(this.Entity);
+
+            this.ShowSuccess(this.Localizer["UserUpdated", this.Entity.FullName]);
+            this.Close();
+        }
+        catch (Exception ex)
+        {
+            this.ShowError($"Error updating user: {ex.Message}");
+        }
+        finally
+        {
+            this.Saving = false;
+        }
+    }
+
+    private string GetRoleDisplayName(string role) => role switch
+    {
+        UserAccount.ORG_ADMIN => this.Localizer["RoleOrgAdmin"],
+        UserAccount.SHOP_MANAGER => this.Localizer["RoleShopManager"],
+        UserAccount.STAFF => this.Localizer["RoleStaff"],
+        UserAccount.MECHANIC => this.Localizer["RoleMechanic"],
+        _ => role
+    };
+
+    private static string GetRoleBadgeClass(string role) => role switch
+    {
+        UserAccount.ORG_ADMIN => "bg-primary",
+        UserAccount.SHOP_MANAGER => "bg-purple",
+        UserAccount.STAFF => "bg-info",
+        UserAccount.MECHANIC => "bg-warning",
+        _ => "bg-secondary"
+    };
+
+    private static string GetProviderBadgeClass(string provider) => provider switch
+    {
+        User.GOOGLE => "bg-red text-white",
+        User.MICROSOFT => "bg-azure text-white",
+        User.LINE => "bg-green text-white",
+        _ => "bg-secondary text-white"
+    };
+}

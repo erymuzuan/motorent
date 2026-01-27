@@ -99,7 +99,8 @@
             case 3:
                 <CollectDepositStep RequiredAmount="@(m_selectedVehicle?.DepositAmount ?? 0)"
                                     RentalAmount="@GetRentalTotalAmount()"
-                                    @bind-DepositInfo="m_depositInfo" />
+                                    DepositInfo="@m_depositInfo"
+                                    DepositInfoChanged="OnDepositInfoChanged" />
                 break;
             case 4:
                 <PreInspectionStep @bind-InspectionInfo="m_preInspection" />
@@ -127,7 +128,7 @@
             @if (m_activeStep < 5)
             {
                 <button type="button" class="mr-btn-primary-action"
-                        disabled="@(!CanProceedToNextStep())"
+                        disabled="@(m_activeStep != 3 && m_activeStep != 4 && !CanProceedToNextStep())"
                         @onclick="NextStep">
                     @CommonLocalizer["Next"]
                     <i class="ti ti-arrow-right"></i>
@@ -337,7 +338,19 @@
     private void NextStep()
     {
         if (this.m_activeStep < 5 && this.CanProceedToNextStep())
+        {
             this.m_activeStep++;
+        }
+        else if (this.m_activeStep == 3 && !this.m_depositInfo.IsCollected)
+        {
+            // Show alert when deposit is not confirmed
+            this.ShowWarning(this.Localizer["DepositConfirmationRequired"]);
+        }
+        else if (this.m_activeStep == 4 && this.m_preInspection == null)
+        {
+            // Show alert when inspector is not selected
+            this.ShowWarning(this.Localizer["InspectorNotSelected"]);
+        }
     }
 
     private void PreviousStep()
@@ -351,6 +364,12 @@
         // Only allow going back to previous steps
         if (step < this.m_activeStep)
             this.m_activeStep = step;
+    }
+
+    private void OnDepositInfoChanged(DepositInfo info)
+    {
+        this.m_depositInfo = info;
+        StateHasChanged(); // Force re-render to update Next button state
     }
 
     private async Task OpenCreateRenterDialog()
@@ -454,6 +473,10 @@
                         result.RentalId,
                         this.UserName);
                 }
+
+                // Hide spinner before showing receipt dialog
+                this.m_processing = false;
+                this.StateHasChanged();
 
                 // Generate and show receipt
                 await this.GenerateAndShowReceiptAsync(result.RentalId);
