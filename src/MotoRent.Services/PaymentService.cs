@@ -21,14 +21,16 @@ public class PaymentService(RentalDataContext context)
         int page = 1,
         int pageSize = 20)
     {
-        // Get rental IDs for this shop first
-        var rentalIds = await this.Context.GetDistinctAsync<Rental, int>(
-            r => r.RentedFromShopId == shopId,
-            r => r.RentalId);
+        var query = this.Context.CreateQuery<Payment>();
 
-        // Build query with all filters applied at SQL level
-        var query = this.Context.CreateQuery<Payment>()
-            .Where(p => rentalIds.IsInList(p.RentalId));
+        // Only filter by shop if a specific shopId is provided (> 0)
+        if (shopId > 0)
+        {
+            var rentalIds = await this.Context.GetDistinctAsync<Rental, int>(
+                r => r.RentedFromShopId == shopId,
+                r => r.RentalId);
+            query = query.Where(p => rentalIds.IsInList(p.RentalId));
+        }
 
         if (!string.IsNullOrWhiteSpace(status))
         {

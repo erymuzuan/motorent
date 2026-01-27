@@ -23,14 +23,16 @@ public class DamageReportService(RentalDataContext context)
         int page = 1,
         int pageSize = 20)
     {
-        // Get rental IDs for the shop
-        var rentalIds = await this.Context.GetDistinctAsync<Rental, int>(
-            r => r.RentedFromShopId == shopId,
-            r => r.RentalId);
+        var query = this.Context.CreateQuery<DamageReport>();
 
-        // Build query with all filters at SQL level
-        var query = this.Context.CreateQuery<DamageReport>()
-            .Where(d => rentalIds.IsInList(d.RentalId));
+        // Only filter by shop if a specific shopId is provided (> 0)
+        if (shopId > 0)
+        {
+            var rentalIds = await this.Context.GetDistinctAsync<Rental, int>(
+                r => r.RentedFromShopId == shopId,
+                r => r.RentalId);
+            query = query.Where(d => rentalIds.IsInList(d.RentalId));
+        }
 
         if (!string.IsNullOrWhiteSpace(status))
         {
@@ -107,14 +109,16 @@ public class DamageReportService(RentalDataContext context)
         int page = 1,
         int pageSize = 50)
     {
-        // Get rental IDs for the shop
-        var rentalIds = await this.Context.GetDistinctAsync<Rental, int>(
-            r => r.RentedFromShopId == shopId,
-            r => r.RentalId);
+        var damageReportsQuery = this.Context.CreateQuery<DamageReport>();
 
-        // Build damage reports query with SQL-level filters
-        var damageReportsQuery = this.Context.CreateQuery<DamageReport>()
-            .Where(d => rentalIds.IsInList(d.RentalId));
+        // Only filter by shop if a specific shopId is provided (> 0)
+        if (shopId > 0)
+        {
+            var rentalIds = await this.Context.GetDistinctAsync<Rental, int>(
+                r => r.RentedFromShopId == shopId,
+                r => r.RentalId);
+            damageReportsQuery = damageReportsQuery.Where(d => rentalIds.IsInList(d.RentalId));
+        }
 
         if (!string.IsNullOrWhiteSpace(status))
         {
@@ -257,14 +261,16 @@ public class DamageReportService(RentalDataContext context)
     /// </summary>
     public async Task<Dictionary<string, int>> GetStatusCountsAsync(int shopId)
     {
-        // Get rental IDs for the shop
-        var rentalIds = await this.Context.GetDistinctAsync<Rental, int>(
-            r => r.RentedFromShopId == shopId,
-            r => r.RentalId);
+        var query = this.Context.CreateQuery<DamageReport>();
 
-        // Get status counts via SQL GROUP BY
-        var query = this.Context.CreateQuery<DamageReport>()
-            .Where(d => rentalIds.IsInList(d.RentalId));
+        // Only filter by shop if a specific shopId is provided (> 0)
+        if (shopId > 0)
+        {
+            var rentalIds = await this.Context.GetDistinctAsync<Rental, int>(
+                r => r.RentedFromShopId == shopId,
+                r => r.RentalId);
+            query = query.Where(d => rentalIds.IsInList(d.RentalId));
+        }
 
         var groupCounts = await this.Context.GetGroupByCountAsync(query, d => d.Status ?? "Unknown");
 
@@ -276,13 +282,16 @@ public class DamageReportService(RentalDataContext context)
     /// </summary>
     public async Task<DamageCostSummary> GetCostSummaryAsync(int shopId)
     {
-        // Get rental IDs for the shop
-        var rentalIds = await this.Context.GetDistinctAsync<Rental, int>(
-            r => r.RentedFromShopId == shopId,
-            r => r.RentalId);
+        var baseQuery = this.Context.CreateQuery<DamageReport>();
 
-        var baseQuery = this.Context.CreateQuery<DamageReport>()
-            .Where(d => rentalIds.IsInList(d.RentalId));
+        // Only filter by shop if a specific shopId is provided (> 0)
+        if (shopId > 0)
+        {
+            var rentalIds = await this.Context.GetDistinctAsync<Rental, int>(
+                r => r.RentedFromShopId == shopId,
+                r => r.RentalId);
+            baseQuery = baseQuery.Where(d => rentalIds.IsInList(d.RentalId));
+        }
 
         // Get counts and sums for each status using SQL aggregates
         var pendingQuery = baseQuery.Where(d => d.Status == "Pending");

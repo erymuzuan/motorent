@@ -13,9 +13,15 @@ public class AccessoryService(RentalDataContext context)
         int page = 1,
         int pageSize = 20)
     {
-        var query = this.Context.CreateQuery<Accessory>()
-            .Where(a => a.ShopId == shopId)
-            .OrderByDescending(a => a.AccessoryId);
+        var query = this.Context.CreateQuery<Accessory>();
+
+        // Only filter by shop if a specific shopId is provided (> 0)
+        if (shopId > 0)
+        {
+            query = query.Where(a => a.ShopId == shopId);
+        }
+
+        query = query.OrderByDescending(a => a.AccessoryId);
 
         var result = await this.Context.LoadAsync(query, page, pageSize, includeTotalRows: true);
 
@@ -38,10 +44,16 @@ public class AccessoryService(RentalDataContext context)
 
     public async Task<List<Accessory>> GetAvailableAccessoriesAsync(int shopId)
     {
-        var result = await this.Context.LoadAsync(
-            this.Context.CreateQuery<Accessory>()
-                .Where(a => a.ShopId == shopId && a.QuantityAvailable > 0),
-            page: 1, size: 100, includeTotalRows: false);
+        var query = this.Context.CreateQuery<Accessory>()
+            .Where(a => a.QuantityAvailable > 0);
+
+        // Only filter by shop if a specific shopId is provided (> 0)
+        if (shopId > 0)
+        {
+            query = query.Where(a => a.ShopId == shopId);
+        }
+
+        var result = await this.Context.LoadAsync(query, page: 1, size: 100, includeTotalRows: false);
 
         return result.ItemCollection;
     }
@@ -78,12 +90,21 @@ public class AccessoryService(RentalDataContext context)
 
     public async Task<(int Total, int IncludedFree)> GetAccessoryCountsAsync(int shopId)
     {
-        // Get total count using SQL COUNT
-        var total = await this.Context.GetCountAsync<Accessory>(a => a.ShopId == shopId);
+        int total;
+        int includedFree;
 
-        // Get included free count using SQL COUNT with filter
-        var includedFree = await this.Context.GetCountAsync<Accessory>(
-            a => a.ShopId == shopId && a.IsIncluded);
+        // Only filter by shop if a specific shopId is provided (> 0)
+        if (shopId > 0)
+        {
+            total = await this.Context.GetCountAsync<Accessory>(a => a.ShopId == shopId);
+            includedFree = await this.Context.GetCountAsync<Accessory>(
+                a => a.ShopId == shopId && a.IsIncluded);
+        }
+        else
+        {
+            total = await this.Context.GetCountAsync<Accessory>(a => true);
+            includedFree = await this.Context.GetCountAsync<Accessory>(a => a.IsIncluded);
+        }
 
         return (total, includedFree);
     }

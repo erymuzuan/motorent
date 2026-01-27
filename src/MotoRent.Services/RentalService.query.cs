@@ -8,9 +8,14 @@ public partial class RentalService
     public async Task<Dictionary<string, int>> GetStatusCountsAsync(int shopId)
     {
         // Use database-side grouping instead of loading all rentals
-        var groups = await this.Context.GetGroupByCountAsync<Rental, string?>(
-            r => r.RentedFromShopId == shopId,
-            r => r.Status);
+        // Only filter by shop if a specific shopId is provided (> 0)
+        var groups = shopId > 0
+            ? await this.Context.GetGroupByCountAsync<Rental, string?>(
+                r => r.RentedFromShopId == shopId,
+                r => r.Status)
+            : await this.Context.GetGroupByCountAsync<Rental, string?>(
+                r => true,
+                r => r.Status);
 
         // Handle null keys by converting to "Unknown"
         return groups.ToDictionary(g => g.Key ?? "Unknown", g => g.Count);
@@ -23,13 +28,18 @@ public partial class RentalService
     {
         // Filter at database level: only load completed/active rentals in date range
         var statuses = new[] { "Completed", "Active" };
-        var rentals = await this.Context.LoadAsync(
-            this.Context.CreateQuery<Rental>()
-                .Where(r => r.RentedFromShopId == shopId)
-                .Where(r => r.StartDate >= fromDate)
-                .Where(r => r.StartDate <= toDate)
-                .Where(r => statuses.IsInList(r.Status)),
-            page: 1, size: 10000, includeTotalRows: false);
+        var query = this.Context.CreateQuery<Rental>()
+            .Where(r => r.StartDate >= fromDate)
+            .Where(r => r.StartDate <= toDate)
+            .Where(r => statuses.IsInList(r.Status));
+
+        // Only filter by shop if a specific shopId is provided (> 0)
+        if (shopId > 0)
+        {
+            query = query.Where(r => r.RentedFromShopId == shopId);
+        }
+
+        var rentals = await this.Context.LoadAsync(query, page: 1, size: 10000, includeTotalRows: false);
 
         var completedRentals = rentals.ItemCollection.ToList();
         var dynamicPricingRentals = completedRentals.Where(r => r.DynamicPricingApplied).ToList();
@@ -72,13 +82,18 @@ public partial class RentalService
         var todayStart = today.Date;
         var todayEnd = todayStart.AddDays(1);
 
-        var rentals = await this.Context.LoadAsync(
-            this.Context.CreateQuery<Rental>()
-                .Where(r => r.RentedFromShopId == shopId)
-                .Where(r => r.Status == "Active")
-                .Where(r => r.ExpectedEndDate >= todayStart)
-                .Where(r => r.ExpectedEndDate < todayEnd),
-            page: 1, size: 1000, includeTotalRows: false);
+        var query = this.Context.CreateQuery<Rental>()
+            .Where(r => r.Status == "Active")
+            .Where(r => r.ExpectedEndDate >= todayStart)
+            .Where(r => r.ExpectedEndDate < todayEnd);
+
+        // Only filter by shop if a specific shopId is provided (> 0)
+        if (shopId > 0)
+        {
+            query = query.Where(r => r.RentedFromShopId == shopId);
+        }
+
+        var rentals = await this.Context.LoadAsync(query, page: 1, size: 1000, includeTotalRows: false);
 
         return rentals.ItemCollection.ToList();
     }
@@ -87,12 +102,17 @@ public partial class RentalService
     {
         var todayStart = today.Date;
 
-        var rentals = await this.Context.LoadAsync(
-            this.Context.CreateQuery<Rental>()
-                .Where(r => r.RentedFromShopId == shopId)
-                .Where(r => r.Status == "Active")
-                .Where(r => r.ExpectedEndDate < todayStart),
-            page: 1, size: 1000, includeTotalRows: false);
+        var query = this.Context.CreateQuery<Rental>()
+            .Where(r => r.Status == "Active")
+            .Where(r => r.ExpectedEndDate < todayStart);
+
+        // Only filter by shop if a specific shopId is provided (> 0)
+        if (shopId > 0)
+        {
+            query = query.Where(r => r.RentedFromShopId == shopId);
+        }
+
+        var rentals = await this.Context.LoadAsync(query, page: 1, size: 1000, includeTotalRows: false);
 
         return rentals.ItemCollection.ToList();
     }

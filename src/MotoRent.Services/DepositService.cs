@@ -16,13 +16,16 @@ public class DepositService(RentalDataContext context)
         int page = 1,
         int pageSize = 20)
     {
-        // Get rental IDs for this shop
-        var rentalIds = await this.Context.GetDistinctAsync<Rental, int>(
-            r => r.ShopId == shopId,
-            r => r.RentalId);
+        var query = this.Context.CreateQuery<Deposit>();
 
-        var query = this.Context.CreateQuery<Deposit>()
-            .Where(d => rentalIds.IsInList(d.RentalId));
+        // Only filter by shop if a specific shopId is provided (> 0)
+        if (shopId > 0)
+        {
+            var rentalIds = await this.Context.GetDistinctAsync<Rental, int>(
+                r => r.ShopId == shopId,
+                r => r.RentalId);
+            query = query.Where(d => rentalIds.IsInList(d.RentalId));
+        }
 
         if (!string.IsNullOrWhiteSpace(status))
         {
@@ -56,14 +59,16 @@ public class DepositService(RentalDataContext context)
 
     public async Task<Dictionary<string, int>> GetStatusCountsAsync(int shopId)
     {
-        // Get rental IDs for this shop
-        var rentalIds = await this.Context.GetDistinctAsync<Rental, int>(
-            r => r.ShopId == shopId,
-            r => r.RentalId);
+        var query = this.Context.CreateQuery<Deposit>();
 
-        // Get status counts via SQL GROUP BY
-        var query = this.Context.CreateQuery<Deposit>()
-            .Where(d => rentalIds.IsInList(d.RentalId));
+        // Only filter by shop if a specific shopId is provided (> 0)
+        if (shopId > 0)
+        {
+            var rentalIds = await this.Context.GetDistinctAsync<Rental, int>(
+                r => r.ShopId == shopId,
+                r => r.RentalId);
+            query = query.Where(d => rentalIds.IsInList(d.RentalId));
+        }
 
         var groupCounts = await this.Context.GetGroupByCountAsync(query, d => d.Status ?? "Unknown");
 
@@ -72,15 +77,17 @@ public class DepositService(RentalDataContext context)
 
     public async Task<decimal> GetTotalHeldDepositsAsync(int shopId)
     {
-        // Get rental IDs for this shop
-        var rentalIds = await this.Context.GetDistinctAsync<Rental, int>(
-            r => r.ShopId == shopId,
-            r => r.RentalId);
-
-        // Sum held deposits via SQL SUM
         var query = this.Context.CreateQuery<Deposit>()
-            .Where(d => rentalIds.IsInList(d.RentalId))
             .Where(d => d.Status == "Held");
+
+        // Only filter by shop if a specific shopId is provided (> 0)
+        if (shopId > 0)
+        {
+            var rentalIds = await this.Context.GetDistinctAsync<Rental, int>(
+                r => r.ShopId == shopId,
+                r => r.RentalId);
+            query = query.Where(d => rentalIds.IsInList(d.RentalId));
+        }
 
         return await this.Context.GetSumAsync(query, d => d.Amount);
     }
@@ -139,16 +146,22 @@ public class DepositService(RentalDataContext context)
         int page = 1,
         int pageSize = 20)
     {
-        // Get all rentals for the shop
-        var rentals = await this.Context.LoadAsync(
-            this.Context.CreateQuery<Rental>().Where(r => r.ShopId == shopId),
-            page: 1, size: 10000, includeTotalRows: false);
+        // Get all rentals (optionally filtered by shop)
+        var rentalsQuery = this.Context.CreateQuery<Rental>();
+        if (shopId > 0)
+        {
+            rentalsQuery = rentalsQuery.Where(r => r.ShopId == shopId);
+        }
+        var rentals = await this.Context.LoadAsync(rentalsQuery, page: 1, size: 10000, includeTotalRows: false);
 
         var rentalIds = rentals.ItemCollection.Select(r => r.RentalId).ToList();
 
         // Get deposits
-        var depositQuery = this.Context.CreateQuery<Deposit>()
-            .Where(d => rentalIds.IsInList(d.RentalId));
+        var depositQuery = this.Context.CreateQuery<Deposit>();
+        if (rentalIds.Count > 0)
+        {
+            depositQuery = depositQuery.Where(d => rentalIds.IsInList(d.RentalId));
+        }
 
         if (!string.IsNullOrWhiteSpace(status))
         {
