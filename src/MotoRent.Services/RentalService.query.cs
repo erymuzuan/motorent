@@ -8,14 +8,13 @@ public partial class RentalService
     public async Task<Dictionary<string, int>> GetStatusCountsAsync(int shopId)
     {
         // Use database-side grouping instead of loading all rentals
-        // Only filter by shop if a specific shopId is provided (> 0)
-        var groups = shopId > 0
-            ? await this.Context.GetGroupByCountAsync<Rental, string?>(
-                r => r.RentedFromShopId == shopId,
-                r => r.Status)
-            : await this.Context.GetGroupByCountAsync<Rental, string?>(
-                r => true,
-                r => r.Status);
+        var query = this.Context.CreateQuery<Rental>();
+        if (shopId > 0)
+        {
+            query = query.Where(r => r.RentedFromShopId == shopId);
+        }
+
+        var groups = await this.Context.GetGroupByCountAsync(query, r => r.Status);
 
         // Handle null keys by converting to "Unknown"
         return groups.ToDictionary(g => g.Key ?? "Unknown", g => g.Count);
