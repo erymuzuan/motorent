@@ -43,7 +43,7 @@
                         }
                     </div>
                     <div class="list-group list-group-flush">
-                        @foreach (var doc in this.m_manifest.OrderBy(d => d.Order))
+                        @foreach (var doc in this.m_manifest.Where(d => !d.FileName.Contains("superadmin", StringComparison.OrdinalIgnoreCase)).OrderBy(d => d.Order))
                         {
                             <a href="@GetDocUrl(doc.FileName)"
                                class="list-group-item list-group-item-action @(this.DocName == doc.FileName ? "active" : "")">
@@ -97,7 +97,7 @@
 
                 @if (this.m_manifest.Any())
                 {
-                    var sortedManifest = this.m_manifest.OrderBy(d => d.Order).ToList();
+                    var sortedManifest = this.m_manifest.Where(d => !d.FileName.Contains("superadmin", StringComparison.OrdinalIgnoreCase)).OrderBy(d => d.Order).ToList();
                     var currentIndex = sortedManifest.FindIndex(d => d.FileName == this.DocName);
                     <div class="d-flex justify-content-between mt-4">
                         @if (currentIndex > 0)
