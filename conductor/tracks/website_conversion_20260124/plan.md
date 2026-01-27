@@ -35,17 +35,15 @@ This plan outlines the conversion of the static marketing website into a functio
 
 ## Phase 3: Blazor Onboarding UI & Localization [checkpoint: ]
 
-### Task 1: Create Multi-Step Onboarding Wizard
-- [ ] Task: Build the 4-step signup wizard in Blazor.
-    - [ ] Implement Step 1: Social Auth buttons (Google/LINE).
-    - [ ] Implement Step 2: Shop Details (with `datalist` for Thai locations).
-    - [ ] Implement Step 3: Initial Inventory/Fleet setup.
-    - [ ] Implement Step 4: Plan Selection (Free/Pro/Ultra).
+### Task 1: Create Multi-Step Onboarding Wizard (COMPLETED) 686f3e4
+- [x] Task: Build the 4-step signup wizard in Blazor. 686f3e4
+    - [x] Implement Step 1: Social Auth buttons (Google/LINE).
+    - [x] Implement Step 2: Shop Details (with `datalist` for Thai locations).
+    - [x] Implement Step 3: Initial Inventory/Fleet setup.
+    - [x] Implement Step 4: Plan Selection (Free/Pro/Ultra).
 
-### Task 2: Thai & English Localization
-- [ ] Task: Implement full localization for the onboarding flow.
-    - [ ] Add Thai and English resource files for all onboarding labels and messages.
-    - [ ] Implement language toggle logic that updates the organization setting.
+### Task 2: Thai & English Localization (COMPLETED)
+- [x] Task: Implement full localization for the onboarding flow.
 
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Blazor Onboarding UI & Localization' (Protocol in workflow.md)
 
