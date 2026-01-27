@@ -1,3 +1,4 @@
+using System.Runtime.ExceptionServices;
 using HashidsNet;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Localization;
@@ -111,6 +112,22 @@ public class MotoRentComponentBase : ComponentBase
     /// </summary>
     protected void ShowInfo(string message) =>
         this.ToastService.ShowInfo(message);
+
+    /// <summary>
+    /// Logs an error and rethrows in localhost for debugging.
+    /// In production, only logs the error without rethrowing.
+    /// </summary>
+    protected void LogError(Exception ex, string message, params object[] args)
+    {
+        this.Logger.LogError(ex, message, args);
+
+        // Rethrow in localhost to show full stack trace in ErrorPage
+        if (this.NavigationManager.Uri.StartsWith("https://localhost") ||
+            this.NavigationManager.Uri.StartsWith("http://localhost"))
+        {
+            ExceptionDispatchInfo.Capture(ex).Throw();
+        }
+    }
 
     /// <summary>
     /// Triggers a UI refresh.

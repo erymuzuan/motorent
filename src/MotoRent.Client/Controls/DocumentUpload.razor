@@ -1,6 +1,6 @@
 @using MotoRent.Services
 @using MotoRent.Domain.Core
-@inherits MotoRentComponentBase
+@inherits LocalizedComponentBase<DocumentUpload>
 @inject DocumentOcrService OcrService
 @inject IJSRuntime JS
 
@@ -13,7 +13,7 @@
                 {
                     <span class="badge bg-success">
                         <i class="ti ti-check me-1"></i>
-                        Data Extracted
+                        @Localizer["DataExtracted"]
                     </span>
                 }
             </div>
@@ -27,16 +27,16 @@
                     @if (m_uploading)
                     {
                         <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Processing...</span>
+                            <span class="visually-hidden">@Localizer["Processing"]</span>
                         </div>
-                        <span class="mt-2">Processing document...</span>
+                        <span class="mt-2">@Localizer["ProcessingDocument"]</span>
                     }
                     else
                     {
                         <i class="ti ti-cloud-upload text-primary" style="font-size: 3rem;"></i>
-                        <span class="mt-2">Click to upload or take a photo</span>
+                        <span class="mt-2">@Localizer["UploadHint"]</span>
                         <small class="text-secondary">
-                            Supported: JPG, PNG, PDF (max 10MB)
+                            @Localizer["SupportedFiles"]
                         </small>
                     }
                 </div>
@@ -48,7 +48,7 @@
                 <button type="button" class="btn btn-outline-primary w-100" @onclick="OpenCamera"
                         disabled="@m_uploading">
                     <i class="ti ti-camera me-2"></i>
-                    Take Photo with Camera
+                    @Localizer["TakePhoto"]
                 </button>
                 <InputFile @ref="m_cameraFileInput" OnChange="OnCameraCapture"
                            AdditionalAttributes="@CameraAttributes" />
@@ -58,7 +58,7 @@
                 <!-- Preview Area -->
                 <div class="d-flex flex-column gap-2">
                     <div class="text-center">
-                        <img src="@m_previewUrl" alt="Document preview"
+                        <img src="@m_previewUrl" alt="@Localizer["DocumentPreview"]"
                              style="max-height: 200px; max-width: 100%; border-radius: 8px; object-fit: contain;" />
                     </div>
 
@@ -66,12 +66,12 @@
                         <button type="button" class="btn btn-ghost-danger" @onclick="ClearDocument"
                                 disabled="@m_uploading">
                             <i class="ti ti-trash me-1"></i>
-                            Remove
+                            @Localizer["Remove"]
                         </button>
                         <button type="button" class="btn btn-ghost-primary" @onclick="RetryOcr"
                                 disabled="@m_uploading">
                             <i class="ti ti-refresh me-1"></i>
-                            Retry OCR
+                            @Localizer["RetryOcr"]
                         </button>
                     </div>
                 </div>
@@ -85,7 +85,7 @@
                         <h2 class="accordion-header">
                             <button class="accordion-button" type="button" data-bs-toggle="collapse"
                                     data-bs-target="#extractedDataPanel" aria-expanded="true">
-                                Extracted Information
+                                @Localizer["ExtractedInformation"]
                             </button>
                         </h2>
                         <div id="extractedDataPanel" class="accordion-collapse collapse show">
@@ -95,7 +95,7 @@
                                         @if (!string.IsNullOrEmpty(m_extractedData.FullName))
                                         {
                                             <tr>
-                                                <td class="fw-semibold" style="width: 40%;">Full Name</td>
+                                                <td class="fw-semibold" style="width: 40%;">@Localizer["FullName"]</td>
                                                 <td>@m_extractedData.FullName</td>
                                             </tr>
                                         }
@@ -109,35 +109,35 @@
                                         @if (!string.IsNullOrEmpty(m_extractedData.Nationality))
                                         {
                                             <tr>
-                                                <td class="fw-semibold">Nationality</td>
+                                                <td class="fw-semibold">@Localizer["Nationality"]</td>
                                                 <td>@m_extractedData.Nationality</td>
                                             </tr>
                                         }
                                         @if (m_extractedData.DateOfBirth.HasValue)
                                         {
                                             <tr>
-                                                <td class="fw-semibold">Date of Birth</td>
+                                                <td class="fw-semibold">@Localizer["DateOfBirth"]</td>
                                                 <td>@m_extractedData.DateOfBirth.Value.ToString("yyyy-MM-dd")</td>
                                             </tr>
                                         }
                                         @if (m_extractedData.DateOfExpiry.HasValue)
                                         {
                                             <tr>
-                                                <td class="fw-semibold">Expiry Date</td>
+                                                <td class="fw-semibold">@Localizer["ExpiryDate"]</td>
                                                 <td>@m_extractedData.DateOfExpiry.Value.ToString("yyyy-MM-dd")</td>
                                             </tr>
                                         }
                                         @if (!string.IsNullOrEmpty(m_extractedData.IssuingCountry))
                                         {
                                             <tr>
-                                                <td class="fw-semibold">Issuing Country</td>
+                                                <td class="fw-semibold">@Localizer["IssuingCountry"]</td>
                                                 <td>@m_extractedData.IssuingCountry</td>
                                             </tr>
                                         }
                                         @if (!string.IsNullOrEmpty(m_extractedData.Gender))
                                         {
                                             <tr>
-                                                <td class="fw-semibold">Gender</td>
+                                                <td class="fw-semibold">@Localizer["Gender"]</td>
                                                 <td>@m_extractedData.Gender</td>
                                             </tr>
                                         }
@@ -148,14 +148,14 @@
                                 {
                                     <div class="alert alert-warning m-3">
                                         <i class="ti ti-alert-triangle me-2"></i>
-                                        OCR Error: @m_extractedData.Error
+                                        @Localizer["OcrError", m_extractedData.Error]
                                     </div>
                                 }
 
                                 <div class="p-3">
                                     <button type="button" class="btn btn-primary w-100" @onclick="ApplyExtractedData"
                                             disabled="@(m_extractedData.FullName == null)">
-                                        Apply to Form
+                                        @Localizer["ApplyToForm"]
                                     </button>
                                 </div>
                             </div>
@@ -205,19 +205,161 @@
 
     private string GetDocumentTypeLabel() => this.DocumentType switch
     {
-        "Passport" => "Passport",
-        "NationalId" => "National ID Card",
-        "DrivingLicense" => "Driving License",
-        _ => "Document"
+        "Passport" => Localizer["Passport"],
+        "NationalId" => Localizer["NationalId"],
+        "DrivingLicense" => Localizer["DrivingLicense"],
+        _ => Localizer["Document"]
     };
 
     private string GetDocumentNumberLabel() => this.DocumentType switch
     {
-        "Passport" => "Passport Number",
-        "NationalId" => "ID Number",
-        "DrivingLicense" => "License Number",
-        _ => "Document Number"
+        "Passport" => Localizer["PassportNumber"],
+        "NationalId" => Localizer["NationalIdNumber"],
+        "DrivingLicense" => Localizer["DrivingLicenseNumber"],
+        _ => Localizer["DocumentNumber"]
     };
+
+    private async Task TriggerFileSelect()
+    {
+        await this.JS.InvokeVoidAsync("MotoRent.clickElement", this.m_fileInputId);
+    }
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file == null) return;
+        await this.ProcessFile(file);
+    }
+
+    private async Task OnCameraCapture(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file == null) return;
+        await this.ProcessFile(file);
+    }
+
+    private async Task OpenCamera()
+    {
+        await this.JS.InvokeVoidAsync("MotoRent.clickElement", this.m_cameraInputId);
+    }
+
+    private async Task ProcessFile(IBrowserFile file)
+    {
+        if (file.Size > 10 * 1024 * 1024)
+        {
+            this.ShowError(Localizer["FileSizeError"]);
+            return;
+        }
+
+        // Validate file type
+        var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp", ".pdf" };
+        var extension = Path.GetExtension(file.Name).ToLowerInvariant();
+        if (!allowedExtensions.Contains(extension))
+        {
+            this.ShowError(Localizer["InvalidFileTypeError"]);
+            return;
+        }
+
+        this.m_uploading = true;
+        this.StateHasChanged();
+
+        try
+        {
+            // Read file into memory
+            using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            var fileBytes = ms.ToArray();
+
+            // Save file to disk
+            var basePath = MotoConfig.FileStorageBasePath;
+            var accountNo = this.RequestContext.GetAccountNo() ?? "default";
+            var uploadDir = Path.Combine(Directory.GetCurrentDirectory(), basePath, accountNo, "documents");
+            Directory.CreateDirectory(uploadDir);
+
+            var fileName = $"{Guid.NewGuid()}{extension}";
+            var filePath = Path.Combine(uploadDir, fileName);
+            await File.WriteAllBytesAsync(filePath, fileBytes);
+
+            // Perform OCR extraction
+            var extractedData = await this.OcrService.ExtractDocumentDataAsync(filePath, this.DocumentType);
+            this.m_extractedData = extractedData;
+
+            // Calculate relative path for storage
+            var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), basePath);
+            this.m_uploadedFilePath = filePath.StartsWith(uploadsDir)
+                ? filePath[uploadsDir.Length..].TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                : filePath;
+
+            // Create preview URL
+            this.m_previewUrl = $"data:{file.ContentType};base64,{Convert.ToBase64String(fileBytes)}";
+
+            // Save document if renterId is provided
+            int? documentId = null;
+            if (this.RenterId.HasValue)
+            {
+                var username = this.RequestContext.GetUserName() ?? "system";
+                var document = await this.OcrService.SaveDocumentAsync(
+                    this.RenterId.Value,
+                    this.DocumentType,
+                    filePath,
+                    extractedData,
+                    username);
+                documentId = document.DocumentId;
+            }
+
+            // Notify parent
+            await this.OnDocumentUploaded.InvokeAsync(new DocumentUploadResult
+            {
+                DocumentId = documentId,
+                FilePath = this.m_uploadedFilePath,
+                ExtractedData = extractedData
+            });
+
+            if (extractedData != null && !string.IsNullOrEmpty(extractedData.FullName))
+            {
+                this.ShowSuccess(Localizer["ProcessSuccess"]);
+            }
+            else
+            {
+                this.ShowInfo(Localizer["ManualVerificationHint"]);
+            }
+        }
+        catch (Exception ex)
+        {
+            this.ShowError(Localizer["ProcessError", ex.Message]);
+        }
+        finally
+        {
+            this.m_uploading = false;
+            this.StateHasChanged();
+        }
+    }
+
+    private void ClearDocument()
+    {
+        this.m_previewUrl = null;
+        this.m_extractedData = null;
+        this.m_uploadedFilePath = null;
+    }
+
+    private async Task RetryOcr()
+    {
+        if (string.IsNullOrEmpty(this.m_uploadedFilePath)) return;
+
+        // TODO: Call reprocess endpoint
+        this.ShowInfo(Localizer["RetryingOcr"]);
+    }
+
+    private async Task ApplyExtractedData()
+    {
+        if (this.m_extractedData != null)
+        {
+            await this.OnDataExtracted.InvokeAsync(this.m_extractedData);
+            this.ShowSuccess(Localizer["DataApplied"]);
+        }
+    }
+}
 
     private async Task TriggerFileSelect()
     {

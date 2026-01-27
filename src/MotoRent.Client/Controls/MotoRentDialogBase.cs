@@ -67,7 +67,9 @@ public abstract class MotoRentDialogBase<TEntity> : MotoRentComponentBase where 
     /// <summary>
     /// Gets the save button text based on IsNew.
     /// </summary>
-    protected string SaveButtonText => this.IsNew ? "Add" : "Save";
+    protected virtual string SaveButtonText => this.IsNew 
+        ? this.CommonLocalizer["Add"].Value 
+        : this.CommonLocalizer["Save"].Value;
 
     /// <summary>
     /// Gets whether the OK button should be disabled.

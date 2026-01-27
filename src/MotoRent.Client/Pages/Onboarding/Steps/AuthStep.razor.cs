@@ -9,34 +9,19 @@ public partial class AuthStep
     [Parameter] public EventCallback<OnboardingRequest> RequestChanged { get; set; }
     [Parameter] public EventCallback<bool> OnAuthenticatedChanged { get; set; }
 
-    private bool m_isAuthenticated;
+    private string m_mockName = "Dev Tester";
+    private string m_mockEmail = "dev@motorent.app";
+    private string m_mockProvider = "Google";
 
-    [SupplyParameterFromQuery(Name = "provider")]
-    public string? Provider { get; set; }
+    private bool IsLocalHost => this.NavigationManager.BaseUri.Contains("localhost");
 
-    [SupplyParameterFromQuery(Name = "id")]
-    public string? ProviderId { get; set; }
-
-    [SupplyParameterFromQuery(Name = "email")]
-    public string? Email { get; set; }
-
-    [SupplyParameterFromQuery(Name = "name")]
-    public string? Name { get; set; }
-
-    protected override async Task OnParametersSetAsync()
+    private void SimulateLogin()
     {
-        // Check if we have OAuth callback data
-        if (!string.IsNullOrWhiteSpace(Provider) && !string.IsNullOrWhiteSpace(ProviderId))
-        {
-            Request.Provider = Provider;
-            Request.ProviderId = ProviderId;
-            Request.Email = Email ?? "";
-            Request.FullName = Name ?? "";
-            Request.UserName = Provider == "Line" ? ProviderId : (Email ?? ProviderId);
-
-            m_isAuthenticated = true;
-            await RequestChanged.InvokeAsync(Request);
-            await OnAuthenticatedChanged.InvokeAsync(true);
-        }
+        var mockId = Guid.NewGuid().ToString("N");
+        // Construct URI manually to avoid overload issues
+        // Note: The parent OnboardingWizard will pick up these query parameters in its OnParametersSet
+        var uri = $"/onboarding?provider={this.m_mockProvider}&id={mockId}&email={Uri.EscapeDataString(this.m_mockEmail)}&name={Uri.EscapeDataString(this.m_mockName)}";
+        
+        this.NavigationManager.NavigateTo(uri);
     }
 }

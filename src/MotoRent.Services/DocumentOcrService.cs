@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using MotoRent.Domain.Core;
 using MotoRent.Domain.DataContext;
 using MotoRent.Domain.Entities;
+using MotoRent.Domain.Extensions;
 
 namespace MotoRent.Services;
 
@@ -13,6 +14,8 @@ public class DocumentOcrService(
     IHttpClientFactory httpClientFactory,
     ILogger<DocumentOcrService> logger)
 {
+    private const string GEMINI_MODEL = "gemini-3-flash-preview";
+
     private RentalDataContext Context { get; } = context;
     private IHttpClientFactory HttpClientFactory { get; } = httpClientFactory;
     private ILogger<DocumentOcrService> Logger { get; } = logger;
@@ -30,7 +33,7 @@ public class DocumentOcrService(
         CancellationToken cancellationToken = default)
     {
         var apiKey = MotoConfig.GeminiApiKey;
-        var model = MotoConfig.GeminiModel;
+        var model = GEMINI_MODEL;
 
         if (string.IsNullOrEmpty(apiKey))
         {
@@ -42,8 +45,7 @@ public class DocumentOcrService(
         var base64Image = Convert.ToBase64String(imageBytes);
         var mimeType = GetMimeType(imagePath);
 
-        var prompt = GetExtractionPrompt(documentType);
-        var request = CreateGeminiRequest(base64Image, mimeType, prompt);
+        var request = CreateGeminiRequest(base64Image, mimeType, documentType);
 
         var client = this.HttpClientFactory.CreateClient("Gemini");
         var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}";
@@ -53,7 +55,8 @@ public class DocumentOcrService(
             var response = await client.PostAsJsonAsync(url, request, s_jsonOptions, cancellationToken);
             response.EnsureSuccessStatusCode();
 
-            var geminiResponse = await response.Content.ReadFromJsonAsync<GeminiResponse>(s_jsonOptions, cancellationToken);
+            var geminiText = await response.ReadContentAsStringAsync();//().ReadFromJsonAsync<GeminiResponse>(s_jsonOptions, cancellationToken);
+            var geminiResponse = JsonSerializer.Deserialize<GeminiResponse>(geminiText);
             var rawJson = geminiResponse?.Candidates?.FirstOrDefault()?.Content?.Parts?.FirstOrDefault()?.Text ?? "{}";
 
             this.Logger.LogInformation("Gemini OCR response received for {DocumentType}", documentType);
@@ -142,86 +145,115 @@ public class DocumentOcrService(
         return await session.SubmitChanges("DocumentDelete");
     }
 
+    private static string GetSystemInstruction()
+    {
+        return """
+            You are an expert document analyzer AI specializing in identity document OCR.
+            Your task is to analyze images of identity documents and extract structured data with high precision.
+
+            **CRITICAL RULES:**
+            1. Extract text exactly as it appears on the document
+            2. For dates, use ISO 8601 format (YYYY-MM-DD)
+            3. If a field cannot be determined or is not visible, return null
+            4. For gender, normalize to "M" or "F"
+            5. For names, preserve the original casing and spelling
+            6. If the document is blurry or partially visible, extract what is readable
+
+            **DOCUMENT QUALITY:**
+            - If the image quality is poor, still attempt extraction
+            - Note any fields that are uncertain in the response
+            """;
+    }
+
     private static string GetExtractionPrompt(string documentType)
     {
-        var basePrompt = """
-            Analyze this document image and extract the following information.
-            Return ONLY a valid JSON object with the extracted data.
-            If a field cannot be determined, use null.
-            For dates, use ISO 8601 format (YYYY-MM-DD).
-            """;
-
         return documentType switch
         {
-            "Passport" => basePrompt + """
-
-                Extract these fields for a Passport:
-                {
-                    "documentNumber": "passport number",
-                    "fullName": "full name as shown",
-                    "givenName": "first/given name",
-                    "surname": "last/family name",
-                    "nationality": "nationality/citizenship",
-                    "dateOfBirth": "YYYY-MM-DD",
-                    "gender": "M or F",
-                    "placeOfBirth": "place of birth",
-                    "dateOfIssue": "YYYY-MM-DD",
-                    "dateOfExpiry": "YYYY-MM-DD",
-                    "issuingAuthority": "issuing authority/country",
-                    "mrz": "machine readable zone if visible"
-                }
-                """,
-
-            "NationalId" => basePrompt + """
-
-                Extract these fields for a National ID Card:
-                {
-                    "documentNumber": "ID number",
-                    "fullName": "full name as shown",
-                    "givenName": "first/given name",
-                    "surname": "last/family name",
-                    "nationality": "nationality if shown",
-                    "dateOfBirth": "YYYY-MM-DD",
-                    "gender": "M or F",
-                    "address": "address if shown",
-                    "dateOfIssue": "YYYY-MM-DD",
-                    "dateOfExpiry": "YYYY-MM-DD"
-                }
-                """,
-
-            "DrivingLicense" => basePrompt + """
-
-                Extract these fields for a Driving License:
-                {
-                    "documentNumber": "license number",
-                    "fullName": "full name as shown",
-                    "givenName": "first/given name",
-                    "surname": "last/family name",
-                    "dateOfBirth": "YYYY-MM-DD",
-                    "address": "address if shown",
-                    "dateOfIssue": "YYYY-MM-DD",
-                    "dateOfExpiry": "YYYY-MM-DD",
-                    "issuingCountry": "country that issued the license",
-                    "vehicleClasses": ["array of vehicle classes/categories"],
-                    "restrictions": "any restrictions noted"
-                }
-                """,
-
-            _ => basePrompt + """
-
-                Extract any relevant identification information:
-                {
-                    "documentNumber": "any ID number found",
-                    "fullName": "full name",
-                    "dateOfBirth": "YYYY-MM-DD",
-                    "dateOfExpiry": "YYYY-MM-DD"
-                }
-                """
+            "Passport" => "Extract all visible information from this passport document.",
+            "NationalId" => "Extract all visible information from this national ID card.",
+            "DrivingLicense" => "Extract all visible information from this driving license.",
+            _ => "Extract any relevant identification information from this document."
         };
     }
 
-    private static object CreateGeminiRequest(string base64Image, string mimeType, string prompt)
+    private static object GetResponseSchema(string documentType)
     {
+        return documentType switch
+        {
+            "Passport" => new
+            {
+                type = "OBJECT",
+                properties = new Dictionary<string, object>
+                {
+                    ["documentNumber"] = new { type = "STRING", description = "Passport number", nullable = true },
+                    ["fullName"] = new { type = "STRING", description = "Full name as shown on passport", nullable = true },
+                    ["givenName"] = new { type = "STRING", description = "First/given name", nullable = true },
+                    ["surname"] = new { type = "STRING", description = "Last/family name", nullable = true },
+                    ["nationality"] = new { type = "STRING", description = "Nationality/citizenship", nullable = true },
+                    ["dateOfBirth"] = new { type = "STRING", description = "Date of birth in YYYY-MM-DD format", nullable = true },
+                    ["gender"] = new { type = "STRING", description = "Gender: M or F", nullable = true },
+                    ["placeOfBirth"] = new { type = "STRING", description = "Place of birth", nullable = true },
+                    ["dateOfIssue"] = new { type = "STRING", description = "Issue date in YYYY-MM-DD format", nullable = true },
+                    ["dateOfExpiry"] = new { type = "STRING", description = "Expiry date in YYYY-MM-DD format", nullable = true },
+                    ["issuingAuthority"] = new { type = "STRING", description = "Issuing authority or country", nullable = true },
+                    ["mrz"] = new { type = "STRING", description = "Machine readable zone if visible", nullable = true }
+                }
+            },
+            "NationalId" => new
+            {
+                type = "OBJECT",
+                properties = new Dictionary<string, object>
+                {
+                    ["documentNumber"] = new { type = "STRING", description = "National ID number", nullable = true },
+                    ["fullName"] = new { type = "STRING", description = "Full name as shown", nullable = true },
+                    ["givenName"] = new { type = "STRING", description = "First/given name", nullable = true },
+                    ["surname"] = new { type = "STRING", description = "Last/family name", nullable = true },
+                    ["nationality"] = new { type = "STRING", description = "Nationality if shown", nullable = true },
+                    ["dateOfBirth"] = new { type = "STRING", description = "Date of birth in YYYY-MM-DD format", nullable = true },
+                    ["gender"] = new { type = "STRING", description = "Gender: M or F", nullable = true },
+                    ["address"] = new { type = "STRING", description = "Address if shown", nullable = true },
+                    ["dateOfIssue"] = new { type = "STRING", description = "Issue date in YYYY-MM-DD format", nullable = true },
+                    ["dateOfExpiry"] = new { type = "STRING", description = "Expiry date in YYYY-MM-DD format", nullable = true }
+                }
+            },
+            "DrivingLicense" => new
+            {
+                type = "OBJECT",
+                properties = new Dictionary<string, object>
+                {
+                    ["documentNumber"] = new { type = "STRING", description = "License number", nullable = true },
+                    ["fullName"] = new { type = "STRING", description = "Full name as shown", nullable = true },
+                    ["givenName"] = new { type = "STRING", description = "First/given name", nullable = true },
+                    ["surname"] = new { type = "STRING", description = "Last/family name", nullable = true },
+                    ["dateOfBirth"] = new { type = "STRING", description = "Date of birth in YYYY-MM-DD format", nullable = true },
+                    ["address"] = new { type = "STRING", description = "Address if shown", nullable = true },
+                    ["dateOfIssue"] = new { type = "STRING", description = "Issue date in YYYY-MM-DD format", nullable = true },
+                    ["dateOfExpiry"] = new { type = "STRING", description = "Expiry date in YYYY-MM-DD format", nullable = true },
+                    ["issuingCountry"] = new { type = "STRING", description = "Country that issued the license", nullable = true },
+                    ["vehicleClasses"] = new { type = "ARRAY", items = new { type = "STRING" }, description = "Vehicle classes/categories", nullable = true },
+                    ["restrictions"] = new { type = "STRING", description = "Any restrictions noted", nullable = true }
+                }
+            },
+            _ => new
+            {
+                type = "OBJECT",
+                properties = new Dictionary<string, object>
+                {
+                    ["documentNumber"] = new { type = "STRING", description = "Any ID number found", nullable = true },
+                    ["fullName"] = new { type = "STRING", description = "Full name", nullable = true },
+                    ["dateOfBirth"] = new { type = "STRING", description = "Date of birth in YYYY-MM-DD format", nullable = true },
+                    ["dateOfExpiry"] = new { type = "STRING", description = "Expiry date in YYYY-MM-DD format", nullable = true }
+                }
+            }
+        };
+    }
+
+    private static object CreateGeminiRequest(string base64Image, string mimeType, string documentType)
+    {
+        var userPrompt = GetExtractionPrompt(documentType);
+        var systemInstruction = GetSystemInstruction();
+        var responseSchema = GetResponseSchema(documentType);
+
         return new
         {
             contents = new[]
@@ -230,7 +262,6 @@ public class DocumentOcrService(
                 {
                     parts = new object[]
                     {
-                        new { text = prompt },
                         new
                         {
                             inline_data = new
@@ -238,15 +269,22 @@ public class DocumentOcrService(
                                 mime_type = mimeType,
                                 data = base64Image
                             }
-                        }
+                        },
+                        new { text = userPrompt }
                     }
                 }
             },
-            generationConfig = new
+            system_instruction = new
             {
-                temperature = 0.1,
-                maxOutputTokens = 2048,
-                responseMimeType = "application/json"
+                parts = new[]
+                {
+                    new { text = systemInstruction }
+                }
+            },
+            generation_config = new
+            {
+                response_mime_type = "application/json",
+                response_schema = responseSchema
             }
         };
     }

@@ -191,7 +191,7 @@
     private string m_startTimeString = "";
     private TimeSpan m_startTime = TimeSpan.Zero;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         this.m_startDate = DateTime.Today;
         this.m_startTime = new TimeSpan(DateTime.Now.Hour, 0, 0);
@@ -205,37 +205,38 @@
         else if (this.SelectedVehicle?.Rate15Min.HasValue == true)
             this.m_selectedInterval = 15;
 
-        this.UpdateConfig();
+        await this.UpdateConfigAsync();
     }
 
-    private void SelectInterval(int minutes)
+    private async Task SelectInterval(int minutes)
     {
         this.m_selectedInterval = minutes;
-        this.UpdateConfig();
+        await this.UpdateConfigAsync();
     }
 
-    private void OnTimeChanged(string? timeValue)
+    private async Task OnTimeChanged(string? timeValue)
     {
         if (!string.IsNullOrEmpty(timeValue) && TimeSpan.TryParse(timeValue, out var time))
         {
             this.m_startTimeString = timeValue;
             this.m_startTime = time;
-            this.UpdateConfig();
+            await this.UpdateConfigAsync();
         }
     }
 
-    private void UpdateConfig()
+    private async Task UpdateConfigAsync()
     {
         if (this.m_startDate.HasValue && this.m_selectedInterval.HasValue)
         {
             var startDateTime = this.m_startDate.Value.Date + this.m_startTime;
-            this.Config.StartDateTime = new DateTimeOffset(startDateTime, TimeSpan.Zero);
+            var offset = TimeZoneInfo.Local.GetUtcOffset(startDateTime);
+            this.Config.StartDateTime = new DateTimeOffset(startDateTime, offset);
             this.Config.IntervalMinutes = this.m_selectedInterval.Value;
             this.Config.RentalRate = GetIntervalRate();
             this.Config.TotalAmount = this.Config.RentalRate;
         }
 
-        this.ConfigChanged.InvokeAsync(this.Config);
+        await this.ConfigChanged.InvokeAsync(this.Config);
     }
 
     private decimal GetIntervalRate() => this.m_selectedInterval switch

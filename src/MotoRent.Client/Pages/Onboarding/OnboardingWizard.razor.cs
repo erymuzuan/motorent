@@ -25,29 +25,34 @@ public partial class OnboardingWizard
     [SupplyParameterFromQuery(Name = "name")]
     public string? Name { get; set; }
 
-    protected override void OnInitialized()
+    protected override void OnParametersSet()
     {
         // Pre-populate from OAuth callback if available
-        if (!string.IsNullOrWhiteSpace(Provider) && !string.IsNullOrWhiteSpace(ProviderId))
+        if (!string.IsNullOrWhiteSpace(this.Provider) && !string.IsNullOrWhiteSpace(this.ProviderId))
         {
-            m_request.Provider = Provider;
-            m_request.ProviderId = ProviderId;
-            m_request.Email = Email ?? "";
-            m_request.FullName = Name ?? "";
-            m_request.UserName = Provider == "Line" ? ProviderId : (Email ?? ProviderId);
-            m_isAuthenticated = true;
-            m_activeStep = 1; // Skip auth step
+            this.m_request.Provider = this.Provider;
+            this.m_request.ProviderId = this.ProviderId;
+            this.m_request.Email = this.Email ?? "";
+            this.m_request.FullName = this.Name ?? "";
+            this.m_request.UserName = this.Provider == "Line" ? this.ProviderId : (this.Email ?? this.ProviderId);
+            this.m_isAuthenticated = true;
+            
+            // If we just got authenticated, move to Shop Details step
+            if (this.m_activeStep == 0)
+            {
+                this.m_activeStep = 1;
+            }
         }
     }
 
     private bool CanProceedToNextStep()
     {
-        return m_activeStep switch
+        return this.m_activeStep switch
         {
-            0 => m_isAuthenticated && !string.IsNullOrWhiteSpace(m_request.Email),
-            1 => !string.IsNullOrWhiteSpace(m_request.ShopName) &&
-                 !string.IsNullOrWhiteSpace(m_request.Location),
-            2 => m_request.Fleet.Count > 0,
+            0 => this.m_isAuthenticated && !string.IsNullOrWhiteSpace(this.m_request.Email),
+            1 => !string.IsNullOrWhiteSpace(this.m_request.ShopName) &&
+                 !string.IsNullOrWhiteSpace(this.m_request.Location),
+            2 => this.m_request.Fleet.Count > 0,
             3 => true, // Plan selection validation handled in PlanSelectionStep
             _ => false
         };
@@ -55,61 +60,61 @@ public partial class OnboardingWizard
 
     private void NextStep()
     {
-        if (m_activeStep < 3 && CanProceedToNextStep())
-            m_activeStep++;
+        if (this.m_activeStep < 3 && this.CanProceedToNextStep())
+            this.m_activeStep++;
     }
 
     private void PreviousStep()
     {
-        if (m_activeStep > 0)
-            m_activeStep--;
+        if (this.m_activeStep > 0)
+            this.m_activeStep--;
     }
 
     private void GoToStep(int step)
     {
         // Only allow going back to previous steps
-        if (step < m_activeStep)
-            m_activeStep = step;
+        if (step < this.m_activeStep)
+            this.m_activeStep = step;
     }
 
     private void OnAuthenticatedChanged(bool isAuthenticated)
     {
-        m_isAuthenticated = isAuthenticated;
+        this.m_isAuthenticated = isAuthenticated;
         if (isAuthenticated)
         {
             // Auto-advance to next step after authentication
-            m_activeStep = 1;
+            this.m_activeStep = 1;
         }
     }
 
     private async Task CompleteOnboarding()
     {
-        if (m_processing)
+        if (this.m_processing)
             return;
 
-        m_processing = true;
+        this.m_processing = true;
         try
         {
-            var result = await OnboardingService.OnboardAsync(m_request);
+            var result = await this.OnboardingService.OnboardAsync(this.m_request);
 
             if (result != null)
             {
-                ShowSuccess(Localizer["AccountCreatedSuccess"]);
-                NavigationManager.NavigateTo("/quick-start");
+                this.ShowSuccess(Localizer["AccountCreatedSuccess"]);
+                this.NavigationManager.NavigateTo("/quick-start");
             }
             else
             {
-                ShowError(Localizer["AccountCreationFailed"]);
+                this.ShowError(Localizer["AccountCreationFailed"]);
             }
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Onboarding failed");
-            ShowError(GetLocalizedText("OnboardingError", ex.Message));
+            this.Logger.LogError(ex, "Onboarding failed");
+            this.ShowError(this.GetLocalizedText("OnboardingError", ex.Message));
         }
         finally
         {
-            m_processing = false;
+            this.m_processing = false;
         }
     }
 }

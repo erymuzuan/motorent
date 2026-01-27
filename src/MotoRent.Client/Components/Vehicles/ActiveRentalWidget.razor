@@ -1,0 +1,203 @@
+@using MotoRent.Domain.Entities
+@using MotoRent.Services
+
+@inherits LocalizedComponentBase<ActiveRentalWidget>
+@inject RentalService RentalService
+
+<div class="mr-rental-summary">
+    @if (m_loading)
+    {
+        <div class="d-flex align-items-center text-secondary">
+            <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+            <span>@Localizer["LoadingRental"]</span>
+        </div>
+    }
+    else if (m_activeRental == null)
+    {
+        <div class="mr-info-panel mr-info-panel-sm">
+            <div class="mr-info-panel-icon">
+                <i class="ti ti-key-off"></i>
+            </div>
+            <div class="flex-grow-1">
+                <p class="mr-info-panel-text mb-0">@Localizer["NoActiveRental"]</p>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="d-flex flex-column gap-3">
+            @* Header with Status and View Button *@
+            <div class="d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="mr-rental-status-badge @GetStatusClass(m_activeRental.Status)">
+                        <i class="ti @GetStatusIcon(m_activeRental.Status) me-1"></i>
+                        @GetStatusLabel(m_activeRental.Status)
+                    </span>
+                </div>
+                <a href="/rentals/@EncodeId(m_activeRental.RentalId)" class="btn btn-ghost-primary btn-sm">
+                    <i class="ti ti-external-link me-1"></i>
+                    @Localizer["ViewDetails"]
+                </a>
+            </div>
+
+            @* Renter Info *@
+            <div class="mr-renter-info">
+                <div class="mr-renter-avatar">
+                    <i class="ti ti-user"></i>
+                </div>
+                <div>
+                    <div class="fw-medium">@(m_activeRental.RenterName ?? "Unknown")</div>
+                    <div class="small text-secondary">@Localizer["CurrentRenter"]</div>
+                </div>
+            </div>
+
+            @* Dates Card *@
+            <div class="mr-rental-dates">
+                <div class="mr-rental-date-item">
+                    <div class="small text-secondary">@Localizer["StartDate"]</div>
+                    <div class="fw-medium">@m_activeRental.StartDate.ToString("dd MMM yyyy")</div>
+                </div>
+                <div class="mr-rental-date-divider">
+                    <i class="ti ti-arrow-right"></i>
+                </div>
+                <div class="mr-rental-date-item">
+                    <div class="small text-secondary">@Localizer["ExpectedReturn"]</div>
+                    <div class="fw-medium">@m_activeRental.ExpectedEndDate.ToString("dd MMM yyyy")</div>
+                </div>
+            </div>
+
+            @* Duration and Amount *@
+            <div class="d-flex align-items-center justify-content-between">
+                <div class="mr-rental-duration">
+                    <i class="ti ti-clock me-1"></i>
+                    @FormatDuration()
+                </div>
+                <div class="mr-rental-amount">
+                    @m_activeRental.TotalAmount.ToString("N0") <span class="text-secondary">THB</span>
+                </div>
+            </div>
+
+            @* Add-ons *@
+            @if (m_activeRental.IncludeDriver || m_activeRental.IncludeGuide)
+            {
+                <div class="d-flex flex-wrap gap-2">
+                    @if (m_activeRental.IncludeDriver)
+                    {
+                        <span class="mr-addon-badge">
+                            <i class="ti ti-steering-wheel me-1"></i>
+                            @Localizer["WithDriver"]
+                        </span>
+                    }
+                    @if (m_activeRental.IncludeGuide)
+                    {
+                        <span class="mr-addon-badge">
+                            <i class="ti ti-map-pin me-1"></i>
+                            @Localizer["WithGuide"]
+                        </span>
+                    }
+                </div>
+            }
+
+            @* Overdue Warning *@
+            @if (m_isOverdue)
+            {
+                <div class="mr-overdue-warning">
+                    <i class="ti ti-alert-triangle me-2"></i>
+                    @Localizer["OverdueWarning", m_overdueDays]
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// The vehicle ID to show active rental for.
+    /// </summary>
+    [Parameter]
+    public int VehicleId { get; set; }
+
+    /// <summary>
+    /// The vehicle name for display context.
+    /// </summary>
+    [Parameter]
+    public string VehicleName { get; set; } = "";
+
+    private Rental? m_activeRental;
+    private bool m_loading = true;
+    private bool m_isOverdue;
+    private int m_overdueDays;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (this.VehicleId > 0)
+        {
+            await this.LoadActiveRentalAsync();
+        }
+    }
+
+    private async Task LoadActiveRentalAsync()
+    {
+        this.m_loading = true;
+        try
+        {
+            var rentals = await this.RentalService.GetActiveRentalsForVehicleAsync(this.VehicleId);
+            // Get the most recent active rental (Active status takes priority over Reserved)
+            this.m_activeRental = rentals
+                .OrderByDescending(r => r.Status == "Active" ? 1 : 0)
+                .ThenByDescending(r => r.StartDate)
+                .FirstOrDefault();
+
+            if (this.m_activeRental != null)
+            {
+                var now = DateTimeOffset.Now;
+                if (this.m_activeRental.ExpectedEndDate < now && this.m_activeRental.Status == "Active")
+                {
+                    this.m_isOverdue = true;
+                    this.m_overdueDays = (int)(now - this.m_activeRental.ExpectedEndDate).TotalDays;
+                    if (this.m_overdueDays < 1) this.m_overdueDays = 1;
+                }
+                else
+                {
+                    this.m_isOverdue = false;
+                    this.m_overdueDays = 0;
+                }
+            }
+        }
+        finally
+        {
+            this.m_loading = false;
+        }
+    }
+
+    private string GetStatusClass(string status) => status switch
+    {
+        "Active" => "mr-status-active",
+        "Reserved" => "mr-status-reserved",
+        _ => ""
+    };
+
+    private string GetStatusIcon(string status) => status switch
+    {
+        "Active" => "ti-key",
+        "Reserved" => "ti-calendar-event",
+        _ => "ti-key"
+    };
+
+    private string GetStatusLabel(string status) => status switch
+    {
+        "Active" => Localizer["Active"],
+        "Reserved" => Localizer["Reserved"],
+        _ => status
+    };
+
+    private string FormatDuration()
+    {
+        if (this.m_activeRental == null) return "";
+
+        var days = (int)(this.m_activeRental.ExpectedEndDate - this.m_activeRental.StartDate).TotalDays;
+        if (days < 1) days = 1;
+
+        return this.Localizer["DurationDays", days];
+    }
+}

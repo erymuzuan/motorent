@@ -212,4 +212,15 @@ window.MotoRentCamera = {
     }
 };
 
+// General MotoRent utilities
+window.MotoRent = {
+    // Click an element by ID (for triggering hidden file inputs)
+    clickElement: function (elementId) {
+        const element = document.getElementById(elementId);
+        if (element) {
+            element.click();
+        }
+    }
+};
+
 console.log('[PWA] MotoRent PWA utilities loaded');

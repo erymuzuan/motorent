@@ -11,21 +11,14 @@ using MotoRent.Domain.Core;
 
 namespace MotoRent.Services;
 
-public class DocumentationSearchService
+public class DocumentationSearchService(
+    IHttpClientFactory httpClientFactory,
+    ILogger<DocumentationSearchService> logger,
+    string docsPath)
 {
-    private readonly IHttpClientFactory m_httpClientFactory;
-    private readonly ILogger<DocumentationSearchService> m_logger;
-    private readonly string m_docsPath;
-
-    public DocumentationSearchService(
-        IHttpClientFactory httpClientFactory,
-        ILogger<DocumentationSearchService> logger,
-        string docsPath)
-    {
-        m_httpClientFactory = httpClientFactory;
-        m_logger = logger;
-        m_docsPath = docsPath;
-    }
+    private IHttpClientFactory HttpClientFactory { get; } = httpClientFactory;
+    private ILogger<DocumentationSearchService> Logger { get; } = logger;
+    private string DocsPath { get; } = docsPath;
 
     public async Task<string> AskGeminiAsync(string question, CancellationToken cancellationToken = default)
     {
@@ -37,7 +30,7 @@ public class DocumentationSearchService
             return "Gemini API key is not configured.";
         }
 
-        var context = await GetDocumentationContextAsync();
+        var context = await this.GetDocumentationContextAsync();
         var prompt = $"""
             You are the MotoRent Help Assistant. Use the following documentation context to answer the user's question.
             If the answer is not in the documentation, say "I'm sorry, I couldn't find information about that in our guides."
@@ -73,7 +66,7 @@ public class DocumentationSearchService
             }
         };
 
-        var client = m_httpClientFactory.CreateClient("Gemini");
+        var client = this.HttpClientFactory.CreateClient("Gemini");
         var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}";
 
         try
@@ -87,23 +80,23 @@ public class DocumentationSearchService
         }
         catch (Exception ex)
         {
-            m_logger.LogError(ex, "Failed to get response from Gemini API for documentation search");
+            this.Logger.LogError(ex, "Failed to get response from Gemini API for documentation search");
             return "An error occurred while communicating with the AI assistant.";
         }
     }
 
     private async Task<string> GetDocumentationContextAsync()
     {
-        m_logger.LogInformation("Gathering documentation context from: {Path}", m_docsPath);
+        this.Logger.LogInformation("Gathering documentation context from: {Path}", this.DocsPath);
 
-        if (!Directory.Exists(m_docsPath))
+        if (!Directory.Exists(this.DocsPath))
         {
-            m_logger.LogWarning("Documentation path does not exist: {Path}", m_docsPath);
+            this.Logger.LogWarning("Documentation path does not exist: {Path}", this.DocsPath);
             return string.Empty;
         }
 
-        var files = Directory.GetFiles(m_docsPath, "*.md");
-        m_logger.LogInformation("Found {Count} documentation files.", files.Length);
+        var files = Directory.GetFiles(this.DocsPath, "*.md");
+        this.Logger.LogInformation("Found {Count} documentation files.", files.Length);
 
         var contextBuilder = new System.Text.StringBuilder();
 
