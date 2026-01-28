@@ -1,9 +1,12 @@
-@page "/finance/assets/{AssetId:int}/details"
+@page "/finance/assets/{AssetId}/details"
 @using Microsoft.AspNetCore.Authorization
 @using MotoRent.Domain.Entities
 @attribute [Authorize(Policy = "RequireTenantManager")]
 @inherits LocalizedComponentBase<AssetDetails>
 @inject AssetService AssetService
+@inject VehicleService VehicleService
+@inject AssetExpenseService ExpenseService
+@inject AssetLoanService LoanService
 
 <MotoRentPageTitle>@(m_asset?.VehicleName ?? this.Localizer["AssetDetails"])</MotoRentPageTitle>
 
@@ -57,79 +60,206 @@
     }
     else
     {
-        <!-- Asset Summary Cards -->
-        <div class="row row-deck row-cards">
-            <div class="col-sm-6 col-lg-3">
-                <div class="card">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center">
-                            <div class="subheader">@this.Localizer["AcquisitionCost"]</div>
+        <!-- Vehicle Hero + KPI Grid -->
+        <div class="row mr-animate-in">
+            <!-- Vehicle Identity Card -->
+            <div class="col-lg-4 mb-4">
+                <div class="mr-vehicle-hero-card">
+                    <div class="mr-vehicle-image-wrap">
+                        @if (!string.IsNullOrEmpty(m_vehicle?.ImagePath))
+                        {
+                            <img src="@m_vehicle.ImagePath" alt="@m_asset.VehicleName" class="mr-vehicle-image" />
+                        }
+                        else
+                        {
+                            <div class="mr-vehicle-image-fallback">
+                                <i class="ti ti-@GetVehicleTypeIcon()"></i>
+                            </div>
+                        }
+                        <span class="badge @GetStatusBadgeClass(m_asset.Status) mr-vehicle-status-badge">@m_asset.Status</span>
+                    </div>
+                    <div class="mr-vehicle-info">
+                        <h3 class="mr-vehicle-name">@m_asset.VehicleName</h3>
+                        <div class="mr-vehicle-meta">
+                            @if (m_vehicle != null)
+                            {
+                                <span class="badge bg-blue-lt me-1">@m_vehicle.VehicleType</span>
+                                @if (m_vehicle.Year > 0)
+                                {
+                                    <span class="text-muted">@m_vehicle.Year</span>
+                                }
+                                @if (!string.IsNullOrEmpty(m_vehicle.Color))
+                                {
+                                    <span class="text-muted mx-1">·</span>
+                                    <span class="text-muted">@m_vehicle.Color</span>
+                                }
+                            }
                         </div>
-                        <div class="h1 mb-0">@m_asset.AcquisitionCost.ToString("N0") <small class="text-muted">@this.Localizer["CurrencyTHB"]</small></div>
-                        <div class="text-muted">@m_asset.AcquisitionDate.ToString("dd MMM yyyy")</div>
+                        <div class="mr-vehicle-details">
+                            <div class="mr-vehicle-detail-row">
+                                <i class="ti ti-id"></i>
+                                <span>@m_asset.LicensePlate</span>
+                            </div>
+                            @if (m_vehicle?.DailyRate > 0)
+                            {
+                                <div class="mr-vehicle-detail-row">
+                                    <i class="ti ti-currency-baht"></i>
+                                    <span>@this.Localizer["DailyRateValue", m_vehicle.DailyRate.ToString("N0")]</span>
+                                </div>
+                            }
+                            @if (m_vehicle?.DepositAmount > 0)
+                            {
+                                <div class="mr-vehicle-detail-row">
+                                    <i class="ti ti-shield-check"></i>
+                                    <span>@this.Localizer["DepositValue", m_vehicle.DepositAmount.ToString("N0")]</span>
+                                </div>
+                            }
+                            <div class="mr-vehicle-detail-row">
+                                <i class="ti ti-calendar"></i>
+                                <span>@this.Localizer["AcquiredOn", m_asset.AcquisitionDate.ToString("dd MMM yyyy")]</span>
+                            </div>
+                            @if (!string.IsNullOrEmpty(m_asset.VendorName))
+                            {
+                                <div class="mr-vehicle-detail-row">
+                                    <i class="ti ti-building-store"></i>
+                                    <span>@m_asset.VendorName</span>
+                                </div>
+                            }
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="col-sm-6 col-lg-3">
-                <div class="card">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center">
-                            <div class="subheader">@this.Localizer["CurrentBookValue"]</div>
+
+            <!-- 3-Row KPI Grid -->
+            <div class="col-lg-8 mb-4">
+                <!-- Row 1: Asset Value & Depreciation -->
+                <div class="mr-detail-kpi-grid mb-3">
+                    <div class="mr-detail-kpi mr-detail-kpi-cost">
+                        <div class="mr-detail-kpi-icon">
+                            <i class="ti ti-building-bank"></i>
                         </div>
-                        <div class="h1 mb-0 text-primary">@m_asset.CurrentBookValue.ToString("N0") <small class="text-muted">@this.Localizer["CurrencyTHB"]</small></div>
-                        <div class="text-muted">@this.Localizer["PercentOfOriginal", (m_asset.CurrentBookValue / m_asset.AcquisitionCost * 100).ToString("N1")]</div>
+                        <span class="mr-detail-kpi-label">@this.Localizer["AcquisitionCost"]</span>
+                        <span class="mr-detail-kpi-value">@m_asset.AcquisitionCost.ToString("N0") <span class="mr-detail-kpi-currency">@this.Localizer["CurrencyTHB"]</span></span>
+                        <span class="mr-detail-kpi-sub">@m_asset.AcquisitionDate.ToString("dd MMM yyyy")</span>
+                    </div>
+                    <div class="mr-detail-kpi mr-detail-kpi-book">
+                        <div class="mr-detail-kpi-icon">
+                            <i class="ti ti-receipt"></i>
+                        </div>
+                        <span class="mr-detail-kpi-label">@this.Localizer["CurrentBookValue"]</span>
+                        <span class="mr-detail-kpi-value" style="color: #8b5cf6;">@m_asset.CurrentBookValue.ToString("N0") <span class="mr-detail-kpi-currency">@this.Localizer["CurrencyTHB"]</span></span>
+                        <span class="mr-detail-kpi-sub">@this.Localizer["PercentOfOriginal", (m_asset.CurrentBookValue / Math.Max(1, m_asset.AcquisitionCost) * 100).ToString("N1")]</span>
+                    </div>
+                    <div class="mr-detail-kpi mr-detail-kpi-depr">
+                        <div class="mr-detail-kpi-icon">
+                            <i class="ti ti-trending-down"></i>
+                        </div>
+                        <span class="mr-detail-kpi-label">@this.Localizer["AccumulatedDepreciation"]</span>
+                        <span class="mr-detail-kpi-value" style="color: #f59e0b;">@m_asset.AccumulatedDepreciation.ToString("N0") <span class="mr-detail-kpi-currency">@this.Localizer["CurrencyTHB"]</span></span>
+                        <span class="mr-detail-kpi-sub">@this.Localizer["MonthsRemaining", m_asset.RemainingUsefulLifeMonths]</span>
+                    </div>
+                    <div class="mr-detail-kpi" style="border-top: 3px solid #6366f1;">
+                        <div class="mr-detail-kpi-icon" style="background: rgba(99, 102, 241, 0.1); color: #6366f1;">
+                            <i class="ti ti-calendar-minus"></i>
+                        </div>
+                        <span class="mr-detail-kpi-label">@this.Localizer["MonthlyDepreciation"]</span>
+                        <span class="mr-detail-kpi-value" style="color: #6366f1;">@m_asset.MonthlyDepreciationStraightLine.ToString("N0") <span class="mr-detail-kpi-currency">@this.Localizer["CurrencyTHB"]</span></span>
+                        <span class="mr-detail-kpi-sub">@this.Localizer["PerMonth"]</span>
                     </div>
                 </div>
-            </div>
-            <div class="col-sm-6 col-lg-3">
-                <div class="card">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center">
-                            <div class="subheader">@this.Localizer["AccumulatedDepreciation"]</div>
+
+                <!-- Row 2: Income & Profitability -->
+                <div class="mr-detail-kpi-grid mb-3">
+                    <div class="mr-detail-kpi" style="border-top: 3px solid #10b981;">
+                        <div class="mr-detail-kpi-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+                            <i class="ti ti-cash"></i>
                         </div>
-                        <div class="h1 mb-0 text-warning">@m_asset.AccumulatedDepreciation.ToString("N0") <small class="text-muted">@this.Localizer["CurrencyTHB"]</small></div>
-                        <div class="text-muted">@this.Localizer["MonthsRemaining", m_asset.RemainingUsefulLifeMonths]</div>
+                        <span class="mr-detail-kpi-label">@this.Localizer["TotalRentalIncome"]</span>
+                        <span class="mr-detail-kpi-value" style="color: #10b981;">@m_asset.TotalRevenue.ToString("N0") <span class="mr-detail-kpi-currency">@this.Localizer["CurrencyTHB"]</span></span>
                     </div>
-                </div>
-            </div>
-            <div class="col-sm-6 col-lg-3">
-                <div class="card">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center">
-                            <div class="subheader">@this.Localizer["ROI"]</div>
+                    <div class="mr-detail-kpi" style="border-top: 3px solid #ef4444;">
+                        <div class="mr-detail-kpi-icon" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;">
+                            <i class="ti ti-receipt-2"></i>
                         </div>
-                        <div class="h1 mb-0 @(m_asset.ROIPercent >= 0 ? "text-success" : "text-danger")">
+                        <span class="mr-detail-kpi-label">@this.Localizer["TotalExpenses"]</span>
+                        <span class="mr-detail-kpi-value" style="color: #ef4444;">@m_asset.TotalExpenses.ToString("N0") <span class="mr-detail-kpi-currency">@this.Localizer["CurrencyTHB"]</span></span>
+                    </div>
+                    <div class="mr-detail-kpi @(m_asset.NetProfitLoss >= 0 ? "mr-detail-kpi-roi-positive" : "mr-detail-kpi-roi-negative")">
+                        <div class="mr-detail-kpi-icon">
+                            <i class="ti ti-scale"></i>
+                        </div>
+                        <span class="mr-detail-kpi-label">@this.Localizer["NetProfitLoss"]</span>
+                        <span class="mr-detail-kpi-value" style="color: @(m_asset.NetProfitLoss >= 0 ? "#22c55e" : "#ef4444");">
+                            @(m_asset.NetProfitLoss >= 0 ? "+" : "")@m_asset.NetProfitLoss.ToString("N0") <span class="mr-detail-kpi-currency">@this.Localizer["CurrencyTHB"]</span>
+                        </span>
+                    </div>
+                    <div class="mr-detail-kpi @(m_asset.ROIPercent >= 0 ? "mr-detail-kpi-roi-positive" : "mr-detail-kpi-roi-negative")">
+                        <div class="mr-detail-kpi-icon">
+                            <i class="ti ti-percentage"></i>
+                        </div>
+                        <span class="mr-detail-kpi-label">@this.Localizer["ROI"]</span>
+                        <span class="mr-detail-kpi-value" style="color: @(m_asset.ROIPercent >= 0 ? "#22c55e" : "#ef4444");">
                             @(m_asset.ROIPercent >= 0 ? "+" : "")@m_asset.ROIPercent.ToString("N1")%
+                        </span>
+                        <span class="mr-detail-kpi-sub">@this.Localizer["NetPLLabel", m_asset.NetProfitLoss.ToString("N0")]</span>
+                    </div>
+                </div>
+
+                <!-- Row 3: Operational -->
+                <div class="mr-detail-kpi-grid">
+                    <div class="mr-detail-kpi" style="border-top: 3px solid #0ea5e9;">
+                        <div class="mr-detail-kpi-icon" style="background: rgba(14, 165, 233, 0.1); color: #0ea5e9;">
+                            <i class="ti ti-report-money"></i>
                         </div>
-                        <div class="text-muted">@this.Localizer["NetPLLabel", m_asset.NetProfitLoss.ToString("N0")]</div>
+                        <span class="mr-detail-kpi-label">@this.Localizer["RevenuePerMonth"]</span>
+                        <span class="mr-detail-kpi-value" style="color: #0ea5e9;">@GetRevenuePerMonth().ToString("N0") <span class="mr-detail-kpi-currency">@this.Localizer["CurrencyTHB"]</span></span>
+                    </div>
+                    <div class="mr-detail-kpi" style="border-top: 3px solid #f97316;">
+                        <div class="mr-detail-kpi-icon" style="background: rgba(249, 115, 22, 0.1); color: #f97316;">
+                            <i class="ti ti-chart-pie"></i>
+                        </div>
+                        <span class="mr-detail-kpi-label">@this.Localizer["IncomeToMaintenanceRatio"]</span>
+                        <span class="mr-detail-kpi-value" style="color: #f97316;">@GetIncomeToMaintenanceRatio()</span>
+                    </div>
+                    <div class="mr-detail-kpi" style="border-top: 3px solid #8b5cf6;">
+                        <div class="mr-detail-kpi-icon" style="background: rgba(139, 92, 246, 0.1); color: #8b5cf6;">
+                            <i class="ti ti-hourglass"></i>
+                        </div>
+                        <span class="mr-detail-kpi-label">@this.Localizer["RemainingUsefulLife"]</span>
+                        <span class="mr-detail-kpi-value" style="color: #8b5cf6;">@m_asset.RemainingUsefulLifeMonths <span class="mr-detail-kpi-currency">@this.Localizer["MonthsUnit"]</span></span>
+                    </div>
+                    <div class="mr-detail-kpi" style="border-top: 3px solid #64748b;">
+                        <div class="mr-detail-kpi-icon" style="background: rgba(100, 116, 139, 0.1); color: #64748b;">
+                            <i class="ti ti-clock"></i>
+                        </div>
+                        <span class="mr-detail-kpi-label">@this.Localizer["FleetAge"]</span>
+                        <span class="mr-detail-kpi-value" style="color: #64748b;">@GetFleetAgeMonths() <span class="mr-detail-kpi-currency">@this.Localizer["MonthsUnit"]</span></span>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="row row-deck row-cards mt-4">
+        <div class="row row-deck row-cards mt-2">
             <!-- Depreciation Chart -->
-            <div class="col-lg-8">
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">
-                            <i class="ti ti-chart-area me-2"></i>
-                            @this.Localizer["AssetValueOverTime"]
-                        </h3>
-                        <div class="card-actions">
-                            <div class="btn-group">
-                                <button class="btn btn-sm @(m_chartView == "history" ? "btn-primary" : "btn-outline-secondary")"
-                                        @onclick="@(() => SetChartView("history"))">
-                                    @this.Localizer["History"]
-                                </button>
-                                <button class="btn btn-sm @(m_chartView == "projection" ? "btn-primary" : "btn-outline-secondary")"
-                                        @onclick="@(() => SetChartView("projection"))">
-                                    @this.Localizer["Projection"]
-                                </button>
-                            </div>
+            <div class="col-lg-8 mr-animate-in mr-animate-delay-1">
+                <div class="mr-chart-card">
+                    <div class="mr-chart-header">
+                        <div class="mr-chart-title">
+                            <i class="ti ti-chart-area"></i>
+                            <h3>@this.Localizer["AssetValueOverTime"]</h3>
+                        </div>
+                        <div class="btn-group">
+                            <button class="btn btn-sm @(m_chartView == "history" ? "btn-primary" : "btn-outline-secondary")"
+                                    @onclick="@(() => SetChartView("history"))">
+                                @this.Localizer["History"]
+                            </button>
+                            <button class="btn btn-sm @(m_chartView == "projection" ? "btn-primary" : "btn-outline-secondary")"
+                                    @onclick="@(() => SetChartView("projection"))">
+                                @this.Localizer["Projection"]
+                            </button>
                         </div>
                     </div>
-                    <div class="card-body">
+                    <div class="mr-chart-body">
                         @if (m_chartView == "history" && m_depreciationEntries.Any())
                         {
                             <div class="depreciation-chart">
@@ -215,133 +345,333 @@
                 </div>
             </div>
 
-            <!-- Asset Info -->
-            <div class="col-lg-4">
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">
-                            <i class="ti ti-info-circle me-2"></i>
-                            @this.Localizer["DepreciationSettings"]
-                        </h3>
+            <!-- Income vs CapEx/OpEx Card -->
+            <div class="col-lg-4 mr-animate-in mr-animate-delay-1">
+                <div class="mr-cost-analysis-card">
+                    <div class="mr-cost-analysis-header">
+                        <i class="ti ti-arrows-split-2"></i>
+                        <h3>@this.Localizer["IncomeVsCost"]</h3>
                     </div>
-                    <div class="card-body">
-                        <dl class="row mb-0">
-                            <dt class="col-5">@this.Localizer["MethodLabel"]:</dt>
-                            <dd class="col-7">
-                                <span class="badge bg-blue-lt">@m_asset.DepreciationMethod.ToString()</span>
-                            </dd>
-                            <dt class="col-5">@this.Localizer["UsefulLifeLabel"]:</dt>
-                            <dd class="col-7">@this.Localizer["UsefulLifeMonthsValue", m_asset.UsefulLifeMonths, (m_asset.UsefulLifeMonths / 12.0).ToString("N1")]</dd>
-                            <dt class="col-5">@this.Localizer["ResidualValueLabel"]:</dt>
-                            <dd class="col-7">@m_asset.ResidualValue.ToString("N0") @this.Localizer["CurrencyTHB"]</dd>
-                            <dt class="col-5">@this.Localizer["MonthlyDeprLabel"]:</dt>
-                            <dd class="col-7">@m_asset.MonthlyDepreciationStraightLine.ToString("N0") @this.Localizer["CurrencyTHB"]</dd>
-                            @if (m_asset.DayOutOfDoorPercent.HasValue)
-                            {
-                                <dt class="col-5">@this.Localizer["DayOutPercentLabel"]:</dt>
-                                <dd class="col-7">@((m_asset.DayOutOfDoorPercent.Value * 100).ToString("N0"))%</dd>
-                            }
-                            @if (m_asset.FirstRentalDate.HasValue)
-                            {
-                                <dt class="col-5">@this.Localizer["FirstRentalLabel"]:</dt>
-                                <dd class="col-7">@m_asset.FirstRentalDate.Value.ToString("dd MMM yyyy")</dd>
-                            }
-                            <dt class="col-5">@this.Localizer["LastDeprLabel"]:</dt>
-                            <dd class="col-7">@(m_asset.LastDepreciationDate?.ToString("dd MMM yyyy") ?? this.Localizer["Never"])</dd>
-                            <dt class="col-5">@this.Localizer["StatusLabel"]:</dt>
-                            <dd class="col-7">
-                                <span class="badge @GetStatusBadgeClass(m_asset.Status)">@m_asset.Status</span>
-                            </dd>
-                        </dl>
+                    <div class="mr-cost-analysis-body">
+                        @{
+                            var capex = m_asset.AcquisitionCost + (m_loan?.TotalInterestPaid ?? 0);
+                            var opex = m_asset.TotalExpenses;
+                            var income = m_asset.TotalRevenue;
+                            var netPosition = income - capex - opex;
+                            var maxBar = Math.Max(Math.Max(capex, opex), Math.Max(income, 1));
+                        }
+                        <div class="mr-cost-row">
+                            <div class="mr-cost-label">
+                                <span class="mr-cost-dot" style="background: #3b82f6;"></span>
+                                @this.Localizer["CapEx"]
+                            </div>
+                            <div class="mr-cost-bar-wrap">
+                                <div class="mr-cost-bar" style="width: @((capex / maxBar * 100).ToString("N1"))%; background: #3b82f6;"></div>
+                            </div>
+                            <span class="mr-cost-amount">@capex.ToString("N0")</span>
+                        </div>
+                        <div class="mr-cost-row">
+                            <div class="mr-cost-label">
+                                <span class="mr-cost-dot" style="background: #f59e0b;"></span>
+                                @this.Localizer["OpEx"]
+                            </div>
+                            <div class="mr-cost-bar-wrap">
+                                <div class="mr-cost-bar" style="width: @((opex / maxBar * 100).ToString("N1"))%; background: #f59e0b;"></div>
+                            </div>
+                            <span class="mr-cost-amount">@opex.ToString("N0")</span>
+                        </div>
+                        <div class="mr-cost-row">
+                            <div class="mr-cost-label">
+                                <span class="mr-cost-dot" style="background: #10b981;"></span>
+                                @this.Localizer["Income"]
+                            </div>
+                            <div class="mr-cost-bar-wrap">
+                                <div class="mr-cost-bar" style="width: @((income / maxBar * 100).ToString("N1"))%; background: #10b981;"></div>
+                            </div>
+                            <span class="mr-cost-amount">@income.ToString("N0")</span>
+                        </div>
+                        <hr class="my-2" />
+                        <div class="mr-cost-row mr-cost-net">
+                            <div class="mr-cost-label fw-bold">
+                                <span class="mr-cost-dot" style="background: @(netPosition >= 0 ? "#22c55e" : "#ef4444");"></span>
+                                @this.Localizer["NetPosition"]
+                            </div>
+                            <span class="mr-cost-amount fw-bold" style="color: @(netPosition >= 0 ? "#22c55e" : "#ef4444");">
+                                @(netPosition >= 0 ? "+" : "")@netPosition.ToString("N0")
+                            </span>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Depreciation History Table -->
-        <div class="card mt-4">
-            <div class="card-header">
-                <h3 class="card-title">
-                    <i class="ti ti-history me-2"></i>
-                    @this.Localizer["DepreciationHistory"]
-                </h3>
-                <div class="card-actions">
-                    <span class="badge bg-blue">@this.Localizer["EntriesCount", m_depreciationEntries.Count]</span>
+        <!-- Depreciation Settings + History -->
+        <div class="row row-deck row-cards mt-4">
+            <div class="col-lg-4 mr-animate-in mr-animate-delay-2">
+                <div class="mr-settings-card">
+                    <div class="mr-settings-header">
+                        <i class="ti ti-info-circle"></i>
+                        <h3>@this.Localizer["DepreciationSettings"]</h3>
+                    </div>
+                    <div class="mr-settings-body">
+                        <div class="mr-settings-row">
+                            <span class="mr-settings-label">@this.Localizer["MethodLabel"]</span>
+                            <span class="badge bg-blue-lt">@m_asset.DepreciationMethod.ToString()</span>
+                        </div>
+                        <div class="mr-settings-row">
+                            <span class="mr-settings-label">@this.Localizer["UsefulLifeLabel"]</span>
+                            <span class="mr-settings-value">@this.Localizer["UsefulLifeMonthsValue", m_asset.UsefulLifeMonths, (m_asset.UsefulLifeMonths / 12.0).ToString("N1")]</span>
+                        </div>
+                        <div class="mr-settings-row">
+                            <span class="mr-settings-label">@this.Localizer["ResidualValueLabel"]</span>
+                            <span class="mr-settings-value">@m_asset.ResidualValue.ToString("N0") @this.Localizer["CurrencyTHB"]</span>
+                        </div>
+                        <div class="mr-settings-row">
+                            <span class="mr-settings-label">@this.Localizer["MonthlyDeprLabel"]</span>
+                            <span class="mr-settings-value">@m_asset.MonthlyDepreciationStraightLine.ToString("N0") @this.Localizer["CurrencyTHB"]</span>
+                        </div>
+                        @if (m_asset.DayOutOfDoorPercent.HasValue)
+                        {
+                            <div class="mr-settings-row">
+                                <span class="mr-settings-label">@this.Localizer["DayOutPercentLabel"]</span>
+                                <span class="mr-settings-value">@((m_asset.DayOutOfDoorPercent.Value * 100).ToString("N0"))%</span>
+                            </div>
+                        }
+                        @if (m_asset.FirstRentalDate.HasValue)
+                        {
+                            <div class="mr-settings-row">
+                                <span class="mr-settings-label">@this.Localizer["FirstRentalLabel"]</span>
+                                <span class="mr-settings-value">@m_asset.FirstRentalDate.Value.ToString("dd MMM yyyy")</span>
+                            </div>
+                        }
+                        <div class="mr-settings-row">
+                            <span class="mr-settings-label">@this.Localizer["LastDeprLabel"]</span>
+                            <span class="mr-settings-value">@(m_asset.LastDepreciationDate?.ToString("dd MMM yyyy") ?? this.Localizer["Never"])</span>
+                        </div>
+                        <div class="mr-settings-row">
+                            <span class="mr-settings-label">@this.Localizer["StatusLabel"]</span>
+                            <span class="badge @GetStatusBadgeClass(m_asset.Status)">@m_asset.Status</span>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="table-responsive">
-                <table class="table table-vcenter card-table">
-                    <thead>
-                        <tr>
-                            <th>@this.Localizer["Period"]</th>
-                            <th>@this.Localizer["Method"]</th>
-                            <th class="text-end">@this.Localizer["BookValueStart"]</th>
-                            <th class="text-end">@this.Localizer["Depreciation"]</th>
-                            <th class="text-end">@this.Localizer["BookValueEnd"]</th>
-                            <th>@this.Localizer["Type"]</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @if (m_depreciationEntries.Any())
-                        {
-                            @foreach (var entry in m_depreciationEntries)
+
+            <!-- Depreciation History Table -->
+            <div class="col-lg-8 mr-animate-in mr-animate-delay-2">
+                <div class="mr-history-card">
+                    <div class="mr-history-header">
+                        <div class="mr-history-title">
+                            <i class="ti ti-history"></i>
+                            <h3>@this.Localizer["DepreciationHistory"]</h3>
+                        </div>
+                        <span class="badge bg-blue">@this.Localizer["EntriesCount", m_depreciationEntries.Count]</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-vcenter card-table">
+                            <thead>
+                                <tr>
+                                    <th>@this.Localizer["Period"]</th>
+                                    <th>@this.Localizer["Method"]</th>
+                                    <th class="text-end">@this.Localizer["BookValueStart"]</th>
+                                    <th class="text-end">@this.Localizer["Depreciation"]</th>
+                                    <th class="text-end">@this.Localizer["BookValueEnd"]</th>
+                                    <th>@this.Localizer["Type"]</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (m_depreciationEntries.Any())
+                                {
+                                    @foreach (var entry in m_depreciationEntries)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <div>@entry.PeriodStart.ToString("MMM yyyy")</div>
+                                                <small class="text-muted">@entry.PeriodStart.ToString("dd") - @entry.PeriodEnd.ToString("dd MMM")</small>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-azure-lt">@entry.Method</span>
+                                            </td>
+                                            <td class="text-end">@entry.BookValueStart.ToString("N0")</td>
+                                            <td class="text-end text-danger">-@entry.Amount.ToString("N0")</td>
+                                            <td class="text-end fw-bold">@entry.BookValueEnd.ToString("N0")</td>
+                                            <td>
+                                                @if (entry.IsManualOverride)
+                                                {
+                                                    <span class="badge bg-yellow-lt" title="@entry.OverrideReason">
+                                                        <i class="ti ti-edit me-1"></i>@this.Localizer["Manual"]
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-green-lt">
+                                                        <i class="ti ti-robot me-1"></i>@this.Localizer["System"]
+                                                    </span>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                                else
+                                {
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted py-4">
+                                            <i class="ti ti-calendar-off" style="font-size: 2rem;"></i>
+                                            <p class="mb-0 mt-2">@this.Localizer["NoDepreciationEntries"]</p>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loan Amortization Section -->
+        @if (m_loan != null)
+        {
+            <div class="mr-history-card mt-4 mr-animate-in mr-animate-delay-3">
+                <div class="mr-history-header">
+                    <div class="mr-history-title">
+                        <i class="ti ti-building-bank"></i>
+                        <h3>@this.Localizer["LoanAmortization"]</h3>
+                    </div>
+                    <span class="badge @GetLoanStatusBadgeClass(m_loan.Status)">@m_loan.Status</span>
+                </div>
+
+                <!-- Loan Summary KPIs -->
+                <div class="mr-loan-summary">
+                    <div class="mr-loan-summary-item">
+                        <span class="mr-loan-summary-label">@this.Localizer["Lender"]</span>
+                        <span class="mr-loan-summary-value">@m_loan.LenderName</span>
+                    </div>
+                    @if (!string.IsNullOrEmpty(m_loan.LoanAccountNo))
+                    {
+                        <div class="mr-loan-summary-item">
+                            <span class="mr-loan-summary-label">@this.Localizer["AccountNo"]</span>
+                            <span class="mr-loan-summary-value">@m_loan.LoanAccountNo</span>
+                        </div>
+                    }
+                    <div class="mr-loan-summary-item">
+                        <span class="mr-loan-summary-label">@this.Localizer["Principal"]</span>
+                        <span class="mr-loan-summary-value">@m_loan.PrincipalAmount.ToString("N0") @this.Localizer["CurrencyTHB"]</span>
+                    </div>
+                    <div class="mr-loan-summary-item">
+                        <span class="mr-loan-summary-label">@this.Localizer["InterestRate"]</span>
+                        <span class="mr-loan-summary-value">@m_loan.AnnualInterestRate.ToString("N2")%</span>
+                    </div>
+                    <div class="mr-loan-summary-item">
+                        <span class="mr-loan-summary-label">@this.Localizer["Term"]</span>
+                        <span class="mr-loan-summary-value">@m_loan.TermMonths @this.Localizer["MonthsUnit"]</span>
+                    </div>
+                    <div class="mr-loan-summary-item">
+                        <span class="mr-loan-summary-label">@this.Localizer["MonthlyPayment"]</span>
+                        <span class="mr-loan-summary-value fw-bold">@m_loan.MonthlyPayment.ToString("N0") @this.Localizer["CurrencyTHB"]</span>
+                    </div>
+                </div>
+
+                <!-- Amortization Table -->
+                <div class="table-responsive">
+                    <table class="table table-vcenter card-table table-striped">
+                        <thead>
+                            <tr>
+                                <th class="text-center">#</th>
+                                <th>@this.Localizer["DueDate"]</th>
+                                <th>@this.Localizer["PaidDate"]</th>
+                                <th class="text-end">@this.Localizer["PrincipalAmt"]</th>
+                                <th class="text-end">@this.Localizer["InterestAmt"]</th>
+                                <th class="text-end">@this.Localizer["VatOnInterest"]</th>
+                                <th class="text-end">@this.Localizer["TotalPayment"]</th>
+                                <th class="text-end">@this.Localizer["Balance"]</th>
+                                <th>@this.Localizer["StatusLabel"]</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var payment in GetPagedLoanPayments())
                             {
                                 <tr>
+                                    <td class="text-center text-muted">@payment.PaymentNumber</td>
+                                    <td>@payment.DueDate.ToString("dd MMM yyyy")</td>
+                                    <td>@(payment.PaidDate?.ToString("dd MMM yyyy") ?? "-")</td>
+                                    <td class="text-end">@payment.PrincipalAmount.ToString("N0")</td>
+                                    <td class="text-end">@payment.InterestAmount.ToString("N0")</td>
+                                    <td class="text-end">@((payment.InterestAmount * 0.07m).ToString("N0"))</td>
+                                    <td class="text-end fw-bold">@((payment.TotalAmount + payment.InterestAmount * 0.07m).ToString("N0"))</td>
+                                    <td class="text-end">@payment.BalanceAfter.ToString("N0")</td>
                                     <td>
-                                        <div>@entry.PeriodStart.ToString("MMM yyyy")</div>
-                                        <small class="text-muted">@entry.PeriodStart.ToString("dd") - @entry.PeriodEnd.ToString("dd MMM")</small>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-azure-lt">@entry.Method</span>
-                                    </td>
-                                    <td class="text-end">@entry.BookValueStart.ToString("N0")</td>
-                                    <td class="text-end text-danger">-@entry.Amount.ToString("N0")</td>
-                                    <td class="text-end fw-bold">@entry.BookValueEnd.ToString("N0")</td>
-                                    <td>
-                                        @if (entry.IsManualOverride)
-                                        {
-                                            <span class="badge bg-yellow-lt" title="@entry.OverrideReason">
-                                                <i class="ti ti-edit me-1"></i>@this.Localizer["Manual"]
-                                            </span>
-                                        }
-                                        else
-                                        {
-                                            <span class="badge bg-green-lt">
-                                                <i class="ti ti-robot me-1"></i>@this.Localizer["System"]
-                                            </span>
-                                        }
+                                        <span class="badge @GetPaymentStatusBadgeClass(payment.Status)">@payment.Status</span>
                                     </td>
                                 </tr>
                             }
-                        }
-                        else
-                        {
-                            <tr>
-                                <td colspan="6" class="text-center text-muted py-4">
-                                    <i class="ti ti-calendar-off" style="font-size: 2rem;"></i>
-                                    <p class="mb-0 mt-2">@this.Localizer["NoDepreciationEntries"]</p>
-                                </td>
+                        </tbody>
+                        <tfoot>
+                            <tr class="fw-bold">
+                                <td colspan="3" class="text-end">@this.Localizer["Total"]</td>
+                                <td class="text-end">@m_loanPayments.Sum(p => p.PrincipalAmount).ToString("N0")</td>
+                                <td class="text-end">@m_loanPayments.Sum(p => p.InterestAmount).ToString("N0")</td>
+                                <td class="text-end">@m_loanPayments.Sum(p => p.InterestAmount * 0.07m).ToString("N0")</td>
+                                <td class="text-end">@m_loanPayments.Sum(p => p.TotalAmount + p.InterestAmount * 0.07m).ToString("N0")</td>
+                                <td colspan="2"></td>
                             </tr>
-                        }
-                    </tbody>
-                </table>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                @if (m_loanTotalPages > 1)
+                {
+                    <div class="card-footer d-flex align-items-center justify-content-between">
+                        <p class="m-0 text-muted">
+                            @this.Localizer["ShowingPayments", (m_loanPage - 1) * m_loanPageSize + 1, Math.Min(m_loanPage * m_loanPageSize, m_loanPayments.Count), m_loanPayments.Count]
+                        </p>
+                        <ul class="pagination m-0">
+                            <li class="page-item @(m_loanPage <= 1 ? "disabled" : "")">
+                                <a class="page-link" @onclick="@(() => SetLoanPage(m_loanPage - 1))" @onclick:preventDefault>
+                                    <i class="ti ti-chevron-left"></i>
+                                </a>
+                            </li>
+                            @for (int p = 1; p <= m_loanTotalPages; p++)
+                            {
+                                var pageNum = p;
+                                <li class="page-item @(pageNum == m_loanPage ? "active" : "")">
+                                    <a class="page-link" @onclick="@(() => SetLoanPage(pageNum))" @onclick:preventDefault>@pageNum</a>
+                                </li>
+                            }
+                            <li class="page-item @(m_loanPage >= m_loanTotalPages ? "disabled" : "")">
+                                <a class="page-link" @onclick="@(() => SetLoanPage(m_loanPage + 1))" @onclick:preventDefault>
+                                    <i class="ti ti-chevron-right"></i>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                }
             </div>
-        </div>
+        }
     }
 </div>
 
 @code {
     [Parameter]
-    public int AssetId { get; set; }
+    public string AssetId { get; set; } = "";
 
+    private int m_assetId;
     private Asset? m_asset;
+    private Vehicle? m_vehicle;
+    private AssetLoan? m_loan;
+    private List<AssetLoanPayment> m_loanPayments = [];
     private List<DepreciationEntry> m_depreciationEntries = [];
     private List<DepreciationProjection> m_projections = [];
     private bool m_loading = true;
     private string m_chartView = "history";
 
+    // Loan pagination
+    private int m_loanPage = 1;
+    private const int m_loanPageSize = 12;
+    private int m_loanTotalPages => (int)Math.Ceiling(m_loanPayments.Count / (double)m_loanPageSize);
+
     protected override async Task OnParametersSetAsync()
     {
+        m_assetId = DecodeId(AssetId);
         await LoadDataAsync();
     }
 
@@ -350,12 +680,25 @@
         try
         {
             m_loading = true;
-            m_asset = await AssetService.GetAssetByIdAsync(AssetId);
+            m_asset = await AssetService.GetAssetByIdAsync(m_assetId);
 
             if (m_asset != null)
             {
-                m_depreciationEntries = await AssetService.GetDepreciationEntriesAsync(AssetId);
+                var vehicleTask = VehicleService.GetVehicleByIdAsync(m_asset.VehicleId);
+                var depreciationTask = AssetService.GetDepreciationEntriesAsync(m_assetId);
+
+                m_vehicle = await vehicleTask;
+                m_depreciationEntries = await depreciationTask;
                 m_projections = AssetService.GetDepreciationProjections(m_asset, 24);
+
+                if (m_asset.AssetLoanId.HasValue)
+                {
+                    m_loan = await LoanService.GetLoanByAssetIdAsync(m_assetId);
+                    if (m_loan != null)
+                    {
+                        m_loanPayments = await LoanService.GetPaymentsAsync(m_loan.AssetLoanId);
+                    }
+                }
             }
         }
         finally
@@ -364,16 +707,69 @@
         }
     }
 
-    private void SetChartView(string view)
+    private void SetChartView(string view) => m_chartView = view;
+
+    private void SetLoanPage(int page)
     {
-        m_chartView = view;
+        if (page >= 1 && page <= m_loanTotalPages)
+            m_loanPage = page;
     }
+
+    private List<AssetLoanPayment> GetPagedLoanPayments()
+        => m_loanPayments.Skip((m_loanPage - 1) * m_loanPageSize).Take(m_loanPageSize).ToList();
+
+    private decimal GetRevenuePerMonth()
+    {
+        var months = GetFleetAgeMonths();
+        return months > 0 ? m_asset!.TotalRevenue / months : 0;
+    }
+
+    private int GetFleetAgeMonths()
+    {
+        if (m_asset == null) return 0;
+        var now = DateTimeOffset.UtcNow;
+        return (now.Year - m_asset.AcquisitionDate.Year) * 12 + now.Month - m_asset.AcquisitionDate.Month;
+    }
+
+    private string GetIncomeToMaintenanceRatio()
+    {
+        if (m_asset == null || m_asset.TotalExpenses == 0)
+            return "N/A";
+        return $"{(m_asset.TotalRevenue / m_asset.TotalExpenses):N1}x";
+    }
+
+    private string GetVehicleTypeIcon() => m_vehicle?.VehicleType switch
+    {
+        VehicleType.Motorbike => "motorbike",
+        VehicleType.Car => "car",
+        VehicleType.JetSki => "sailboat",
+        VehicleType.Boat => "sailboat-2",
+        VehicleType.Van => "bus",
+        _ => "motorbike"
+    };
 
     private string GetStatusBadgeClass(AssetStatus status) => status switch
     {
         AssetStatus.Active => "bg-success-lt",
         AssetStatus.Disposed => "bg-warning-lt",
         AssetStatus.WriteOff => "bg-danger-lt",
+        _ => "bg-secondary-lt"
+    };
+
+    private string GetLoanStatusBadgeClass(LoanStatus status) => status switch
+    {
+        LoanStatus.Active => "bg-blue-lt",
+        LoanStatus.PaidOff => "bg-success-lt",
+        LoanStatus.Defaulted => "bg-danger-lt",
+        _ => "bg-secondary-lt"
+    };
+
+    private string GetPaymentStatusBadgeClass(LoanPaymentStatus status) => status switch
+    {
+        LoanPaymentStatus.Paid => "bg-success-lt",
+        LoanPaymentStatus.Pending => "bg-azure-lt",
+        LoanPaymentStatus.Late => "bg-warning-lt",
+        LoanPaymentStatus.Missed => "bg-danger-lt",
         _ => "bg-secondary-lt"
     };
 
