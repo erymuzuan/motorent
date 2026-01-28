@@ -292,5 +292,12 @@ public static class SettingKeys
     /// </summary>
     public const string Till_DefaultOpeningFloat = "Till.DefaultOpeningFloat";
 
+    /// <summary>
+    /// Enable cashier till requirement for payment recording (bool).
+    /// When disabled, payments can be recorded without a till session.
+    /// Default: false (till not required).
+    /// </summary>
+    public const string Till_EnableCashierTill = "Till.EnableCashierTill";
+
     #endregion
 }

@@ -2,12 +2,14 @@
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Authorization
 @using MotoRent.Domain.Entities
+@using MotoRent.Domain.Settings
 @using MotoRent.Services
 @attribute [Authorize(Policy = "RequireTenantStaff")]
 @inherits LocalizedComponentBase<BookingDetails>
 @inject BookingService BookingService
 @inject ShopService ShopService
 @inject DocumentTemplateService TemplateService
+@inject TillService TillService
 @inject IJSRuntime JS
 
 <MotoRentPageTitle>@Localizer["PageTitle"] @BookingRef</MotoRentPageTitle>
@@ -259,14 +261,10 @@
                                 <span class="fw-bold">@FormatCurrency(m_booking.TotalAmount)</span>
                             </div>
                             <div class="d-flex justify-content-between mb-2">
-                                <span>@Localizer["DepositRequired"]:</span>
-                                <span>@FormatCurrency(m_booking.DepositRequired)</span>
-                            </div>
-                            <div class="d-flex justify-content-between mb-2">
                                 <span>@Localizer["AmountPaid"]:</span>
-                                <span class="@(m_booking.AmountPaid >= m_booking.DepositRequired ? "text-success" : "text-warning")">
+                                <span class="@(m_booking.AmountPaid > 0 ? "text-success" : "text-muted")">
                                     @FormatCurrency(m_booking.AmountPaid)
-                                    @if (m_booking.AmountPaid >= m_booking.DepositRequired)
+                                    @if (m_booking.AmountPaid >= m_booking.TotalAmount)
                                     {
                                         <i class="ti ti-check"></i>
                                     }
@@ -279,6 +277,43 @@
                                     @FormatCurrency(m_booking.BalanceDue)
                                 </span>
                             </div>
+
+                            @* Payment History List *@
+                            @if (m_booking.Payments.Count > 0)
+                            {
+                                <div class="mt-3 pt-3 border-top">
+                                    <small class="text-muted d-block mb-2">@Localizer["PaymentHistory"]</small>
+                                    @foreach (var payment in m_booking.Payments.OrderByDescending(p => p.PaidAt))
+                                    {
+                                        <div class="d-flex align-items-center gap-2 py-2 border-bottom payment-row"
+                                             style="cursor: pointer;"
+                                             @onclick="@(() => ShowPaymentDetails(payment))">
+                                            <div class="flex-shrink-0">
+                                                <span class="avatar avatar-xs @GetPaymentMethodIconBg(payment.PaymentMethod)">
+                                                    <i class="@GetPaymentMethodIcon(payment.PaymentMethod) text-white" style="font-size: 0.75rem;"></i>
+                                                </span>
+                                            </div>
+                                            <div class="flex-grow-1 min-w-0">
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <span class="small text-truncate">
+                                                        @Localizer[payment.PaymentType]
+                                                    </span>
+                                                    <span class="fw-semibold @(payment.IsRefund ? "text-danger" : "text-success")">
+                                                        @(payment.IsRefund ? "-" : "+")@FormatCurrency(Math.Abs(payment.Amount))
+                                                    </span>
+                                                </div>
+                                                <div class="text-muted" style="font-size: 0.7rem;">
+                                                    @payment.PaidAt.ToString("dd MMM yyyy, h:mm tt")
+                                                </div>
+                                            </div>
+                                            <div class="flex-shrink-0">
+                                                <i class="ti ti-chevron-right text-muted"></i>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+
                             <div class="mt-3">
                                 <button class="btn btn-primary w-100" @onclick="RecordPayment">
                                     <i class="ti ti-plus"></i> @Localizer["RecordPayment"]
@@ -351,6 +386,101 @@
     </LoadingSkeleton>
 </div>
 
+@* Payment Details Offcanvas *@
+@if (m_selectedPayment != null)
+{
+    <div class="offcanvas-backdrop fade show" @onclick="ClosePaymentDetails"></div>
+    <div class="offcanvas offcanvas-end show" tabindex="-1" style="visibility: visible; width: 360px;">
+        <div class="offcanvas-header bg-primary text-white">
+            <h5 class="offcanvas-title d-flex align-items-center gap-2">
+                <i class="ti ti-receipt-2"></i>
+                @Localizer["PaymentDetails"]
+            </h5>
+            <button type="button" class="btn-close btn-close-white" @onclick="ClosePaymentDetails"></button>
+        </div>
+        <div class="offcanvas-body p-0">
+            @* Amount Header *@
+            <div class="p-4 text-center" style="background: linear-gradient(135deg, var(--tblr-primary) 0%, var(--tblr-primary-darken) 100%);">
+                <div class="text-white-50 small mb-1">@Localizer[m_selectedPayment.PaymentType]</div>
+                <div class="text-white display-6 fw-bold">
+                    @(m_selectedPayment.IsRefund ? "-" : "+")@FormatCurrency(Math.Abs(m_selectedPayment.Amount))
+                </div>
+            </div>
+
+            <div class="p-3">
+                @* Payment Details Table *@
+                <table class="table table-sm table-borderless mb-0">
+                    <tbody>
+                        <tr>
+                            <td class="text-muted py-2" style="width: 40%;">@Localizer["PaymentId"]</td>
+                            <td class="py-2">
+                                <code class="bg-light px-2 py-1 rounded">@m_selectedPayment.PaymentId.ToUpper()</code>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted py-2">@Localizer["Date"]</td>
+                            <td class="py-2">@m_selectedPayment.PaidAt.ToString("dd MMM yyyy")</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted py-2">@Localizer["Time"]</td>
+                            <td class="py-2">@m_selectedPayment.PaidAt.ToString("h:mm:ss tt")</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted py-2">@Localizer["Method"]</td>
+                            <td class="py-2">
+                                <span class="d-inline-flex align-items-center gap-1">
+                                    <i class="@GetPaymentMethodIcon(m_selectedPayment.PaymentMethod)"></i>
+                                    @Localizer[m_selectedPayment.PaymentMethod]
+                                </span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted py-2">@Localizer["PaymentType"]</td>
+                            <td class="py-2">
+                                <span class="badge @GetPaymentTypeBadgeClass(m_selectedPayment.PaymentType)">
+                                    @Localizer[m_selectedPayment.PaymentType]
+                                </span>
+                            </td>
+                        </tr>
+                        @if (!string.IsNullOrEmpty(m_selectedPayment.TransactionRef))
+                        {
+                            <tr>
+                                <td class="text-muted py-2">@Localizer["TransactionRef"]</td>
+                                <td class="py-2">
+                                    <code>@m_selectedPayment.TransactionRef</code>
+                                </td>
+                            </tr>
+                        }
+                        @if (!string.IsNullOrEmpty(m_selectedPayment.CardLast4))
+                        {
+                            <tr>
+                                <td class="text-muted py-2">@Localizer["Card"]</td>
+                                <td class="py-2">**** **** **** @m_selectedPayment.CardLast4</td>
+                            </tr>
+                        }
+                        @if (!string.IsNullOrEmpty(m_selectedPayment.RecordedBy))
+                        {
+                            <tr>
+                                <td class="text-muted py-2">@Localizer["RecordedBy"]</td>
+                                <td class="py-2">@m_selectedPayment.RecordedBy</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+
+                @* Notes Section *@
+                @if (!string.IsNullOrEmpty(m_selectedPayment.Notes))
+                {
+                    <div class="mt-3 p-3 rounded" style="background: var(--tblr-bg-surface-secondary);">
+                        <small class="text-muted d-block mb-1">@Localizer["Notes"]</small>
+                        <span>@m_selectedPayment.Notes</span>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     [Parameter]
     public string BookingRef { get; set; } = string.Empty;
@@ -359,13 +489,27 @@
     private bool m_loading = true;
     private List<DocumentTemplate> m_templates = new();
 
+    // Till-related state
+    private bool m_isTillEnabled;
+    private TillSession? m_activeSession;
+
+    // Payment details offcanvas
+    private BookingPayment? m_selectedPayment;
+
     protected override async Task OnParametersSetAsync()
     {
         await LoadBookingAsync();
-        
+
         // Load templates
         var result = await TemplateService.GetTemplatesAsync(DocumentType.BookingConfirmation);
         m_templates = result.ItemCollection.Where(t => t.Status == DocumentTemplateStatus.Approved).ToList();
+
+        // Check till settings and active session
+        m_isTillEnabled = await SettingConfig.GetBoolAsync(SettingKeys.Till_EnableCashierTill, defaultValue: false);
+        if (m_isTillEnabled)
+        {
+            m_activeSession = await TillService.GetActiveSessionForUserAsync(UserName);
+        }
     }
 
     private async Task PrintConfirmation(int? templateId = null)
@@ -511,9 +655,111 @@
 
     private async Task RecordPayment()
     {
-        // TODO: Open payment dialog
-        ToastService.ShowInfo(Localizer["FeatureComingSoon"]);
-        await Task.CompletedTask;
+        if (m_booking == null) return;
+
+        // Case 1: Till disabled - direct payment recording
+        if (!m_isTillEnabled)
+        {
+            await RecordDirectPaymentAsync();
+            return;
+        }
+
+        // Case 2: Till enabled but no active session
+        if (m_activeSession == null)
+        {
+            var openTill = await DialogService.ConfirmYesNoAsync(
+                Localizer["TillRequiredDescription"],
+                Localizer["TillRequired"]);
+
+            if (openTill)
+            {
+                NavigationManager.NavigateTo($"/staff/till?returnUrl=/bookings/{BookingRef}");
+            }
+            return;
+        }
+
+        // Case 3: Till enabled with active session
+        await RecordTillPaymentAsync();
+    }
+
+    private async Task RecordDirectPaymentAsync()
+    {
+        if (m_booking == null) return;
+
+        var result = await DialogService.Create<RecordBookingPaymentDialog>(Localizer["RecordPayment"])
+            .WithParameter(x => x.BookingId, m_booking.BookingId)
+            .WithParameter(x => x.BookingRef, BookingRef)
+            .WithParameter(x => x.BalanceDue, m_booking.BalanceDue)
+            .WithParameter(x => x.TotalAmount, m_booking.TotalAmount)
+            .WithSize(ModalSize.Medium)
+            .ShowDialogAsync();
+
+        if (!result.Cancelled && result.Data is BookingPayment payment)
+        {
+            var saveResult = await BookingService.RecordPaymentAsync(m_booking.BookingId, payment, UserName);
+            if (saveResult.Success)
+            {
+                ShowSuccess(Localizer["PaymentRecorded"]);
+                await LoadBookingAsync();
+            }
+            else
+            {
+                ShowError(saveResult.Message ?? Localizer["ErrorRecordingPayment"]);
+            }
+        }
+    }
+
+    private async Task RecordTillPaymentAsync()
+    {
+        if (m_booking == null || m_activeSession == null) return;
+
+        var result = await DialogService.Create<RecordBookingPaymentDialog>(Localizer["RecordPayment"])
+            .WithParameter(x => x.BookingId, m_booking.BookingId)
+            .WithParameter(x => x.BookingRef, BookingRef)
+            .WithParameter(x => x.BalanceDue, m_booking.BalanceDue)
+            .WithParameter(x => x.TotalAmount, m_booking.TotalAmount)
+            .WithSize(ModalSize.Medium)
+            .ShowDialogAsync();
+
+        if (!result.Cancelled && result.Data is BookingPayment payment)
+        {
+            // 1. Record to Till (for cash payments) - use appropriate transaction type
+            var tillTransactionType = payment.PaymentMethod switch
+            {
+                "Cash" => TillTransactionType.BookingDeposit,
+                "Card" => TillTransactionType.CardPayment,
+                "PromptPay" => TillTransactionType.PromptPay,
+                "BankTransfer" => TillTransactionType.BankTransfer,
+                _ => TillTransactionType.BookingDeposit
+            };
+
+            var tillResult = await TillService.RecordCashInAsync(
+                m_activeSession.TillSessionId,
+                tillTransactionType,
+                payment.Amount,
+                $"Booking payment {BookingRef} - {payment.PaymentType}",
+                UserName,
+                notes: payment.Notes);
+
+            if (!tillResult.Success)
+            {
+                ShowError(tillResult.Message ?? Localizer["ErrorRecordingPayment"]);
+                return;
+            }
+
+            // 2. Record to Booking
+            var bookingResult = await BookingService.RecordPaymentAsync(m_booking.BookingId, payment, UserName);
+
+            if (bookingResult.Success)
+            {
+                ShowSuccess(Localizer["PaymentRecorded"]);
+                await LoadBookingAsync();
+            }
+            else
+            {
+                ShowError(bookingResult.Message ?? Localizer["ErrorRecordingPayment"]);
+            }
+        }
     }
 
     private async Task ChangeSchedule()
@@ -522,4 +768,41 @@
         ToastService.ShowInfo(Localizer["FeatureComingSoon"]);
         await Task.CompletedTask;
     }
+
+    private void ShowPaymentDetails(BookingPayment payment)
+    {
+        m_selectedPayment = payment;
+    }
+
+    private void ClosePaymentDetails()
+    {
+        m_selectedPayment = null;
+    }
+
+    private static string GetPaymentMethodIcon(string method) => method switch
+    {
+        "Cash" => "ti ti-cash",
+        "Card" => "ti ti-credit-card",
+        "PromptPay" => "ti ti-qrcode",
+        "BankTransfer" => "ti ti-building-bank",
+        _ => "ti ti-cash"
+    };
+
+    private static string GetPaymentMethodIconBg(string method) => method switch
+    {
+        "Cash" => "bg-green",
+        "Card" => "bg-blue",
+        "PromptPay" => "bg-purple",
+        "BankTransfer" => "bg-cyan",
+        _ => "bg-secondary"
+    };
+
+    private static string GetPaymentTypeBadgeClass(string paymentType) => paymentType switch
+    {
+        BookingPaymentType.Deposit => "bg-blue-lt",
+        BookingPaymentType.Partial => "bg-yellow-lt",
+        BookingPaymentType.Full => "bg-green-lt",
+        BookingPaymentType.Refund => "bg-red-lt",
+        _ => "bg-secondary-lt"
+    };
 }

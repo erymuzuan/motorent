@@ -1,0 +1,159 @@
+@using MotoRent.Domain.Entities
+@inherits LocalizedDialogBase<BookingPayment, RecordBookingPaymentDialog>
+
+<form id="@FormId" @onsubmit="SaveAsync" @onsubmit:preventDefault>
+    <div class="modal-body">
+        @* Booking Info *@
+        <div class="alert alert-info mb-3">
+            <div class="d-flex justify-content-between">
+                <span>@Localizer["BookingRef"]: <strong>@BookingRef</strong></span>
+                <span>@Localizer["BalanceDue"]: <strong class="@(BalanceDue > 0 ? "text-warning" : "text-success")">@FormatCurrency(BalanceDue)</strong></span>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            @* Amount Section *@
+            <div class="col-12">
+                <label class="form-label required">@Localizer["Amount"]</label>
+                <div class="input-group">
+                    <span class="input-group-text">฿</span>
+                    <input type="number" class="form-control text-end" @bind="Entity.Amount"
+                           required min="1" step="any" placeholder="0" />
+                </div>
+            </div>
+
+            @* Quick Amount Buttons *@
+            <div class="col-12">
+                <div class="d-flex gap-2 flex-wrap">
+                    @if (BalanceDue > 0)
+                    {
+                        <button type="button" class="btn btn-outline-primary btn-sm" @onclick="SetBalanceDue">
+                            <i class="ti ti-wallet me-1"></i>@Localizer["BalanceDue"] (@FormatCurrency(BalanceDue))
+                        </button>
+                    }
+                    @if (TotalAmount > 0 && TotalAmount != BalanceDue)
+                    {
+                        <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="SetFullAmount">
+                            <i class="ti ti-cash me-1"></i>@Localizer["FullAmount"] (@FormatCurrency(TotalAmount))
+                        </button>
+                    }
+                </div>
+            </div>
+
+            @* Payment Method *@
+            <div class="col-md-6">
+                <label class="form-label required">@Localizer["PaymentMethod"]</label>
+                <select class="form-select" @bind="Entity.PaymentMethod" required>
+                    <option value="Cash">@Localizer["Cash"]</option>
+                    <option value="Card">@Localizer["Card"]</option>
+                    <option value="PromptPay">@Localizer["PromptPay"]</option>
+                    <option value="BankTransfer">@Localizer["BankTransfer"]</option>
+                </select>
+            </div>
+
+            @* Payment Type *@
+            <div class="col-md-6">
+                <label class="form-label required">@Localizer["PaymentType"]</label>
+                <select class="form-select" @bind="Entity.PaymentType" required>
+                    <option value="@BookingPaymentType.Deposit">@Localizer["Deposit"]</option>
+                    <option value="@BookingPaymentType.Partial">@Localizer["Partial"]</option>
+                    <option value="@BookingPaymentType.Full">@Localizer["Full"]</option>
+                </select>
+            </div>
+
+            @* Transaction Ref (for non-cash) *@
+            @if (Entity.PaymentMethod != "Cash")
+            {
+                <div class="col-12">
+                    <label class="form-label">@Localizer["TransactionRef"]</label>
+                    <input type="text" class="form-control" @bind="Entity.TransactionRef"
+                           placeholder="@Localizer["TransactionRefPlaceholder"]" />
+                </div>
+            }
+
+            @* Notes *@
+            <div class="col-12">
+                <label class="form-label">@Localizer["Notes"]</label>
+                <textarea class="form-control" @bind="Entity.Notes" rows="2"
+                          placeholder="@Localizer["NotesPlaceholder"]"></textarea>
+            </div>
+        </div>
+    </div>
+</form>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
+        @CommonLocalizer["Cancel"]
+    </button>
+    <button type="submit" form="@FormId" class="btn btn-success" disabled="@(!CanSave || Saving)">
+        @if (Saving)
+        {
+            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+        }
+        <i class="ti ti-check me-1"></i>
+        @Localizer["RecordPayment"]
+    </button>
+</div>
+
+@code {
+    [Parameter]
+    public int BookingId { get; set; }
+
+    [Parameter]
+    public string BookingRef { get; set; } = string.Empty;
+
+    [Parameter]
+    public decimal BalanceDue { get; set; }
+
+    [Parameter]
+    public decimal TotalAmount { get; set; }
+
+    private bool CanSave => Entity.Amount > 0 && !string.IsNullOrWhiteSpace(Entity.PaymentMethod);
+
+    protected override void OnParametersSet()
+    {
+        // Default amount to balance due if not set
+        if (Entity.Amount == 0 && BalanceDue > 0)
+        {
+            Entity.Amount = BalanceDue;
+        }
+
+        // Auto-select payment type based on amount
+        UpdatePaymentType();
+    }
+
+    private void SetBalanceDue()
+    {
+        Entity.Amount = BalanceDue;
+        UpdatePaymentType();
+    }
+
+    private void SetFullAmount()
+    {
+        Entity.Amount = TotalAmount;
+        UpdatePaymentType();
+    }
+
+    private void UpdatePaymentType()
+    {
+        if (Entity.Amount >= BalanceDue && BalanceDue > 0)
+        {
+            Entity.PaymentType = BookingPaymentType.Full;
+        }
+        else if (Entity.Amount > 0)
+        {
+            Entity.PaymentType = BookingPaymentType.Partial;
+        }
+    }
+
+    private Task SaveAsync()
+    {
+        if (!CanSave) return Task.CompletedTask;
+
+        Entity.PaidAt = DateTimeOffset.Now;
+        Close(Entity);
+        return Task.CompletedTask;
+    }
+
+    private static string FormatCurrency(decimal amount) => $"฿{amount:N0}";
+}

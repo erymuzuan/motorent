@@ -136,6 +136,9 @@
     // Late fee mode setting
     private string m_dailyLateFeeMode = "Daily";
 
+    // Cashier till setting
+    private bool m_enableCashierTill;
+
     // Dynamic pricing settings
     private bool m_dynamicPricingEnabled;
     private bool m_showMultiplierOnInvoice = true;
@@ -206,6 +209,9 @@
         // Dynamic pricing settings
         m_dynamicPricingEnabled = await SettingConfig.GetBoolAsync(DynamicPricingService.SettingKeyEnabled, defaultValue: false);
         m_showMultiplierOnInvoice = await SettingConfig.GetBoolAsync(DynamicPricingService.SettingKeyShowOnInvoice, defaultValue: true);
+
+        // Cashier till setting
+        m_enableCashierTill = await SettingConfig.GetBoolAsync(SettingKeys.Till_EnableCashierTill, defaultValue: false);
     }
 
     private async Task SaveAsync()
@@ -275,6 +281,9 @@
         // Dynamic pricing settings
         await SettingConfig.SetValueAsync(DynamicPricingService.SettingKeyEnabled, m_dynamicPricingEnabled);
         await SettingConfig.SetValueAsync(DynamicPricingService.SettingKeyShowOnInvoice, m_showMultiplierOnInvoice);
+
+        // Cashier till setting
+        await SettingConfig.SetValueAsync(SettingKeys.Till_EnableCashierTill, m_enableCashierTill);
     }
 
     #region Panel Render Fragments
@@ -620,6 +629,18 @@
                                 <input type="text" class="form-control" @bind="m_bankAccountName" placeholder="Account holder name" />
                             </div>
                         </div>
+                    </div>
+
+                    <div class="col-12">
+                        <hr />
+                        <h4 class="mb-3">@Localizer["CashierTill"]</h4>
+                        <div class="form-check form-switch">
+                            <input type="checkbox" class="form-check-input" @bind="m_enableCashierTill" id="enableCashierTill" />
+                            <label class="form-check-label" for="enableCashierTill">
+                                @Localizer["EnableCashierTill"]
+                            </label>
+                        </div>
+                        <small class="text-secondary">@Localizer["EnableCashierTillDescription"]</small>
                     </div>
                 </div>
             </div>
