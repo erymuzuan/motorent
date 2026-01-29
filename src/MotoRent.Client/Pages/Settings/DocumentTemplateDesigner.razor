@@ -8,7 +8,7 @@
 @using MotoRent.Services.Core
 @using MotoRent.Client.Components.Templates
 @using MotoRent.Client.Services
-@implements IDisposable
+@implements IAsyncDisposable
 @attribute [Authorize(Policy = "RequireTenantOrgAdmin")]
 @inherits LocalizedComponentBase<DocumentTemplateDesigner>
 @inject DocumentTemplateService TemplateService
@@ -17,63 +17,61 @@
 @inject ITemplateDataResolver DataResolver
 @inject IHtmlTemplateRenderer HtmlRenderer
 @inject OrganizationService OrganizationService
+@inject IJSRuntime JS
 
 <MotoRentPageTitle>@this.Localizer["PageTitle"]</MotoRentPageTitle>
 
-<TablerHeader Title="@this.Localizer["Header"]"
-              PreTitle="@(this.m_template.DocumentTemplateId == 0 ? this.Localizer["CreateNewTemplate"] : this.Localizer["EditTemplate"])">
-    <div class="btn-list">
-        <button type="button" class="btn btn-outline-secondary"
-                @onclick="() => this.m_showAiSidebar = !this.m_showAiSidebar">
-            <i class="ti ti-sparkles me-1 text-accent"></i>
-            @this.Localizer["AiSuggester"]
-        </button>
-        <button type="button" class="btn btn-outline-primary" @onclick="this.TogglePreview">
-            <i class="ti ti-eye me-1"></i>
-            @this.Localizer["Preview"]
-        </button>
-        <button type="button" class="btn btn-primary" @onclick="this.SaveTemplateAsync" disabled="@this.m_saving">
-            @if (this.m_saving)
-            {
-                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
-            }
-            else
-            {
-                <i class="ti ti-device-floppy me-1"></i>
-            }
-            @this.Localizer["SaveTemplate"]
-        </button>
-    </div>
+<TablerHeader PreTitle="@(this.m_template.DocumentTemplateId == 0 ? this.Localizer["CreateNewTemplate"] : this.Localizer["EditTemplate"])">
+    <TitleContent>
+        <input type="text" class="designer-inline-name" @bind="this.m_template.Name"
+               placeholder="@this.Localizer["NamePlaceholder"]" />
+    </TitleContent>
+    <ChildContent>
+        <div class="btn-list">
+            <button type="button" class="btn btn-ghost-secondary btn-icon"
+                    title="@this.Localizer["ToggleLeftPanel"]"
+                    @onclick="() => this.DesignerState.ToggleLeftPanel()">
+                <i class="ti @(this.DesignerState.LeftCollapsed ? "ti-layout-sidebar-right" : "ti-layout-sidebar-left-collapse")"></i>
+            </button>
+            <button type="button" class="btn btn-outline-secondary"
+                    @onclick="() => this.m_showAiSidebar = !this.m_showAiSidebar">
+                <i class="ti ti-sparkles me-1 text-accent"></i>
+                @this.Localizer["AiSuggester"]
+            </button>
+            <button type="button" class="btn btn-outline-primary" @onclick="this.TogglePreview">
+                <i class="ti ti-eye me-1"></i>
+                @this.Localizer["Preview"]
+            </button>
+            <button type="button" class="btn btn-primary" @onclick="this.SaveTemplateAsync" disabled="@this.m_saving">
+                @if (this.m_saving)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                }
+                else
+                {
+                    <i class="ti ti-device-floppy me-1"></i>
+                }
+                @this.Localizer["SaveTemplate"]
+            </button>
+            <button type="button" class="btn btn-ghost-secondary btn-icon"
+                    title="@this.Localizer["ToggleRightPanel"]"
+                    @onclick="() => this.DesignerState.ToggleRightPanel()">
+                <i class="ti @(this.DesignerState.RightCollapsed ? "ti-layout-sidebar-left" : "ti-layout-sidebar-right-collapse")"></i>
+            </button>
+        </div>
+    </ChildContent>
 </TablerHeader>
 
-<div class="container-fluid mt-4">
-    <LoadingSkeleton Loading="@this.m_loading" Mode="LoadingSkeleton.PlaceholderMode.Card">
-        <div class="row g-4">
-            @* Left Sidebar - Template Info & Block Library *@
-            <div class="col-lg-2">
-                <div class="card mb-3">
-                    <div class="card-header">
-                        <h3 class="card-title">@this.Localizer["TemplateInfo"]</h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <label class="form-label">@this.Localizer["Name"]</label>
-                            <input type="text" class="form-control" @bind="this.m_template.Name"
-                                   placeholder="@this.Localizer["NamePlaceholder"]"/>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">@this.Localizer["DocumentType"]</label>
-                            <select class="form-select" @bind="this.m_template.Type">
-                                @foreach (DocumentType type in Enum.GetValues(typeof(DocumentType)))
-                                {
-                                    <option value="@type">@type</option>
-                                }
-                            </select>
-                        </div>
-                    </div>
-                </div>
+<div class="designer-wrapper">
+<LoadingSkeleton Loading="@this.m_loading" Mode="LoadingSkeleton.PlaceholderMode.Card">
+    <div class="designer-layout @(this.DesignerState.LeftCollapsed ? "left-collapsed" : "") @(this.DesignerState.RightCollapsed ? "right-collapsed" : "")"
+         @ref="m_containerRef">
 
-                <div class="card">
+        @* Left Panel *@
+        <div class="designer-panel designer-panel-left">
+            @if (!this.DesignerState.LeftCollapsed)
+            {
+                <div class="card mb-3">
                     <div class="card-header">
                         <h3 class="card-title">@this.Localizer["BlockLibrary"]</h3>
                     </div>
@@ -122,148 +120,116 @@
                         </div>
                     </div>
                 </div>
-            </div>
 
-            @* Main Canvas Editor *@
-            <div class="col-lg-7">
-                <DocumentCanvas Layout="this.m_layout"
-                                SelectedBlock="this.DesignerState.SelectedBlock"
-                                OnBlockSelected="b => this.DesignerState.SetSelectedBlock(b)"
-                                OnBlockAdded="this.AddBlock"/>
-            </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">@this.Localizer["TemplateInfo"]</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">@this.Localizer["DocumentType"]</label>
+                            <select class="form-select" @bind="this.m_documentType">
+                                @foreach (DocumentType type in Enum.GetValues(typeof(DocumentType)))
+                                {
+                                    <option value="@type">@type</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="mb-0">
+                            <label class="form-label">@this.Localizer["Description"]</label>
+                            <textarea class="form-control" @bind="this.m_template.Description" rows="2"
+                                      placeholder="@this.Localizer["DescriptionPlaceholder"]"></textarea>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
 
-            @* Right Sidebar - Properties & AI *@
-            <div class="col-lg-3">
+        @* Left Splitter *@
+        <div class="designer-splitter" data-panel="left"></div>
+
+        @* Canvas (center) *@
+        <div class="designer-panel designer-panel-canvas">
+            <DocumentCanvas Layout="this.m_layout"
+                            SelectedBlock="this.DesignerState.SelectedBlock"
+                            OnBlockSelected="b => this.DesignerState.SetSelectedBlock(b)"
+                            OnBlockAdded="this.AddBlock"/>
+        </div>
+
+        @* Right Splitter *@
+        <div class="designer-splitter" data-panel="right"></div>
+
+        @* Right Panel *@
+        <div class="designer-panel designer-panel-right">
+            @if (!this.DesignerState.RightCollapsed)
+            {
                 <BlockPropertyEditor Block="this.DesignerState.SelectedBlock"
                                      OnDeleteRequested="this.DeleteSelectedBlock"/>
 
-                                @if (this.m_showAiSidebar)
-
-                                {
-
-                                    <div class="card mt-3">
-
-                                        <div class="card-header bg-primary-lt">
-
-                                            <h3 class="card-title">
-
-                                                <i class="ti ti-sparkles me-2"></i>
-
-                                                @this.Localizer["AiSuggester"]
-
-                                            </h3>
-
-                                        </div>
-
-                                        <div class="card-body">
-
-                                            <div class="mb-3">
-
-                                                <label class="form-label">@this.Localizer["AiContextLabel"]</label>
-
-                                                <textarea class="form-control" @bind="this.m_aiContext" rows="3"
-
-                                                          placeholder="@this.Localizer["AiContextPlaceholder"]"></textarea>
-
-                                            </div>
-
-                                            <button class="btn btn-primary w-100 mb-3" @onclick="this.GetAiSuggestions"
-
-                                                    disabled="@this.m_loadingAi">
-
-                                                @if (this.m_loadingAi)
-
-                                                {
-
-                                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
-
-                                                }
-
-                                                @this.Localizer["SuggestClauses"]
-
-                                            </button>
-
-                
-
-                                            <div class="list-group list-group-flush border-top overflow-auto" style="max-height: 400px;">
-
-                                                @foreach (var suggestion in this.m_aiSuggestions)
-
-                                                {
-
-                                                    <div class="list-group-item p-3 border-bottom cursor-pointer hover-bg-light"
-
-                                                         @onclick="() => this.AddClauseToLayout(suggestion)">
-
-                                                        <div class="text-secondary small mb-2">@this.Localizer["ClickToAdd"]</div>
-
-                                                        <div class="fw-medium text-wrap">@suggestion</div>
-
-                                                    </div>
-
-                                                }
-
-                                            </div>
-
-                                        </div>
-
-                                    </div>
-
-                                }
-
-                            </div>
-
-                        </div>
-
-                    </LoadingSkeleton>
-
-                </div>
-
-                
-
-                @* Preview Modal *@
-
-                @if (this.m_showPreview)
-
+                @if (this.m_showAiSidebar)
                 {
-
-                    <div class="modal modal-blur fade show d-block" tabindex="-1" role="dialog">
-
-                        <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
-
-                            <div class="modal-content">
-
-                                <div class="modal-header">
-
-                                    <h5 class="modal-title">@this.Localizer["PreviewTitle"]</h5>
-
-                                    <button type="button" class="btn-close" @onclick="this.TogglePreview"></button>
-
-                                </div>
-
-                                <div class="modal-body p-0" style="height: 600px; overflow-y: auto;">
-
-                                    <iframe srcdoc="@this.m_previewHtml" style="width: 100%; height: 100%; border: none;"></iframe>
-
-                                </div>
-
-                                <div class="modal-footer">
-
-                                    <button type="button" class="btn btn-secondary"
-
-                                            @onclick="this.TogglePreview">@this.CommonLocalizer["Close"]</button>
-
-                                </div>
-
-                            </div>
-
+                    <div class="card mt-3">
+                        <div class="card-header bg-primary-lt">
+                            <h3 class="card-title">
+                                <i class="ti ti-sparkles me-2"></i>
+                                @this.Localizer["AiSuggester"]
+                            </h3>
                         </div>
-
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">@this.Localizer["AiContextLabel"]</label>
+                                <textarea class="form-control" @bind="this.m_aiContext" rows="3"
+                                          placeholder="@this.Localizer["AiContextPlaceholder"]"></textarea>
+                            </div>
+                            <button class="btn btn-primary w-100 mb-3" @onclick="this.GetAiSuggestions"
+                                    disabled="@this.m_loadingAi">
+                                @if (this.m_loadingAi)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                }
+                                @this.Localizer["SuggestClauses"]
+                            </button>
+                            <div class="list-group list-group-flush border-top overflow-auto" style="max-height: 400px;">
+                                @foreach (var suggestion in this.m_aiSuggestions)
+                                {
+                                    <div class="list-group-item p-3 border-bottom cursor-pointer hover-bg-light"
+                                         @onclick="() => this.AddClauseToLayout(suggestion)">
+                                        <div class="text-secondary small mb-2">@this.Localizer["ClickToAdd"]</div>
+                                        <div class="fw-medium text-wrap">@suggestion</div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
                     </div>
-
-                    <div class="modal-backdrop fade show"></div>
-
                 }
+            }
+        </div>
+    </div>
+</LoadingSkeleton>
+</div>
+
+@* Preview Modal *@
+@if (this.m_showPreview)
+{
+    <div class="modal modal-blur fade show d-block" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@this.Localizer["PreviewTitle"]</h5>
+                    <button type="button" class="btn-close" @onclick="this.TogglePreview"></button>
+                </div>
+                <div class="modal-body p-0" style="height: 600px; overflow-y: auto;">
+                    <iframe srcdoc="@this.m_previewHtml" style="width: 100%; height: 100%; border: none;"></iframe>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary"
+                            @onclick="this.TogglePreview">@this.CommonLocalizer["Close"]</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
 
 @code {
     [Parameter] public int? TemplateId { get; set; }
@@ -275,6 +241,8 @@
     private bool m_saving;
     private bool m_showPreview;
     private string? m_previewHtml;
+    private ElementReference m_containerRef;
+    private IJSObjectReference? m_jsModule;
 
     // AI Features
     private bool m_showAiSidebar = true;
@@ -282,15 +250,57 @@
     private List<string> m_aiSuggestions = [];
     private bool m_loadingAi;
 
+    private DocumentType m_documentType
+    {
+        get => this.m_template.Type;
+        set
+        {
+            this.m_template.Type = value;
+            this.DesignerState.DocumentType = value;
+        }
+    }
+
     protected override async Task OnInitializedAsync()
     {
         this.DesignerState.OnStateChanged += this.StateHasChanged;
         await this.LoadDataAsync();
     }
 
-    public void Dispose()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            this.m_jsModule = await this.JS.InvokeAsync<IJSObjectReference>("import", "./js/designer-splitter.js");
+            await this.m_jsModule.InvokeVoidAsync("initSplitter", this.m_containerRef, DotNetObjectReference.Create(this));
+        }
+    }
+
+    [JSInvokable]
+    public void OnPanelResized(int leftWidth, int rightWidth)
+    {
+        this.DesignerState.LeftPanelWidth = leftWidth;
+        this.DesignerState.RightPanelWidth = rightWidth;
+    }
+
+    [JSInvokable]
+    public void OnPanelToggle(string panel)
+    {
+        if (panel == "left")
+            this.DesignerState.ToggleLeftPanel();
+        else
+            this.DesignerState.ToggleRightPanel();
+
+        this.InvokeAsync(this.StateHasChanged);
+    }
+
+    public async ValueTask DisposeAsync()
     {
         this.DesignerState.OnStateChanged -= this.StateHasChanged;
+        if (this.m_jsModule != null)
+        {
+            await this.m_jsModule.InvokeVoidAsync("dispose", this.m_containerRef);
+            await this.m_jsModule.DisposeAsync();
+        }
     }
 
     private async Task GetAiSuggestions()
@@ -299,10 +309,6 @@
         try
         {
             this.m_aiSuggestions = await this.AiService.GetSuggestedClausesAsync(this.m_template.Type, this.m_aiContext);
-        }
-        catch (Exception ex)
-        {
-            this.ShowError($"AI Suggestion failed: {ex.Message}");
         }
         finally
         {
@@ -347,10 +353,8 @@
                     Sections = [new LayoutSection { Name = "Main Content" }]
                 };
             }
-        }
-        catch (Exception ex)
-        {
-            this.ShowError($"Error loading template: {ex.Message}");
+
+            this.DesignerState.DocumentType = this.m_template.Type;
         }
         finally
         {
@@ -407,7 +411,6 @@
     {
         if (!this.m_showPreview)
         {
-            // Prepare sample data for preview
             var sampleData = await this.GetSampleDataAsync();
             this.m_previewHtml = this.HtmlRenderer.RenderHtml(this.m_layout, sampleData);
         }
@@ -448,14 +451,9 @@
                 this.ShowError(result.Message ?? "Failed to save template");
             }
         }
-        catch (Exception ex)
-        {
-            this.ShowError($"Error saving template: {ex.Message}");
-        }
         finally
         {
             this.m_saving = false;
         }
     }
-
 }
