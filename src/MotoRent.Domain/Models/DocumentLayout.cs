@@ -2,13 +2,30 @@ using System.Text.Json.Serialization;
 
 namespace MotoRent.Domain.Models;
 
-/// <summary>
-/// Root model for a document template layout.
-/// </summary>
+public class DocumentPage
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public string Name { get; set; } = "Page 1";
+    public List<LayoutSection> Sections { get; set; } = [new LayoutSection()];
+}
+
 public class DocumentLayout
 {
     public List<LayoutSection> Sections { get; set; } = [];
+    public List<DocumentPage> Pages { get; set; } = [];
     public LayoutSettings Settings { get; set; } = new();
+
+    public void EnsurePages()
+    {
+        if (this.Pages.Count > 0) return;
+
+        var page = new DocumentPage
+        {
+            Name = "Page 1",
+            Sections = this.Sections.Count > 0 ? this.Sections : [new LayoutSection()]
+        };
+        this.Pages.Add(page);
+    }
 }
 
 public class LayoutSettings

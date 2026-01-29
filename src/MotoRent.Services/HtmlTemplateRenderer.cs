@@ -20,14 +20,23 @@ public class HtmlTemplateRenderer : IHtmlTemplateRenderer
         sb.Append("table { width: 100%; border-collapse: collapse; margin-top: 10px; }");
         sb.Append("th { background-color: #f8f9fa; border-bottom: 2px solid #dee2e6; text-align: left; padding: 8px; }");
         sb.Append("td { border-bottom: 1px solid #dee2e6; padding: 8px; }");
+        sb.Append(".page-break { page-break-after: always; break-after: page; }");
         sb.Append("</style></head><body>");
 
-        foreach (var section in layout.Sections)
+        layout.EnsurePages();
+        for (var i = 0; i < layout.Pages.Count; i++)
         {
-            sb.Append("<div class='section'>");
-            foreach (var block in section.Blocks)
+            var page = layout.Pages[i];
+            var isLastPage = i == layout.Pages.Count - 1;
+            sb.Append($"<div class='{(isLastPage ? "" : "page-break")}'>");
+            foreach (var section in page.Sections)
             {
-                this.RenderBlock(sb, block, data);
+                sb.Append("<div class='section'>");
+                foreach (var block in section.Blocks)
+                {
+                    this.RenderBlock(sb, block, data);
+                }
+                sb.Append("</div>");
             }
             sb.Append("</div>");
         }

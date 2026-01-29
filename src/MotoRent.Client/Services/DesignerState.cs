@@ -12,11 +12,26 @@ public class DesignerState
     public int RightPanelWidth { get; set; } = 280;
     public bool LeftCollapsed { get; set; }
     public bool RightCollapsed { get; set; }
+    public int CurrentPageIndex { get; set; }
+    public string ActiveRightTab { get; set; } = "properties";
     public event Action? OnStateChanged;
 
     public void SetSelectedBlock(LayoutBlock? block)
     {
         this.SelectedBlock = block;
+        this.OnStateChanged?.Invoke();
+    }
+
+    public void SetCurrentPage(int index)
+    {
+        this.CurrentPageIndex = index;
+        this.SelectedBlock = null;
+        this.OnStateChanged?.Invoke();
+    }
+
+    public void SetRightTab(string tab)
+    {
+        this.ActiveRightTab = tab;
         this.OnStateChanged?.Invoke();
     }
 

@@ -225,7 +225,9 @@ public class DocumentTemplateAiService(
             if (rawJson.EndsWith("```")) rawJson = rawJson[..^3];
             rawJson = rawJson.Trim();
 
-            return JsonSerializer.Deserialize<DocumentLayout>(rawJson, s_layoutDeserializeOptions);
+            var layout = JsonSerializer.Deserialize<DocumentLayout>(rawJson, s_layoutDeserializeOptions);
+            layout?.EnsurePages();
+            return layout;
         }
         catch (Exception ex)
         {

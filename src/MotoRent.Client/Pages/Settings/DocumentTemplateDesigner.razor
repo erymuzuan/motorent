@@ -21,140 +21,141 @@
 
 <MotoRentPageTitle>@this.Localizer["PageTitle"]</MotoRentPageTitle>
 
-<TablerHeader PreTitle="@(this.m_template.DocumentTemplateId == 0 ? this.Localizer["CreateNewTemplate"] : this.Localizer["EditTemplate"])">
-    <TitleContent>
+@* ─── Top Bar ─── *@
+<div class="designer-topbar">
+    <div class="designer-topbar-left">
+        <a href="/settings/templates" class="designer-back-btn" title="@this.Localizer["Dashboard"]">
+            <i class="ti ti-arrow-left"></i>
+        </a>
+        <img src="images/icons/ios/40.png" alt="Logo" height="24" class="designer-logo" />
         <input type="text" class="designer-inline-name" @bind="this.m_template.Name"
                placeholder="@this.Localizer["NamePlaceholder"]" />
-    </TitleContent>
-    <ChildContent>
-        <div class="btn-list">
-            <button type="button" class="btn btn-ghost-secondary btn-icon"
-                    title="@this.Localizer["ToggleLeftPanel"]"
-                    @onclick="() => this.DesignerState.ToggleLeftPanel()">
-                <i class="ti @(this.DesignerState.LeftCollapsed ? "ti-layout-sidebar-right" : "ti-layout-sidebar-left-collapse")"></i>
-            </button>
-            <button type="button" class="btn btn-outline-secondary" @onclick="this.TriggerImportFileAsync" disabled="@this.m_importing">
-                @if (this.m_importing)
-                {
-                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
-                    @this.Localizer["ImportProcessing"]
-                }
-                else
-                {
-                    <i class="ti ti-file-import me-1"></i>
-                    @this.Localizer["ImportFromDocument"]
-                }
-            </button>
-            <InputFile @ref="this.m_importFileInput" OnChange="this.HandleImportFileAsync"
-                       accept=".pdf,.jpg,.jpeg,.png,.webp" style="display:none" />
-            <button type="button" class="btn btn-outline-secondary"
-                    @onclick="() => this.m_showAiSidebar = !this.m_showAiSidebar">
-                <i class="ti ti-sparkles me-1 text-accent"></i>
-                @this.Localizer["AiSuggester"]
-            </button>
-            <button type="button" class="btn btn-outline-primary" @onclick="this.TogglePreview">
-                <i class="ti ti-eye me-1"></i>
-                @this.Localizer["Preview"]
-            </button>
-            <button type="button" class="btn btn-primary" @onclick="this.SaveTemplateAsync" disabled="@this.m_saving">
-                @if (this.m_saving)
-                {
-                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
-                }
-                else
-                {
-                    <i class="ti ti-device-floppy me-1"></i>
-                }
-                @this.Localizer["SaveTemplate"]
-            </button>
-            <button type="button" class="btn btn-ghost-secondary btn-icon"
-                    title="@this.Localizer["ToggleRightPanel"]"
-                    @onclick="() => this.DesignerState.ToggleRightPanel()">
-                <i class="ti @(this.DesignerState.RightCollapsed ? "ti-layout-sidebar-left" : "ti-layout-sidebar-right-collapse")"></i>
-            </button>
-        </div>
-    </ChildContent>
-</TablerHeader>
+    </div>
+    <div class="designer-topbar-actions">
+        <button type="button" class="btn btn-ghost-secondary btn-sm btn-icon"
+                title="@this.Localizer["ToggleLeftPanel"]"
+                @onclick="() => this.DesignerState.ToggleLeftPanel()">
+            <i class="ti @(this.DesignerState.LeftCollapsed ? "ti-layout-sidebar-right" : "ti-layout-sidebar-left-collapse")"></i>
+        </button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="this.TriggerImportFileAsync" disabled="@this.m_importing">
+            @if (this.m_importing)
+            {
+                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                @this.Localizer["ImportProcessing"]
+            }
+            else
+            {
+                <i class="ti ti-file-import me-1"></i>
+                @this.Localizer["ImportFromDocument"]
+            }
+        </button>
+        <InputFile @ref="this.m_importFileInput" OnChange="this.HandleImportFileAsync"
+                   accept=".pdf,.jpg,.jpeg,.png,.webp" style="display:none" />
+        <button type="button" class="btn btn-outline-secondary btn-sm"
+                @onclick="() => this.m_showAiSidebar = !this.m_showAiSidebar">
+            <i class="ti ti-sparkles me-1"></i>
+            @this.Localizer["AiSuggester"]
+        </button>
+        <button type="button" class="btn btn-outline-primary btn-sm" @onclick="this.TogglePreview">
+            <i class="ti ti-eye me-1"></i>
+            @this.Localizer["Preview"]
+        </button>
+        <button type="button" class="btn btn-primary btn-sm" @onclick="this.SaveTemplateAsync" disabled="@this.m_saving">
+            @if (this.m_saving)
+            {
+                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+            }
+            else
+            {
+                <i class="ti ti-device-floppy me-1"></i>
+            }
+            @this.Localizer["SaveTemplate"]
+        </button>
+        <a href="/settings/templates" class="btn btn-ghost-secondary btn-sm">
+            <i class="ti ti-layout-dashboard me-1"></i>
+            @this.Localizer["Dashboard"]
+        </a>
+        <button type="button" class="btn btn-ghost-secondary btn-sm btn-icon"
+                title="@this.Localizer["ToggleRightPanel"]"
+                @onclick="() => this.DesignerState.ToggleRightPanel()">
+            <i class="ti @(this.DesignerState.RightCollapsed ? "ti-layout-sidebar-left" : "ti-layout-sidebar-right-collapse")"></i>
+        </button>
+    </div>
+</div>
 
-<div class="designer-wrapper">
+@* ─── Main Body ─── *@
 <LoadingSkeleton Loading="@this.m_loading" Mode="LoadingSkeleton.PlaceholderMode.Card">
     <div class="designer-layout @(this.DesignerState.LeftCollapsed ? "left-collapsed" : "") @(this.DesignerState.RightCollapsed ? "right-collapsed" : "")"
          @ref="this.m_containerRef">
 
-        @* Left Panel *@
+        @* ─── Left Panel ─── *@
         <div class="designer-panel designer-panel-left">
             @if (!this.DesignerState.LeftCollapsed)
             {
-                <div class="card mb-3">
-                    <div class="card-header">
-                        <h3 class="card-title">@this.Localizer["BlockLibrary"]</h3>
-                    </div>
-                    <div class="card-body p-0">
-                        <div class="list-group list-group-flush">
-                            <button class="list-group-item list-group-item-action"
-                                    @onclick='() => this.AddBlock("heading")' draggable="true"
-                                    @ondragstart='() => this.DesignerState.DraggingBlockType = "heading"'>
-                                <i class="ti ti-heading me-2"></i> @this.Localizer["Heading"]
-                            </button>
-                            <button class="list-group-item list-group-item-action"
-                                    @onclick='() => this.AddBlock("text")' draggable="true"
-                                    @ondragstart='() => this.DesignerState.DraggingBlockType = "text"'>
-                                <i class="ti ti-type me-2"></i> @this.Localizer["TextBlock"]
-                            </button>
-                            <button class="list-group-item list-group-item-action"
-                                    @onclick='() => this.AddBlock("table")' draggable="true"
-                                    @ondragstart='() => this.DesignerState.DraggingBlockType = "table"'>
-                                <i class="ti ti-table me-2"></i> @this.Localizer["DataTable"]
-                            </button>
-                            <button class="list-group-item list-group-item-action"
-                                    @onclick='() => this.AddBlock("image")' draggable="true"
-                                    @ondragstart='() => this.DesignerState.DraggingBlockType = "image"'>
-                                <i class="ti ti-photo me-2"></i> @this.Localizer["ImageLogo"]
-                            </button>
-                            <button class="list-group-item list-group-item-action"
-                                    @onclick='() => this.AddBlock("divider")' draggable="true"
-                                    @ondragstart='() => this.DesignerState.DraggingBlockType = "divider"'>
-                                <i class="ti ti-minus me-2"></i> @this.Localizer["DividerLine"]
-                            </button>
-                            <button class="list-group-item list-group-item-action"
-                                    @onclick='() => this.AddBlock("signature")' draggable="true"
-                                    @ondragstart='() => this.DesignerState.DraggingBlockType = "signature"'>
-                                <i class="ti ti-pencil me-2"></i> @this.Localizer["Signature"]
-                            </button>
-                            <button class="list-group-item list-group-item-action"
-                                    @onclick='() => this.AddBlock("two-columns")' draggable="true"
-                                    @ondragstart='() => this.DesignerState.DraggingBlockType = "two-columns"'>
-                                <i class="ti ti-columns me-2"></i> @this.Localizer["TwoColumns"]
-                            </button>
-                            <button class="list-group-item list-group-item-action"
-                                    @onclick='() => this.AddBlock("spacer")' draggable="true"
-                                    @ondragstart='() => this.DesignerState.DraggingBlockType = "spacer"'>
-                                <i class="ti ti-separator-horizontal me-2"></i> @this.Localizer["Spacer"]
-                            </button>
+                @* Pages Section *@
+                <div class="designer-section-header">
+                    <span class="designer-section-label">@this.Localizer["Pages"]</span>
+                </div>
+                <div class="designer-pages-list">
+                    @for (var i = 0; i < this.m_layout.Pages.Count; i++)
+                    {
+                        var idx = i;
+                        var docPage = this.m_layout.Pages[i];
+                        <div class="designer-page-item @(this.DesignerState.CurrentPageIndex == idx ? "active" : "")"
+                             @onclick="() => this.DesignerState.SetCurrentPage(idx)">
+                            <i class="ti ti-file-text me-2"></i>
+                            <span class="designer-page-name">@docPage.Name</span>
                         </div>
-                    </div>
+                    }
                 </div>
 
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">@this.Localizer["TemplateInfo"]</h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <label class="form-label">@this.Localizer["DocumentType"]</label>
-                            <select class="form-select" @bind="this.m_documentType">
-                                @foreach (DocumentType type in Enum.GetValues(typeof(DocumentType)))
-                                {
-                                    <option value="@type">@type</option>
-                                }
-                            </select>
-                        </div>
-                        <div class="mb-0">
-                            <label class="form-label">@this.Localizer["Description"]</label>
-                            <textarea class="form-control" @bind="this.m_template.Description" rows="2"
-                                      placeholder="@this.Localizer["DescriptionPlaceholder"]"></textarea>
-                        </div>
-                    </div>
+                <div class="designer-divider"></div>
+
+                @* Elements Section *@
+                <div class="designer-section-header">
+                    <span class="designer-section-label">@this.Localizer["StandardElements"]</span>
+                </div>
+                <div class="designer-elements-list">
+                    <button class="designer-element-btn"
+                            @onclick='() => this.AddBlock("heading")' draggable="true"
+                            @ondragstart='() => this.DesignerState.DraggingBlockType = "heading"'>
+                        <i class="ti ti-heading"></i> <span>@this.Localizer["Heading"]</span>
+                    </button>
+                    <button class="designer-element-btn"
+                            @onclick='() => this.AddBlock("text")' draggable="true"
+                            @ondragstart='() => this.DesignerState.DraggingBlockType = "text"'>
+                        <i class="ti ti-type"></i> <span>@this.Localizer["TextBlock"]</span>
+                    </button>
+                    <button class="designer-element-btn"
+                            @onclick='() => this.AddBlock("table")' draggable="true"
+                            @ondragstart='() => this.DesignerState.DraggingBlockType = "table"'>
+                        <i class="ti ti-table"></i> <span>@this.Localizer["DataTable"]</span>
+                    </button>
+                    <button class="designer-element-btn"
+                            @onclick='() => this.AddBlock("image")' draggable="true"
+                            @ondragstart='() => this.DesignerState.DraggingBlockType = "image"'>
+                        <i class="ti ti-photo"></i> <span>@this.Localizer["ImageLogo"]</span>
+                    </button>
+                    <button class="designer-element-btn"
+                            @onclick='() => this.AddBlock("divider")' draggable="true"
+                            @ondragstart='() => this.DesignerState.DraggingBlockType = "divider"'>
+                        <i class="ti ti-minus"></i> <span>@this.Localizer["DividerLine"]</span>
+                    </button>
+                    <button class="designer-element-btn"
+                            @onclick='() => this.AddBlock("signature")' draggable="true"
+                            @ondragstart='() => this.DesignerState.DraggingBlockType = "signature"'>
+                        <i class="ti ti-pencil"></i> <span>@this.Localizer["Signature"]</span>
+                    </button>
+                    <button class="designer-element-btn"
+                            @onclick='() => this.AddBlock("two-columns")' draggable="true"
+                            @ondragstart='() => this.DesignerState.DraggingBlockType = "two-columns"'>
+                        <i class="ti ti-columns"></i> <span>@this.Localizer["TwoColumns"]</span>
+                    </button>
+                    <button class="designer-element-btn"
+                            @onclick='() => this.AddBlock("spacer")' draggable="true"
+                            @ondragstart='() => this.DesignerState.DraggingBlockType = "spacer"'>
+                        <i class="ti ti-separator-horizontal"></i> <span>@this.Localizer["Spacer"]</span>
+                    </button>
                 </div>
             }
         </div>
@@ -162,34 +163,98 @@
         @* Left Splitter *@
         <div class="designer-splitter" data-panel="left"></div>
 
-        @* Canvas (center) *@
+        @* ─── Canvas (center) ─── *@
         <div class="designer-panel designer-panel-canvas">
             <DocumentCanvas Layout="this.m_layout"
+                            Page="this.CurrentPage"
                             SelectedBlock="this.DesignerState.SelectedBlock"
                             OnBlockSelected="b => this.DesignerState.SetSelectedBlock(b)"
                             OnBlockAdded="this.AddBlock"/>
+
+            @* Page Navigation Footer *@
+            <div class="designer-canvas-footer">
+                <button class="btn btn-ghost-secondary btn-sm btn-icon" @onclick="this.PreviousPage"
+                        disabled="@(this.DesignerState.CurrentPageIndex <= 0)">
+                    <i class="ti ti-chevron-left"></i>
+                </button>
+                <span class="designer-page-indicator">
+                    @this.Localizer["PageXOfY", this.DesignerState.CurrentPageIndex + 1, this.m_layout.Pages.Count]
+                </span>
+                <button class="btn btn-ghost-secondary btn-sm btn-icon" @onclick="this.NextPage"
+                        disabled="@(this.DesignerState.CurrentPageIndex >= this.m_layout.Pages.Count - 1)">
+                    <i class="ti ti-chevron-right"></i>
+                </button>
+                <div class="designer-page-actions">
+                    <button class="btn btn-ghost-primary btn-sm" @onclick="this.AddPage">
+                        <i class="ti ti-plus me-1"></i> @this.Localizer["AddPage"]
+                    </button>
+                    @if (this.m_layout.Pages.Count > 1)
+                    {
+                        <button class="btn btn-ghost-danger btn-sm" @onclick="this.DeleteCurrentPage">
+                            <i class="ti ti-trash me-1"></i> @this.Localizer["DeletePage"]
+                        </button>
+                    }
+                </div>
+            </div>
         </div>
 
         @* Right Splitter *@
         <div class="designer-splitter" data-panel="right"></div>
 
-        @* Right Panel *@
+        @* ─── Right Panel ─── *@
         <div class="designer-panel designer-panel-right">
             @if (!this.DesignerState.RightCollapsed)
             {
-                <BlockPropertyEditor Block="this.DesignerState.SelectedBlock"
-                                     OnDeleteRequested="this.DeleteSelectedBlock"/>
+                @* Right Panel Tabs *@
+                <div class="designer-right-tabs">
+                    <button class="designer-tab @(this.DesignerState.ActiveRightTab == "properties" ? "active" : "")"
+                            @onclick='() => this.DesignerState.SetRightTab("properties")'>
+                        @this.Localizer["PropertiesTab"]
+                    </button>
+                    <button class="designer-tab @(this.DesignerState.ActiveRightTab == "page" ? "active" : "")"
+                            @onclick='() => this.DesignerState.SetRightTab("page")'>
+                        @this.Localizer["PageTab"]
+                    </button>
+                    <button class="designer-tab @(this.DesignerState.ActiveRightTab == "data" ? "active" : "")"
+                            @onclick='() => this.DesignerState.SetRightTab("data")'>
+                        @this.Localizer["DataTab"]
+                    </button>
+                </div>
 
-                @if (this.m_showAiSidebar)
-                {
-                    <div class="card mt-3">
-                        <div class="card-header bg-primary-lt">
-                            <h3 class="card-title">
-                                <i class="ti ti-sparkles me-2"></i>
-                                @this.Localizer["AiSuggester"]
-                            </h3>
+                <div class="designer-right-content">
+                    @if (this.DesignerState.ActiveRightTab == "properties")
+                    {
+                        <BlockPropertyEditor Block="this.DesignerState.SelectedBlock"
+                                             OnDeleteRequested="this.DeleteSelectedBlock"/>
+                    }
+                    else if (this.DesignerState.ActiveRightTab == "page")
+                    {
+                        @* Page Settings *@
+                        <div class="p-3">
+                            <div class="mb-3">
+                                <label class="form-label">@this.Localizer["PageName"]</label>
+                                <input type="text" class="form-control" @bind="this.CurrentPage.Name" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">@this.Localizer["DocumentType"]</label>
+                                <select class="form-select" @bind="this.m_documentType">
+                                    @foreach (DocumentType type in Enum.GetValues(typeof(DocumentType)))
+                                    {
+                                        <option value="@type">@type</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="mb-0">
+                                <label class="form-label">@this.Localizer["Description"]</label>
+                                <textarea class="form-control" @bind="this.m_template.Description" rows="2"
+                                          placeholder="@this.Localizer["DescriptionPlaceholder"]"></textarea>
+                            </div>
                         </div>
-                        <div class="card-body">
+                    }
+                    else if (this.DesignerState.ActiveRightTab == "data")
+                    {
+                        @* AI Suggester / Data Tab *@
+                        <div class="p-3">
                             <div class="mb-3">
                                 <label class="form-label">@this.Localizer["AiContextLabel"]</label>
                                 <textarea class="form-control" @bind="this.m_aiContext" rows="3"
@@ -214,13 +279,12 @@
                                 }
                             </div>
                         </div>
-                    </div>
-                }
+                    }
+                </div>
             }
         </div>
     </div>
 </LoadingSkeleton>
-</div>
 
 @* Preview Modal *@
 @if (this.m_showPreview)
@@ -272,6 +336,10 @@
     private bool m_importing;
 
     private string MainSectionName => this.Localizer["MainContent"];
+
+    private DocumentPage CurrentPage => this.m_layout.Pages.Count > this.DesignerState.CurrentPageIndex
+        ? this.m_layout.Pages[this.DesignerState.CurrentPageIndex]
+        : this.m_layout.Pages.Last();
 
     private DocumentType m_documentType
     {
@@ -383,11 +451,22 @@
             var fileBytes = ms.ToArray();
 
             var layout = await this.AiService.ExtractTemplateLayoutAsync(fileBytes, file.ContentType, this.m_template.Type);
-            if (layout?.Sections is { Count: > 0 })
+            if (layout?.Pages is { Count: > 0 })
+            {
+                foreach (var page in layout.Pages)
+                {
+                    foreach (var section in page.Sections)
+                    {
+                        this.CurrentPage.Sections.Add(section);
+                    }
+                }
+                this.ShowSuccess(this.Localizer["ImportSuccess"]);
+            }
+            else if (layout?.Sections is { Count: > 0 })
             {
                 foreach (var section in layout.Sections)
                 {
-                    this.m_layout.Sections.Add(section);
+                    this.CurrentPage.Sections.Add(section);
                 }
                 this.ShowSuccess(this.Localizer["ImportSuccess"]);
             }
@@ -434,6 +513,8 @@
                 };
             }
 
+            this.m_layout.EnsurePages();
+            this.DesignerState.CurrentPageIndex = 0;
             this.DesignerState.DocumentType = this.m_template.Type;
         }
         catch (Exception ex)
@@ -450,7 +531,7 @@
     {
         if (this.DesignerState.SelectedBlock == null) return;
 
-        foreach (var section in this.m_layout.Sections)
+        foreach (var section in this.CurrentPage.Sections)
         {
             if (section.Blocks.Contains(this.DesignerState.SelectedBlock))
             {
@@ -541,11 +622,44 @@
 
     private LayoutSection GetMainSection()
     {
-        if (!this.m_layout.Sections.Any())
+        var page = this.CurrentPage;
+        if (!page.Sections.Any())
         {
-            this.m_layout.Sections.Add(new LayoutSection { Name = this.MainSectionName });
+            page.Sections.Add(new LayoutSection { Name = this.MainSectionName });
         }
 
-        return this.m_layout.Sections.Last();
+        return page.Sections.Last();
+    }
+
+    private void AddPage()
+    {
+        var newPage = new DocumentPage
+        {
+            Name = $"Page {this.m_layout.Pages.Count + 1}",
+            Sections = [new LayoutSection { Name = this.MainSectionName }]
+        };
+        this.m_layout.Pages.Add(newPage);
+        this.DesignerState.SetCurrentPage(this.m_layout.Pages.Count - 1);
+    }
+
+    private void DeleteCurrentPage()
+    {
+        if (this.m_layout.Pages.Count <= 1) return;
+
+        this.m_layout.Pages.RemoveAt(this.DesignerState.CurrentPageIndex);
+        var newIndex = Math.Min(this.DesignerState.CurrentPageIndex, this.m_layout.Pages.Count - 1);
+        this.DesignerState.SetCurrentPage(newIndex);
+    }
+
+    private void PreviousPage()
+    {
+        if (this.DesignerState.CurrentPageIndex > 0)
+            this.DesignerState.SetCurrentPage(this.DesignerState.CurrentPageIndex - 1);
+    }
+
+    private void NextPage()
+    {
+        if (this.DesignerState.CurrentPageIndex < this.m_layout.Pages.Count - 1)
+            this.DesignerState.SetCurrentPage(this.DesignerState.CurrentPageIndex + 1);
     }
 }

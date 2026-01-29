@@ -16,26 +16,29 @@ public class QuestPdfGenerator(IBinaryStore binaryStore) : IQuestPdfGenerator
         // QuestPDF License - Community (Free for small businesses/open source)
         QuestPDF.Settings.License = LicenseType.Community;
 
+        layout.EnsurePages();
         var document = Document.Create(container =>
         {
-            container.Page(page =>
+            foreach (var docPage in layout.Pages)
             {
-                page.Margin(layout.Settings.MarginLeft, Unit.Point);
-                // page.MarginRight(layout.Settings.MarginRight, Unit.Point); // Simplified margin in QuestPDF
-                page.Size(PageSizes.A4);
-                page.DefaultTextStyle(x => x.FontSize(layout.Settings.FontSize).FontFamily(layout.Settings.FontFamily));
-
-                page.Content().Column(col =>
+                container.Page(page =>
                 {
-                    foreach (var section in layout.Sections)
+                    page.Margin(layout.Settings.MarginLeft, Unit.Point);
+                    page.Size(PageSizes.A4);
+                    page.DefaultTextStyle(x => x.FontSize(layout.Settings.FontSize).FontFamily(layout.Settings.FontFamily));
+
+                    page.Content().Column(col =>
                     {
-                        foreach (var block in section.Blocks)
+                        foreach (var section in docPage.Sections)
                         {
-                            this.RenderBlock(col.Item(), block, data);
+                            foreach (var block in section.Blocks)
+                            {
+                                this.RenderBlock(col.Item(), block, data);
+                            }
                         }
-                    }
+                    });
                 });
-            });
+            }
         });
 
         return document.GeneratePdf();

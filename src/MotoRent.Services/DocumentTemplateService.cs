@@ -70,7 +70,9 @@ public class DocumentTemplateService(RentalDataContext context, IBinaryStore bin
         if (content?.Content == null) return null;
 
         var json = System.Text.Encoding.UTF8.GetString(content.Content);
-        return JsonSerializer.Deserialize<DocumentLayout>(json);
+        var layout = JsonSerializer.Deserialize<DocumentLayout>(json);
+        layout?.EnsurePages();
+        return layout;
     }
 
     /// <summary>
