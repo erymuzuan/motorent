@@ -244,7 +244,7 @@ else
                                             <span class="mr-badge mr-badge-success">@Localizer["Active"]</span>
                                         </td>
                                         <td class="text-end">
-                                            <a href="/rentals/checkout/@rental.Rental.RentalId" class="btn btn-outline-primary btn-sm">
+                                            <a href="/rentals/checkout/@EncodeId(rental.Rental.RentalId)" class="btn btn-outline-primary btn-sm">
                                                 <i class="ti ti-logout me-1"></i>
                                                 @Localizer["ReturnVehicle"]
                                             </a>
@@ -425,7 +425,8 @@ else
 
     protected override async Task OnParametersSetAsync()
     {
-        if (!string.IsNullOrEmpty(this.RentalRef) && int.TryParse(this.RentalRef, out var rentalId))
+        var rentalId = this.DecodeId(this.RentalRef);
+        if (rentalId > 0)
         {
             if (this.m_rental == null || this.m_rental.RentalId != rentalId)
             {
@@ -439,7 +440,7 @@ else
                 await LoadWizardDataAsync();
             }
         }
-        else
+        else if (string.IsNullOrEmpty(this.RentalRef))
         {
             this.m_rental = null;
         }

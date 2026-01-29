@@ -21,6 +21,50 @@ description: Manage blazor development, razor and razor.cs and any blazor compon
 - **Loading** a `boolean` property named `Loading` in `try-finally` when loading data
 - **For list** 2 columns, `col-3` for filters, and `col-9` for tables
 
+## Route Parameters — Hashed IDs (IMPORTANT)
+- **NEVER expose raw integer IDs** in route parameters or navigation URLs
+- **Use `EncodeId()` / `DecodeId()`** from `MotoRentComponentBase` to obfuscate entity IDs in URLs
+- **Route parameter type** must be `string`, not `int`
+- **HashidsNet** is configured in `Program.cs` with a salt and minimum length of 8 characters
+
+### Pattern
+```razor
+@page "/rentals/view/{RentalId}"
+
+@code {
+    [Parameter] public string RentalId { get; set; } = "";
+
+    private int m_rentalId;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        this.m_rentalId = this.DecodeId(this.RentalId);
+        if (this.m_rentalId == 0) return;
+        await this.LoadDataAsync();
+    }
+}
+```
+
+### Navigation
+```razor
+@* Always encode IDs when building href links *@
+<a href="/rentals/view/@EncodeId(rental.RentalId)">View</a>
+
+@* Programmatic navigation *@
+this.NavigationManager.NavigateTo($"/rentals/view/{this.EncodeId(rentalId)}");
+```
+
+### Multiple IDs
+```csharp
+// Encode multiple IDs into a single hash
+var hash = this.EncodeId(rentalId, vehicleId);
+
+// Decode back to array
+var ids = this.DecodeIdList(hash);
+var rentalId = ids[0];
+var vehicleId = ids[1];
+```
+
 ## Loading Pattern (IMPORTANT)
 - **Use `LoadingSkeleton`** - NOT `Dimmer` for loading states
 - **Property name** - Always use `Loading` (not `Busy`, `IsLoading`, etc.)

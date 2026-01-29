@@ -187,10 +187,10 @@
                             <div class="d-flex gap-2">
                                 @if (rental.Rental.Status == "Active")
                                 {
-                                    <button type="button" class="mr-btn-action success" @onclick="@(() => OpenCheckOutDialog(rental))">
+                                    <a href="/rentals/checkout/@EncodeId(rental.Rental.RentalId)" class="mr-btn-action success">
                                         <i class="ti ti-logout"></i>
                                         @Localizer["CheckOut"]
-                                    </button>
+                                    </a>
                                 }
                                 <a href="/rentals/view/@EncodeId(rental.Rental.RentalId)" class="mr-btn-action view">
                                     <i class="ti ti-eye"></i>
@@ -355,19 +355,6 @@
             .ShowDialogAsync();
     }
 
-    private async Task OpenCheckOutDialog(RentalViewModel rental)
-    {
-        var result = await this.DialogService
-            .Create<CheckOutDialog>($"{Localizer["CheckOut"]} - {rental.RenterName}")
-            .WithParameter(x => x.Entity, rental.Rental)
-            .Large()
-            .ShowDialogAsync();
-
-        if (!result.Cancelled)
-        {
-            await this.LoadDataAsync();
-        }
-    }
 
     private async Task ExtendRental(RentalViewModel rental)
     {

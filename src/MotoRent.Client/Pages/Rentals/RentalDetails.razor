@@ -41,10 +41,10 @@
                     }
                     @if (m_rental.Status == "Active")
                     {
-                        <button type="button" class="mr-btn-action success" @onclick="OpenCheckOutDialog">
+                        <a href="/rentals/checkout/@EncodeId(m_rental.RentalId)" class="mr-btn-action success">
                             <i class="ti ti-logout"></i>
                             @Localizer["CheckOut"]
-                        </button>
+                        </a>
                         @if (m_rental.DurationType == RentalDurationType.Daily)
                         {
                             <button type="button" class="btn btn-warning" @onclick="ExtendRental">
@@ -1044,32 +1044,6 @@
         }
     }
 
-    private async Task OpenCheckOutDialog()
-    {
-        if (m_rental == null) return;
-
-        if (!await DialogService.ConfirmAsync(
-            Localizer["ConfirmCheckOut", m_renter?.FullName ?? "", m_vehicle?.DisplayName ?? ""]))
-            return;
-
-        var request = new CheckOutRequest
-        {
-            RentalId = m_rental.RentalId,
-            ActualEndDate = DateTimeOffset.Now,
-            MileageEnd = m_rental.MileageStart + 50
-        };
-
-        var result = await RentalService.CheckOutAsync(request, UserName);
-        if (result.Success)
-        {
-            await LoadDataAsync();
-            ShowSuccess(Localizer["CheckOutCompleted", FormatCurrency(result.RefundAmount)]);
-        }
-        else
-        {
-            ShowError(Localizer["CheckOutFailed", result.Message ?? ""]);
-        }
-    }
 
     private async Task ExtendRental()
     {
