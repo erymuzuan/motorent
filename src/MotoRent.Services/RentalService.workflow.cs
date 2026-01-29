@@ -303,6 +303,20 @@ public partial class RentalService
             if (request.PostRentalInspection != null)
                 rental.PostRentalInspection = request.PostRentalInspection;
 
+            // Fuel assessment
+            if (request.FuelLevelAtReturn.HasValue)
+                rental.FuelLevelAtCheckOut = request.FuelLevelAtReturn;
+            rental.FuelSurcharge = request.FuelSurcharge;
+
+            // Cleanliness assessment
+            if (!string.IsNullOrEmpty(request.CleanlinessLevel))
+                rental.CleanlinessLevel = request.CleanlinessLevel;
+            rental.CleaningFee = request.CleaningFee;
+
+            // Accessories return
+            if (request.ReturnedAccessories is { Count: > 0 })
+                rental.ReturnedAccessories = request.ReturnedAccessories;
+
             session.Attach(rental);
 
             // 5. Calculate additional charges
@@ -359,6 +373,11 @@ public partial class RentalService
                     additionalCharges += (decimal)(extraMinutes / 60) * rental.RentalRate;
                 }
             }
+
+            // 5b. Add fuel, cleaning, and accessory charges
+            additionalCharges += request.FuelSurcharge;
+            additionalCharges += request.CleaningFee;
+            additionalCharges += request.AccessoryMissingCharge;
 
             // 6. Process damage reports
             foreach (var damageInfo in request.DamageReports ?? [])

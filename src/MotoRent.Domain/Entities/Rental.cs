@@ -383,6 +383,18 @@ public partial class Rental : Entity
     /// </summary>
     public InspectionInfo? PostRentalInspection { get; set; }
 
+    // Fuel assessment at return
+    public int? FuelLevelAtCheckIn { get; set; }
+    public int? FuelLevelAtCheckOut { get; set; }
+    public decimal FuelSurcharge { get; set; }
+
+    // Cleanliness assessment
+    public string? CleanlinessLevel { get; set; }
+    public decimal CleaningFee { get; set; }
+
+    // Accessories return status
+    public List<AccessoryReturnItem> ReturnedAccessories { get; set; } = [];
+
     public override int GetId() => this.RentalId;
     public override void SetId(int value) => this.RentalId = value;
 }

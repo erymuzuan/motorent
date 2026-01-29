@@ -2,11 +2,25 @@
 @page "/rentals/checkout/{RentalRef}"
 @using Microsoft.AspNetCore.Authorization
 @using MotoRent.Domain.Entities
+@using MotoRent.Domain.Models
+@using MotoRent.Domain.Models.VehicleInspection
+@using MotoRent.Domain.Settings
+@using MotoRent.Client.Components.Shared
+@using MotoRent.Client.Controls
+@using MotoRent.Client.Controls.VehicleInspection
 @attribute [Authorize(Policy = "RequireTenantStaff")]
 @inherits LocalizedComponentBase<CheckOut>
 @inject RentalService RentalService
 @inject RenterService RenterService
 @inject VehicleService VehicleService
+@inject VehiclePoolService VehiclePoolService
+@inject ShopService ShopService
+@inject MaintenanceService MaintenanceService
+@inject ServiceLocationService LocationService
+@inject OperatingHoursService HoursService
+@inject RentalPricingService PricingService
+@inject VehicleInspectionService VehicleInspectionService
+@inject AccessoryService AccessoryService
 
 <MotoRentPageTitle>@Localizer["PageTitle"]</MotoRentPageTitle>
 
@@ -27,146 +41,417 @@
                 </h1>
                 <p class="mr-page-subtitle">@Localizer["SubHeader"]</p>
             </div>
-            <a href="/rentals" class="mr-btn-header-action">
-                <i class="ti ti-arrow-left"></i>
-                @CommonLocalizer["BackToList"]
-            </a>
+            @if (m_rental != null)
+            {
+                <a href="/rentals/checkout" class="mr-btn-header-action">
+                    <i class="ti ti-arrow-left"></i>
+                    @CommonLocalizer["BackToList"]
+                </a>
+            }
+            else
+            {
+                <a href="/rentals" class="mr-btn-header-action">
+                    <i class="ti ti-arrow-left"></i>
+                    @CommonLocalizer["BackToList"]
+                </a>
+            }
         </div>
     </div>
 </div>
 
-<div class="container-xl">
-    <div class="mr-card mr-animate-in mr-animate-delay-1">
-        <div class="mr-card-header">
-            <div class="mr-card-title">
-                <i class="ti ti-car me-2"></i>
-                @Localizer["SelectRental"]
-            </div>
-            <div class="ms-auto">
-                <div class="input-icon">
-                    <span class="input-icon-addon">
-                        <i class="ti ti-search"></i>
-                    </span>
-                    <input type="text" class="form-control" placeholder="@Localizer["SearchPlaceholder"]"
-                           @bind="m_searchTerm" @bind:event="oninput" @onkeyup="OnSearchChanged" />
-                </div>
-            </div>
-        </div>
-        <div class="mr-card-body p-0">
-            @if (m_loading)
-            {
-                <div class="d-flex justify-content-center py-5">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
+@if (m_rental != null)
+{
+    @* ===== Full-page checkout wizard ===== *@
+    <div class="container-xl">
+        <div class="mr-card mr-animate-in mr-animate-delay-1">
+            <div class="mr-card-body p-4">
+                @if (m_wizardLoading)
+                {
+                    <div class="d-flex justify-content-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
                     </div>
-                </div>
-            }
-            else if (m_activeRentals.Count == 0)
-            {
-                <div class="text-center py-5">
-                    <i class="ti ti-car-off text-secondary" style="font-size: 3rem;"></i>
-                    <h4 class="mt-3 text-secondary">@Localizer["NoActiveRentals"]</h4>
-                    <p class="text-secondary">@Localizer["NoActiveRentalsHint"]</p>
-                    <a href="/rentals/checkin" class="btn btn-primary mt-2">
-                        <i class="ti ti-login me-1"></i>
-                        @Localizer["NewCheckIn"]
-                    </a>
-                </div>
-            }
-            else
-            {
-                <div class="table-responsive">
-                    <table class="table table-vcenter card-table table-hover mb-0">
-                        <thead>
-                            <tr>
-                                <th>@Localizer["Renter"]</th>
-                                <th>@Localizer["Vehicle"]</th>
-                                <th>@Localizer["StartDate"]</th>
-                                <th>@Localizer["ExpectedReturn"]</th>
-                                <th class="text-center">@Localizer["Status"]</th>
-                                <th class="text-end" style="width: 120px;"></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var rental in m_filteredRentals)
-                            {
-                                var isOverdue = rental.ExpectedEndDate < DateTimeOffset.Now;
-                                <tr class="@(isOverdue ? "table-warning" : "")">
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <span class="avatar avatar-sm bg-primary-lt me-2">
-                                                <i class="ti ti-user"></i>
-                                            </span>
-                                            <div>
-                                                <div class="fw-medium">@rental.RenterName</div>
-                                                <small class="text-secondary">@rental.RenterPhone</small>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="fw-medium">@rental.VehicleName</div>
-                                        <small class="text-secondary">@rental.LicensePlate</small>
-                                    </td>
-                                    <td>@rental.StartDate.ToString("dd MMM yyyy")</td>
-                                    <td>
-                                        @rental.ExpectedEndDate.ToString("dd MMM yyyy")
-                                        @if (isOverdue)
-                                        {
-                                            <span class="badge bg-danger ms-1">@Localizer["Overdue"]</span>
-                                        }
-                                    </td>
-                                    <td class="text-center">
-                                        <span class="mr-badge mr-badge-success">@Localizer["Active"]</span>
-                                    </td>
-                                    <td class="text-end">
-                                        <button type="button" class="btn btn-outline-primary btn-sm"
-                                                @onclick="@(() => OpenCheckOutDialog(rental.Rental))">
-                                            <i class="ti ti-logout me-1"></i>
-                                            @Localizer["ReturnVehicle"]
-                                        </button>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-            }
+                }
+                else
+                {
+                    @* Step indicators *@
+                    <div class="mr-filter-tabs mb-4" style="justify-content: center;">
+                        @for (int i = 0; i < m_stepKeys.Length; i++)
+                        {
+                            var stepIndex = i;
+                            var isActive = m_activeStep == stepIndex;
+                            var isCompleted = m_activeStep > stepIndex;
+                            <button type="button"
+                                    class="mr-filter-tab @(isActive ? "active" : "") @(isCompleted ? "text-success" : "")"
+                                    disabled="@(stepIndex > m_activeStep)"
+                                    @onclick="@(() => GoToStep(stepIndex))">
+                                @if (isCompleted)
+                                {
+                                    <i class="ti ti-check me-1"></i>
+                                }
+                                else
+                                {
+                                    <span class="me-1">@(stepIndex + 1).</span>
+                                }
+                                @Localizer[m_stepKeys[stepIndex]]
+                            </button>
+                        }
+                    </div>
+
+                    <hr class="my-4" style="border-color: var(--mr-border-light);" />
+
+                    @* Step content *@
+                    @switch (m_activeStep)
+                    {
+                        case 0:
+                            @RenderReturnStep()
+                            break;
+                        case 1:
+                            @RenderDamageStep()
+                            break;
+                        case 2:
+                            @RenderSettleStep()
+                            break;
+                    }
+
+                    @* Navigation buttons *@
+                    <div class="d-flex justify-content-between mt-4 pt-3" style="border-top: 1px solid var(--mr-border-light);">
+                        <button type="button" class="mr-btn-cancel"
+                                disabled="@(m_activeStep == 0)"
+                                @onclick="PreviousStep">
+                            <i class="ti ti-arrow-left"></i>
+                            @Localizer["Back"]
+                        </button>
+
+                        @if (m_activeStep < 2)
+                        {
+                            <button type="button" class="mr-btn-primary-action"
+                                    disabled="@(m_activeStep == 0 && !CanProceedToStep2)"
+                                    @onclick="NextStep">
+                                @if (m_activeStep == 0)
+                                {
+                                    @Localizer["NextDamageCheck"]
+                                }
+                                else
+                                {
+                                    @Localizer["NextSettlement"]
+                                }
+                                <i class="ti ti-arrow-right"></i>
+                            </button>
+                        }
+                        else
+                        {
+                            <button type="button" class="btn btn-success btn-lg" disabled="@(!CanComplete)" @onclick="CompleteCheckOut">
+                                @if (m_saving)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                }
+                                <i class="ti ti-check me-1"></i>
+                                @Localizer["Complete"]
+                            </button>
+                        }
+                    </div>
+                }
+            </div>
         </div>
     </div>
-</div>
+}
+else
+{
+    @* ===== List view (no RentalRef) ===== *@
+    <div class="container-xl">
+        <div class="mr-card mr-animate-in mr-animate-delay-1">
+            <div class="mr-card-header">
+                <div class="mr-card-title">
+                    <i class="ti ti-car me-2"></i>
+                    @Localizer["SelectRental"]
+                </div>
+                <div class="ms-auto">
+                    <div class="input-icon">
+                        <span class="input-icon-addon">
+                            <i class="ti ti-search"></i>
+                        </span>
+                        <input type="text" class="form-control" placeholder="@Localizer["SearchPlaceholder"]"
+                               @bind="m_searchTerm" @bind:event="oninput" @onkeyup="OnSearchChanged" />
+                    </div>
+                </div>
+            </div>
+            <div class="mr-card-body p-0">
+                @if (m_loading)
+                {
+                    <div class="d-flex justify-content-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                }
+                else if (m_activeRentals.Count == 0)
+                {
+                    <div class="text-center py-5">
+                        <i class="ti ti-car-off text-secondary" style="font-size: 3rem;"></i>
+                        <h4 class="mt-3 text-secondary">@Localizer["NoActiveRentals"]</h4>
+                        <p class="text-secondary">@Localizer["NoActiveRentalsHint"]</p>
+                        <a href="/rentals/checkin" class="btn btn-primary mt-2">
+                            <i class="ti ti-login me-1"></i>
+                            @Localizer["NewCheckIn"]
+                        </a>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-vcenter card-table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>@Localizer["Renter"]</th>
+                                    <th>@Localizer["Vehicle"]</th>
+                                    <th>@Localizer["StartDate"]</th>
+                                    <th>@Localizer["ExpectedReturn"]</th>
+                                    <th class="text-center">@Localizer["Status"]</th>
+                                    <th class="text-end" style="width: 120px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var rental in m_filteredRentals)
+                                {
+                                    var isOverdue = rental.ExpectedEndDate < DateTimeOffset.Now;
+                                    <tr class="@(isOverdue ? "table-warning" : "")">
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <span class="avatar avatar-sm bg-primary-lt me-2">
+                                                    <i class="ti ti-user"></i>
+                                                </span>
+                                                <div>
+                                                    <div class="fw-medium">@rental.RenterName</div>
+                                                    <small class="text-secondary">@rental.RenterPhone</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="fw-medium">@rental.VehicleName</div>
+                                            <small class="text-secondary">@rental.LicensePlate</small>
+                                        </td>
+                                        <td>@rental.StartDate.ToString("dd MMM yyyy")</td>
+                                        <td>
+                                            @rental.ExpectedEndDate.ToString("dd MMM yyyy")
+                                            @if (isOverdue)
+                                            {
+                                                <span class="badge bg-danger ms-1">@Localizer["Overdue"]</span>
+                                            }
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="mr-badge mr-badge-success">@Localizer["Active"]</span>
+                                        </td>
+                                        <td class="text-end">
+                                            <a href="/rentals/checkout/@rental.Rental.RentalId" class="btn btn-outline-primary btn-sm">
+                                                <i class="ti ti-logout me-1"></i>
+                                                @Localizer["ReturnVehicle"]
+                                            </a>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
 
 @code {
     [Parameter] public string? RentalRef { get; set; }
 
+    private readonly string[] m_stepKeys = ["Return", "Damage", "Settle"];
+    private int m_activeStep;
+
+    // List view state
     private bool m_loading = true;
     private string m_searchTerm = "";
     private List<ActiveRentalItem> m_activeRentals = [];
     private List<ActiveRentalItem> m_filteredRentals = [];
 
+    // Wizard state
+    private Rental? m_rental;
+    private bool m_wizardLoading = true;
+    private bool m_saving;
+    private bool m_showPricingBreakdown;
+
+    // Rental details
+    private string m_renterName = "";
+    private string m_vehicleName = "";
+    private Vehicle? m_vehicle;
+    private decimal m_depositAmount;
+    private bool m_isIntervalRental;
+    private bool m_isHourlyRental;
+    private string m_dailyLateFeeMode = "Daily";
+    private bool m_showMileage;
+
+    // Cross-shop return for pooled vehicles
+    private bool m_isPooledVehicle;
+    private List<Shop> m_poolShops = [];
+    private int m_returnToShopId;
+
+    // Return details
+    private DateTime? m_actualReturnDate;
+    private int m_mileageEnd;
+    private string? m_notes;
+
+    // Post-rental inspection
+    private InspectionInfo? m_postInspection;
+
+    // Damage assessment
+    private string m_damageLevel = "None";
+    private string? m_damageDescription;
+    private decimal m_damageEstimate;
+    private DamagePhotoUpload? m_damagePhotoUpload;
+    private List<string> m_damagePhotoPaths = [];
+
+    // 3D Inspection
+    private bool m_use3DInspection;
+    private VehicleInspector? m_vehicleInspector;
+    private List<DamageMarker> m_inspectionMarkers = [];
+    private DamageMarker? m_selectedMarker;
+    private VehicleInspection? m_preRentalInspection;
+
+    // Settlement
+    private string m_refundMethod = "Cash";
+    private bool m_refundProcessed;
+
+    // Maintenance warning
+    private bool m_hasMaintenanceWarning;
+    private int m_maintenanceOverdueCount;
+    private int m_maintenanceDueSoonCount;
+    private bool m_acknowledgeMaintenanceWarning;
+
+    // Drop-off service location
+    private List<ServiceLocation> m_dropoffLocations = [];
+    private int m_dropoffLocationId;
+    private ServiceLocation? m_selectedDropoffLocation;
+    private TimeSpan m_dropoffTime = new(10, 0, 0);
+    private decimal m_dropoffLocationFee;
+    private decimal m_dropoffOutOfHoursFee;
+    private OutOfHoursResult? m_dropoffOutOfHoursBand;
+
+    // Fuel level
+    private int m_fuelLevelAtReturn = 100;
+    private int? m_fuelLevelAtCheckIn;
+    private decimal m_fuelSurcharge;
+
+    // Cleanliness
+    private string m_cleanlinessLevel = "Clean";
+    private decimal m_cleaningFee;
+
+    // Accessories
+    private List<AccessoryReturnItem> m_rentalAccessories = [];
+    private decimal m_accessoryMissingCharge;
+
+    // Calculated values
+    private int m_extraDays => this.m_actualReturnDate.HasValue && !this.m_isIntervalRental && !this.m_isHourlyRental
+        ? Math.Max(0, (int)(this.m_actualReturnDate.Value - this.m_rental!.ExpectedEndDate.Date).TotalDays)
+        : 0;
+
+    private int m_extraHours
+    {
+        get
+        {
+            if (this.m_rental == null) return 0;
+
+            if (this.m_isHourlyRental)
+            {
+                var actualEnd = DateTimeOffset.Now;
+                if (actualEnd <= this.m_rental.ExpectedEndDate) return 0;
+                return (int)Math.Ceiling((actualEnd - this.m_rental.ExpectedEndDate).TotalHours);
+            }
+
+            if (this.m_dailyLateFeeMode == "Hourly" && this.m_vehicle?.HourlyRate > 0
+                && this.m_actualReturnDate.HasValue && !this.m_isIntervalRental)
+            {
+                var expectedEnd = this.m_rental.ExpectedEndDate;
+                var actualEnd = new DateTimeOffset(
+                    DateTime.SpecifyKind(this.m_actualReturnDate.Value, DateTimeKind.Utc), TimeSpan.Zero);
+                if (actualEnd <= expectedEnd) return 0;
+                return (int)Math.Ceiling((actualEnd - expectedEnd).TotalHours);
+            }
+
+            return 0;
+        }
+    }
+
+    private decimal m_extraDaysCharge
+    {
+        get
+        {
+            if (this.m_rental == null) return 0;
+
+            if (this.m_isHourlyRental)
+                return this.m_extraHours * this.m_rental.RentalRate;
+
+            if (this.m_dailyLateFeeMode == "Hourly" && this.m_vehicle?.HourlyRate > 0
+                && !this.m_isIntervalRental)
+                return this.m_extraHours * this.m_vehicle.HourlyRate.Value;
+
+            return this.m_extraDays * this.m_rental.RentalRate;
+        }
+    }
+
+    private decimal m_dropoffTotalFees => this.m_dropoffLocationFee + this.m_dropoffOutOfHoursFee;
+    private decimal m_3dInspectionDamageEstimate => this.m_inspectionMarkers.Sum(m => m.EstimatedCost ?? 0);
+    private decimal m_totalAdditional => this.m_extraDaysCharge +
+        (this.m_use3DInspection ? this.m_3dInspectionDamageEstimate : (this.m_damageLevel != "None" ? this.m_damageEstimate : 0)) +
+        this.m_dropoffTotalFees +
+        this.m_fuelSurcharge +
+        this.m_cleaningFee +
+        this.m_accessoryMissingCharge;
+    private decimal m_refundAmount => Math.Max(0, this.m_depositAmount - this.m_totalAdditional);
+
+    private bool CanProceedToStep2 => this.m_rental != null &&
+                                      (this.m_actualReturnDate.HasValue || this.m_isIntervalRental || this.m_isHourlyRental) &&
+                                      (!this.m_showMileage || this.m_mileageEnd >= this.m_rental.MileageStart) &&
+                                      this.m_postInspection != null;
+
+    private bool CanComplete => this.CanProceedToStep2 &&
+                                (this.m_refundAmount == 0 || this.m_refundProcessed) &&
+                                (!this.m_hasMaintenanceWarning || this.m_acknowledgeMaintenanceWarning);
+
     protected override async Task OnInitializedAsync()
     {
-        await LoadActiveRentalsAsync();
+        if (string.IsNullOrEmpty(this.RentalRef))
+        {
+            await LoadActiveRentalsAsync();
+        }
     }
 
     protected override async Task OnParametersSetAsync()
     {
-        // If RentalRef is provided, open checkout dialog directly
         if (!string.IsNullOrEmpty(this.RentalRef) && int.TryParse(this.RentalRef, out var rentalId))
         {
-            var rental = await this.RentalService.GetRentalByIdAsync(rentalId);
-            if (rental != null && rental.Status == "Active")
+            if (this.m_rental == null || this.m_rental.RentalId != rentalId)
             {
-                await OpenCheckOutDialog(rental);
+                this.m_rental = await this.RentalService.GetRentalByIdAsync(rentalId);
+                if (this.m_rental == null || this.m_rental.Status != "Active")
+                {
+                    this.ShowError(this.Localizer["ErrorLoading", "Rental not found or not active"]);
+                    this.NavigationManager.NavigateTo("/rentals/checkout");
+                    return;
+                }
+                await LoadWizardDataAsync();
             }
         }
+        else
+        {
+            this.m_rental = null;
+        }
     }
+
+    #region List View
 
     private async Task LoadActiveRentalsAsync()
     {
         this.m_loading = true;
         try
         {
-            // Get all active rentals
             var result = await this.RentalService.GetRentalsAsync(0, status: "Active", pageSize: 100);
 
             this.m_activeRentals.Clear();
@@ -187,7 +472,6 @@
                 });
             }
 
-            // Sort by expected end date (overdue first)
             this.m_activeRentals = this.m_activeRentals
                 .OrderBy(r => r.ExpectedEndDate)
                 .ToList();
@@ -222,21 +506,6 @@
         }
     }
 
-    private async Task OpenCheckOutDialog(Rental rental)
-    {
-        var result = await this.DialogService
-            .Create<CheckOutDialog>(this.Localizer["CheckOutTitle"])
-            .WithParameter(x => x.Entity, rental)
-            .Large()
-            .ShowDialogAsync();
-
-        if (!result.Cancelled)
-        {
-            this.ShowSuccess(this.Localizer["CheckOutSuccess"]);
-            this.NavigationManager.NavigateTo("/rentals");
-        }
-    }
-
     private class ActiveRentalItem
     {
         public Rental Rental { get; set; } = null!;
@@ -247,4 +516,1224 @@
         public DateTimeOffset StartDate { get; set; }
         public DateTimeOffset ExpectedEndDate { get; set; }
     }
+
+    #endregion
+
+    #region Wizard
+
+    private async Task LoadWizardDataAsync()
+    {
+        this.m_wizardLoading = true;
+        try
+        {
+            this.m_activeStep = 0;
+            this.m_actualReturnDate = DateTime.Today;
+            this.m_mileageEnd = this.m_rental!.MileageStart;
+            this.m_returnToShopId = this.RequestContext.GetShopId();
+
+            // Load renter name
+            var renter = await this.DataContext.LoadOneAsync<Renter>(r => r.RenterId == this.m_rental.RenterId);
+            this.m_renterName = renter?.FullName ?? "Unknown";
+
+            // Load vehicle
+            var vehicleId = this.m_rental.VehicleId;
+            this.m_vehicle = vehicleId > 0
+                ? await this.DataContext.LoadOneAsync<Vehicle>(v => v.VehicleId == vehicleId)
+                : null;
+            if (this.m_vehicle != null)
+            {
+                this.m_vehicleName = $"{this.m_vehicle.Brand} {this.m_vehicle.Model} ({this.m_vehicle.LicensePlate})";
+                this.m_mileageEnd = this.m_vehicle.Mileage ?? 0;
+                this.m_isIntervalRental = this.m_rental.DurationType == RentalDurationType.FixedInterval;
+                this.m_isHourlyRental = this.m_rental.DurationType == RentalDurationType.Hourly;
+                this.m_showMileage = this.m_vehicle.VehicleType == VehicleType.Motorbike ||
+                                     this.m_vehicle.VehicleType == VehicleType.Car ||
+                                     this.m_vehicle.VehicleType == VehicleType.Van;
+
+                if (this.m_vehicle.VehiclePoolId.HasValue)
+                {
+                    this.m_isPooledVehicle = true;
+                    this.m_poolShops = await this.VehiclePoolService.GetShopsInPoolAsync(this.m_vehicle.VehiclePoolId.Value);
+                }
+            }
+
+            // Load daily late fee mode setting
+            if (this.m_rental.DurationType == RentalDurationType.Daily)
+            {
+                this.m_dailyLateFeeMode = await this.SettingConfig.GetStringAsync(
+                    SettingKeys.Rental_DailyLateFeeMode, defaultValue: "Daily") ?? "Daily";
+            }
+
+            // Load deposit
+            var deposit = await this.DataContext.LoadOneAsync<Deposit>(d => d.RentalId == this.m_rental.RentalId);
+            this.m_depositAmount = deposit?.Amount ?? 0;
+
+            // Check maintenance status
+            if (this.m_showMileage && this.m_vehicle != null)
+            {
+                var maintenanceSummary = await this.MaintenanceService.GetMotorbikeMaintenanceSummaryAsync(
+                    this.m_vehicle.VehicleId, DateTimeOffset.Now);
+                this.m_maintenanceOverdueCount = maintenanceSummary.OverdueCount;
+                this.m_maintenanceDueSoonCount = maintenanceSummary.DueSoonCount;
+                this.m_hasMaintenanceWarning = maintenanceSummary.OverallStatus != MaintenanceStatus.Ok;
+            }
+
+            // Load dropoff service locations
+            this.m_dropoffLocations = await this.LocationService.GetActiveLocationsAsync(
+                this.RequestContext.GetShopId(), pickupOnly: null, dropoffOnly: true);
+
+            // Check if rental already has a dropoff location configured
+            if (this.m_rental.DropoffLocationId.HasValue)
+            {
+                this.m_dropoffLocationId = this.m_rental.DropoffLocationId.Value;
+                this.m_selectedDropoffLocation = this.m_dropoffLocations.FirstOrDefault(l => l.ServiceLocationId == this.m_dropoffLocationId);
+                this.m_dropoffLocationFee = this.m_rental.DropoffLocationFee;
+                if (this.m_rental.ScheduledDropoffTime.HasValue)
+                {
+                    this.m_dropoffTime = this.m_rental.ScheduledDropoffTime.Value;
+                }
+            }
+
+            // Load fuel level from check-in (stored on rental)
+            this.m_fuelLevelAtCheckIn = this.m_rental.FuelLevelAtCheckIn;
+            this.m_fuelLevelAtReturn = this.m_fuelLevelAtCheckIn ?? 100;
+
+            // Load rental accessories for return checklist
+            this.m_rentalAccessories.Clear();
+            var rentalAccessories = await this.DataContext.LoadAsync(
+                this.DataContext.CreateQuery<RentalAccessory>()
+                    .Where(ra => ra.RentalId == this.m_rental.RentalId));
+            foreach (var ra in rentalAccessories.ItemCollection)
+            {
+                var accessory = await this.DataContext.LoadOneAsync<Accessory>(a => a.AccessoryId == ra.AccessoryId);
+                this.m_rentalAccessories.Add(new AccessoryReturnItem
+                {
+                    AccessoryId = ra.AccessoryId,
+                    Name = accessory?.Name ?? $"Accessory #{ra.AccessoryId}",
+                    QuantityRented = ra.Quantity,
+                    QuantityReturned = ra.Quantity
+                });
+            }
+
+            // Load pre-rental inspection for 3D comparison
+            this.m_preRentalInspection = await this.VehicleInspectionService.GetPreRentalInspectionAsync(this.m_rental.RentalId);
+            if (this.m_preRentalInspection != null)
+            {
+                foreach (var marker in this.m_preRentalInspection.Markers)
+                {
+                    marker.IsPreExisting = true;
+                }
+                this.m_inspectionMarkers = [.. this.m_preRentalInspection.Markers];
+            }
+        }
+        finally
+        {
+            this.m_wizardLoading = false;
+        }
+    }
+
+    private string GetVehicleTypeLabel() => this.m_vehicle?.VehicleType switch
+    {
+        VehicleType.Motorbike => Localizer["Motorbike"],
+        VehicleType.Car => Localizer["Car"],
+        VehicleType.JetSki => Localizer["JetSki"],
+        VehicleType.Boat => Localizer["Boat"],
+        VehicleType.Van => Localizer["Van"],
+        _ => Localizer["Vehicle"]
+    };
+
+    private void GoToStep(int step)
+    {
+        if (step < this.m_activeStep)
+            this.m_activeStep = step;
+    }
+
+    private void NextStep()
+    {
+        if (this.m_activeStep < 2)
+            this.m_activeStep++;
+    }
+
+    private void PreviousStep()
+    {
+        if (this.m_activeStep > 0)
+            this.m_activeStep--;
+    }
+
+    private string GetRefundConfirmationText()
+    {
+        if (this.m_refundAmount > 0)
+            return Localizer["ConfirmRefundProcessed", FormatCurrency(this.m_refundAmount), Localizer[this.m_refundMethod]];
+        else if (this.m_totalAdditional > this.m_depositAmount)
+            return Localizer["ConfirmAdditionalCollected", FormatCurrency(this.m_totalAdditional - this.m_depositAmount)];
+        else
+            return Localizer["NoRefundNeeded"];
+    }
+
+    private void OnDamagePhotosChanged(List<string> photoPaths)
+    {
+        this.m_damagePhotoPaths = photoPaths;
+    }
+
+    private async Task OnDropoffLocationChanged()
+    {
+        this.m_selectedDropoffLocation = this.m_dropoffLocations.FirstOrDefault(l => l.ServiceLocationId == this.m_dropoffLocationId);
+
+        if (this.m_selectedDropoffLocation != null)
+        {
+            this.m_dropoffLocationFee = this.m_selectedDropoffLocation.DropoffFee;
+            await this.CalculateDropoffOutOfHoursFeeAsync();
+        }
+        else
+        {
+            this.m_dropoffLocationFee = 0;
+            this.m_dropoffOutOfHoursFee = 0;
+            this.m_dropoffOutOfHoursBand = null;
+        }
+    }
+
+    private async Task OnDropoffTimeChanged(ChangeEventArgs e)
+    {
+        if (TimeSpan.TryParse(e.Value?.ToString(), out var time))
+        {
+            this.m_dropoffTime = time;
+            await this.CalculateDropoffOutOfHoursFeeAsync();
+        }
+    }
+
+    private async Task CalculateDropoffOutOfHoursFeeAsync()
+    {
+        if (!this.m_actualReturnDate.HasValue && !this.m_isIntervalRental && !this.m_isHourlyRental) return;
+
+        var dropoffDate = (this.m_isIntervalRental || this.m_isHourlyRental) ? DateTime.Today : this.m_actualReturnDate!.Value;
+        var dropoffDateTime = new DateTimeOffset(
+            DateTime.SpecifyKind(dropoffDate, DateTimeKind.Utc), TimeSpan.Zero)
+            .Add(this.m_dropoffTime);
+
+        this.m_dropoffOutOfHoursBand = await this.HoursService.GetOutOfHoursFeeAsync(this.RequestContext.GetShopId(), dropoffDateTime);
+        this.m_dropoffOutOfHoursFee = this.m_dropoffOutOfHoursBand?.Fee ?? 0;
+    }
+
+    private async Task CompleteCheckOut()
+    {
+        if (this.m_rental == null) return;
+        if (!this.m_actualReturnDate.HasValue && !this.m_isIntervalRental && !this.m_isHourlyRental) return;
+
+        this.m_saving = true;
+        try
+        {
+            var request = new CheckOutRequest
+            {
+                RentalId = this.m_rental.RentalId,
+                ActualEndDate = (this.m_isIntervalRental || this.m_isHourlyRental)
+                    ? DateTimeOffset.Now
+                    : new DateTimeOffset(DateTime.SpecifyKind(this.m_actualReturnDate!.Value, DateTimeKind.Utc), TimeSpan.Zero),
+                MileageEnd = this.m_showMileage ? this.m_mileageEnd : 0,
+                Notes = this.m_notes,
+                PaymentMethod = this.m_refundMethod,
+                RefundDeposit = this.m_refundAmount > 0,
+                ReturnShopId = this.m_isPooledVehicle ? this.m_returnToShopId : null,
+                DropoffLocationId = this.m_dropoffLocationId > 0 ? this.m_dropoffLocationId : null,
+                DropoffLocationName = this.m_selectedDropoffLocation?.Name,
+                ScheduledDropoffTime = this.m_dropoffLocationId > 0 ? this.m_dropoffTime : null,
+                DropoffLocationFee = this.m_dropoffLocationFee,
+                OutOfHoursDropoffFee = this.m_dropoffOutOfHoursFee,
+                IsOutOfHoursDropoff = this.m_dropoffOutOfHoursBand != null,
+                OutOfHoursDropoffBand = this.m_dropoffOutOfHoursBand?.BandName,
+                PostRentalInspection = this.m_postInspection,
+                FuelLevelAtReturn = this.m_fuelLevelAtReturn,
+                FuelSurcharge = this.m_fuelSurcharge,
+                CleanlinessLevel = this.m_cleanlinessLevel,
+                CleaningFee = this.m_cleaningFee,
+                ReturnedAccessories = this.m_rentalAccessories.Count > 0 ? this.m_rentalAccessories : null,
+                AccessoryMissingCharge = this.m_accessoryMissingCharge
+            };
+
+            if (this.m_damageLevel != "None" && !string.IsNullOrEmpty(this.m_damageDescription))
+            {
+                request.DamageReports = [
+                    new DamageReportInfo
+                    {
+                        Description = this.m_damageDescription,
+                        Severity = this.m_damageLevel,
+                        EstimatedCost = this.m_damageEstimate,
+                        PhotoPaths = this.m_damagePhotoPaths.Count > 0 ? this.m_damagePhotoPaths : null
+                    }
+                ];
+            }
+
+            var result = await this.RentalService.CheckOutAsync(request, this.UserName);
+
+            if (result.Success)
+            {
+                var message = Localizer["CheckOutCompleted"].Value;
+                if (this.m_refundAmount > 0)
+                    message += $" {Localizer["RefundLabel", FormatCurrency(result.RefundAmount)]}";
+                if (this.m_returnToShopId != this.RequestContext.GetShopId())
+                    message += $" {Localizer["VehicleTransferred", this.m_poolShops.FirstOrDefault(s => s.ShopId == this.m_returnToShopId)?.Name ?? ""]}";
+                this.ShowSuccess(message);
+                this.NavigationManager.NavigateTo("/rentals");
+            }
+            else
+            {
+                this.ShowError(Localizer["CheckOutFailed", result.Message ?? ""]);
+            }
+        }
+        finally
+        {
+            this.m_saving = false;
+        }
+    }
+
+    #endregion
+
+    #region Fuel, Accessories, Cleanliness
+
+    private void OnFuelLevelChanged(int level)
+    {
+        this.m_fuelLevelAtReturn = level;
+        this.CalculateFuelSurcharge();
+    }
+
+    private void CalculateFuelSurcharge()
+    {
+        if (this.m_fuelLevelAtCheckIn.HasValue && this.m_fuelLevelAtReturn < this.m_fuelLevelAtCheckIn.Value)
+        {
+            int deficit = this.m_fuelLevelAtCheckIn.Value - this.m_fuelLevelAtReturn;
+            int quarters = deficit / 25;
+            this.m_fuelSurcharge = quarters * 50m; // ฿50 per quarter-tank
+        }
+        else
+        {
+            this.m_fuelSurcharge = 0;
+        }
+    }
+
+    private void OnAccessoryReturnChanged(int index, ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var qty))
+        {
+            var item = this.m_rentalAccessories[index];
+            item.QuantityReturned = Math.Max(0, Math.Min(qty, item.QuantityRented));
+            this.RecalculateAccessoryCharges();
+        }
+    }
+
+    private void RecalculateAccessoryCharges()
+    {
+        decimal total = 0;
+        foreach (var item in this.m_rentalAccessories)
+        {
+            if (item.IsMissing)
+            {
+                int missing = item.QuantityRented - item.QuantityReturned;
+                item.MissingCharge = missing * 500m; // ฿500 per missing accessory
+                total += item.MissingCharge;
+            }
+            else
+            {
+                item.MissingCharge = 0;
+            }
+        }
+        this.m_accessoryMissingCharge = total;
+    }
+
+    private void OnCleanlinessChanged(string level)
+    {
+        this.m_cleanlinessLevel = level;
+        this.m_cleaningFee = level switch
+        {
+            "Dirty" => 100m,
+            "VeryDirty" => 200m,
+            _ => 0
+        };
+    }
+
+    #endregion
+
+    #region 3D Inspection Methods
+
+    private string GetVehicleModelPath()
+    {
+        if (this.m_vehicle == null) return "models/vehicles/scooter-generic.glb";
+
+        return VehicleInspectionService.GetModelPath(
+            this.m_vehicle.VehicleType,
+            this.m_vehicle.EngineCC);
+    }
+
+    private void OnInspectionMarkersChanged(List<DamageMarker> markers)
+    {
+        this.m_inspectionMarkers = markers;
+        if (this.m_use3DInspection)
+        {
+            this.m_damageEstimate = this.m_3dInspectionDamageEstimate;
+            this.m_damageLevel = markers.Count > 0 ? "Minor" : "None";
+        }
+    }
+
+    private void OnMarkerAdded(DamageMarker marker)
+    {
+        this.m_selectedMarker = marker;
+    }
+
+    private void OnMarkerSelected(DamageMarker marker)
+    {
+        this.m_selectedMarker = marker;
+    }
+
+    private void OnMarkerUpdated(DamageMarker marker)
+    {
+        if (this.m_selectedMarker != null && this.m_vehicleInspector != null)
+        {
+            this.m_vehicleInspector.UpdateMarker(marker);
+            this.m_selectedMarker = marker;
+        }
+    }
+
+    private void SelectMarkerByIndex(int index)
+    {
+        if (index >= 0 && index < this.m_inspectionMarkers.Count)
+        {
+            this.m_selectedMarker = this.m_inspectionMarkers[index];
+        }
+    }
+
+    private async Task OnAddMarkerPhoto()
+    {
+        await Task.CompletedTask;
+    }
+
+    private static string GetSeverityBadgeClass(string severity) => severity switch
+    {
+        "Minor" => "bg-success",
+        "Moderate" => "bg-warning text-dark",
+        "Major" => "bg-danger",
+        _ => "bg-secondary"
+    };
+
+    #endregion
+
+    #region Render Fragments
+
+    private RenderFragment RenderReturnStep() => __builder =>
+    {
+        @* Rental Summary Card *@
+        <div class="summary-card">
+            <div class="summary-row">
+                <div class="summary-item">
+                    <i class="ti ti-user summary-icon"></i>
+                    <div class="summary-text">
+                        <span class="summary-label">@Localizer["Renter"]</span>
+                        <span class="summary-value">@m_renterName</span>
+                    </div>
+                </div>
+                <div class="summary-item">
+                    <i class="ti ti-motorbike summary-icon"></i>
+                    <div class="summary-text">
+                        <span class="summary-label">@GetVehicleTypeLabel()</span>
+                        <span class="summary-value">@m_vehicleName</span>
+                    </div>
+                </div>
+            </div>
+            <div class="summary-dates">
+                <div class="date-box">
+                    <span class="date-label">@Localizer["Started"]</span>
+                    <span class="date-value">@FormatDate(m_rental!.StartDate)</span>
+                </div>
+                <div class="date-arrow">
+                    <i class="ti ti-arrow-right"></i>
+                </div>
+                <div class="date-box">
+                    <span class="date-label">@Localizer["Expected"]</span>
+                    <span class="date-value">
+                        @if (m_isIntervalRental || m_isHourlyRental)
+                        {
+                            @m_rental.ExpectedEndDate.ToString("dd MMM h:mm tt")
+                        }
+                        else
+                        {
+                            @FormatDate(m_rental.ExpectedEndDate)
+                        }
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        @* Return Form *@
+        <div class="form-section">
+            <h5 class="section-title">
+                <i class="ti ti-calendar-check"></i>
+                @Localizer["ReturnInformation"]
+            </h5>
+
+            <div class="form-grid">
+                @if (!m_isIntervalRental && !m_isHourlyRental)
+                {
+                    <div class="form-group">
+                        <label class="form-label">@Localizer["ActualReturnDate"]</label>
+                        <input type="date" class="form-control form-control-lg" lang="en" @bind="m_actualReturnDate" />
+                    </div>
+                }
+                @if (m_showMileage)
+                {
+                    <div class="form-group">
+                        <label class="form-label">@Localizer["MileageAtReturn"]</label>
+                        <input type="number" class="form-control form-control-lg" @bind="m_mileageEnd" min="@m_rental.MileageStart" />
+                    </div>
+                }
+            </div>
+        </div>
+
+        @* Cross-shop return for pooled vehicles *@
+        @if (m_isPooledVehicle && m_poolShops.Count > 1)
+        {
+            <div class="form-section">
+                <h5 class="section-title">
+                    <i class="ti ti-share text-purple"></i>
+                    @Localizer["ReturnLocation"]
+                </h5>
+                <select class="form-select form-select-lg" @bind="m_returnToShopId">
+                    @foreach (var shop in m_poolShops)
+                    {
+                        <option value="@shop.ShopId">
+                            @shop.Name @(shop.ShopId == this.RequestContext.GetShopId() ? $"({Localizer["CurrentShop"]})" : "")
+                        </option>
+                    }
+                </select>
+                @if (m_returnToShopId != this.RequestContext.GetShopId())
+                {
+                    <div class="info-banner info-purple mt-2">
+                        <i class="ti ti-info-circle"></i>
+                        <span>@Localizer["TransferHint"]</span>
+                    </div>
+                }
+            </div>
+        }
+
+        @* Drop-off Service Location *@
+        @if (m_dropoffLocations.Count > 0)
+        {
+            <div class="form-section">
+                <h5 class="section-title">
+                    <i class="ti ti-map-pin text-teal"></i>
+                    @Localizer["DropoffServiceLocation"]
+                </h5>
+                <select class="form-select" @bind="m_dropoffLocationId" @bind:after="OnDropoffLocationChanged">
+                    <option value="0">@Localizer["AtShopFree"]</option>
+                    @foreach (var location in m_dropoffLocations)
+                    {
+                        <option value="@location.ServiceLocationId">
+                            @location.Name
+                            @if (location.DropoffFee > 0)
+                            {
+                                @($" (+{FormatCurrency(location.DropoffFee)})")
+                            }
+                        </option>
+                    }
+                </select>
+
+                @if (m_dropoffLocationId > 0)
+                {
+                    <div class="mt-3">
+                        <label class="form-label">@Localizer["DropoffTime"]</label>
+                        <input type="time" class="form-control"
+                               value="@m_dropoffTime.ToString(@"hh\:mm")"
+                               @onchange="OnDropoffTimeChanged" />
+                        @if (m_dropoffOutOfHoursBand != null)
+                        {
+                            <small class="text-warning mt-1 d-block">
+                                <i class="ti ti-clock-exclamation me-1"></i>
+                                @m_dropoffOutOfHoursBand.BandName: +@FormatCurrency(m_dropoffOutOfHoursBand.Fee)
+                            </small>
+                        }
+                    </div>
+                }
+
+                @if (m_dropoffLocationFee > 0 || m_dropoffOutOfHoursFee > 0)
+                {
+                    <div class="info-banner info-blue mt-3">
+                        <i class="ti ti-info-circle"></i>
+                        <span>
+                            @Localizer["DropoffFees"]: <strong>@FormatCurrency(m_dropoffLocationFee + m_dropoffOutOfHoursFee)</strong>
+                            @if (m_dropoffLocationFee > 0 && m_dropoffOutOfHoursFee > 0)
+                            {
+                                @($" ({Localizer["LocationFee"]}: {FormatCurrency(m_dropoffLocationFee)}, {Localizer["OutOfHoursFee"]}: {FormatCurrency(m_dropoffOutOfHoursFee)})")
+                            }
+                        </span>
+                    </div>
+                }
+            </div>
+        }
+
+        @* Status Alerts *@
+        @if (m_isHourlyRental && m_extraHours > 0)
+        {
+            <div class="status-alert status-warning">
+                <div class="status-icon">
+                    <i class="ti ti-alert-triangle"></i>
+                </div>
+                <div class="status-content">
+                    <span class="status-title">@Localizer["LateReturn"]</span>
+                    <span class="status-detail">@Localizer["OverdueHoursCharge", m_extraHours, FormatCurrency(m_extraDaysCharge)]</span>
+                </div>
+            </div>
+        }
+        else if (!m_isHourlyRental && !m_isIntervalRental && m_dailyLateFeeMode == "Hourly" && m_vehicle?.HourlyRate > 0 && m_extraHours > 0)
+        {
+            <div class="status-alert status-warning">
+                <div class="status-icon">
+                    <i class="ti ti-alert-triangle"></i>
+                </div>
+                <div class="status-content">
+                    <span class="status-title">@Localizer["LateReturn"]</span>
+                    <span class="status-detail">@Localizer["OverdueHoursCharge", m_extraHours, FormatCurrency(m_extraDaysCharge)]</span>
+                </div>
+            </div>
+        }
+        else if (m_extraDays > 0 && !m_isIntervalRental && !m_isHourlyRental)
+        {
+            <div class="status-alert status-warning">
+                <div class="status-icon">
+                    <i class="ti ti-alert-triangle"></i>
+                </div>
+                <div class="status-content">
+                    <span class="status-title">@Localizer["LateReturn"]</span>
+                    <span class="status-detail">@Localizer["OverdueDaysCharge", m_extraDays, FormatCurrency(m_extraDaysCharge)]</span>
+                </div>
+            </div>
+        }
+        else if (m_extraDays < 0 && !m_isIntervalRental && !m_isHourlyRental)
+        {
+            <div class="status-alert status-info">
+                <div class="status-icon">
+                    <i class="ti ti-clock"></i>
+                </div>
+                <div class="status-content">
+                    <span class="status-title">@Localizer["EarlyReturn"]</span>
+                    <span class="status-detail">@Localizer["ReturningEarly", Math.Abs(m_extraDays)]</span>
+                </div>
+            </div>
+        }
+
+        @* Fuel Level *@
+        <div class="form-section">
+            <h5 class="section-title">
+                <i class="ti ti-gas-station text-orange"></i>
+                @Localizer["FuelLevel"]
+            </h5>
+            <div class="fuel-level-selector">
+                @{
+                    var fuelLevels = new[] { (0, "Empty"), (25, "Quarter"), (50, "Half"), (75, "ThreeQuarters"), (100, "Full") };
+                }
+                @foreach (var (value, key) in fuelLevels)
+                {
+                    var fuelValue = value;
+                    <div class="fuel-option @(m_fuelLevelAtReturn == fuelValue ? "selected" : "")"
+                         @onclick="@(() => OnFuelLevelChanged(fuelValue))">
+                        <i class="ti @(fuelValue == 0 ? "ti-battery-off" : fuelValue <= 25 ? "ti-battery-1" : fuelValue <= 50 ? "ti-battery-2" : fuelValue <= 75 ? "ti-battery-3" : "ti-battery-4")"></i>
+                        <span>@Localizer[key]</span>
+                    </div>
+                }
+            </div>
+            @if (m_fuelLevelAtCheckIn.HasValue)
+            {
+                var checkInKey = fuelLevels.FirstOrDefault(f => f.Item1 == m_fuelLevelAtCheckIn.Value).Item2 ?? "Full";
+                var returnKey = fuelLevels.FirstOrDefault(f => f.Item1 == m_fuelLevelAtReturn).Item2 ?? "Full";
+                <div class="text-secondary small mt-2">
+                    @Localizer["FuelLevelAtCheckIn"]: @Localizer[checkInKey] → @Localizer["FuelLevelAtReturn"]: @Localizer[returnKey]
+                </div>
+            }
+            @if (m_fuelSurcharge > 0)
+            {
+                <div class="status-alert status-warning mt-2">
+                    <div class="status-icon">
+                        <i class="ti ti-alert-triangle"></i>
+                    </div>
+                    <div class="status-content">
+                        <span class="status-title">@Localizer["FuelSurchargeApplied"]</span>
+                        <span class="status-detail">+@FormatCurrency(m_fuelSurcharge)</span>
+                    </div>
+                </div>
+            }
+        </div>
+
+        @* Accessories Checklist *@
+        @if (m_rentalAccessories.Count > 0)
+        {
+            <div class="form-section">
+                <h5 class="section-title">
+                    <i class="ti ti-backpack text-blue"></i>
+                    @Localizer["AccessoriesChecklist"]
+                </h5>
+                <p class="text-secondary small mb-3">@Localizer["AccessoriesChecklistDesc"]</p>
+                <div class="accessory-checklist">
+                    @for (int ai = 0; ai < m_rentalAccessories.Count; ai++)
+                    {
+                        var idx = ai;
+                        var item = m_rentalAccessories[ai];
+                        <div class="accessory-item @(item.IsMissing ? "missing" : "")">
+                            <div class="accessory-info">
+                                <span class="accessory-name">@item.Name</span>
+                                <span class="accessory-qty-label">
+                                    @Localizer["QuantityRented"]: @item.QuantityRented
+                                </span>
+                            </div>
+                            <div class="accessory-return-input">
+                                <label class="form-label small mb-0">@Localizer["QuantityReturned"]</label>
+                                <input type="number" class="form-control form-control-sm"
+                                       min="0" max="@item.QuantityRented"
+                                       value="@item.QuantityReturned"
+                                       @onchange="@(e => OnAccessoryReturnChanged(idx, e))" />
+                            </div>
+                            @if (item.IsMissing)
+                            {
+                                <div class="accessory-missing-badge">
+                                    <i class="ti ti-alert-circle"></i>
+                                    @Localizer["Missing"]: @(item.QuantityRented - item.QuantityReturned)
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+                @if (m_accessoryMissingCharge > 0)
+                {
+                    <div class="status-alert status-warning mt-2">
+                        <div class="status-icon">
+                            <i class="ti ti-alert-triangle"></i>
+                        </div>
+                        <div class="status-content">
+                            <span class="status-title">@Localizer["MissingAccessoryCharge"]</span>
+                            <span class="status-detail">+@FormatCurrency(m_accessoryMissingCharge)</span>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+
+        @* Vehicle Cleanliness *@
+        <div class="form-section">
+            <h5 class="section-title">
+                <i class="ti ti-wash text-green"></i>
+                @Localizer["Cleanliness"]
+            </h5>
+            <p class="text-secondary small mb-3">@Localizer["CleanlinessDesc"]</p>
+            <div class="cleanliness-options">
+                <div class="cleanliness-option clean @(m_cleanlinessLevel == "Clean" ? "selected" : "")"
+                     @onclick="@(() => OnCleanlinessChanged("Clean"))">
+                    <div class="cleanliness-icon">
+                        <i class="ti ti-sparkles"></i>
+                    </div>
+                    <span class="cleanliness-label">@Localizer["CleanLevel"]</span>
+                </div>
+                <div class="cleanliness-option dirty @(m_cleanlinessLevel == "Dirty" ? "selected" : "")"
+                     @onclick="@(() => OnCleanlinessChanged("Dirty"))">
+                    <div class="cleanliness-icon">
+                        <i class="ti ti-droplet"></i>
+                    </div>
+                    <span class="cleanliness-label">@Localizer["DirtyLevel"]</span>
+                </div>
+                <div class="cleanliness-option very-dirty @(m_cleanlinessLevel == "VeryDirty" ? "selected" : "")"
+                     @onclick="@(() => OnCleanlinessChanged("VeryDirty"))">
+                    <div class="cleanliness-icon">
+                        <i class="ti ti-droplet-filled"></i>
+                    </div>
+                    <span class="cleanliness-label">@Localizer["VeryDirtyLevel"]</span>
+                </div>
+            </div>
+            @if (m_cleaningFee > 0)
+            {
+                <div class="info-banner info-blue mt-2">
+                    <i class="ti ti-info-circle"></i>
+                    <span>@Localizer["CleaningFeeDeducted"]: +@FormatCurrency(m_cleaningFee)</span>
+                </div>
+            }
+        </div>
+
+        @* Post-rental Inspection *@
+        <div class="form-section">
+            <h5 class="section-title">
+                <i class="ti ti-clipboard-check text-teal"></i>
+                @Localizer["PostRentalInspection"]
+            </h5>
+            <p class="text-secondary small mb-3">@Localizer["PostRentalInspectionDesc"]</p>
+            <InspectionSelector @bind-Value="m_postInspection" />
+        </div>
+
+        @if (m_postInspection != null)
+        {
+            <div class="info-banner info-blue">
+                <i class="ti ti-circle-check"></i>
+                <span>
+                    @Localizer["InspectionRecorded", m_postInspection.InspectorName]
+                    @if (!m_postInspection.IsSystemUser && !string.IsNullOrEmpty(m_postInspection.CompanyAffiliation))
+                    {
+                        <span class="text-secondary">(@m_postInspection.CompanyAffiliation)</span>
+                    }
+                </span>
+            </div>
+        }
+
+        <div class="form-section">
+            <label class="form-label">@Localizer["ReturnNotes"]</label>
+            <textarea class="form-control" @bind="m_notes" rows="2"
+                      placeholder="@Localizer["ReturnNotesPlaceholder"]"></textarea>
+        </div>
+    };
+
+    private RenderFragment RenderDamageStep() => __builder =>
+    {
+        <h5 class="section-title mb-3">
+            <i class="ti ti-clipboard-check"></i>
+            @Localizer["VehicleCondition"]
+        </h5>
+
+        @* Inspection Mode Toggle *@
+        <div class="inspection-mode-toggle mb-3">
+            <div class="btn-group w-100" role="group">
+                <button type="button" class="btn @(m_use3DInspection ? "btn-outline-primary" : "btn-primary")"
+                        @onclick="@(() => m_use3DInspection = false)">
+                    <i class="ti ti-list-check me-1"></i>
+                    @Localizer["StandardInspection"]
+                </button>
+                <button type="button" class="btn @(m_use3DInspection ? "btn-primary" : "btn-outline-primary")"
+                        @onclick="@(() => m_use3DInspection = true)">
+                    <i class="ti ti-3d-cube-sphere me-1"></i>
+                    @Localizer["3DInspection"]
+                </button>
+            </div>
+        </div>
+
+        @if (m_use3DInspection)
+        {
+            @* 3D Vehicle Inspection Mode *@
+            <div class="inspection-3d-container">
+                <div class="row">
+                    <div class="col-lg-8">
+                        <VehicleInspector @ref="m_vehicleInspector"
+                                          ModelPath="@GetVehicleModelPath()"
+                                          Height="350"
+                                          Markers="@m_inspectionMarkers"
+                                          MarkersChanged="OnInspectionMarkersChanged"
+                                          OnMarkerAdded="OnMarkerAdded"
+                                          OnMarkerSelected="OnMarkerSelected"
+                                          ShowMarkersList="false" />
+                    </div>
+                    <div class="col-lg-4">
+                        <MarkerDetailPanel Marker="@m_selectedMarker"
+                                           MarkerChanged="OnMarkerUpdated"
+                                           ShowPhotos="true"
+                                           OnAddPhoto="OnAddMarkerPhoto" />
+
+                        @if (m_inspectionMarkers.Count > 0)
+                        {
+                            <div class="card mt-3">
+                                <div class="card-header">
+                                    <h5 class="card-title mb-0">
+                                        @Localizer["DamageMarkers"] (@m_inspectionMarkers.Count)
+                                    </h5>
+                                </div>
+                                <div class="list-group list-group-flush" style="max-height: 200px; overflow-y: auto;">
+                                    @for (int i = 0; i < m_inspectionMarkers.Count; i++)
+                                    {
+                                        var idx = i;
+                                        var marker = m_inspectionMarkers[i];
+                                        <button type="button"
+                                                class="list-group-item list-group-item-action d-flex justify-content-between align-items-center @(m_selectedMarker?.MarkerId == marker.MarkerId ? "active" : "")"
+                                                @onclick="@(() => SelectMarkerByIndex(idx))">
+                                            <span>
+                                                <span class="badge bg-secondary rounded-pill me-1">@(idx + 1)</span>
+                                                @marker.DamageType
+                                            </span>
+                                            <span class="badge @GetSeverityBadgeClass(marker.Severity)">
+                                                @marker.Severity
+                                            </span>
+                                        </button>
+                                    }
+                                </div>
+                                <div class="card-footer">
+                                    <div class="d-flex justify-content-between small">
+                                        <span>@Localizer["EstimatedTotal"]:</span>
+                                        <strong class="text-danger">
+                                            @FormatCurrency(m_inspectionMarkers.Sum(m => m.EstimatedCost ?? 0))
+                                        </strong>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                @if (m_preRentalInspection != null)
+                {
+                    <div class="alert alert-info mt-3">
+                        <i class="ti ti-info-circle me-1"></i>
+                        @Localizer["PreRentalInspectionFound", m_preRentalInspection.Markers.Count]
+                        @if (m_preRentalInspection.Markers.Count > 0)
+                        {
+                            <span class="ms-2">
+                                @Localizer["PreExistingDamageMarked"]
+                            </span>
+                        }
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            @* Standard Inspection Mode *@
+            <div class="damage-options">
+                <div class="damage-option @(m_damageLevel == "None" ? "selected" : "") damage-none"
+                     @onclick="@(() => m_damageLevel = "None")">
+                    <div class="damage-icon">
+                        <i class="ti ti-circle-check"></i>
+                    </div>
+                    <div class="damage-text">
+                        <span class="damage-title">@Localizer["NoDamage"]</span>
+                        <span class="damage-desc">@Localizer["GoodCondition"]</span>
+                    </div>
+                    <div class="damage-check">
+                        @if (m_damageLevel == "None")
+                        {
+                            <i class="ti ti-check"></i>
+                        }
+                    </div>
+                </div>
+
+                <div class="damage-option @(m_damageLevel == "Minor" ? "selected" : "") damage-minor"
+                     @onclick="@(() => m_damageLevel = "Minor")">
+                    <div class="damage-icon">
+                        <i class="ti ti-info-circle"></i>
+                    </div>
+                    <div class="damage-text">
+                        <span class="damage-title">@Localizer["Minor"]</span>
+                        <span class="damage-desc">@Localizer["ScratchesScuffs"]</span>
+                    </div>
+                    <div class="damage-check">
+                        @if (m_damageLevel == "Minor")
+                        {
+                            <i class="ti ti-check"></i>
+                        }
+                    </div>
+                </div>
+
+                <div class="damage-option @(m_damageLevel == "Moderate" ? "selected" : "") damage-moderate"
+                     @onclick="@(() => m_damageLevel = "Moderate")">
+                    <div class="damage-icon">
+                        <i class="ti ti-alert-triangle"></i>
+                    </div>
+                    <div class="damage-text">
+                        <span class="damage-title">@Localizer["Moderate"]</span>
+                        <span class="damage-desc">@Localizer["RepairsNeeded"]</span>
+                    </div>
+                    <div class="damage-check">
+                        @if (m_damageLevel == "Moderate")
+                        {
+                            <i class="ti ti-check"></i>
+                        }
+                    </div>
+                </div>
+
+                <div class="damage-option @(m_damageLevel == "Major" ? "selected" : "") damage-major"
+                     @onclick="@(() => m_damageLevel = "Major")">
+                    <div class="damage-icon">
+                        <i class="ti ti-alert-octagon"></i>
+                    </div>
+                    <div class="damage-text">
+                        <span class="damage-title">@Localizer["Major"]</span>
+                        <span class="damage-desc">@Localizer["SignificantDamage"]</span>
+                    </div>
+                    <div class="damage-check">
+                        @if (m_damageLevel == "Major")
+                        {
+                            <i class="ti ti-check"></i>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            @if (m_damageLevel != "None")
+            {
+                <div class="damage-details-section">
+                    <h5 class="section-title">
+                        <i class="ti ti-file-description"></i>
+                        @Localizer["DamageDetails"]
+                    </h5>
+
+                    <div class="form-group">
+                        <label class="form-label">@Localizer["DescribeDamage"]</label>
+                        <textarea class="form-control" @bind="m_damageDescription" rows="3"
+                                  placeholder="@Localizer["DescribeDamagePlaceholder"]"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">@Localizer["EstimatedRepairCost"]</label>
+                        <div class="cost-input">
+                            <span class="cost-currency">฿</span>
+                            <input type="number" class="form-control form-control-lg" @bind="m_damageEstimate"
+                                   min="0" max="100000" step="100" placeholder="0" />
+                        </div>
+                    </div>
+
+                    <h5 class="section-title mt-4">
+                        <i class="ti ti-camera"></i>
+                        @Localizer["DamagePhotos"]
+                    </h5>
+                    <p class="text-secondary small mb-3">
+                        @Localizer["DamagePhotosDesc"]
+                    </p>
+
+                    <DamagePhotoUpload @ref="m_damagePhotoUpload"
+                                       RentalId="@m_rental!.RentalId"
+                                       PhotoType="After"
+                                       MaxPhotos="5"
+                                       OnPhotosChanged="OnDamagePhotosChanged" />
+
+                    <div class="info-banner info-blue mt-3">
+                        <i class="ti ti-info-circle"></i>
+                        <span>@Localizer["DeductedFromDeposit"]</span>
+                    </div>
+                </div>
+            }
+        }
+    };
+
+    private RenderFragment RenderSettleStep() => __builder =>
+    {
+        @* Charges Summary *@
+        <div class="settlement-card">
+            <h5 class="settlement-title">@Localizer["ChargesSummary"]</h5>
+
+            <div class="settlement-row">
+                <span>@Localizer["OriginalRental"]</span>
+                <span class="text-secondary">@FormatCurrency(m_rental!.TotalAmount) (@Localizer["Paid"])</span>
+            </div>
+
+            @* Dynamic Pricing Badge *@
+            @if (m_rental.DynamicPricingApplied)
+            {
+                <div class="dynamic-pricing-summary">
+                    <button type="button" class="dynamic-pricing-toggle @(m_showPricingBreakdown ? "expanded" : "")"
+                            @onclick="@(() => m_showPricingBreakdown = !m_showPricingBreakdown)">
+                        <i class="ti ti-chart-arrows-vertical text-warning me-2"></i>
+                        <span class="flex-grow-1 text-start">@Localizer["DynamicPricingApplied"]</span>
+                        <span class="badge bg-warning text-dark me-2">×@m_rental.AverageMultiplier.ToString("N2")</span>
+                        <i class="ti @(m_showPricingBreakdown ? "ti-chevron-up" : "ti-chevron-down")"></i>
+                    </button>
+
+                    @if (m_showPricingBreakdown && m_rental.DayPricingBreakdown.Count > 0)
+                    {
+                        <div class="pricing-breakdown">
+                            <div class="breakdown-header">
+                                <span>@Localizer["Date"]</span>
+                                <span class="text-end">@Localizer["BaseRate"]</span>
+                                <span class="text-center">@Localizer["Multiplier"]</span>
+                                <span class="text-end">@Localizer["AdjustedRate"]</span>
+                            </div>
+                            @foreach (var day in m_rental.DayPricingBreakdown)
+                            {
+                                <div class="breakdown-row @(day.HasAdjustment ? "adjusted" : "")">
+                                    <span>@day.Date.ToString("dd MMM")</span>
+                                    <span class="text-end">@FormatCurrency(day.BaseRate)</span>
+                                    <span class="text-center">
+                                        @if (day.HasAdjustment)
+                                        {
+                                            <span class="text-warning fw-medium">×@day.Multiplier.ToString("N2")</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">×1.00</span>
+                                        }
+                                    </span>
+                                    <span class="text-end fw-medium">@FormatCurrency(day.AdjustedRate)</span>
+                                </div>
+                            }
+                            <div class="breakdown-footer">
+                                <span class="text-muted">@m_rental.AppliedPricingRules</span>
+                                <span class="text-decoration-line-through text-muted">
+                                    @FormatCurrency(m_rental.BaseRentalRate * m_rental.DayPricingBreakdown.Count)
+                                </span>
+                                <span></span>
+                                <span class="fw-bold text-warning">
+                                    @FormatCurrency(m_rental.DayPricingBreakdown.Sum(d => d.AdjustedRate))
+                                </span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+
+            @if (m_isHourlyRental && m_extraHours > 0)
+            {
+                <div class="settlement-row text-warning">
+                    <span>@Localizer["ExtraHours", m_extraHours]</span>
+                    <span>+@FormatCurrency(m_extraDaysCharge)</span>
+                </div>
+            }
+            else if (!m_isHourlyRental && m_dailyLateFeeMode == "Hourly" && m_vehicle?.HourlyRate > 0 && m_extraHours > 0)
+            {
+                <div class="settlement-row text-warning">
+                    <span>@Localizer["ExtraHours", m_extraHours]</span>
+                    <span>+@FormatCurrency(m_extraDaysCharge)</span>
+                </div>
+            }
+            else if (m_extraDays > 0)
+            {
+                <div class="settlement-row text-warning">
+                    <span>@Localizer["ExtraDays", m_extraDays]</span>
+                    <span>+@FormatCurrency(m_extraDaysCharge)</span>
+                </div>
+            }
+
+            @if (m_damageLevel != "None" && m_damageEstimate > 0)
+            {
+                <div class="settlement-row text-danger">
+                    <span>@Localizer["Damage"] (@Localizer[m_damageLevel])</span>
+                    <span>+@FormatCurrency(m_damageEstimate)</span>
+                </div>
+            }
+
+            @if (m_fuelSurcharge > 0)
+            {
+                <div class="settlement-row text-warning">
+                    <span><i class="ti ti-gas-station me-1"></i>@Localizer["FuelSurcharge"]</span>
+                    <span>+@FormatCurrency(m_fuelSurcharge)</span>
+                </div>
+            }
+
+            @if (m_cleaningFee > 0)
+            {
+                <div class="settlement-row text-warning">
+                    <span><i class="ti ti-wash me-1"></i>@Localizer["CleaningFee"]</span>
+                    <span>+@FormatCurrency(m_cleaningFee)</span>
+                </div>
+            }
+
+            @if (m_accessoryMissingCharge > 0)
+            {
+                <div class="settlement-row text-danger">
+                    <span><i class="ti ti-backpack me-1"></i>@Localizer["MissingAccessoryCharge"]</span>
+                    <span>+@FormatCurrency(m_accessoryMissingCharge)</span>
+                </div>
+            }
+
+            @if (m_dropoffLocationFee > 0)
+            {
+                <div class="settlement-row text-secondary">
+                    <span><i class="ti ti-map-pin me-1"></i>@m_selectedDropoffLocation?.Name</span>
+                    <span>+@FormatCurrency(m_dropoffLocationFee)</span>
+                </div>
+            }
+
+            @if (m_dropoffOutOfHoursFee > 0)
+            {
+                <div class="settlement-row text-warning">
+                    <span><i class="ti ti-clock me-1"></i>@m_dropoffOutOfHoursBand?.BandName</span>
+                    <span>+@FormatCurrency(m_dropoffOutOfHoursFee)</span>
+                </div>
+            }
+
+            <div class="settlement-total">
+                <span>@Localizer["AdditionalDue"]</span>
+                <span class="total-value">@FormatCurrency(m_totalAdditional)</span>
+            </div>
+        </div>
+
+        @* Deposit Settlement *@
+        <div class="settlement-card">
+            <h5 class="settlement-title">@Localizer["DepositSettlement"]</h5>
+
+            <div class="settlement-row">
+                <span>@Localizer["DepositHeld"]</span>
+                <span>@FormatCurrency(m_depositAmount)</span>
+            </div>
+
+            @if (m_totalAdditional > 0)
+            {
+                <div class="settlement-row text-danger">
+                    <span>@Localizer["Deductions"]</span>
+                    <span>-@FormatCurrency(Math.Min(m_totalAdditional, m_depositAmount))</span>
+                </div>
+            }
+
+            <div class="refund-amount">
+                <span class="refund-label">@Localizer["RefundAmount"]</span>
+                <span class="refund-value @(m_refundAmount > 0 ? "text-success" : "")">
+                    @FormatCurrency(m_refundAmount)
+                </span>
+            </div>
+
+            @if (m_totalAdditional > m_depositAmount)
+            {
+                <div class="status-alert status-warning mt-3">
+                    <div class="status-icon">
+                        <i class="ti ti-alert-triangle"></i>
+                    </div>
+                    <div class="status-content">
+                        <span class="status-title">@Localizer["PaymentRequired"]</span>
+                        <span class="status-detail">@Localizer["CollectFromRenter", FormatCurrency(m_totalAdditional - m_depositAmount)]</span>
+                    </div>
+                </div>
+            }
+        </div>
+
+        @* Refund Method *@
+        <div class="form-section">
+            <h5 class="section-title">
+                <i class="ti ti-wallet"></i>
+                @Localizer["RefundMethod"]
+            </h5>
+
+            <div class="refund-methods">
+                <div class="refund-method @(m_refundMethod == "Cash" ? "selected" : "")"
+                     @onclick="@(() => m_refundMethod = "Cash")">
+                    <i class="ti ti-cash"></i>
+                    <span>@Localizer["Cash"]</span>
+                </div>
+                <div class="refund-method @(m_refundMethod == "Card" ? "selected" : "")"
+                     @onclick="@(() => m_refundMethod = "Card")">
+                    <i class="ti ti-credit-card"></i>
+                    <span>@Localizer["Card"]</span>
+                </div>
+                <div class="refund-method @(m_refundMethod == "BankTransfer" ? "selected" : "")"
+                     @onclick="@(() => m_refundMethod = "BankTransfer")">
+                    <i class="ti ti-building-bank"></i>
+                    <span>@Localizer["Bank"]</span>
+                </div>
+            </div>
+
+            <label class="confirm-check">
+                <input type="checkbox" class="form-check-input" @bind="m_refundProcessed" />
+                <span>@GetRefundConfirmationText()</span>
+            </label>
+        </div>
+
+        @if (m_hasMaintenanceWarning)
+        {
+            <div class="status-alert status-warning">
+                <div class="status-icon">
+                    <i class="ti ti-tool"></i>
+                </div>
+                <div class="status-content">
+                    <span class="status-title">@Localizer["MaintenanceNotice"]</span>
+                    <span class="status-detail">
+                        @if (m_maintenanceOverdueCount > 0)
+                        {
+                            <span class="badge bg-danger me-1">@m_maintenanceOverdueCount @Localizer["Overdue"]</span>
+                        }
+                        @if (m_maintenanceDueSoonCount > 0)
+                        {
+                            <span class="badge bg-warning text-dark">@m_maintenanceDueSoonCount @Localizer["DueSoon"]</span>
+                        }
+                    </span>
+                    <label class="confirm-check mt-2">
+                        <input type="checkbox" class="form-check-input" @bind="m_acknowledgeMaintenanceWarning" />
+                        <span>@Localizer["Acknowledge"]</span>
+                    </label>
+                </div>
+            </div>
+        }
+    };
+
+    #endregion
 }

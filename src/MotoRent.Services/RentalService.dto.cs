@@ -110,6 +110,18 @@ public class CheckOutRequest
     public InspectionInfo? PostRentalInspection { get; set; }
 
     public List<DamageReportInfo>? DamageReports { get; set; }
+
+    // Fuel level
+    public int? FuelLevelAtReturn { get; set; }
+    public decimal FuelSurcharge { get; set; }
+
+    // Cleanliness
+    public string? CleanlinessLevel { get; set; }
+    public decimal CleaningFee { get; set; }
+
+    // Accessories
+    public List<AccessoryReturnItem>? ReturnedAccessories { get; set; }
+    public decimal AccessoryMissingCharge { get; set; }
 }
 
 public class DamageReportInfo
