@@ -59,6 +59,9 @@ public class TemplateDataResolver : ITemplateDataResolver
         data["Booking.CustomerName"] = booking.CustomerName;
         data["Booking.CustomerPhone"] = booking.CustomerPhone;
         data["Booking.CustomerEmail"] = booking.CustomerEmail;
+        data["Booking.CustomerPassport"] = booking.CustomerPassportNo;
+        data["Booking.CustomerNationality"] = booking.CustomerNationality;
+        data["Booking.HotelName"] = booking.HotelName;
         data["Booking.StartDate"] = booking.StartDate;
         data["Booking.EndDate"] = booking.EndDate;
         data["Booking.TotalAmount"] = booking.TotalAmount;

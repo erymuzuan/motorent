@@ -12,99 +12,20 @@
         <p class="mr-text-muted mb-0">@Localizer["SelectRenterDesc"]</p>
     </div>
 
-    <div class="mb-3">
-        <label class="mr-form-label">@Localizer["SearchRenter"]</label>
-        <div class="mr-search-box" style="max-width: 100%;">
-            <i class="ti ti-search"></i>
-            <input type="text" placeholder="@Localizer["SearchRenterPlaceholder"]"
-                   @bind="m_searchTerm" @bind:event="oninput" @onkeyup="OnSearchKeyup" />
-        </div>
-        @if (m_showSearchResults && m_searchResults.Count > 0)
-        {
-            <div class="mr-card mt-2" style="max-height: 300px; overflow-y: auto;">
-                @foreach (var renter in m_searchResults)
-                {
-                    <div class="d-flex align-items-center gap-3 p-3 border-bottom" style="cursor: pointer; border-color: var(--mr-border-light) !important;"
-                         @onclick="@(() => SelectRenterItem(renter))">
-                        <span class="avatar avatar-sm" style="background: var(--mr-accent-gradient); color: white;">
-                            @renter.FullName?.FirstOrDefault()
-                        </span>
-                        <div class="d-flex flex-column">
-                            <span class="mr-text-primary" style="font-weight: 500;">@renter.FullName</span>
-                            <small class="mr-text-muted">
-                                @renter.Phone @(renter.Nationality != null ? $"| {renter.Nationality}" : "")
-                            </small>
-                        </div>
-                    </div>
-                }
-            </div>
-        }
-        else if (m_showSearchResults && !string.IsNullOrWhiteSpace(m_searchTerm))
-        {
-            <div class="mr-card mt-2 p-3">
-                <span class="mr-text-muted">@Localizer["NoRentersFound"]</span>
-            </div>
-        }
-    </div>
-
-    <hr style="border-color: var(--mr-border-light);">
-
-    <button type="button" class="mr-btn-action view w-100 justify-content-center" @onclick="@(() => OnCreateNew.InvokeAsync())">
-        <i class="ti ti-user-plus"></i>
-        @Localizer["CreateNewRenter"]
-    </button>
-
-    @if (m_recentRenters.Count > 0)
-    {
-        <div class="mt-4">
-            <h6 class="mb-3 mr-text-primary" style="font-weight: 600;">
-                <i class="ti ti-clock me-1" style="color: var(--mr-accent-secondary);"></i>
-                @Localizer["RecentRenters"]
-            </h6>
-            <div class="d-flex flex-column gap-2">
-                @foreach (var renter in m_recentRenters.Take(5))
-                {
-                    var isSelected = this.SelectedRenter?.RenterId == renter.RenterId;
-                    <div class="mr-card p-3" style="cursor: pointer; @(isSelected ? "border: 2px solid var(--mr-accent-primary); background: var(--mr-accent-bg);" : "")"
-                         @onclick="@(() => SelectRenterItem(renter))">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div class="d-flex align-items-center gap-3">
-                                <span class="avatar avatar-sm" style="background: var(--mr-accent-gradient); color: white;">
-                                    @renter.FullName?.FirstOrDefault()
-                                </span>
-                                <div class="d-flex flex-column">
-                                    <span class="mr-text-primary" style="font-weight: 500;">@renter.FullName</span>
-                                    <small class="mr-text-muted">
-                                        @renter.Phone
-                                        @if (!string.IsNullOrEmpty(renter.Nationality))
-                                        {
-                                            <span> | @renter.Nationality</span>
-                                        }
-                                    </small>
-                                </div>
-                            </div>
-                            @if (isSelected)
-                            {
-                                <i class="ti ti-circle-check" style="font-size: 1.5rem; color: var(--mr-accent-primary);"></i>
-                            }
-                        </div>
-                    </div>
-                }
-            </div>
-        </div>
-    }
-
     @if (this.SelectedRenter != null)
     {
-        <hr style="border-color: var(--mr-border-light);">
         <div class="mr-info-panel">
             <div class="mr-info-panel-icon success">
                 <i class="ti ti-user-check"></i>
             </div>
-            <div>
+            <div class="flex-grow-1">
                 <div class="mr-info-panel-title">@Localizer["Selected"]: <strong>@this.SelectedRenter.FullName</strong></div>
                 <div class="mr-info-panel-desc">@this.SelectedRenter.Phone</div>
             </div>
+            <button type="button" class="btn btn-ghost-secondary btn-sm" @onclick="ClearSelection">
+                <i class="ti ti-x me-1"></i>
+                @Localizer["ChangeRenter"]
+            </button>
         </div>
 
         <div class="mr-form-panel mt-3">
@@ -148,6 +69,85 @@
                 </div>
             </div>
         </div>
+    }
+    else
+    {
+        <div class="mb-3">
+            <label class="mr-form-label">@Localizer["SearchRenter"]</label>
+            <div class="mr-search-box" style="max-width: 100%;">
+                <i class="ti ti-search"></i>
+                <input type="text" placeholder="@Localizer["SearchRenterPlaceholder"]"
+                       @bind="m_searchTerm" @bind:event="oninput" @onkeyup="OnSearchKeyup" />
+            </div>
+            @if (m_showSearchResults && m_searchResults.Count > 0)
+            {
+                <div class="mr-card mt-2" style="max-height: 300px; overflow-y: auto;">
+                    @foreach (var renter in m_searchResults)
+                    {
+                        <div class="d-flex align-items-center gap-3 p-3 border-bottom" style="cursor: pointer; border-color: var(--mr-border-light) !important;"
+                             @onclick="@(() => SelectRenterItem(renter))">
+                            <span class="avatar avatar-sm" style="background: var(--mr-accent-gradient); color: white;">
+                                @renter.FullName?.FirstOrDefault()
+                            </span>
+                            <div class="d-flex flex-column">
+                                <span class="mr-text-primary" style="font-weight: 500;">@renter.FullName</span>
+                                <small class="mr-text-muted">
+                                    @renter.Phone @(renter.Nationality != null ? $"| {renter.Nationality}" : "")
+                                </small>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else if (m_showSearchResults && !string.IsNullOrWhiteSpace(m_searchTerm))
+            {
+                <div class="mr-card mt-2 p-3">
+                    <span class="mr-text-muted">@Localizer["NoRentersFound"]</span>
+                </div>
+            }
+        </div>
+
+        <hr style="border-color: var(--mr-border-light);">
+
+        <button type="button" class="mr-btn-action view w-100 justify-content-center" @onclick="@(() => OnCreateNew.InvokeAsync())">
+            <i class="ti ti-user-plus"></i>
+            @Localizer["CreateNewRenter"]
+        </button>
+
+        @if (m_recentRenters.Count > 0)
+        {
+            <div class="mt-4">
+                <h6 class="mb-3 mr-text-primary" style="font-weight: 600;">
+                    <i class="ti ti-clock me-1" style="color: var(--mr-accent-secondary);"></i>
+                    @Localizer["RecentRenters"]
+                </h6>
+                <div class="d-flex flex-column gap-2">
+                    @foreach (var renter in m_recentRenters.Take(5))
+                    {
+                        <div class="mr-card p-3" style="cursor: pointer;"
+                             @onclick="@(() => SelectRenterItem(renter))">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="d-flex align-items-center gap-3">
+                                    <span class="avatar avatar-sm" style="background: var(--mr-accent-gradient); color: white;">
+                                        @renter.FullName?.FirstOrDefault()
+                                    </span>
+                                    <div class="d-flex flex-column">
+                                        <span class="mr-text-primary" style="font-weight: 500;">@renter.FullName</span>
+                                        <small class="mr-text-muted">
+                                            @renter.Phone
+                                            @if (!string.IsNullOrEmpty(renter.Nationality))
+                                            {
+                                                <span> | @renter.Nationality</span>
+                                            }
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
     }
 </div>
 
@@ -224,5 +224,13 @@
         this.m_showSearchResults = false;
         this.m_searchTerm = renter.FullName;
         await this.SelectedRenterChanged.InvokeAsync(renter);
+    }
+
+    private async Task ClearSelection()
+    {
+        this.SelectedRenter = null;
+        this.m_searchTerm = null;
+        this.m_showSearchResults = false;
+        await this.SelectedRenterChanged.InvokeAsync(null);
     }
 }

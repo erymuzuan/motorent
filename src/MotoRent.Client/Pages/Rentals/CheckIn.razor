@@ -275,9 +275,10 @@
             // Link to existing renter
             this.m_selectedRenter = await this.RenterService.GetRenterByIdAsync(this.m_sourceBooking.RenterId.Value);
         }
-        else
+
+        // Fallback: create renter from booking customer info if no existing renter found
+        if (this.m_selectedRenter == null)
         {
-            // Create new renter from booking customer info
             var newRenter = new Renter
             {
                 FullName = this.m_sourceBooking.CustomerName ?? "",
