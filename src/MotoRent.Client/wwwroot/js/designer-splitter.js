@@ -79,6 +79,10 @@ function onDoubleClick(e, handle, container, state) {
     state.dotNetRef.invokeMethodAsync('OnPanelToggle', panel);
 }
 
+export function triggerFileInput(inputElement) {
+    if (inputElement) inputElement.click();
+}
+
 export function setPanelWidths(containerEl, leftWidth, rightWidth) {
     if (!containerEl) return;
     containerEl.style.setProperty('--left-width', leftWidth + 'px');

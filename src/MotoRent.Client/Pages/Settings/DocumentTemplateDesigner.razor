@@ -33,6 +33,20 @@
                     @onclick="() => this.DesignerState.ToggleLeftPanel()">
                 <i class="ti @(this.DesignerState.LeftCollapsed ? "ti-layout-sidebar-right" : "ti-layout-sidebar-left-collapse")"></i>
             </button>
+            <button type="button" class="btn btn-outline-secondary" @onclick="this.TriggerImportFileAsync" disabled="@this.m_importing">
+                @if (this.m_importing)
+                {
+                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                    @this.Localizer["ImportProcessing"]
+                }
+                else
+                {
+                    <i class="ti ti-file-import me-1"></i>
+                    @this.Localizer["ImportFromDocument"]
+                }
+            </button>
+            <InputFile @ref="m_importFileInput" OnChange="this.HandleImportFileAsync"
+                       accept=".pdf,.jpg,.jpeg,.png,.webp" style="display:none" />
             <button type="button" class="btn btn-outline-secondary"
                     @onclick="() => this.m_showAiSidebar = !this.m_showAiSidebar">
                 <i class="ti ti-sparkles me-1 text-accent"></i>
@@ -243,12 +257,17 @@
     private string? m_previewHtml;
     private ElementReference m_containerRef;
     private IJSObjectReference? m_jsModule;
+    private bool m_splitterInitialized;
 
     // AI Features
     private bool m_showAiSidebar = true;
     private string m_aiContext = "";
     private List<string> m_aiSuggestions = [];
     private bool m_loadingAi;
+
+    // Import
+    private InputFile? m_importFileInput;
+    private bool m_importing;
 
     private DocumentType m_documentType
     {
@@ -271,6 +290,11 @@
         if (firstRender)
         {
             this.m_jsModule = await this.JS.InvokeAsync<IJSObjectReference>("import", "./js/designer-splitter.js");
+        }
+
+        if (this.m_jsModule != null && !this.m_loading && !this.m_splitterInitialized)
+        {
+            this.m_splitterInitialized = true;
             await this.m_jsModule.InvokeVoidAsync("initSplitter", this.m_containerRef, DotNetObjectReference.Create(this));
         }
     }
@@ -324,6 +348,56 @@
         section.Blocks.Add(block);
         this.DesignerState.SetSelectedBlock(block);
         this.ShowSuccess("Clause added to layout");
+    }
+
+    private async Task TriggerImportFileAsync()
+    {
+        if (this.m_jsModule != null && this.m_importFileInput?.Element != null)
+        {
+            await this.m_jsModule.InvokeVoidAsync("triggerFileInput", this.m_importFileInput.Element);
+        }
+    }
+
+    private async Task HandleImportFileAsync(InputFileChangeEventArgs e)
+    {
+        const long maxFileSize = 10 * 1024 * 1024; // 10 MB
+        var file = e.File;
+        if (file.Size > maxFileSize)
+        {
+            this.ShowError(this.Localizer["ImportFailed"]);
+            return;
+        }
+
+        this.m_importing = true;
+        try
+        {
+            await using var stream = file.OpenReadStream(maxFileSize);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            var fileBytes = ms.ToArray();
+
+            var layout = await this.AiService.ExtractTemplateLayoutAsync(fileBytes, file.ContentType, this.m_template.Type);
+            if (layout?.Sections is { Count: > 0 })
+            {
+                foreach (var section in layout.Sections)
+                {
+                    this.m_layout.Sections.Add(section);
+                }
+                this.ShowSuccess(this.Localizer["ImportSuccess"]);
+            }
+            else
+            {
+                this.ShowError(this.Localizer["ImportFailed"]);
+            }
+        }
+        catch
+        {
+            this.ShowError(this.Localizer["ImportFailed"]);
+        }
+        finally
+        {
+            this.m_importing = false;
+        }
     }
 
     private async Task LoadDataAsync()
