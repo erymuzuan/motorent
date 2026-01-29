@@ -1,5 +1,5 @@
 @page "/finance/assets/new"
-@page "/finance/assets/{AssetId:int}"
+@page "/finance/assets/{AssetId}"
 @using Microsoft.AspNetCore.Authorization
 @using MotoRent.Domain.Entities
 @attribute [Authorize(Policy = "RequireTenantManager")]
@@ -30,6 +30,15 @@
                     <p class="mr-page-subtitle mb-0">@(IsNew ? Localizer["CreateNewAssetDescription"] : Localizer["EditAssetDescription"])</p>
                 </div>
             </div>
+            @if (!IsNew)
+            {
+                <div class="btn-list">
+                    <a href="/finance/assets/@AssetId/details" class="btn btn-outline-primary">
+                        <i class="ti ti-chart-line me-1"></i>
+                        @Localizer["ViewDetails"]
+                    </a>
+                </div>
+            }
         </div>
     </div>
 </div>
@@ -45,65 +54,120 @@
     }
     else
     {
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h3 class="card-title">
-                    <i class="ti ti-chart-pie me-2"></i>
-                    @(IsNew ? Localizer["AssetDetails"] : $"{m_asset?.VehicleName} - {m_asset?.LicensePlate}")
-                </h3>
-                @if (!IsNew && m_asset?.Status == AssetStatus.Active)
-                {
-                    <div class="dropdown">
-                        <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                            <i class="ti ti-dots-vertical me-1"></i>
-                            @Localizer["Actions"]
+        <div class="row mr-animate-in">
+            <!-- Form Card -->
+            <div class="@(IsNew ? "col-12" : "col-lg-8") mb-4">
+                <div class="mr-edit-card">
+                    <div class="mr-edit-card-header">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="ti ti-chart-pie"></i>
+                            <h3>@(IsNew ? Localizer["AssetDetails"] : $"{m_asset?.VehicleName} - {m_asset?.LicensePlate}")</h3>
+                        </div>
+                        @if (!IsNew && m_asset?.Status == AssetStatus.Active)
+                        {
+                            <div class="dropdown">
+                                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                    <i class="ti ti-dots-vertical me-1"></i>
+                                    @Localizer["Actions"]
+                                </button>
+                                <div class="dropdown-menu dropdown-menu-end">
+                                    <button class="dropdown-item" @onclick="ShowDisposalDialogAsync">
+                                        <i class="ti ti-cash text-success me-2"></i>
+                                        @Localizer["DisposeAsset"]
+                                    </button>
+                                    <div class="dropdown-divider"></div>
+                                    <button class="dropdown-item text-danger" @onclick="ShowWriteOffDialogAsync">
+                                        <i class="ti ti-trash me-2"></i>
+                                        @Localizer["WriteOffAsset"]
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                    <AssetDialog @ref="m_dialog" Entity="m_asset" IsNew="@IsNew" OnSaved="OnSavedAsync" />
+                    <div class="mr-edit-card-footer">
+                        <a href="/finance/asset-dashboard" class="btn btn-outline-secondary">
+                            <i class="ti ti-arrow-left me-1"></i>
+                            @Localizer["Cancel"]
+                        </a>
+                        <button type="submit" form="assetdialog" class="btn btn-primary" disabled="@(m_dialog?.Saving ?? false)">
+                            @if (m_dialog?.Saving ?? false)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            }
+                            <i class="ti ti-device-floppy me-1"></i>
+                            @Localizer["Save"]
                         </button>
-                        <div class="dropdown-menu dropdown-menu-end">
-                            <button class="dropdown-item" @onclick="ShowDisposalDialogAsync">
-                                <i class="ti ti-cash text-success me-2"></i>
-                                @Localizer["DisposeAsset"]
-                            </button>
-                            <div class="dropdown-divider"></div>
-                            <button class="dropdown-item text-danger" @onclick="ShowWriteOffDialogAsync">
-                                <i class="ti ti-trash me-2"></i>
-                                @Localizer["WriteOffAsset"]
-                            </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar (edit mode only) -->
+            @if (!IsNew && m_asset != null)
+            {
+                <div class="col-lg-4 mb-4">
+                    <!-- Asset Summary -->
+                    <div class="mr-edit-sidebar-card mb-3">
+                        <div class="mr-edit-sidebar-header">
+                            <i class="ti ti-report-analytics"></i>
+                            <h4>@Localizer["AssetSummary"]</h4>
+                        </div>
+                        <div class="mr-edit-sidebar-body">
+                            <div class="mr-edit-summary-row">
+                                <span class="mr-edit-summary-label">@Localizer["Status"]</span>
+                                <span class="badge @GetStatusBadgeClass(m_asset.Status)">@m_asset.Status</span>
+                            </div>
+                            <div class="mr-edit-summary-row">
+                                <span class="mr-edit-summary-label">@Localizer["AcquisitionCost"]</span>
+                                <span class="mr-edit-summary-value">@m_asset.AcquisitionCost.ToString("N0") <small class="text-muted">@Localizer["CurrencyTHB"]</small></span>
+                            </div>
+                            <div class="mr-edit-summary-row">
+                                <span class="mr-edit-summary-label">@Localizer["BookValue"]</span>
+                                <span class="mr-edit-summary-value" style="color: #8b5cf6;">@m_asset.CurrentBookValue.ToString("N0") <small class="text-muted">@Localizer["CurrencyTHB"]</small></span>
+                            </div>
+                            <div class="mr-edit-summary-row">
+                                <span class="mr-edit-summary-label">@Localizer["Depreciation"]</span>
+                                <span class="mr-edit-summary-value" style="color: #f59e0b;">@m_asset.AccumulatedDepreciation.ToString("N0") <small class="text-muted">@Localizer["CurrencyTHB"]</small></span>
+                            </div>
+                            <div class="mr-edit-summary-row">
+                                <span class="mr-edit-summary-label">@Localizer["RemainingLife"]</span>
+                                <span class="mr-edit-summary-value">@m_asset.RemainingUsefulLifeMonths <small class="text-muted">@Localizer["MonthsUnit"]</small></span>
+                            </div>
                         </div>
                     </div>
-                }
-            </div>
-            <AssetDialog @ref="m_dialog" Entity="m_asset" IsNew="@IsNew" OnSaved="OnSavedAsync" />
-            <div class="card-footer d-flex justify-content-between">
-                <a href="/finance/asset-dashboard" class="btn btn-outline-secondary">
-                    <i class="ti ti-arrow-left me-1"></i>
-                    @Localizer["Cancel"]
-                </a>
-                <button type="submit" form="@m_dialog?.FormId" class="btn btn-primary" disabled="@m_saving">
-                    @if (m_saving)
-                    {
-                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
-                    }
-                    <i class="ti ti-device-floppy me-1"></i>
-                    @Localizer["Save"]
-                </button>
-            </div>
+
+                    <!-- Comments -->
+                    <div class="mr-edit-sidebar-card">
+                        <div class="mr-edit-sidebar-header">
+                            <i class="ti ti-message-2"></i>
+                            <h4>@Localizer["Comments"]</h4>
+                        </div>
+                        <div class="mr-edit-sidebar-body">
+                            <CommentPanel EntityId="@m_assetId"
+                                          EntityType="Asset"
+                                          EntityWebId="@m_asset.WebId" />
+                        </div>
+                    </div>
+                </div>
+            }
         </div>
     }
 </div>
 
 @code {
     [Parameter]
-    public int AssetId { get; set; }
+    public string AssetId { get; set; } = "";
 
+    private int m_assetId;
     private Asset? m_asset;
     private AssetDialog? m_dialog;
     private bool m_loading = true;
-    private bool m_saving;
 
-    private bool IsNew => AssetId == 0;
+    private bool IsNew => m_assetId == 0;
 
     protected override async Task OnParametersSetAsync()
     {
+        m_assetId = DecodeId(AssetId);
         try
         {
             m_loading = true;
@@ -114,7 +178,7 @@
             }
             else
             {
-                m_asset = await AssetService.GetAssetByIdAsync(AssetId);
+                m_asset = await AssetService.GetAssetByIdAsync(m_assetId);
                 if (m_asset == null)
                 {
                     NavigationManager.NavigateTo("/finance/asset-dashboard");
@@ -161,4 +225,12 @@
             NavigationManager.NavigateTo("/finance/asset-dashboard");
         }
     }
+
+    private string GetStatusBadgeClass(AssetStatus status) => status switch
+    {
+        AssetStatus.Active => "bg-success-lt",
+        AssetStatus.Disposed => "bg-warning-lt",
+        AssetStatus.WriteOff => "bg-danger-lt",
+        _ => "bg-secondary-lt"
+    };
 }

@@ -124,9 +124,7 @@ public class DocumentTemplateService(RentalDataContext context, IBinaryStore bin
             query = query.Where(t => t.ShopId == null || t.ShopId == 0 || t.ShopId == shopId);
         }
 
-        query = query.OrderByDescending(t => t.IsDefault);
-            // .ThenByDescending(t => t.ShopId > 0)
-            // .ThenBy(t => t.Name);
+        query = query.OrderByDescending(t => t.DocumentTemplateId);
 
         return await this.Context.LoadAsync(query, page, size, includeTotalRows: true);
     }

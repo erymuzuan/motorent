@@ -84,26 +84,26 @@
                         <span class="text-warning">@this.CommonLocalizer["Pending"]</span>
                         <div class="text-end">
                             <div class="fw-bold">@this.Summary.PendingCount</div>
-                            <small class="text-secondary">@this.Localizer["CurrencyTHB"]@this.Summary.PendingAmount.ToString("N0")</small>
+                            <small class="text-secondary">฿@this.Summary.PendingAmount.ToString("N0")</small>
                         </div>
                     </div>
                     <div class="list-group-item d-flex justify-content-between">
                         <span class="text-info">@this.Localizer["Approved"]</span>
                         <div class="text-end">
                             <div class="fw-bold">@this.Summary.ApprovedCount</div>
-                            <small class="text-secondary">@this.Localizer["CurrencyTHB"]@this.Summary.ApprovedAmount.ToString("N0")</small>
+                            <small class="text-secondary">฿@this.Summary.ApprovedAmount.ToString("N0")</small>
                         </div>
                     </div>
                     <div class="list-group-item d-flex justify-content-between">
                         <span class="text-success">@this.CommonLocalizer["Paid"]</span>
                         <div class="text-end">
                             <div class="fw-bold">@this.Summary.PaidCount</div>
-                            <small class="text-secondary">@this.Localizer["CurrencyTHB"]@this.Summary.PaidAmount.ToString("N0")</small>
+                            <small class="text-secondary">฿@this.Summary.PaidAmount.ToString("N0")</small>
                         </div>
                     </div>
                     <div class="list-group-item d-flex justify-content-between bg-light">
                         <span class="fw-bold">@this.Localizer["TotalOutstanding"]</span>
-                        <span class="fw-bold text-danger">@this.Localizer["CurrencyTHB"]@this.Summary.TotalOutstanding.ToString("N0")</span>
+                        <span class="fw-bold text-danger">฿@this.Summary.TotalOutstanding.ToString("N0")</span>
                     </div>
                 </div>
             </div>
@@ -112,6 +112,60 @@
 
     @* Commissions Table Column *@
     <div class="col-md-9">
+        @* KPI Stats Row *@
+        <div class="mr-comm-kpi-strip mb-3">
+            <div class="mr-comm-kpi mr-comm-kpi-pending">
+                <div class="mr-comm-kpi-icon">
+                    <i class="ti ti-clock-pause"></i>
+                </div>
+                <div class="mr-comm-kpi-body">
+                    <span class="mr-comm-kpi-label">@this.Localizer["PendingPayments"]</span>
+                    <span class="mr-comm-kpi-value">@this.Summary.PendingCount</span>
+                    <span class="mr-comm-kpi-sub">฿@this.Summary.PendingAmount.ToString("N0")</span>
+                </div>
+            </div>
+            <div class="mr-comm-kpi mr-comm-kpi-approved">
+                <div class="mr-comm-kpi-icon">
+                    <i class="ti ti-checks"></i>
+                </div>
+                <div class="mr-comm-kpi-body">
+                    <span class="mr-comm-kpi-label">@this.Localizer["ReadyToPay"]</span>
+                    <span class="mr-comm-kpi-value">@this.Summary.ApprovedCount</span>
+                    <span class="mr-comm-kpi-sub">฿@this.Summary.ApprovedAmount.ToString("N0")</span>
+                </div>
+            </div>
+            <div class="mr-comm-kpi mr-comm-kpi-outstanding">
+                <div class="mr-comm-kpi-icon">
+                    <i class="ti ti-alert-triangle"></i>
+                </div>
+                <div class="mr-comm-kpi-body">
+                    <span class="mr-comm-kpi-label">@this.Localizer["TotalOutstanding"]</span>
+                    <span class="mr-comm-kpi-value">฿@this.Summary.TotalOutstanding.ToString("N0")</span>
+                    <span class="mr-comm-kpi-sub">@this.Localizer["OutstandingItems", this.Summary.PendingCount + this.Summary.ApprovedCount]</span>
+                </div>
+            </div>
+            <div class="mr-comm-kpi mr-comm-kpi-agents">
+                <div class="mr-comm-kpi-icon">
+                    <i class="ti ti-users-group"></i>
+                </div>
+                <div class="mr-comm-kpi-body">
+                    <span class="mr-comm-kpi-label">@this.Localizer["ActiveAgents"]</span>
+                    <span class="mr-comm-kpi-value">@this.Agents.Count</span>
+                    <span class="mr-comm-kpi-sub">@this.Localizer["RegisteredPartners"]</span>
+                </div>
+            </div>
+            <div class="mr-comm-kpi mr-comm-kpi-paid">
+                <div class="mr-comm-kpi-icon">
+                    <i class="ti ti-circle-check"></i>
+                </div>
+                <div class="mr-comm-kpi-body">
+                    <span class="mr-comm-kpi-label">@this.Localizer["PaidThisPeriod"]</span>
+                    <span class="mr-comm-kpi-value">@this.Summary.PaidCount</span>
+                    <span class="mr-comm-kpi-sub">฿@this.Summary.PaidAmount.ToString("N0")</span>
+                </div>
+            </div>
+        </div>
+
         <LoadingSkeleton Loading="@this.Loading" Mode="LoadingSkeleton.PlaceholderMode.Table">
             <div class="card">
                 <div class="table-responsive">
@@ -151,8 +205,8 @@
                                         <a href="/bookings/@commission.BookingRef">@commission.BookingRef</a>
                                     </td>
                                     <td>@commission.CustomerName</td>
-                                    <td class="text-end">@this.Localizer["CurrencyTHB"]@commission.BookingTotal.ToString("N0")</td>
-                                    <td class="text-end fw-bold">@this.Localizer["CurrencyTHB"]@commission.CommissionAmount.ToString("N0")</td>
+                                    <td class="text-end">฿@commission.BookingTotal.ToString("N0")</td>
+                                    <td class="text-end fw-bold">฿@commission.CommissionAmount.ToString("N0")</td>
                                     <td>
                                         <span class="badge @GetStatusBadgeClass(commission.Status)">
                                             @this.Localizer[commission.Status]
@@ -274,10 +328,6 @@
                 agentId: this.AgentFilter,
                 fromDate: fromDate,
                 toDate: toDate);
-        }
-        catch (Exception ex)
-        {
-            this.ShowError(this.Localizer["ErrorLoadingCommissions", ex.Message]);
         }
         finally
         {

@@ -63,6 +63,9 @@ if ($LASTEXITCODE -eq 0) {
 
     # Change location to new worktree
     Set-Location $WorktreePath
+    mkdir .\src\MotoRent.Server\Properties\  
+    Copy-Item ..\motorent\src\MotoRent.Server\Properties\launchSettings.json .\src\MotoRent.Server\Properties\
+
     
     # Restore dependencies
     Write-Host "Restoring dependencies..."
@@ -148,9 +151,6 @@ if ($LASTEXITCODE -eq 0) {
     $json | ConvertTo-Json -Depth 10 | Set-Content $vscodeSettingsPath
     Write-Host "Updated VS Code window color settings."
     
-    # Start VS Code
-    Write-Host "Opening VS Code..."
-    code .
 }
 else {
     Write-Error "Failed to create worktree."

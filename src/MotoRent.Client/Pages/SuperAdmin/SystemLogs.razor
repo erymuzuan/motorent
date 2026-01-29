@@ -353,14 +353,7 @@
 
     private async Task LoadStatsAsync()
     {
-        try
-        {
             m_stats = await LogEntryService.GetStatsAsync();
-        }
-        catch (Exception ex)
-        {
-            ShowError($"Error loading stats: {ex.Message}");
-        }
     }
 
     private async Task LoadAsync()
@@ -380,10 +373,6 @@
                 m_logs = lo.ItemCollection.ToList();
                 m_totalRows = lo.TotalRows;
             }
-        }
-        catch (Exception ex)
-        {
-            ShowError($"Error loading logs: {ex.Message}");
         }
         finally
         {
@@ -438,17 +427,10 @@
 
     private async Task Resolve(int logEntryId)
     {
-        try
-        {
             await LogEntryService.ResolveAsync(logEntryId, UserName);
             ShowSuccess("Log entry marked as resolved");
             await LoadAsync();
             await LoadStatsAsync();
-        }
-        catch (Exception ex)
-        {
-            ShowError($"Error resolving log: {ex.Message}");
-        }
     }
 
     private async Task ResolveAllSimilar(string incidentHash)
@@ -459,17 +441,10 @@
 
         if (!confirmed) return;
 
-        try
-        {
             await LogEntryService.ResolveAllSimilarAsync(incidentHash, UserName);
             ShowSuccess("All similar log entries marked as resolved");
             await LoadAsync();
             await LoadStatsAsync();
-        }
-        catch (Exception ex)
-        {
-            ShowError($"Error resolving logs: {ex.Message}");
-        }
     }
 
     private async Task Delete(int logEntryId)
@@ -480,17 +455,10 @@
 
         if (!confirmed) return;
 
-        try
-        {
             await LogEntryService.DeleteAsync(logEntryId);
             ShowSuccess("Log entry deleted");
             await LoadAsync();
             await LoadStatsAsync();
-        }
-        catch (Exception ex)
-        {
-            ShowError($"Error deleting log: {ex.Message}");
-        }
     }
 
     private async Task DeleteAllSimilar(string incidentHash)
@@ -501,17 +469,10 @@
 
         if (!confirmed) return;
 
-        try
-        {
             await LogEntryService.DeleteAllSimilarAsync(incidentHash);
             ShowSuccess("All similar log entries deleted");
             await LoadAsync();
             await LoadStatsAsync();
-        }
-        catch (Exception ex)
-        {
-            ShowError($"Error deleting logs: {ex.Message}");
-        }
     }
 
     private string GetSeverityBadgeClass(LogSeverity severity) => severity switch

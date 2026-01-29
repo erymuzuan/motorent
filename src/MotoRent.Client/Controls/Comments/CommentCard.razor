@@ -140,8 +140,6 @@
 
     private async Task AddReaction(CommentExpression expression)
     {
-        try
-        {
             Comment.Expressions ??= [];
 
             // Check if user already reacted
@@ -165,12 +163,6 @@
             await session.SubmitChanges("CommentExpression");
 
             StateHasChanged();
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Failed to add reaction");
-            ShowError("Failed to add reaction");
-        }
     }
 
     private async Task PostReply()
@@ -207,11 +199,6 @@
 
             await OnReplyAdded.InvokeAsync(reply);
             ShowSuccess("Reply added");
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Failed to post reply");
-            ShowError("Failed to post reply");
         }
         finally
         {
