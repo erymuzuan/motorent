@@ -5,7 +5,7 @@
 
 <div class="mr-closing-count-panel">
     @* Currency Sections *@
-    <div class="mr-count-sections mr-count-grid">
+    <div class="mr-count-sections">
         @foreach (var currency in m_visibleCurrencies)
         {
             var denominations = CurrencyDenominations.GetDenominations(currency);
@@ -16,6 +16,7 @@
             var varianceClass = GetVarianceClass(variance);
             var varianceIcon = GetVarianceIcon(variance);
             var symbol = CurrencyDenominations.GetCurrencySymbol(currency);
+            var isTHB = currency == SupportedCurrencies.THB;
 
             <div class="mr-currency-section">
                 <div class="mr-currency-header">
@@ -25,36 +26,79 @@
                     </span>
                 </div>
 
-                @* Denomination Rows *@
-                @foreach (var denomination in denominations)
-                {
-                    var count = counts.GetValueOrDefault(denomination, 0);
-                    var subtotal = denomination * count;
-                    var hasValue = count > 0;
+                @* Denomination Chips - tap to add *@
+                <div class="mr-add-cash-section">
+                    <div class="mr-denomination-chips">
+                        @foreach (var denomination in denominations)
+                        {
+                            var localCur = currency;
+                            var localDen = denomination;
+                            var count = counts.GetValueOrDefault(localDen, 0);
+                            var isBill = isTHB ? localDen >= 20 : localDen >= 1;
+                            var chipClass = isBill ? "mr-chip-bill" : "mr-chip-coin";
 
-                    <div class="mr-denom-row @(hasValue ? "has-value" : "")">
-                        <span class="mr-denom-value">@symbol@denomination.ToString("N0")</span>
-                        <div class="mr-denom-counter">
-                            <button type="button" class="mr-denom-btn" @onclick="() => Decrement(currency, denomination)" disabled="@(Disabled || count <= 0)">
-                                <i class="ti ti-minus"></i>
+                            <button type="button"
+                                    class="mr-denom-chip @chipClass @(count > 0 ? "active" : "")"
+                                    disabled="@Disabled"
+                                    @onclick="async () => await Increment(localCur, localDen)">
+                                <span class="mr-chip-indicator"></span>
+                                <span class="mr-chip-icon">@(isBill ? symbol : "C")</span>
+                                <span class="mr-chip-value">@localDen.ToString("N0")</span>
                             </button>
-                            <input type="number"
-                                   class="form-control form-control-sm mr-denom-count"
-                                   min="0"
-                                   step="1"
-                                   value="@count"
-                                   disabled="@Disabled"
-                                   @oninput="@(e => this.OnCountChanged(currency, denomination, e))" />
-                            <button type="button" class="mr-denom-btn" @onclick="() => Increment(currency, denomination)" disabled="@Disabled">
-                                <i class="ti ti-plus"></i>
-                            </button>
-                        </div>
-                        <span class="mr-denom-subtotal">
-                            @if (hasValue)
+                        }
+                    </div>
+                </div>
+
+                @* Counted Items List *@
+                @{
+                    var countedItems = denominations.Where(d => counts.GetValueOrDefault(d, 0) > 0).ToList();
+                }
+                @if (countedItems.Any())
+                {
+                    <div class="mr-counted-section">
+                        <div class="mr-counted-list">
+                            @foreach (var denomination in countedItems)
                             {
-                                @($"{symbol}{subtotal:N0}")
+                                var localCurrency = currency;
+                                var localDenom = denomination;
+                                var count = counts.GetValueOrDefault(localDenom, 0);
+                                var subtotal = localDenom * count;
+                                var isBill = isTHB ? localDenom >= 20 : localDenom >= 1;
+                                var chipClass = isBill ? "mr-item-bill" : "mr-item-coin";
+
+                                <div class="mr-counted-item">
+                                    <div class="mr-item-badge @chipClass">
+                                        <span class="mr-badge-icon">@(isBill ? symbol : "C")</span>
+                                        <span class="mr-badge-value">@localDenom.ToString("N0")</span>
+                                    </div>
+                                    <div class="mr-item-subtotal">
+                                        <span class="mr-subtotal-label">@Localizer["Subtotal"]</span>
+                                        <span class="mr-subtotal-value">@symbol@subtotal.ToString("N0")</span>
+                                    </div>
+                                    <div class="mr-item-controls">
+                                        @if (count > 1)
+                                        {
+                                            <button type="button" class="mr-control-btn" disabled="@Disabled"
+                                                    @onclick="async () => await Decrement(localCurrency, localDenom)">
+                                                <i class="ti ti-minus"></i>
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" class="mr-control-btn mr-control-delete" disabled="@Disabled"
+                                                    @onclick="async () => await Decrement(localCurrency, localDenom)">
+                                                <i class="ti ti-trash"></i>
+                                            </button>
+                                        }
+                                        <span class="mr-item-count">@count</span>
+                                        <button type="button" class="mr-control-btn" disabled="@Disabled"
+                                                @onclick="async () => await Increment(localCurrency, localDenom)">
+                                            <i class="ti ti-plus"></i>
+                                        </button>
+                                    </div>
+                                </div>
                             }
-                        </span>
+                        </div>
                     </div>
                 }
 
@@ -383,49 +427,30 @@
         < 0 => "ti-trending-down"
     };
 
-    private void Increment(string currency, decimal denomination)
+    private async Task Increment(string currency, decimal denomination)
     {
         var breakdown = this.GetOrCreateBreakdown(currency);
         breakdown[denomination] = breakdown.TryGetValue(denomination, out var count) ? count + 1 : 1;
-        this.NotifyChanged();
+        await this.NotifyChangedAsync();
     }
 
-    private void Decrement(string currency, decimal denomination)
+    private async Task Decrement(string currency, decimal denomination)
     {
         var breakdown = this.GetOrCreateBreakdown(currency);
         if (breakdown.TryGetValue(denomination, out var count) && count > 0)
         {
             breakdown[denomination] = count - 1;
-            this.NotifyChanged();
+            await this.NotifyChangedAsync();
         }
     }
 
-    private void OnCountChanged(string currency, decimal denomination, ChangeEventArgs e)
-    {
-        var breakdown = this.GetOrCreateBreakdown(currency);
-
-        if (int.TryParse(e.Value?.ToString(), out var count) && count >= 0)
-        {
-            breakdown[denomination] = count;
-        }
-        else
-        {
-            breakdown[denomination] = 0;
-        }
-
-        this.NotifyChanged();
-    }
-
-    private void NotifyChanged()
+    private async Task NotifyChangedAsync()
     {
         var breakdowns = this.BuildBreakdowns();
-        this.OnBreakdownsChanged.InvokeAsync(breakdowns);
+        await this.OnBreakdownsChanged.InvokeAsync(breakdowns);
 
         // Schedule debounced auto-save
         this.ScheduleAutoSave();
-
-        // Trigger UI update
-        this.StateHasChanged();
     }
 
     /// <summary>
