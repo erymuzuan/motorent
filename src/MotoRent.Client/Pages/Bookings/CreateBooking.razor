@@ -674,8 +674,6 @@
 
     private async Task LoadInitialDataAsync()
     {
-        try
-        {
             var shopsTask = ShopService.GetShopsAsync(page: 1, pageSize: 100);
             var insuranceTask = InsuranceService.GetActiveInsurancesAsync();
             var agentsTask = AgentService.GetActiveAgentsAsync();
@@ -685,11 +683,6 @@
             m_shops = (await shopsTask).ItemCollection.ToList();
             m_insurancePackages = await insuranceTask;
             m_agents = await agentsTask;
-        }
-        catch (Exception ex)
-        {
-            ShowError(Localizer["ErrorLoadingData", ex.Message]);
-        }
     }
 
     private async Task LoadAvailableVehiclesAsync()
@@ -727,11 +720,6 @@
                     m_accessories = [];
                 }
             }
-        }
-        catch (Exception ex)
-        {
-            ShowError(Localizer["ErrorLoadingVehicles", ex.Message]);
-            m_availableVehicles = [];
         }
         finally
         {
@@ -953,12 +941,6 @@
                 Console.WriteLine($"Booking creation failed: {result.Error}");
                 ShowError(result.Error ?? Localizer["ErrorCreatingBooking"]);
             }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"EXCEPTION in CreateBookingAsync: {ex.Message}");
-            Console.WriteLine($"Stack trace: {ex.StackTrace}");
-            ShowError(Localizer["ErrorCreatingBooking", ex.Message]);
         }
         finally
         {

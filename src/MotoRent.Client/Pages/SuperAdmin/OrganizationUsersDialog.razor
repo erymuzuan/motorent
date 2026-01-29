@@ -149,10 +149,6 @@
             var users = await this.SubscriptionService.GetUsersAsync(this.Organization.AccountNo);
             this.m_users = users.ToList();
         }
-        catch (Exception ex)
-        {
-            this.ShowError($"Error loading users: {ex.Message}");
-        }
         finally
         {
             this.m_loading = false;
@@ -161,8 +157,6 @@
 
     private async Task LoadAvailableUsersAsync()
     {
-        try
-        {
             // Load all users who are NOT already in this organization
             var existingUserNames = this.m_users.Select(u => u.UserName).ToHashSet();
             var allUsersQuery = this.CoreContext.Users.OrderBy(u => u.FullName);
@@ -171,11 +165,6 @@
             this.m_availableUsers = allUsersResult.ItemCollection
                 .Where(u => !existingUserNames.Contains(u.UserName))
                 .ToList();
-        }
-        catch (Exception ex)
-        {
-            this.ShowError($"Error loading available users: {ex.Message}");
-        }
     }
 
     private void ToggleAddUser()
@@ -202,8 +191,6 @@
     {
         if (string.IsNullOrEmpty(this.m_selectedUserName)) return;
 
-        try
-        {
             var user = this.m_availableUsers.FirstOrDefault(u => u.UserName == this.m_selectedUserName);
             if (user == null)
             {
@@ -222,11 +209,6 @@
 
             this.m_showAddUser = false;
             this.m_selectedUserName = null;
-        }
-        catch (Exception ex)
-        {
-            this.ShowError($"Error adding user: {ex.Message}");
-        }
     }
 
     private void Close() => this.ModalInstance?.Close();

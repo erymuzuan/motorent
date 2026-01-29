@@ -1,5 +1,8 @@
+@using MotoRent.Domain.Entities
 @using MotoRent.Domain.Models
+@using MotoRent.Client.Services
 @inherits LocalizedComponentBase<BlockPropertyEditor>
+@inject DesignerState DesignerState
 
 <div class="card h-100">
     <div class="card-header">
@@ -26,6 +29,8 @@
                     <label class="form-label">@this.Localizer["Content"]</label>
                     <input type="text" class="form-control" @bind="hb.Content" @bind:event="oninput" />
                 </div>
+                @* Placeholder Picker for Heading *@
+                <PlaceholderPicker OnInsert="(token) => hb.Content += token" />
                 <div class="mb-3">
                     <label class="form-label">@this.Localizer["HeadingLevel"]</label>
                     <select class="form-select" @bind="hb.Level">
@@ -63,6 +68,8 @@
                     <textarea class="form-control" @bind="tb.Content" @bind:event="oninput" rows="5"></textarea>
                     <div class="form-hint">@this.Localizer["PlaceholderHint"]</div>
                 </div>
+                @* Placeholder Picker for Text *@
+                <PlaceholderPicker OnInsert="(token) => { tb.Content += token; this.StateHasChanged(); }" />
                 <div class="mb-3">
                     <label class="form-label">@this.Localizer["FontSize"]</label>
                     <input type="number" class="form-control" @bind="tb.FontSize" />
@@ -169,7 +176,7 @@
                     <input type="text" class="form-control" @bind="sig.BindingPath" />
                 </div>
             }
-            
+
             <div class="mt-4 pt-3 border-top">
                 <button class="btn btn-outline-danger w-100" @onclick="this.OnDeleteRequested">
                     <i class="ti ti-trash me-2"></i> @this.Localizer["DeleteBlock"]

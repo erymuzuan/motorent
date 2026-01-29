@@ -308,29 +308,15 @@
 
     private async Task LoadOrganizationsAsync()
     {
-        try
-        {
             var orgs = await this.SubscriptionService.GetAllOrganizationsAsync();
             this.m_organizations = orgs.ToList();
-        }
-        catch (Exception ex)
-        {
-            this.ShowError($"Error loading organizations: {ex.Message}");
-        }
     }
 
     private async Task LoadAvailableUsersAsync()
     {
-        try
-        {
             var allUsersQuery = this.CoreContext.Users.OrderBy(u => u.FullName);
             var allUsersResult = await this.CoreContext.LoadAsync(allUsersQuery, page: 1, size: 500);
             this.m_availableUsers = allUsersResult.ItemCollection.ToList();
-        }
-        catch (Exception ex)
-        {
-            this.ShowError($"Error loading users: {ex.Message}");
-        }
     }
 
     private void OnUserSelected()
@@ -466,10 +452,6 @@
             this.ShowSuccess(this.Localizer["UserAddedToOrgs", user.FullName ?? user.UserName, orgCount]);
             this.Close();
         }
-        catch (Exception ex)
-        {
-            this.ShowError($"Error adding user: {ex.Message}");
-        }
         finally
         {
             this.Saving = false;
@@ -531,10 +513,6 @@
             var orgCount = this.m_selectedOrgs.Count;
             this.ShowSuccess(this.Localizer["UserCreatedWithOrgs", newUser.FullName, orgCount]);
             this.Close();
-        }
-        catch (Exception ex)
-        {
-            this.ShowError($"Error creating user: {ex.Message}");
         }
         finally
         {

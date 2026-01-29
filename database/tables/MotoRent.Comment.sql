@@ -9,6 +9,7 @@ CREATE TABLE [<schema>].[Comment]
     [ObjectWebId]       AS CAST(JSON_VALUE([Json], '$.ObjectWebId') AS VARCHAR(50)),
     [User]              AS CAST(JSON_VALUE([Json], '$.User') AS VARCHAR(100)),
     [EntityId]          AS CAST(JSON_VALUE([Json], '$.EntityId') AS INT),
+    [Hidden]              AS CAST(JSON_VALUE([Json], '$.Hidden') AS BIT),
     [Root]              AS CAST(JSON_VALUE([Json], '$.Root') AS INT),
     [ReplyTo]           AS CAST(JSON_VALUE([Json], '$.ReplyTo') AS INT),
     [SupportComment]    AS CAST(JSON_VALUE([Json], '$.SupportComment') AS BIT),

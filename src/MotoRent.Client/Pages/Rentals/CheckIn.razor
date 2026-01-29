@@ -254,10 +254,6 @@
             // Pre-fill from booking
             await this.PrefillFromBookingAsync();
         }
-        catch (Exception ex)
-        {
-            this.ShowError(this.Localizer["ErrorLoading", ex.Message]);
-        }
         finally
         {
             this.m_loadingBooking = false;
@@ -275,9 +271,10 @@
             // Link to existing renter
             this.m_selectedRenter = await this.RenterService.GetRenterByIdAsync(this.m_sourceBooking.RenterId.Value);
         }
-        else
+
+        // Fallback: create renter from booking customer info if no existing renter found
+        if (this.m_selectedRenter == null)
         {
-            // Create new renter from booking customer info
             var newRenter = new Renter
             {
                 FullName = this.m_sourceBooking.CustomerName ?? "",
@@ -574,10 +571,6 @@
             {
                 this.ShowError(this.GetLocalizedText("CheckInFailed", result.Message ?? "Unknown error"));
             }
-        }
-        catch (Exception ex)
-        {
-            this.ShowError(Localizer["ErrorLoading", ex.Message]);
         }
         finally
         {

@@ -224,10 +224,6 @@
                 m_occurrenceCount = await LogEntryService.GetOccurrenceCountAsync(m_log.IncidentHash);
             }
         }
-        catch (Exception ex)
-        {
-            ShowError($"Error loading log entry: {ex.Message}");
-        }
         finally
         {
             m_loading = false;
@@ -238,16 +234,9 @@
     {
         if (m_log is null) return;
 
-        try
-        {
             await LogEntryService.ResolveAsync(m_log.LogEntryId, UserName);
             ShowSuccess("Log entry marked as resolved");
             await LoadAsync();
-        }
-        catch (Exception ex)
-        {
-            ShowError($"Error resolving log: {ex.Message}");
-        }
     }
 
     private async Task ResolveAllSimilar()
@@ -260,16 +249,9 @@
 
         if (!confirmed) return;
 
-        try
-        {
             await LogEntryService.ResolveAllSimilarAsync(m_log.IncidentHash, UserName);
             ShowSuccess($"All {m_occurrenceCount} similar log entries marked as resolved");
             Close();
-        }
-        catch (Exception ex)
-        {
-            ShowError($"Error resolving logs: {ex.Message}");
-        }
     }
 
     private async Task Delete()
@@ -282,16 +264,9 @@
 
         if (!confirmed) return;
 
-        try
-        {
             await LogEntryService.DeleteAsync(m_log.LogEntryId);
             ShowSuccess("Log entry deleted");
             Close();
-        }
-        catch (Exception ex)
-        {
-            ShowError($"Error deleting log: {ex.Message}");
-        }
     }
 
     private void Close()
