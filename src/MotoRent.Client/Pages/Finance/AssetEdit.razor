@@ -1,5 +1,5 @@
 @page "/finance/assets/new"
-@page "/finance/assets/{AssetId:int}"
+@page "/finance/assets/{AssetId}"
 @using Microsoft.AspNetCore.Authorization
 @using MotoRent.Domain.Entities
 @attribute [Authorize(Policy = "RequireTenantManager")]
@@ -93,14 +93,15 @@
 
 @code {
     [Parameter]
-    public int AssetId { get; set; }
+    public string? AssetId { get; set; }
 
+    private int m_assetId;
     private Asset? m_asset;
     private AssetDialog? m_dialog;
     private bool m_loading = true;
     private bool m_saving;
 
-    private bool IsNew => AssetId == 0;
+    private bool IsNew => string.IsNullOrEmpty(AssetId);
 
     protected override async Task OnParametersSetAsync()
     {
@@ -114,7 +115,8 @@
             }
             else
             {
-                m_asset = await AssetService.GetAssetByIdAsync(AssetId);
+                m_assetId = DecodeId(AssetId);
+                m_asset = await AssetService.GetAssetByIdAsync(m_assetId);
                 if (m_asset == null)
                 {
                     NavigationManager.NavigateTo("/finance/asset-dashboard");

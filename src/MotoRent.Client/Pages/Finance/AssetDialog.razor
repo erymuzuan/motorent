@@ -115,7 +115,7 @@
                 <div class="col-md-6">
                     <label class="form-label">@Localizer["InitialBookValue"]</label>
                     <div class="input-group">
-                        <span class="input-group-text">฿</span>
+                        <span class="input-group-text">@Localizer["CurrencyTHBShort"]</span>
                         <input type="number" class="form-control" @bind="Entity.InitialBookValue" min="0" step="0.01" />
                     </div>
                     <small class="text-muted">@Localizer["InitialBookValueHelp"]</small>
@@ -152,7 +152,7 @@
             <div class="col-md-6">
                 <label class="form-label required">@Localizer["ResidualValue"]</label>
                 <div class="input-group">
-                    <span class="input-group-text">฿</span>
+                    <span class="input-group-text">@Localizer["CurrencyTHBShort"]</span>
                     <input type="number" class="form-control" @bind="Entity.ResidualValue" required min="0" step="0.01" />
                 </div>
                 <small class="text-muted">@Localizer["ResidualValueHelp"]</small>
@@ -180,7 +180,7 @@
                     <label class="form-label required">@Localizer["DecliningBalanceRate"]</label>
                     <div class="input-group">
                         <input type="number" class="form-control" @bind="m_decliningBalanceRate" required min="0" max="100" step="1" />
-                        <span class="input-group-text">% / year</span>
+                        <span class="input-group-text">@Localizer["PercentPerYear"]</span>
                     </div>
                     <small class="text-muted">@Localizer["DecliningBalanceRateHelp"]</small>
                 </div>
@@ -213,7 +213,7 @@
                 <div class="col-md-6">
                     <label class="form-label required">@Localizer["PrincipalAmount"]</label>
                     <div class="input-group">
-                        <span class="input-group-text">฿</span>
+                        <span class="input-group-text">@Localizer["CurrencyTHBShort"]</span>
                         <input type="number" class="form-control" @bind="m_loan.PrincipalAmount" required min="0" step="0.01" />
                     </div>
                 </div>
@@ -244,7 +244,7 @@
                     <div class="col-12">
                         <div class="alert alert-info">
                             <strong>@Localizer["EstimatedMonthlyPayment"]:</strong>
-                            ฿@CalculateMonthlyPayment().ToString("N2")
+                            @Localizer["CurrencyTHBShort"]@CalculateMonthlyPayment().ToString("N2")
                         </div>
                     </div>
                 }
@@ -359,7 +359,7 @@
 
             if (!result.Success)
             {
-                ShowError(result.Message ?? "Failed to save asset");
+                ShowError(result.Message ?? Localizer["SaveAssetFailed"]);
                 return;
             }
 
@@ -373,7 +373,7 @@
                 var loanResult = await LoanService.CreateLoanAsync(m_loan, UserName);
                 if (!loanResult.Success)
                 {
-                    ShowError($"Asset created but loan failed: {loanResult.Message}");
+                    ShowError(Localizer["AssetCreatedLoanFailed", loanResult.Message]);
                     return;
                 }
 
