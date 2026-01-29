@@ -31,6 +31,14 @@ public partial class Vehicle : Entity
     /// </summary>
     public int CurrentShopId { get; set; }
 
+    // Fleet Model
+
+    /// <summary>
+    /// Link to the fleet model that owns shared attributes (specs, pricing).
+    /// When set, shared properties are populated from FleetModel on load.
+    /// </summary>
+    public int? FleetModelId { get; set; }
+
     // Vehicle Type and Duration
 
     /// <summary>
@@ -345,5 +353,33 @@ public partial class Vehicle : Entity
                 ? this.DisplayName
                 : $"{this.DisplayName} {engine}";
         }
+    }
+
+    /// <summary>
+    /// Populates shared properties from the linked FleetModel.
+    /// Called by VehicleService on load — existing consumers continue reading vehicle properties unchanged.
+    /// </summary>
+    public void PopulateFromFleetModel(FleetModel fm)
+    {
+        Brand = fm.Brand;
+        Model = fm.Model;
+        Year = fm.Year;
+        VehicleType = fm.VehicleType;
+        EngineCC = fm.EngineCC;
+        EngineLiters = fm.EngineLiters;
+        Segment = fm.Segment;
+        Transmission = fm.Transmission;
+        SeatCount = fm.SeatCount;
+        PassengerCapacity = fm.PassengerCapacity;
+        MaxRiderWeight = fm.MaxRiderWeight;
+        DailyRate = fm.DailyRate;
+        HourlyRate = fm.HourlyRate;
+        Rate15Min = fm.Rate15Min;
+        Rate30Min = fm.Rate30Min;
+        Rate1Hour = fm.Rate1Hour;
+        DepositAmount = fm.DepositAmount;
+        DurationType = fm.DurationType;
+        DriverDailyFee = fm.DriverDailyFee;
+        GuideDailyFee = fm.GuideDailyFee;
     }
 }

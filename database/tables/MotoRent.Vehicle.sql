@@ -2,6 +2,8 @@
 CREATE TABLE [<schema>].[Vehicle]
 (
     [VehicleId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
+    -- Fleet Model
+    [FleetModelId] AS CAST(JSON_VALUE([Json], '$.FleetModelId') AS INT),
     -- Location and Pool
     [HomeShopId] AS CAST(JSON_VALUE([Json], '$.HomeShopId') AS INT),
     [VehiclePoolId] AS CAST(JSON_VALUE([Json], '$.VehiclePoolId') AS INT),
@@ -50,4 +52,6 @@ CREATE INDEX IX_Vehicle_VehicleType_Status ON [<schema>].[Vehicle]([VehicleType]
 CREATE UNIQUE INDEX IX_Vehicle_LicensePlate ON [<schema>].[Vehicle]([LicensePlate])
 --
 CREATE INDEX IX_Vehicle_VehicleOwnerId ON [<schema>].[Vehicle]([VehicleOwnerId])
+--
+CREATE INDEX IX_Vehicle_FleetModelId ON [<schema>].[Vehicle]([FleetModelId])
 --

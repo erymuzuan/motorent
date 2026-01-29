@@ -58,6 +58,7 @@ builder.Services.AddMotoRentSqlServerRepository();
 builder.Services.AddScoped<MotorbikeService>(); // Deprecated: use VehicleService
 builder.Services.AddScoped<VehiclePoolService>();
 builder.Services.AddScoped<VehicleService>();
+builder.Services.AddScoped<FleetModelService>();
 builder.Services.AddScoped<VehicleImageService>();
 builder.Services.AddScoped<RentalPricingService>();
 builder.Services.AddScoped<RenterService>();

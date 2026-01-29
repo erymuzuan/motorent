@@ -1,0 +1,440 @@
+@using MotoRent.Client.Components.Shared
+@using MotoRent.Domain.Lookups
+@inherits LocalizedComponentBase<FleetModelForm>
+@inject VehicleLookupService LookupService
+
+<div class="row">
+    @* Left Column: Basic Info *@
+    <div class="col-lg-4">
+        <div class="mr-form-panel mb-3">
+            <div class="mr-form-panel-header">
+                <div class="mr-form-panel-header-icon">
+                    <i class="ti ti-info-circle"></i>
+                </div>
+                <h3 class="mr-form-panel-title">@Localizer["BasicInfo"]</h3>
+            </div>
+            <div class="mr-form-panel-body">
+                @* Vehicle Type *@
+                <div class="mb-3">
+                    <label class="mr-form-label">@Localizer["VehicleType"] <span class="required">*</span></label>
+                    @if (IsNew)
+                    {
+                        <div class="mr-quick-select">
+                            @foreach (VehicleType type in Enum.GetValues<VehicleType>())
+                            {
+                                <button type="button"
+                                        class="mr-quick-select-btn @(Entity.VehicleType == type ? "active" : "")"
+                                        @onclick="@(() => OnVehicleTypeChanged(type))">
+                                    <i class="ti @GetVehicleTypeIcon(type) me-1"></i>
+                                    @GetVehicleTypeLabel(type)
+                                </button>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="mt-2">
+                            <span class="mr-detail-badge" style="font-size: 0.875rem; padding: 0.5rem 1rem;">
+                                <i class="ti @GetVehicleTypeIcon(Entity.VehicleType) me-1"></i>
+                                @GetVehicleTypeLabel(Entity.VehicleType)
+                            </span>
+                        </div>
+                    }
+                </div>
+
+                @* Brand & Model *@
+                <div class="row g-3 mb-3">
+                    <div class="col-6">
+                        <label class="mr-form-label">@Localizer["Brand"] <span class="required">*</span></label>
+                        <input type="text" class="mr-form-control" @bind="Entity.Brand" required
+                               list="brandSuggestions" placeholder="@Localizer["BrandPlaceholder"]" />
+                        <datalist id="brandSuggestions">
+                            @foreach (var brand in GetBrandSuggestions())
+                            {
+                                <option value="@brand" />
+                            }
+                        </datalist>
+                    </div>
+                    <div class="col-6">
+                        <label class="mr-form-label">@Localizer["Model"] <span class="required">*</span></label>
+                        <input type="text" class="mr-form-control" @bind="Entity.Model" required
+                               placeholder="@GetModelPlaceholder()" />
+                    </div>
+                </div>
+
+                @* Year *@
+                <div class="mb-3">
+                    <label class="mr-form-label">@Localizer["Year"]</label>
+                    <input type="number" class="mr-form-control" @bind="Entity.Year"
+                           min="2000" max="@DateTime.Now.Year" />
+                </div>
+
+                @* Active toggle *@
+                <div class="mb-0">
+                    <label class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" @bind="Entity.IsActive" />
+                        <span class="form-check-label">@Localizer["Active"]</span>
+                    </label>
+                    <div class="mr-form-hint">
+                        <i class="ti ti-info-circle"></i>
+                        @Localizer["ActiveHint"]
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Right Column: Specs & Pricing *@
+    <div class="col-lg-8">
+        @* Type-Specific Fields Card *@
+        <div class="mr-form-panel mb-3">
+            <div class="mr-form-panel-header">
+                <div class="mr-form-panel-header-icon">
+                    <i class="ti @GetVehicleTypeIcon(Entity.VehicleType)"></i>
+                </div>
+                <h3 class="mr-form-panel-title">@GetVehicleTypeLabel(Entity.VehicleType) @Localizer["Details"]</h3>
+            </div>
+            <div class="mr-form-panel-body">
+                <div class="row g-3">
+                    @* Car-specific: Segment & Transmission *@
+                    @if (Entity.VehicleType == VehicleType.Car)
+                    {
+                        <div class="col-md-6">
+                            <label class="mr-form-label">@Localizer["Segment"]</label>
+                            <select class="mr-form-control" @bind="Entity.Segment">
+                                <option value="">@Localizer["SelectSegment"]...</option>
+                                @foreach (CarSegment segment in Enum.GetValues<CarSegment>())
+                                {
+                                    <option value="@segment">@GetSegmentLabel(segment)</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="mr-form-label">@Localizer["Transmission"]</label>
+                            <select class="mr-form-control" @bind="Entity.Transmission">
+                                <option value="">@Localizer["Select"]...</option>
+                                <option value="Automatic">@Localizer["Automatic"]</option>
+                                <option value="Manual">@Localizer["Manual"]</option>
+                            </select>
+                        </div>
+                    }
+
+                    @* Engine specs *@
+                    @if (Entity.VehicleType == VehicleType.Motorbike)
+                    {
+                        <div class="col-md-6">
+                            <label class="mr-form-label">@Localizer["EngineCC"] <span class="required">*</span></label>
+                            <div class="mr-input-group">
+                                <input type="number" class="mr-form-control" @bind="Entity.EngineCC" required
+                                       min="50" max="2000" placeholder="125" />
+                                <span class="mr-input-group-text">cc</span>
+                            </div>
+                        </div>
+                    }
+                    else if (Entity.VehicleType == VehicleType.Car)
+                    {
+                        <div class="col-md-6">
+                            <label class="mr-form-label">@Localizer["EngineLiters"]</label>
+                            <div class="mr-input-group">
+                                <input type="number" class="mr-form-control" @bind="Entity.EngineLiters"
+                                       min="0.5" max="8" step="0.1" placeholder="1.5" />
+                                <span class="mr-input-group-text">L</span>
+                            </div>
+                        </div>
+                    }
+
+                    @* Capacity *@
+                    @if (Entity.VehicleType == VehicleType.Boat)
+                    {
+                        <div class="col-md-6">
+                            <label class="mr-form-label">@Localizer["PassengerCapacity"]</label>
+                            <div class="mr-input-group">
+                                <input type="number" class="mr-form-control" @bind="Entity.PassengerCapacity"
+                                       min="1" max="50" placeholder="12" />
+                                <span class="mr-input-group-text">@Localizer["Persons"]</span>
+                            </div>
+                        </div>
+                    }
+                    else if (Entity.VehicleType == VehicleType.Car || Entity.VehicleType == VehicleType.Van)
+                    {
+                        <div class="col-md-6">
+                            <label class="mr-form-label">@Localizer["SeatCount"]</label>
+                            <div class="mr-input-group">
+                                <input type="number" class="mr-form-control" @bind="Entity.SeatCount"
+                                       min="1" max="50" placeholder="5" />
+                                <span class="mr-input-group-text">@Localizer["Seats"]</span>
+                            </div>
+                        </div>
+                    }
+
+                    @* Max rider weight - JetSki & Boat *@
+                    @if (Entity.VehicleType is VehicleType.JetSki or VehicleType.Boat)
+                    {
+                        <div class="col-md-6">
+                            <label class="mr-form-label">@Localizer["MaxRiderWeight"]</label>
+                            <div class="mr-input-group">
+                                <input type="number" class="mr-form-control" @bind="Entity.MaxRiderWeight"
+                                       min="50" max="500" placeholder="150" />
+                                <span class="mr-input-group-text">kg</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        @* Pricing Card *@
+        <div class="mr-form-panel mb-3">
+            <div class="mr-form-panel-header">
+                <div class="mr-form-panel-header-icon">
+                    <i class="ti ti-currency-baht"></i>
+                </div>
+                <h3 class="mr-form-panel-title">@Localizer["Pricing"]</h3>
+            </div>
+            <div class="mr-form-panel-body">
+                <div class="row g-3">
+                    @if (Entity.VehicleType == VehicleType.JetSki)
+                    {
+                        <div class="col-md-4">
+                            <label class="mr-form-label">@Localizer["Rate15Min"]</label>
+                            <div class="mr-input-group">
+                                <span class="mr-input-group-text">฿</span>
+                                <input type="number" class="mr-form-control mr-mono" @bind="Entity.Rate15Min"
+                                       min="0" step="50" placeholder="500" />
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="mr-form-label">@Localizer["Rate30Min"]</label>
+                            <div class="mr-input-group">
+                                <span class="mr-input-group-text">฿</span>
+                                <input type="number" class="mr-form-control mr-mono" @bind="Entity.Rate30Min"
+                                       min="0" step="50" placeholder="800" />
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="mr-form-label">@Localizer["Rate1Hour"] <span class="required">*</span></label>
+                            <div class="mr-input-group">
+                                <span class="mr-input-group-text">฿</span>
+                                <input type="number" class="mr-form-control mr-mono" @bind="Entity.Rate1Hour" required
+                                       min="100" step="100" placeholder="1500" />
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="col-md-4">
+                            <label class="mr-form-label">@Localizer["DailyRate"]</label>
+                            <div class="mr-input-group">
+                                <span class="mr-input-group-text">฿</span>
+                                <input type="number" class="mr-form-control mr-mono" @bind="Entity.DailyRate"
+                                       min="0" step="50" placeholder="@GetDailyRatePlaceholder()" />
+                                <span class="mr-input-group-text">/ @Localizer["Day"]</span>
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="mr-form-label">@Localizer["HourlyRate"]</label>
+                            <div class="mr-input-group">
+                                <span class="mr-input-group-text">฿</span>
+                                <input type="number" class="mr-form-control mr-mono" @bind="Entity.HourlyRate"
+                                       min="0" step="50" placeholder="@GetHourlyRatePlaceholder()" />
+                                <span class="mr-input-group-text">/ @Localizer["Hour"]</span>
+                            </div>
+                        </div>
+                    }
+
+                    <div class="col-md-4">
+                        <label class="mr-form-label">@Localizer["DepositAmount"] <span class="required">*</span></label>
+                        <div class="mr-input-group">
+                            <span class="mr-input-group-text">฿</span>
+                            <input type="number" class="mr-form-control mr-mono" @bind="Entity.DepositAmount" required
+                                   min="500" step="500" placeholder="@GetDepositPlaceholder()" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* Driver/Guide Options - Boats and Vans *@
+        @if (Entity.VehicleType is VehicleType.Boat or VehicleType.Van)
+        {
+            <div class="mr-form-panel mb-3">
+                <div class="mr-form-panel-header">
+                    <div class="mr-form-panel-header-icon">
+                        <i class="ti ti-user"></i>
+                    </div>
+                    <h3 class="mr-form-panel-title">@Localizer["DriverGuideOptions"]</h3>
+                </div>
+                <div class="mr-form-panel-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="mr-form-label">@Localizer["DriverDailyFee"]</label>
+                            <div class="mr-input-group">
+                                <span class="mr-input-group-text">฿</span>
+                                <input type="number" class="mr-form-control mr-mono" @bind="Entity.DriverDailyFee"
+                                       min="0" step="100" placeholder="1000" />
+                                <span class="mr-input-group-text">/ @Localizer["Day"]</span>
+                            </div>
+                        </div>
+
+                        @if (Entity.VehicleType == VehicleType.Boat)
+                        {
+                            <div class="col-md-6">
+                                <label class="mr-form-label">@Localizer["GuideDailyFee"]</label>
+                                <div class="mr-input-group">
+                                    <span class="mr-input-group-text">฿</span>
+                                    <input type="number" class="mr-form-control mr-mono" @bind="Entity.GuideDailyFee"
+                                           min="0" step="100" placeholder="800" />
+                                    <span class="mr-input-group-text">/ @Localizer["Day"]</span>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+        @* Notes Card *@
+        <div class="mr-form-panel mb-3">
+            <div class="mr-form-panel-header">
+                <div class="mr-form-panel-header-icon">
+                    <i class="ti ti-notes"></i>
+                </div>
+                <h3 class="mr-form-panel-title">@Localizer["Notes"]</h3>
+            </div>
+            <div class="mr-form-panel-body">
+                <textarea class="mr-form-control" @bind="Entity.Notes" rows="3"
+                          placeholder="@Localizer["NotesPlaceholder"]"></textarea>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public FleetModel Entity { get; set; } = new();
+
+    [Parameter]
+    public bool IsNew { get; set; }
+
+    private void OnVehicleTypeChanged(VehicleType type)
+    {
+        Entity.VehicleType = type;
+        Entity.DurationType = type == VehicleType.JetSki
+            ? RentalDurationType.FixedInterval
+            : RentalDurationType.Daily;
+
+        // Clear type-specific fields
+        if (type != VehicleType.Car)
+        {
+            Entity.Segment = null;
+            Entity.Transmission = null;
+            Entity.EngineLiters = null;
+            Entity.SeatCount = null;
+        }
+
+        if (type == VehicleType.JetSki)
+        {
+            Entity.DailyRate = 0;
+        }
+        else
+        {
+            Entity.Rate15Min = null;
+            Entity.Rate30Min = null;
+            Entity.Rate1Hour = null;
+        }
+
+        if (type is not (VehicleType.Boat or VehicleType.Van))
+        {
+            Entity.DriverDailyFee = null;
+            Entity.GuideDailyFee = null;
+            Entity.PassengerCapacity = null;
+        }
+
+        this.StateHasChanged();
+    }
+
+    private static string GetVehicleTypeIcon(VehicleType type) => type switch
+    {
+        VehicleType.Motorbike => "ti-motorbike",
+        VehicleType.Car => "ti-car",
+        VehicleType.JetSki => "ti-sailboat",
+        VehicleType.Boat => "ti-ship",
+        VehicleType.Van => "ti-bus",
+        _ => "ti-car"
+    };
+
+    private string GetVehicleTypeLabel(VehicleType type) => type switch
+    {
+        VehicleType.Motorbike => Localizer["Motorbike"],
+        VehicleType.Car => Localizer["Car"],
+        VehicleType.JetSki => Localizer["JetSki"],
+        VehicleType.Boat => Localizer["Boat"],
+        VehicleType.Van => Localizer["Van"],
+        _ => Localizer["Vehicle"]
+    };
+
+    private string GetSegmentLabel(CarSegment segment) => segment switch
+    {
+        CarSegment.SmallSedan => Localizer["SmallSedan"],
+        CarSegment.BigSedan => Localizer["BigSedan"],
+        CarSegment.SUV => Localizer["SUV"],
+        CarSegment.Pickup => Localizer["Pickup"],
+        CarSegment.Hatchback => Localizer["Hatchback"],
+        CarSegment.Minivan => Localizer["Minivan"],
+        CarSegment.Luxury => Localizer["Luxury"],
+        _ => segment.ToString()
+    };
+
+    private List<string> GetBrandSuggestions() => Entity.VehicleType switch
+    {
+        VehicleType.Motorbike => ["Honda", "Yamaha", "Suzuki", "Kawasaki", "Vespa", "GPX"],
+        VehicleType.Car => ["Toyota", "Honda", "Mazda", "Nissan", "Mitsubishi", "Isuzu", "Mercedes", "BMW"],
+        VehicleType.JetSki => ["Yamaha", "Sea-Doo", "Kawasaki", "Honda"],
+        VehicleType.Boat => ["Yamaha", "Bayliner", "Sea Ray", "Boston Whaler"],
+        VehicleType.Van => ["Toyota", "Hyundai", "Mercedes", "Ford", "Nissan"],
+        _ => []
+    };
+
+    private string GetModelPlaceholder() => Entity.VehicleType switch
+    {
+        VehicleType.Motorbike => "e.g., Click 125, PCX 160",
+        VehicleType.Car => "e.g., Camry, Civic, CX-5",
+        VehicleType.JetSki => "e.g., VX Cruiser, GTI 130",
+        VehicleType.Boat => "e.g., Center Console 24ft",
+        VehicleType.Van => "e.g., Hiace, H1, Sprinter",
+        _ => "Model name"
+    };
+
+    private string GetDailyRatePlaceholder() => Entity.VehicleType switch
+    {
+        VehicleType.Motorbike => "300",
+        VehicleType.Car => "1500",
+        VehicleType.Boat => "5000",
+        VehicleType.Van => "2500",
+        _ => "1000"
+    };
+
+    private string GetHourlyRatePlaceholder() => Entity.VehicleType switch
+    {
+        VehicleType.Motorbike => "100",
+        VehicleType.Car => "500",
+        VehicleType.Boat => "2000",
+        VehicleType.Van => "800",
+        _ => "300"
+    };
+
+    private string GetDepositPlaceholder() => Entity.VehicleType switch
+    {
+        VehicleType.Motorbike => "2000",
+        VehicleType.Car => "10000",
+        VehicleType.JetSki => "5000",
+        VehicleType.Boat => "20000",
+        VehicleType.Van => "10000",
+        _ => "5000"
+    };
+
+}

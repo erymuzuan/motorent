@@ -8,10 +8,11 @@ namespace MotoRent.Services;
 /// <summary>
 /// Service for managing vehicles (replaces MotorbikeService with multi-vehicle type support).
 /// </summary>
-public class VehicleService(RentalDataContext context, VehiclePoolService poolService)
+public class VehicleService(RentalDataContext context, VehiclePoolService poolService, FleetModelService fleetModelService)
 {
     private RentalDataContext Context { get; } = context;
     private VehiclePoolService PoolService { get; } = poolService;
+    private FleetModelService FleetModelService { get; } = fleetModelService;
 
     #region Query Methods
 
@@ -43,6 +44,9 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
         query = query.OrderByDescending(v => v.VehicleId);
 
         var result = await this.Context.LoadAsync(query, page, pageSize, includeTotalRows: true);
+
+        // Populate shared properties from FleetModel
+        await PopulateFleetModelDataAsync(result.ItemCollection);
 
         // Apply search term filter in memory
         if (!string.IsNullOrWhiteSpace(searchTerm))
@@ -123,6 +127,9 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
             }
         }
 
+        // Populate shared properties from FleetModel
+        await PopulateFleetModelDataAsync(results.Select(r => r.Vehicle).ToList());
+
         return results
             .OrderBy(r => !r.IsAtCurrentShop)  // Local vehicles first
             .ThenBy(r => r.Vehicle.VehicleType)
@@ -136,7 +143,12 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
     /// </summary>
     public async Task<Vehicle?> GetVehicleByIdAsync(int vehicleId)
     {
-        return await this.Context.LoadOneAsync<Vehicle>(v => v.VehicleId == vehicleId);
+        var vehicle = await this.Context.LoadOneAsync<Vehicle>(v => v.VehicleId == vehicleId);
+        if (vehicle != null)
+        {
+            await PopulateFleetModelDataAsync(vehicle);
+        }
+        return vehicle;
     }
 
     /// <summary>
@@ -157,11 +169,14 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
         var vehicleIdsWithAssets = assetsResult.ItemCollection.Select(a => a.VehicleId).ToHashSet();
 
         // Return vehicles without assets
-        return allVehicles.ItemCollection
+        var result = allVehicles.ItemCollection
             .Where(v => !vehicleIdsWithAssets.Contains(v.VehicleId))
             .OrderBy(v => v.Brand)
             .ThenBy(v => v.Model)
             .ToList();
+
+        await PopulateFleetModelDataAsync(result);
+        return result;
     }
 
     /// <summary>
@@ -174,6 +189,9 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
             this.Context.CreateQuery<Vehicle>()
                 .Where(v => v.VehicleType == vehicleType),
             page: 1, size: 500, includeTotalRows: false);
+
+        // Populate shared properties from FleetModel
+        await PopulateFleetModelDataAsync(result.ItemCollection);
 
         return result.ItemCollection;
     }
@@ -478,6 +496,44 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
                 (v.Brand?.ToLowerInvariant().Contains(term) ?? false) ||
                 (v.Model?.ToLowerInvariant().Contains(term) ?? false))
             .ToList();
+    }
+
+    private async Task PopulateFleetModelDataAsync(List<Vehicle> vehicles)
+    {
+        var fleetModelIds = vehicles
+            .Where(v => v.FleetModelId.HasValue && v.FleetModelId > 0)
+            .Select(v => v.FleetModelId!.Value)
+            .Distinct()
+            .ToList();
+
+        if (fleetModelIds.Count == 0) return;
+
+        // Batch-load all referenced fleet models
+        var allModels = await this.FleetModelService.GetAllActiveFleetModelsAsync();
+        var fleetModelMap = allModels
+            .Where(fm => fleetModelIds.Contains(fm.FleetModelId))
+            .ToDictionary(fm => fm.FleetModelId);
+
+        foreach (var vehicle in vehicles)
+        {
+            if (vehicle.FleetModelId.HasValue
+                && vehicle.FleetModelId > 0
+                && fleetModelMap.TryGetValue(vehicle.FleetModelId.Value, out var fm))
+            {
+                vehicle.PopulateFromFleetModel(fm);
+            }
+        }
+    }
+
+    private async Task PopulateFleetModelDataAsync(Vehicle vehicle)
+    {
+        if (vehicle.FleetModelId is not (> 0)) return;
+
+        var fm = await this.FleetModelService.GetFleetModelByIdAsync(vehicle.FleetModelId.Value);
+        if (fm is not null)
+        {
+            vehicle.PopulateFromFleetModel(fm);
+        }
     }
 
     #endregion

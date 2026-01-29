@@ -1,0 +1,188 @@
+@page "/fleet-models"
+@using Microsoft.AspNetCore.Authorization
+@using MotoRent.Domain.Entities
+@attribute [Authorize(Policy = "RequireTenantStaff")]
+@inherits LocalizedComponentBase<FleetModels>
+@inject FleetModelService FleetModelService
+
+<MotoRentPageTitle>@Localizer["FleetModels"]</MotoRentPageTitle>
+
+<TablerHeader Title="@Localizer["FleetModels"]" PreTitle="@Localizer["SharedVehicleAttributes"]">
+    <a href="/fleet-models/new" class="btn btn-primary">
+        <i class="ti ti-plus me-1"></i>
+        @Localizer["CreateFleetModel"]
+    </a>
+</TablerHeader>
+
+@* Vehicle Type Tabs *@
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <ul class="nav nav-pills">
+            <li class="nav-item">
+                <a class="nav-link @(this.m_vehicleTypeFilter == null ? "active" : "")"
+                   href="javascript:void(0)" @onclick="@(() => this.FilterByType(null))">
+                    <i class="ti ti-list me-1"></i>
+                    @Localizer["All"]
+                </a>
+            </li>
+            @foreach (VehicleType type in Enum.GetValues<VehicleType>())
+            {
+                <li class="nav-item">
+                    <a class="nav-link @(this.m_vehicleTypeFilter == type ? "active" : "")"
+                       href="javascript:void(0)" @onclick="@(() => this.FilterByType(type))">
+                        <i class="ti @GetVehicleTypeIcon(type) me-1"></i>
+                        @this.GetVehicleTypeLabel(type)
+                    </a>
+                </li>
+            }
+        </ul>
+    </div>
+</div>
+
+<LoadingSkeleton Loading="@this.Loading" Mode="LoadingSkeleton.PlaceholderMode.Card">
+    @if (this.m_fleetModels.Count == 0)
+    {
+        <div class="card">
+            <div class="card-body">
+                <div class="empty py-5">
+                    <div class="empty-icon">
+                        <i class="ti ti-template" style="font-size: 3rem;"></i>
+                    </div>
+                    <p class="empty-title">@Localizer["NoFleetModels"]</p>
+                    <p class="empty-subtitle text-secondary">
+                        @Localizer["NoFleetModelsDescription"]
+                    </p>
+                    <div class="empty-action">
+                        <a href="/fleet-models/new" class="btn btn-primary">
+                            <i class="ti ti-plus me-1"></i>@Localizer["CreateFleetModel"]
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="row row-cards">
+            @foreach (var fm in this.m_fleetModels)
+            {
+                <div class="col-sm-6 col-lg-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center mb-3">
+                                <span class="avatar avatar-md bg-primary-lt me-3">
+                                    <i class="ti @GetVehicleTypeIcon(fm.VehicleType)"></i>
+                                </span>
+                                <div>
+                                    <h3 class="mb-0">@fm.DisplayName</h3>
+                                    <div class="text-secondary">
+                                        @if (!string.IsNullOrEmpty(fm.EngineDisplay))
+                                        {
+                                            <span class="me-2">@fm.EngineDisplay</span>
+                                        }
+                                        <span class="badge @(fm.IsActive ? "bg-success-lt" : "bg-secondary-lt")">
+                                            @(fm.IsActive ? Localizer["Active"] : Localizer["Inactive"])
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row g-2 mb-3">
+                                <div class="col-6">
+                                    <div class="text-secondary small">@Localizer["DailyRate"]</div>
+                                    <div class="fw-bold">฿@fm.DailyRate.ToString("N0")</div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="text-secondary small">@Localizer["Deposit"]</div>
+                                    <div class="fw-bold">฿@fm.DepositAmount.ToString("N0")</div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="text-secondary small">@Localizer["Units"]</div>
+                                    <div class="fw-bold">@this.GetUnitCount(fm.FleetModelId)</div>
+                                </div>
+                                @if (fm.HourlyRate.HasValue && fm.HourlyRate > 0)
+                                {
+                                    <div class="col-6">
+                                        <div class="text-secondary small">@Localizer["HourlyRate"]</div>
+                                        <div class="fw-bold">฿@fm.HourlyRate.Value.ToString("N0")</div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                        <div class="card-footer d-flex justify-content-between">
+                            <a href="/fleet-models/@this.EncodeId(fm.FleetModelId)/edit" class="btn btn-ghost-primary btn-sm">
+                                <i class="ti ti-edit me-1"></i>@Localizer["Edit"]
+                            </a>
+                            <a href="/vehicles?fleetModelId=@fm.FleetModelId" class="btn btn-ghost-secondary btn-sm">
+                                <i class="ti ti-car me-1"></i>@Localizer["ViewUnits"]
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</LoadingSkeleton>
+
+@code {
+    private List<FleetModel> m_fleetModels = [];
+    private Dictionary<int, int> m_unitCounts = new();
+    private VehicleType? m_vehicleTypeFilter;
+    private bool Loading { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await this.LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        if (this.Loading) return;
+        this.Loading = true;
+        try
+        {
+            var result = await this.FleetModelService.GetFleetModelsAsync(
+                vehicleType: this.m_vehicleTypeFilter,
+                activeOnly: false,
+                pageSize: 200);
+            this.m_fleetModels = result.ItemCollection;
+            this.m_unitCounts = await this.FleetModelService.GetFleetModelCountsAsync();
+        }
+        finally
+        {
+            this.Loading = false;
+        }
+    }
+
+    private async Task FilterByType(VehicleType? type)
+    {
+        this.m_vehicleTypeFilter = type;
+        this.Loading = false; // Reset to allow reload
+        await this.LoadDataAsync();
+    }
+
+    private int GetUnitCount(int fleetModelId)
+    {
+        return this.m_unitCounts.TryGetValue(fleetModelId, out var count) ? count : 0;
+    }
+
+    private static string GetVehicleTypeIcon(VehicleType type) => type switch
+    {
+        VehicleType.Motorbike => "ti-motorbike",
+        VehicleType.Car => "ti-car",
+        VehicleType.JetSki => "ti-sailboat",
+        VehicleType.Boat => "ti-ship",
+        VehicleType.Van => "ti-bus",
+        _ => "ti-car"
+    };
+
+    private string GetVehicleTypeLabel(VehicleType type) => type switch
+    {
+        VehicleType.Motorbike => Localizer["Motorbike"],
+        VehicleType.Car => Localizer["Car"],
+        VehicleType.JetSki => Localizer["JetSki"],
+        VehicleType.Boat => Localizer["Boat"],
+        VehicleType.Van => Localizer["Van"],
+        _ => Localizer["Vehicle"]
+    };
+}

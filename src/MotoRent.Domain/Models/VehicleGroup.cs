@@ -14,6 +14,8 @@ public class VehicleGroup
     /// </summary>
     public string GroupKey { get; set; } = string.Empty;
 
+    public int? FleetModelId { get; set; }
+
     /// <summary>
     /// Vehicle brand/manufacturer (Honda, Yamaha, Toyota, etc.).
     /// </summary>
@@ -155,9 +157,17 @@ public class VehicleGroup
 
         var first = vehicleList[0];
 
+        // If all vehicles share the same FleetModel, use its ID
+        var fleetModelId = vehicleList
+            .Where(v => v.FleetModelId.HasValue && v.FleetModelId > 0)
+            .Select(v => v.FleetModelId!.Value)
+            .Distinct()
+            .ToList();
+
         return new VehicleGroup
         {
             GroupKey = CreateGroupKey(first),
+            FleetModelId = fleetModelId.Count == 1 ? fleetModelId[0] : null,
             Brand = first.Brand,
             Model = first.Model,
             Year = first.Year,
