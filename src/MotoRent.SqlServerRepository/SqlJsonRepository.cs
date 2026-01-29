@@ -462,6 +462,8 @@ public async Task<LoadOperation<T>> LoadAsync(IQueryable<T> query, int page = 1,
         var baseSql = query.ToSqlCommand($"[{keyColumn}], COUNT(*) as Cnt");
         var sql = baseSql + $" GROUP BY [{keyColumn}]";
 
+        var schema = this.GetSchema();
+
         var pr = await Policy.Handle<SqlException>(HasNetworkError)
             .WaitAndRetryAsync(5, Sleep)
             .ExecuteAndCaptureAsync(async () =>
@@ -481,7 +483,10 @@ public async Task<LoadOperation<T>> LoadAsync(IQueryable<T> query, int page = 1,
                 return results;
             });
 
-        if (pr.FinalException != null)
+        if (await pr.FinalException.CreateSqlObjectIfMissingAsync(schema, this.TableName))
+            return await this.GetGroupCountAsync(query, keySelector);
+
+        if (pr.FinalException is not null)
             throw pr.FinalException;
 
         return pr.Result;
@@ -497,6 +502,7 @@ public async Task<LoadOperation<T>> LoadAsync(IQueryable<T> query, int page = 1,
 
         var baseSql = query.ToSqlCommand($"[{keyColumn}], SUM([{valueColumn}]) as Total");
         var sql = baseSql + $" GROUP BY [{keyColumn}]";
+        var schema = this.GetSchema();
 
         var pr = await Policy.Handle<SqlException>(HasNetworkError)
             .WaitAndRetryAsync(5, Sleep)
@@ -517,7 +523,10 @@ public async Task<LoadOperation<T>> LoadAsync(IQueryable<T> query, int page = 1,
                 return results;
             });
 
-        if (pr.FinalException != null)
+        if (await pr.FinalException.CreateSqlObjectIfMissingAsync(schema, this.TableName))
+            return await this.GetGroupSumAsync(query, keySelector, valueSelector);
+
+        if (pr.FinalException is not null)
             throw pr.FinalException;
 
         return pr.Result;
@@ -535,6 +544,7 @@ public async Task<LoadOperation<T>> LoadAsync(IQueryable<T> query, int page = 1,
 
         var baseSql = query.ToSqlCommand($"[{keyColumn}], [{key2Column}], SUM([{valueColumn}]) as Total");
         var sql = baseSql + $" GROUP BY [{keyColumn}], [{key2Column}]";
+        var schema = this.GetSchema();
 
         var pr = await Policy.Handle<SqlException>(HasNetworkError)
             .WaitAndRetryAsync(5, Sleep)
@@ -556,7 +566,10 @@ public async Task<LoadOperation<T>> LoadAsync(IQueryable<T> query, int page = 1,
                 return results;
             });
 
-        if (pr.FinalException != null)
+        if (await pr.FinalException.CreateSqlObjectIfMissingAsync(schema, this.TableName))
+            return await this.GetGroupSumAsync(query, keySelector, key2Selector, valueSelector);
+
+        if (pr.FinalException is not null)
             throw pr.FinalException;
 
         return pr.Result;
