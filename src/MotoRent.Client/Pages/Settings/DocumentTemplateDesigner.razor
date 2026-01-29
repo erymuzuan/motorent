@@ -45,7 +45,7 @@
                     @this.Localizer["ImportFromDocument"]
                 }
             </button>
-            <InputFile @ref="m_importFileInput" OnChange="this.HandleImportFileAsync"
+            <InputFile @ref="this.m_importFileInput" OnChange="this.HandleImportFileAsync"
                        accept=".pdf,.jpg,.jpeg,.png,.webp" style="display:none" />
             <button type="button" class="btn btn-outline-secondary"
                     @onclick="() => this.m_showAiSidebar = !this.m_showAiSidebar">
@@ -79,7 +79,7 @@
 <div class="designer-wrapper">
 <LoadingSkeleton Loading="@this.m_loading" Mode="LoadingSkeleton.PlaceholderMode.Card">
     <div class="designer-layout @(this.DesignerState.LeftCollapsed ? "left-collapsed" : "") @(this.DesignerState.RightCollapsed ? "right-collapsed" : "")"
-         @ref="m_containerRef">
+         @ref="this.m_containerRef">
 
         @* Left Panel *@
         <div class="designer-panel designer-panel-left">
@@ -249,6 +249,8 @@
     [Parameter] public int? TemplateId { get; set; }
     [SupplyParameterFromQuery] public string? Type { get; set; }
 
+    private const long MAX_IMPORT_FILE_SIZE = 10 * 1024 * 1024;
+
     private DocumentTemplate m_template = new();
     private DocumentLayout m_layout = new();
     private bool m_loading = true;
@@ -268,6 +270,8 @@
     // Import
     private InputFile? m_importFileInput;
     private bool m_importing;
+
+    private string MainSectionName => this.Localizer["MainContent"];
 
     private DocumentType m_documentType
     {
@@ -334,6 +338,10 @@
         {
             this.m_aiSuggestions = await this.AiService.GetSuggestedClausesAsync(this.m_template.Type, this.m_aiContext);
         }
+        catch (Exception ex)
+        {
+            this.ShowError(this.Localizer["AiSuggestionFailed", ex.Message]);
+        }
         finally
         {
             this.m_loadingAi = false;
@@ -342,12 +350,11 @@
 
     private void AddClauseToLayout(string clause)
     {
-        if (!this.m_layout.Sections.Any()) this.m_layout.Sections.Add(new LayoutSection { Name = "Main Content" });
-        var section = this.m_layout.Sections.Last();
+        var section = this.GetMainSection();
         var block = new TextBlock { Content = clause };
         section.Blocks.Add(block);
         this.DesignerState.SetSelectedBlock(block);
-        this.ShowSuccess("Clause added to layout");
+        this.ShowSuccess(this.Localizer["ClauseAdded"]);
     }
 
     private async Task TriggerImportFileAsync()
@@ -360,9 +367,8 @@
 
     private async Task HandleImportFileAsync(InputFileChangeEventArgs e)
     {
-        const long maxFileSize = 10 * 1024 * 1024; // 10 MB
         var file = e.File;
-        if (file.Size > maxFileSize)
+        if (file.Size > MAX_IMPORT_FILE_SIZE)
         {
             this.ShowError(this.Localizer["ImportFailed"]);
             return;
@@ -371,7 +377,7 @@
         this.m_importing = true;
         try
         {
-            await using var stream = file.OpenReadStream(maxFileSize);
+            await using var stream = file.OpenReadStream(MAX_IMPORT_FILE_SIZE);
             using var ms = new MemoryStream();
             await stream.CopyToAsync(ms);
             var fileBytes = ms.ToArray();
@@ -424,11 +430,15 @@
                 };
                 this.m_layout = new DocumentLayout
                 {
-                    Sections = [new LayoutSection { Name = "Main Content" }]
+                    Sections = [new LayoutSection { Name = this.MainSectionName }]
                 };
             }
 
             this.DesignerState.DocumentType = this.m_template.Type;
+        }
+        catch (Exception ex)
+        {
+            this.ShowError(this.Localizer["LoadError", ex.Message]);
         }
         finally
         {
@@ -453,28 +463,26 @@
 
     private void AddBlock(string type)
     {
-        if (!this.m_layout.Sections.Any()) this.m_layout.Sections.Add(new LayoutSection { Name = "Main Content" });
-
-        var section = this.m_layout.Sections.Last();
+        var section = this.GetMainSection();
         LayoutBlock block = type switch
         {
-            "heading" => new HeadingBlock { Content = "New Heading", Level = 2, HorizontalAlignment = "Center", IsBold = true },
-            "text" => new TextBlock { Content = "New Text Block", HorizontalAlignment = "Left" },
+            "heading" => new HeadingBlock { Content = this.Localizer["NewHeading"], Level = 2, HorizontalAlignment = "Center", IsBold = true },
+            "text" => new TextBlock { Content = this.Localizer["NewTextBlock"], HorizontalAlignment = "Left" },
             "image" => new ImageBlock { Width = 200 },
             "table" => new TableBlock
             {
                 Columns =
                 [
-                    new TableColumn { Header = "Item", BindingPath = "Description" },
-                    new TableColumn { Header = "Qty", BindingPath = "Quantity" },
-                    new TableColumn { Header = "Price", BindingPath = "Price" }
+                    new TableColumn { Header = this.Localizer["TableColumnItem"], BindingPath = "Description" },
+                    new TableColumn { Header = this.Localizer["TableColumnQuantity"], BindingPath = "Quantity" },
+                    new TableColumn { Header = this.Localizer["TableColumnPrice"], BindingPath = "Price" }
                 ]
             },
             "divider" => new DividerBlock { Thickness = 1, Color = "#eeeeee" },
-            "signature" => new SignatureBlock { Label = "Authorized Signature" },
+            "signature" => new SignatureBlock { Label = this.Localizer["AuthorizedSignature"] },
             "two-columns" => new TwoColumnBlock(),
             "spacer" => new SpacerBlock { Height = 20 },
-            _ => new TextBlock { Content = "New Block" }
+            _ => new TextBlock { Content = this.Localizer["NewBlock"] }
         };
 
         section.Blocks.Add(block);
@@ -504,7 +512,7 @@
     {
         if (string.IsNullOrWhiteSpace(this.m_template.Name))
         {
-            this.ShowError("Template name is required");
+            this.ShowError(this.Localizer["NameRequired"]);
             return;
         }
 
@@ -514,7 +522,7 @@
             var result = await this.TemplateService.SaveTemplateAsync(this.m_template, this.m_layout, this.UserName);
             if (result.Success)
             {
-                this.ShowSuccess("Template saved successfully");
+                this.ShowSuccess(this.Localizer["SaveSuccess"]);
                 if (this.TemplateId == null || this.TemplateId == 0)
                 {
                     this.NavigationManager.NavigateTo($"/settings/templates/designer/{this.m_template.DocumentTemplateId}");
@@ -522,12 +530,22 @@
             }
             else
             {
-                this.ShowError(result.Message ?? "Failed to save template");
+                this.ShowError(this.Localizer["SaveError", result.Message ?? this.Localizer["UnknownError"]]);
             }
         }
         finally
         {
             this.m_saving = false;
         }
+    }
+
+    private LayoutSection GetMainSection()
+    {
+        if (!this.m_layout.Sections.Any())
+        {
+            this.m_layout.Sections.Add(new LayoutSection { Name = this.MainSectionName });
+        }
+
+        return this.m_layout.Sections.Last();
     }
 }
