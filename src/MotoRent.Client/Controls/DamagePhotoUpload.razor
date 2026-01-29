@@ -2,6 +2,7 @@
 @using System.Text.Json
 @inherits MotoRentComponentBase
 @inject HttpClient Http
+@inject IJSRuntime JS
 
 <div class="damage-photo-upload">
     @if (m_photos.Count > 0)
@@ -44,7 +45,7 @@
                         <small class="mt-1">Add Photo</small>
                     }
                 </div>
-                <InputFile @ref="m_fileInput" OnChange="OnFileSelected" accept="image/*"
+                <InputFile id="@m_fileInputId" @ref="m_fileInput" OnChange="OnFileSelected" accept="image/*"
                            style="display: none;" />
             </div>
             <div class="col-6">
@@ -54,8 +55,8 @@
                     <i class="ti ti-camera text-secondary fs-3"></i>
                     <small class="mt-1">Take Photo</small>
                 </button>
-                <input type="file" @ref="m_cameraInput" accept="image/*" capture="environment"
-                       @onchange="OnCameraCapture" style="display: none;" />
+                <InputFile @ref="m_cameraFileInput" OnChange="OnCameraCapture"
+                           AdditionalAttributes="@CameraAttributes" />
             </div>
         </div>
     }
@@ -95,7 +96,16 @@
     public EventCallback<List<string>> OnPhotosChanged { get; set; }
 
     private InputFile? m_fileInput;
-    private ElementReference m_cameraInput;
+    private InputFile? m_cameraFileInput;
+    private string m_fileInputId = $"damage-file-{Guid.NewGuid():N}";
+    private string m_cameraInputId = $"damage-camera-{Guid.NewGuid():N}";
+    private Dictionary<string, object> CameraAttributes => new()
+    {
+        { "id", m_cameraInputId },
+        { "capture", "environment" },
+        { "accept", "image/*" },
+        { "style", "display: none;" }
+    };
     private List<DamagePhotoItem> m_photos = [];
     private bool m_uploading;
     private string? m_error;
@@ -110,8 +120,7 @@
     private async Task TriggerFileSelect()
     {
         if (m_uploading) return;
-        // Note: This requires JS interop to click the hidden input
-        // For now, we use the InputFile component directly
+        await JS.InvokeVoidAsync("MotoRent.clickElement", m_fileInputId);
     }
 
     private async Task OnFileSelected(InputFileChangeEventArgs e)
@@ -121,14 +130,17 @@
         await ProcessFile(file);
     }
 
-    private async Task OnCameraCapture(ChangeEventArgs e)
+    private async Task OnCameraCapture(InputFileChangeEventArgs e)
     {
-        // Camera capture handled by native HTML5 input
+        var file = e.File;
+        if (file == null) return;
+        await ProcessFile(file);
     }
 
     private async Task OpenCamera()
     {
-        // Trigger camera input - requires JS interop
+        if (m_uploading) return;
+        await JS.InvokeVoidAsync("MotoRent.clickElement", m_cameraInputId);
     }
 
     private async Task ProcessFile(IBrowserFile file)
