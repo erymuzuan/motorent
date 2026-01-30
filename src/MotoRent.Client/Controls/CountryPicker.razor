@@ -1,0 +1,93 @@
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<select id="@m_elementId">
+    <option value="">@(Placeholder ?? "")</option>
+    @foreach (var country in s_countries)
+    {
+        <option value="@country.Name" data-custom-properties="<span class='flag flag-xs flag-country-@country.Code'></span>"
+                selected="@(Value == country.Name)">
+            @country.Name
+        </option>
+    }
+</select>
+
+@code {
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    [Parameter] public string? Placeholder { get; set; }
+
+    private string m_elementId = $"country-picker-{Guid.NewGuid():N}";
+    private IJSObjectReference? m_jsModule;
+    private DotNetObjectReference<CountryPicker>? m_dotNetRef;
+    private string? m_lastSetValue;
+
+    private static readonly (string Code, string Name)[] s_countries =
+    [
+        ("cn", "China"),
+        ("my", "Malaysia"),
+        ("in", "India"),
+        ("ru", "Russia"),
+        ("kr", "South Korea"),
+        ("jp", "Japan"),
+        ("la", "Laos"),
+        ("sg", "Singapore"),
+        ("us", "United States"),
+        ("vn", "Vietnam"),
+        ("gb", "United Kingdom"),
+        ("de", "Germany"),
+        ("au", "Australia"),
+        ("fr", "France"),
+        ("kh", "Cambodia"),
+        ("id", "Indonesia"),
+        ("tw", "Taiwan"),
+        ("mm", "Myanmar"),
+        ("ph", "Philippines"),
+        ("se", "Sweden"),
+        ("ca", "Canada"),
+        ("nl", "Netherlands"),
+        ("ch", "Switzerland"),
+        ("dk", "Denmark"),
+        ("ae", "United Arab Emirates"),
+        ("th", "Thailand")
+    ];
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            this.m_dotNetRef = DotNetObjectReference.Create(this);
+            this.m_jsModule = await this.JS.InvokeAsync<IJSObjectReference>("import", "./js/country-picker.js");
+            await this.m_jsModule.InvokeVoidAsync("initCountryPicker", this.m_elementId, this.m_dotNetRef);
+            this.m_lastSetValue = this.Value;
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (this.m_jsModule != null && this.Value != this.m_lastSetValue)
+        {
+            this.m_lastSetValue = this.Value;
+            await this.m_jsModule.InvokeVoidAsync("setValue", this.m_elementId, this.Value ?? "");
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnValueChanged(string value)
+    {
+        var newValue = string.IsNullOrEmpty(value) ? null : value;
+        this.m_lastSetValue = newValue;
+        await this.ValueChanged.InvokeAsync(newValue);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (this.m_jsModule != null)
+        {
+            await this.m_jsModule.InvokeVoidAsync("destroyCountryPicker", this.m_elementId);
+            await this.m_jsModule.DisposeAsync();
+        }
+        this.m_dotNetRef?.Dispose();
+    }
+}
