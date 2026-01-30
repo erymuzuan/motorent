@@ -49,17 +49,15 @@ This plan outlines the conversion of the static marketing website into a functio
 
 ## Phase 4: Payment & Billing Integration [checkpoint: ]
 
-### Task 1: PromptPay QR Integration
-- [ ] Task: Implement dynamic PromptPay QR code generation.
-    - [ ] Write unit tests for QR payload generation.
-    - [ ] Implement a service to generate PromptPay QR images based on subscription fees.
-
-### Task 2: Local & International Gateway Integration
-- [ ] Task: Integrate Omise/GB Prime Pay and Stripe.
-    - [ ] Write unit tests for payment webhook handling.
-    - [ ] Implement Omise/GB Prime Pay integration for local cards.
-    - [ ] Implement Stripe integration for international cards.
-    - [ ] Create a "Billing Dashboard" component in the app.
+### Task 1: Fiuu Payment Gateway Integration
+- [ ] Task: Integrate Fiuu (formerly Razer Merchant Services) for all payment methods.
+    - [ ] Write unit tests for Fiuu payment webhook handling (IPN) and signature verification.
+    - [ ] Implement Fiuu service for generating payment requests (Credit Card & PromptPay QR).
+    - [ ] Implement Fiuu IPN (Instant Payment Notification) endpoint to handle payment success/failure callbacks.
+    - [ ] **Requirement:** Handle 0 THB transactions for 'Free' plan (process as 0-value cart item or registration).
+    - [ ] **Requirement:** Update `Pricing.razor` to redirect to `/signup?plan={planId}`.
+    - [ ] **Requirement:** Update `OnboardingWizard` to read `plan` query parameter and capture email (via Auth step) before initializing Fiuu payment.
+    - [ ] Create a "Billing Dashboard" component for managing subscriptions and viewing payment history.
 
 - [ ] Task: Conductor - User Manual Verification 'Phase 4: Payment & Billing Integration' (Protocol in workflow.md)
 

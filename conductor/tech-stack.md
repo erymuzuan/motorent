@@ -7,6 +7,7 @@
 - **Utilities:** Hashids.net for generating short, unique, and non-sequential IDs from numbers; Markdig for high-performance, runtime Markdown-to-HTML rendering.
 - **Document Generation:** QuestPDF for high-fidelity, code-based PDF generation from template layouts.
 - **AI Integration:** Google Gemini Flash API for automated document OCR and natural language documentation search/chat.
+- **Payments:** Fiuu (formerly Razer Merchant Services) for credit card and PromptPay processing.
 
 ## Frontend
 - **Framework:** Blazor WebAssembly (hosted on the ASP.NET Core server).

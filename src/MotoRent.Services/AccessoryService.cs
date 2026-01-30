@@ -102,7 +102,7 @@ public class AccessoryService(RentalDataContext context)
         }
         else
         {
-            total = await this.Context.GetCountAsync<Accessory>(a => true);
+            total = await this.Context.GetCountAsync<Accessory>(a => a.AccessoryId > 0);
             includedFree = await this.Context.GetCountAsync<Accessory>(a => a.IsIncluded);
         }
 
