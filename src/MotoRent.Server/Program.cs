@@ -109,6 +109,8 @@ builder.Services.AddScoped<VehicleOwnerService>();
 builder.Services.AddScoped<OwnerPaymentService>();
 // Accident services
 builder.Services.AddScoped<AccidentService>();
+// Traffic fine service
+builder.Services.AddScoped<TrafficFineService>();
 // Comment service
 builder.Services.AddScoped<CommentService>();
 // Notification service

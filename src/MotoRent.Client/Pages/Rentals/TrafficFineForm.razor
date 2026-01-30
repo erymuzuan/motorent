@@ -1,0 +1,281 @@
+@page "/rentals/traffic-fines/new"
+@page "/rentals/traffic-fines/{FineRef}"
+@using Microsoft.AspNetCore.Authorization
+@using MotoRent.Domain.Entities
+@attribute [Authorize(Policy = "RequireTenantStaff")]
+@inherits LocalizedComponentBase<TrafficFineForm>
+@inject TrafficFineService TrafficFineService
+@inject VehicleService VehicleService
+@inject RentalService RentalService
+
+<MotoRentPageTitle>@(m_isNew ? Localizer["RecordFine"] : Localizer["EditFine"])</MotoRentPageTitle>
+
+<div class="mr-page-header mr-animate-in">
+    <div class="container-xl">
+        <nav class="mr-breadcrumb">
+            <span class="mr-breadcrumb-item"><a href="/"><i class="ti ti-home"></i></a></span>
+            <span class="mr-breadcrumb-separator"><i class="ti ti-chevron-right"></i></span>
+            <span class="mr-breadcrumb-item"><a href="/rentals/traffic-fines">@Localizer["TrafficFines"]</a></span>
+            <span class="mr-breadcrumb-separator"><i class="ti ti-chevron-right"></i></span>
+            <span class="mr-breadcrumb-item active">@(m_isNew ? Localizer["RecordFine"] : Localizer["EditFine"])</span>
+        </nav>
+        <h1 class="mr-page-title">
+            <i class="ti ti-ticket"></i>
+            @(m_isNew ? Localizer["RecordFine"] : Localizer["EditFine"])
+        </h1>
+    </div>
+</div>
+
+<div class="container-xl">
+    @if (m_loading)
+    {
+        <div class="d-flex justify-content-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="mr-form-panel mb-3">
+                    <div class="mr-form-panel-header">
+                        <div class="mr-form-panel-header-icon">
+                            <i class="ti ti-ticket"></i>
+                        </div>
+                        <h3 class="mr-form-panel-title">@Localizer["FineDetails"]</h3>
+                    </div>
+                    <div class="mr-form-panel-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="mr-form-label">@Localizer["Vehicle"] <span class="required">*</span></label>
+                                <select class="mr-form-control" @bind="m_fine.VehicleId">
+                                    <option value="0">@Localizer["SelectVehicle"]...</option>
+                                    @foreach (var v in m_vehicles)
+                                    {
+                                        <option value="@v.VehicleId">@v.Brand @v.Model (@v.LicensePlate)</option>
+                                    }
+                                </select>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="mr-form-label">@Localizer["FineType"] <span class="required">*</span></label>
+                                <select class="mr-form-control" @bind="m_fine.FineType">
+                                    <option value="Speeding">@Localizer["Speeding"]</option>
+                                    <option value="Parking">@Localizer["Parking"]</option>
+                                    <option value="RedLight">@Localizer["RedLight"]</option>
+                                    <option value="NoHelmet">@Localizer["NoHelmet"]</option>
+                                    <option value="Other">@Localizer["Other"]</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="mr-form-label">@Localizer["Amount"] <span class="required">*</span></label>
+                                <div class="mr-input-group">
+                                    <span class="mr-input-group-text">฿</span>
+                                    <input type="number" class="mr-form-control mr-mono" @bind="m_fine.Amount"
+                                           min="0" step="100" placeholder="500" required />
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="mr-form-label">@Localizer["FineDate"] <span class="required">*</span></label>
+                                <input type="date" class="mr-form-control" lang="en" @bind="m_fineDate" />
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="mr-form-label">@Localizer["ReferenceNo"]</label>
+                                <input type="text" class="mr-form-control" @bind="m_fine.ReferenceNo"
+                                       placeholder="@Localizer["ReferenceNoPlaceholder"]" />
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="mr-form-label">@Localizer["Location"]</label>
+                                <input type="text" class="mr-form-control" @bind="m_fine.Location"
+                                       placeholder="@Localizer["LocationPlaceholder"]" />
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="mr-form-label">@Localizer["LinkedRental"]</label>
+                                <select class="mr-form-control" @bind="m_fine.RentalId">
+                                    <option value="">@Localizer["NoLinkedRental"]</option>
+                                    @foreach (var r in m_rentals)
+                                    {
+                                        <option value="@r.RentalId">#@r.RentalId - @r.VehicleName (@r.StartDate.ToString("dd MMM yyyy"))</option>
+                                    }
+                                </select>
+                            </div>
+
+                            <div class="col-12">
+                                <label class="mr-form-label">@Localizer["Description"] <span class="required">*</span></label>
+                                <textarea class="mr-form-control" @bind="m_fine.Description" rows="3"
+                                          placeholder="@Localizer["DescriptionPlaceholder"]"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                @if (!m_isNew)
+                {
+                    <div class="mr-form-panel mb-3">
+                        <div class="mr-form-panel-header">
+                            <div class="mr-form-panel-header-icon">
+                                <i class="ti ti-receipt"></i>
+                            </div>
+                            <h3 class="mr-form-panel-title">@Localizer["Settlement"]</h3>
+                        </div>
+                        <div class="mr-form-panel-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="mr-form-label">@Localizer["Status"]</label>
+                                    <select class="mr-form-control" @bind="m_fine.Status">
+                                        <option value="Pending">@Localizer["Pending"]</option>
+                                        <option value="Paid">@Localizer["Paid"]</option>
+                                        <option value="ChargedToDeposit">@Localizer["ChargedToDeposit"]</option>
+                                        <option value="Disputed">@Localizer["Disputed"]</option>
+                                        <option value="Waived">@Localizer["Waived"]</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="mr-form-label">@Localizer["SettlementMethod"]</label>
+                                    <select class="mr-form-control" @bind="m_fine.SettlementMethod">
+                                        <option value="">@Localizer["NotSettled"]</option>
+                                        <option value="Cash">@Localizer["Cash"]</option>
+                                        <option value="BankTransfer">@Localizer["BankTransfer"]</option>
+                                        <option value="DeductFromDeposit">@Localizer["DeductFromDeposit"]</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div class="col-lg-4">
+                <div class="mr-form-panel mb-3">
+                    <div class="mr-form-panel-header">
+                        <div class="mr-form-panel-header-icon">
+                            <i class="ti ti-info-circle"></i>
+                        </div>
+                        <h3 class="mr-form-panel-title">@Localizer["Summary"]</h3>
+                    </div>
+                    <div class="mr-form-panel-body text-center">
+                        <div class="h1 mb-1">@FormatCurrency(m_fine.Amount)</div>
+                        <div class="text-secondary mb-3">@Localizer[m_fine.FineType]</div>
+                        <span class="badge @GetStatusBadgeClass(m_fine.Status) fs-6">
+                            @Localizer[m_fine.Status]
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between mt-3">
+            <a href="/rentals/traffic-fines" class="mr-btn-cancel">
+                <i class="ti ti-arrow-left me-1"></i>
+                @CommonLocalizer["Cancel"]
+            </a>
+            <button type="button" class="mr-btn-primary-action" disabled="@(!CanSave || m_saving)" @onclick="SaveAsync">
+                @if (m_saving)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                }
+                <i class="ti ti-check me-1"></i>
+                @CommonLocalizer["Save"]
+            </button>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string? FineRef { get; set; }
+
+    private TrafficFine m_fine = new() { FineDate = DateTimeOffset.Now };
+    private DateTime m_fineDate = DateTime.Today;
+    private bool m_isNew = true;
+    private bool m_loading = true;
+    private bool m_saving;
+    private List<Vehicle> m_vehicles = [];
+    private List<Rental> m_rentals = [];
+
+    private bool CanSave => m_fine.VehicleId > 0 &&
+                            m_fine.Amount > 0 &&
+                            !string.IsNullOrWhiteSpace(m_fine.Description);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        m_loading = true;
+        try
+        {
+            // Load vehicles for selector
+            var vehicleResult = await DataContext.LoadAsync(
+                DataContext.CreateQuery<Vehicle>()
+                    .Where(v => v.Status != VehicleStatus.Retired)
+                    .OrderBy(v => v.Brand));
+            m_vehicles = vehicleResult.ItemCollection;
+
+            // Load recent rentals for linking
+            var rentalResult = await DataContext.LoadAsync(
+                DataContext.CreateQuery<Rental>()
+                    .OrderByDescending(r => r.StartDate), 1, 50);
+            m_rentals = rentalResult.ItemCollection;
+
+            var fineId = DecodeId(FineRef);
+            if (fineId > 0)
+            {
+                var existing = await TrafficFineService.GetByIdAsync(fineId);
+                if (existing != null)
+                {
+                    m_fine = existing;
+                    m_fineDate = existing.FineDate.Date;
+                    m_isNew = false;
+                }
+            }
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (!CanSave) return;
+        m_saving = true;
+        try
+        {
+            m_fine.FineDate = new DateTimeOffset(DateTime.SpecifyKind(m_fineDate, DateTimeKind.Utc), TimeSpan.Zero);
+
+            if (m_isNew)
+            {
+                await TrafficFineService.CreateAsync(m_fine, UserName);
+                ShowSuccess(Localizer["FineRecorded"]);
+            }
+            else
+            {
+                await TrafficFineService.UpdateAsync(m_fine, UserName);
+                ShowSuccess(Localizer["FineUpdated"]);
+            }
+            NavigationManager.NavigateTo("/rentals/traffic-fines");
+        }
+        catch (Exception ex)
+        {
+            ShowError(Localizer["SaveError", ex.Message]);
+        }
+        finally
+        {
+            m_saving = false;
+        }
+    }
+
+    private static string GetStatusBadgeClass(string status) => status switch
+    {
+        "Pending" => "bg-warning text-dark",
+        "Paid" => "bg-success",
+        "ChargedToDeposit" => "bg-info",
+        "Disputed" => "bg-danger",
+        "Waived" => "bg-secondary",
+        _ => "bg-secondary"
+    };
+}

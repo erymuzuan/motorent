@@ -185,6 +185,23 @@ public partial class Vehicle : Entity
     /// </summary>
     public decimal? GuideDailyFee { get; set; }
 
+    // Checkout fees (from FleetModel or per-vehicle override)
+
+    /// <summary>
+    /// Cleaning fee when vehicle is returned dirty.
+    /// </summary>
+    public decimal? CleaningFeeDirty { get; set; }
+
+    /// <summary>
+    /// Cleaning fee when vehicle is returned very dirty.
+    /// </summary>
+    public decimal? CleaningFeeVeryDirty { get; set; }
+
+    /// <summary>
+    /// Fuel surcharge per quarter-tank deficit.
+    /// </summary>
+    public decimal? FuelSurchargePerQuarter { get; set; }
+
     /// <summary>
     /// Passenger capacity (boats and vans).
     /// </summary>
@@ -381,5 +398,8 @@ public partial class Vehicle : Entity
         DurationType = fm.DurationType;
         DriverDailyFee = fm.DriverDailyFee;
         GuideDailyFee = fm.GuideDailyFee;
+        CleaningFeeDirty = fm.CleaningFeeDirty;
+        CleaningFeeVeryDirty = fm.CleaningFeeVeryDirty;
+        FuelSurchargePerQuarter = fm.FuelSurchargePerQuarter;
     }
 }

@@ -39,6 +39,11 @@ public class FleetModel : Entity
     public decimal? DriverDailyFee { get; set; }
     public decimal? GuideDailyFee { get; set; }
 
+    // Checkout fees (optional overrides for system defaults)
+    public decimal? CleaningFeeDirty { get; set; }
+    public decimal? CleaningFeeVeryDirty { get; set; }
+    public decimal? FuelSurchargePerQuarter { get; set; }
+
     public string? ImageStoreId { get; set; }
     public bool IsActive { get; set; } = true;
     public string? Notes { get; set; }

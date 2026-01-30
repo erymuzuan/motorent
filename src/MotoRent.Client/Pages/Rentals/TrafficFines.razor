@@ -1,0 +1,202 @@
+@page "/rentals/traffic-fines"
+@using Microsoft.AspNetCore.Authorization
+@using MotoRent.Domain.Entities
+@attribute [Authorize(Policy = "RequireTenantStaff")]
+@inherits LocalizedComponentBase<TrafficFines>
+@inject TrafficFineService TrafficFineService
+@inject VehicleService VehicleService
+
+<MotoRentPageTitle>@Localizer["TrafficFines"]</MotoRentPageTitle>
+
+<TablerHeader Title="@Localizer["TrafficFines"]" PreTitle="@Localizer["TrafficFinesPreTitle"]">
+    <a href="/rentals/traffic-fines/new" class="btn btn-primary">
+        <i class="ti ti-plus me-1"></i>
+        @Localizer["RecordFine"]
+    </a>
+</TablerHeader>
+
+<div class="row g-3">
+    <div class="col-lg-3">
+        <div class="card mb-3">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="ti ti-filter me-2"></i>@Localizer["Filters"]
+                </h3>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">@Localizer["FineType"]</label>
+                    <select class="form-select" @bind="m_typeFilter" @bind:after="LoadDataAsync">
+                        <option value="">@Localizer["AllTypes"]</option>
+                        <option value="Speeding">@Localizer["Speeding"]</option>
+                        <option value="Parking">@Localizer["Parking"]</option>
+                        <option value="RedLight">@Localizer["RedLight"]</option>
+                        <option value="NoHelmet">@Localizer["NoHelmet"]</option>
+                        <option value="Other">@Localizer["Other"]</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">@Localizer["Status"]</label>
+                    <select class="form-select" @bind="m_statusFilter" @bind:after="LoadDataAsync">
+                        <option value="">@Localizer["AllStatuses"]</option>
+                        <option value="Pending">@Localizer["Pending"]</option>
+                        <option value="Paid">@Localizer["Paid"]</option>
+                        <option value="ChargedToDeposit">@Localizer["ChargedToDeposit"]</option>
+                        <option value="Disputed">@Localizer["Disputed"]</option>
+                        <option value="Waived">@Localizer["Waived"]</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">@Localizer["Search"]</label>
+                    <div class="input-icon">
+                        <span class="input-icon-addon">
+                            <i class="ti ti-search"></i>
+                        </span>
+                        <input type="text" class="form-control" placeholder="@Localizer["SearchPlaceholder"]"
+                               @bind="m_searchTerm" @bind:event="oninput" @bind:after="LoadDataAsync" />
+                    </div>
+                </div>
+                <button type="button" class="btn btn-ghost-secondary w-100" @onclick="ClearFilters">
+                    <i class="ti ti-x me-1"></i>
+                    @Localizer["ClearFilters"]
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-9">
+        <div class="card">
+            <div class="card-body p-0">
+                @if (m_loading)
+                {
+                    <div class="d-flex justify-content-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                }
+                else if (m_fines.Count == 0)
+                {
+                    <div class="text-center py-5">
+                        <i class="ti ti-ticket-off text-secondary" style="font-size: 3rem;"></i>
+                        <h4 class="mt-3 text-secondary">@Localizer["NoFinesFound"]</h4>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-vcenter card-table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>@Localizer["FineDate"]</th>
+                                    <th>@Localizer["Vehicle"]</th>
+                                    <th>@Localizer["FineType"]</th>
+                                    <th>@Localizer["Description"]</th>
+                                    <th class="text-end">@Localizer["Amount"]</th>
+                                    <th class="text-center">@Localizer["Status"]</th>
+                                    <th style="width: 80px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var fine in m_fines)
+                                {
+                                    <tr>
+                                        <td>@fine.FineDate.ToString("dd MMM yyyy")</td>
+                                        <td>
+                                            <div class="fw-medium">@fine.VehicleName</div>
+                                            <small class="text-secondary">@fine.VehicleLicensePlate</small>
+                                        </td>
+                                        <td>
+                                            <span class="badge @GetFineTypeBadgeClass(fine.FineType)">
+                                                @Localizer[fine.FineType]
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="text-truncate d-inline-block" style="max-width: 200px;">
+                                                @fine.Description
+                                            </span>
+                                            @if (!string.IsNullOrEmpty(fine.RenterName))
+                                            {
+                                                <br /><small class="text-secondary">@Localizer["Renter"]: @fine.RenterName</small>
+                                            }
+                                        </td>
+                                        <td class="text-end fw-medium">@FormatCurrency(fine.Amount)</td>
+                                        <td class="text-center">
+                                            <span class="badge @GetStatusBadgeClass(fine.Status)">
+                                                @Localizer[fine.Status]
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <a href="/rentals/traffic-fines/@EncodeId(fine.TrafficFineId)" class="btn btn-ghost-primary btn-sm">
+                                                <i class="ti ti-edit"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool m_loading = true;
+    private string m_typeFilter = "";
+    private string m_statusFilter = "";
+    private string m_searchTerm = "";
+    private List<TrafficFine> m_fines = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        m_loading = true;
+        try
+        {
+            var result = await TrafficFineService.GetFinesAsync(
+                status: string.IsNullOrEmpty(m_statusFilter) ? null : m_statusFilter,
+                fineType: string.IsNullOrEmpty(m_typeFilter) ? null : m_typeFilter,
+                searchTerm: string.IsNullOrEmpty(m_searchTerm) ? null : m_searchTerm);
+
+            m_fines = result.ItemCollection;
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private async Task ClearFilters()
+    {
+        m_typeFilter = "";
+        m_statusFilter = "";
+        m_searchTerm = "";
+        await LoadDataAsync();
+    }
+
+    private static string GetStatusBadgeClass(string status) => status switch
+    {
+        "Pending" => "bg-warning text-dark",
+        "Paid" => "bg-success",
+        "ChargedToDeposit" => "bg-info",
+        "Disputed" => "bg-danger",
+        "Waived" => "bg-secondary",
+        _ => "bg-secondary"
+    };
+
+    private static string GetFineTypeBadgeClass(string fineType) => fineType switch
+    {
+        "Speeding" => "bg-danger-lt text-danger",
+        "Parking" => "bg-warning-lt text-warning",
+        "RedLight" => "bg-danger-lt text-danger",
+        "NoHelmet" => "bg-info-lt text-info",
+        "Other" => "bg-secondary-lt text-secondary",
+        _ => "bg-secondary-lt text-secondary"
+    };
+}
