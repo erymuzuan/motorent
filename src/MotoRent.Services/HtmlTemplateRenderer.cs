@@ -11,8 +11,8 @@ public class HtmlTemplateRenderer : IHtmlTemplateRenderer
         var sb = new StringBuilder();
         sb.Append("<!DOCTYPE html><html><head><meta charset='utf-8'>");
         sb.Append("<style>");
-        sb.Append($"body {{ font-family: {layout.Settings.FontFamily}; font-size: {layout.Settings.FontSize}pt; ");
-        sb.Append($"padding: {layout.Settings.MarginTop}pt {layout.Settings.MarginRight}pt {layout.Settings.MarginBottom}pt {layout.Settings.MarginLeft}pt; }}");
+        sb.Append($"@page {{ size: A4; margin: {layout.Settings.MarginTop}pt {layout.Settings.MarginRight}pt {layout.Settings.MarginBottom}pt {layout.Settings.MarginLeft}pt; }}");
+        sb.Append($"body {{ font-family: {layout.Settings.FontFamily}; font-size: {layout.Settings.FontSize}pt; margin: 0; }}");
         sb.Append(".section { margin-bottom: 20px; }");
         sb.Append(".text-center { text-align: center; }");
         sb.Append(".text-right { text-align: right; }");
