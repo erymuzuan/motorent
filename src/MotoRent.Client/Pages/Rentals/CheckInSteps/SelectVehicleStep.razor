@@ -1,5 +1,6 @@
 @inherits LocalizedComponentBase<CheckIn>
 @using MotoRent.Domain.Entities
+@using MotoRent.Domain.Models
 @using MotoRent.Domain.Storage
 @using MotoRent.Services
 @inject VehicleService VehicleService
@@ -15,58 +16,6 @@
         <p class="mr-text-muted mb-0">@Localizer["SelectVehicleDesc"]</p>
     </div>
 
-    @* Vehicle Type Filter Tabs *@
-    <div class="mr-filter-tabs" style="flex-wrap: wrap; justify-content: center;">
-        <button type="button"
-                class="mr-filter-tab @(m_vehicleTypeFilter == null ? "active" : "")"
-                @onclick="@(() => FilterByType(null))">
-            <i class="ti ti-list"></i>
-            @Localizer["All"]
-            <span class="mr-badge">@m_allVehicles.Count</span>
-        </button>
-        @foreach (var type in m_availableTypes)
-        {
-            var count = m_allVehicles.Count(v => v.Vehicle.VehicleType == type);
-            <button type="button"
-                    class="mr-filter-tab @(m_vehicleTypeFilter == type ? "active" : "")"
-                    @onclick="@(() => FilterByType(type))">
-                <i class="ti @GetVehicleTypeIcon(type)"></i>
-                @GetVehicleTypeLabel(type)
-                <span class="mr-badge">@count</span>
-            </button>
-        }
-    </div>
-
-    <div class="d-flex flex-wrap gap-3 align-items-center">
-        <div class="mr-search-box" style="min-width: 250px;">
-            <i class="ti ti-search"></i>
-            <input type="text" placeholder="@Localizer["SearchRenterPlaceholder"]"
-                   @bind="m_searchTerm" @bind:event="oninput" @onkeyup="OnSearchChanged" />
-        </div>
-
-        <select class="form-select" style="width: 150px; border-radius: 8px; border-color: var(--mr-border-light);" @bind="m_brandFilter" @bind:after="ApplyFilters">
-            <option value="">@Localizer["AllBrands"]</option>
-            @foreach (var brand in m_brands)
-            {
-                <option value="@brand">@brand</option>
-            }
-        </select>
-
-        <div class="form-check form-switch ms-2">
-            <input class="form-check-input" type="checkbox" id="includePooled"
-                   @bind="m_includePooled" @bind:after="LoadVehicles"
-                   style="background-color: var(--mr-accent-primary);">
-            <label class="form-check-label mr-text-secondary" for="includePooled">@Localizer["IncludePooled"]</label>
-        </div>
-
-        <div class="ms-auto">
-            <span class="mr-status-badge success">
-                <i class="ti ti-check"></i>
-                @m_filteredVehicles.Count @Localizer["Available"]
-            </span>
-        </div>
-    </div>
-
     @if (m_loading)
     {
         <div class="progress progress-sm" style="background: var(--mr-border-light);">
@@ -74,183 +23,228 @@
         </div>
     }
 
-    <div class="row g-3">
-        @foreach (var availability in m_filteredVehicles)
-        {
-            var vehicle = availability.Vehicle;
-            var isSelected = this.SelectedVehicle?.VehicleId == vehicle.VehicleId;
-            <div class="col-12 col-sm-6 col-md-4">
-                <div class="mr-card h-100"
-                     style="cursor: pointer; @(isSelected ? "border: 2px solid var(--mr-accent-primary); background: var(--mr-accent-bg);" : "")"
-                     @onclick="@(() => SelectVehicleItem(vehicle))">
-                    @* Vehicle Image or Placeholder *@
-                    @{
-                        var vehicleImageUrl = GetVehicleImage(vehicle);
-                    }
-                    <div style="aspect-ratio: 1; overflow: hidden; border-radius: 8px 8px 0 0; background: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%); display: flex; align-items: center; justify-content: center;">
-                        @if (!string.IsNullOrEmpty(vehicleImageUrl))
+    @if (m_selectedFleetModel == null)
+    {
+        @* Phase 1: FleetModel Selection *@
+        <div class="d-flex flex-wrap gap-3 align-items-center">
+            <div class="mr-search-box" style="min-width: 250px;">
+                <i class="ti ti-search"></i>
+                <input type="text" placeholder="@Localizer["SearchRenterPlaceholder"]"
+                       @bind="m_searchTerm" @bind:event="oninput" @onkeyup="OnSearchChanged" />
+            </div>
+
+            <div class="form-check form-switch ms-2">
+                <input class="form-check-input" type="checkbox" id="includePooled"
+                       @bind="m_includePooled" @bind:after="LoadVehicles"
+                       style="background-color: var(--mr-accent-primary);">
+                <label class="form-check-label mr-text-secondary" for="includePooled">@Localizer["IncludePooled"]</label>
+            </div>
+
+            <div class="ms-auto">
+                <span class="mr-status-badge success">
+                    <i class="ti ti-check"></i>
+                    @m_filteredGroups.Count @Localizer["ModelsAvailable"]
+                </span>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            @foreach (var group in m_filteredGroups)
+            {
+                <div class="col-12 col-sm-6 col-md-4">
+                    <div class="mr-card h-100" style="cursor: pointer;" @onclick="@(() => SelectFleetModel(group))">
+                        @if (!string.IsNullOrEmpty(group.ImagePath))
                         {
-                            <img src="@vehicleImageUrl" alt="@vehicle.Brand @vehicle.Model"
-                                 style="width: 100%; height: 100%; object-fit: cover;" />
+                            <div style="aspect-ratio: 16/10; overflow: hidden; border-radius: 8px 8px 0 0;">
+                                <img src="@group.ImagePath" alt="@group.DisplayName"
+                                     style="width: 100%; height: 100%; object-fit: cover;" />
+                            </div>
                         }
                         else
                         {
-                            <i class="ti @GetVehicleTypeIcon(vehicle.VehicleType)" style="font-size: 3rem; color: var(--mr-accent-primary); opacity: 0.6;"></i>
+                            <div style="aspect-ratio: 16/10; overflow: hidden; border-radius: 8px 8px 0 0; background: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%); display: flex; align-items: center; justify-content: center;">
+                                <i class="ti @GetVehicleTypeIcon(group.VehicleType)" style="font-size: 3rem; color: var(--mr-accent-primary); opacity: 0.6;"></i>
+                            </div>
                         }
-                    </div>
-                    <div class="p-3" style="border-bottom: 1px solid var(--mr-border-light);">
-                        <div class="d-flex align-items-center gap-2">
-                            <div class="flex-grow-1">
-                                <div class="mr-text-primary" style="font-weight: 600;">@vehicle.Brand @vehicle.Model</div>
-                                <div class="d-flex align-items-center gap-1">
-                                    <span class="mr-mono" style="color: var(--mr-accent-primary); font-size: 0.85rem;">@vehicle.LicensePlate</span>
-                                    @if (availability.IsPooled)
+                        <div class="p-3">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div class="mr-text-primary" style="font-weight: 600;">@group.DisplayName</div>
+                                    @if (!string.IsNullOrEmpty(group.EngineDisplay))
                                     {
-                                        <span class="mr-status-badge info" style="font-size: 0.65rem; padding: 2px 6px;">
-                                            <i class="ti ti-share"></i> Pooled
-                                        </span>
+                                        <span class="text-muted small">@group.EngineDisplay</span>
                                     }
                                 </div>
+                                <span class="mr-status-badge success" style="font-size: 0.75rem;">
+                                    @group.AvailableUnits @Localizer["Available"]
+                                </span>
                             </div>
-                            @if (isSelected)
+                            @if (group.AvailableColors.Count > 0)
                             {
-                                <i class="ti ti-circle-check" style="font-size: 1.5rem; color: var(--mr-accent-primary);"></i>
-                            }
-                        </div>
-                    </div>
-                    <div class="p-3">
-                        <div class="d-flex flex-column gap-1">
-                            @* Vehicle-type specific info *@
-                            @if (vehicle.VehicleType == VehicleType.Motorbike && vehicle.EngineCC.HasValue)
-                            {
-                                <div class="d-flex justify-content-between">
-                                    <small class="text-secondary">@Localizer["Engine"]</small>
-                                    <span>@vehicle.EngineCC cc</span>
+                                <div class="mt-2">
+                                    @foreach (var color in group.AvailableColors)
+                                    {
+                                        <span class="badge bg-secondary me-1" style="font-size: 0.7rem;">@color</span>
+                                    }
                                 </div>
                             }
-                            @if (vehicle.VehicleType == VehicleType.Car)
-                            {
-                                @if (vehicle.Segment.HasValue)
+                            <div class="mt-2">
+                                @if (group.HasPriceRange)
                                 {
-                                    <div class="d-flex justify-content-between">
-                                        <small class="text-secondary">@Localizer["Segment"]</small>
-                                        <span>@GetSegmentLabel(vehicle.Segment.Value)</span>
-                                    </div>
+                                    <span class="text-primary fw-bold">@FormatCurrency(group.MinDailyRate)-@FormatCurrency(group.MaxDailyRate)</span>
                                 }
-                                @if (vehicle.SeatCount.HasValue)
+                                else
                                 {
-                                    <div class="d-flex justify-content-between">
-                                        <small class="text-secondary">@Localizer["Seats"]</small>
-                                        <span>@vehicle.SeatCount</span>
-                                    </div>
+                                    <span class="text-primary fw-bold">@FormatCurrency(group.MinDailyRate)</span>
                                 }
-                            }
-                            @if (vehicle.VehicleType == VehicleType.Boat && vehicle.PassengerCapacity.HasValue)
-                            {
-                                <div class="d-flex justify-content-between">
-                                    <small class="text-secondary">@Localizer["Capacity"]</small>
-                                    <span>@vehicle.PassengerCapacity @Localizer["TourGuideDesc"]</span>
-                                </div>
-                            }
-                            @if (vehicle.Year > 0)
-                            {
-                                <div class="d-flex justify-content-between">
-                                    <small class="text-secondary">@Localizer["Year"]</small>
-                                    <span>@vehicle.Year</span>
-                                </div>
-                            }
-                            @if (!string.IsNullOrEmpty(vehicle.Color))
-                            {
-                                <div class="d-flex justify-content-between">
-                                    <small class="text-secondary">@Localizer["Color"]</small>
-                                    <span>@vehicle.Color</span>
-                                </div>
-                            }
-
-                            @* Driver/Guide availability *@
-                            @if (vehicle.HasDriverOption || vehicle.HasGuideOption)
-                            {
-                                <div class="d-flex gap-1 mt-1">
-                                    @if (vehicle.HasDriverOption)
-                                    {
-                                        <span class="badge bg-azure-lt text-azure" style="font-size: 0.65rem;">
-                                            <i class="ti ti-steering-wheel"></i> @Localizer["DriverAvailable"]
-                                        </span>
-                                    }
-                                    @if (vehicle.HasGuideOption)
-                                    {
-                                        <span class="badge bg-teal-lt text-teal" style="font-size: 0.65rem;">
-                                            <i class="ti ti-map"></i> @Localizer["GuideAvailable"]
-                                        </span>
-                                    }
-                                </div>
-                            }
-
-                            <hr class="my-2">
-
-                            @* Pricing *@
-                            @if (vehicle.UsesIntervalPricing)
-                            {
-                                <div class="d-flex justify-content-between">
-                                    <span class="fw-medium">@Localizer["HourlyRate"]</span>
-                                    <span class="text-primary fw-semibold" style="font-size: 1.1rem;">
-                                        @FormatCurrency(vehicle.Rate1Hour ?? 0)/hr
-                                    </span>
-                                </div>
-                                <div class="text-secondary small">
-                                    @if (vehicle.Rate15Min.HasValue)
-                                    {
-                                        <span class="me-2">15min: @FormatCurrency(vehicle.Rate15Min.Value)</span>
-                                    }
-                                    @if (vehicle.Rate30Min.HasValue)
-                                    {
-                                        <span>30min: @FormatCurrency(vehicle.Rate30Min.Value)</span>
-                                    }
-                                </div>
-                            }
-                            else
-                            {
-                                <div class="d-flex justify-content-between">
-                                    <span class="fw-medium">@(vehicle.IsHourlyOnly ? Localizer["HourlyRate"] : Localizer["DailyRate"])</span>
-                                    <span class="text-primary fw-semibold" style="font-size: 1.1rem;">
-                                        @FormatCurrency(vehicle.DisplayRate)
-                                    </span>
-                                </div>
-                            }
-                            <div class="d-flex justify-content-between">
-                                <small class="text-secondary">@Localizer["Deposit"]</small>
-                                <span>@FormatCurrency(vehicle.DepositAmount)</span>
+                                <span class="text-muted">/@(group.IsHourlyOnly ? "hr" : "day")</span>
                             </div>
-
-                            @* Pool location indicator *@
-                            @if (availability.IsPooled && !availability.IsAtCurrentShop)
-                            {
-                                <div class="mr-info-panel py-2 px-3 mt-2" style="background: var(--mr-warning-bg); border-color: var(--mr-warning-border); font-size: 0.75rem;">
-                                    <i class="ti ti-map-pin me-1" style="color: var(--mr-warning-text);"></i>
-                                    <span style="color: var(--mr-warning-text);">@Localizer["AtAnotherShop"]</span>
-                                </div>
-                            }
                         </div>
                     </div>
                 </div>
+            }
+        </div>
+
+        @if (m_filteredGroups.Count == 0 && !m_loading)
+        {
+            <div class="mr-info-panel">
+                <div class="mr-info-panel-icon">
+                    <i class="ti ti-info-circle"></i>
+                </div>
+                <div>
+                    <div class="mr-info-panel-title">@Localizer["NoVehiclesFound"]</div>
+                    @if (!m_includePooled)
+                    {
+                        <div class="mr-info-panel-desc">@Localizer["IncludePooledHint"]</div>
+                    }
+                </div>
             </div>
         }
-    </div>
-
-    @if (m_filteredVehicles.Count == 0 && !m_loading)
+    }
+    else
     {
-        <div class="mr-info-panel">
-            <div class="mr-info-panel-icon">
-                <i class="ti ti-info-circle"></i>
-            </div>
-            <div>
-                <div class="mr-info-panel-title">@Localizer["NoVehiclesFound"]</div>
-                @if (!m_includePooled)
-                {
-                    <div class="mr-info-panel-desc">@Localizer["IncludePooledHint"]</div>
-                }
-            </div>
+        @* Phase 2: Individual Vehicle Selection within FleetModel *@
+        <div class="d-flex align-items-center gap-3">
+            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="BackToModelList">
+                <i class="ti ti-arrow-left me-1"></i>
+                @Localizer["Back"]
+            </button>
+            <h6 class="mb-0 mr-text-primary">@m_selectedFleetModel.DisplayName</h6>
+            <span class="mr-status-badge success" style="font-size: 0.75rem;">
+                @m_selectedFleetModel.AvailableUnits @Localizer["Available"]
+            </span>
         </div>
+
+        <div class="row g-3">
+            @foreach (var availability in m_filteredVehicles)
+            {
+                var vehicle = availability.Vehicle;
+                var isSelected = this.SelectedVehicle?.VehicleId == vehicle.VehicleId;
+                <div class="col-12 col-sm-6 col-md-4">
+                    <div class="mr-card h-100"
+                         style="cursor: pointer; @(isSelected ? "border: 2px solid var(--mr-accent-primary); background: var(--mr-accent-bg);" : "")"
+                         @onclick="@(() => SelectVehicleItem(vehicle))">
+                        @{
+                            var vehicleImageUrl = GetVehicleImage(vehicle);
+                        }
+                        <div style="aspect-ratio: 1; overflow: hidden; border-radius: 8px 8px 0 0; background: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%); display: flex; align-items: center; justify-content: center;">
+                            @if (!string.IsNullOrEmpty(vehicleImageUrl))
+                            {
+                                <img src="@vehicleImageUrl" alt="@vehicle.Brand @vehicle.Model"
+                                     style="width: 100%; height: 100%; object-fit: cover;" />
+                            }
+                            else
+                            {
+                                <i class="ti @GetVehicleTypeIcon(vehicle.VehicleType)" style="font-size: 3rem; color: var(--mr-accent-primary); opacity: 0.6;"></i>
+                            }
+                        </div>
+                        <div class="p-3" style="border-bottom: 1px solid var(--mr-border-light);">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="flex-grow-1">
+                                    <div class="mr-text-primary" style="font-weight: 600;">@vehicle.Brand @vehicle.Model</div>
+                                    <div class="d-flex align-items-center gap-1">
+                                        <span class="mr-mono" style="color: var(--mr-accent-primary); font-size: 0.85rem;">@vehicle.LicensePlate</span>
+                                        @if (availability.IsPooled)
+                                        {
+                                            <span class="mr-status-badge info" style="font-size: 0.65rem; padding: 2px 6px;">
+                                                <i class="ti ti-share"></i> Pooled
+                                            </span>
+                                        }
+                                    </div>
+                                </div>
+                                @if (isSelected)
+                                {
+                                    <i class="ti ti-circle-check" style="font-size: 1.5rem; color: var(--mr-accent-primary);"></i>
+                                }
+                            </div>
+                        </div>
+                        <div class="p-3">
+                            <div class="d-flex flex-column gap-1">
+                                @if (!string.IsNullOrEmpty(vehicle.Color))
+                                {
+                                    <div class="d-flex justify-content-between">
+                                        <small class="text-secondary">@Localizer["Color"]</small>
+                                        <span>@vehicle.Color</span>
+                                    </div>
+                                }
+                                @if (vehicle.Year > 0)
+                                {
+                                    <div class="d-flex justify-content-between">
+                                        <small class="text-secondary">@Localizer["Year"]</small>
+                                        <span>@vehicle.Year</span>
+                                    </div>
+                                }
+
+                                <hr class="my-2">
+
+                                @if (vehicle.UsesIntervalPricing)
+                                {
+                                    <div class="d-flex justify-content-between">
+                                        <span class="fw-medium">@Localizer["HourlyRate"]</span>
+                                        <span class="text-primary fw-semibold" style="font-size: 1.1rem;">
+                                            @FormatCurrency(vehicle.Rate1Hour ?? 0)/hr
+                                        </span>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="d-flex justify-content-between">
+                                        <span class="fw-medium">@(vehicle.IsHourlyOnly ? Localizer["HourlyRate"] : Localizer["DailyRate"])</span>
+                                        <span class="text-primary fw-semibold" style="font-size: 1.1rem;">
+                                            @FormatCurrency(vehicle.DisplayRate)
+                                        </span>
+                                    </div>
+                                }
+                                <div class="d-flex justify-content-between">
+                                    <small class="text-secondary">@Localizer["Deposit"]</small>
+                                    <span>@FormatCurrency(vehicle.DepositAmount)</span>
+                                </div>
+
+                                @if (availability.IsPooled && !availability.IsAtCurrentShop)
+                                {
+                                    <div class="mr-info-panel py-2 px-3 mt-2" style="background: var(--mr-warning-bg); border-color: var(--mr-warning-border); font-size: 0.75rem;">
+                                        <i class="ti ti-map-pin me-1" style="color: var(--mr-warning-text);"></i>
+                                        <span style="color: var(--mr-warning-text);">@Localizer["AtAnotherShop"]</span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        @if (m_filteredVehicles.Count == 0 && !m_loading)
+        {
+            <div class="mr-info-panel">
+                <div class="mr-info-panel-icon">
+                    <i class="ti ti-info-circle"></i>
+                </div>
+                <div>
+                    <div class="mr-info-panel-title">@Localizer["NoVehiclesFound"]</div>
+                </div>
+            </div>
+        }
     }
 
     @if (this.SelectedVehicle != null)
@@ -289,13 +283,12 @@
 
     private List<VehicleAvailability> m_allVehicles = [];
     private List<VehicleAvailability> m_filteredVehicles = [];
-    private List<string> m_brands = [];
-    private List<VehicleType> m_availableTypes = [];
+    private List<VehicleGroup> m_allGroups = [];
+    private List<VehicleGroup> m_filteredGroups = [];
+    private VehicleGroup? m_selectedFleetModel;
     private Dictionary<int, string> m_vehiclePrimaryImages = new();
     private bool m_loading;
     private string? m_searchTerm;
-    private string? m_brandFilter;
-    private VehicleType? m_vehicleTypeFilter;
     private bool m_includePooled = true;
 
     protected override async Task OnInitializedAsync()
@@ -313,17 +306,14 @@
                 vehicleType: null,
                 includePooledVehicles: m_includePooled);
 
-            this.m_brands = this.m_allVehicles
-                .Where(v => !string.IsNullOrEmpty(v.Vehicle.Brand))
-                .Select(v => v.Vehicle.Brand!)
-                .Distinct()
-                .OrderBy(b => b)
-                .ToList();
-
-            this.m_availableTypes = this.m_allVehicles
-                .Select(v => v.Vehicle.VehicleType)
-                .Distinct()
-                .OrderBy(t => t)
+            // Build fleet model groups from loaded vehicles
+            this.m_allGroups = this.m_allVehicles
+                .Where(v => v.Vehicle.FleetModelId > 0)
+                .GroupBy(v => v.Vehicle.FleetModelId)
+                .Select(g => VehicleGroup.FromVehicles(g.Select(a => a.Vehicle)))
+                .OrderBy(g => g.VehicleType)
+                .ThenBy(g => g.Brand)
+                .ThenBy(g => g.Model)
                 .ToList();
 
             // Load primary images for all vehicles
@@ -350,44 +340,45 @@
         this.ApplyFilters();
     }
 
-    private void FilterByType(VehicleType? type)
+    private void ApplyFilters()
     {
-        this.m_vehicleTypeFilter = type;
+        if (this.m_selectedFleetModel == null)
+        {
+            // Phase 1: Filter groups
+            var filtered = this.m_allGroups.AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(this.m_searchTerm))
+            {
+                var term = this.m_searchTerm.ToLowerInvariant();
+                filtered = filtered.Where(g =>
+                    g.Brand.ToLowerInvariant().Contains(term) ||
+                    g.Model.ToLowerInvariant().Contains(term) ||
+                    g.DisplayName.ToLowerInvariant().Contains(term));
+            }
+
+            this.m_filteredGroups = filtered.ToList();
+        }
+        else
+        {
+            // Phase 2: Filter vehicles within selected model
+            this.m_filteredVehicles = this.m_allVehicles
+                .Where(v => v.Vehicle.FleetModelId == this.m_selectedFleetModel.FleetModelId)
+                .OrderBy(v => !v.IsAtCurrentShop)
+                .ThenBy(v => v.Vehicle.LicensePlate)
+                .ToList();
+        }
+    }
+
+    private void SelectFleetModel(VehicleGroup group)
+    {
+        this.m_selectedFleetModel = group;
         this.ApplyFilters();
     }
 
-    private void ApplyFilters()
+    private void BackToModelList()
     {
-        var filtered = this.m_allVehicles.AsEnumerable();
-
-        // Filter by vehicle type
-        if (this.m_vehicleTypeFilter.HasValue)
-        {
-            filtered = filtered.Where(v => v.Vehicle.VehicleType == this.m_vehicleTypeFilter.Value);
-        }
-
-        // Filter by search term
-        if (!string.IsNullOrWhiteSpace(this.m_searchTerm))
-        {
-            var term = this.m_searchTerm.ToLowerInvariant();
-            filtered = filtered.Where(v =>
-                (v.Vehicle.Brand?.ToLowerInvariant().Contains(term) ?? false) ||
-                (v.Vehicle.Model?.ToLowerInvariant().Contains(term) ?? false) ||
-                (v.Vehicle.LicensePlate?.ToLowerInvariant().Contains(term) ?? false));
-        }
-
-        // Filter by brand
-        if (!string.IsNullOrWhiteSpace(this.m_brandFilter))
-        {
-            filtered = filtered.Where(v => v.Vehicle.Brand == this.m_brandFilter);
-        }
-
-        this.m_filteredVehicles = filtered
-            .OrderBy(v => !v.IsAtCurrentShop) // Local vehicles first
-            .ThenBy(v => v.Vehicle.VehicleType)
-            .ThenBy(v => v.Vehicle.Brand)
-            .ThenBy(v => v.Vehicle.Model)
-            .ToList();
+        this.m_selectedFleetModel = null;
+        this.ApplyFilters();
     }
 
     private async Task SelectVehicleItem(Vehicle vehicle)
@@ -398,15 +389,12 @@
 
     private string GetVehicleImage(Vehicle vehicle)
     {
-        // First check loaded primary images
         if (this.m_vehiclePrimaryImages.TryGetValue(vehicle.VehicleId, out var imageUrl))
             return imageUrl;
 
-        // Fall back to ImagePath on entity
         if (!string.IsNullOrEmpty(vehicle.ImagePath))
             return vehicle.ImagePath;
 
-        // Return empty to show placeholder icon
         return string.Empty;
     }
 
@@ -418,37 +406,5 @@
         VehicleType.Boat => "ti-ship",
         VehicleType.Van => "ti-bus",
         _ => "ti-car"
-    };
-
-    private string GetVehicleTypeLabel(VehicleType type) => type switch
-    {
-        VehicleType.Motorbike => Localizer["Motorbike"],
-        VehicleType.Car => Localizer["Car"],
-        VehicleType.JetSki => Localizer["JetSki"],
-        VehicleType.Boat => Localizer["Boat"],
-        VehicleType.Van => Localizer["Van"],
-        _ => Localizer["Vehicle"]
-    };
-
-    private static string GetVehicleTypeAvatarClass(VehicleType type) => type switch
-    {
-        VehicleType.Motorbike => "bg-indigo",
-        VehicleType.Car => "bg-blue",
-        VehicleType.JetSki => "bg-cyan",
-        VehicleType.Boat => "bg-azure",
-        VehicleType.Van => "bg-purple",
-        _ => "bg-primary"
-    };
-
-    private string GetSegmentLabel(CarSegment segment) => segment switch
-    {
-        CarSegment.SmallSedan => Localizer["SmallSedan"],
-        CarSegment.BigSedan => Localizer["BigSedan"],
-        CarSegment.SUV => Localizer["SUV"],
-        CarSegment.Pickup => Localizer["Pickup"],
-        CarSegment.Hatchback => Localizer["Hatchback"],
-        CarSegment.Minivan => Localizer["Minivan"],
-        CarSegment.Luxury => Localizer["Luxury"],
-        _ => segment.ToString()
     };
 }
