@@ -45,7 +45,18 @@ public class OnboardingController(
 
         try
         {
-            var org = await this.OnboardingService.OnboardAsync(request);
+            var result = await this.OnboardingService.OnboardAsync(request);
+            var org = result.Organization;
+            
+            if (org == null)
+            {
+                 return this.StatusCode(500, new OnboardingResponse
+                { 
+                    Success = false, 
+                    Error = "Organization creation failed." 
+                });
+            }
+
             this.Logger.LogInformation("Successfully onboarded new organization {AccountNo} ({ShopName})", 
                 org.AccountNo, request.ShopName);
             
@@ -53,7 +64,9 @@ public class OnboardingController(
             { 
                 Success = true, 
                 AccountNo = org.AccountNo,
-                Message = "Welcome to MotoRent! Your shop is being prepared."
+                Message = "Welcome to MotoRent! Your shop is being prepared.",
+                PaymentUrl = result.PaymentUrl,
+                PaymentParams = result.PaymentParams
             });
         }
         catch (Exception ex)

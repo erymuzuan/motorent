@@ -4,6 +4,7 @@
 @using MotoRent.Domain.Core
 @inherits LocalizedComponentBase<OnboardingWizard>
 @inject IOnboardingService OnboardingService
+@inject IJSRuntime JSRuntime
 
 <MotoRentPageTitle>@Localizer["PageTitle"]</MotoRentPageTitle>
 
@@ -108,7 +109,38 @@
     <div class="d-flex flex-column align-items-center justify-content-center position-fixed top-50 start-50 translate-middle" style="z-index: 1060;">
         <div class="mr-card p-4 text-center" style="min-width: 200px;">
             <div class="spinner-border mb-3" style="width: 3rem; height: 3rem; color: var(--mr-accent-primary);" role="status"></div>
-            <h5 class="mr-text-primary mb-0">@Localizer["CreatingAccount"]</h5>
+            <h5 class="mr-text-primary mb-0">
+                @if (!string.IsNullOrEmpty(m_paymentUrl))
+                {
+                    @Localizer["RedirectingToPayment"]
+                }
+                else
+                {
+                    @Localizer["CreatingAccount"]
+                }
+            </h5>
         </div>
     </div>
+}
+
+@* Hidden Payment Form *@
+@if (!string.IsNullOrEmpty(m_paymentUrl))
+{
+    <form action="@m_paymentUrl" method="POST" id="fiuuForm" class="d-none">
+        @foreach (var kvp in m_paymentParams)
+        {
+            <input type="hidden" name="@kvp.Key" value="@kvp.Value" />
+        }
+    </form>
+}
+
+@code {
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!string.IsNullOrEmpty(m_paymentUrl))
+        {
+            // Auto-submit the form
+            await JSRuntime.InvokeVoidAsync("eval", "document.getElementById('fiuuForm').submit();");
+        }
+    }
 }

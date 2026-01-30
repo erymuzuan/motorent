@@ -97,8 +97,19 @@ public partial class OnboardingWizard
         {
             var result = await this.OnboardingService.OnboardAsync(this.m_request);
 
-            if (result != null)
+            if (result?.Organization != null)
             {
+                if (!string.IsNullOrEmpty(result.PaymentUrl))
+                {
+                    // Handle Payment Redirect
+                    // We need to submit a form to the payment gateway
+                    // For now, we'll store the payment data and trigger the UI to render the auto-submit form
+                    this.m_paymentUrl = result.PaymentUrl;
+                    this.m_paymentParams = result.PaymentParams;
+                    this.StateHasChanged();
+                    return;
+                }
+
                 this.ShowSuccess(Localizer["AccountCreatedSuccess"]);
                 this.NavigationManager.NavigateTo("/quick-start");
             }
@@ -114,7 +125,14 @@ public partial class OnboardingWizard
         }
         finally
         {
-            this.m_processing = false;
+            // Only stop processing if we are NOT redirecting (if redirecting, we want the spinner to stay)
+            if (string.IsNullOrEmpty(this.m_paymentUrl))
+            {
+                this.m_processing = false;
+            }
         }
     }
+
+    private string? m_paymentUrl;
+    private Dictionary<string, string> m_paymentParams = [];
 }

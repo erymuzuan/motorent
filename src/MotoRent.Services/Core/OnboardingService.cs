@@ -2,6 +2,7 @@ using System.Text.RegularExpressions;
 using MotoRent.Domain.Core;
 using MotoRent.Domain.DataContext;
 using MotoRent.Domain.Entities;
+using MotoRent.Services.Payments;
 
 namespace MotoRent.Services.Core;
 
@@ -11,13 +12,15 @@ namespace MotoRent.Services.Core;
 public class OnboardingService(
     CoreDataContext coreDataContext,
     RentalDataContext rentalDataContext,
-    IDirectoryService directoryService) : IOnboardingService
+    IDirectoryService directoryService,
+    FiuuPaymentService fiuuPaymentService) : IOnboardingService
 {
     private CoreDataContext CoreDataContext { get; } = coreDataContext;
     private RentalDataContext RentalDataContext { get; } = rentalDataContext;
     private IDirectoryService DirectoryService { get; } = directoryService;
+    private FiuuPaymentService FiuuPaymentService { get; } = fiuuPaymentService;
 
-    public async Task<Organization> OnboardAsync(OnboardingRequest request)
+    public async Task<OnboardingResult> OnboardAsync(OnboardingRequest request)
     {
         // 1. Generate unique AccountNo
         var accountNo = await this.GenerateAccountNoAsync(request.ShopName);
@@ -78,10 +81,6 @@ public class OnboardingService(
         }
 
         // 4. Create Shop (Tenant Schema)
-        // We need to set the context to the new account so the RentalDataContext knows which schema to use
-        // However, since we are using the service inside the server, we might need a way to override schema.
-        // For now, we'll assume the implementation of RentalDataContext can handle dynamic schema if AccountNo is provided.
-        
         var shop = new Shop
         {
             Name = request.ShopName,
@@ -127,7 +126,49 @@ public class OnboardingService(
             }
         }
 
-        return org;
+        // 6. Generate Fiuu Payment Request
+        // Even for Free plan (0 THB), we initiate a transaction to capture card/payment details if required.
+        // Assuming Free = 0, Pro = 799/999, Ultra = 1199/1499.
+        // For now, we use a placeholder amount or logic.
+        decimal amount = request.Plan switch
+        {
+            SubscriptionPlan.Free => 0.00m,
+            SubscriptionPlan.Pro => 799.00m, // Monthly default
+            SubscriptionPlan.Ultra => 1199.00m, // Monthly default
+            _ => 0.00m
+        };
+
+        // Use AccountNo as part of OrderId to track it
+        var orderId = $"{accountNo}-{DateTime.UtcNow.Ticks}"; 
+        var paymentRequest = this.FiuuPaymentService.CreatePaymentRequest(
+            amount, 
+            orderId, 
+            request.FullName, 
+            request.Email, 
+            request.Phone, 
+            $"Subscription: {request.Plan}"
+        );
+
+        var result = new OnboardingResult
+        {
+            Organization = org,
+            PaymentUrl = "https://sandbox.merchant.razer.com/RMS/pay/test_merchant/index.php", // Should come from config/service
+            PaymentParams = new Dictionary<string, string>
+            {
+                { "merchant_id", paymentRequest.MerchantId },
+                { "amount", paymentRequest.Amount },
+                { "orderid", paymentRequest.OrderId },
+                { "bill_name", paymentRequest.BillName },
+                { "bill_email", paymentRequest.BillEmail },
+                { "bill_mobile", paymentRequest.BillMobile },
+                { "bill_desc", paymentRequest.BillDesc },
+                { "country", paymentRequest.Country },
+                { "currency", paymentRequest.Currency },
+                { "vcode", paymentRequest.VCode }
+            }
+        };
+
+        return result;
     }
 
     private async Task<string> GenerateAccountNoAsync(string shopName)

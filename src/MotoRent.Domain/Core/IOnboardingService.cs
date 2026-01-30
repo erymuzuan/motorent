@@ -42,6 +42,18 @@ public class OnboardingResponse
     public string AccountNo { get; set; } = "";
     public string Message { get; set; } = "";
     public string? Error { get; set; }
+    public string? PaymentUrl { get; set; }
+    public Dictionary<string, string>? PaymentParams { get; set; }
+}
+
+/// <summary>
+/// Data transfer object for onboarding result.
+/// </summary>
+public class OnboardingResult
+{
+    public Organization? Organization { get; set; }
+    public string? PaymentUrl { get; set; }
+    public Dictionary<string, string> PaymentParams { get; set; } = [];
 }
 
 /// <summary>
@@ -53,6 +65,6 @@ public interface IOnboardingService
     /// Processes an onboarding request, creating the organization, user, shop, and initial vehicles.
     /// </summary>
     /// <param name="request">The onboarding details.</param>
-    /// <returns>The created organization.</returns>
-    Task<Organization> OnboardAsync(OnboardingRequest request);
+    /// <returns>The onboarding result containing the organization and optional payment redirect.</returns>
+    Task<OnboardingResult> OnboardAsync(OnboardingRequest request);
 }

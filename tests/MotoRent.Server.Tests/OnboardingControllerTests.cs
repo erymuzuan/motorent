@@ -33,9 +33,10 @@ public class OnboardingControllerTests
         // Arrange
         var request = new OnboardingRequest { ShopName = "Test Shop", Email = "test@example.com" };
         var org = new Organization { AccountNo = "testshop", Name = "Test Shop" };
+        var resultData = new OnboardingResult { Organization = org };
         
         m_onboardingServiceMock.Setup(s => s.OnboardAsync(request))
-            .ReturnsAsync(org);
+            .ReturnsAsync(resultData);
 
         // Act
         var result = await m_controller.Submit(request);
