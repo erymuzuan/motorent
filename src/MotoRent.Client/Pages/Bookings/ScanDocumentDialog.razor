@@ -1,0 +1,75 @@
+@inherits LocalizedDialogBase<ScanDocumentResult, ScanDocumentDialog>
+@using MotoRent.Services
+@using MotoRent.Client.Controls
+
+<div class="modal-body">
+    <p class="text-secondary mb-3">
+        @Localizer["ScanHint"]
+    </p>
+
+    <div class="row g-3">
+        <div class="col-md-6">
+            <DocumentUpload DocumentType="Passport"
+                            OnDataExtracted="OnPassportDataExtracted"
+                            OnDocumentUploaded="OnDocumentUploaded" />
+        </div>
+        <div class="col-md-6">
+            <DocumentUpload DocumentType="DrivingLicense"
+                            OnDataExtracted="OnLicenseDataExtracted"
+                            OnDocumentUploaded="OnDocumentUploaded" />
+        </div>
+    </div>
+</div>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="Cancel">
+        @CommonLocalizer["Cancel"]
+    </button>
+    <button type="button" class="btn btn-primary" disabled="@(!m_hasData)" @onclick="ApplyAndClose">
+        <i class="ti ti-check me-1"></i>
+        @Localizer["ApplyToBooking"]
+    </button>
+</div>
+
+@code {
+    private bool m_hasData;
+
+    private void OnPassportDataExtracted(ExtractedDocumentData data)
+    {
+        if (!string.IsNullOrEmpty(data.FullName))
+            this.Entity.CustomerName = data.FullName;
+
+        if (!string.IsNullOrEmpty(data.DocumentNumber))
+            this.Entity.PassportNo = data.DocumentNumber;
+
+        if (!string.IsNullOrEmpty(data.Nationality))
+            this.Entity.Nationality = data.Nationality;
+
+        this.m_hasData = true;
+        this.StateHasChanged();
+        this.ShowSuccess(Localizer["PassportDataApplied"]);
+    }
+
+    private void OnLicenseDataExtracted(ExtractedDocumentData data)
+    {
+        if (string.IsNullOrEmpty(this.Entity.CustomerName) && !string.IsNullOrEmpty(data.FullName))
+            this.Entity.CustomerName = data.FullName;
+
+        if (!string.IsNullOrEmpty(data.IssuingCountry) && string.IsNullOrEmpty(this.Entity.Nationality))
+            this.Entity.Nationality = data.IssuingCountry;
+
+        this.m_hasData = true;
+        this.StateHasChanged();
+        this.ShowSuccess(Localizer["LicenseDataApplied"]);
+    }
+
+    private void OnDocumentUploaded(DocumentUploadResult result)
+    {
+        // Document uploaded successfully
+    }
+
+    private void ApplyAndClose()
+    {
+        this.Close(this.Entity);
+    }
+}

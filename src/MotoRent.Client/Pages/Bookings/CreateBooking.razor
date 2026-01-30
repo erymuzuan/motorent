@@ -75,6 +75,12 @@
         {
             case 0:
                 @* Step 1: Customer Info *@
+                <div class="d-flex justify-content-end mb-3">
+                    <button type="button" class="btn btn-outline-primary btn-sm" @onclick="OpenScanDocumentDialog">
+                        <i class="ti ti-scan me-1"></i>
+                        @Localizer["ScanDocument"]
+                    </button>
+                </div>
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label class="form-label">@Localizer["CustomerName"] *</label>
@@ -930,6 +936,26 @@
     private void UnlinkRenter()
     {
         m_linkedRenter = null;
+    }
+
+    private async Task OpenScanDocumentDialog()
+    {
+        var result = await this.DialogService
+            .Create<ScanDocumentDialog>(Localizer["ScanDocument"])
+            .Medium()
+            .ShowAndGetDataAsync<ScanDocumentResult>();
+
+        if (result != null)
+        {
+            if (!string.IsNullOrEmpty(result.CustomerName))
+                m_request.CustomerName = result.CustomerName;
+            if (!string.IsNullOrEmpty(result.PassportNo))
+                m_request.CustomerPassportNo = result.PassportNo;
+            if (!string.IsNullOrEmpty(result.Nationality))
+                m_request.CustomerNationality = result.Nationality;
+
+            StateHasChanged();
+        }
     }
 
     private void OnAgentChanged()
