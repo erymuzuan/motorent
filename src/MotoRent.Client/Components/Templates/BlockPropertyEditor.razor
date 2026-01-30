@@ -3,6 +3,7 @@
 @using MotoRent.Client.Services
 @inherits LocalizedComponentBase<BlockPropertyEditor>
 @inject DesignerState DesignerState
+@inject IJSRuntime JS
 
 <div class="card h-100">
     <div class="card-header">
@@ -27,10 +28,11 @@
             {
                 <div class="mb-3">
                     <label class="form-label">@this.Localizer["Content"]</label>
-                    <input type="text" class="form-control" @bind="hb.Content" @bind:event="oninput" />
+                    <input type="text" class="form-control" @bind="hb.Content" @bind:event="oninput"
+                           @ref="this.m_headingContentRef" />
                 </div>
                 @* Placeholder Picker for Heading *@
-                <PlaceholderPicker OnInsert="(token) => hb.Content += token" />
+                <PlaceholderPicker OnInsert="(token) => this.InsertAtCursorAsync(hb, token)" />
                 <div class="mb-3">
                     <label class="form-label">@this.Localizer["HeadingLevel"]</label>
                     <select class="form-select" @bind="hb.Level">
@@ -65,11 +67,12 @@
             {
                 <div class="mb-3">
                     <label class="form-label">@this.Localizer["Content"]</label>
-                    <textarea class="form-control" @bind="tb.Content" @bind:event="oninput" rows="5"></textarea>
+                    <textarea class="form-control" @bind="tb.Content" @bind:event="oninput" rows="5"
+                              @ref="this.m_textContentRef"></textarea>
                     <div class="form-hint">@this.Localizer["PlaceholderHint"]</div>
                 </div>
                 @* Placeholder Picker for Text *@
-                <PlaceholderPicker OnInsert="(token) => { tb.Content += token; this.StateHasChanged(); }" />
+                <PlaceholderPicker OnInsert="(token) => this.InsertAtCursorAsync(tb, token)" />
                 <div class="mb-3">
                     <label class="form-label">@this.Localizer["FontSize"]</label>
                     <input type="number" class="form-control" @bind="tb.FontSize" />
@@ -189,4 +192,22 @@
 @code {
     [Parameter] public LayoutBlock? Block { get; set; }
     [Parameter] public EventCallback OnDeleteRequested { get; set; }
+
+    private ElementReference m_textContentRef;
+    private ElementReference m_headingContentRef;
+
+    private async Task InsertAtCursorAsync(TextBlock block, string token)
+    {
+        var elementRef = block is HeadingBlock ? this.m_headingContentRef : this.m_textContentRef;
+        var pos = await this.JS.InvokeAsync<int>("getSelectionStart", elementRef);
+        var content = block.Content ?? string.Empty;
+        if (pos < 0 || pos > content.Length)
+            pos = content.Length;
+
+        block.Content = content.Insert(pos, token);
+        this.StateHasChanged();
+
+        var newPos = pos + token.Length;
+        await this.JS.InvokeVoidAsync("setSelectionRange", elementRef, newPos, newPos);
+    }
 }
