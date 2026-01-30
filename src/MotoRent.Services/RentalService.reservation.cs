@@ -1,5 +1,4 @@
 using MotoRent.Domain.Entities;
-using MotoRent.Domain.Models;
 
 namespace MotoRent.Services;
 
@@ -12,9 +11,9 @@ public partial class RentalService
             using var session = this.Context.OpenSession("tourist");
 
             // 1. Check if vehicle is available for the requested dates
-            // For group reservations (VehicleId == 0, VehicleGroupKey set), skip individual vehicle check
+            // For group reservations (VehicleId == 0, FleetModelId set), skip individual vehicle check
             // since the actual vehicle will be assigned at check-in
-            bool isGroupReservation = request.VehicleId == 0 && !string.IsNullOrEmpty(request.VehicleGroupKey);
+            bool isGroupReservation = request.VehicleId == 0 && request.FleetModelId.HasValue;
 
             if (!isGroupReservation && request.VehicleId > 0)
             {
@@ -63,7 +62,7 @@ public partial class RentalService
                 RentedFromShopId = request.ShopId,
                 RenterId = renterId,
                 VehicleId = request.VehicleId,
-                VehicleGroupKey = request.VehicleGroupKey,
+                FleetModelId = request.FleetModelId,
                 PreferredColor = request.PreferredColor,
                 DurationType = request.DurationType,
                 IntervalMinutes = request.IntervalMinutes,
@@ -136,10 +135,6 @@ public partial class RentalService
     /// Assigns a specific vehicle to a group-based reservation.
     /// Used during check-in to convert a model reservation to a specific vehicle rental.
     /// </summary>
-    /// <param name="rentalId">The rental/reservation ID</param>
-    /// <param name="vehicleId">The specific vehicle to assign (optional - auto-selects if not provided)</param>
-    /// <param name="username">The staff member performing the assignment</param>
-    /// <returns>The assigned vehicle, or null if no suitable vehicle found</returns>
     public async Task<Vehicle?> AssignVehicleToRentalAsync(int rentalId, int? vehicleId, string username)
     {
         var rental = await this.Context.LoadOneAsync<Rental>(r => r.RentalId == rentalId);
@@ -161,16 +156,14 @@ public partial class RentalService
                 v.VehicleId == vehicleId.Value &&
                 v.Status == VehicleStatus.Available);
         }
-        else if (!string.IsNullOrEmpty(rental.VehicleGroupKey))
+        else if (rental.FleetModelId.HasValue && rental.FleetModelId.Value > 0)
         {
-            // Auto-select based on group key and color preference
+            // Auto-select based on FleetModelId
             var vehicles = await this.Context.LoadAsync(
                 this.Context.CreateQuery<Vehicle>()
-                    .Where(v => v.Status == VehicleStatus.Available));
+                    .Where(v => v.Status == VehicleStatus.Available && v.FleetModelId == rental.FleetModelId.Value));
 
-            var availableInGroup = vehicles.ItemCollection
-                .Where(v => VehicleGroup.CreateGroupKey(v) == rental.VehicleGroupKey)
-                .ToList();
+            var availableInGroup = vehicles.ItemCollection.ToList();
 
             if (availableInGroup.Count > 0)
             {
@@ -212,15 +205,13 @@ public partial class RentalService
     public async Task<List<Vehicle>> GetAvailableVehiclesForReservationAsync(int rentalId)
     {
         var rental = await this.Context.LoadOneAsync<Rental>(r => r.RentalId == rentalId);
-        if (rental == null || string.IsNullOrEmpty(rental.VehicleGroupKey))
+        if (rental == null || !rental.FleetModelId.HasValue || rental.FleetModelId.Value <= 0)
             return [];
 
         var vehicles = await this.Context.LoadAsync(
             this.Context.CreateQuery<Vehicle>()
-                .Where(v => v.Status == VehicleStatus.Available));
+                .Where(v => v.Status == VehicleStatus.Available && v.FleetModelId == rental.FleetModelId.Value));
 
-        return vehicles.ItemCollection
-            .Where(v => VehicleGroup.CreateGroupKey(v) == rental.VehicleGroupKey)
-            .ToList();
+        return vehicles.ItemCollection.ToList();
     }
 }

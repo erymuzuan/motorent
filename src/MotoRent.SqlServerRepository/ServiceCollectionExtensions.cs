@@ -87,6 +87,7 @@ public static class ServiceCollectionExtensions
 
         // Fleet model entities
         services.AddScoped<IRepository<FleetModel>, SqlJsonRepository<FleetModel>>();
+        services.AddScoped<IRepository<FleetModelImage>, SqlJsonRepository<FleetModelImage>>();
         // Traffic fine entities
         services.AddScoped<IRepository<TrafficFine>, SqlJsonRepository<TrafficFine>>();
 

@@ -59,7 +59,8 @@ public class BookingService
         {
             var item = new BookingItem
             {
-                VehicleGroupKey = itemRequest.VehicleGroupKey,
+                FleetModelId = itemRequest.FleetModelId,
+                FleetModelDisplayName = itemRequest.FleetModelDisplayName,
                 PreferredVehicleId = itemRequest.PreferredVehicleId,
                 PreferredColor = itemRequest.PreferredColor,
                 InsuranceId = itemRequest.InsuranceId,
@@ -610,7 +611,8 @@ public class BookingService
         var oldVehicle = existingItem.VehicleDisplayName;
 
         // Update item properties
-        existingItem.VehicleGroupKey = updatedItem.VehicleGroupKey;
+        existingItem.FleetModelId = updatedItem.FleetModelId;
+        existingItem.FleetModelDisplayName = updatedItem.FleetModelDisplayName;
         existingItem.PreferredVehicleId = updatedItem.PreferredVehicleId;
         existingItem.PreferredColor = updatedItem.PreferredColor;
         existingItem.InsuranceId = updatedItem.InsuranceId;
@@ -868,20 +870,21 @@ public class BookingService
     #region Cross-Shop Methods
 
     /// <summary>
-    /// Finds available vehicles at a shop matching the vehicle group key.
+    /// Finds available vehicles at a shop matching the fleet model ID.
     /// </summary>
-    public async Task<List<Vehicle>> FindMatchingVehiclesAsync(int shopId, string vehicleGroupKey)
+    public async Task<List<Vehicle>> FindMatchingVehiclesAsync(int shopId, int fleetModelId)
     {
+        if (fleetModelId <= 0)
+            return [];
+
         var vehicles = await m_context.LoadAsync(
             m_context.CreateQuery<Vehicle>()
                 .Where(v => v.CurrentShopId == shopId)
-                .Where(v => v.Status == VehicleStatus.Available),
+                .Where(v => v.Status == VehicleStatus.Available)
+                .Where(v => v.FleetModelId == fleetModelId),
             1, 1000, includeTotalRows: false);
 
-        // Filter by vehicle group key (Brand|Model|Year|Type|Engine)
-        return vehicles.ItemCollection
-            .Where(v => v.GetGroupKey() == vehicleGroupKey)
-            .ToList();
+        return vehicles.ItemCollection.ToList();
     }
 
     /// <summary>
@@ -897,7 +900,7 @@ public class BookingService
 
         foreach (var item in booking.Items.Where(i => i.IsPending))
         {
-            var matchingVehicles = await FindMatchingVehiclesAsync(shopId, item.VehicleGroupKey);
+            var matchingVehicles = await FindMatchingVehiclesAsync(shopId, item.FleetModelId);
             if (matchingVehicles.Count == 0)
             {
                 return false;
@@ -1244,7 +1247,8 @@ public class CreateBookingRequest
 
 public class BookingItemRequest
 {
-    public string VehicleGroupKey { get; set; } = string.Empty;
+    public int FleetModelId { get; set; }
+    public string? FleetModelDisplayName { get; set; }
     public int? PreferredVehicleId { get; set; }
     public string? PreferredColor { get; set; }
     public int? InsuranceId { get; set; }

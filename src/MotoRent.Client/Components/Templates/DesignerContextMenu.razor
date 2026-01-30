@@ -1,0 +1,143 @@
+@using MotoRent.Domain.Entities
+@using MotoRent.Domain.Models
+@using MotoRent.Client.Services
+@inherits LocalizedComponentBase<DesignerContextMenu>
+@inject DesignerState DesignerState
+
+<div class="designer-context-menu" @ref="this.MenuElement" style="display:none;" tabindex="-1">
+
+    @if (this.IsTextBlock)
+    {
+        @* ─── Formatting ─── *@
+        <button class="context-menu-item" @onclick='() => this.OnFormatCommand.InvokeAsync("bold")'>
+            <i class="ti ti-bold me-2"></i> @this.Localizer["Bold"]
+        </button>
+        <button class="context-menu-item" @onclick='() => this.OnFormatCommand.InvokeAsync("italic")'>
+            <i class="ti ti-italic me-2"></i> @this.Localizer["Italic"]
+        </button>
+        <button class="context-menu-item" @onclick='() => this.OnFormatCommand.InvokeAsync("underline")'>
+            <i class="ti ti-underline me-2"></i> @this.Localizer["Underline"]
+        </button>
+        <button class="context-menu-item" @onclick='() => this.OnFormatCommand.InvokeAsync("strikeThrough")'>
+            <i class="ti ti-strikethrough me-2"></i> @this.Localizer["Strikethrough"]
+        </button>
+
+        <div class="context-menu-divider"></div>
+
+        @* ─── Next Line ─── *@
+        <button class="context-menu-item" @onclick='() => this.OnFormatCommand.InvokeAsync("insertLineBreak")'>
+            <i class="ti ti-arrow-back me-2"></i> @this.Localizer["NextLine"]
+        </button>
+
+        <div class="context-menu-divider"></div>
+
+        @* ─── Font Size submenu ─── *@
+        <div class="submenu-trigger">
+            <button class="context-menu-item">
+                <i class="ti ti-text-resize me-2"></i> @this.Localizer["FontSize"]
+                <i class="ti ti-chevron-right ms-auto"></i>
+            </button>
+            <div class="context-submenu">
+                @foreach (var size in m_fontSizes)
+                {
+                    var s = size;
+                    <button class="context-menu-item" @onclick="() => this.OnFontSizeChanged.InvokeAsync(s)">
+                        <span style="font-size:@(s)px;">@(s)px</span>
+                    </button>
+                }
+            </div>
+        </div>
+
+        @* ─── Alignment submenu ─── *@
+        <div class="submenu-trigger">
+            <button class="context-menu-item">
+                <i class="ti ti-align-left me-2"></i> @this.Localizer["Alignment"]
+                <i class="ti ti-chevron-right ms-auto"></i>
+            </button>
+            <div class="context-submenu">
+                <button class="context-menu-item" @onclick='() => this.OnFormatCommand.InvokeAsync("justifyLeft")'>
+                    <i class="ti ti-align-left me-2"></i> @this.Localizer["Left"]
+                </button>
+                <button class="context-menu-item" @onclick='() => this.OnFormatCommand.InvokeAsync("justifyCenter")'>
+                    <i class="ti ti-align-center me-2"></i> @this.Localizer["Center"]
+                </button>
+                <button class="context-menu-item" @onclick='() => this.OnFormatCommand.InvokeAsync("justifyRight")'>
+                    <i class="ti ti-align-right me-2"></i> @this.Localizer["Right"]
+                </button>
+            </div>
+        </div>
+
+        <div class="context-menu-divider"></div>
+
+        @* ─── Insert Field submenu ─── *@
+        <div class="submenu-trigger">
+            <button class="context-menu-item">
+                <i class="ti ti-code me-2"></i> @this.Localizer["InsertField"]
+                <i class="ti ti-chevron-right ms-auto"></i>
+            </button>
+            <div class="context-submenu context-submenu-fields">
+                @foreach (var group in PlaceholderDefinitions.Groups)
+                {
+                    var isRelevant = this.IsRelevantGroup(group.Key);
+                    <div class="context-submenu-group">
+                        <div class="context-menu-group-label @(isRelevant ? "text-primary" : "")">
+                            <i class="ti @PlaceholderDefinitions.GetCategoryIcon(group.Key) me-1"></i>
+                            @group.Key
+                        </div>
+                        @foreach (var placeholder in group.Value)
+                        {
+                            var token = $"{{{{{placeholder}}}}}";
+                            <button class="context-menu-item context-menu-item-sm"
+                                    @onclick="() => this.OnInsertPlaceholder.InvokeAsync(token)">
+                                @placeholder.Split('.').Last()
+                            </button>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="context-menu-divider"></div>
+    }
+
+    @* ─── Block operations (always shown) ─── *@
+    <button class="context-menu-item" @onclick="this.OnMoveUp">
+        <i class="ti ti-arrow-up me-2"></i> @this.Localizer["MoveUp"]
+    </button>
+    <button class="context-menu-item" @onclick="this.OnMoveDown">
+        <i class="ti ti-arrow-down me-2"></i> @this.Localizer["MoveDown"]
+    </button>
+    <button class="context-menu-item" @onclick="this.OnCopy">
+        <i class="ti ti-copy me-2"></i> @this.Localizer["Copy"]
+    </button>
+    <div class="context-menu-divider"></div>
+    <button class="context-menu-item context-menu-item-danger" @onclick="this.OnDelete">
+        <i class="ti ti-trash me-2"></i> @this.Localizer["DeleteElement"]
+    </button>
+</div>
+
+@code {
+    [Parameter] public EventCallback OnMoveUp { get; set; }
+    [Parameter] public EventCallback OnMoveDown { get; set; }
+    [Parameter] public EventCallback OnCopy { get; set; }
+    [Parameter] public EventCallback OnDelete { get; set; }
+    [Parameter] public EventCallback<string> OnFormatCommand { get; set; }
+    [Parameter] public EventCallback<int> OnFontSizeChanged { get; set; }
+    [Parameter] public EventCallback<string> OnInsertPlaceholder { get; set; }
+    [Parameter] public LayoutBlock? Block { get; set; }
+
+    public ElementReference MenuElement { get; private set; }
+
+    private bool IsTextBlock => this.Block is TextBlock;
+
+    private static readonly int[] m_fontSizes = [10, 12, 14, 16, 18, 20, 24, 28, 32];
+
+    private bool IsRelevantGroup(string groupKey) => groupKey switch
+    {
+        "Organization" or "Staff" => true,
+        "Booking" => this.DesignerState.DocumentType == DocumentType.BookingConfirmation,
+        "Rental" => this.DesignerState.DocumentType == DocumentType.RentalAgreement,
+        "Receipt" => this.DesignerState.DocumentType == DocumentType.Receipt,
+        _ => false
+    };
+}

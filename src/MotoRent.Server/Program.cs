@@ -59,6 +59,7 @@ builder.Services.AddScoped<MotorbikeService>(); // Deprecated: use VehicleServic
 builder.Services.AddScoped<VehiclePoolService>();
 builder.Services.AddScoped<VehicleService>();
 builder.Services.AddScoped<FleetModelService>();
+builder.Services.AddScoped<FleetModelImageService>();
 builder.Services.AddScoped<VehicleImageService>();
 builder.Services.AddScoped<RentalPricingService>();
 builder.Services.AddScoped<RenterService>();

@@ -1,9 +1,12 @@
 @page "/fleet-models"
 @using Microsoft.AspNetCore.Authorization
 @using MotoRent.Domain.Entities
+@using MotoRent.Domain.Storage
 @attribute [Authorize(Policy = "RequireTenantStaff")]
 @inherits LocalizedComponentBase<FleetModels>
 @inject FleetModelService FleetModelService
+@inject FleetModelImageService FleetModelImageService
+@inject IBinaryStore BinaryStore
 
 <MotoRentPageTitle>@Localizer["FleetModels"]</MotoRentPageTitle>
 
@@ -70,9 +73,16 @@
                     <div class="card">
                         <div class="card-body">
                             <div class="d-flex align-items-center mb-3">
-                                <span class="avatar avatar-md bg-primary-lt me-3">
-                                    <i class="ti @GetVehicleTypeIcon(fm.VehicleType)"></i>
-                                </span>
+                                @if (this.GetPrimaryImageUrl(fm.FleetModelId) is { } imageUrl)
+                                {
+                                    <span class="avatar avatar-md me-3" style="background-image: url(@imageUrl)"></span>
+                                }
+                                else
+                                {
+                                    <span class="avatar avatar-md bg-primary-lt me-3">
+                                        <i class="ti @GetVehicleTypeIcon(fm.VehicleType)"></i>
+                                    </span>
+                                }
                                 <div>
                                     <h3 class="mb-0">@fm.DisplayName</h3>
                                     <div class="text-secondary">
@@ -127,6 +137,7 @@
 @code {
     private List<FleetModel> m_fleetModels = [];
     private Dictionary<int, int> m_unitCounts = new();
+    private Dictionary<int, string> m_primaryImages = new();
     private VehicleType? m_vehicleTypeFilter;
     private bool Loading { get; set; }
 
@@ -147,6 +158,17 @@
                 pageSize: 200);
             this.m_fleetModels = result.ItemCollection;
             this.m_unitCounts = await this.FleetModelService.GetFleetModelCountsAsync();
+
+            // Load primary images for all fleet models
+            this.m_primaryImages.Clear();
+            foreach (var fm in this.m_fleetModels)
+            {
+                var storeId = await this.FleetModelImageService.GetPrimaryImageStoreIdAsync(fm.FleetModelId);
+                if (!string.IsNullOrEmpty(storeId))
+                {
+                    this.m_primaryImages[fm.FleetModelId] = storeId;
+                }
+            }
         }
         finally
         {
@@ -164,6 +186,15 @@
     private int GetUnitCount(int fleetModelId)
     {
         return this.m_unitCounts.TryGetValue(fleetModelId, out var count) ? count : 0;
+    }
+
+    private string? GetPrimaryImageUrl(int fleetModelId)
+    {
+        if (this.m_primaryImages.TryGetValue(fleetModelId, out var storeId))
+        {
+            return this.BinaryStore.GetImageUrl(storeId);
+        }
+        return null;
     }
 
     private static string GetVehicleTypeIcon(VehicleType type) => type switch

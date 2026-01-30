@@ -207,9 +207,9 @@
                                 </span>
                             </div>
                             @* Favorite Button *@
-                            <button type="button" class="btn btn-icon position-absolute bottom-0 end-0 m-2 @(m_favorites.Contains(group.GroupKey) ? "btn-danger" : "btn-ghost-light")"
-                                    @onclick="@(() => ToggleFavorite(group.GroupKey))" @onclick:stopPropagation="true">
-                                <i class="ti @(m_favorites.Contains(group.GroupKey) ? "ti-heart-filled" : "ti-heart")"></i>
+                            <button type="button" class="btn btn-icon position-absolute bottom-0 end-0 m-2 @(m_favorites.Contains(group.FleetModelId.ToString()) ? "btn-danger" : "btn-ghost-light")"
+                                    @onclick="@(() => ToggleFavorite(group.FleetModelId.ToString()))" @onclick:stopPropagation="true">
+                                <i class="ti @(m_favorites.Contains(group.FleetModelId.ToString()) ? "ti-heart-filled" : "ti-heart")"></i>
                             </button>
                         </div>
                         <div class="card-body">
@@ -368,7 +368,7 @@
         if (this.m_favorites.Count > 0)
         {
             this.m_filteredGroups = this.m_vehicleGroups
-                .Where(g => this.m_favorites.Contains(g.GroupKey))
+                .Where(g => this.m_favorites.Contains(g.FleetModelId.ToString()))
                 .ToList();
         }
     }
@@ -419,9 +419,7 @@
 
     private void ViewGroupDetails(VehicleGroup group)
     {
-        // Navigate to the vehicle group details page using URL-encoded group key
-        var encodedKey = Uri.EscapeDataString(group.GroupKey);
-        NavigationManager.NavigateTo(TenantUrl($"vehicle-model/{encodedKey}"));
+        NavigationManager.NavigateTo(TenantUrl($"vehicle-model/{group.FleetModelId}"));
     }
 
     private async Task StartReservation(VehicleGroup group)

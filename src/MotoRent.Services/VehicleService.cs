@@ -227,7 +227,7 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
     }
 
     /// <summary>
-    /// Gets vehicles grouped by make/model/year/type/engine.
+    /// Gets vehicles grouped by FleetModelId.
     /// </summary>
     public async Task<List<VehicleGroup>> GetVehicleGroupsAsync(
         int shopId,
@@ -246,16 +246,10 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
             vehicles = vehicles.Where(v => v.Status == status).ToList();
         }
 
-        // Group by Brand, Model, Year, VehicleType, and Engine (CC or Liters)
+        // Group by FleetModelId
         var groups = vehicles
-            .GroupBy(v => new
-            {
-                v.Brand,
-                v.Model,
-                v.Year,
-                v.VehicleType,
-                Engine = v.EngineCC?.ToString() ?? v.EngineLiters?.ToString("0.0") ?? "0"
-            })
+            .Where(v => v.FleetModelId > 0)
+            .GroupBy(v => v.FleetModelId)
             .Select(g => VehicleGroup.FromVehicles(g))
             .OrderBy(g => g.VehicleType)
             .ThenBy(g => g.Brand)
@@ -267,30 +261,30 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
     }
 
     /// <summary>
-    /// Gets a single vehicle group by its group key.
+    /// Gets a single vehicle group by its FleetModelId.
     /// </summary>
-    public async Task<VehicleGroup?> GetVehicleGroupAsync(int shopId, string groupKey, bool includePooled = true)
+    public async Task<VehicleGroup?> GetVehicleGroupByFleetModelAsync(int shopId, int fleetModelId, bool includePooled = true)
     {
         var groups = await GetVehicleGroupsAsync(shopId, includePooled: includePooled);
-        return groups.FirstOrDefault(g => g.GroupKey == groupKey);
+        return groups.FirstOrDefault(g => g.FleetModelId == fleetModelId);
     }
 
     /// <summary>
-    /// Gets an available vehicle from a group, optionally preferring a specific color.
+    /// Gets an available vehicle by fleet model ID, optionally preferring a specific color.
     /// </summary>
-    public async Task<Vehicle?> GetAvailableVehicleFromGroupAsync(
+    public async Task<Vehicle?> GetAvailableVehicleByFleetModelAsync(
         int shopId,
-        string groupKey,
+        int fleetModelId,
         string? preferredColor = null)
     {
-        var group = await GetVehicleGroupAsync(shopId, groupKey);
-        if (group == null)
-            return null;
+        var result = await Context.LoadAsync(
+            Context.CreateQuery<Vehicle>()
+                .Where(v => v.CurrentShopId == shopId
+                    && v.FleetModelId == fleetModelId
+                    && v.Status == VehicleStatus.Available),
+            1, 100, includeTotalRows: false);
 
-        var availableVehicles = group.Vehicles
-            .Where(v => v.Status == VehicleStatus.Available)
-            .ToList();
-
+        var availableVehicles = result.ItemCollection.ToList();
         if (availableVehicles.Count == 0)
             return null;
 
@@ -303,7 +297,6 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
                 return colorMatch;
         }
 
-        // Return first available
         return availableVehicles[0];
     }
 
@@ -333,6 +326,12 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
     /// </summary>
     public async Task<SubmitOperation> CreateVehicleAsync(Vehicle vehicle, string username)
     {
+        // Every vehicle must belong to a FleetModel
+        if (vehicle.FleetModelId <= 0)
+        {
+            return SubmitOperation.CreateFailure("A fleet model must be selected for the vehicle.");
+        }
+
         // Set CurrentShopId to HomeShopId if not set
         if (vehicle.CurrentShopId == 0)
         {
@@ -501,8 +500,8 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
     private async Task PopulateFleetModelDataAsync(List<Vehicle> vehicles)
     {
         var fleetModelIds = vehicles
-            .Where(v => v.FleetModelId.HasValue && v.FleetModelId > 0)
-            .Select(v => v.FleetModelId!.Value)
+            .Where(v => v.FleetModelId > 0)
+            .Select(v => v.FleetModelId)
             .Distinct()
             .ToList();
 
@@ -516,9 +515,8 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
 
         foreach (var vehicle in vehicles)
         {
-            if (vehicle.FleetModelId.HasValue
-                && vehicle.FleetModelId > 0
-                && fleetModelMap.TryGetValue(vehicle.FleetModelId.Value, out var fm))
+            if (vehicle.FleetModelId > 0
+                && fleetModelMap.TryGetValue(vehicle.FleetModelId, out var fm))
             {
                 vehicle.PopulateFromFleetModel(fm);
             }
@@ -527,9 +525,9 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
 
     private async Task PopulateFleetModelDataAsync(Vehicle vehicle)
     {
-        if (vehicle.FleetModelId is not (> 0)) return;
+        if (vehicle.FleetModelId <= 0) return;
 
-        var fm = await this.FleetModelService.GetFleetModelByIdAsync(vehicle.FleetModelId.Value);
+        var fm = await this.FleetModelService.GetFleetModelByIdAsync(vehicle.FleetModelId);
         if (fm is not null)
         {
             vehicle.PopulateFromFleetModel(fm);

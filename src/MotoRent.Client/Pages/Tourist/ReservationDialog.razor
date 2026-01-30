@@ -399,17 +399,8 @@
     private decimal DepositAmount => this.VehicleGroup?.MinDepositAmount ?? this.Motorbike?.DepositAmount ?? 0;
     private bool IsGroupReservation => this.VehicleGroup != null;
 
-    // VehicleGroupKey - from VehicleGroup or build from Motorbike
-    private string GetVehicleGroupKey()
-    {
-        if (this.VehicleGroup != null)
-            return this.VehicleGroup.GroupKey;
-
-        if (this.Motorbike != null)
-            return $"{this.Motorbike.Brand}|{this.Motorbike.Model}|{this.Motorbike.Year}|Motorbike|{this.Motorbike.EngineCC}";
-
-        return string.Empty;
-    }
+    // FleetModelId - from VehicleGroup (Motorbike doesn't have FleetModelId)
+    private int GetFleetModelId() => this.VehicleGroup?.FleetModelId ?? 0;
 
     // Calculations
     private int m_days => this.m_startDate.HasValue && this.m_endDate.HasValue
@@ -497,7 +488,8 @@
                 [
                     new BookingItemRequest
                     {
-                        VehicleGroupKey = this.GetVehicleGroupKey(),
+                        FleetModelId = this.GetFleetModelId(),
+                        FleetModelDisplayName = this.DisplayName,
                         PreferredVehicleId = this.IsGroupReservation ? null : this.Motorbike?.MotorbikeId,
                         PreferredColor = this.m_preferredColor,
                         InsuranceId = this.m_selectedInsuranceId,

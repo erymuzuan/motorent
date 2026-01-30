@@ -171,7 +171,9 @@
                             Page="this.CurrentPage"
                             SelectedBlock="this.DesignerState.SelectedBlock"
                             OnBlockSelected="b => this.DesignerState.SetSelectedBlock(b)"
-                            OnBlockAdded="this.AddBlock"/>
+                            OnBlockAdded="this.AddBlock"
+                            OnContextMenu="this.HandleBlockContextMenu"
+                            EditorModule="this.m_editorModule"/>
 
             @* Page Navigation Footer *@
             <div class="designer-canvas-footer">
@@ -290,6 +292,17 @@
 
 </div>
 
+@* ─── Context Menu (single instance) ─── *@
+<DesignerContextMenu @ref="this.m_contextMenu"
+                     Block="this.m_contextMenuBlock"
+                     OnFormatCommand="this.HandleFormatCommand"
+                     OnFontSizeChanged="this.HandleFontSizeChanged"
+                     OnInsertPlaceholder="this.HandleInsertPlaceholder"
+                     OnMoveUp="this.HandleContextMoveUp"
+                     OnMoveDown="this.HandleContextMoveDown"
+                     OnCopy="this.HandleContextCopy"
+                     OnDelete="this.HandleContextDelete" />
+
 @* Preview Modal *@
 @if (this.m_showPreview)
 {
@@ -327,7 +340,13 @@
     private string? m_previewHtml;
     private ElementReference m_containerRef;
     private IJSObjectReference? m_jsModule;
+    private IJSObjectReference? m_editorModule;
     private bool m_splitterInitialized;
+
+    // Context menu
+    private DesignerContextMenu? m_contextMenu;
+    private LayoutBlock? m_contextMenuBlock;
+    private string? m_contextMenuBlockId;
 
     // AI Features
     private bool m_showAiSidebar = true;
@@ -366,6 +385,7 @@
         if (firstRender)
         {
             this.m_jsModule = await this.JS.InvokeAsync<IJSObjectReference>("import", "./js/designer-splitter.js");
+            this.m_editorModule = await this.JS.InvokeAsync<IJSObjectReference>("import", "./js/designer-editor.js");
         }
 
         if (this.m_jsModule != null && !this.m_loading && !this.m_splitterInitialized)
@@ -396,10 +416,23 @@
     public async ValueTask DisposeAsync()
     {
         this.DesignerState.OnStateChanged -= this.StateHasChanged;
+        if (this.m_editorModule != null)
+        {
+            try
+            {
+                await this.m_editorModule.InvokeVoidAsync("removeClickAwayListener");
+                await this.m_editorModule.DisposeAsync();
+            }
+            catch (JSDisconnectedException) { }
+        }
         if (this.m_jsModule != null)
         {
-            await this.m_jsModule.InvokeVoidAsync("dispose", this.m_containerRef);
-            await this.m_jsModule.DisposeAsync();
+            try
+            {
+                await this.m_jsModule.InvokeVoidAsync("dispose", this.m_containerRef);
+                await this.m_jsModule.DisposeAsync();
+            }
+            catch (JSDisconnectedException) { }
         }
     }
 
@@ -528,6 +561,130 @@
         finally
         {
             this.m_loading = false;
+        }
+    }
+
+    // ─── Context menu handlers ───────────────────────────────────────
+    private async Task HandleBlockContextMenu(DesignerContextMenuEventArgs args)
+    {
+        this.m_contextMenuBlock = args.Block;
+        this.m_contextMenuBlockId = args.BlockId;
+        this.DesignerState.ActiveBlockId = args.BlockId;
+        this.DesignerState.SetSelectedBlock(args.Block);
+
+        if (this.m_contextMenu != null && this.m_editorModule != null)
+        {
+            await this.m_editorModule.InvokeVoidAsync("showContextMenu", this.m_contextMenu.MenuElement, args.ClientX, args.ClientY);
+            await this.m_editorModule.InvokeVoidAsync("addClickAwayListener", this.m_contextMenu.MenuElement);
+        }
+    }
+
+    private async Task HideContextMenu()
+    {
+        if (this.m_contextMenu != null && this.m_editorModule != null)
+        {
+            await this.m_editorModule.InvokeVoidAsync("hideContextMenu", this.m_contextMenu.MenuElement);
+        }
+    }
+
+    private async Task HandleFormatCommand(string command)
+    {
+        if (this.m_editorModule != null && this.m_contextMenuBlockId != null)
+        {
+            await this.m_editorModule.InvokeVoidAsync("execFormat", this.m_contextMenuBlockId, command, null);
+        }
+        await this.HideContextMenu();
+    }
+
+    private async Task HandleFontSizeChanged(int size)
+    {
+        if (this.m_editorModule != null && this.m_contextMenuBlockId != null)
+        {
+            await this.m_editorModule.InvokeVoidAsync("execFormat", this.m_contextMenuBlockId, "fontSize", size);
+        }
+        await this.HideContextMenu();
+    }
+
+    private async Task HandleInsertPlaceholder(string token)
+    {
+        if (this.m_editorModule != null && this.m_contextMenuBlockId != null)
+        {
+            await this.m_editorModule.InvokeVoidAsync("insertAtCaret", this.m_contextMenuBlockId, token);
+        }
+        await this.HideContextMenu();
+    }
+
+    private async Task HandleContextMoveUp()
+    {
+        if (this.m_contextMenuBlock != null) this.MoveSelectedBlock(-1);
+        await this.HideContextMenu();
+    }
+
+    private async Task HandleContextMoveDown()
+    {
+        if (this.m_contextMenuBlock != null) this.MoveSelectedBlock(1);
+        await this.HideContextMenu();
+    }
+
+    private async Task HandleContextCopy()
+    {
+        if (this.m_contextMenuBlock is TextBlock tb)
+        {
+            var section = this.GetMainSection();
+            var copy = new TextBlock
+            {
+                Content = tb.Content,
+                HorizontalAlignment = tb.HorizontalAlignment,
+                IsBold = tb.IsBold,
+                FontSize = tb.FontSize
+            };
+            var idx = section.Blocks.IndexOf(this.m_contextMenuBlock);
+            if (idx >= 0)
+                section.Blocks.Insert(idx + 1, copy);
+            else
+                section.Blocks.Add(copy);
+            this.DesignerState.SetSelectedBlock(copy);
+        }
+        else if (this.m_contextMenuBlock is HeadingBlock hb)
+        {
+            var section = this.GetMainSection();
+            var copy = new HeadingBlock
+            {
+                Content = hb.Content,
+                Level = hb.Level,
+                HorizontalAlignment = hb.HorizontalAlignment,
+                IsBold = hb.IsBold,
+                FontSize = hb.FontSize
+            };
+            var idx = section.Blocks.IndexOf(this.m_contextMenuBlock);
+            if (idx >= 0)
+                section.Blocks.Insert(idx + 1, copy);
+            else
+                section.Blocks.Add(copy);
+            this.DesignerState.SetSelectedBlock(copy);
+        }
+        await this.HideContextMenu();
+    }
+
+    private async Task HandleContextDelete()
+    {
+        this.DesignerState.SetSelectedBlock(this.m_contextMenuBlock);
+        this.DeleteSelectedBlock();
+        await this.HideContextMenu();
+    }
+
+    private void MoveSelectedBlock(int direction)
+    {
+        if (this.m_contextMenuBlock == null) return;
+        foreach (var section in this.CurrentPage.Sections)
+        {
+            var idx = section.Blocks.IndexOf(this.m_contextMenuBlock);
+            if (idx < 0) continue;
+            var newIdx = idx + direction;
+            if (newIdx < 0 || newIdx >= section.Blocks.Count) return;
+            section.Blocks.RemoveAt(idx);
+            section.Blocks.Insert(newIdx, this.m_contextMenuBlock);
+            return;
         }
     }
 

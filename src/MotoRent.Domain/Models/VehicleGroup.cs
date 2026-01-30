@@ -9,12 +9,10 @@ namespace MotoRent.Domain.Models;
 public class VehicleGroup
 {
     /// <summary>
-    /// Unique key for this group: "Brand|Model|Year|VehicleType|Engine".
-    /// Engine is EngineCC for motorbikes/jetskis or EngineLiters for cars.
+    /// Fleet model ID that identifies this group.
+    /// All vehicles in the group share the same FleetModelId.
     /// </summary>
-    public string GroupKey { get; set; } = string.Empty;
-
-    public int? FleetModelId { get; set; }
+    public int FleetModelId { get; set; }
 
     /// <summary>
     /// Vehicle brand/manufacturer (Honda, Yamaha, Toyota, etc.).
@@ -138,16 +136,7 @@ public class VehicleGroup
             : string.Empty;
 
     /// <summary>
-    /// Creates the group key from vehicle properties.
-    /// </summary>
-    public static string CreateGroupKey(Vehicle vehicle)
-    {
-        var engine = vehicle.EngineCC?.ToString() ?? vehicle.EngineLiters?.ToString("0.0") ?? "0";
-        return $"{vehicle.Brand}|{vehicle.Model}|{vehicle.Year}|{vehicle.VehicleType}|{engine}";
-    }
-
-    /// <summary>
-    /// Creates a VehicleGroup from a collection of vehicles that share the same grouping key.
+    /// Creates a VehicleGroup from a collection of vehicles that share the same FleetModelId.
     /// </summary>
     public static VehicleGroup FromVehicles(IEnumerable<Vehicle> vehicles)
     {
@@ -157,17 +146,9 @@ public class VehicleGroup
 
         var first = vehicleList[0];
 
-        // If all vehicles share the same FleetModel, use its ID
-        var fleetModelId = vehicleList
-            .Where(v => v.FleetModelId.HasValue && v.FleetModelId > 0)
-            .Select(v => v.FleetModelId!.Value)
-            .Distinct()
-            .ToList();
-
         return new VehicleGroup
         {
-            GroupKey = CreateGroupKey(first),
-            FleetModelId = fleetModelId.Count == 1 ? fleetModelId[0] : null,
+            FleetModelId = first.FleetModelId,
             Brand = first.Brand,
             Model = first.Model,
             Year = first.Year,

@@ -1,15 +1,22 @@
 @using MotoRent.Domain.Models
 @using MotoRent.Services
+@using MotoRent.Client.Services
 @inherits LocalizedComponentBase<CanvasBlock>
+@implements IAsyncDisposable
+@inject IJSRuntime JS
 
-<div class="canvas-block @(this.IsSelected ? "selected" : "")" 
-     @onclick="this.HandleClick" 
+<div class="canvas-block @(this.IsSelected ? "selected" : "")"
+     @onclick="this.HandleClick"
      @onclick:stopPropagation="true"
+     @oncontextmenu="this.HandleContextMenu"
+     @oncontextmenu:preventDefault="true"
      draggable="true"
      @ondragstart="this.HandleDragStart"
      @ondragover="this.HandleDragOver"
-     @ondrop="this.HandleDrop">
-    
+     @ondrop="this.HandleDrop"
+     data-block-id="@this.BlockId"
+     @ref="this.m_blockRef">
+
     <div class="block-controls">
         <button class="btn btn-sm btn-icon btn-white shadow-sm" @onclick="this.OnMoveUp" @onclick:stopPropagation="true">
             <i class="ti ti-arrow-up"></i>
@@ -137,8 +144,64 @@
     [Parameter] public EventCallback OnDelete { get; set; }
     [Parameter] public EventCallback OnMoveUp { get; set; }
     [Parameter] public EventCallback OnMoveDown { get; set; }
+    [Parameter] public EventCallback<string> ContentChanged { get; set; }
+    [Parameter] public EventCallback<DesignerContextMenuEventArgs> OnContextMenu { get; set; }
+    [Parameter] public IJSObjectReference? EditorModule { get; set; }
+
+    private ElementReference m_blockRef;
+    private DotNetObjectReference<CanvasBlock>? m_dotNetRef;
+    private bool m_isEditing;
+    private bool m_editorInitialized;
+
+    public string BlockId => $"block-{this.Block.GetHashCode():x8}";
+
+    protected override bool ShouldRender() => !this.m_isEditing;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (this.EditorModule != null && this.Block is TextBlock && !this.m_editorInitialized)
+        {
+            this.m_editorInitialized = true;
+            this.m_dotNetRef = DotNetObjectReference.Create(this);
+            await this.EditorModule.InvokeVoidAsync("initEditor", this.m_blockRef, this.m_dotNetRef, this.BlockId);
+        }
+    }
+
+    [JSInvokable]
+    public void OnEditingStarted()
+    {
+        this.m_isEditing = true;
+    }
+
+    [JSInvokable]
+    public void OnEditingStopped()
+    {
+        this.m_isEditing = false;
+        this.InvokeAsync(this.StateHasChanged);
+    }
+
+    [JSInvokable]
+    public async Task OnContentChanged(string html)
+    {
+        if (this.Block is TextBlock tb)
+        {
+            tb.Content = html;
+            await this.ContentChanged.InvokeAsync(html);
+        }
+    }
 
     private void HandleClick() => this.OnSelect.InvokeAsync();
+
+    private async Task HandleContextMenu(MouseEventArgs e)
+    {
+        await this.OnContextMenu.InvokeAsync(new DesignerContextMenuEventArgs
+        {
+            ClientX = e.ClientX,
+            ClientY = e.ClientY,
+            BlockId = this.BlockId,
+            Block = this.Block
+        });
+    }
 
     private float GetFontSize(int level, float? customSize)
     {
@@ -155,18 +218,20 @@
         };
     }
 
-    private void HandleDragStart(DragEventArgs e)
-    {
-        // Not implemented yet
-    }
+    private void HandleDragStart(DragEventArgs e) { }
+    private void HandleDragOver(DragEventArgs e) { }
+    private void HandleDrop(DragEventArgs e) { }
 
-    private void HandleDragOver(DragEventArgs e)
+    public async ValueTask DisposeAsync()
     {
-        // Not implemented yet
-    }
-
-    private void HandleDrop(DragEventArgs e)
-    {
-        // Not implemented yet
+        if (this.EditorModule != null && this.m_editorInitialized)
+        {
+            try
+            {
+                await this.EditorModule.InvokeVoidAsync("destroyEditor", this.BlockId);
+            }
+            catch (JSDisconnectedException) { }
+        }
+        this.m_dotNetRef?.Dispose();
     }
 }

@@ -44,7 +44,6 @@ public class FleetModel : Entity
     public decimal? CleaningFeeVeryDirty { get; set; }
     public decimal? FuelSurchargePerQuarter { get; set; }
 
-    public string? ImageStoreId { get; set; }
     public bool IsActive { get; set; } = true;
     public string? Notes { get; set; }
 
@@ -74,14 +73,4 @@ public class FleetModel : Entity
         }
     }
 
-    public string GetGroupKey()
-    {
-        var engine = this.VehicleType switch
-        {
-            VehicleType.Motorbike => this.EngineCC?.ToString() ?? "0",
-            VehicleType.Car => this.EngineLiters?.ToString("F1") ?? "0",
-            _ => "0"
-        };
-        return $"{this.Brand}|{this.Model}|{this.Year}|{this.VehicleType}|{engine}";
-    }
 }

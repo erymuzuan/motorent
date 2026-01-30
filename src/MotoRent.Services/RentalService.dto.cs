@@ -184,10 +184,10 @@ public class ReservationRequest
     public int VehicleId { get; set; }
 
     /// <summary>
-    /// For group-based reservations: the vehicle group key (Brand|Model|Year|Type|Engine).
+    /// Fleet model ID for model-based reservations.
     /// When set, VehicleId may be 0 until a specific vehicle is assigned at check-in.
     /// </summary>
-    public string? VehicleGroupKey { get; set; }
+    public int? FleetModelId { get; set; }
 
     /// <summary>
     /// Optional color preference for group reservations (not guaranteed).

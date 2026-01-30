@@ -79,13 +79,13 @@ public class FleetModelService(RentalDataContext context)
     public async Task<Dictionary<int, int>> GetFleetModelCountsAsync()
     {
         var query = this.Context.CreateQuery<Vehicle>()
-            .Where(v => v.FleetModelId != null);
+            .Where(v => v.FleetModelId > 0);
 
-        var groupCounts = await this.Context.GetGroupByCountAsync<Vehicle, int?>(query, v => v.FleetModelId);
+        var groupCounts = await this.Context.GetGroupByCountAsync<Vehicle, int>(query, v => v.FleetModelId);
 
         return groupCounts
-            .Where(g => g.Key.HasValue && g.Key > 0)
-            .ToDictionary(g => g.Key!.Value, g => g.Count);
+            .Where(g => g.Key > 0)
+            .ToDictionary(g => g.Key, g => g.Count);
     }
 
     public async Task<SubmitOperation> CreateFleetModelAsync(FleetModel fleetModel, string username)

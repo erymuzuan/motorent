@@ -14,6 +14,7 @@ public class DesignerState
     public bool RightCollapsed { get; set; }
     public int CurrentPageIndex { get; set; }
     public string ActiveRightTab { get; set; } = "properties";
+    public string? ActiveBlockId { get; set; }
     public event Action? OnStateChanged;
 
     public void SetSelectedBlock(LayoutBlock? block)

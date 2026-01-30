@@ -1,0 +1,263 @@
+@using MotoRent.Domain.Entities
+@using MotoRent.Domain.Storage
+@using MotoRent.Services
+
+@inherits LocalizedComponentBase<FleetModelImageGallery>
+@inject FleetModelImageService FleetModelImageService
+@inject IBinaryStore BinaryStore
+
+<div class="mr-form-panel mb-3">
+    <div class="mr-form-panel-header">
+        <div class="mr-form-panel-header-icon">
+            <i class="ti ti-photo"></i>
+        </div>
+        <h3 class="mr-form-panel-title">@Localizer["ModelImages"]</h3>
+        <span class="badge bg-secondary ms-2">@m_images.Count / @MaxImages</span>
+    </div>
+    <div class="mr-form-panel-body p-0">
+        @if (m_loading)
+        {
+            <div class="d-flex justify-content-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            @if (m_images.Count == 0)
+            {
+                @* Empty state - nice upload area *@
+                <div class="empty-state">
+                    <ImageUpload StoreId="@m_newImageStoreId"
+                                 StoreIdChanged="OnImageUploaded"
+                                 HideImage="true">
+                        <div class="empty-state-content">
+                            <div class="empty-state-icon">
+                                <i class="ti ti-camera-plus"></i>
+                            </div>
+                            <div class="empty-state-title">@Localizer["AddModelImage"]</div>
+                            <div class="empty-state-hint">@Localizer["ClickOrDragToUpload"]</div>
+                        </div>
+                    </ImageUpload>
+                </div>
+            }
+            else
+            {
+                @* Main large image *@
+                <div class="main-image-container">
+                    @if (m_selectedImage != null)
+                    {
+                        <div class="main-image-wrapper">
+                            <img src="@GetImageUrl(m_selectedImage)"
+                                 alt="@m_selectedImage.Caption"
+                                 class="main-image" />
+                        </div>
+                        @* Action buttons *@
+                        <div class="main-image-actions">
+                            @if (!m_selectedImage.IsPrimary)
+                            {
+                                <button type="button"
+                                        class="btn btn-sm btn-light"
+                                        @onclick="@(() => SetPrimaryAsync(m_selectedImage))"
+                                        disabled="@m_saving">
+                                    <i class="ti ti-star"></i>
+                                </button>
+                            }
+                            else
+                            {
+                                <span class="badge bg-primary">
+                                    <i class="ti ti-star-filled me-1"></i>@Localizer["PrimaryImage"]
+                                </span>
+                            }
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-danger"
+                                    @onclick="@(() => DeleteImageAsync(m_selectedImage))"
+                                    disabled="@m_saving">
+                                <i class="ti ti-trash"></i>
+                            </button>
+                        </div>
+                    }
+                </div>
+
+                @* Thumbnail row *@
+                <div class="p-3 border-top">
+                    <div class="d-flex gap-2 flex-wrap">
+                        @foreach (var image in m_images)
+                        {
+                            var isSelected = m_selectedImage?.FleetModelImageId == image.FleetModelImageId;
+                            <div class="fleet-thumb @(isSelected ? "selected" : "")"
+                                 @onclick="@(() => SelectImage(image))">
+                                <img src="@GetImageUrl(image)" alt="@image.Caption" />
+                                @if (image.IsPrimary)
+                                {
+                                    <span class="thumb-badge">@Localizer["PrimaryImage"]</span>
+                                }
+                            </div>
+                        }
+                        @* Add more button *@
+                        @if (m_images.Count < MaxImages)
+                        {
+                            <div class="fleet-thumb-add">
+                                <ImageUpload StoreId="@m_newImageStoreId"
+                                             StoreIdChanged="OnImageUploaded"
+                                             HideImage="true">
+                                    <div class="add-content">
+                                        <i class="ti ti-camera-plus"></i>
+                                        <span>@Localizer["AddImage"]</span>
+                                    </div>
+                                </ImageUpload>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    private const int MaxImages = 5;
+
+    [Parameter]
+    public int FleetModelId { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> PrimaryImageChanged { get; set; }
+
+    [Parameter]
+    public EventCallback ImagesChanged { get; set; }
+
+    private List<FleetModelImage> m_images = [];
+    private FleetModelImage? m_selectedImage;
+    private bool m_loading = true;
+    private bool m_saving;
+    private string? m_newImageStoreId;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (this.FleetModelId > 0)
+        {
+            await LoadImagesAsync();
+        }
+        else
+        {
+            this.m_loading = false;
+        }
+    }
+
+    private async Task LoadImagesAsync()
+    {
+        this.m_loading = true;
+        try
+        {
+            this.m_images = await this.FleetModelImageService.GetImagesForFleetModelAsync(this.FleetModelId);
+            this.m_selectedImage = this.m_images.FirstOrDefault(i => i.IsPrimary) ?? this.m_images.FirstOrDefault();
+        }
+        finally
+        {
+            this.m_loading = false;
+        }
+    }
+
+    private void SelectImage(FleetModelImage image)
+    {
+        this.m_selectedImage = image;
+    }
+
+    private async Task OnImageUploaded(string? storeId)
+    {
+        if (string.IsNullOrEmpty(storeId)) return;
+
+        this.m_saving = true;
+        try
+        {
+            var result = await this.FleetModelImageService.AddImageAsync(
+                this.FleetModelId, storeId, null, this.UserName);
+
+            if (result.Success)
+            {
+                await LoadImagesAsync();
+                this.m_newImageStoreId = null;
+                await NotifyChanges();
+            }
+            else
+            {
+                this.ShowError(result.Message ?? "Failed to add image");
+            }
+        }
+        finally
+        {
+            this.m_saving = false;
+        }
+    }
+
+    private async Task SetPrimaryAsync(FleetModelImage image)
+    {
+        if (image.IsPrimary) return;
+
+        this.m_saving = true;
+        try
+        {
+            var result = await this.FleetModelImageService.SetPrimaryImageAsync(
+                this.FleetModelId, image.FleetModelImageId, this.UserName);
+
+            if (result.Success)
+            {
+                await LoadImagesAsync();
+                await NotifyChanges();
+            }
+            else
+            {
+                this.ShowError(result.Message ?? "Failed to set primary image");
+            }
+        }
+        finally
+        {
+            this.m_saving = false;
+        }
+    }
+
+    private async Task DeleteImageAsync(FleetModelImage image)
+    {
+        if (!await this.ConfirmDeleteAsync(Localizer["ThisImage"]))
+            return;
+
+        this.m_saving = true;
+        try
+        {
+            var result = await this.FleetModelImageService.DeleteImageAsync(
+                image.FleetModelImageId, this.UserName);
+
+            if (result.Success)
+            {
+                await LoadImagesAsync();
+                await NotifyChanges();
+                this.ShowSuccess(Localizer["ImageDeleted"]);
+            }
+            else
+            {
+                this.ShowError(result.Message ?? "Failed to delete image");
+            }
+        }
+        finally
+        {
+            this.m_saving = false;
+        }
+    }
+
+    private async Task NotifyChanges()
+    {
+        var primary = this.m_images.FirstOrDefault(i => i.IsPrimary);
+        await this.PrimaryImageChanged.InvokeAsync(primary?.StoreId);
+        await this.ImagesChanged.InvokeAsync();
+    }
+
+    private string GetImageUrl(FleetModelImage image)
+    {
+        if (string.IsNullOrEmpty(image.StoreId))
+            return "/images/no-image.png";
+
+        return this.BinaryStore.GetImageUrl(image.StoreId);
+    }
+}

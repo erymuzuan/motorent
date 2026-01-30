@@ -2,7 +2,7 @@ namespace MotoRent.Domain.Entities;
 
 /// <summary>
 /// Represents a single vehicle item within a booking.
-/// Uses VehicleGroupKey for cross-shop flexibility - any shop with matching vehicle can fulfill.
+/// Uses FleetModelId for cross-shop flexibility - any shop with matching vehicle can fulfill.
 /// </summary>
 public class BookingItem
 {
@@ -11,14 +11,19 @@ public class BookingItem
     /// </summary>
     public string ItemId { get; set; } = Guid.NewGuid().ToString("N")[..8];
 
-    // Vehicle matching - uses VehicleGroupKey for cross-shop flexibility
+    // Vehicle matching - uses FleetModelId for cross-shop flexibility
 
     /// <summary>
-    /// Vehicle group key for matching (Brand|Model|Year|VehicleType|EngineCC).
-    /// Example: "Honda|Click|2024|Motorbike|125"
-    /// PRIMARY matching key - used to find available vehicles at any shop.
+    /// Fleet model ID for matching - PRIMARY matching key.
+    /// Used to find available vehicles of the same model at any shop.
     /// </summary>
-    public string VehicleGroupKey { get; set; } = string.Empty;
+    public int FleetModelId { get; set; }
+
+    /// <summary>
+    /// Display name of the fleet model (e.g., "Honda Click 125cc 2024").
+    /// Denormalized for display without needing to look up FleetModel.
+    /// </summary>
+    public string? FleetModelDisplayName { get; set; }
 
     /// <summary>
     /// Optional: Specific vehicle ID if customer selected one.

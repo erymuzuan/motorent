@@ -24,12 +24,14 @@
 
                 @foreach (var block in layoutSection.Blocks)
                 {
-                    <CanvasBlock Block="block" 
+                    <CanvasBlock Block="block"
                                 IsSelected="@(this.SelectedBlock == block)"
                                 OnSelect="() => this.OnBlockSelected.InvokeAsync(block)"
                                 OnDelete="() => layoutSection.Blocks.Remove(block)"
                                 OnMoveUp="() => this.MoveBlockUp(layoutSection, block)"
-                                OnMoveDown="() => this.MoveBlockDown(layoutSection, block)" />
+                                OnMoveDown="() => this.MoveBlockDown(layoutSection, block)"
+                                OnContextMenu="this.OnContextMenu"
+                                EditorModule="this.EditorModule" />
                 }
 
                 @if (!layoutSection.Blocks.Any())
@@ -49,12 +51,16 @@
     </div>
 </div>
 
+@using MotoRent.Client.Services
+
 @code {
     [Parameter] public DocumentLayout Layout { get; set; } = default!;
     [Parameter] public DocumentPage? Page { get; set; }
     [Parameter] public LayoutBlock? SelectedBlock { get; set; }
     [Parameter] public EventCallback<LayoutBlock?> OnBlockSelected { get; set; }
     [Parameter] public EventCallback<string> OnBlockAdded { get; set; }
+    [Parameter] public EventCallback<DesignerContextMenuEventArgs> OnContextMenu { get; set; }
+    [Parameter] public IJSObjectReference? EditorModule { get; set; }
 
     private List<LayoutSection> ActiveSections => this.Page?.Sections ?? this.Layout.Sections;
 

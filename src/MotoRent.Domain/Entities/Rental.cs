@@ -92,10 +92,10 @@ public partial class Rental : Entity
     }
 
     /// <summary>
-    /// For model-based reservations: the group key (Brand|Model|Year|Type|Engine).
-    /// When set, VehicleId may be 0 until a specific vehicle is assigned at check-in.
+    /// Fleet model ID for model-based reservations.
+    /// Used to find matching vehicles at check-in.
     /// </summary>
-    public string? VehicleGroupKey { get; set; }
+    public int? FleetModelId { get; set; }
 
     /// <summary>
     /// Optional color preference from the tourist (not guaranteed).
@@ -104,10 +104,10 @@ public partial class Rental : Entity
     public string? PreferredColor { get; set; }
 
     /// <summary>
-    /// Whether this is a model-based reservation (VehicleGroupKey set, VehicleId may be unassigned).
+    /// Whether this is a model-based reservation (FleetModelId set, VehicleId may be unassigned).
     /// </summary>
     [JsonIgnore]
-    public bool IsGroupReservation => !string.IsNullOrEmpty(VehicleGroupKey);
+    public bool IsGroupReservation => FleetModelId.HasValue;
 
     /// <summary>
     /// Whether a specific vehicle has been assigned to this rental.

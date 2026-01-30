@@ -21,6 +21,7 @@
 @inject RentalPricingService PricingService
 @inject VehicleInspectionService VehicleInspectionService
 @inject AccessoryService AccessoryService
+@inject FleetModelService FleetModelService
 
 <MotoRentPageTitle>@Localizer["PageTitle"]</MotoRentPageTitle>
 
@@ -282,6 +283,7 @@ else
     private string m_renterName = "";
     private string m_vehicleName = "";
     private Vehicle? m_vehicle;
+    private FleetModel? m_fleetModel;
     private decimal m_depositAmount;
     private bool m_isIntervalRental;
     private bool m_isHourlyRental;
@@ -558,6 +560,14 @@ else
                 }
             }
 
+            // Load FleetModel for fee fallback (via Rental.FleetModelId or Vehicle.FleetModelId)
+            var fleetModelId = this.m_rental!.FleetModelId
+                ?? (this.m_vehicle?.FleetModelId > 0 ? this.m_vehicle.FleetModelId : (int?)null);
+            if (fleetModelId.HasValue && fleetModelId.Value > 0)
+            {
+                this.m_fleetModel = await this.FleetModelService.GetFleetModelByIdAsync(fleetModelId.Value);
+            }
+
             // Load daily late fee mode setting
             if (this.m_rental.DurationType == RentalDurationType.Daily)
             {
@@ -802,7 +812,8 @@ else
         {
             int deficit = this.m_fuelLevelAtCheckIn.Value - this.m_fuelLevelAtReturn;
             int quarters = deficit / 25;
-            var perQuarter = this.m_vehicle?.FuelSurchargePerQuarter ?? 50m;
+            var perQuarter = this.m_vehicle?.FuelSurchargePerQuarter
+                ?? this.m_fleetModel?.FuelSurchargePerQuarter ?? 50m;
             this.m_fuelSurcharge = quarters * perQuarter;
         }
         else
@@ -845,8 +856,8 @@ else
         this.m_cleanlinessLevel = level;
         this.m_cleaningFee = level switch
         {
-            "Dirty" => this.m_vehicle?.CleaningFeeDirty ?? 100m,
-            "VeryDirty" => this.m_vehicle?.CleaningFeeVeryDirty ?? 200m,
+            "Dirty" => this.m_vehicle?.CleaningFeeDirty ?? this.m_fleetModel?.CleaningFeeDirty ?? 100m,
+            "VeryDirty" => this.m_vehicle?.CleaningFeeVeryDirty ?? this.m_fleetModel?.CleaningFeeVeryDirty ?? 200m,
             _ => 0
         };
     }

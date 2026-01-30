@@ -47,6 +47,7 @@ public partial class RentalService
                 RenterId = request.RenterId,
                 RenterName = renter?.FullName,
                 VehicleId = request.VehicleId,
+                FleetModelId = vehicle.FleetModelId > 0 ? vehicle.FleetModelId : null,
                 DurationType = request.DurationType,
                 IntervalMinutes = request.IntervalMinutes,
                 RentalHours = request.RentalHours,
