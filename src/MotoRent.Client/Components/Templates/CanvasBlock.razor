@@ -4,6 +4,7 @@
 @inherits LocalizedComponentBase<CanvasBlock>
 @implements IAsyncDisposable
 @inject IJSRuntime JS
+@inject DesignerState DesignerState
 
 <div class="canvas-block @(this.IsSelected ? "selected" : "")"
      @onclick="this.HandleClick"
@@ -171,12 +172,15 @@
     public void OnEditingStarted()
     {
         this.m_isEditing = true;
+        this.DesignerState.ActiveBlockId = this.BlockId;
     }
 
     [JSInvokable]
     public void OnEditingStopped()
     {
         this.m_isEditing = false;
+        if (this.DesignerState.ActiveBlockId == this.BlockId)
+            this.DesignerState.ActiveBlockId = null;
         this.InvokeAsync(this.StateHasChanged);
     }
 

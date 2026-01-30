@@ -51,8 +51,18 @@ function onFocus(state) {
 }
 
 function onBlur(state, e) {
-    // Don't sync if focus moved into the context menu
-    if (e.relatedTarget && e.relatedTarget.closest('.designer-context-menu')) return;
+    // Don't clear editing state if focus moved into the context menu,
+    // placeholder picker, or right panel (for placeholder insertion into canvas)
+    const target = e.relatedTarget;
+    if (target && (
+        target.closest('.designer-context-menu') ||
+        target.closest('.placeholder-picker') ||
+        target.closest('.designer-panel-right')
+    )) {
+        // Still sync content but keep editing state active
+        state.dotNetRef.invokeMethodAsync('OnContentChanged', state.el.innerHTML);
+        return;
+    }
 
     state.dotNetRef.invokeMethodAsync('OnContentChanged', state.el.innerHTML);
     state.dotNetRef.invokeMethodAsync('OnEditingStopped');

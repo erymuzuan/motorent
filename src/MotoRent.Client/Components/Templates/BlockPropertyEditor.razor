@@ -192,12 +192,22 @@
 @code {
     [Parameter] public LayoutBlock? Block { get; set; }
     [Parameter] public EventCallback OnDeleteRequested { get; set; }
+    [Parameter] public IJSObjectReference? EditorModule { get; set; }
 
     private ElementReference m_textContentRef;
     private ElementReference m_headingContentRef;
 
     private async Task InsertAtCursorAsync(TextBlock block, string token)
     {
+        // If there's an active contenteditable editor on the canvas, insert there
+        var activeBlockId = this.DesignerState.ActiveBlockId;
+        if (this.EditorModule != null && !string.IsNullOrEmpty(activeBlockId))
+        {
+            await this.EditorModule.InvokeVoidAsync("insertAtCaret", activeBlockId, token);
+            return;
+        }
+
+        // Fallback: insert into the right-panel textarea
         var elementRef = block is HeadingBlock ? this.m_headingContentRef : this.m_textContentRef;
         var pos = await this.JS.InvokeAsync<int>("getSelectionStart", elementRef);
         var content = block.Content ?? string.Empty;
