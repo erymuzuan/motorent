@@ -123,8 +123,25 @@
                 <div class="row g-3 mb-3">
                     <div class="col-6">
                         <label class="mr-form-label">@Localizer["Color"]</label>
-                        <input type="text" class="mr-form-control" @bind="Entity.Color"
-                               placeholder="@Localizer["ColorPlaceholder"]" />
+                        <div class="d-flex flex-wrap gap-2 mt-1">
+                            @foreach (var (name, hex) in VehicleColors)
+                            {
+                                <button type="button"
+                                        class="mr-color-swatch @(string.Equals(Entity.Color, name, StringComparison.OrdinalIgnoreCase) ? "active" : "")"
+                                        style="background-color: @hex;"
+                                        title="@name"
+                                        @onclick="@(() => Entity.Color = name)">
+                                    @if (string.Equals(Entity.Color, name, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        <i class="ti ti-check" style="color: @GetContrastColor(hex);"></i>
+                                    }
+                                </button>
+                            }
+                        </div>
+                        @if (!string.IsNullOrEmpty(Entity.Color))
+                        {
+                            <small class="text-secondary mt-1 d-block">@Entity.Color</small>
+                        }
                     </div>
                     @if (!IsLinkedToFleetModel)
                     {
@@ -681,6 +698,29 @@
     /// Whether this vehicle is linked to a FleetModel (shared fields are read-only).
     /// </summary>
     private bool IsLinkedToFleetModel => HasFleetModel || Entity.FleetModelId > 0;
+
+    private static readonly (string Name, string Hex)[] VehicleColors =
+    [
+        ("White", "#FFFFFF"),
+        ("Black", "#1a1a1a"),
+        ("Silver", "#C0C0C0"),
+        ("Gray", "#808080"),
+        ("Red", "#DC2626"),
+        ("Blue", "#2563EB"),
+        ("Dark Blue", "#1E3A5F"),
+        ("Green", "#16A34A"),
+        ("Yellow", "#EAB308"),
+        ("Orange", "#EA580C"),
+        ("Brown", "#78350F"),
+        ("Beige", "#D4C5A9"),
+        ("Gold", "#B8860B"),
+        ("Pink", "#EC4899"),
+        ("Purple", "#7C3AED"),
+        ("Matte Black", "#2d2d2d"),
+    ];
+
+    private static string GetContrastColor(string hex) =>
+        hex.ToUpperInvariant() is "#FFFFFF" or "#C0C0C0" or "#D4C5A9" or "#EAB308" ? "#333" : "#fff";
 
     /// <summary>
     /// Stores pending image data from Quick Recognition to be uploaded after save.
