@@ -13,12 +13,12 @@ public class OnboardingService(
     CoreDataContext coreDataContext,
     RentalDataContext rentalDataContext,
     IDirectoryService directoryService,
-    FiuuPaymentService fiuuPaymentService) : IOnboardingService
+    IFiuuPaymentService fiuuPaymentService) : IOnboardingService
 {
     private CoreDataContext CoreDataContext { get; } = coreDataContext;
     private RentalDataContext RentalDataContext { get; } = rentalDataContext;
     private IDirectoryService DirectoryService { get; } = directoryService;
-    private FiuuPaymentService FiuuPaymentService { get; } = fiuuPaymentService;
+    private IFiuuPaymentService FiuuPaymentService { get; } = fiuuPaymentService;
 
     public async Task<OnboardingResult> OnboardAsync(OnboardingRequest request)
     {

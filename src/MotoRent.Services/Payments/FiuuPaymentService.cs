@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 
 namespace MotoRent.Services.Payments;
 
-public class FiuuPaymentService
+public class FiuuPaymentService : IFiuuPaymentService
 {
     private readonly IConfiguration _configuration;
     private readonly ILogger<FiuuPaymentService> _logger;

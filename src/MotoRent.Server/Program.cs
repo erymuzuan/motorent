@@ -95,7 +95,7 @@ builder.Services.AddScoped<DesignerState>();
 builder.Services.AddScoped<ITemplateDataResolver, TemplateDataResolver>();
 builder.Services.AddScoped<IQuestPdfGenerator, QuestPdfGenerator>();
 builder.Services.AddScoped<IHtmlTemplateRenderer, HtmlTemplateRenderer>();
-builder.Services.AddScoped<MotoRent.Services.Payments.FiuuPaymentService>();
+builder.Services.AddScoped<MotoRent.Services.Payments.IFiuuPaymentService, MotoRent.Services.Payments.FiuuPaymentService>();
 builder.Services.AddScoped<PaymentService>();
 builder.Services.AddScoped<DepositService>();
 builder.Services.AddScoped<InvoiceService>();
