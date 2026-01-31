@@ -47,10 +47,10 @@ This plan outlines the conversion of the static marketing website into a functio
 
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Blazor Onboarding UI & Localization' (Protocol in workflow.md) 267dcf4
 
-## Phase 4: Payment & Billing Integration [checkpoint: ]
+## Phase 4: Payment & Billing Integration [checkpoint: 61d8cbd]
 
 ### Task 1: Fiuu Payment Gateway Integration
-- [~] Task: Integrate Fiuu (formerly Razer Merchant Services) for all payment methods.
+- [x] Task: Integrate Fiuu (formerly Razer Merchant Services) for all payment methods.
     - [x] Write unit tests for Fiuu payment webhook handling (IPN) and signature verification. c59caeb
     - [x] Implement Fiuu service for generating payment requests (Credit Card & PromptPay QR). dca0195
     - [x] Implement Fiuu IPN (Instant Payment Notification) endpoint to handle payment success/failure callbacks. 3478ab2
@@ -59,7 +59,7 @@ This plan outlines the conversion of the static marketing website into a functio
     - [x] **Requirement:** Update `OnboardingWizard` to read `plan` query parameter and capture email (via Auth step) before initializing Fiuu payment. 50f15a7
     - [x] Create a "Billing Dashboard" component for managing subscriptions and viewing payment history. 50f15a7
 
-- [ ] Task: Conductor - User Manual Verification 'Phase 4: Payment & Billing Integration' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 4: Payment & Billing Integration' (Protocol in workflow.md) 61d8cbd
 
 ## Phase 5: Marketing Site Migration & Final Integration [checkpoint: ]
 
