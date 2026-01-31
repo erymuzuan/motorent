@@ -14,7 +14,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [~] **Track: Convert static website to web app with SaaS signup, Google/LINE auth, and PromptPay/Stripe integration.**
+- [x] **Track: Convert static website to web app with SaaS signup, Google/LINE auth, and PromptPay/Stripe integration.**
 *Link: [./tracks/website_conversion_20260124/](./tracks/website_conversion_20260124/)*
 
 ---
