@@ -61,7 +61,7 @@ This plan outlines the conversion of the static marketing website into a functio
 
 - [x] Task: Conductor - User Manual Verification 'Phase 4: Payment & Billing Integration' (Protocol in workflow.md) 61d8cbd
 
-## Phase 5: Marketing Site Migration & Final Integration [checkpoint: ]
+## Phase 5: Marketing Site Migration & Final Integration [checkpoint: 8fb3249]
 
 ### Task 1: Convert Static Pages to Blazor Components
 - [x] Task: Migrate `website/index.html` and other pages to the Blazor Server/WASM host. b827859
@@ -74,4 +74,4 @@ This plan outlines the conversion of the static marketing website into a functio
     - [x] Verify mobile responsiveness on iPhone/Android browsers.
     - [x] Ensure all assets (images/logos) are correctly served from the new app structure.
 
-- [ ] Task: Conductor - User Manual Verification 'Phase 5: Marketing Site Migration & Final Integration' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 5: Marketing Site Migration & Final Integration' (Protocol in workflow.md) 8fb3249
