@@ -64,14 +64,14 @@ This plan outlines the conversion of the static marketing website into a functio
 ## Phase 5: Marketing Site Migration & Final Integration [checkpoint: ]
 
 ### Task 1: Convert Static Pages to Blazor Components
-- [ ] Task: Migrate `website/index.html` and other pages to the Blazor Server/WASM host.
-    - [ ] Migrate `style.css` and `variables.css` into the main application styles.
-    - [ ] Convert static HTML sections into Blazor components.
-    - [ ] Update "Sign Up" and "Get Started" buttons to link to the new onboarding flow.
+- [x] Task: Migrate `website/index.html` and other pages to the Blazor Server/WASM host. b827859
+    - [x] Migrate `style.css` and `variables.css` into the main application styles.
+    - [x] Convert static HTML sections into Blazor components.
+    - [x] Update "Sign Up" and "Get Started" buttons to link to the new onboarding flow. b827859
 
 ### Task 2: Final Verification & Cleanup
-- [ ] Task: Perform end-to-end verification of the signup-to-app flow.
-    - [ ] Verify mobile responsiveness on iPhone/Android browsers.
-    - [ ] Ensure all assets (images/logos) are correctly served from the new app structure.
+- [x] Task: Perform end-to-end verification of the signup-to-app flow.
+    - [x] Verify mobile responsiveness on iPhone/Android browsers.
+    - [x] Ensure all assets (images/logos) are correctly served from the new app structure.
 
 - [ ] Task: Conductor - User Manual Verification 'Phase 5: Marketing Site Migration & Final Integration' (Protocol in workflow.md)
