@@ -25,6 +25,9 @@ public partial class OnboardingWizard
     [SupplyParameterFromQuery(Name = "name")]
     public string? Name { get; set; }
 
+    [SupplyParameterFromQuery(Name = "plan")]
+    public string? Plan { get; set; }
+
     protected override void OnParametersSet()
     {
         // Pre-populate from OAuth callback if available
@@ -42,6 +45,11 @@ public partial class OnboardingWizard
             {
                 this.m_activeStep = 1;
             }
+        }
+
+        if (!string.IsNullOrWhiteSpace(this.Plan) && Enum.TryParse<SubscriptionPlan>(this.Plan, true, out var plan))
+        {
+            this.m_request.Plan = plan;
         }
     }
 
