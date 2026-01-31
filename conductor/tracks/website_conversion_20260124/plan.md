@@ -50,14 +50,14 @@ This plan outlines the conversion of the static marketing website into a functio
 ## Phase 4: Payment & Billing Integration [checkpoint: ]
 
 ### Task 1: Fiuu Payment Gateway Integration
-- [ ] Task: Integrate Fiuu (formerly Razer Merchant Services) for all payment methods.
-    - [ ] Write unit tests for Fiuu payment webhook handling (IPN) and signature verification.
-    - [ ] Implement Fiuu service for generating payment requests (Credit Card & PromptPay QR).
-    - [ ] Implement Fiuu IPN (Instant Payment Notification) endpoint to handle payment success/failure callbacks.
-    - [ ] **Requirement:** Handle 0 THB transactions for 'Free' plan (process as 0-value cart item or registration).
-    - [ ] **Requirement:** Update `Pricing.razor` to redirect to `/signup?plan={planId}`.
-    - [ ] **Requirement:** Update `OnboardingWizard` to read `plan` query parameter and capture email (via Auth step) before initializing Fiuu payment.
-    - [ ] Create a "Billing Dashboard" component for managing subscriptions and viewing payment history.
+- [~] Task: Integrate Fiuu (formerly Razer Merchant Services) for all payment methods.
+    - [x] Write unit tests for Fiuu payment webhook handling (IPN) and signature verification. c59caeb
+    - [x] Implement Fiuu service for generating payment requests (Credit Card & PromptPay QR). dca0195
+    - [x] Implement Fiuu IPN (Instant Payment Notification) endpoint to handle payment success/failure callbacks. 3478ab2
+    - [x] **Requirement:** Handle 0 THB transactions for 'Free' plan (process as 0-value cart item or registration). 50f15a7
+    - [x] **Requirement:** Update `Pricing.razor` to redirect to `/signup?plan={planId}`. 50f15a7
+    - [x] **Requirement:** Update `OnboardingWizard` to read `plan` query parameter and capture email (via Auth step) before initializing Fiuu payment. 50f15a7
+    - [x] Create a "Billing Dashboard" component for managing subscriptions and viewing payment history. 50f15a7
 
 - [ ] Task: Conductor - User Manual Verification 'Phase 4: Payment & Billing Integration' (Protocol in workflow.md)
 
