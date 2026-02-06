@@ -1,6 +1,7 @@
 @using MotoRent.Client.Components.Shared
 @using MotoRent.Client.Components.Vehicles
 @using MotoRent.Domain.Lookups
+@using MotoRent.Domain.Models
 @inherits LocalizedComponentBase<FleetModelForm>
 @inject VehicleLookupService LookupService
 
@@ -267,6 +268,86 @@
                         </div>
                     </div>
                 </div>
+
+                @* Hourly Package Prices - only show if HourlyRate is set and not JetSki *@
+                @if (Entity.VehicleType != VehicleType.JetSki && Entity.HourlyRate > 0)
+                {
+                    <div class="mt-4 pt-4" style="border-top: 1px solid var(--tblr-border-color);">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <label class="mr-form-label mb-0">@Localizer["HourlyPackages"]</label>
+                                <div class="mr-form-hint">
+                                    <i class="ti ti-info-circle"></i>
+                                    @Localizer["HourlyPackagesHint"]
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-primary" @onclick="AddHourlyPackage">
+                                <i class="ti ti-plus me-1"></i>@Localizer["AddPackage"]
+                            </button>
+                        </div>
+
+                        @if (Entity.HourlyPackages.Count > 0)
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-sm table-vcenter mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 100px;">@Localizer["Hours"]</th>
+                                            <th style="width: 150px;">@Localizer["PackagePrice"]</th>
+                                            <th>@Localizer["Savings"]</th>
+                                            <th style="width: 50px;"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var package in Entity.HourlyPackages.OrderBy(p => p.Hours))
+                                        {
+                                            var p = package;
+                                            var linearPrice = (Entity.HourlyRate ?? 0) * p.Hours;
+                                            var savings = linearPrice - p.Price;
+                                            <tr>
+                                                <td>
+                                                    <input type="number" class="form-control form-control-sm"
+                                                           @bind="p.Hours" min="1" max="24" />
+                                                </td>
+                                                <td>
+                                                    <div class="input-group input-group-sm">
+                                                        <span class="input-group-text">฿</span>
+                                                        <input type="number" class="form-control mr-mono"
+                                                               @bind="p.Price" min="0" step="50" />
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    @if (savings > 0)
+                                                    {
+                                                        <span class="text-success">
+                                                            <i class="ti ti-discount-2"></i> @Localizer["SaveAmount", FormatCurrency(savings)]
+                                                        </span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="text-muted">-</span>
+                                                    }
+                                                </td>
+                                                <td>
+                                                    <button type="button" class="btn btn-sm btn-ghost-danger"
+                                                            @onclick="@(() => RemoveHourlyPackage(p))">
+                                                        <i class="ti ti-trash"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="text-secondary small">
+                                <i class="ti ti-info-circle me-1"></i>@Localizer["NoPackagesConfigured"]
+                            </div>
+                        }
+                    </div>
+                }
             </div>
         </div>
 
@@ -506,5 +587,29 @@
         VehicleType.Van => "10000",
         _ => "5000"
     };
+
+    private void AddHourlyPackage()
+    {
+        // Find next available hour slot
+        var usedHours = this.Entity.HourlyPackages.Select(p => p.Hours).ToHashSet();
+        var nextHours = new[] { 2, 3, 4, 6, 8, 12 }.FirstOrDefault(h => !usedHours.Contains(h));
+        if (nextHours == 0)
+            nextHours = this.Entity.HourlyPackages.Count > 0
+                ? this.Entity.HourlyPackages.Max(p => p.Hours) + 1
+                : 2;
+
+        this.Entity.HourlyPackages.Add(new HourlyPackagePrice
+        {
+            Hours = nextHours,
+            Price = Math.Round((this.Entity.HourlyRate ?? 0) * nextHours * 0.9m / 50) * 50 // Default 10% discount, rounded to 50
+        });
+        this.StateHasChanged();
+    }
+
+    private void RemoveHourlyPackage(HourlyPackagePrice package)
+    {
+        this.Entity.HourlyPackages.Remove(package);
+        this.StateHasChanged();
+    }
 
 }

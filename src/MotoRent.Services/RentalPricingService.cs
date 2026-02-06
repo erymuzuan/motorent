@@ -298,8 +298,20 @@ public class RentalPricingService(
         int hours = Math.Max(1, (int)Math.Ceiling((endDate - startDate).TotalHours));
         pricing.RentalHours = hours;
         pricing.RentalDays = 0;
-        pricing.RentalRate = vehicle.HourlyRate ?? 0;
-        pricing.VehicleTotal = pricing.RentalRate * hours;
+
+        // Check for package price first, otherwise use hourly rate
+        var packagePrice = vehicle.HourlyPackages?.FirstOrDefault(p => p.Hours == hours);
+        if (packagePrice != null)
+        {
+            pricing.RentalRate = packagePrice.Price;
+            pricing.VehicleTotal = packagePrice.Price;
+            pricing.IsPackagePrice = true;
+        }
+        else
+        {
+            pricing.RentalRate = vehicle.HourlyRate ?? 0;
+            pricing.VehicleTotal = pricing.RentalRate * hours;
+        }
 
         // Driver fee (prorated from daily)
         if (includeDriver && vehicle.DriverDailyFee.HasValue && vehicle.DriverDailyFee > 0)
@@ -659,6 +671,7 @@ public class RentalPricing
     public int? IntervalMinutes { get; set; }
     public decimal RentalRate { get; set; }
     public decimal VehicleTotal { get; set; }
+    public bool IsPackagePrice { get; set; }
     public string? InsuranceName { get; set; }
     public decimal InsuranceTotal { get; set; }
     public decimal AccessoriesTotal { get; set; }

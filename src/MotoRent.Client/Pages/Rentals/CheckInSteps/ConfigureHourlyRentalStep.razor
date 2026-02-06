@@ -1,5 +1,6 @@
 @inherits LocalizedComponentBase<CheckIn>
 @using MotoRent.Domain.Entities
+@using MotoRent.Domain.Models
 @using MotoRent.Client.Pages.Rentals
 
 <div class="d-flex flex-column gap-4">
@@ -20,6 +21,9 @@
                         @foreach (var hours in new[] { 1, 2, 3, 4, 6, 8 })
                         {
                             var h = hours;
+                            var price = this.SelectedVehicle?.GetHourlyPrice(h) ?? 0;
+                            var hasPackage = this.SelectedVehicle?.HasPackagePrice(h) ?? false;
+                            var linearPrice = (this.SelectedVehicle?.HourlyRate ?? 0) * h;
                             <div class="col-6 col-md-4">
                                 <div class="card h-100 @(m_selectedHours == h ? "border-primary border-2" : "")"
                                      style="cursor: pointer;"
@@ -32,8 +36,14 @@
                                         </div>
                                         <h3 class="mb-0">@h @Localizer[h == 1 ? "HourSingular" : "Hours"]</h3>
                                         <div class="text-primary fw-bold" style="font-size: 1.25rem;">
-                                            @FormatCurrency((this.SelectedVehicle?.HourlyRate ?? 0) * h)
+                                            @FormatCurrency(price)
                                         </div>
+                                        @if (hasPackage && linearPrice > price)
+                                        {
+                                            <div class="text-success small">
+                                                <i class="ti ti-discount-2 me-1"></i>@Localizer["SaveAmount", FormatCurrency(linearPrice - price)]
+                                            </div>
+                                        }
                                         @if (m_selectedHours == h)
                                         {
                                             <i class="ti ti-circle-check text-success mt-2" style="font-size: 1.5rem;"></i>
@@ -207,6 +217,11 @@
             this.Config.StartDateTime = new DateTimeOffset(startDateTime, offset);
             this.Config.Hours = this.m_selectedHours;
             this.Config.HourlyRate = this.SelectedVehicle.HourlyRate ?? 0;
+
+            // Check for package price
+            var package = this.SelectedVehicle.HourlyPackages?
+                .FirstOrDefault(p => p.Hours == this.m_selectedHours);
+            this.Config.PackagePrice = package?.Price;
         }
 
         await this.ConfigChanged.InvokeAsync(this.Config);

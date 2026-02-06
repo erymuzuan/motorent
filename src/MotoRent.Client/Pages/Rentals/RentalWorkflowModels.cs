@@ -112,7 +112,9 @@ public class HourlyRentalConfig
     public DateTimeOffset StartDateTime { get; set; } = DateTimeOffset.Now;
     public int Hours { get; set; } = 1;
     public decimal HourlyRate { get; set; }
-    public decimal VehicleTotal => HourlyRate * Hours;
+    public decimal? PackagePrice { get; set; }
+    public bool IsPackagePrice => PackagePrice.HasValue;
+    public decimal VehicleTotal => PackagePrice ?? (HourlyRate * Hours);
 
     // Add-ons
     public int? SelectedInsuranceId { get; set; }
@@ -127,7 +129,7 @@ public class HourlyRentalConfig
 
     public decimal TotalAmount => VehicleTotal + InsuranceTotal + AccessoriesTotal + DriverFee + GuideFee;
     public DateTimeOffset EndDateTime => StartDateTime.AddHours(Hours);
-    public bool IsValid => Hours > 0 && HourlyRate > 0;
+    public bool IsValid => Hours > 0 && (HourlyRate > 0 || PackagePrice > 0);
 }
 
 /// <summary>
