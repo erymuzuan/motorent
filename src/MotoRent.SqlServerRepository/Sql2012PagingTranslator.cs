@@ -83,6 +83,10 @@ public partial class Sql2012PagingTranslator : IPagingTranslator
         return computedColumns.Any(col => whereClause.Contains($"[{col}]"));
     }
 
+    // Regex to extract ORDER BY column from SQL (e.g., "[Name]" from "ORDER BY [Name]")
+    [GeneratedRegex(@"ORDER\s+BY\s+\[(\w+)\]", RegexOptions.IgnoreCase)]
+    private static partial Regex OrderByColumnRegex();
+
     /// <summary>
     /// Creates a subquery that includes computed columns in both inner and outer queries.
     /// </summary>
@@ -95,6 +99,21 @@ public partial class Sql2012PagingTranslator : IPagingTranslator
 
         // Extract the original SELECT clause (without SELECT keyword)
         var originalSelect = sql.Substring(selectIndex + 6, fromIndex - selectIndex - 6).Trim();
+        if (string.IsNullOrWhiteSpace(originalSelect)) return sql;
+
+        // Extract original ORDER BY column (if any) to preserve sort order
+        var orderByMatch = OrderByColumnRegex().Match(sql);
+        string orderColumn;
+        if (orderByMatch.Success)
+        {
+            orderColumn = orderByMatch.Groups[1].Value;
+        }
+        else
+        {
+            // Fallback: derive from table name (e.g., Shop -> ShopId)
+            var tableMatch = TableNameRegex().Match(sql);
+            orderColumn = tableMatch.Success ? $"{tableMatch.Groups[1].Value}Id" : "1";
+        }
 
         // Build new SELECT with computed columns for WHERE clause filtering
         var whereIndex = sql.IndexOf("WHERE", StringComparison.OrdinalIgnoreCase);
@@ -104,13 +123,19 @@ public partial class Sql2012PagingTranslator : IPagingTranslator
             var wherePart = sql.Substring(whereIndex);
             additionalColumns = computedColumns.Where(col => wherePart.Contains($"[{col}]")).ToList();
         }
+
+        // Also include ORDER BY column if it's a computed column not already in original select
+        if (computedColumns.Contains(orderColumn) && !originalSelect.Contains($"[{orderColumn}]"))
+        {
+            if (!additionalColumns.Contains(orderColumn))
+            {
+                additionalColumns.Add(orderColumn);
+            }
+        }
+
         var newSelect = additionalColumns.Count > 0
             ? $"{originalSelect}, {string.Join(", ", additionalColumns.Select(c => $"[{c}]"))}"
             : originalSelect;
-
-        // Extract table name to derive entity ID column for ORDER BY
-        var tableMatch = TableNameRegex().Match(sql);
-        var orderColumn = tableMatch.Success ? $"{tableMatch.Groups[1].Value}Id" : "1";
 
         // Build inner query (without ORDER BY - ORDER BY should be on outer query with OFFSET/FETCH)
         var innerSql = sql.Substring(fromIndex);
@@ -121,8 +146,15 @@ public partial class Sql2012PagingTranslator : IPagingTranslator
         }
         var innerQuery = $"SELECT {newSelect} {innerSql}";
 
+        // Build outer SELECT - include ORDER BY column if it's a computed column
+        var outerSelect = originalSelect;
+        if (computedColumns.Contains(orderColumn) && !originalSelect.Contains($"[{orderColumn}]"))
+        {
+            outerSelect = $"{originalSelect}, [{orderColumn}]";
+        }
+
         // Build final query with subquery - ORDER BY must be before OFFSET/FETCH
-        return $"SELECT {originalSelect} FROM ({innerQuery}) AS t1 ORDER BY [{orderColumn}] OFFSET {skip} ROWS FETCH NEXT {size} ROWS ONLY";
+        return $"SELECT {outerSelect} FROM ({innerQuery}) AS t1 ORDER BY [{orderColumn}] OFFSET {skip} ROWS FETCH NEXT {size} ROWS ONLY";
     }
 
     public string TranslateWithSkip(string sql, int top, int skip)

@@ -70,9 +70,9 @@ public class DepositService(RentalDataContext context)
             query = query.Where(d => rentalIds.IsInList(d.RentalId));
         }
 
-        var groupCounts = await this.Context.GetGroupByCountAsync(query, d => d.Status ?? "Unknown");
+        var groupCounts = await this.Context.GetGroupByCountAsync(query, d => d.Status);
 
-        return groupCounts.ToDictionary(g => g.Key, g => g.Count);
+        return groupCounts.ToDictionary(g => g.Key ?? "Unknown", g => g.Count);
     }
 
     public async Task<decimal> GetTotalHeldDepositsAsync(int shopId)
@@ -89,7 +89,9 @@ public class DepositService(RentalDataContext context)
             query = query.Where(d => rentalIds.IsInList(d.RentalId));
         }
 
-        return await this.Context.GetSumAsync(query, d => d.Amount);
+        // Amount is stored in JSON, not as a computed column, so calculate sum in memory
+        var deposits = await this.Context.LoadAsync(query, page: 1, size: 10000, includeTotalRows: false);
+        return deposits.ItemCollection.Sum(d => d.Amount);
     }
 
     public async Task<SubmitOperation> RefundDepositAsync(int depositId, string refundMethod, string username)
