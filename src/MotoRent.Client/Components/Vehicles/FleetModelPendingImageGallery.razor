@@ -1,0 +1,113 @@
+@using MotoRent.Domain.Storage
+@inherits LocalizedComponentBase<FleetModelPendingImageGallery>
+@inject IBinaryStore BinaryStore
+
+<div class="mr-form-panel mb-3">
+    <div class="mr-form-panel-header">
+        <div class="mr-form-panel-header-icon">
+            <i class="ti ti-photo"></i>
+        </div>
+        <h3 class="mr-form-panel-title">@Localizer["ModelImages"]</h3>
+        @if (m_pendingImages.Count == 0)
+        {
+            <span class="badge bg-danger ms-2">@Localizer["Required"]</span>
+        }
+    </div>
+    <div class="mr-form-panel-body p-0">
+        @if (m_pendingImages.Count == 0)
+        {
+            @* Empty state - upload area *@
+            <div class="empty-state">
+                <ImageUpload StoreId="@m_newImageStoreId"
+                             StoreIdChanged="OnImageUploaded"
+                             HideImage="true">
+                    <div class="empty-state-content">
+                        <div class="empty-state-icon">
+                            <i class="ti ti-camera-plus"></i>
+                        </div>
+                        <div class="empty-state-title">@Localizer["AddModelImage"]</div>
+                        <div class="empty-state-hint">@Localizer["ClickOrDragToUpload"]</div>
+                        <div class="text-warning small mt-2">
+                            <i class="ti ti-alert-triangle me-1"></i>
+                            @Localizer["AtLeastOneImageRequired"]
+                        </div>
+                    </div>
+                </ImageUpload>
+            </div>
+        }
+        else
+        {
+            @* Show uploaded image *@
+            <div class="uploaded-image-container">
+                <div class="uploaded-image-wrapper">
+                    <img src="@GetImageUrl(m_pendingImages[0].StoreId)"
+                         alt="Fleet model image"
+                         class="uploaded-image" />
+                </div>
+                <div class="uploaded-image-actions">
+                    <ImageUpload StoreId="@m_newImageStoreId"
+                                 StoreIdChanged="OnImageUploaded"
+                                 HideImage="true">
+                        <button type="button" class="btn btn-sm btn-light">
+                            <i class="ti ti-camera-plus me-1"></i>
+                            @Localizer["ChangeImage"]
+                        </button>
+                    </ImageUpload>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public List<PendingImage> PendingImages { get; set; } = [];
+
+    [Parameter]
+    public EventCallback<List<PendingImage>> PendingImagesChanged { get; set; }
+
+    private List<PendingImage> m_pendingImages = [];
+    private string? m_newImageStoreId;
+
+    protected override void OnParametersSet()
+    {
+        m_pendingImages = PendingImages ?? [];
+    }
+
+    private async Task OnImageUploaded(string? storeId)
+    {
+        if (string.IsNullOrEmpty(storeId)) return;
+
+        // Clear existing and replace with new image (only 1 image allowed)
+        m_pendingImages.Clear();
+        m_pendingImages.Add(new PendingImage
+        {
+            StoreId = storeId,
+            IsPrimary = true,
+            DisplayOrder = 1
+        });
+
+        m_newImageStoreId = null;
+        await NotifyChanges();
+    }
+
+    private async Task NotifyChanges()
+    {
+        await PendingImagesChanged.InvokeAsync(m_pendingImages);
+    }
+
+    private string GetImageUrl(string storeId)
+    {
+        if (string.IsNullOrEmpty(storeId))
+            return "/images/no-image.png";
+
+        return BinaryStore.GetImageUrl(storeId);
+    }
+
+    public class PendingImage
+    {
+        public string StoreId { get; set; } = string.Empty;
+        public bool IsPrimary { get; set; }
+        public int DisplayOrder { get; set; }
+    }
+}

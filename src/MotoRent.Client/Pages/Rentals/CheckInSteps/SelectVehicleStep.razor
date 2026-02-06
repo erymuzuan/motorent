@@ -5,6 +5,7 @@
 @using MotoRent.Services
 @inject VehicleService VehicleService
 @inject VehicleImageService VehicleImageService
+@inject FleetModelImageService FleetModelImageService
 @inject IBinaryStore BinaryStore
 
 <div class="d-flex flex-column gap-4">
@@ -53,10 +54,13 @@
             {
                 <div class="col-12 col-sm-6 col-md-4">
                     <div class="mr-card h-100" style="cursor: pointer;" @onclick="@(() => SelectFleetModel(group))">
-                        @if (!string.IsNullOrEmpty(group.ImagePath))
+                        @{
+                            var groupImageUrl = GetFleetModelImage(group);
+                        }
+                        @if (!string.IsNullOrEmpty(groupImageUrl))
                         {
                             <div style="aspect-ratio: 16/10; overflow: hidden; border-radius: 8px 8px 0 0;">
-                                <img src="@group.ImagePath" alt="@group.DisplayName"
+                                <img src="@groupImageUrl" alt="@group.DisplayName"
                                      style="width: 100%; height: 100%; object-fit: cover;" />
                             </div>
                         }
@@ -287,6 +291,7 @@
     private List<VehicleGroup> m_filteredGroups = [];
     private VehicleGroup? m_selectedFleetModel;
     private Dictionary<int, string> m_vehiclePrimaryImages = new();
+    private Dictionary<int, string> m_fleetModelImages = new();
     private bool m_loading;
     private string? m_searchTerm;
     private bool m_includePooled = true;
@@ -315,6 +320,17 @@
                 .ThenBy(g => g.Brand)
                 .ThenBy(g => g.Model)
                 .ToList();
+
+            // Load FleetModel images for all groups
+            this.m_fleetModelImages.Clear();
+            foreach (var group in this.m_allGroups)
+            {
+                var primaryImage = await this.FleetModelImageService.GetPrimaryImageAsync(group.FleetModelId);
+                if (primaryImage != null && !string.IsNullOrEmpty(primaryImage.StoreId))
+                {
+                    this.m_fleetModelImages[group.FleetModelId] = this.BinaryStore.GetImageUrl(primaryImage.StoreId);
+                }
+            }
 
             // Load primary images for all vehicles
             this.m_vehiclePrimaryImages.Clear();
@@ -396,6 +412,13 @@
             return vehicle.ImagePath;
 
         return string.Empty;
+    }
+
+    private string GetFleetModelImage(VehicleGroup group)
+    {
+        if (this.m_fleetModelImages.TryGetValue(group.FleetModelId, out var imageUrl))
+            return imageUrl;
+        return group.ImagePath ?? string.Empty;
     }
 
     private static string GetVehicleTypeIcon(VehicleType type) => type switch

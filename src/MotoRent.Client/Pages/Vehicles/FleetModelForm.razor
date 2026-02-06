@@ -1,11 +1,23 @@
 @using MotoRent.Client.Components.Shared
+@using MotoRent.Client.Components.Vehicles
 @using MotoRent.Domain.Lookups
 @inherits LocalizedComponentBase<FleetModelForm>
 @inject VehicleLookupService LookupService
 
 <div class="row">
-    @* Left Column: Basic Info *@
+    @* Left Column: Images & Basic Info *@
     <div class="col-lg-4">
+        @* Model Images *@
+        @if (IsNew)
+        {
+            <FleetModelPendingImageGallery PendingImages="@PendingImages"
+                                           PendingImagesChanged="OnPendingImagesChanged" />
+        }
+        else if (FleetModelId > 0)
+        {
+            <FleetModelImageGallery FleetModelId="@FleetModelId" />
+        }
+
         <div class="mr-form-panel mb-3">
             <div class="mr-form-panel-header">
                 <div class="mr-form-panel-header-icon">
@@ -86,12 +98,6 @@
 
     @* Right Column: Specs & Pricing *@
     <div class="col-lg-8">
-        @* Model Images - only show for existing models *@
-        @if (!IsNew && FleetModelId > 0)
-        {
-            <FleetModelImageGallery FleetModelId="@FleetModelId" />
-        }
-
         @* Type-Specific Fields Card *@
         <div class="mr-form-panel mb-3">
             <div class="mr-form-panel-header">
@@ -372,6 +378,17 @@
 
     [Parameter]
     public int FleetModelId { get; set; }
+
+    [Parameter]
+    public List<FleetModelPendingImageGallery.PendingImage> PendingImages { get; set; } = [];
+
+    [Parameter]
+    public EventCallback<List<FleetModelPendingImageGallery.PendingImage>> PendingImagesChanged { get; set; }
+
+    private async Task OnPendingImagesChanged(List<FleetModelPendingImageGallery.PendingImage> images)
+    {
+        await PendingImagesChanged.InvokeAsync(images);
+    }
 
     private void OnVehicleTypeChanged(VehicleType type)
     {
