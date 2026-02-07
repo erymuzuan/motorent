@@ -1,8 +1,10 @@
 @page "/fleet-models/new"
 @using Microsoft.AspNetCore.Authorization
+@using MotoRent.Client.Components.Vehicles
 @attribute [Authorize(Policy = "RequireTenantStaff")]
 @inherits LocalizedComponentBase<CreateFleetModel>
 @inject FleetModelService FleetModelService
+@inject FleetModelImageService FleetModelImageService
 
 <MotoRentPageTitle>@Localizer["CreateFleetModel"]</MotoRentPageTitle>
 
@@ -35,7 +37,10 @@
 
 <div class="container-xl">
     <form id="create-fleet-model-form" @onsubmit="this.SaveAsync" @onsubmit:preventDefault>
-        <FleetModelForm Entity="@this.m_fleetModel" IsNew="true" />
+        <FleetModelForm Entity="@this.m_fleetModel"
+                        IsNew="true"
+                        PendingImages="@this.m_pendingImages"
+                        PendingImagesChanged="OnPendingImagesChanged" />
 
         @* Action Buttons *@
         <div class="mr-card mt-4">
@@ -43,18 +48,28 @@
                 <a href="/fleet-models" class="btn btn-ghost-secondary">
                     <i class="ti ti-x me-1"></i>@Localizer["Cancel"]
                 </a>
-                <button type="submit" class="mr-btn-primary-action" disabled="@this.m_saving">
-                    @if (this.m_saving)
+                <div class="d-flex align-items-center gap-3">
+                    @if (this.m_pendingImages.Count == 0)
                     {
-                        <span class="spinner-border spinner-border-sm" role="status"></span>
-                        <span>@Localizer["Saving"]...</span>
+                        <div class="text-warning small">
+                            <i class="ti ti-alert-triangle me-1"></i>
+                            @Localizer["AtLeastOneImageRequired"]
+                        </div>
                     }
-                    else
-                    {
-                        <i class="ti ti-device-floppy"></i>
-                        <span>@Localizer["CreateFleetModel"]</span>
-                    }
-                </button>
+                    <button type="submit" class="mr-btn-primary-action"
+                            disabled="@(this.m_saving || this.m_pendingImages.Count == 0)">
+                        @if (this.m_saving)
+                        {
+                            <span class="spinner-border spinner-border-sm" role="status"></span>
+                            <span>@Localizer["Saving"]...</span>
+                        }
+                        else
+                        {
+                            <i class="ti ti-device-floppy"></i>
+                            <span>@Localizer["CreateFleetModel"]</span>
+                        }
+                    </button>
+                </div>
             </div>
         </div>
     </form>
@@ -68,9 +83,22 @@
         DurationType = RentalDurationType.Daily
     };
     private bool m_saving;
+    private List<FleetModelPendingImageGallery.PendingImage> m_pendingImages = [];
+
+    private void OnPendingImagesChanged(List<FleetModelPendingImageGallery.PendingImage> images)
+    {
+        m_pendingImages = images;
+    }
 
     private async Task SaveAsync()
     {
+        // Validate at least one image
+        if (m_pendingImages.Count == 0)
+        {
+            ShowError(Localizer["AtLeastOneImageRequired"]);
+            return;
+        }
+
         this.m_saving = true;
         try
         {
@@ -78,8 +106,16 @@
 
             if (result.Success)
             {
+                // Create FleetModelImage records for pending images
+                var newFleetModelId = this.m_fleetModel.FleetModelId;
+                foreach (var pending in m_pendingImages)
+                {
+                    await FleetModelImageService.AddImageAsync(
+                        newFleetModelId, pending.StoreId, null, this.UserName);
+                }
+
                 this.ShowSuccess(Localizer["FleetModelCreatedSuccess"]);
-                this.NavigationManager.NavigateTo($"/fleet-models/{this.EncodeId(this.m_fleetModel.FleetModelId)}/edit");
+                this.NavigationManager.NavigateTo($"/fleet-models/{this.EncodeId(newFleetModelId)}/edit");
             }
             else
             {

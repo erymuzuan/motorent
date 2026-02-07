@@ -309,7 +309,7 @@ else
                         <span class="info-value">@m_startTime?.AddHours(m_hours).ToString("dd MMM yyyy h:mm tt")</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">@Localizer["HourlyRate"]:</span>
+                        <span class="info-label">@(m_isPackage ? Localizer["PackagePrice"] : Localizer["HourlyRate"]):</span>
                         <span class="info-value">@FormatCurrency(m_hourlyRate)</span>
                     </div>
                 }
@@ -402,6 +402,7 @@ else
     [SupplyParameterFromQuery] public string? RentalType { get; set; }
     [SupplyParameterFromQuery] public int? Hours { get; set; }
     [SupplyParameterFromQuery] public decimal? HourlyRate { get; set; }
+    [SupplyParameterFromQuery] public bool? IsPackage { get; set; }
     // Fallback renter data (for unsaved renters)
     [SupplyParameterFromQuery] public string? RenterName { get; set; }
     [SupplyParameterFromQuery] public string? RenterPhone { get; set; }
@@ -421,6 +422,7 @@ else
 
     private bool m_isIntervalRental;
     private bool m_isHourlyRental;
+    private bool m_isPackage;
     private DateTimeOffset? m_startTime;
     private DateTime? m_startDate;
     private DateTime? m_endDate;
@@ -474,6 +476,7 @@ else
             // Set rental parameters
             m_isIntervalRental = this.Interval.HasValue && this.Interval > 0;
             m_isHourlyRental = this.RentalType == "Hourly";
+            m_isPackage = this.IsPackage ?? false;
             if (!string.IsNullOrEmpty(this.StartTime) && DateTimeOffset.TryParse(this.StartTime, out var startTime)) m_startTime = startTime;
             if (!string.IsNullOrEmpty(this.StartDate) && DateTime.TryParse(this.StartDate, out var startDate)) m_startDate = startDate;
             if (!string.IsNullOrEmpty(this.EndDate) && DateTime.TryParse(this.EndDate, out var endDate)) m_endDate = endDate;

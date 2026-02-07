@@ -6,14 +6,18 @@
 @using MotoRent.Domain.Core
 @using MotoRent.Domain.DataContext
 @using MotoRent.Domain.Entities
+@using MotoRent.Domain.Settings
 @using MotoRent.Services
 @using Microsoft.Extensions.Localization
 @inject IRequestContext RequestContext
 @inject RentalDataContext RentalContext
 @inject TillService TillService
+@inject ISettingConfig SettingConfig
 @inject NavigationManager Navigation
 @inject IStringLocalizer<TillStatusButton> Localizer
 
+@if (m_tillEnabled)
+{
 <div class="nav-item d-none d-md-flex me-3">
     @if (m_loading)
     {
@@ -42,9 +46,11 @@
         </button>
     }
 </div>
+}
 
 @code {
     private bool m_loading = true;
+    private bool m_tillEnabled;
     private TillSession? m_activeSession;
     private string m_userName = string.Empty;
 
@@ -65,6 +71,10 @@
         m_loading = true;
         try
         {
+            // Check if Till feature is enabled
+            m_tillEnabled = await SettingConfig.GetBoolAsync(SettingKeys.Till_EnableCashierTill, defaultValue: false);
+            if (!m_tillEnabled) return;
+
             m_userName = RequestContext.GetUserName() ?? string.Empty;
             if (string.IsNullOrEmpty(m_userName)) return;
 

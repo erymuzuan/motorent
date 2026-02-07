@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using MotoRent.Domain.Models;
 
 namespace MotoRent.Domain.Entities;
 
@@ -109,6 +110,11 @@ public partial class Vehicle : Entity
     /// Hourly rental rate (for DurationType == Hourly).
     /// </summary>
     public decimal? HourlyRate { get; set; }
+
+    /// <summary>
+    /// Fixed package prices for specific hour durations (synced from FleetModel).
+    /// </summary>
+    public List<HourlyPackagePrice> HourlyPackages { get; set; } = [];
 
     /// <summary>
     /// Required deposit amount.
@@ -319,6 +325,22 @@ public partial class Vehicle : Entity
     public bool SupportsHourlyRental => this.HourlyRate.HasValue && this.HourlyRate > 0;
 
     /// <summary>
+    /// Gets the price for a specific number of hours.
+    /// Returns package price if exists, otherwise calculates from hourly rate.
+    /// </summary>
+    public decimal GetHourlyPrice(int hours)
+    {
+        var package = this.HourlyPackages?.FirstOrDefault(p => p.Hours == hours);
+        return package?.Price ?? (this.HourlyRate ?? 0) * hours;
+    }
+
+    /// <summary>
+    /// Checks if a package price exists for the given hours.
+    /// </summary>
+    public bool HasPackagePrice(int hours) =>
+        this.HourlyPackages?.Any(p => p.Hours == hours) ?? false;
+
+    /// <summary>
     /// Whether this vehicle is hourly-only (no daily rate, only hourly).
     /// </summary>
     [JsonIgnore]
@@ -375,6 +397,7 @@ public partial class Vehicle : Entity
         MaxRiderWeight = fm.MaxRiderWeight;
         DailyRate = fm.DailyRate;
         HourlyRate = fm.HourlyRate;
+        HourlyPackages = fm.HourlyPackages?.ToList() ?? [];
         Rate15Min = fm.Rate15Min;
         Rate30Min = fm.Rate30Min;
         Rate1Hour = fm.Rate1Hour;

@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using MotoRent.Domain.Models;
 
 namespace MotoRent.Domain.Entities;
 
@@ -29,6 +30,7 @@ public class FleetModel : Entity
     // Pricing
     public decimal DailyRate { get; set; }
     public decimal? HourlyRate { get; set; }
+    public List<HourlyPackagePrice> HourlyPackages { get; set; } = [];
     public decimal? Rate15Min { get; set; }
     public decimal? Rate30Min { get; set; }
     public decimal? Rate1Hour { get; set; }

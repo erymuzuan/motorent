@@ -150,6 +150,7 @@ public class ReceiptService(RentalDataContext context, ShopService shopService)
         var rentalDays = (int)Math.Ceiling((rental.ExpectedEndDate - rental.StartDate).TotalDays);
         if (rentalDays < 1) rentalDays = 1;
         var rentalAmount = rental.TotalAmount;
+        var isHourly = rental.DurationType == RentalDurationType.Hourly;
 
         // Calculate insurance amount from rental (if present)
         decimal insuranceAmount = 0;
@@ -165,10 +166,12 @@ public class ReceiptService(RentalDataContext context, ShopService shopService)
         {
             Category = ReceiptItemCategory.Rental,
             Description = vehicle.DisplayName,
-            Detail = $"{rentalDays} day(s) @ {rental.RentalRate:N0}/day",
-            Quantity = rentalDays,
-            UnitPrice = rental.RentalRate,
-            Amount = baseRentalAmount > 0 ? baseRentalAmount : rental.RentalRate * rentalDays,
+            Detail = isHourly
+                ? $"{rental.RentalHours ?? rental.CalculatedRentalHours} hour package"
+                : $"{rentalDays} day(s) @ {rental.RentalRate:N0}/day",
+            Quantity = isHourly ? 1 : rentalDays,
+            UnitPrice = isHourly ? baseRentalAmount : rental.RentalRate,
+            Amount = baseRentalAmount > 0 ? baseRentalAmount : (isHourly ? rental.TotalAmount : rental.RentalRate * rentalDays),
             SortOrder = sortOrder++
         });
 

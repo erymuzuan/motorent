@@ -66,6 +66,7 @@ public async Task<LoadOperation<T>> LoadAsync(IQueryable<T> query, int page = 1,
         var schema = this.GetSchema();
         var sql = this.GenerateSqlWithComputedColumns(query);
         var pagedSql = string.Empty;
+        var countSql = string.Empty;
 
         var pr = await Policy.Handle<SqlException>(HasNetworkError)
             .WaitAndRetryAsync(5, Sleep)
@@ -84,7 +85,7 @@ public async Task<LoadOperation<T>> LoadAsync(IQueryable<T> query, int page = 1,
                 if (includeTotalRows)
                 {
                     // For COUNT, we don't need computed columns, use standard method
-                    var countSql = query.ToSqlCommand("COUNT(*)");
+                    countSql = query.ToSqlCommand("COUNT(*)");
                     // ORDER BY is invalid in COUNT queries - strip it
                     var orderByIndex = countSql.IndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase);
                     if (orderByIndex >= 0)
@@ -115,11 +116,12 @@ public async Task<LoadOperation<T>> LoadAsync(IQueryable<T> query, int page = 1,
 
         if (pr.FinalException != null)
         {
-            System.Diagnostics.Debug.WriteLine($"SQL Error for {typeof(T).Name}: {pagedSql}");
-            Console.WriteLine($"SQL Error for {typeof(T).Name}: {pagedSql}");
+            var errorSql = !string.IsNullOrEmpty(pagedSql) ? pagedSql : countSql;
+            System.Diagnostics.Debug.WriteLine($"SQL Error for {typeof(T).Name}: {errorSql}");
+            Console.WriteLine($"SQL Error for {typeof(T).Name}: {errorSql}");
             Console.WriteLine($"⚠ {typeof(T).Name} Exception: {pr.FinalException.Message}");
             Console.WriteLine($"⚠ {typeof(T).Name} Stack: {pr.FinalException.StackTrace}");
-            throw new InvalidOperationException($"SQL Error for {typeof(T).Name}: {pagedSql}", pr.FinalException);
+            throw new InvalidOperationException($"SQL Error for {typeof(T).Name}: {errorSql}", pr.FinalException);
         }
 
         return pr.Result;
@@ -854,8 +856,7 @@ public async Task<LoadOperation<T>> LoadAsync(IQueryable<T> query, int page = 1,
             },
             "Deposit" => new[]
             {
-                "RentalId", "RenterId", "Status", "Amount", "DepositDate",
-                "RefundDate", "Currency", "IsRefunded"
+                "RentalId", "DepositType", "Status"
             },
             "Shop" => new[]
             {

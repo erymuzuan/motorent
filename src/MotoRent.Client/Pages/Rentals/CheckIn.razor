@@ -99,16 +99,16 @@
                         <div class="d-flex justify-content-center mb-4">
                             <div class="btn-group" role="group">
                                 <button type="button"
-                                        class="btn @(m_selectedDurationType == RentalDurationType.Daily ? "btn-primary" : "btn-outline-primary")"
-                                        @onclick="@(() => OnDurationTypeChanged(RentalDurationType.Daily))">
-                                    <i class="ti ti-calendar me-1"></i>
-                                    @Localizer["DailyRental"]
-                                </button>
-                                <button type="button"
                                         class="btn @(m_selectedDurationType == RentalDurationType.Hourly ? "btn-primary" : "btn-outline-primary")"
                                         @onclick="@(() => OnDurationTypeChanged(RentalDurationType.Hourly))">
                                     <i class="ti ti-clock me-1"></i>
                                     @Localizer["HourlyRental"]
+                                </button>
+                                <button type="button"
+                                        class="btn @(m_selectedDurationType == RentalDurationType.Daily ? "btn-primary" : "btn-outline-primary")"
+                                        @onclick="@(() => OnDurationTypeChanged(RentalDurationType.Daily))">
+                                    <i class="ti ti-calendar me-1"></i>
+                                    @Localizer["DailyRental"]
                                 </button>
                             </div>
                         </div>
@@ -343,7 +343,7 @@
     private HourlyRentalConfig m_hourlyConfig = new();
 
     // Duration type selection (Daily or Hourly) for non-JetSki vehicles
-    private RentalDurationType m_selectedDurationType = RentalDurationType.Daily;
+    private RentalDurationType m_selectedDurationType = RentalDurationType.Hourly;
 
     // Step 4: Deposit information
     private DepositInfo m_depositInfo = new();
@@ -393,10 +393,10 @@
                 var hasDaily = this.m_selectedVehicle.DailyRate > 0;
                 var hasHourly = this.m_selectedVehicle.SupportsHourlyRental;
 
-                if (hasHourly && !hasDaily)
-                    this.m_selectedDurationType = RentalDurationType.Hourly;
-                else
+                if (hasDaily && !hasHourly)
                     this.m_selectedDurationType = RentalDurationType.Daily;
+                else
+                    this.m_selectedDurationType = RentalDurationType.Hourly;
             }
 
             this.m_activeStep++;

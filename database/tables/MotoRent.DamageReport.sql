@@ -7,6 +7,8 @@ CREATE TABLE [<schema>].[DamageReport]
     [MotorbikeId] AS CAST(JSON_VALUE([Json], '$.MotorbikeId') AS INT),
     [Severity] AS CAST(JSON_VALUE([Json], '$.Severity') AS NVARCHAR(20)),
     [Status] AS CAST(JSON_VALUE([Json], '$.Status') AS NVARCHAR(20)),
+    -- DATETIMEOFFSET column (stored, not computed)
+    [ReportedOn] DATETIMEOFFSET NULL,
     -- JSON storage
     [Json] NVARCHAR(MAX) NOT NULL,
     -- Audit columns
