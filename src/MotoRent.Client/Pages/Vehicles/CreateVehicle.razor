@@ -243,17 +243,7 @@
 
             if (result.Success)
             {
-                // Upload recognition image if captured
-                var imageUploaded = await UploadRecognitionImageAsync();
-
-                if (imageUploaded)
-                {
-                    this.ShowSuccess(Localizer["VehicleCreatedWithImageSuccess"]);
-                }
-                else
-                {
-                    this.ShowSuccess(Localizer["VehicleCreatedSuccess"]);
-                }
+                this.ShowSuccess(Localizer["VehicleCreatedSuccess"]);
 
                 // Navigate to edit page
                 this.NavigationManager.NavigateTo($"/vehicles/{EncodeId(this.m_vehicle.VehicleId)}/edit");
@@ -268,60 +258,6 @@
             this.m_saving = false;
         }
     }
-
-    private async Task<bool> UploadRecognitionImageAsync()
-    {
-        var pendingImage = m_vehicleForm?.PendingRecognitionImage;
-        if (pendingImage == null || string.IsNullOrEmpty(pendingImage.Base64Data))
-        {
-            return false;
-        }
-
-            // Determine file extension from content type
-            var extension = pendingImage.ContentType switch
-            {
-                "image/jpeg" => ".jpg",
-                "image/png" => ".png",
-                "image/webp" => ".webp",
-                _ => ".jpg"
-            };
-            var fileName = $"vehicle-{m_vehicle.VehicleId}{extension}";
-
-            // Use JS interop to upload (includes auth cookies)
-            var module = await this.JsRuntime.InvokeAsync<IJSObjectReference>("import", "./scripts/file-upload.js");
-            var result = await module.InvokeAsync<UploadResult>("uploadBase64Image",
-                pendingImage.Base64Data,
-                pendingImage.ContentType,
-                fileName);
-
-            if (!string.IsNullOrEmpty(result?.Error))
-            {
-                this.ShowError($"{Localizer["ImageUploadFailed"]}: {result.Error}");
-                return false;
-            }
-
-            if (string.IsNullOrEmpty(result?.StoreId))
-            {
-                this.ShowError($"{Localizer["ImageUploadFailed"]}: {Localizer["NoStoreIdReceived"]}");
-                return false;
-            }
-
-            // Add as vehicle image
-            var addResult = await this.VehicleImageService.AddImageAsync(
-                m_vehicle.VehicleId,
-                result.StoreId,
-                "Quick Recognition",
-                this.UserName);
-
-            if (!addResult.Success)
-            {
-                this.ShowError($"{Localizer["ImageSaveFailed"]}: {addResult.Message}");
-            }
-
-            return addResult.Success;
-    }
-
-    private record UploadResult(string? StoreId, string? Url, string? Error);
 
     private static string GetVehicleTypeIcon(VehicleType type) => type switch
     {
