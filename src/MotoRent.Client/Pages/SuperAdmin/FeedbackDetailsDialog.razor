@@ -1,0 +1,274 @@
+@using MotoRent.Domain.Core
+@using MotoRent.Domain.Storage
+@using MotoRent.Services.Core
+@using MotoRent.Client.Controls
+@using MotoRent.Client.Services
+@inherits LocalizedComponentBase<FeedbackDetailsDialog>
+@inject FeedbackService FeedbackService
+@inject LogEntryService LogEntryService
+@inject IModalService ModalService
+@inject IBinaryStore BinaryStore
+
+<div class="modal-body">
+    @if (m_loading)
+    {
+        <div class="d-flex justify-content-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">@Localizer["Loading"]</span>
+            </div>
+        </div>
+    }
+    else if (m_feedback is null)
+    {
+        <div class="alert alert-warning">
+            <i class="ti ti-alert-triangle me-2"></i>
+            @Localizer["NotFound"]
+        </div>
+    }
+    else
+    {
+        @* Header with type and status *@
+        <div class="d-flex align-items-center justify-content-between mb-4">
+            <div class="d-flex align-items-center">
+                <span class="badge @GetTypeBadgeClass(m_feedback.Type) me-2" style="font-size: 1rem;">
+                    @m_feedback.Type
+                </span>
+                <span class="badge @GetStatusBadgeClass(m_feedback.Status)" style="font-size: 1rem;">
+                    @m_feedback.Status
+                </span>
+            </div>
+            <div class="text-secondary">
+                <i class="ti ti-clock me-1"></i>
+                @m_feedback.Timestamp.ToString("g")
+            </div>
+        </div>
+
+        @* Description *@
+        <div class="card mb-3">
+            <div class="card-header">
+                <i class="ti ti-message me-2"></i>@Localizer["Description"]
+            </div>
+            <div class="card-body">
+                <p class="mb-0" style="white-space: pre-wrap;">@m_feedback.Description</p>
+            </div>
+        </div>
+
+        @* Screenshot *@
+        @if (!string.IsNullOrWhiteSpace(m_feedback.ScreenshotStoreId))
+        {
+            <div class="card mb-3">
+                <div class="card-header">
+                    <i class="ti ti-photo me-2"></i>@Localizer["Screenshot"]
+                </div>
+                <div class="card-body text-center">
+                    <img src="@BinaryStore.GetImageUrl(m_feedback.ScreenshotStoreId)" alt="@Localizer["Screenshot"]"
+                         class="img-fluid rounded" style="max-height: 400px; object-fit: contain;" />
+                </div>
+            </div>
+        }
+
+        @* Context information *@
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="ti ti-user me-2"></i>@Localizer["UserContext"]
+                    </div>
+                    <div class="card-body">
+                        <dl class="row mb-0">
+                            <dt class="col-4">@Localizer["Account"]</dt>
+                            <dd class="col-8">@(m_feedback.AccountNo ?? "N/A")</dd>
+
+                            <dt class="col-4">@Localizer["User"]</dt>
+                            <dd class="col-8">@(m_feedback.UserName ?? "N/A")</dd>
+
+                            <dt class="col-4">@Localizer["Submitted"]</dt>
+                            <dd class="col-8">@m_feedback.Timestamp.ToString("F")</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="ti ti-info-circle me-2"></i>@Localizer["PageContext"]
+                    </div>
+                    <div class="card-body">
+                        <dl class="row mb-0">
+                            <dt class="col-4">@Localizer["Url"]</dt>
+                            <dd class="col-8 text-truncate" title="@m_feedback.Url">@(m_feedback.Url ?? "N/A")</dd>
+
+                            <dt class="col-4">@Localizer["UserAgent"]</dt>
+                            <dd class="col-8 text-truncate" title="@m_feedback.UserAgent">@(m_feedback.UserAgent ?? "N/A")</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* Linked LogEntry (for ErrorReport type) *@
+        @if (m_feedback.Type == FeedbackType.ErrorReport)
+        {
+            <div class="card mb-3">
+                <div class="card-header">
+                    <i class="ti ti-bug me-2 text-danger"></i>@Localizer["LinkedError"]
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-3">@Localizer["ExceptionType"]</dt>
+                        <dd class="col-9">@(m_feedback.ExceptionType ?? "N/A")</dd>
+
+                        <dt class="col-3">@Localizer["ExceptionMessage"]</dt>
+                        <dd class="col-9">@(m_feedback.ExceptionMessage ?? "N/A")</dd>
+
+                        <dt class="col-3">@Localizer["LogEntry"]</dt>
+                        <dd class="col-9">
+                            @if (m_feedback.LogEntryId.HasValue)
+                            {
+                                <a href="/super-admin/system-logs" class="link-primary">
+                                    <i class="ti ti-external-link me-1"></i>#@m_feedback.LogEntryId
+                                </a>
+                            }
+                            else
+                            {
+                                <span class="text-secondary">@Localizer["NotLinked"]</span>
+                            }
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+        }
+
+        @* Status & Admin Notes *@
+        <div class="card mb-3">
+            <div class="card-header">
+                <i class="ti ti-settings me-2"></i>@Localizer["Management"]
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">@Localizer["Status"]</label>
+                        <select class="form-select" @bind="m_selectedStatus">
+                            @foreach (var status in Enum.GetValues<FeedbackStatus>())
+                            {
+                                <option value="@status">@status</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label">@Localizer["AdminNotes"]</label>
+                        <textarea class="form-control" rows="2" @bind="m_adminNotes"
+                                  placeholder="@Localizer["AdminNotesPlaceholder"]"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<div class="modal-footer">
+    @if (m_feedback is not null)
+    {
+        <button type="button" class="btn btn-primary" @onclick="SaveChangesAsync" disabled="@m_saving">
+            @if (m_saving)
+            {
+                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+            }
+            <i class="ti ti-device-floppy me-1"></i>@Localizer["SaveChanges"]
+        </button>
+        <button type="button" class="btn btn-danger" @onclick="DeleteAsync">
+            <i class="ti ti-trash me-1"></i>@Localizer["Delete"]
+        </button>
+    }
+    <button type="button" class="btn btn-secondary" @onclick="Close">
+        @Localizer["Close"]
+    </button>
+</div>
+
+@code {
+    [Parameter]
+    public int FeedbackId { get; set; }
+
+    private Feedback? m_feedback;
+    private bool m_loading = true;
+    private bool m_saving;
+    private FeedbackStatus m_selectedStatus;
+    private string? m_adminNotes;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        m_loading = true;
+        try
+        {
+            m_feedback = await FeedbackService.GetByIdAsync(FeedbackId);
+            if (m_feedback is not null)
+            {
+                m_selectedStatus = m_feedback.Status;
+                m_adminNotes = m_feedback.AdminNotes;
+            }
+        }
+        finally
+        {
+            m_loading = false;
+        }
+    }
+
+    private async Task SaveChangesAsync()
+    {
+        if (m_feedback is null) return;
+
+        m_saving = true;
+        try
+        {
+            await FeedbackService.UpdateStatusAsync(m_feedback.FeedbackId, m_selectedStatus, m_adminNotes, UserName);
+            ShowSuccess(Localizer["FeedbackUpdated"].Value);
+            await LoadAsync();
+        }
+        finally
+        {
+            m_saving = false;
+        }
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (m_feedback is null) return;
+
+        var confirmed = await DialogService.ConfirmYesNoAsync(
+            Localizer["ConfirmDelete"].Value,
+            Localizer["ConfirmDeleteTitle"].Value);
+
+        if (!confirmed) return;
+
+        await FeedbackService.DeleteAsync(m_feedback.FeedbackId);
+        ShowSuccess(Localizer["FeedbackDeleted"].Value);
+        Close();
+    }
+
+    private void Close()
+    {
+        ModalService.Close(ModalResult.Ok(true));
+    }
+
+    private string GetTypeBadgeClass(FeedbackType type) => type switch
+    {
+        FeedbackType.ErrorReport => "bg-danger",
+        FeedbackType.General => "bg-info",
+        _ => "bg-secondary"
+    };
+
+    private string GetStatusBadgeClass(FeedbackStatus status) => status switch
+    {
+        FeedbackStatus.New => "bg-info",
+        FeedbackStatus.Reviewed => "bg-primary",
+        FeedbackStatus.InProgress => "bg-warning",
+        FeedbackStatus.Resolved => "bg-success",
+        FeedbackStatus.Dismissed => "bg-secondary",
+        _ => "bg-secondary"
+    };
+}

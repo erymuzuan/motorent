@@ -1,0 +1,24 @@
+@using Microsoft.AspNetCore.Components.Authorization
+@using MotoRent.Client.Services
+@inherits LocalizedComponentBase<FeedbackButton>
+
+<AuthorizeView>
+    <Authorized>
+        <button type="button" class="btn btn-primary rounded-circle shadow-lg d-print-none"
+                style="position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 1040; width: 48px; height: 48px; padding: 0; display: flex; align-items: center; justify-content: center;"
+                title="@Localizer["SendFeedback"]"
+                @onclick="OpenFeedbackDialogAsync">
+            <i class="ti ti-message-report" style="font-size: 1.25rem;"></i>
+        </button>
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    private async Task OpenFeedbackDialogAsync()
+    {
+        await DialogService
+            .Create<FeedbackDialog>(Localizer["SendFeedback"].Value)
+            .WithParameter(x => x.PageUrl, NavigationManager.Uri)
+            .ShowDialogAsync();
+    }
+}

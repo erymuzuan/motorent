@@ -73,6 +73,15 @@ public static class MotoConfig
     public static string SmtpFromEmail => GetEnvironmentVariable("SmtpFromEmail") ?? "noreply@motorent.com";
     public static string SmtpFromName => GetEnvironmentVariable("SmtpFromName") ?? "MotoRent";
 
+    // Azure Communication Services
+    public static string? AzureCommunicationConnectionString =>
+        GetEnvironmentVariable("AzureCommunicationConnectionString");
+    public static string AzureCommunicationFromEmail =>
+        GetEnvironmentVariable("AzureCommunicationFromEmail") ?? "noreply@motorent.com";
+    // Feedback notification recipients (comma-separated)
+    public static string? FeedbackNotificationEmails =>
+        GetEnvironmentVariable("FeedbackNotificationEmails");
+
     // LINE Notify Configuration (for shop staff notifications)
     public static string? LineNotifyToken => GetEnvironmentVariable("LineNotifyToken");
 

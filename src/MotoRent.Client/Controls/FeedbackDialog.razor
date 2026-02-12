@@ -1,0 +1,123 @@
+@using MotoRent.Domain.Core
+@using MotoRent.Domain.DataContext
+@using MotoRent.Services.Core
+@using MotoRent.Client.Services
+@inherits LocalizedComponentBase<FeedbackDialog>
+@inject FeedbackService FeedbackService
+@inject IModalService ModalService
+@inject CoreDataContext CoreContext
+
+<div class="modal-body">
+    @if (m_submitted)
+    {
+        <div class="empty py-4">
+            <div class="empty-icon text-success">
+                <i class="ti ti-circle-check" style="font-size: 3rem;"></i>
+            </div>
+            <p class="empty-title">@Localizer["ThankYou"]</p>
+            <p class="empty-subtitle text-secondary">@Localizer["FeedbackReceived"]</p>
+        </div>
+    }
+    else
+    {
+        <div class="mb-3">
+            <label class="form-label required">@Localizer["Description"]</label>
+            <textarea class="form-control" rows="4" placeholder="@Localizer["DescriptionPlaceholder"]"
+                      @bind="m_description"></textarea>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">@Localizer["Screenshot"]</label>
+            <ImageUpload StoreId="@m_screenshotStoreId"
+                         StoreIdChanged="id => { m_screenshotStoreId = id; StateHasChanged(); }"
+                         Title="@Localizer["UploadScreenshot"]"
+                         HelpHint="@Localizer["ScreenshotHint"]" />
+        </div>
+
+        <div class="card bg-light">
+            <div class="card-body py-2">
+                <small class="text-secondary">
+                    <i class="ti ti-info-circle me-1"></i>@Localizer["AutoCaptured"]
+                </small>
+                <div class="row mt-2">
+                    <div class="col-auto">
+                        <small class="text-secondary fw-bold">@Localizer["User"]:</small>
+                        <small class="ms-1">@UserName</small>
+                    </div>
+                    <div class="col-auto">
+                        <small class="text-secondary fw-bold">@Localizer["Account"]:</small>
+                        <small class="ms-1">@(AccountNo ?? "N/A")</small>
+                    </div>
+                </div>
+                <div class="mt-1">
+                    <small class="text-secondary fw-bold">@Localizer["Page"]:</small>
+                    <small class="ms-1 text-truncate d-inline-block" style="max-width: 350px; vertical-align: bottom;" title="@PageUrl">@PageUrl</small>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<div class="modal-footer">
+    @if (!m_submitted)
+    {
+        <button type="button" class="btn btn-primary" disabled="@(m_submitting || string.IsNullOrWhiteSpace(m_description))" @onclick="SubmitAsync">
+            @if (m_submitting)
+            {
+                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+            }
+            <i class="ti ti-send me-1"></i>
+            @Localizer["Submit"]
+        </button>
+    }
+    <button type="button" class="btn btn-secondary" @onclick="Close">
+        @(m_submitted ? Localizer["Close"] : Localizer["Cancel"])
+    </button>
+</div>
+
+@code {
+    [Parameter] public string? PageUrl { get; set; }
+
+    private string? m_description;
+    private string? m_screenshotStoreId;
+    private bool m_submitting;
+    private bool m_submitted;
+
+    private async Task SubmitAsync()
+    {
+        if (string.IsNullOrWhiteSpace(m_description)) return;
+
+        m_submitting = true;
+        try
+        {
+            var feedback = new Feedback
+            {
+                Description = m_description.Trim(),
+                Type = FeedbackType.General,
+                AccountNo = AccountNo,
+                UserName = UserName,
+                Url = PageUrl ?? NavigationManager.Uri,
+                ScreenshotStoreId = m_screenshotStoreId,
+                Timestamp = DateTimeOffset.Now
+            };
+
+            await FeedbackService.SubmitFeedbackAsync(feedback, UserName);
+            m_submitted = true;
+            ShowSuccess(Localizer["FeedbackSent"].Value);
+        }
+        catch (Exception ex)
+        {
+            LogError(ex, "Failed to submit feedback");
+            ShowError(Localizer["FeedbackError"].Value);
+        }
+        finally
+        {
+            m_submitting = false;
+        }
+    }
+
+    private void Close()
+    {
+        ModalService.Close(m_submitted ? ModalResult.Ok(true) : ModalResult.Cancel());
+    }
+}

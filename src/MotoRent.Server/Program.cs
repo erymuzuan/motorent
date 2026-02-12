@@ -140,6 +140,9 @@ builder.Services.AddScoped<ManagerPinService>();
 // Error logging services
 builder.Services.AddScoped<MotoRent.Domain.Core.ILogger, SqlLogger>();
 builder.Services.AddScoped<LogEntryService>();
+// Feedback services
+builder.Services.AddScoped<FeedbackService>();
+builder.Services.AddScoped<FeedbackEmailService>();
 // Sales lead tracking
 builder.Services.AddScoped<SalesLeadService>();
 

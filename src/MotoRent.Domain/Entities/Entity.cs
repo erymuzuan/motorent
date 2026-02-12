@@ -86,6 +86,8 @@ namespace MotoRent.Domain.Entities;
 // Fleet model entities
 [JsonDerivedType(typeof(FleetModel), nameof(FleetModel))]
 [JsonDerivedType(typeof(FleetModelImage), nameof(FleetModelImage))]
+// Feedback entity
+[JsonDerivedType(typeof(Feedback), nameof(Feedback))]
 public abstract class Entity
 {
     public string? WebId { get; set; }
