@@ -4,10 +4,19 @@
 @using MotoRent.Domain.Models
 @inherits LocalizedComponentBase<FleetModelForm>
 @inject VehicleLookupService LookupService
+@inject IJSRuntime JsRuntime
 
 <div class="row">
     @* Left Column: Images & Basic Info *@
     <div class="col-lg-4">
+        @* Quick Recognition Panel (for new fleet models only) *@
+        @if (IsNew)
+        {
+            <VehicleRecognitionPanel SuggestedVehicleType="@Entity.VehicleType"
+                                     OnApply="ApplyRecognitionResult"
+                                     OnImageCaptured="OnRecognitionImageCaptured" />
+        }
+
         @* Model Images *@
         @if (IsNew)
         {
@@ -470,6 +479,82 @@
     {
         await PendingImagesChanged.InvokeAsync(images);
     }
+
+    #region Quick Recognition
+
+    private void ApplyRecognitionResult(VehicleRecognitionResult result)
+    {
+        if (result.VehicleType.HasValue)
+        {
+            OnVehicleTypeChanged(result.VehicleType.Value);
+        }
+
+        if (!string.IsNullOrEmpty(result.RecognizedMake))
+        {
+            this.Entity.Brand = result.RecognizedMake;
+        }
+
+        if (!string.IsNullOrEmpty(result.RecognizedModel))
+        {
+            this.Entity.Model = result.RecognizedModel;
+        }
+
+        if (result.Year.HasValue)
+        {
+            this.Entity.Year = result.Year.Value;
+        }
+
+        if (result.EngineCC.HasValue && this.Entity.VehicleType == VehicleType.Motorbike)
+        {
+            this.Entity.EngineCC = result.EngineCC.Value;
+        }
+
+        this.StateHasChanged();
+    }
+
+    private async Task OnRecognitionImageCaptured(VehicleRecognitionPanel.RecognitionImageData imageData)
+    {
+        // Upload base64 image to get storeId
+        var extension = imageData.ContentType switch
+        {
+            "image/jpeg" => ".jpg",
+            "image/png" => ".png",
+            "image/webp" => ".webp",
+            _ => ".jpg"
+        };
+        var fileName = $"fleet-model-{Guid.NewGuid():N}{extension}";
+
+        try
+        {
+            var module = await this.JsRuntime.InvokeAsync<IJSObjectReference>("import", "./scripts/file-upload.js");
+            var result = await module.InvokeAsync<UploadResult>("uploadBase64Image",
+                imageData.Base64Data,
+                imageData.ContentType,
+                fileName);
+
+            if (!string.IsNullOrEmpty(result?.StoreId))
+            {
+                // Clear existing and add new image to pending
+                var newImages = new List<FleetModelPendingImageGallery.PendingImage>
+                {
+                    new() { StoreId = result.StoreId, IsPrimary = true, DisplayOrder = 1 }
+                };
+                await PendingImagesChanged.InvokeAsync(newImages);
+            }
+            else if (!string.IsNullOrEmpty(result?.Error))
+            {
+                this.ShowError($"Image upload failed: {result.Error}");
+            }
+        }
+        catch (Exception ex)
+        {
+            this.ShowError($"Failed to upload image: {ex.Message}");
+        }
+    }
+
+    private record UploadResult(string? StoreId, string? Url, string? Error);
+
+    #endregion
 
     private void OnVehicleTypeChanged(VehicleType type)
     {
