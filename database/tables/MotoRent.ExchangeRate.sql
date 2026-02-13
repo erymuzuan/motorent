@@ -1,23 +1,23 @@
 -- ExchangeRate table - Exchange rates for multi-currency cash payments
--- Organization-scoped rates with effective dates for history/audit
-CREATE TABLE [<schema>].[ExchangeRate]
+CREATE TABLE "ExchangeRate"
 (
-    [ExchangeRateId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
-    -- Computed columns for indexing
-    [Currency] AS CAST(JSON_VALUE([Json], '$.Currency') AS CHAR(3)),
-    [BuyRate] AS CAST(JSON_VALUE([Json], '$.BuyRate') AS DECIMAL(18,4)),
-    [Source] AS CAST(JSON_VALUE([Json], '$.Source') AS NVARCHAR(20)),
-    [IsActive] AS CAST(JSON_VALUE([Json], '$.IsActive') AS BIT),
-    [EffectiveDate] AS CONVERT(DATETIMEOFFSET, JSON_VALUE([Json], '$.EffectiveDate'), 127) PERSISTED,
-    [ExpiresOn] AS CONVERT(DATETIMEOFFSET, JSON_VALUE([Json], '$.ExpiresOn'), 127) PERSISTED,
-    -- JSON storage
-    [Json] NVARCHAR(MAX) NOT NULL,
-    -- Audit columns
-    [CreatedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
-    [ChangedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
-    [CreatedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
-    [ChangedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
-)
+    "ExchangeRateId" INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "Currency" CHAR(3) GENERATED ALWAYS AS (("Json"->>'Currency')::CHAR(3)) STORED,
+    "BuyRate" NUMERIC(18,4) GENERATED ALWAYS AS (("Json"->>'BuyRate')::NUMERIC(18,4)) STORED,
+    "Source" VARCHAR(20) GENERATED ALWAYS AS (("Json"->>'Source')::VARCHAR(20)) STORED,
+    "IsActive" BOOLEAN GENERATED ALWAYS AS (("Json"->>'IsActive')::BOOLEAN) STORED,
+    "EffectiveDate" TIMESTAMPTZ GENERATED ALWAYS AS (immutable_text_to_timestamptz("Json"->>'EffectiveDate')) STORED,
+    "ExpiresOn" TIMESTAMPTZ GENERATED ALWAYS AS (immutable_text_to_timestamptz("Json"->>'ExpiresOn')) STORED,
+    "Json" JSONB NOT NULL,
+    "tenant_id" VARCHAR(50) NOT NULL DEFAULT current_setting('app.current_tenant'),
+    "CreatedBy" VARCHAR(50) NOT NULL DEFAULT 'system',
+    "ChangedBy" VARCHAR(50) NOT NULL DEFAULT 'system',
+    "CreatedTimestamp" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "ChangedTimestamp" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE "ExchangeRate" ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation_exchangerate ON "ExchangeRate" USING ("tenant_id" = current_setting('app.current_tenant'));
 
-CREATE INDEX IX_ExchangeRate_Currency_Active ON [<schema>].[ExchangeRate]([Currency], [IsActive])
-CREATE INDEX IX_ExchangeRate_EffectiveDate ON [<schema>].[ExchangeRate]([EffectiveDate])
+CREATE INDEX IX_ExchangeRate_Currency_Active ON "ExchangeRate"("Currency", "IsActive");
+CREATE INDEX IX_ExchangeRate_EffectiveDate ON "ExchangeRate"("EffectiveDate");
+CREATE INDEX IX_ExchangeRate_TenantId ON "ExchangeRate"("tenant_id");

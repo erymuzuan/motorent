@@ -1,51 +1,44 @@
 -- Rental table
-CREATE TABLE [<schema>].[Rental]
+CREATE TABLE "Rental"
 (
-    [RentalId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
+    "RentalId" INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     -- Shop and Location (COALESCE for backward compatibility with old ShopId)
-    [RentedFromShopId] AS CAST(COALESCE(JSON_VALUE([Json], '$.RentedFromShopId'), JSON_VALUE([Json], '$.ShopId')) AS INT),
-    [ReturnedToShopId] AS CAST(JSON_VALUE([Json], '$.ReturnedToShopId') AS INT),
-    [VehiclePoolId] AS CAST(JSON_VALUE([Json], '$.VehiclePoolId') AS INT),
+    "RentedFromShopId" INT GENERATED ALWAYS AS ((COALESCE("Json"->>'RentedFromShopId', "Json"->>'ShopId'))::INT) STORED,
+    "ReturnedToShopId" INT GENERATED ALWAYS AS (("Json"->>'ReturnedToShopId')::INT) STORED,
+    "VehiclePoolId" INT GENERATED ALWAYS AS (("Json"->>'VehiclePoolId')::INT) STORED,
     -- Renter and Vehicle (COALESCE for backward compatibility with old MotorbikeId)
-    [RenterId] AS CAST(JSON_VALUE([Json], '$.RenterId') AS INT),
-    [VehicleId] AS CAST(COALESCE(JSON_VALUE([Json], '$.VehicleId'), JSON_VALUE([Json], '$.MotorbikeId')) AS INT),
+    "RenterId" INT GENERATED ALWAYS AS (("Json"->>'RenterId')::INT) STORED,
+    "VehicleId" INT GENERATED ALWAYS AS ((COALESCE("Json"->>'VehicleId', "Json"->>'MotorbikeId'))::INT) STORED,
     -- Duration Type (defaults to Daily for backward compatibility)
-    [DurationType] AS CAST(COALESCE(JSON_VALUE([Json], '$.DurationType'), 'Daily') AS NVARCHAR(20)),
-    [IntervalMinutes] AS CAST(JSON_VALUE([Json], '$.IntervalMinutes') AS INT),
+    "DurationType" VARCHAR(20) GENERATED ALWAYS AS ((COALESCE("Json"->>'DurationType', 'Daily'))::VARCHAR(20)) STORED,
+    "IntervalMinutes" INT GENERATED ALWAYS AS (("Json"->>'IntervalMinutes')::INT) STORED,
     -- Booking Reference (for rentals created from bookings)
-    [BookingId] AS CAST(JSON_VALUE([Json], '$.BookingId') AS INT),
+    "BookingId" INT GENERATED ALWAYS AS (("Json"->>'BookingId')::INT) STORED,
     -- Status and Dates
-    [Status] AS CAST(JSON_VALUE([Json], '$.Status') AS NVARCHAR(20)),
-    [StartDate] DATE NULL,
-    [ExpectedEndDate] DATE NULL,
+    "Status" VARCHAR(20) GENERATED ALWAYS AS (("Json"->>'Status')::VARCHAR(20)) STORED,
+    "StartDate" DATE NULL,
+    "ExpectedEndDate" DATE NULL,
     -- Driver/Guide
-    [IncludeDriver] AS CAST(COALESCE(JSON_VALUE([Json], '$.IncludeDriver'), 'false') AS BIT),
-    [IncludeGuide] AS CAST(COALESCE(JSON_VALUE([Json], '$.IncludeGuide'), 'false') AS BIT),
+    "IncludeDriver" BOOLEAN GENERATED ALWAYS AS ((COALESCE("Json"->>'IncludeDriver', 'false'))::BOOLEAN) STORED,
+    "IncludeGuide" BOOLEAN GENERATED ALWAYS AS ((COALESCE("Json"->>'IncludeGuide', 'false'))::BOOLEAN) STORED,
     -- Till Session
-    [TillSessionId] AS CAST(JSON_VALUE([Json], '$.TillSessionId') AS INT),
-    -- JSON storage
-    [Json] NVARCHAR(MAX) NOT NULL,
-    -- Audit columns
-    [CreatedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
-    [ChangedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
-    [CreatedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
-    [ChangedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
-)
+    "TillSessionId" INT GENERATED ALWAYS AS (("Json"->>'TillSessionId')::INT) STORED,
+    "Json" JSONB NOT NULL,
+    "tenant_id" VARCHAR(50) NOT NULL DEFAULT current_setting('app.current_tenant'),
+    "CreatedBy" VARCHAR(50) NOT NULL DEFAULT 'system',
+    "ChangedBy" VARCHAR(50) NOT NULL DEFAULT 'system',
+    "CreatedTimestamp" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "ChangedTimestamp" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE "Rental" ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation_rental ON "Rental" USING ("tenant_id" = current_setting('app.current_tenant'));
 
-
-CREATE INDEX IX_Rental_RentedFromShopId_Status ON [<schema>].[Rental]([RentedFromShopId], [Status])
-
-CREATE INDEX IX_Rental_ReturnedToShopId ON [<schema>].[Rental]([ReturnedToShopId]) WHERE [ReturnedToShopId] IS NOT NULL
-
-CREATE INDEX IX_Rental_VehiclePoolId ON [<schema>].[Rental]([VehiclePoolId]) WHERE [VehiclePoolId] IS NOT NULL
-
-CREATE INDEX IX_Rental_RenterId ON [<schema>].[Rental]([RenterId])
-
-CREATE INDEX IX_Rental_VehicleId ON [<schema>].[Rental]([VehicleId])
-
-CREATE INDEX IX_Rental_DurationType ON [<schema>].[Rental]([DurationType])
-
-CREATE INDEX IX_Rental_BookingId ON [<schema>].[Rental]([BookingId]) WHERE [BookingId] IS NOT NULL
-
-CREATE INDEX IX_Rental_TillSessionId ON [<schema>].[Rental]([TillSessionId]) WHERE [TillSessionId] IS NOT NULL
-
+CREATE INDEX IX_Rental_RentedFromShopId_Status ON "Rental"("RentedFromShopId", "Status");
+CREATE INDEX IX_Rental_ReturnedToShopId ON "Rental"("ReturnedToShopId") WHERE "ReturnedToShopId" IS NOT NULL;
+CREATE INDEX IX_Rental_VehiclePoolId ON "Rental"("VehiclePoolId") WHERE "VehiclePoolId" IS NOT NULL;
+CREATE INDEX IX_Rental_RenterId ON "Rental"("RenterId");
+CREATE INDEX IX_Rental_VehicleId ON "Rental"("VehicleId");
+CREATE INDEX IX_Rental_DurationType ON "Rental"("DurationType");
+CREATE INDEX IX_Rental_BookingId ON "Rental"("BookingId") WHERE "BookingId" IS NOT NULL;
+CREATE INDEX IX_Rental_TillSessionId ON "Rental"("TillSessionId") WHERE "TillSessionId" IS NOT NULL;
+CREATE INDEX IX_Rental_TenantId ON "Rental"("tenant_id");

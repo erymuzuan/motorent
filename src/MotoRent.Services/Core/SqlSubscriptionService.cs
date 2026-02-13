@@ -1,19 +1,19 @@
 using System.Text.RegularExpressions;
-using Microsoft.Data.SqlClient;
 using MotoRent.Domain.Core;
 using MotoRent.Domain.DataContext;
-using MotoRent.SqlServerRepository;
+using Npgsql;
 
 namespace MotoRent.Services.Core;
 
 /// <summary>
-/// SQL-based service for managing tenant subscriptions and schema provisioning.
+/// PostgreSQL-based service for managing tenant subscriptions and provisioning.
+/// Uses RLS (Row Level Security) with tenant_id instead of SQL Server schemas.
+/// Tables are shared across tenants; isolation is enforced by tenant_id column + RLS policies.
 /// </summary>
 public partial class SqlSubscriptionService(
     CoreDataContext context,
     IDirectoryService directoryService,
-    IRequestContext requestContext,
-    SqlQueryProvider queryProvider) : ISubscriptionService
+    IRequestContext requestContext) : ISubscriptionService
 {
     // Tables that should be created first (no dependencies or are depended upon by others)
     private static readonly HashSet<string> s_priorityTables =
@@ -38,7 +38,6 @@ public partial class SqlSubscriptionService(
     private CoreDataContext Context { get; } = context;
     private IDirectoryService DirectoryService { get; } = directoryService;
     private IRequestContext RequestContext { get; } = requestContext;
-    private SqlQueryProvider QueryProvider { get; } = queryProvider;
 
     #region Organization Management
 
@@ -66,9 +65,9 @@ public partial class SqlSubscriptionService(
         session.Attach(organization);
         await session.SubmitChanges("CreateOrganization");
 
-        progressCallback?.Invoke(new ProvisioningProgress { Message = $"Organization saved. Creating schema [{organization.AccountNo}]..." });
+        progressCallback?.Invoke(new ProvisioningProgress { Message = $"Organization saved. Provisioning tenant [{organization.AccountNo}]..." });
 
-        // Create the schema and tables
+        // Provision tenant tables (create if not exist, ensure RLS policies)
         await this.CreateSchemaAsync(organization.AccountNo, progressCallback);
 
         progressCallback?.Invoke(new ProvisioningProgress { Message = $"Organization {organization.Name} created successfully!", Status = ProgressStatus.Done });
@@ -85,9 +84,9 @@ public partial class SqlSubscriptionService(
         session.Attach(organization);
         await session.SubmitChanges("CreateOrganization");
 
-        progressCallback?.Invoke(new ProvisioningProgress { Message = $"Organization saved. Creating schema [{organization.AccountNo}]..." });
+        progressCallback?.Invoke(new ProvisioningProgress { Message = $"Organization saved. Provisioning tenant [{organization.AccountNo}]..." });
 
-        // Create the schema and tables
+        // Provision tenant tables
         await this.CreateSchemaAsync(organization.AccountNo, progressCallback);
 
         // Create or update the admin user
@@ -179,12 +178,10 @@ public partial class SqlSubscriptionService(
         if (chars.Length == 0) return "";
 
         // If word already has mixed case (PascalCase), preserve it
-        // e.g., "StaffyCoLtd" should stay as-is
         var hasUpperAfterFirst = chars.Skip(1).Any(char.IsUpper);
         var hasLower = chars.Any(char.IsLower);
         if (hasUpperAfterFirst && hasLower)
         {
-            // Already PascalCase - just ensure first letter is uppercase
             chars[0] = char.ToUpperInvariant(chars[0]);
             return new string(chars);
         }
@@ -209,37 +206,16 @@ public partial class SqlSubscriptionService(
 
     #region Schema Management
 
+    /// <summary>
+    /// In PostgreSQL with RLS, "creating a schema" means ensuring tables exist and RLS policies are in place.
+    /// Tables are shared across all tenants; tenant isolation is enforced by tenant_id + RLS policies.
+    /// This executes table creation scripts (IF NOT EXISTS) from the database folder.
+    /// </summary>
     public async Task CreateSchemaAsync(string accountNo, Action<ProvisioningProgress>? progressCallback = null)
     {
-        progressCallback?.Invoke(new ProvisioningProgress { Message = $"Creating schema [{accountNo}]..." });
+        progressCallback?.Invoke(new ProvisioningProgress { Message = $"Provisioning tenant [{accountNo}]..." });
 
-        // Create the schema
-        try
-        {
-            var schemaSql = $"CREATE SCHEMA [{accountNo}] AUTHORIZATION [dbo]";
-            await using var schemaConn = this.QueryProvider.CreateConnection();
-            await using var schemaCommand = new SqlCommand(schemaSql, schemaConn);
-            await schemaConn.OpenAsync();
-            await schemaCommand.ExecuteNonQueryAsync();
-            progressCallback?.Invoke(new ProvisioningProgress { Message = $"Schema [{accountNo}] created." });
-        }
-        catch (SqlException ex) when (ex.Number == 2714) // Schema already exists
-        {
-            progressCallback?.Invoke(new ProvisioningProgress
-            {
-                Message = $"Schema [{accountNo}] already exists.",
-                Status = ProgressStatus.InProgress
-            });
-        }
-        catch (SqlException ex)
-        {
-            progressCallback?.Invoke(new ProvisioningProgress
-            {
-                Message = $"Error creating schema: {ex.Message}",
-                Status = ProgressStatus.Error
-            });
-            throw;
-        }
+        var connectionString = MotoConfig.SqlConnectionString;
 
         // Read and execute table scripts from the tables folder
         var databaseFolder = MotoConfig.DatabaseSource;
@@ -280,38 +256,29 @@ public partial class SqlSubscriptionService(
 
             var sqlTemplate = await File.ReadAllTextAsync(filePath);
 
-            // Replace <schema> placeholder and also handle hardcoded [MotoRent] schema references
-            var sql = sqlTemplate
-                .Replace("<schema>", accountNo)
-                .Replace("[MotoRent].", $"[{accountNo}].");
+            // For PostgreSQL, table scripts use CREATE TABLE IF NOT EXISTS
+            // No schema replacement needed - tables are in public schema with tenant_id
+            var sql = sqlTemplate;
 
-            // Split by GO statements and execute each batch
-            var batches = SplitSqlBatches(sql);
-
-            foreach (var batch in batches)
+            try
             {
-                if (string.IsNullOrWhiteSpace(batch)) continue;
-
-                try
+                await using var conn = new NpgsqlConnection(connectionString);
+                await conn.OpenAsync();
+                await using var cmd = new NpgsqlCommand(sql, conn);
+                await cmd.ExecuteNonQueryAsync();
+            }
+            catch (NpgsqlException ex) when (ex.SqlState == "42P07") // table already exists
+            {
+                // Silently skip - table already exists
+            }
+            catch (NpgsqlException ex)
+            {
+                // Log but continue
+                progressCallback?.Invoke(new ProvisioningProgress
                 {
-                    await using var conn = this.QueryProvider.CreateConnection();
-                    await using var cmd = new SqlCommand(batch, conn);
-                    await conn.OpenAsync();
-                    await cmd.ExecuteNonQueryAsync();
-                }
-                catch (SqlException ex) when (ex.Number == 2714) // Object already exists
-                {
-                    // Silently skip - table already exists
-                }
-                catch (SqlException ex)
-                {
-                    // Log but continue
-                    progressCallback?.Invoke(new ProvisioningProgress
-                    {
-                        Message = $"Warning ({tableFile}): {ex.Message}",
-                        Status = ProgressStatus.InProgress
-                    });
-                }
+                    Message = $"Warning ({tableFile}): {ex.Message}",
+                    Status = ProgressStatus.InProgress
+                });
             }
 
             progressCallback?.Invoke(new ProvisioningProgress
@@ -323,7 +290,7 @@ public partial class SqlSubscriptionService(
 
         progressCallback?.Invoke(new ProvisioningProgress
         {
-            Message = $"Schema [{accountNo}] tables created successfully!",
+            Message = $"Tenant [{accountNo}] provisioned successfully!",
             Status = ProgressStatus.Done
         });
     }
@@ -331,20 +298,25 @@ public partial class SqlSubscriptionService(
     public async Task DeleteSchemaAsync(Organization organization)
     {
         var accountNo = organization.AccountNo;
+        var connectionString = MotoConfig.SqlConnectionString;
 
-        // Get all tables in the schema
-        var tablesSql = $"""
-            SELECT TABLE_NAME
-            FROM INFORMATION_SCHEMA.TABLES
-            WHERE TABLE_SCHEMA = '{accountNo}'
+        // In PostgreSQL with RLS, deleting a "schema" means removing all tenant data
+        // Delete all rows with matching tenant_id from all tables
+
+        // Get all tables that have tenant_id column
+        var tablesSql = """
+            SELECT table_name
+            FROM information_schema.columns
+            WHERE column_name = 'tenant_id'
+            AND table_schema = 'public'
             """;
 
         var tables = new List<string>();
 
-        await using (var conn = this.QueryProvider.CreateConnection())
+        await using (var conn = new NpgsqlConnection(connectionString))
         {
-            await using var cmd = new SqlCommand(tablesSql, conn);
             await conn.OpenAsync();
+            await using var cmd = new NpgsqlCommand(tablesSql, conn);
             await using var reader = await cmd.ExecuteReaderAsync();
             while (await reader.ReadAsync())
             {
@@ -352,21 +324,21 @@ public partial class SqlSubscriptionService(
             }
         }
 
-        // Drop all tables
+        // Delete all data for this tenant from each table
         foreach (var table in tables)
         {
-            await using var conn = this.QueryProvider.CreateConnection();
-            await using var cmd = new SqlCommand($"DROP TABLE [{accountNo}].[{table}]", conn);
-            await conn.OpenAsync();
-            await cmd.ExecuteNonQueryAsync();
-        }
-
-        // Drop the schema
-        await using (var conn = this.QueryProvider.CreateConnection())
-        {
-            await using var cmd = new SqlCommand($"DROP SCHEMA [{accountNo}]", conn);
-            await conn.OpenAsync();
-            await cmd.ExecuteNonQueryAsync();
+            try
+            {
+                await using var conn = new NpgsqlConnection(connectionString);
+                await conn.OpenAsync();
+                await using var cmd = new NpgsqlCommand($"DELETE FROM \"{table}\" WHERE \"tenant_id\" = @tenantId", conn);
+                cmd.Parameters.AddWithValue("@tenantId", accountNo);
+                await cmd.ExecuteNonQueryAsync();
+            }
+            catch (NpgsqlException)
+            {
+                // Continue even if a table delete fails
+            }
         }
 
         // Get all users in this organization
@@ -375,9 +347,10 @@ public partial class SqlSubscriptionService(
         // Remove users who only belong to this organization
         foreach (var user in users.Where(u => u.AccountCollection.Count == 1))
         {
-            await using var conn = this.QueryProvider.CreateConnection();
-            await using var cmd = new SqlCommand($"DELETE FROM [Core].[User] WHERE [UserId] = {user.UserId}", conn);
+            await using var conn = new NpgsqlConnection(connectionString);
             await conn.OpenAsync();
+            await using var cmd = new NpgsqlCommand($"DELETE FROM \"User\" WHERE \"UserId\" = @Id", conn);
+            cmd.Parameters.AddWithValue("@Id", user.UserId);
             await cmd.ExecuteNonQueryAsync();
         }
 
@@ -389,24 +362,14 @@ public partial class SqlSubscriptionService(
         }
 
         // Delete the organization
-        await using (var conn = this.QueryProvider.CreateConnection())
+        await using (var conn = new NpgsqlConnection(connectionString))
         {
-            await using var cmd = new SqlCommand($"DELETE FROM [Core].[Organization] WHERE [OrganizationId] = {organization.OrganizationId}", conn);
             await conn.OpenAsync();
+            await using var cmd = new NpgsqlCommand($"DELETE FROM \"Organization\" WHERE \"OrganizationId\" = @Id", conn);
+            cmd.Parameters.AddWithValue("@Id", organization.OrganizationId);
             await cmd.ExecuteNonQueryAsync();
         }
     }
-
-    private static IEnumerable<string> SplitSqlBatches(string sql)
-    {
-        // Split on GO statements (case insensitive, on its own line)
-        return GoRegex().Split(sql)
-            .Select(s => s.Trim())
-            .Where(s => !string.IsNullOrWhiteSpace(s));
-    }
-
-    [GeneratedRegex(@"^\s*GO\s*$", RegexOptions.IgnoreCase | RegexOptions.Multiline)]
-    private static partial Regex GoRegex();
 
     #endregion
 
@@ -444,14 +407,17 @@ public partial class SqlSubscriptionService(
 
     public async Task RemoveUserFromOrganizationAsync(User user, string accountNo)
     {
+        var connectionString = MotoConfig.SqlConnectionString;
+
         user.AccountCollection.RemoveAll(a => a.AccountNo == accountNo);
 
         if (user.AccountCollection.Count == 0)
         {
             // Delete the user entirely
-            await using var conn = this.QueryProvider.CreateConnection();
-            await using var cmd = new SqlCommand($"DELETE FROM [Core].[User] WHERE [UserId] = {user.UserId}", conn);
+            await using var conn = new NpgsqlConnection(connectionString);
             await conn.OpenAsync();
+            await using var cmd = new NpgsqlCommand($"DELETE FROM \"User\" WHERE \"UserId\" = @Id", conn);
+            cmd.Parameters.AddWithValue("@Id", user.UserId);
             await cmd.ExecuteNonQueryAsync();
         }
         else

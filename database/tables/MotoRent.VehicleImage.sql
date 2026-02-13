@@ -1,20 +1,20 @@
 -- VehicleImage table
--- Stores images associated with vehicles (up to 5 per vehicle)
-CREATE TABLE [<schema>].[VehicleImage]
+CREATE TABLE "VehicleImage"
 (
-    [VehicleImageId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
-    -- Computed columns
-    [VehicleId] AS CAST(JSON_VALUE([Json], '$.VehicleId') AS INT),
-    [IsPrimary] AS CAST(JSON_VALUE([Json], '$.IsPrimary') AS BIT),
-    [DisplayOrder] AS CAST(JSON_VALUE([Json], '$.DisplayOrder') AS INT),
-    -- JSON storage
-    [Json] NVARCHAR(MAX) NOT NULL,
-    -- Audit columns
-    [CreatedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
-    [ChangedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
-    [CreatedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
-    [ChangedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
-)
+    "VehicleImageId" INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "VehicleId" INT GENERATED ALWAYS AS (("Json"->>'VehicleId')::INT) STORED,
+    "IsPrimary" BOOLEAN GENERATED ALWAYS AS (("Json"->>'IsPrimary')::BOOLEAN) STORED,
+    "DisplayOrder" INT GENERATED ALWAYS AS (("Json"->>'DisplayOrder')::INT) STORED,
+    "Json" JSONB NOT NULL,
+    "tenant_id" VARCHAR(50) NOT NULL DEFAULT current_setting('app.current_tenant'),
+    "CreatedBy" VARCHAR(50) NOT NULL DEFAULT 'system',
+    "ChangedBy" VARCHAR(50) NOT NULL DEFAULT 'system',
+    "CreatedTimestamp" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "ChangedTimestamp" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE "VehicleImage" ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation_vehicleimage ON "VehicleImage" USING ("tenant_id" = current_setting('app.current_tenant'));
 
-CREATE INDEX IX_VehicleImage_VehicleId ON [<schema>].[VehicleImage]([VehicleId])
-CREATE INDEX IX_VehicleImage_VehicleId_IsPrimary ON [<schema>].[VehicleImage]([VehicleId], [IsPrimary])
+CREATE INDEX IX_VehicleImage_VehicleId ON "VehicleImage"("VehicleId");
+CREATE INDEX IX_VehicleImage_VehicleId_IsPrimary ON "VehicleImage"("VehicleId", "IsPrimary");
+CREATE INDEX IX_VehicleImage_TenantId ON "VehicleImage"("tenant_id");

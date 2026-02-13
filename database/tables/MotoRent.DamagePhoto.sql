@@ -1,17 +1,18 @@
 -- DamagePhoto table
-CREATE TABLE [<schema>].[DamagePhoto]
+CREATE TABLE "DamagePhoto"
 (
-    [DamagePhotoId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
-    -- Computed columns
-    [DamageReportId] AS CAST(JSON_VALUE([Json], '$.DamageReportId') AS INT),
-    [PhotoType] AS CAST(JSON_VALUE([Json], '$.PhotoType') AS NVARCHAR(20)),
-    -- JSON storage
-    [Json] NVARCHAR(MAX) NOT NULL,
-    -- Audit columns
-    [CreatedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
-    [ChangedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
-    [CreatedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
-    [ChangedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
-)
+    "DamagePhotoId" INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "DamageReportId" INT GENERATED ALWAYS AS (("Json"->>'DamageReportId')::INT) STORED,
+    "PhotoType" VARCHAR(20) GENERATED ALWAYS AS (("Json"->>'PhotoType')::VARCHAR(20)) STORED,
+    "Json" JSONB NOT NULL,
+    "tenant_id" VARCHAR(50) NOT NULL DEFAULT current_setting('app.current_tenant'),
+    "CreatedBy" VARCHAR(50) NOT NULL DEFAULT 'system',
+    "ChangedBy" VARCHAR(50) NOT NULL DEFAULT 'system',
+    "CreatedTimestamp" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "ChangedTimestamp" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE "DamagePhoto" ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation_damagephoto ON "DamagePhoto" USING ("tenant_id" = current_setting('app.current_tenant'));
 
-CREATE INDEX IX_DamagePhoto_DamageReportId ON [<schema>].[DamagePhoto]([DamageReportId])
+CREATE INDEX IX_DamagePhoto_DamageReportId ON "DamagePhoto"("DamageReportId");
+CREATE INDEX IX_DamagePhoto_TenantId ON "DamagePhoto"("tenant_id");

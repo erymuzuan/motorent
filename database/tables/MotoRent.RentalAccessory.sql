@@ -1,17 +1,18 @@
 -- RentalAccessory table
-CREATE TABLE [<schema>].[RentalAccessory]
+CREATE TABLE "RentalAccessory"
 (
-    [RentalAccessoryId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
-    -- Computed columns
-    [RentalId] AS CAST(JSON_VALUE([Json], '$.RentalId') AS INT),
-    [AccessoryId] AS CAST(JSON_VALUE([Json], '$.AccessoryId') AS INT),
-    -- JSON storage
-    [Json] NVARCHAR(MAX) NOT NULL,
-    -- Audit columns
-    [CreatedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
-    [ChangedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
-    [CreatedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
-    [ChangedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
-)
+    "RentalAccessoryId" INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "RentalId" INT GENERATED ALWAYS AS (("Json"->>'RentalId')::INT) STORED,
+    "AccessoryId" INT GENERATED ALWAYS AS (("Json"->>'AccessoryId')::INT) STORED,
+    "Json" JSONB NOT NULL,
+    "tenant_id" VARCHAR(50) NOT NULL DEFAULT current_setting('app.current_tenant'),
+    "CreatedBy" VARCHAR(50) NOT NULL DEFAULT 'system',
+    "ChangedBy" VARCHAR(50) NOT NULL DEFAULT 'system',
+    "CreatedTimestamp" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "ChangedTimestamp" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE "RentalAccessory" ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation_rentalaccessory ON "RentalAccessory" USING ("tenant_id" = current_setting('app.current_tenant'));
 
-CREATE INDEX IX_RentalAccessory_RentalId ON [<schema>].[RentalAccessory]([RentalId])
+CREATE INDEX IX_RentalAccessory_RentalId ON "RentalAccessory"("RentalId");
+CREATE INDEX IX_RentalAccessory_TenantId ON "RentalAccessory"("tenant_id");

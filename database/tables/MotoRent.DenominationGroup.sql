@@ -1,20 +1,20 @@
 -- DenominationGroup table - Groups of denominations that share the same exchange rate
--- Admin-configurable through settings UI
-CREATE TABLE [<schema>].[DenominationGroup]
+CREATE TABLE "DenominationGroup"
 (
-    [DenominationGroupId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
-    -- Computed columns for indexing
-    [Currency] AS CAST(JSON_VALUE([Json], '$.Currency') AS CHAR(3)),
-    [GroupName] AS CAST(JSON_VALUE([Json], '$.GroupName') AS NVARCHAR(50)),
-    [SortOrder] AS CAST(JSON_VALUE([Json], '$.SortOrder') AS INT),
-    [IsActive] AS CAST(JSON_VALUE([Json], '$.IsActive') AS BIT),
-    -- JSON storage
-    [Json] NVARCHAR(MAX) NOT NULL,
-    -- Audit columns
-    [CreatedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
-    [ChangedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
-    [CreatedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
-    [ChangedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
-)
+    "DenominationGroupId" INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "Currency" CHAR(3) GENERATED ALWAYS AS (("Json"->>'Currency')::CHAR(3)) STORED,
+    "GroupName" VARCHAR(50) GENERATED ALWAYS AS (("Json"->>'GroupName')::VARCHAR(50)) STORED,
+    "SortOrder" INT GENERATED ALWAYS AS (("Json"->>'SortOrder')::INT) STORED,
+    "IsActive" BOOLEAN GENERATED ALWAYS AS (("Json"->>'IsActive')::BOOLEAN) STORED,
+    "Json" JSONB NOT NULL,
+    "tenant_id" VARCHAR(50) NOT NULL DEFAULT current_setting('app.current_tenant'),
+    "CreatedBy" VARCHAR(50) NOT NULL DEFAULT 'system',
+    "ChangedBy" VARCHAR(50) NOT NULL DEFAULT 'system',
+    "CreatedTimestamp" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "ChangedTimestamp" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE "DenominationGroup" ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation_denominationgroup ON "DenominationGroup" USING ("tenant_id" = current_setting('app.current_tenant'));
 
-CREATE INDEX IX_DenominationGroup_Currency ON [<schema>].[DenominationGroup]([Currency], [IsActive], [SortOrder])
+CREATE INDEX IX_DenominationGroup_Currency ON "DenominationGroup"("Currency", "IsActive", "SortOrder");
+CREATE INDEX IX_DenominationGroup_TenantId ON "DenominationGroup"("tenant_id");

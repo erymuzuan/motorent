@@ -1,180 +1,135 @@
 -- =============================================
--- MotoRent Core Schema
+-- MotoRent Core Schema (PostgreSQL)
 -- Multi-tenant core entities for user management,
 -- organization (tenant) management, and authentication
 -- =============================================
 
-SET QUOTED_IDENTIFIER ON
-GO
-
--- Create Core schema
-IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'Core')
-BEGIN
-    EXEC('CREATE SCHEMA [Core]');
-END
-GO
-
 -- =============================================
 -- Organization (Tenant) Table
 -- =============================================
-CREATE TABLE [Core].[Organization]
+CREATE TABLE "Organization"
 (
-    [OrganizationId]    INT            NOT NULL PRIMARY KEY IDENTITY(1,1),
-    -- Computed columns from JSON
-    [AccountNo]         AS CAST(JSON_VALUE([Json], '$.AccountNo') AS VARCHAR(50)) PERSISTED,
-    [Name]              AS CAST(JSON_VALUE([Json], '$.Name') AS NVARCHAR(200)),
-    [Currency]          AS CAST(JSON_VALUE([Json], '$.Currency') AS VARCHAR(10)),
-    [Timezone]          AS CAST(JSON_VALUE([Json], '$.Timezone') AS FLOAT),
-    [Language]          AS CAST(JSON_VALUE([Json], '$.Language') AS VARCHAR(10)),
-    [IsActive]          AS CAST(JSON_VALUE([Json], '$.IsActive') AS BIT),
-    -- JSON storage
-    [Json]              NVARCHAR(MAX)  NOT NULL,
-    -- Audit columns
-    [CreatedBy]         VARCHAR(50)    NOT NULL DEFAULT 'system',
-    [ChangedBy]         VARCHAR(50)    NOT NULL DEFAULT 'system',
-    [CreatedTimestamp]  DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
-    [ChangedTimestamp]  DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
+    "OrganizationId"    INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "AccountNo"         VARCHAR(50) GENERATED ALWAYS AS (("Json"->>'AccountNo')::VARCHAR(50)) STORED,
+    "Name"              VARCHAR(200) GENERATED ALWAYS AS (("Json"->>'Name')::VARCHAR(200)) STORED,
+    "Currency"          VARCHAR(10) GENERATED ALWAYS AS (("Json"->>'Currency')::VARCHAR(10)) STORED,
+    "Timezone"          DOUBLE PRECISION GENERATED ALWAYS AS (("Json"->>'Timezone')::DOUBLE PRECISION) STORED,
+    "Language"          VARCHAR(10) GENERATED ALWAYS AS (("Json"->>'Language')::VARCHAR(10)) STORED,
+    "IsActive"          BOOLEAN GENERATED ALWAYS AS (("Json"->>'IsActive')::BOOLEAN) STORED,
+    "Json"              JSONB NOT NULL,
+    "CreatedBy"         VARCHAR(50) NOT NULL DEFAULT 'system',
+    "ChangedBy"         VARCHAR(50) NOT NULL DEFAULT 'system',
+    "CreatedTimestamp"  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "ChangedTimestamp"  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-GO
 
-CREATE UNIQUE INDEX [IX_Organization_AccountNo] ON [Core].[Organization]([AccountNo]);
-GO
+CREATE UNIQUE INDEX IX_Organization_AccountNo ON "Organization"("AccountNo");
 
 -- =============================================
 -- User Table
 -- =============================================
-CREATE TABLE [Core].[User]
+CREATE TABLE "User"
 (
-    [UserId]            INT            NOT NULL PRIMARY KEY IDENTITY(1,1),
-    -- Computed columns from JSON
-    [UserName]          AS CAST(JSON_VALUE([Json], '$.UserName') AS VARCHAR(200)) PERSISTED,
-    [Email]             AS CAST(JSON_VALUE([Json], '$.Email') AS VARCHAR(200)),
-    [FullName]          AS CAST(JSON_VALUE([Json], '$.FullName') AS NVARCHAR(200)),
-    [CredentialProvider] AS CAST(JSON_VALUE([Json], '$.CredentialProvider') AS VARCHAR(20)),
-    [IsLockedOut]       AS CAST(JSON_VALUE([Json], '$.IsLockedOut') AS BIT),
-    -- JSON storage
-    [Json]              NVARCHAR(MAX)  NOT NULL,
-    -- Audit columns
-    [CreatedBy]         VARCHAR(50)    NOT NULL DEFAULT 'system',
-    [ChangedBy]         VARCHAR(50)    NOT NULL DEFAULT 'system',
-    [CreatedTimestamp]  DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
-    [ChangedTimestamp]  DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
+    "UserId"            INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "UserName"          VARCHAR(200) GENERATED ALWAYS AS (("Json"->>'UserName')::VARCHAR(200)) STORED,
+    "Email"             VARCHAR(200) GENERATED ALWAYS AS (("Json"->>'Email')::VARCHAR(200)) STORED,
+    "FullName"          VARCHAR(200) GENERATED ALWAYS AS (("Json"->>'FullName')::VARCHAR(200)) STORED,
+    "CredentialProvider" VARCHAR(20) GENERATED ALWAYS AS (("Json"->>'CredentialProvider')::VARCHAR(20)) STORED,
+    "IsLockedOut"       BOOLEAN GENERATED ALWAYS AS (("Json"->>'IsLockedOut')::BOOLEAN) STORED,
+    "Json"              JSONB NOT NULL,
+    "CreatedBy"         VARCHAR(50) NOT NULL DEFAULT 'system',
+    "ChangedBy"         VARCHAR(50) NOT NULL DEFAULT 'system',
+    "CreatedTimestamp"  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "ChangedTimestamp"  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-GO
 
-CREATE UNIQUE INDEX [IX_User_UserName] ON [Core].[User]([UserName]);
-CREATE INDEX [IX_User_Email] ON [Core].[User]([Email]);
-GO
+CREATE UNIQUE INDEX IX_User_UserName ON "User"("UserName");
+CREATE INDEX IX_User_Email ON "User"("Email");
 
 -- =============================================
 -- Setting Table
 -- Supports both global and user-specific settings
 -- =============================================
-CREATE TABLE [Core].[Setting]
+CREATE TABLE "Setting"
 (
-    [SettingId]         INT            NOT NULL PRIMARY KEY IDENTITY(1,1),
-    -- Computed columns from JSON
-    [AccountNo]         AS CAST(JSON_VALUE([Json], '$.AccountNo') AS VARCHAR(20)),
-    [Key]               AS CAST(JSON_VALUE([Json], '$.Key') AS VARCHAR(100)) PERSISTED,
-    [UserName]          AS CAST(JSON_VALUE([Json], '$.UserName') AS VARCHAR(200)),
-    [Expire]            AS CAST(JSON_VALUE([Json], '$.Expire') AS DATETIMEOFFSET),
-    -- JSON storage
-    [Json]              NVARCHAR(MAX)  NOT NULL,
-    -- Audit columns
-    [CreatedBy]         VARCHAR(50)    NOT NULL DEFAULT 'system',
-    [ChangedBy]         VARCHAR(50)    NOT NULL DEFAULT 'system',
-    [CreatedTimestamp]  DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
-    [ChangedTimestamp]  DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
+    "SettingId"         INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "AccountNo"         VARCHAR(20) GENERATED ALWAYS AS (("Json"->>'AccountNo')::VARCHAR(20)) STORED,
+    "Key"               VARCHAR(100) GENERATED ALWAYS AS (("Json"->>'Key')::VARCHAR(100)) STORED,
+    "UserName"          VARCHAR(200) GENERATED ALWAYS AS (("Json"->>'UserName')::VARCHAR(200)) STORED,
+    "Expire"            TIMESTAMPTZ GENERATED ALWAYS AS (immutable_text_to_timestamptz("Json"->>'Expire')) STORED,
+    "Json"              JSONB NOT NULL,
+    "CreatedBy"         VARCHAR(50) NOT NULL DEFAULT 'system',
+    "ChangedBy"         VARCHAR(50) NOT NULL DEFAULT 'system',
+    "CreatedTimestamp"  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "ChangedTimestamp"  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-GO
 
-CREATE INDEX [IX_Setting_AccountNo_Key] ON [Core].[Setting]([AccountNo], [Key]);
-CREATE INDEX [IX_Setting_AccountNo_UserName_Key] ON [Core].[Setting]([AccountNo], [UserName], [Key]);
-GO
+CREATE INDEX IX_Setting_AccountNo_Key ON "Setting"("AccountNo", "Key");
+CREATE INDEX IX_Setting_AccountNo_UserName_Key ON "Setting"("AccountNo", "UserName", "Key");
 
 -- =============================================
 -- AccessToken Table
 -- For API authentication
 -- =============================================
-CREATE TABLE [Core].[AccessToken]
+CREATE TABLE "AccessToken"
 (
-    [AccessTokenId]     INT            NOT NULL PRIMARY KEY IDENTITY(1,1),
-    -- Computed columns from JSON
-    [AccountNo]         AS CAST(JSON_VALUE([Json], '$.AccountNo') AS VARCHAR(20)),
-    [UserName]          AS CAST(JSON_VALUE([Json], '$.UserName') AS VARCHAR(200)),
-    [Token]             AS CAST(JSON_VALUE([Json], '$.Token') AS VARCHAR(100)) PERSISTED,
-    [Salt]              AS CAST(JSON_VALUE([Json], '$.Salt') AS VARCHAR(20)),
-    [Issued]            AS CAST(JSON_VALUE([Json], '$.Issued') AS DATE),
-    [Expires]           AS CAST(JSON_VALUE([Json], '$.Expires') AS DATE),
-    [IsRevoked]         AS CAST(JSON_VALUE([Json], '$.IsRevoked') AS BIT),
-    -- JSON storage (includes JWT Payload)
-    [Json]              NVARCHAR(MAX)  NOT NULL,
-    -- Audit columns
-    [CreatedBy]         VARCHAR(50)    NOT NULL DEFAULT 'system',
-    [ChangedBy]         VARCHAR(50)    NOT NULL DEFAULT 'system',
-    [CreatedTimestamp]  DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
-    [ChangedTimestamp]  DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
+    "AccessTokenId"     INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "AccountNo"         VARCHAR(20) GENERATED ALWAYS AS (("Json"->>'AccountNo')::VARCHAR(20)) STORED,
+    "UserName"          VARCHAR(200) GENERATED ALWAYS AS (("Json"->>'UserName')::VARCHAR(200)) STORED,
+    "Token"             VARCHAR(100) GENERATED ALWAYS AS (("Json"->>'Token')::VARCHAR(100)) STORED,
+    "Salt"              VARCHAR(20) GENERATED ALWAYS AS (("Json"->>'Salt')::VARCHAR(20)) STORED,
+    "Issued"            DATE GENERATED ALWAYS AS (immutable_text_to_date("Json"->>'Issued')) STORED,
+    "Expires"           DATE GENERATED ALWAYS AS (immutable_text_to_date("Json"->>'Expires')) STORED,
+    "IsRevoked"         BOOLEAN GENERATED ALWAYS AS (("Json"->>'IsRevoked')::BOOLEAN) STORED,
+    "Json"              JSONB NOT NULL,
+    "CreatedBy"         VARCHAR(50) NOT NULL DEFAULT 'system',
+    "ChangedBy"         VARCHAR(50) NOT NULL DEFAULT 'system',
+    "CreatedTimestamp"  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "ChangedTimestamp"  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-GO
 
-CREATE INDEX [IX_AccessToken_Token] ON [Core].[AccessToken]([Token]);
-CREATE INDEX [IX_AccessToken_UserName] ON [Core].[AccessToken]([UserName]);
-GO
+CREATE INDEX IX_AccessToken_Token ON "AccessToken"("Token");
+CREATE INDEX IX_AccessToken_UserName ON "AccessToken"("UserName");
 
 -- =============================================
 -- RegistrationInvite Table
 -- For controlled tenant onboarding
 -- =============================================
-CREATE TABLE [Core].[RegistrationInvite]
+CREATE TABLE "RegistrationInvite"
 (
-    [RegistrationInviteId] INT         NOT NULL PRIMARY KEY IDENTITY(1,1),
-    -- Computed columns from JSON
-    [Code]              AS CAST(JSON_VALUE([Json], '$.Code') AS VARCHAR(50)) PERSISTED,
-    [IsActive]          AS CAST(JSON_VALUE([Json], '$.IsActive') AS BIT),
-    [ValidFrom]         AS CAST(JSON_VALUE([Json], '$.ValidFrom') AS DATE),
-    [ValidTo]           AS CAST(JSON_VALUE([Json], '$.ValidTo') AS DATE),
-    [MaxAccount]        AS CAST(JSON_VALUE([Json], '$.MaxAccount') AS INT),
-    -- JSON storage
-    [Json]              NVARCHAR(MAX)  NOT NULL,
-    -- Audit columns
-    [CreatedBy]         VARCHAR(50)    NOT NULL DEFAULT 'system',
-    [ChangedBy]         VARCHAR(50)    NOT NULL DEFAULT 'system',
-    [CreatedTimestamp]  DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
-    [ChangedTimestamp]  DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
+    "RegistrationInviteId" INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "Code"              VARCHAR(50) GENERATED ALWAYS AS (("Json"->>'Code')::VARCHAR(50)) STORED,
+    "IsActive"          BOOLEAN GENERATED ALWAYS AS (("Json"->>'IsActive')::BOOLEAN) STORED,
+    "ValidFrom"         DATE GENERATED ALWAYS AS (immutable_text_to_date("Json"->>'ValidFrom')) STORED,
+    "ValidTo"           DATE GENERATED ALWAYS AS (immutable_text_to_date("Json"->>'ValidTo')) STORED,
+    "MaxAccount"        INT GENERATED ALWAYS AS (("Json"->>'MaxAccount')::INT) STORED,
+    "Json"              JSONB NOT NULL,
+    "CreatedBy"         VARCHAR(50) NOT NULL DEFAULT 'system',
+    "ChangedBy"         VARCHAR(50) NOT NULL DEFAULT 'system',
+    "CreatedTimestamp"  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "ChangedTimestamp"  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-GO
 
-CREATE UNIQUE INDEX [IX_RegistrationInvite_Code] ON [Core].[RegistrationInvite]([Code]);
-GO
+CREATE UNIQUE INDEX IX_RegistrationInvite_Code ON "RegistrationInvite"("Code");
 
 -- =============================================
 -- LogEntry Table
 -- For audit logging
 -- =============================================
-CREATE TABLE [Core].[LogEntry]
+CREATE TABLE "LogEntry"
 (
-    [LogEntryId]        INT            NOT NULL PRIMARY KEY IDENTITY(1,1),
-    -- Computed columns from JSON
-    [AccountNo]         AS CAST(JSON_VALUE([Json], '$.AccountNo') AS VARCHAR(20)),
-    [UserName]          AS CAST(JSON_VALUE([Json], '$.UserName') AS VARCHAR(200)),
-    [Severity]          AS CAST(JSON_VALUE([Json], '$.Severity') AS VARCHAR(20)),
-    [Application]       AS CAST(JSON_VALUE([Json], '$.Application') AS VARCHAR(50)),
-    [DateTime]          AS CAST(JSON_VALUE([Json], '$.DateTime') AS DATETIMEOFFSET),
-    -- JSON storage
-    [Json]              NVARCHAR(MAX)  NOT NULL,
-    -- Audit columns
-    [CreatedBy]         VARCHAR(50)    NOT NULL DEFAULT 'system',
-    [ChangedBy]         VARCHAR(50)    NOT NULL DEFAULT 'system',
-    [CreatedTimestamp]  DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
-    [ChangedTimestamp]  DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
+    "LogEntryId"        INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "AccountNo"         VARCHAR(20) GENERATED ALWAYS AS (("Json"->>'AccountNo')::VARCHAR(20)) STORED,
+    "UserName"          VARCHAR(200) GENERATED ALWAYS AS (("Json"->>'UserName')::VARCHAR(200)) STORED,
+    "Severity"          VARCHAR(20) GENERATED ALWAYS AS (("Json"->>'Severity')::VARCHAR(20)) STORED,
+    "Application"       VARCHAR(50) GENERATED ALWAYS AS (("Json"->>'Application')::VARCHAR(50)) STORED,
+    "DateTime"          TIMESTAMPTZ GENERATED ALWAYS AS (immutable_text_to_timestamptz("Json"->>'DateTime')) STORED,
+    "Json"              JSONB NOT NULL,
+    "CreatedBy"         VARCHAR(50) NOT NULL DEFAULT 'system',
+    "ChangedBy"         VARCHAR(50) NOT NULL DEFAULT 'system',
+    "CreatedTimestamp"  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "ChangedTimestamp"  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-GO
 
-CREATE INDEX [IX_LogEntry_AccountNo_DateTime] ON [Core].[LogEntry]([AccountNo], [DateTime]);
-CREATE INDEX [IX_LogEntry_Severity] ON [Core].[LogEntry]([Severity]);
-GO
-
--- NOTE: Shop table does NOT need AccountNo column
--- Shop data is stored in tenant-specific schemas (e.g., [AccountNo].[Shop])
--- The schema itself provides tenant isolation
--- Organization (tenant) -> has many Shops (outlets)
+CREATE INDEX IX_LogEntry_AccountNo_DateTime ON "LogEntry"("AccountNo", "DateTime");
+CREATE INDEX IX_LogEntry_Severity ON "LogEntry"("Severity");

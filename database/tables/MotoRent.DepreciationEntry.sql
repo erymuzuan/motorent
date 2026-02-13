@@ -1,33 +1,27 @@
 -- DepreciationEntry table - Period depreciation records
-CREATE TABLE [<schema>].[DepreciationEntry]
+CREATE TABLE "DepreciationEntry"
 (
-    [DepreciationEntryId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
-    -- Asset reference
-    [AssetId] AS CAST(JSON_VALUE([Json], '$.AssetId') AS INT),
-    -- Period
-    [PeriodStart] DATE NULL,
-    [PeriodEnd] DATE NULL,
-    -- Amounts
-    [Amount] AS CAST(JSON_VALUE([Json], '$.Amount') AS DECIMAL(12,2)),
-    [BookValueStart] AS CAST(JSON_VALUE([Json], '$.BookValueStart') AS DECIMAL(12,2)),
-    [BookValueEnd] AS CAST(JSON_VALUE([Json], '$.BookValueEnd') AS DECIMAL(12,2)),
-    -- Type
-    [Method] AS CAST(JSON_VALUE([Json], '$.Method') AS NVARCHAR(30)),
-    [EntryType] AS CAST(JSON_VALUE([Json], '$.EntryType') AS NVARCHAR(20)),
-    [IsManualOverride] AS CAST(JSON_VALUE([Json], '$.IsManualOverride') AS BIT),
-    -- JSON storage
-    [Json] NVARCHAR(MAX) NOT NULL,
-    -- Audit columns
-    [CreatedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
-    [ChangedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
-    [CreatedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
-    [ChangedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
-)
---
+    "DepreciationEntryId" INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "AssetId" INT GENERATED ALWAYS AS (("Json"->>'AssetId')::INT) STORED,
+    "PeriodStart" DATE NULL,
+    "PeriodEnd" DATE NULL,
+    "Amount" NUMERIC(12,2) GENERATED ALWAYS AS (("Json"->>'Amount')::NUMERIC(12,2)) STORED,
+    "BookValueStart" NUMERIC(12,2) GENERATED ALWAYS AS (("Json"->>'BookValueStart')::NUMERIC(12,2)) STORED,
+    "BookValueEnd" NUMERIC(12,2) GENERATED ALWAYS AS (("Json"->>'BookValueEnd')::NUMERIC(12,2)) STORED,
+    "Method" VARCHAR(30) GENERATED ALWAYS AS (("Json"->>'Method')::VARCHAR(30)) STORED,
+    "EntryType" VARCHAR(20) GENERATED ALWAYS AS (("Json"->>'EntryType')::VARCHAR(20)) STORED,
+    "IsManualOverride" BOOLEAN GENERATED ALWAYS AS (("Json"->>'IsManualOverride')::BOOLEAN) STORED,
+    "Json" JSONB NOT NULL,
+    "tenant_id" VARCHAR(50) NOT NULL DEFAULT current_setting('app.current_tenant'),
+    "CreatedBy" VARCHAR(50) NOT NULL DEFAULT 'system',
+    "ChangedBy" VARCHAR(50) NOT NULL DEFAULT 'system',
+    "CreatedTimestamp" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "ChangedTimestamp" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE "DepreciationEntry" ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation_depreciationentry ON "DepreciationEntry" USING ("tenant_id" = current_setting('app.current_tenant'));
 
-CREATE INDEX IX_DepreciationEntry_AssetId ON [<schema>].[DepreciationEntry]([AssetId])
---
-CREATE INDEX IX_DepreciationEntry_Period ON [<schema>].[DepreciationEntry]([AssetId], [PeriodStart], [PeriodEnd])
---
-CREATE INDEX IX_DepreciationEntry_Type ON [<schema>].[DepreciationEntry]([EntryType])
---
+CREATE INDEX IX_DepreciationEntry_AssetId ON "DepreciationEntry"("AssetId");
+CREATE INDEX IX_DepreciationEntry_Period ON "DepreciationEntry"("AssetId", "PeriodStart", "PeriodEnd");
+CREATE INDEX IX_DepreciationEntry_Type ON "DepreciationEntry"("EntryType");
+CREATE INDEX IX_DepreciationEntry_TenantId ON "DepreciationEntry"("tenant_id");

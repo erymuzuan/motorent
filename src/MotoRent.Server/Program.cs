@@ -18,7 +18,7 @@ using MotoRent.Services.ExchangeRateProviders;
 using MotoRent.Domain.Search;
 using MotoRent.Server.Middleware;
 using MotoRent.Core.Repository;
-using MotoRent.SqlServerRepository;
+using MotoRent.PostgreSqlRepository;
 using HashidsNet;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -51,8 +51,8 @@ builder.Services.AddScoped<IRequestContext>(sp =>
 // Add MotoRent data context (uses environment variable MOTO_SqlConnectionString)
 builder.Services.AddMotoRentDataContext(MotoConfig.SqlConnectionString);
 
-// Add SQL Server repository implementations (IPagingTranslator, ISqlServerMetadata, IRepository<T>)
-builder.Services.AddMotoRentSqlServerRepository();
+// Add PostgreSQL repository implementations (PgPagingTranslator, IPgMetadata, IRepository<T>)
+builder.Services.AddMotoRentPostgreSqlRepository();
 
 // Add MotoRent services
 builder.Services.AddScoped<MotorbikeService>(); // Deprecated: use VehicleService
@@ -183,9 +183,9 @@ if (!string.IsNullOrEmpty(openSearchHost))
     builder.Services.AddScoped<ISearchService, OpenSearchService>();
 }
 
-// Add Core Repository (LINQ expression tree translation + caching)
+// Add Core PostgreSQL Repository (LINQ expression tree translation + caching)
 builder.Services.AddHybridCache();
-builder.Services.AddCoreRepository(builder.Configuration);
+builder.Services.AddCorePostgreSqlRepository(builder.Configuration);
 
 // Add Core services
 builder.Services.AddScoped<IDirectoryService, SqlDirectoryService>();
