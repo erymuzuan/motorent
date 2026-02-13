@@ -2,8 +2,10 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using MotoRent.Domain.Core
 @using MotoRent.Client.Controls
+@using MotoRent.Services.Core
 @inherits MotoRentComponentBase
 @inject MotoRent.Domain.Core.ILogger AppLogger
+@inject FeedbackService FeedbackService
 
 <div class="container-tight py-4">
     <div class="empty">
@@ -61,6 +63,60 @@
                 Reload page
             </a>
         </div>
+
+        @* Help us fix this - Feedback form for all authenticated users *@
+        <AuthorizeView>
+            <Authorized>
+                @if (m_feedbackSubmitted)
+                {
+                    <div class="alert alert-success mt-4" style="max-width: 600px; margin-left: auto; margin-right: auto;">
+                        <i class="ti ti-circle-check me-2"></i>
+                        Thank you! Your feedback has been submitted and will help us fix this issue.
+                    </div>
+                }
+                else
+                {
+                    <div class="card mt-4 text-start" style="max-width: 600px; margin-left: auto; margin-right: auto;">
+                        <div class="card-header cursor-pointer" @onclick="() => m_showFeedbackForm = !m_showFeedbackForm">
+                            <div class="d-flex align-items-center justify-content-between w-100">
+                                <span>
+                                    <i class="ti ti-message-report me-2 text-primary"></i>
+                                    Help us fix this
+                                </span>
+                                <i class="ti @(m_showFeedbackForm ? "ti-chevron-up" : "ti-chevron-down")"></i>
+                            </div>
+                        </div>
+                        @if (m_showFeedbackForm)
+                        {
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label">Describe what you were doing when this error occurred</label>
+                                    <textarea class="form-control" rows="3"
+                                              placeholder="e.g., I was trying to create a new rental when..."
+                                              @bind="m_feedbackDescription"></textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Screenshot (optional)</label>
+                                    <ImageUpload StoreId="@m_feedbackScreenshotStoreId"
+                                                 StoreIdChanged="id => { m_feedbackScreenshotStoreId = id; StateHasChanged(); }"
+                                                 Title="Upload screenshot" />
+                                </div>
+                                <button type="button" class="btn btn-primary"
+                                        disabled="@(m_feedbackSubmitting || string.IsNullOrWhiteSpace(m_feedbackDescription))"
+                                        @onclick="SubmitErrorFeedbackAsync">
+                                    @if (m_feedbackSubmitting)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                    }
+                                    <i class="ti ti-send me-1"></i>
+                                    Submit Feedback
+                                </button>
+                            </div>
+                        }
+                    </div>
+                }
+            </Authorized>
+        </AuthorizeView>
     </div>
 </div>
 
@@ -76,6 +132,14 @@
     /// </summary>
     [Parameter]
     public ErrorBoundary? ErrorBoundary { get; set; }
+
+    // Feedback form fields
+    private bool m_showFeedbackForm;
+    private string? m_feedbackDescription;
+    private string? m_feedbackScreenshotStoreId;
+    private bool m_feedbackSubmitting;
+    private bool m_feedbackSubmitted;
+    private int? m_logEntryId;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -97,10 +161,47 @@
             log.Computer = Environment.MachineName;
 
             await AppLogger.LogAsync(log);
+            m_logEntryId = log.LogEntryId;
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Failed to log exception to database");
+        }
+    }
+
+    private async Task SubmitErrorFeedbackAsync()
+    {
+        if (string.IsNullOrWhiteSpace(m_feedbackDescription)) return;
+
+        m_feedbackSubmitting = true;
+        try
+        {
+            var feedback = new Feedback
+            {
+                Description = m_feedbackDescription.Trim(),
+                Type = FeedbackType.ErrorReport,
+                Status = FeedbackStatus.New,
+                AccountNo = AccountNo,
+                UserName = UserName,
+                Url = NavigationManager.Uri,
+                ScreenshotStoreId = m_feedbackScreenshotStoreId,
+                LogEntryId = m_logEntryId,
+                ExceptionType = Exception?.GetType().Name,
+                ExceptionMessage = Exception?.Message,
+                Timestamp = DateTimeOffset.Now
+            };
+
+            await FeedbackService.SubmitFeedbackAsync(feedback, UserName);
+            m_feedbackSubmitted = true;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to submit error feedback");
+            ShowError("Failed to submit feedback. Please try again.");
+        }
+        finally
+        {
+            m_feedbackSubmitting = false;
         }
     }
 

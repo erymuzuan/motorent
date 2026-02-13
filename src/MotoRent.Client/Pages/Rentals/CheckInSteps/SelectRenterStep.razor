@@ -158,7 +158,6 @@
 
     private List<Renter> m_recentRenters = [];
     private List<Renter> m_searchResults = [];
-    private bool m_loading;
     private string? m_searchTerm;
     private bool m_showSearchResults;
     private System.Timers.Timer? m_debounceTimer;
@@ -170,16 +169,8 @@
 
     private async Task LoadRecentRenters()
     {
-        this.m_loading = true;
-        try
-        {
-            var result = await this.RenterService.GetRentersAsync(page: 1, pageSize: 10);
-            this.m_recentRenters = result.ItemCollection;
-        }
-        finally
-        {
-            this.m_loading = false;
-        }
+        var result = await this.RenterService.GetRentersAsync(page: 1, pageSize: 10);
+        this.m_recentRenters = result.ItemCollection;
     }
 
     private async Task OnSearchKeyup(KeyboardEventArgs e)

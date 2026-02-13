@@ -17,6 +17,8 @@ CREATE TABLE [<schema>].[Accident]
     [TotalEstimatedCost] AS CAST(JSON_VALUE([Json], '$.TotalEstimatedCost') AS DECIMAL(12,2)),
     [TotalActualCost] AS CAST(JSON_VALUE([Json], '$.TotalActualCost') AS DECIMAL(12,2)),
     [ReserveAmount] AS CAST(JSON_VALUE([Json], '$.ReserveAmount') AS DECIMAL(12,2)),
+    [InsurancePayoutReceived] AS CAST(JSON_VALUE([Json], '$.InsurancePayoutReceived') AS DECIMAL(12,2)),
+    [NetCost] AS CAST(JSON_VALUE([Json], '$.NetCost') AS DECIMAL(12,2)),
     -- JSON storage
     [Json] NVARCHAR(MAX) NOT NULL,
     -- Audit columns

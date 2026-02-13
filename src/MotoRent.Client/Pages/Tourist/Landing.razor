@@ -352,7 +352,6 @@
     private List<Motorbike> m_featuredBikes = [];
     private List<Shop> m_shops = [];
     private int m_availableBikesCount;
-    private bool m_loading = true;
 
     protected override async Task OnInitializedAsync()
     {
@@ -361,27 +360,19 @@
 
     private async Task LoadDataAsync()
     {
-        m_loading = true;
-        try
-        {
-            // Load shops
-            m_shops = await ShopService.GetActiveShopsAsync();
+        // Load shops
+        m_shops = await ShopService.GetActiveShopsAsync();
 
-            // Load available bikes count and featured bikes
-            var availableBikes = await MotorbikeService.GetAvailableMotorbikesAsync();
-            var bikesList = availableBikes.ToList();
-            m_availableBikesCount = bikesList.Count;
+        // Load available bikes count and featured bikes
+        var availableBikes = await MotorbikeService.GetAvailableMotorbikesAsync();
+        var bikesList = availableBikes.ToList();
+        m_availableBikesCount = bikesList.Count;
 
-            // Get featured bikes (top 4 by daily rate - assuming higher price = featured)
-            m_featuredBikes = bikesList
-                .OrderByDescending(b => b.DailyRate)
-                .Take(4)
-                .ToList();
-        }
-        finally
-        {
-            m_loading = false;
-        }
+        // Get featured bikes (top 4 by daily rate - assuming higher price = featured)
+        m_featuredBikes = bikesList
+            .OrderByDescending(b => b.DailyRate)
+            .Take(4)
+            .ToList();
     }
 
     private string GetHeroStyle()

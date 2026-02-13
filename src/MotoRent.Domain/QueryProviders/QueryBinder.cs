@@ -129,7 +129,7 @@ public class QueryBinder : ExpressionVisitor
         string alias = this.GetNextAlias();
         ProjectedColumns pc = this.ProjectColumns(expression, alias, projection.Source.Alias);
         return new ProjectionExpression(
-            new SelectExpression(resultType, alias, pc.Columns, projection.Source, null),
+            new SelectExpression(resultType, alias, pc.Columns, projection.Source, null!),
             pc.Projector
         );
     }
@@ -155,7 +155,7 @@ public class QueryBinder : ExpressionVisitor
             pc = this.ProjectColumns(result, alias, projection.Source.Alias, collectionProjection.Source.Alias);
         }
         return new ProjectionExpression(
-            new SelectExpression(resultType, alias, pc.Columns, join, null),
+            new SelectExpression(resultType, alias, pc.Columns, join, null!),
             pc.Projector
         );
     }
@@ -175,7 +175,7 @@ public class QueryBinder : ExpressionVisitor
         string alias = this.GetNextAlias();
         ProjectedColumns pc = this.ProjectColumns(resultExpr, alias, outerProjection.Source.Alias, innerProjection.Source.Alias);
         return new ProjectionExpression(
-            new SelectExpression(resultType, alias, pc.Columns, join, null),
+            new SelectExpression(resultType, alias, pc.Columns, join, null!),
             pc.Projector
         );
     }
@@ -205,7 +205,7 @@ public class QueryBinder : ExpressionVisitor
         string alias = this.GetNextAlias();
         ProjectedColumns pc = this.ProjectColumns(projection.Projector, alias, projection.Source.Alias);
         return new ProjectionExpression(
-            new SelectExpression(resultType, alias, pc.Columns, projection.Source, null, orderings.AsReadOnly()),
+            new SelectExpression(resultType, alias, pc.Columns, projection.Source, null!, orderings.AsReadOnly()),
             pc.Projector
         );
     }
@@ -284,7 +284,7 @@ public class QueryBinder : ExpressionVisitor
                 selectAlias,
                 columns,
                 new TableExpression(resultType, tableAlias, this.GetTableName(table)),
-                null
+                null!
             ),
             projector
         );

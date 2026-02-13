@@ -190,7 +190,6 @@
     private int m_totalVehicles;
     private int m_dueToday;
     private decimal m_todayRevenue;
-    private bool m_loading = true;
 
     // Recent rentals data
     private List<RecentRentalItem> m_recentRentals = [];
@@ -202,35 +201,27 @@
 
     private async Task LoadDashboardDataAsync()
     {
-        m_loading = true;
-        try
-        {
-            // Get vehicle stats
-            var vehicleStats = await VehicleService.GetStatusCountsAsync(0);
-            m_availableVehicles = vehicleStats.GetValueOrDefault(VehicleStatus.Available, 0);
-            m_totalVehicles = vehicleStats.Values.Sum();
+        // Get vehicle stats
+        var vehicleStats = await VehicleService.GetStatusCountsAsync(0);
+        m_availableVehicles = vehicleStats.GetValueOrDefault(VehicleStatus.Available, 0);
+        m_totalVehicles = vehicleStats.Values.Sum();
 
-            // Get rental stats
-            var rentalStats = await RentalService.GetStatusCountsAsync(0);
-            m_activeRentals = rentalStats.GetValueOrDefault("Active", 0);
+        // Get rental stats
+        var rentalStats = await RentalService.GetStatusCountsAsync(0);
+        m_activeRentals = rentalStats.GetValueOrDefault("Active", 0);
 
-            // Get due today count
-            var todaysDueRentals = await RentalService.GetTodaysDueReturnsAsync(0, DateTimeOffset.Now);
-            m_dueToday = todaysDueRentals.Count;
+        // Get due today count
+        var todaysDueRentals = await RentalService.GetTodaysDueReturnsAsync(0, DateTimeOffset.Now);
+        m_dueToday = todaysDueRentals.Count;
 
-            // Get today's revenue
-            var todayStart = DateTimeOffset.Now.Date;
-            var todayEnd = todayStart.AddDays(1);
-            var paymentSummary = await PaymentService.GetPaymentSummaryAsync(0, todayStart, todayEnd);
-            m_todayRevenue = paymentSummary.TotalAmount;
+        // Get today's revenue
+        var todayStart = DateTimeOffset.Now.Date;
+        var todayEnd = todayStart.AddDays(1);
+        var paymentSummary = await PaymentService.GetPaymentSummaryAsync(0, todayStart, todayEnd);
+        m_todayRevenue = paymentSummary.TotalAmount;
 
-            // Load recent rentals
-            await LoadRecentRentalsAsync();
-        }
-        finally
-        {
-            m_loading = false;
-        }
+        // Load recent rentals
+        await LoadRecentRentalsAsync();
     }
 
     private async Task LoadRecentRentalsAsync()

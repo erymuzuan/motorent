@@ -7,7 +7,9 @@
 @using MotoRent.Domain.Extensions
 @using MotoRent.Domain.Helps
 @attribute [Authorize(Roles = UserAccount.SUPER_ADMIN)]
+@using MotoRent.Services.Core
 @inject CoreDataContext CoreDataContext
+@inject FeedbackService FeedbackService
 
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
@@ -79,6 +81,15 @@
             <div class="mr-summary-content">
                 <h4>@Localizer["StatNewLeads"]</h4>
                 <div class="mr-value">@m_newLeadsCount</div>
+            </div>
+        </div>
+        <div class="mr-summary-card">
+            <div class="mr-summary-icon pending">
+                <i class="ti ti-message-report"></i>
+            </div>
+            <div class="mr-summary-content">
+                <h4>@Localizer["StatNewFeedback"]</h4>
+                <div class="mr-value">@m_newFeedbackCount</div>
             </div>
         </div>
     </div>
@@ -236,6 +247,25 @@
                 </div>
             </a>
         </div>
+
+        <!-- User Feedback Card -->
+        <div class="col-12 col-md-6 col-lg-4 mr-animate-in mr-animate-delay-3">
+            <a href="/super-admin/feedback" class="mr-management-card">
+                <div class="mr-management-card-icon bg-orange">
+                    <i class="ti ti-message-report"></i>
+                </div>
+                <div class="mr-management-card-body">
+                    <h3 class="mr-management-card-title">@Localizer["CardFeedbackTitle"]</h3>
+                    <p class="mr-management-card-text">
+                        @Localizer["CardFeedbackText"]
+                    </p>
+                </div>
+                <div class="mr-management-card-footer">
+                    <span>@Localizer["CardFeedbackFooter"]</span>
+                    <i class="ti ti-arrow-right"></i>
+                </div>
+            </a>
+        </div>
     </div>
 
     <!-- Quick Actions Section -->
@@ -271,6 +301,7 @@
     private int m_recentErrorCount;
     private int m_openSupportCount;
     private int m_newLeadsCount;
+    private int m_newFeedbackCount;
 
     protected override async Task OnInitializedAsync()
     {
@@ -296,5 +327,9 @@
             page: 1, size: 100, includeTotalRows: false);
         this.m_newLeadsCount = leadsResult.ItemCollection
             .Count(x => x.Status == LeadStatus.Lead);
+
+        // Count new feedback
+        var feedbackStats = await this.FeedbackService.GetStatsAsync();
+        this.m_newFeedbackCount = feedbackStats.NewCount;
     }
 }

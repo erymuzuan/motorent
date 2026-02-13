@@ -66,8 +66,8 @@
                 </div>
                 <div class="col-6">
                     <div class="subheader text-secondary">@Localizer["RENTALDETAILS"]</div>
-                    <div class="small"><strong>@Localizer["Vehicle"]:</strong> @m_invoice.MotorbikeBrand @m_invoice.MotorbikeModel</div>
-                    <div class="small"><strong>@Localizer["LicensePlate"]:</strong> @m_invoice.MotorbikeLicensePlate</div>
+                    <div class="small"><strong>@Localizer["Vehicle"]:</strong> @m_invoice.VehicleBrand @m_invoice.VehicleModel</div>
+                    <div class="small"><strong>@Localizer["LicensePlate"]:</strong> @m_invoice.VehicleLicensePlate</div>
                     <div class="small"><strong>@Localizer["Period"]:</strong> @FormatDate(m_invoice.StartDate) - @FormatDate(m_invoice.EndDate)</div>
                     <div class="small"><strong>@Localizer["Duration"]:</strong> @Localizer["DaysCount", m_invoice.RentalDays]</div>
                 </div>
@@ -224,7 +224,7 @@
                             {
                                 <tr>
                                     <td>
-                                        <span class="badge @GetPaymentTypeBadgeClass(payment.PaymentType)">
+                                        <span class="badge @GetPaymentTypeBadgeClass(payment.PaymentType ?? "")">
                                             @Localizer[payment.PaymentType ?? ""]
                                         </span>
                                     </td>
@@ -296,7 +296,6 @@
 </style>
 
 @code {
-    [CascadingParameter] private ModalInstance? ModalInstance { get; set; }
     [Parameter] public int RentalId { get; set; }
 
     private InvoiceData? m_invoice;
@@ -315,7 +314,7 @@
         }
     }
 
-    private void Cancel() => this.ModalInstance?.Cancel();
+    protected override void Cancel() => base.Cancel();
 
     private async Task PrintInvoice()
     {

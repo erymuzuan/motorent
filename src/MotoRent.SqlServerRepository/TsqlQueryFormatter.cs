@@ -325,7 +325,7 @@ internal class TsqlQueryFormatter(string schema) : DbExpressionVisitor
                         dynamic list = m.Arguments[0];
                         var values = (IEnumerable)list.Value;
                         var itemsArray = new List<string>();
-                        foreach (var val in values) itemsArray.Add(val.ToString());
+                        foreach (var val in values) itemsArray.Add(val.ToString()!);
 
                         if (itemsArray.Count == 0)
                         {

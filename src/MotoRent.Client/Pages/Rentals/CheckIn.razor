@@ -191,8 +191,6 @@
     [Parameter] public string? BookingRef { get; set; }
     private Booking? m_sourceBooking;
     private BookingItem? m_sourceBookingItem;
-    private bool m_loadingBooking;
-
     // Active till session for check-in
     private TillSession? m_tillSession;
 
@@ -219,45 +217,37 @@
 
     private async Task LoadBookingAsync()
     {
-        this.m_loadingBooking = true;
-        try
+        this.m_sourceBooking = await this.BookingService.GetBookingByRefAsync(this.BookingRef!);
+
+        if (this.m_sourceBooking == null)
         {
-            this.m_sourceBooking = await this.BookingService.GetBookingByRefAsync(this.BookingRef!);
-
-            if (this.m_sourceBooking == null)
-            {
-                this.ShowError(this.Localizer["BookingNotFound", this.BookingRef!]);
-                this.NavigationManager.NavigateTo("/bookings");
-                return;
-            }
-
-            // Check booking status - must be Pending or Confirmed
-            if (this.m_sourceBooking.Status != BookingStatus.Pending &&
-                this.m_sourceBooking.Status != BookingStatus.Confirmed)
-            {
-                this.ShowWarning(this.Localizer["BookingNotAvailableForCheckIn"]);
-                this.NavigationManager.NavigateTo($"/bookings/{this.BookingRef}");
-                return;
-            }
-
-            // Get the first pending item for check-in
-            this.m_sourceBookingItem = this.m_sourceBooking.Items
-                .FirstOrDefault(i => i.ItemStatus == "Pending");
-
-            if (this.m_sourceBookingItem == null)
-            {
-                this.ShowWarning(this.Localizer["NoItemsToCheckIn"]);
-                this.NavigationManager.NavigateTo($"/bookings/{this.BookingRef}");
-                return;
-            }
-
-            // Pre-fill from booking
-            await this.PrefillFromBookingAsync();
+            this.ShowError(this.Localizer["BookingNotFound", this.BookingRef!]);
+            this.NavigationManager.NavigateTo("/bookings");
+            return;
         }
-        finally
+
+        // Check booking status - must be Pending or Confirmed
+        if (this.m_sourceBooking.Status != BookingStatus.Pending &&
+            this.m_sourceBooking.Status != BookingStatus.Confirmed)
         {
-            this.m_loadingBooking = false;
+            this.ShowWarning(this.Localizer["BookingNotAvailableForCheckIn"]);
+            this.NavigationManager.NavigateTo($"/bookings/{this.BookingRef}");
+            return;
         }
+
+        // Get the first pending item for check-in
+        this.m_sourceBookingItem = this.m_sourceBooking.Items
+            .FirstOrDefault(i => i.ItemStatus == "Pending");
+
+        if (this.m_sourceBookingItem == null)
+        {
+            this.ShowWarning(this.Localizer["NoItemsToCheckIn"]);
+            this.NavigationManager.NavigateTo($"/bookings/{this.BookingRef}");
+            return;
+        }
+
+        // Pre-fill from booking
+        await this.PrefillFromBookingAsync();
     }
 
     private async Task PrefillFromBookingAsync()

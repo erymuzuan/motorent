@@ -22,7 +22,7 @@ public class DepositService(RentalDataContext context)
         if (shopId > 0)
         {
             var rentalIds = await this.Context.GetDistinctAsync<Rental, int>(
-                r => r.ShopId == shopId,
+                r => r.RentedFromShopId == shopId,
                 r => r.RentalId);
             query = query.Where(d => rentalIds.IsInList(d.RentalId));
         }
@@ -65,7 +65,7 @@ public class DepositService(RentalDataContext context)
         if (shopId > 0)
         {
             var rentalIds = await this.Context.GetDistinctAsync<Rental, int>(
-                r => r.ShopId == shopId,
+                r => r.RentedFromShopId == shopId,
                 r => r.RentalId);
             query = query.Where(d => rentalIds.IsInList(d.RentalId));
         }
@@ -84,7 +84,7 @@ public class DepositService(RentalDataContext context)
         if (shopId > 0)
         {
             var rentalIds = await this.Context.GetDistinctAsync<Rental, int>(
-                r => r.ShopId == shopId,
+                r => r.RentedFromShopId == shopId,
                 r => r.RentalId);
             query = query.Where(d => rentalIds.IsInList(d.RentalId));
         }
@@ -152,7 +152,7 @@ public class DepositService(RentalDataContext context)
         var rentalsQuery = this.Context.CreateQuery<Rental>();
         if (shopId > 0)
         {
-            rentalsQuery = rentalsQuery.Where(r => r.ShopId == shopId);
+            rentalsQuery = rentalsQuery.Where(r => r.RentedFromShopId == shopId);
         }
         var rentals = await this.Context.LoadAsync(rentalsQuery, page: 1, size: 10000, includeTotalRows: false);
 

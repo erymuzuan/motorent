@@ -233,15 +233,15 @@ public class RabbitMqMessageBroker : IMessageBroker
 
             // Declare exchanges
             await m_channel!.ExchangeDeclareAsync(exchangeName, ExchangeType.Topic, true);
-            await m_channel.ExchangeDeclareAsync(deadLetterExchange, ExchangeType.Topic, true);
+            await m_channel!.ExchangeDeclareAsync(deadLetterExchange, ExchangeType.Topic, true);
 
             // Declare main queue with dead letter exchange
             var args = new Dictionary<string, object?> { { "x-dead-letter-exchange", deadLetterExchange } };
-            await m_channel.QueueDeclareAsync(option.QueueName, true, false, false, args);
+            await m_channel!.QueueDeclareAsync(option.QueueName, true, false, false, args);
 
             // Declare and bind dead letter queue
-            await m_channel.QueueDeclareAsync(deadLetterQueue, true, false, false, args);
-            await m_channel.QueueBindAsync(deadLetterQueue, deadLetterExchange, "#", null);
+            await m_channel!.QueueDeclareAsync(deadLetterQueue, true, false, false, args);
+            await m_channel!.QueueBindAsync(deadLetterQueue, deadLetterExchange, "#", null);
 
             // Bind main queue to exchange
             await m_channel.QueueBindAsync(option.QueueName, exchangeName, option.QueueName, null);

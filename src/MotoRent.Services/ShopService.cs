@@ -13,12 +13,12 @@ public class ShopService(RentalDataContext context)
         int page = 1,
         int pageSize = 20)
     {
-        var query = this.Context.CreateQuery<Shop>().AsQueryable();
+        var query = this.Context.CreateQuery<Shop>();
 
-        if (isActive.HasValue)
-        {
-            query = query.Where(s => s.IsActive == isActive.Value);
-        }
+        if (isActive == true)
+            query = query.Where(s => s.IsActive);
+        else if (isActive == false)
+            query = query.Where(s => !s.IsActive);
 
         query = query.OrderBy(s => s.Name);
 
@@ -94,7 +94,7 @@ public class ShopService(RentalDataContext context)
     public async Task<SubmitOperation> SetActiveStatusAsync(int shopId, bool isActive, string username)
     {
         var shop = await this.GetShopByIdAsync(shopId);
-        if (shop == null)
+        if (shop is null)
             return SubmitOperation.CreateFailure("Shop not found");
 
         shop.IsActive = isActive;
@@ -106,26 +106,19 @@ public class ShopService(RentalDataContext context)
 
     public async Task<Dictionary<string, int>> GetShopStatisticsAsync(int shopId)
     {
-        var stats = new Dictionary<string, int>();
+        var totalMotorbikes = await this.Context.GetCountAsync(this.Context.CreateQuery<Motorbike>());
 
-        // Count motorbikes (organization-wide)
-        var bikes = await this.Context.LoadAsync(
-            this.Context.CreateQuery<Motorbike>(),
-            page: 1, size: 1000, includeTotalRows: true);
-        stats["TotalMotorbikes"] = bikes.TotalRows;
+        var activeRentals = await this.Context.GetCountAsync(
+            this.Context.CreateQuery<Rental>()
+                .Where(r => r.RentedFromShopId == shopId && r.Status == "Active"));
 
-        // Count active rentals
-        var rentals = await this.Context.LoadAsync(
-            this.Context.CreateQuery<Rental>().Where(r => r.RentedFromShopId == shopId && r.Status == "Active"),
-            page: 1, size: 1000, includeTotalRows: true);
-        stats["ActiveRentals"] = rentals.TotalRows;
+        var totalRenters = await this.Context.GetCountAsync(this.Context.CreateQuery<Renter>());
 
-        // Count renters (universal - not shop-specific)
-        var renters = await this.Context.LoadAsync(
-            this.Context.CreateQuery<Renter>(),
-            page: 1, size: 1000, includeTotalRows: true);
-        stats["TotalRenters"] = renters.TotalRows;
-
-        return stats;
+        return new Dictionary<string, int>
+        {
+            ["TotalMotorbikes"] = totalMotorbikes,
+            ["ActiveRentals"] = activeRentals,
+            ["TotalRenters"] = totalRenters
+        };
     }
 }
