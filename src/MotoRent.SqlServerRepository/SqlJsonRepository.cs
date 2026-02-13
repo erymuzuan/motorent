@@ -308,7 +308,7 @@ public async Task<LoadOperation<T>> LoadAsync(IQueryable<T> query, int page = 1,
             ("DateOnly", DateOnly { Year: 1 }) when column.IsNullable => DBNull.Value,
             (_, DateOnly { Year: > 1920 and < 2120 } dt) => $"{dt:yyyy-MM-dd}",
             (_, null) when column.IsNullable => DBNull.Value,
-            _ when type.IsEnum => value.ToString(),
+            _ when type.IsEnum => value!.ToString(),
             _ => value
         };
     }

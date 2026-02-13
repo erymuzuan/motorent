@@ -30,12 +30,11 @@ public class InvoiceService(RentalDataContext context)
         if (rental.VehicleId > 0)
         {
             vehicle = await this.Context.LoadOneAsync<Vehicle>(v => v.VehicleId == rental.VehicleId);
-        }
-        else if (rental.MotorbikeId > 0)
-        {
-#pragma warning disable CS0618 // Type or member is obsolete
-            motorbike = await this.Context.LoadOneAsync<Motorbike>(m => m.MotorbikeId == rental.MotorbikeId);
-#pragma warning restore CS0618
+            // Fall back to Motorbike entity if Vehicle not found (backward compat)
+            if (vehicle == null)
+            {
+                motorbike = await this.Context.LoadOneAsync<Motorbike>(m => m.MotorbikeId == rental.VehicleId);
+            }
         }
 
         // Load shops
@@ -161,9 +160,6 @@ public class InvoiceService(RentalDataContext context)
             IntervalMinutes = intervalMinutes,
             DurationDisplay = durationDisplay,
             RentalRate = rental.RentalRate,
-
-            // Backward compatibility
-            DailyRate = rental.RentalRate,
 
             // Line items
             LineItems = [],

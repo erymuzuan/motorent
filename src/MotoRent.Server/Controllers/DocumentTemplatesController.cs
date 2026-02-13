@@ -155,7 +155,7 @@ public class DocumentTemplatesController(
     private async Task<Dictionary<string, object?>> GetSampleDataAsync(DocumentType type)
     {
         var accountNo = this.RequestContext.GetAccountNo();
-        var org = await this.OrganizationService.GetOrganizationByAccountNoAsync(accountNo);
+        var org = await this.OrganizationService.GetOrganizationByAccountNoAsync(accountNo!);
         var staff = new User { FullName = "Sample Staff", UserName = "staff@example.com" };
 
         Entity sampleEntity = type switch

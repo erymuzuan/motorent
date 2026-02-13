@@ -110,10 +110,15 @@ public abstract class MotoRentModalBase<TEntity> : MotoRentDialogBase<TEntity>
     /// The item being edited (alias for Entity).
     /// </summary>
     [Parameter]
-    public TEntity? Item
+    public TEntity? Item { get; set; }
+
+    protected override void OnParametersSet()
     {
-        get => this.Entity;
-        set => this.Entity = value ?? new TEntity();
+        base.OnParametersSet();
+        if (this.Item is not null)
+        {
+            this.Entity = this.Item;
+        }
     }
 
     /// <summary>

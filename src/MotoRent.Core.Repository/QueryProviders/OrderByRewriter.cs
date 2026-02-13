@@ -108,11 +108,8 @@ public class OrderByRewriter : DbExpressionVisitor
         {
             this.Columns = columns as ReadOnlyCollection<ColumnDeclaration> ??
                            new List<ColumnDeclaration>(columns).AsReadOnly();
-            this.Orderings = orderings as ReadOnlyCollection<OrderExpression>;
-            if (this.Orderings == null)
-            {
-                this.Orderings = new List<OrderExpression>(orderings).AsReadOnly();
-            }
+            this.Orderings = orderings as ReadOnlyCollection<OrderExpression>
+                             ?? new List<OrderExpression>(orderings).AsReadOnly();
         }
         public ReadOnlyCollection<ColumnDeclaration> Columns { get; }
 
