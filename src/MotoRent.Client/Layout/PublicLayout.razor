@@ -13,8 +13,8 @@
             <nav class="public-nav">
                 @* Logo *@
                 <a href="/" class="public-logo">
-                    <img src="images/icons/ios/40.png" alt="MotoRent" width="32" height="32" />
-                    <span>MotoRent</span>
+                    <img src="images/icons/ios/40.png" alt="@MotoConfig.ApplicationName" width="32" height="32" />
+                    <span>@MotoConfig.ApplicationName</span>
                 </a>
 
                 @* Desktop Navigation *@
@@ -39,14 +39,13 @@
                             <span class="ms-1 text-uppercase small fw-medium">@CultureInfo.CurrentCulture.TwoLetterISOLanguageName</span>
                         </button>
                         <div class="dropdown-menu dropdown-menu-end">
-                            <a href="#" class="dropdown-item @(CultureInfo.CurrentCulture.TwoLetterISOLanguageName == "en" ? "active" : "")"
-                               @onclick='() => SetCulture("en")' @onclick:preventDefault>
-                                <span class="me-2">🇬🇧</span> English
-                            </a>
-                            <a href="#" class="dropdown-item @(CultureInfo.CurrentCulture.TwoLetterISOLanguageName == "th" ? "active" : "")"
-                               @onclick='() => SetCulture("th")' @onclick:preventDefault>
-                                <span class="me-2">🇹🇭</span> ไทย
-                            </a>
+                            @foreach (var lang in MotoConfig.Languages)
+                            {
+                                <a href="#" class="dropdown-item @(CultureInfo.CurrentCulture.TwoLetterISOLanguageName == lang ? "active" : "")"
+                                   @onclick="() => SetCulture(lang)" @onclick:preventDefault>
+                                    <span class="me-2">@MotoConfig.GetLanguageFlag(lang)</span> @MotoConfig.GetLanguageDisplayName(lang)
+                                </a>
+                            }
                         </div>
                     </div>
 
@@ -94,10 +93,11 @@
                     <div class="mobile-menu-divider"></div>
                     <div class="mobile-lang-switch">
                         <span class="text-muted small">@Localizer["Language"]:</span>
-                        <button class="btn btn-sm @(CultureInfo.CurrentCulture.TwoLetterISOLanguageName == "en" ? "btn-primary" : "btn-outline-secondary")"
-                                @onclick='() => SetCulture("en")'>EN</button>
-                        <button class="btn btn-sm @(CultureInfo.CurrentCulture.TwoLetterISOLanguageName == "th" ? "btn-primary" : "btn-outline-secondary")"
-                                @onclick='() => SetCulture("th")'>TH</button>
+                        @foreach (var lang in MotoConfig.Languages)
+                        {
+                            <button class="btn btn-sm @(CultureInfo.CurrentCulture.TwoLetterISOLanguageName == lang ? "btn-primary" : "btn-outline-secondary")"
+                                    @onclick="() => SetCulture(lang)">@lang.ToUpperInvariant()</button>
+                        }
                     </div>
                     <AuthorizeView>
                         <NotAuthorized>
@@ -123,8 +123,8 @@
                 @* Brand Column *@
                 <div class="col-lg-4 col-md-6">
                     <div class="footer-brand">
-                        <img src="images/icons/ios/40.png" alt="MotoRent" width="40" height="40" />
-                        <span>MotoRent</span>
+                        <img src="images/icons/ios/40.png" alt="@MotoConfig.ApplicationName" width="40" height="40" />
+                        <span>@MotoConfig.ApplicationName</span>
                     </div>
                     <p class="footer-tagline">@Localizer["FooterTagline"]</p>
                     <div class="footer-social">
@@ -166,7 +166,7 @@
             </div>
 
             <div class="footer-bottom">
-                <p>&copy; @DateTime.Now.Year MotoRent. @Localizer["AllRightsReserved"]</p>
+                <p>&copy; @DateTime.Now.Year @MotoConfig.ApplicationName. @Localizer["AllRightsReserved"]</p>
             </div>
         </div>
     </footer>

@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using MotoRent.Domain.Core;
 
 namespace MotoRent.Services.Payments;
 
@@ -67,8 +68,8 @@ public class FiuuPaymentService : IFiuuPaymentService
             BillEmail = billEmail,
             BillMobile = billMobile,
             BillDesc = billDesc,
-            Country = "TH",
-            Currency = "THB",
+            Country = MotoConfig.CountryDefaults.CountryCode,
+            Currency = MotoConfig.CountryDefaults.Currency,
             VCode = vcode,
             // URLs should be set by the caller or config
         };

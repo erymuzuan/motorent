@@ -54,6 +54,11 @@ public partial class Shop : Entity
     /// Rental terms and conditions in Thai.
     /// </summary>
     public string? TermsAndConditionsTh { get; set; }
+
+    /// <summary>
+    /// Rental terms and conditions in Bahasa Melayu.
+    /// </summary>
+    public string? TermsAndConditionsMs { get; set; }
     public bool IsActive { get; set; } = true;
 
     /// <summary>

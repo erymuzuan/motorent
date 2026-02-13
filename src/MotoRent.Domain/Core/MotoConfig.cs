@@ -85,6 +85,53 @@ public static class MotoConfig
     // LINE Notify Configuration (for shop staff notifications)
     public static string? LineNotifyToken => GetEnvironmentVariable("LineNotifyToken");
 
+    // Multi-Market Configuration
+    /// <summary>
+    /// Country code for the deployment (TH=Thailand, MY=Malaysia).
+    /// Drives currency, timezone, and feature defaults.
+    /// </summary>
+    public static string Country => GetEnvironmentVariable("Country") ?? "TH";
+
+    /// <summary>
+    /// Comma-separated list of enabled language codes (e.g., "en,th" or "en,ms").
+    /// </summary>
+    public static string[] Languages => (GetEnvironmentVariable("Languages") ?? CountryDefaults.DefaultLanguages)
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+    /// <summary>
+    /// Country-specific defaults derived from MOTO_Country.
+    /// </summary>
+    public static CountryConfig CountryDefaults => GetCountryConfig(Country);
+
+    /// <summary>
+    /// Gets country configuration for the given country code.
+    /// </summary>
+    public static CountryConfig GetCountryConfig(string countryCode) => countryCode.ToUpperInvariant() switch
+    {
+        "MY" => new CountryConfig("MY", "MYR", 8.0, "en,ms", "+60"),
+        _ => new CountryConfig("TH", "THB", 7.0, "en,th", "+66"),  // Default to Thailand
+    };
+
+    /// <summary>
+    /// Display name mapping for supported language codes.
+    /// </summary>
+    public static string GetLanguageDisplayName(string code) => code switch
+    {
+        "th" => "ไทย",
+        "ms" => "Bahasa Melayu",
+        _ => "English",
+    };
+
+    /// <summary>
+    /// Flag emoji for supported language codes.
+    /// </summary>
+    public static string GetLanguageFlag(string code) => code switch
+    {
+        "th" => "🇹🇭",
+        "ms" => "🇲🇾",
+        _ => "🇬🇧",
+    };
+
     #region Helper Methods
 
     public static string? GetEnvironmentVariable(string setting, bool usePrefix = true)
@@ -125,6 +172,15 @@ public static class MotoConfig
     }
 
     #endregion
-
-    
 }
+
+/// <summary>
+/// Country-specific configuration defaults.
+/// </summary>
+public record CountryConfig(
+    string CountryCode,
+    string Currency,
+    double TimezoneOffset,
+    string DefaultLanguages,
+    string PhonePrefix
+);

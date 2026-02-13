@@ -7,13 +7,13 @@ namespace MotoRent.Server.Services;
 /// <summary>
 /// ASP.NET Core implementation of IRequestContext.
 /// Provides user context, multi-tenant identity, timezone handling, and date/time formatting.
-/// Default timezone is Thailand (UTC+7).
+/// Default timezone is derived from MOTO_Country configuration.
 /// </summary>
 public class MotoRentRequestContext : IRequestContext
 {
     private readonly IHttpContextAccessor m_accessor;
     private readonly IConfiguration m_configuration;
-    private const double c_thailandTimezone = 7.0; // UTC+7
+    private static readonly double s_defaultTimezone = MotoConfig.CountryDefaults.TimezoneOffset;
 
     public MotoRentRequestContext(IHttpContextAccessor accessor, IConfiguration configuration)
     {
@@ -129,7 +129,7 @@ public class MotoRentRequestContext : IRequestContext
             if (claim != null && double.TryParse(claim.Value, out var tz))
                 return tz;
 
-            return c_thailandTimezone; // Default to Thailand
+            return s_defaultTimezone; // Default to Thailand
         }
     }
 

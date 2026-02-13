@@ -102,6 +102,21 @@ public enum TillTransactionType
     /// </summary>
     PromptPay,
 
+    /// <summary>
+    /// DuitNow payment - Malaysian instant transfer (tracked for reconciliation, not cash).
+    /// </summary>
+    DuitNow,
+
+    /// <summary>
+    /// Touch 'n Go eWallet payment (tracked for reconciliation, not cash).
+    /// </summary>
+    TouchNGo,
+
+    /// <summary>
+    /// FPX online banking payment - Malaysian bank transfer (tracked for reconciliation, not cash).
+    /// </summary>
+    FPX,
+
     // Outflows (Cash Out)
     /// <summary>
     /// Refund of deposit to customer.

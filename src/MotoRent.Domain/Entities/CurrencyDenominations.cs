@@ -27,6 +27,16 @@ public static class CurrencyDenominations
     private static readonly decimal[] s_cnyDenominations = [100, 50, 20, 10, 5, 1];
 
     /// <summary>
+    /// Malaysian Ringgit denominations (notes only - coins rarely used in cash handling).
+    /// </summary>
+    private static readonly decimal[] s_myrDenominations = [100, 50, 20, 10, 5, 1];
+
+    /// <summary>
+    /// Singapore Dollar denominations (notes only).
+    /// </summary>
+    private static readonly decimal[] s_sgdDenominations = [1000, 100, 50, 10, 5, 2];
+
+    /// <summary>
     /// Gets the denominations for a currency.
     /// Returns denominations in descending order (largest first).
     /// </summary>
@@ -38,6 +48,8 @@ public static class CurrencyDenominations
         SupportedCurrencies.USD => s_usdDenominations,
         SupportedCurrencies.EUR => s_eurDenominations,
         SupportedCurrencies.CNY => s_cnyDenominations,
+        SupportedCurrencies.MYR => s_myrDenominations,
+        SupportedCurrencies.SGD => s_sgdDenominations,
         _ => []
     };
 
@@ -56,6 +68,8 @@ public static class CurrencyDenominations
         SupportedCurrencies.JPY => "\u00A5", // Yen symbol (same as Yuan)
         SupportedCurrencies.AUD => "A$",
         SupportedCurrencies.RUB => "\u20BD", // Ruble symbol
+        SupportedCurrencies.MYR => "RM",
+        SupportedCurrencies.SGD => "S$",
         _ => currency
     };
 
@@ -68,6 +82,8 @@ public static class CurrencyDenominations
         SupportedCurrencies.THB,
         SupportedCurrencies.USD,
         SupportedCurrencies.EUR,
-        SupportedCurrencies.CNY
+        SupportedCurrencies.CNY,
+        SupportedCurrencies.MYR,
+        SupportedCurrencies.SGD
     ];
 }

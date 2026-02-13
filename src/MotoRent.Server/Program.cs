@@ -329,11 +329,12 @@ builder.Services.AddControllersWithViews();
 
 // Add localization services
 builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
+builder.Services.Configure<CompanySettings>(builder.Configuration.GetSection(CompanySettings.SectionName));
 
 builder.Services.Configure<RequestLocalizationOptions>(options =>
 {
-    var supportedCultures = new[] { "en", "th" };
-    options.SetDefaultCulture("en");
+    var supportedCultures = MotoConfig.Languages;
+    options.SetDefaultCulture(supportedCultures[0]);
     options.AddSupportedCultures(supportedCultures);
     options.AddSupportedUICultures(supportedCultures);
 });

@@ -94,6 +94,8 @@ public static class SupportedCurrencies
     public const string JPY = "JPY";  // Japanese Yen
     public const string AUD = "AUD";  // Australian Dollar
     public const string RUB = "RUB";  // Russian Ruble
+    public const string MYR = "MYR";  // Malaysian Ringgit
+    public const string SGD = "SGD";  // Singapore Dollar
 
-    public static readonly string[] All = [THB, USD, EUR, GBP, CNY, JPY, AUD, RUB];
+    public static readonly string[] All = [THB, USD, EUR, GBP, CNY, JPY, AUD, RUB, MYR, SGD];
 }

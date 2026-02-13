@@ -22,14 +22,14 @@ public class Organization : Entity
     public string Name { get; set; } = "";
 
     /// <summary>
-    /// Currency code (default: THB for Thailand).
+    /// Currency code (default derived from MOTO_Country).
     /// </summary>
-    public string Currency { get; set; } = "THB";
+    public string Currency { get; set; } = MotoConfig.CountryDefaults.Currency;
 
     /// <summary>
-    /// Timezone offset from UTC (default: 7 for Thailand).
+    /// Timezone offset from UTC (default derived from MOTO_Country).
     /// </summary>
-    public double? Timezone { get; set; } = 7;
+    public double? Timezone { get; set; } = MotoConfig.CountryDefaults.TimezoneOffset;
 
     /// <summary>
     /// Language/locale code (default: th-TH for Thailand).
