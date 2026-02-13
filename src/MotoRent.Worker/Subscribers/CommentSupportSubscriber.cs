@@ -17,7 +17,7 @@ public class CommentSupportSubscriber : Subscriber<Comment>
     public override string[] RoutingKeys => [$"{nameof(Comment)}.#.#"];
 
     private static readonly char[] s_separator = [',', ';'];
-    private static readonly string[] s_supportEmails = ["support@motorent.com"];
+    private static readonly string[] s_supportEmails = [MotoRent.Domain.Core.MotoConfig.GetEnvironmentVariable("SmtpFromEmail") ?? "support@motorent.com"];
 
     protected override async Task ProcessMessage(Comment item, BrokeredMessage message)
     {

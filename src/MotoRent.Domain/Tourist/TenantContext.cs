@@ -1,3 +1,5 @@
+using MotoRent.Domain.Core;
+
 namespace MotoRent.Domain.Tourist;
 
 /// <summary>
@@ -39,7 +41,7 @@ public class TenantContext
     /// <summary>
     /// Language/locale code for UI (default: th-TH).
     /// </summary>
-    public string Language { get; set; } = "th-TH";
+    public string Language { get; set; } = MotoConfig.CountryDefaults.DefaultCulture;
 
     /// <summary>
     /// Contact phone number.

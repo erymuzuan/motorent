@@ -106,10 +106,18 @@ public static class MotoConfig
     /// <summary>
     /// Gets country configuration for the given country code.
     /// </summary>
+    /// <summary>
+    /// Base domain for tenant subdomain mapping (e.g., "motorent.co.th" or "jaleos.my").
+    /// </summary>
+    public static string BaseDomain => GetEnvironmentVariable("BaseDomain") ?? "motorent.co.th";
+
+    /// <summary>
+    /// Gets country configuration for the given country code.
+    /// </summary>
     public static CountryConfig GetCountryConfig(string countryCode) => countryCode.ToUpperInvariant() switch
     {
-        "MY" => new CountryConfig("MY", "MYR", 8.0, "en,ms", "+60"),
-        _ => new CountryConfig("TH", "THB", 7.0, "en,th", "+66"),  // Default to Thailand
+        "MY" => new CountryConfig("MY", "MYR", 8.0, "en,ms", "+60", "en-MY"),
+        _ => new CountryConfig("TH", "THB", 7.0, "en,th", "+66", "th-TH"),  // Default to Thailand
     };
 
     /// <summary>
@@ -182,5 +190,6 @@ public record CountryConfig(
     string Currency,
     double TimezoneOffset,
     string DefaultLanguages,
-    string PhonePrefix
+    string PhonePrefix,
+    string DefaultCulture
 );

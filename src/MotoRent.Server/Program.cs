@@ -402,6 +402,49 @@ app.MapControllers();
 // Map SignalR hubs
 app.MapHub<MotoRent.Server.Hubs.CommentHub>("/hub-comments");
 
+// Dynamic manifest.json from MotoConfig
+app.MapGet("/manifest.json", () => Results.Json(new
+{
+    name = $"{MotoConfig.ApplicationName} - Vehicle Rental",
+    short_name = MotoConfig.ApplicationName,
+    description = $"Vehicle rental management system powered by {MotoConfig.ApplicationName}.",
+    start_url = "/",
+    display = "standalone",
+    background_color = "#ffffff",
+    theme_color = "#5B8DEF",
+    orientation = "portrait-primary",
+    scope = "/",
+    icons = new object[]
+    {
+        new { src = "images/icons/ios/32.png", sizes = "32x32", type = "image/png" },
+        new { src = "images/icons/android/android-launchericon-48-48.png", sizes = "48x48", type = "image/png" },
+        new { src = "images/icons/android/android-launchericon-72-72.png", sizes = "72x72", type = "image/png" },
+        new { src = "images/icons/android/android-launchericon-96-96.png", sizes = "96x96", type = "image/png" },
+        new { src = "images/icons/ios/128.png", sizes = "128x128", type = "image/png" },
+        new { src = "images/icons/android/android-launchericon-144-144.png", sizes = "144x144", type = "image/png" },
+        new { src = "images/icons/ios/152.png", sizes = "152x152", type = "image/png" },
+        new { src = "images/icons/ios/180.png", sizes = "180x180", type = "image/png" },
+        new { src = "images/icons/android/android-launchericon-192-192.png", sizes = "192x192", type = "image/png", purpose = "any" },
+        new { src = "images/icons/ios/256.png", sizes = "256x256", type = "image/png" },
+        new { src = "images/icons/android/android-launchericon-512-512.png", sizes = "512x512", type = "image/png", purpose = "any" },
+        new { src = "images/icons/ios/1024.png", sizes = "1024x1024", type = "image/png" }
+    },
+    screenshots = new object[]
+    {
+        new { src = "screenshots/screenshot-wide.png", sizes = "1280x720", type = "image/png", form_factor = "wide" },
+        new { src = "screenshots/screenshot-mobile.png", sizes = "750x1334", type = "image/png", form_factor = "narrow" }
+    },
+    categories = new[] { "business", "lifestyle", "travel" },
+    shortcuts = new object[]
+    {
+        new { name = "Browse Vehicles", short_name = "Browse", description = "Browse available vehicles for rent", url = "/vehicles", icons = new[] { new { src = "images/icons/android/android-launchericon-96-96.png", sizes = "96x96" } } },
+        new { name = "Active Rentals", short_name = "Rentals", description = "View active rentals", url = "/rentals", icons = new[] { new { src = "images/icons/android/android-launchericon-96-96.png", sizes = "96x96" } } },
+        new { name = "Check-In", short_name = "Check-In", description = "Start a new rental", url = "/rentals/checkin", icons = new[] { new { src = "images/icons/android/android-launchericon-96-96.png", sizes = "96x96" } } }
+    },
+    related_applications = Array.Empty<object>(),
+    prefer_related_applications = false
+}, contentType: "application/manifest+json"));
+
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
     .AddAdditionalAssemblies(typeof(MotoRent.Client._Imports).Assembly);

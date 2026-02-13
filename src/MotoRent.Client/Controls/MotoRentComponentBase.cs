@@ -78,12 +78,12 @@ public class MotoRentComponentBase : ComponentBase
     /// <summary>
     /// Formats a decimal as Thai Baht currency.
     /// </summary>
-    protected string FormatCurrency(decimal amount) => $"{amount:N0} THB";
+    protected string FormatCurrency(decimal amount) => $"{amount:N0} {MotoConfig.CountryDefaults.Currency}";
 
     /// <summary>
-    /// Formats a decimal as Thai Baht currency with decimals.
+    /// Formats a decimal as currency with decimals.
     /// </summary>
-    protected string FormatCurrencyWithDecimals(decimal amount) => $"{amount:N2} THB";
+    protected string FormatCurrencyWithDecimals(decimal amount) => $"{amount:N2} {MotoConfig.CountryDefaults.Currency}";
 
     #endregion
 

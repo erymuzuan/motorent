@@ -1,5 +1,5 @@
 // MotoRent Service Worker v1.0.0
-const CACHE_NAME = 'motorent-cache-v1';
+const CACHE_NAME = 'app-cache-v1';
 const OFFLINE_URL = '/offline.html';
 
 // Assets to cache on install
