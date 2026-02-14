@@ -28,7 +28,7 @@ public partial class CorePgJsonRepository<T>(
     private ICorePagingTranslator Translator { get; } = translator;
     private ICacheService CacheService { get; } = cacheService;
     private CorePgQueryProvider QueryProvider { get; } = queryProvider;
-    private readonly string m_connectionString = MotoConfig.SqlConnectionString;
+    private readonly string m_connectionString = MotoConfig.ConnectionString;
 
     private static ResiliencePipeline CreateRetryPipeline()
     {

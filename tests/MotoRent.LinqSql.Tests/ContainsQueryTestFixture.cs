@@ -2,7 +2,7 @@ using FluentAssertions;
 using MotoRent.Domain.Entities;
 using MotoRent.Domain.Extensions;
 using MotoRent.Domain.QueryProviders;
-using MotoRent.SqlServerRepository;
+using MotoRent.PostgreSqlRepository;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -14,7 +14,7 @@ namespace MotoRent.LinqSql.Tests;
 /// </summary>
 public class ContainsQueryTestFixture(ITestOutputHelper output)
 {
-    private readonly SqlQueryProvider m_provider = new(new MockRequestContext());
+    private readonly PgQueryProvider m_provider = new();
 
     [Fact]
     public void IntegerListIsInList_GeneratesInClause()
@@ -29,7 +29,7 @@ public class ContainsQueryTestFixture(ITestOutputHelper output)
         output.WriteLine(sql);
 
         // Assert
-        sql.Should().Contain("[ShopId] IN (1,2,3)");
+        sql.Should().Contain("\"ShopId\" IN (1,2,3)");
     }
 
     [Fact]
@@ -45,7 +45,7 @@ public class ContainsQueryTestFixture(ITestOutputHelper output)
         output.WriteLine(sql);
 
         // Assert
-        sql.Should().Contain("[StaffUserName] IN (");
+        sql.Should().Contain("\"StaffUserName\" IN (");
         sql.Should().Contain("'john'");
         sql.Should().Contain("'jane'");
         sql.Should().Contain("'bob'");
@@ -128,7 +128,7 @@ public class ContainsQueryTestFixture(ITestOutputHelper output)
         output.WriteLine(sql);
 
         // Assert
-        sql.Should().Contain("[Status]");
+        sql.Should().Contain("\"Status\"");
         sql.Should().Contain("IN (");
         sql.Should().Contain("'Open'");
         sql.Should().Contain("'Reconciling'");
@@ -147,7 +147,7 @@ public class ContainsQueryTestFixture(ITestOutputHelper output)
         output.WriteLine(sql);
 
         // Assert
-        sql.Should().Contain("[ShopId] IN (1)");
+        sql.Should().Contain("\"ShopId\" IN (1)");
     }
 
     [Fact]
@@ -164,8 +164,8 @@ public class ContainsQueryTestFixture(ITestOutputHelper output)
         output.WriteLine(sql);
 
         // Assert - Both conditions present in nested structure
-        sql.Should().Contain("[ShopId] IN (");
-        sql.Should().Contain("[Status] = 'Open'");
+        sql.Should().Contain("\"ShopId\" IN (");
+        sql.Should().Contain("\"Status\" = 'Open'");
         sql.Should().Contain("WHERE");
     }
 
@@ -187,7 +187,7 @@ public class ContainsQueryTestFixture(ITestOutputHelper output)
         output.WriteLine(sql);
 
         // Assert
-        sql.Should().Contain("[Status]");
+        sql.Should().Contain("\"Status\"");
         sql.Should().Contain("IN (");
         sql.Should().Contain("'Closed'");
         sql.Should().Contain("'ClosedWithVariance'");
@@ -223,6 +223,8 @@ public class ContainsQueryTestFixture(ITestOutputHelper output)
         output.WriteLine(sql);
 
         // Assert
-        sql.Should().Contain("[ShopId] IN (5,10)");
+        sql.Should().Contain("\"ShopId\" IN (5,10)");
     }
 }
+
+

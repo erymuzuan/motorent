@@ -48,8 +48,8 @@ builder.Services.AddScoped<IRequestContext>(sp =>
     return new MotoRentRequestContext(httpContextAccessor, configuration);
 });
 
-// Add MotoRent data context (uses environment variable MOTO_SqlConnectionString)
-builder.Services.AddMotoRentDataContext(MotoConfig.SqlConnectionString);
+// Add MotoRent data context (uses MOTO_ConnectionString, or legacy MOTO_SqlConnectionString)
+builder.Services.AddMotoRentDataContext(MotoConfig.ConnectionString);
 
 // Add PostgreSQL repository implementations (PgPagingTranslator, IPgMetadata, IRepository<T>)
 builder.Services.AddMotoRentPostgreSqlRepository();

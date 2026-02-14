@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using System.Text;
 using MotoRent.Domain.Core;
 using MotoRent.Domain.DataContext;
 using Npgsql;
@@ -33,6 +34,11 @@ public partial class SqlSubscriptionService(
         "MotoRent.PricingRule.sql",
         "MotoRent.RateDelta.sql"
     ];
+    private static readonly HashSet<string> s_duplicateObjectSqlStates =
+    [
+        "42P07", // duplicate_table / duplicate_relation (indexes)
+        "42710"  // duplicate_object (policies)
+    ];
 
     // Private get properties from constructor injection
     private CoreDataContext Context { get; } = context;
@@ -60,6 +66,9 @@ public partial class SqlSubscriptionService(
     {
         progressCallback?.Invoke(new ProvisioningProgress { Message = $"Creating organization {organization.Name}..." });
 
+        // Ensure required shared database objects exist before any Core writes
+        await this.EnsureDatabaseInfrastructureAsync(progressCallback);
+
         // Save the organization first
         using var session = this.Context.OpenSession("system");
         session.Attach(organization);
@@ -78,6 +87,9 @@ public partial class SqlSubscriptionService(
     public async Task<Organization> CreateOrganizationWithAdminAsync(Organization organization, OrganizationAdminInfo adminInfo, Action<ProvisioningProgress>? progressCallback = null)
     {
         progressCallback?.Invoke(new ProvisioningProgress { Message = $"Creating organization {organization.Name}..." });
+
+        // Ensure required shared database objects exist before any Core writes
+        await this.EnsureDatabaseInfrastructureAsync(progressCallback);
 
         // Save the organization first
         using var session = this.Context.OpenSession("system");
@@ -215,17 +227,11 @@ public partial class SqlSubscriptionService(
     {
         progressCallback?.Invoke(new ProvisioningProgress { Message = $"Provisioning tenant [{accountNo}]..." });
 
-        var connectionString = MotoConfig.SqlConnectionString;
+        var connectionString = MotoConfig.ConnectionString;
 
         // Read and execute table scripts from the tables folder
-        var databaseFolder = MotoConfig.DatabaseSource;
+        var databaseFolder = ResolveDatabaseFolder();
         var tablesFolder = Path.Combine(databaseFolder, "tables");
-
-        if (!Directory.Exists(tablesFolder))
-        {
-            // Try relative to app base directory
-            tablesFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "database", "tables");
-        }
 
         if (!Directory.Exists(tablesFolder))
         {
@@ -253,33 +259,7 @@ public partial class SqlSubscriptionService(
         foreach (var tableFile in tableFiles)
         {
             var filePath = Path.Combine(tablesFolder, tableFile);
-
-            var sqlTemplate = await File.ReadAllTextAsync(filePath);
-
-            // For PostgreSQL, table scripts use CREATE TABLE IF NOT EXISTS
-            // No schema replacement needed - tables are in public schema with tenant_id
-            var sql = sqlTemplate;
-
-            try
-            {
-                await using var conn = new NpgsqlConnection(connectionString);
-                await conn.OpenAsync();
-                await using var cmd = new NpgsqlCommand(sql, conn);
-                await cmd.ExecuteNonQueryAsync();
-            }
-            catch (NpgsqlException ex) when (ex.SqlState == "42P07") // table already exists
-            {
-                // Silently skip - table already exists
-            }
-            catch (NpgsqlException ex)
-            {
-                // Log but continue
-                progressCallback?.Invoke(new ProvisioningProgress
-                {
-                    Message = $"Warning ({tableFile}): {ex.Message}",
-                    Status = ProgressStatus.InProgress
-                });
-            }
+            await ExecuteSqlScriptFileAsync(connectionString, filePath, ignoreDuplicateObjects: true);
 
             progressCallback?.Invoke(new ProvisioningProgress
             {
@@ -298,7 +278,7 @@ public partial class SqlSubscriptionService(
     public async Task DeleteSchemaAsync(Organization organization)
     {
         var accountNo = organization.AccountNo;
-        var connectionString = MotoConfig.SqlConnectionString;
+        var connectionString = MotoConfig.ConnectionString;
 
         // In PostgreSQL with RLS, deleting a "schema" means removing all tenant data
         // Delete all rows with matching tenant_id from all tables
@@ -407,7 +387,7 @@ public partial class SqlSubscriptionService(
 
     public async Task RemoveUserFromOrganizationAsync(User user, string accountNo)
     {
-        var connectionString = MotoConfig.SqlConnectionString;
+        var connectionString = MotoConfig.ConnectionString;
 
         user.AccountCollection.RemoveAll(a => a.AccountNo == accountNo);
 
@@ -427,4 +407,196 @@ public partial class SqlSubscriptionService(
     }
 
     #endregion
+
+    private async Task EnsureDatabaseInfrastructureAsync(Action<ProvisioningProgress>? progressCallback = null)
+    {
+        var connectionString = MotoConfig.ConnectionString;
+        var databaseFolder = ResolveDatabaseFolder();
+        var tablesFolder = Path.Combine(databaseFolder, "tables");
+
+        if (!Directory.Exists(tablesFolder))
+            throw new DirectoryNotFoundException($"Tables folder not found: {tablesFolder}");
+
+        // Required helper functions used by generated columns in multiple table scripts
+        await ExecuteSqlScriptFileAsync(connectionString, Path.Combine(databaseFolder, "functions.sql"), ignoreDuplicateObjects: true);
+        progressCallback?.Invoke(new ProvisioningProgress { Message = "Database helper functions are ready." });
+
+        // Core base tables required by CoreDataContext (Organization/User/Setting/etc.)
+        await ExecuteSqlScriptFileAsync(connectionString, Path.Combine(databaseFolder, "003-core-schema.sql"), ignoreDuplicateObjects: true);
+        progressCallback?.Invoke(new ProvisioningProgress { Message = "Core base tables are ready." });
+
+        // Additional core tables (SupportRequest/SalesLead/Feedback/VehicleModel)
+        var coreTableFiles = Directory.GetFiles(tablesFolder, "Core.*.sql")
+            .Select(Path.GetFileName)
+            .Where(f => f != null && !f.Contains(".seed.", StringComparison.OrdinalIgnoreCase))
+            .Cast<string>()
+            .OrderBy(f => f)
+            .ToList();
+
+        foreach (var coreFile in coreTableFiles)
+        {
+            var filePath = Path.Combine(tablesFolder, coreFile);
+            await ExecuteSqlScriptFileAsync(connectionString, filePath, ignoreDuplicateObjects: true);
+        }
+    }
+
+    private static async Task ExecuteSqlScriptFileAsync(string connectionString, string scriptPath, bool ignoreDuplicateObjects)
+    {
+        if (!File.Exists(scriptPath))
+            throw new FileNotFoundException($"SQL script not found: {scriptPath}", scriptPath);
+
+        var sqlText = await File.ReadAllTextAsync(scriptPath);
+        var statements = SplitSqlStatements(sqlText);
+
+        await using var conn = new NpgsqlConnection(connectionString);
+        await conn.OpenAsync();
+
+        foreach (var statement in statements)
+        {
+            if (string.IsNullOrWhiteSpace(statement))
+                continue;
+
+            try
+            {
+                await using var cmd = new NpgsqlCommand(statement, conn);
+                await cmd.ExecuteNonQueryAsync();
+            }
+            catch (NpgsqlException ex) when (ignoreDuplicateObjects && IsDuplicateObjectException(ex))
+            {
+                // Idempotency: table/index/policy already exists
+            }
+        }
+    }
+
+    private static bool IsDuplicateObjectException(NpgsqlException exception)
+    {
+        return !string.IsNullOrWhiteSpace(exception.SqlState) &&
+               s_duplicateObjectSqlStates.Contains(exception.SqlState);
+    }
+
+    private static IEnumerable<string> SplitSqlStatements(string sqlText)
+    {
+        var statements = new List<string>();
+        var sb = new StringBuilder();
+        var inSingleQuote = false;
+        var inDoubleQuote = false;
+        var inLineComment = false;
+        string? dollarQuoteTag = null;
+
+        for (var i = 0; i < sqlText.Length;)
+        {
+            if (inLineComment)
+            {
+                sb.Append(sqlText[i]);
+                if (sqlText[i] == '\n')
+                    inLineComment = false;
+                i++;
+                continue;
+            }
+
+            if (!inSingleQuote && !inDoubleQuote && dollarQuoteTag == null && i + 1 < sqlText.Length &&
+                sqlText[i] == '-' && sqlText[i + 1] == '-')
+            {
+                inLineComment = true;
+                sb.Append(sqlText[i]);
+                sb.Append(sqlText[i + 1]);
+                i += 2;
+                continue;
+            }
+
+            if (dollarQuoteTag != null)
+            {
+                if (StartsWithAt(sqlText, i, dollarQuoteTag))
+                {
+                    sb.Append(dollarQuoteTag);
+                    i += dollarQuoteTag.Length;
+                    dollarQuoteTag = null;
+                    continue;
+                }
+
+                sb.Append(sqlText[i]);
+                i++;
+                continue;
+            }
+
+            if (!inSingleQuote && !inDoubleQuote && sqlText[i] == '$')
+            {
+                var end = i + 1;
+                while (end < sqlText.Length &&
+                       (char.IsLetterOrDigit(sqlText[end]) || sqlText[end] == '_'))
+                {
+                    end++;
+                }
+
+                if (end < sqlText.Length && sqlText[end] == '$')
+                {
+                    dollarQuoteTag = sqlText.Substring(i, end - i + 1);
+                    sb.Append(dollarQuoteTag);
+                    i = end + 1;
+                    continue;
+                }
+            }
+
+            var c = sqlText[i];
+
+            if (c == '\'' && !inDoubleQuote)
+            {
+                if (inSingleQuote && i + 1 < sqlText.Length && sqlText[i + 1] == '\'')
+                {
+                    sb.Append("''");
+                    i += 2;
+                    continue;
+                }
+
+                inSingleQuote = !inSingleQuote;
+                sb.Append(c);
+                i++;
+                continue;
+            }
+
+            if (c == '"' && !inSingleQuote)
+            {
+                inDoubleQuote = !inDoubleQuote;
+                sb.Append(c);
+                i++;
+                continue;
+            }
+
+            if (c == ';' && !inSingleQuote && !inDoubleQuote)
+            {
+                var statement = sb.ToString().Trim();
+                if (!string.IsNullOrWhiteSpace(statement))
+                    statements.Add(statement);
+                sb.Clear();
+                i++;
+                continue;
+            }
+
+            sb.Append(c);
+            i++;
+        }
+
+        var tail = sb.ToString().Trim();
+        if (!string.IsNullOrWhiteSpace(tail))
+            statements.Add(tail);
+
+        return statements;
+    }
+
+    private static bool StartsWithAt(string text, int index, string value)
+    {
+        if (index < 0 || index + value.Length > text.Length)
+            return false;
+        return string.CompareOrdinal(text, index, value, 0, value.Length) == 0;
+    }
+
+    private static string ResolveDatabaseFolder()
+    {
+        var databaseFolder = MotoConfig.DatabaseSource;
+        if (Directory.Exists(databaseFolder))
+            return databaseFolder;
+
+        var fallback = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "database");
+        return Path.GetFullPath(fallback);
+    }
 }

@@ -1,7 +1,7 @@
 using FluentAssertions;
 using MotoRent.Domain.Entities;
 using MotoRent.Domain.QueryProviders;
-using MotoRent.SqlServerRepository;
+using MotoRent.PostgreSqlRepository;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -12,7 +12,7 @@ namespace MotoRent.LinqSql.Tests;
 /// </summary>
 public class DateTimeQueryTestFixture(ITestOutputHelper output)
 {
-    private readonly SqlQueryProvider m_provider = new(new MockRequestContext());
+    private readonly PgQueryProvider m_provider = new();
 
     [Fact]
     public void DateTimeOffsetGreaterThanOrEqual_GeneratesCorrectFormat()
@@ -27,7 +27,7 @@ public class DateTimeQueryTestFixture(ITestOutputHelper output)
         output.WriteLine(sql);
 
         // Assert
-        sql.Should().Contain("[OpenedAt] >= '");
+        sql.Should().Contain("\"OpenedAt\" >= '");
         sql.Should().Contain("2024-01-15");
     }
 
@@ -44,7 +44,7 @@ public class DateTimeQueryTestFixture(ITestOutputHelper output)
         output.WriteLine(sql);
 
         // Assert
-        sql.Should().Contain("[OpenedAt] < '");
+        sql.Should().Contain("\"OpenedAt\" < '");
         sql.Should().Contain("2024-01-16");
     }
 
@@ -63,8 +63,8 @@ public class DateTimeQueryTestFixture(ITestOutputHelper output)
         output.WriteLine(sql);
 
         // Assert - Both conditions present in nested structure
-        sql.Should().Contain("[OpenedAt] >=");
-        sql.Should().Contain("[OpenedAt] <=");
+        sql.Should().Contain("\"OpenedAt\" >=");
+        sql.Should().Contain("\"OpenedAt\" <=");
         sql.Should().Contain("WHERE");
     }
 
@@ -81,7 +81,7 @@ public class DateTimeQueryTestFixture(ITestOutputHelper output)
         output.WriteLine(sql);
 
         // Assert
-        sql.Should().Contain("[ExpectedCloseDate]");
+        sql.Should().Contain("\"ExpectedCloseDate\"");
         sql.Should().Contain("2024-01-15");
     }
 
@@ -98,7 +98,7 @@ public class DateTimeQueryTestFixture(ITestOutputHelper output)
         output.WriteLine(sql);
 
         // Assert
-        sql.Should().Contain("[ExpectedCloseDate]");
+        sql.Should().Contain("\"ExpectedCloseDate\"");
         sql.Should().Contain("2024-01-15");
     }
 
@@ -114,7 +114,7 @@ public class DateTimeQueryTestFixture(ITestOutputHelper output)
         output.WriteLine(sql);
 
         // Assert
-        sql.Should().Contain("[ClosedAt]");
+        sql.Should().Contain("\"ClosedAt\"");
         sql.Should().Contain("IS NULL");
     }
 
@@ -130,7 +130,7 @@ public class DateTimeQueryTestFixture(ITestOutputHelper output)
         output.WriteLine(sql);
 
         // Assert
-        sql.Should().Contain("[ClosedAt]");
+        sql.Should().Contain("\"ClosedAt\"");
         sql.Should().Contain("IS NOT NULL");
     }
 
@@ -147,7 +147,7 @@ public class DateTimeQueryTestFixture(ITestOutputHelper output)
         output.WriteLine(sql);
 
         // Assert
-        sql.Should().Contain("[OpenedAt] >= '");
+        sql.Should().Contain("\"OpenedAt\" >= '");
         sql.Should().Contain("2024-06-01");
     }
 
@@ -182,8 +182,10 @@ public class DateTimeQueryTestFixture(ITestOutputHelper output)
         output.WriteLine(sql);
 
         // Assert - Both conditions present in nested structure
-        sql.Should().Contain("[OpenedAt] >=");
-        sql.Should().Contain("[Status] = 'Open'");
+        sql.Should().Contain("\"OpenedAt\" >=");
+        sql.Should().Contain("\"Status\" = 'Open'");
         sql.Should().Contain("WHERE");
     }
 }
+
+

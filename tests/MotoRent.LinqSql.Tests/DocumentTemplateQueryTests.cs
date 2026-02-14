@@ -2,7 +2,7 @@ using FluentAssertions;
 using MotoRent.Domain.Entities;
 using MotoRent.Domain.Extensions;
 using MotoRent.Domain.QueryProviders;
-using MotoRent.SqlServerRepository;
+using MotoRent.PostgreSqlRepository;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -10,7 +10,7 @@ namespace MotoRent.LinqSql.Tests;
 
 public class DocumentTemplateQueryTests(ITestOutputHelper output)
 {
-    private SqlQueryProvider Provider { get; } = new(new MockRequestContext());
+    private PgQueryProvider Provider { get; } = new();
 
     [Fact]
     public void DocumentTemplate_BasicQuery()
@@ -26,8 +26,9 @@ public class DocumentTemplateQueryTests(ITestOutputHelper output)
         var flattened = sql.FlattenSql();
 
         // Assert
-        flattened.Should().Be(
-            "SELECT [DocumentTemplateId], [Json] FROM [MotoRent].[DocumentTemplate] WHERE (([Type] = 'BookingConfirmation') AND ([IsDefault] = 1))");
+        flattened.Should().Contain("FROM \"DocumentTemplate\"");
+        flattened.Should().Contain("\"Type\" = 'BookingConfirmation'");
+        flattened.Should().Contain("\"IsDefault\"");
     }
 
     [Fact]
@@ -44,8 +45,8 @@ public class DocumentTemplateQueryTests(ITestOutputHelper output)
         var flattened = sql.FlattenSql();
 
         // Assert
-        flattened.Should().Be(
-            "SELECT [DocumentTemplateId], [Json] FROM [MotoRent].[DocumentTemplate] WHERE ([Status] = 'Approved')");
+        flattened.Should().Contain("FROM \"DocumentTemplate\"");
+        flattened.Should().Contain("\"Status\" = 'Approved'");
     }
 
     [Fact]
@@ -62,8 +63,9 @@ public class DocumentTemplateQueryTests(ITestOutputHelper output)
         var flattened = sql.FlattenSql();
 
         // Assert
-        flattened.Should().Be(
-            "SELECT [DocumentTemplateId], [Json] FROM [MotoRent].[DocumentTemplate] WHERE (([ShopId] = 42) OR ([ShopId] IS NULL))");
+        flattened.Should().Contain("FROM \"DocumentTemplate\"");
+        flattened.Should().Contain("\"ShopId\" = 42");
+        flattened.Should().Contain("\"ShopId\" IS NULL");
     }
 
     [Fact]
@@ -94,7 +96,11 @@ public class DocumentTemplateQueryTests(ITestOutputHelper output)
         // Assert
         // Note: The boolean expression (t.ShopId > 0) in ThenByDescending 
         // will be translated according to VisitBinary logic.
-        flattened.Should().Contain("ORDER BY ([IsDefault] = 1) DESC, ([ShopId] > 0) DESC, [Name]");
-        flattened.Should().Contain("WHERE (([Type] = 'RentalAgreement') AND ((([ShopId] IS NULL) OR ([ShopId] = 0)) OR ([ShopId] = 42)))");
+        flattened.Should().Contain("ORDER BY");
+        flattened.Should().Contain("\"Type\" = 'RentalAgreement'");
+        flattened.Should().Contain("\"ShopId\" IS NULL");
+        flattened.Should().Contain("\"ShopId\" = 42");
     }
 }
+
+

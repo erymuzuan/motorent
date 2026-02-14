@@ -15,7 +15,7 @@ namespace MotoRent.PostgreSqlRepository;
 public class CorePgPersistence(IRequestContext context) : IPersistence
 {
     private const int MAX_ITEMS_PER_BATCH = 250;
-    private readonly string m_connectionString = MotoConfig.SqlConnectionString;
+    private readonly string m_connectionString = MotoConfig.ConnectionString;
 
     private static ResiliencePipeline CreateRetryPipeline()
     {
