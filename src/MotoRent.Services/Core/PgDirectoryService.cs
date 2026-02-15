@@ -9,9 +9,9 @@ using MotoRent.Domain.DataContext;
 namespace MotoRent.Services.Core;
 
 /// <summary>
-/// SQL-based directory service for user authentication, claims generation, and organization management.
+/// PostgreSQL-based directory service for user authentication, claims generation, and organization management.
 /// </summary>
-public class SqlDirectoryService(CoreDataContext context) : IDirectoryService
+public class PgDirectoryService(CoreDataContext context) : IDirectoryService
 {
     private CoreDataContext Context { get; } = context;
 

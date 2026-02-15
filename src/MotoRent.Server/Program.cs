@@ -138,7 +138,7 @@ builder.Services.AddScoped<IExchangeRateProvider, SuperRichProvider>();
 builder.Services.AddScoped<ManagerPinService>();
 
 // Error logging services
-builder.Services.AddScoped<MotoRent.Domain.Core.ILogger, SqlLogger>();
+builder.Services.AddScoped<MotoRent.Domain.Core.ILogger, PgLogger>();
 builder.Services.AddScoped<LogEntryService>();
 // Feedback services
 builder.Services.AddScoped<FeedbackService>();
@@ -188,10 +188,10 @@ builder.Services.AddHybridCache();
 builder.Services.AddCorePostgreSqlRepository(builder.Configuration);
 
 // Add Core services
-builder.Services.AddScoped<IDirectoryService, SqlDirectoryService>();
+builder.Services.AddScoped<IDirectoryService, PgDirectoryService>();
 builder.Services.AddScoped<MotoRent.Domain.Core.IAuthenticationService, MotoRent.Services.Core.AuthenticationService>();
 builder.Services.AddScoped<IOnboardingService, OnboardingService>();
-builder.Services.AddScoped<ISubscriptionService, SqlSubscriptionService>();
+builder.Services.AddScoped<ISubscriptionService, PgSubscriptionService>();
 builder.Services.AddScoped<OrganizationService>();
 builder.Services.AddScoped<ISettingConfig, SettingConfigService>();
 // Vehicle lookup services (global, shared across all tenants)

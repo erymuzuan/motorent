@@ -5,14 +5,14 @@ using MotoRent.Domain.DataContext;
 namespace MotoRent.Services.Core;
 
 /// <summary>
-/// Logger implementation that persists log entries to SQL Server database.
+/// Logger implementation that persists log entries to PostgreSQL database.
 /// </summary>
-public class SqlLogger : ILogger
+public class PgLogger : ILogger
 {
     private readonly CoreDataContext m_context;
     private readonly IRequestContext m_requestContext;
 
-    public SqlLogger(CoreDataContext context, IRequestContext requestContext)
+    public PgLogger(CoreDataContext context, IRequestContext requestContext)
     {
         m_context = context;
         m_requestContext = requestContext;
@@ -32,7 +32,7 @@ public class SqlLogger : ILogger
         catch (Exception ex)
         {
             // Fallback to console if database logging fails
-            Console.Error.WriteLine($"[SqlLogger] Failed to log to database: {ex.Message}");
+            Console.Error.WriteLine($"[PgLogger] Failed to log to database: {ex.Message}");
             Console.Error.WriteLine(log.ToString());
         }
     }

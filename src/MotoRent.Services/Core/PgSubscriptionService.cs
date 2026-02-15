@@ -11,7 +11,7 @@ namespace MotoRent.Services.Core;
 /// Uses RLS (Row Level Security) with tenant_id instead of SQL Server schemas.
 /// Tables are shared across tenants; isolation is enforced by tenant_id column + RLS policies.
 /// </summary>
-public partial class SqlSubscriptionService(
+public partial class PgSubscriptionService(
     CoreDataContext context,
     IDirectoryService directoryService,
     IRequestContext requestContext) : ISubscriptionService
