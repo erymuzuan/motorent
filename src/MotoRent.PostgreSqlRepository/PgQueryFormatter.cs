@@ -707,9 +707,9 @@ internal class PgQueryFormatter : DbExpressionVisitor
         if (select.From != null)
         {
             this.AppendNewLine(Indentation.Same);
-            this.m_sb.Append("FROM \"");
+            this.m_sb.Append("FROM ");
             this.VisitSource(select.From);
-            this.m_sb.Append("\" ");
+            this.m_sb.Append(" ");
         }
 
         if (select.Where != null)
@@ -767,7 +767,7 @@ internal class PgQueryFormatter : DbExpressionVisitor
         {
             case DbExpressionType.Table:
                 var table = (TableExpression)source;
-                this.m_sb.Append(table.Name);
+                this.m_sb.Append($"\"{table.Name}\"");
                 break;
             case DbExpressionType.Select:
                 var select = (SelectExpression)source;

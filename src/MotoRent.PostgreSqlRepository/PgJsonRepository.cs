@@ -75,8 +75,10 @@ public partial class PgJsonRepository<T>(
     {
         var elementType = typeof(T);
         var sql = new System.Text.StringBuilder(query.ToString());
-        var sqlCountRows = sql.ToString().Replace("\"Data\"", "COUNT(*)");
-        sql.Replace("\"Data\"", $"\"{elementType.Name}Id\",\"Json\",{AuditColumns}");
+        // Use * for subqueries so WHERE clauses can reference computed columns
+        sql.Replace("\"Data\"", "*");
+        // For count query, wrap the base query (with *) to avoid nested COUNT(*) issues
+        var sqlForCount = sql.ToString();
         if (!sql.ToString().Contains("ORDER"))
         {
             sql.AppendLine();
@@ -113,8 +115,9 @@ public partial class PgJsonRepository<T>(
         lo.ItemCollection.AddRange(list);
 
         if (!includeTotalRows) return lo;
-        var order = sqlCountRows.IndexOf("ORDER", StringComparison.Ordinal);
-        var count = order == -1 ? sqlCountRows : sqlCountRows[..order];
+        var order = sqlForCount.IndexOf("ORDER", StringComparison.Ordinal);
+        var baseQuery = order == -1 ? sqlForCount : sqlForCount[..order];
+        var count = $"SELECT COUNT(*) FROM ({baseQuery}) AS _cnt";
         lo.TotalRows = await this.GetCountAsync(count);
 
         return lo;
@@ -387,7 +390,8 @@ public partial class PgJsonRepository<T>(
             throw new ArgumentException("At least one column must be specified", nameof(columns));
 
         var fields = string.Join(", ", columns.Select(c => $"\"{c}\""));
-        var sql = query.ToString()!.Replace("\"Data\"", fields);
+        var baseSql = query.ToString()!.Replace("\"Data\"", "*");
+        var sql = $"SELECT {fields} FROM ({baseSql}) AS _r";
         var connectionString = this.Context.GetConnectionString();
 
         var pipeline = this.CreateRetryPipeline();

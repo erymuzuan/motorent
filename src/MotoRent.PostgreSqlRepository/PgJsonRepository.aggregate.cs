@@ -12,12 +12,14 @@ public partial class PgJsonRepository<T> where T : Entity, new()
 {
     public async Task<int> GetCountAsync(IQueryable<T> query)
     {
-        var sql = query.ToString()!.Replace("\"Data\"", "COUNT(*)");
+        // Use * for subquery compatibility (computed columns must be visible in outer queries)
+        var sql = query.ToString()!.Replace("\"Data\"", "*");
         // Strip ORDER BY - invalid with COUNT(*) without GROUP BY
         var orderByIndex = sql.IndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase);
         if (orderByIndex >= 0)
             sql = sql[..orderByIndex].TrimEnd();
 
+        sql = $"SELECT COUNT(*) FROM ({sql}) AS _cnt";
         return await this.GetCountAsync(sql);
     }
 
@@ -47,7 +49,10 @@ public partial class PgJsonRepository<T> where T : Entity, new()
         if (string.IsNullOrWhiteSpace(column))
             throw new ArgumentException("Cannot determine the aggregate column name");
 
-        var sql = query.ToString()!.Replace("\"Data\"", $"COALESCE(SUM(\"{column}\"), 0)");
+        var sql = query.ToString()!.Replace("\"Data\"", "*");
+        var orderByIndex = sql.IndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase);
+        if (orderByIndex >= 0) sql = sql[..orderByIndex].TrimEnd();
+        sql = $"SELECT COALESCE(SUM(\"{column}\"), 0) FROM ({sql}) AS _agg";
         return await this.ExecuteScalarAsync<TResult>(sql);
     }
 
@@ -57,7 +62,10 @@ public partial class PgJsonRepository<T> where T : Entity, new()
         if (string.IsNullOrWhiteSpace(column))
             throw new ArgumentException("Cannot determine the aggregate column name");
 
-        var sql = query.ToString()!.Replace("\"Data\"", $"SUM(\"{column}\")");
+        var sql = query.ToString()!.Replace("\"Data\"", "*");
+        var orderByIndex = sql.IndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase);
+        if (orderByIndex >= 0) sql = sql[..orderByIndex].TrimEnd();
+        sql = $"SELECT SUM(\"{column}\") FROM ({sql}) AS _agg";
         return await this.ExecuteScalarNullableAsync<TResult>(sql);
     }
 
@@ -67,7 +75,10 @@ public partial class PgJsonRepository<T> where T : Entity, new()
         if (string.IsNullOrWhiteSpace(column))
             throw new ArgumentException("Cannot determine the aggregate column name");
 
-        var sql = query.ToString()!.Replace("\"Data\"", $"MAX(\"{column}\")");
+        var sql = query.ToString()!.Replace("\"Data\"", "*");
+        var orderByIndex = sql.IndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase);
+        if (orderByIndex >= 0) sql = sql[..orderByIndex].TrimEnd();
+        sql = $"SELECT MAX(\"{column}\") FROM ({sql}) AS _agg";
         return await this.ExecuteScalarAsync<TResult>(sql);
     }
 
@@ -77,7 +88,10 @@ public partial class PgJsonRepository<T> where T : Entity, new()
         if (string.IsNullOrWhiteSpace(column))
             throw new ArgumentException("Cannot determine the aggregate column name");
 
-        var sql = query.ToString()!.Replace("\"Data\"", $"MIN(\"{column}\")");
+        var sql = query.ToString()!.Replace("\"Data\"", "*");
+        var orderByIndex = sql.IndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase);
+        if (orderByIndex >= 0) sql = sql[..orderByIndex].TrimEnd();
+        sql = $"SELECT MIN(\"{column}\") FROM ({sql}) AS _agg";
         return await this.ExecuteScalarAsync<TResult>(sql);
     }
 
@@ -87,7 +101,10 @@ public partial class PgJsonRepository<T> where T : Entity, new()
         if (string.IsNullOrWhiteSpace(column))
             throw new ArgumentException("Cannot determine the aggregate column name");
 
-        var sql = query.ToString()!.Replace("\"Data\"", $"COALESCE(AVG(CAST(\"{column}\" AS NUMERIC(18,4))), 0)");
+        var sql = query.ToString()!.Replace("\"Data\"", "*");
+        var orderByIndex = sql.IndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase);
+        if (orderByIndex >= 0) sql = sql[..orderByIndex].TrimEnd();
+        sql = $"SELECT COALESCE(AVG(CAST(\"{column}\" AS NUMERIC(18,4))), 0) FROM ({sql}) AS _agg";
         return await this.ExecuteScalarAsync<decimal>(sql);
     }
 
@@ -97,7 +114,8 @@ public partial class PgJsonRepository<T> where T : Entity, new()
         if (string.IsNullOrWhiteSpace(column))
             throw new ArgumentException("Cannot determine the scalar column name");
 
-        var sql = query.ToString()!.Replace("\"Data\"", $"\"{column}\"");
+        var sql = query.ToString()!.Replace("\"Data\"", "*");
+        sql = $"SELECT \"{column}\" FROM ({sql}) AS _s";
         // Add LIMIT 1 if not already present
         if (!sql.Contains("LIMIT", StringComparison.OrdinalIgnoreCase))
             sql += " LIMIT 1";
@@ -116,7 +134,10 @@ public partial class PgJsonRepository<T> where T : Entity, new()
         if (string.IsNullOrWhiteSpace(column))
             throw new ArgumentException("Cannot determine the column name");
 
-        var sql = query.ToString()!.Replace("\"Data\"", $"DISTINCT \"{column}\"");
+        var sql = query.ToString()!.Replace("\"Data\"", "*");
+        var orderByIndex = sql.IndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase);
+        if (orderByIndex >= 0) sql = sql[..orderByIndex].TrimEnd();
+        sql = $"SELECT DISTINCT \"{column}\" FROM ({sql}) AS _d";
         return await this.ExecuteListAsync<TResult>(sql);
     }
 
@@ -126,12 +147,11 @@ public partial class PgJsonRepository<T> where T : Entity, new()
         if (string.IsNullOrWhiteSpace(keyColumn))
             throw new ArgumentException("Cannot determine the key column name");
 
-        var sql = query.ToString()!.Replace("\"Data\"", $"\"{keyColumn}\", COUNT(*) as \"Cnt\"");
-        // Strip ORDER BY before adding GROUP BY
+        var sql = query.ToString()!.Replace("\"Data\"", "*");
         var orderByIndex = sql.IndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase);
         if (orderByIndex >= 0)
             sql = sql[..orderByIndex].TrimEnd();
-        sql += $" GROUP BY \"{keyColumn}\"";
+        sql = $"SELECT \"{keyColumn}\", COUNT(*) as \"Cnt\" FROM ({sql}) AS _g GROUP BY \"{keyColumn}\"";
 
         var connectionString = this.Context.GetConnectionString();
         var pipeline = this.CreateRetryPipeline();
@@ -162,11 +182,11 @@ public partial class PgJsonRepository<T> where T : Entity, new()
         if (string.IsNullOrWhiteSpace(keyColumn) || string.IsNullOrWhiteSpace(valueColumn))
             throw new ArgumentException("Cannot determine column names");
 
-        var sql = query.ToString()!.Replace("\"Data\"", $"\"{keyColumn}\", SUM(\"{valueColumn}\") as \"Total\"");
+        var sql = query.ToString()!.Replace("\"Data\"", "*");
         var orderByIndex = sql.IndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase);
         if (orderByIndex >= 0)
             sql = sql[..orderByIndex].TrimEnd();
-        sql += $" GROUP BY \"{keyColumn}\"";
+        sql = $"SELECT \"{keyColumn}\", SUM(\"{valueColumn}\") as \"Total\" FROM ({sql}) AS _g GROUP BY \"{keyColumn}\"";
 
         var connectionString = this.Context.GetConnectionString();
         var pipeline = this.CreateRetryPipeline();
@@ -199,11 +219,11 @@ public partial class PgJsonRepository<T> where T : Entity, new()
         if (string.IsNullOrWhiteSpace(keyColumn) || string.IsNullOrWhiteSpace(key2Column) || string.IsNullOrWhiteSpace(valueColumn))
             throw new ArgumentException("Cannot determine column names");
 
-        var sql = query.ToString()!.Replace("\"Data\"", $"\"{keyColumn}\", \"{key2Column}\", SUM(\"{valueColumn}\") as \"Total\"");
+        var sql = query.ToString()!.Replace("\"Data\"", "*");
         var orderByIndex = sql.IndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase);
         if (orderByIndex >= 0)
             sql = sql[..orderByIndex].TrimEnd();
-        sql += $" GROUP BY \"{keyColumn}\", \"{key2Column}\"";
+        sql = $"SELECT \"{keyColumn}\", \"{key2Column}\", SUM(\"{valueColumn}\") as \"Total\" FROM ({sql}) AS _g GROUP BY \"{keyColumn}\", \"{key2Column}\"";
 
         var connectionString = this.Context.GetConnectionString();
         var pipeline = this.CreateRetryPipeline();
@@ -235,7 +255,8 @@ public partial class PgJsonRepository<T> where T : Entity, new()
         if (string.IsNullOrWhiteSpace(column1) || string.IsNullOrWhiteSpace(column2))
             throw new ArgumentException("Cannot determine column names");
 
-        var sql = query.ToString()!.Replace("\"Data\"", $"\"{column1}\", \"{column2}\"");
+        var sql = query.ToString()!.Replace("\"Data\"", "*");
+        sql = $"SELECT \"{column1}\", \"{column2}\" FROM ({sql}) AS _l";
 
         var connectionString = this.Context.GetConnectionString();
         var pipeline = this.CreateRetryPipeline();
@@ -268,7 +289,8 @@ public partial class PgJsonRepository<T> where T : Entity, new()
         if (string.IsNullOrWhiteSpace(column1) || string.IsNullOrWhiteSpace(column2) || string.IsNullOrWhiteSpace(column3))
             throw new ArgumentException("Cannot determine column names");
 
-        var sql = query.ToString()!.Replace("\"Data\"", $"\"{column1}\", \"{column2}\", \"{column3}\"");
+        var sql = query.ToString()!.Replace("\"Data\"", "*");
+        sql = $"SELECT \"{column1}\", \"{column2}\", \"{column3}\" FROM ({sql}) AS _l";
 
         var connectionString = this.Context.GetConnectionString();
         var pipeline = this.CreateRetryPipeline();
