@@ -112,14 +112,34 @@ This tests `PgJsonRepository<T>` (tenant entities with RLS) and `PgPersistence` 
 - **PgJsonRepository.cs**: LoadAsync/GetReaderAsync use `SELECT *` + outer wrapping instead of inline replacement
 - **PgJsonRepository.aggregate.cs**: All 13 aggregate methods use wrapping pattern for subquery compatibility
 
+- **Step 8**: Booking created (QB49DQ):
+  - Customer: Test Tourist, +66 812345678
+  - Vehicle: Honda PCX 160, 300 THB/day, 3 days = 900 THB
+  - Insurance: Basic (100 THB/day x 3 = 300 THB)
+  - Total: 1,200 THB
+  - Status: Pending → CheckedIn (after Step 9)
+  - **Fix**: DateTimeOffset UTC conversion in `PgPersistence.GetEntityPropertyValue()` — PostgreSQL `timestamptz` rejects non-UTC offsets
+  - **Fix**: Safe RollbackAsync in catch blocks (both `PgPersistence.cs` and `CorePgPersistence.cs`) — `await using` already disposes transaction
+
+- **Step 9**: Check-In completed (R00001):
+  - Renter: Test Tourist
+  - Vehicle: Honda PCX 160, 1กก 1234
+  - Rental Period: Feb 15 - Feb 18, 2026 (3 days)
+  - Insurance: Basic, Accessory: Helmet (free)
+  - Deposit: Cash 2,000 THB
+  - Total: 3,200 THB (rental + deposit)
+  - Receipt: RCP-260215-00001
+  - Till Session opened with ฿1,000 float at Patong Beach Shop
+  - 6-step wizard: Renter → Vehicle → Configure → Deposit → Inspection → Agreement
+  - All steps loaded data from PostgreSQL correctly, all writes succeeded
+
 ### Remaining
 - **Step 3**: Create Staff Members (skipped, not blocking)
-- **Step 8**: Create Bookings (browser disconnected before starting)
-- **Step 9**: Check-In Bookings (multi-step rental workflow)
 
 ### Notes
 - No PostgreSQL errors during Steps 2, 4-7 — all tenant CRUD works with RLS
-- Browser extension (Claude in Chrome) disconnected; needs reconnection to continue
+- DateTimeOffset UTC fix was required for all write operations (Step 8+)
+- Full check-in workflow (6 steps) works end-to-end with PostgreSQL + RLS
 - Server runs on port 7105 with `dotnet watch`
 
 ## Verification
