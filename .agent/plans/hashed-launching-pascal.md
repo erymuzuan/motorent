@@ -133,6 +133,22 @@ This tests `PgJsonRepository<T>` (tenant entities with RLS) and `PgPersistence` 
   - 6-step wizard: Renter → Vehicle → Configure → Deposit → Inspection → Agreement
   - All steps loaded data from PostgreSQL correctly, all writes succeeded
 
+- **Step 10**: Check-Out completed (R00001):
+  - 3-step wizard: Return → Damage → Settle
+  - Return: Actual return 15/02/2026, Mileage 45km, Fuel Full, Clean, Helmet returned
+  - Damage: No Damage (standard inspection)
+  - Settle: Original rental 1,200 THB (Paid), Additional Due 0 THB, Deposit refund 2,000 THB via Cash
+  - Rental status: Active → Completed
+  - Vehicle status: Rented → Available (3 vehicles available again)
+  - All PostgreSQL reads/writes succeeded
+
+- **Step 11**: Till Session Close:
+  - Close Shift dialog opened, denomination count entered (4×฿1,000 + 4×฿100 = ฿4,400)
+  - Variance handling tested: +฿200 variance acknowledged via checkbox
+  - Session closed with ClosedWithVariance status
+  - Page returned to "Start Your Shift" prompt
+  - **Fix**: `ClosingCountPanel.razor` — initial `OnBreakdownsChanged` not fired when no draft exists, causing Expected to show ฿0 in sidebar. Added initial callback after `OnParametersSetAsync` completes.
+
 ### Remaining
 - **Step 3**: Create Staff Members (skipped, not blocking)
 
@@ -140,6 +156,8 @@ This tests `PgJsonRepository<T>` (tenant entities with RLS) and `PgPersistence` 
 - No PostgreSQL errors during Steps 2, 4-7 — all tenant CRUD works with RLS
 - DateTimeOffset UTC fix was required for all write operations (Step 8+)
 - Full check-in workflow (6 steps) works end-to-end with PostgreSQL + RLS
+- Full check-out workflow (3 steps) works end-to-end with PostgreSQL + RLS
+- Till close with denomination count and variance handling works with PostgreSQL
 - Server runs on port 7105 with `dotnet watch`
 
 ## Verification
@@ -151,4 +169,6 @@ This tests `PgJsonRepository<T>` (tenant entities with RLS) and `PgPersistence` 
 6. Insurance packages and accessories visible in lists
 7. Bookings created with correct status and customer info
 8. Check-in flow completes — Rental entity created, vehicle status changes to "Rented"
-9. No unhandled PostgreSQL errors in server output throughout
+9. Check-out flow completes — Rental status Completed, vehicle Available, deposit refunded
+10. Till close completes — Session closed with denomination count, variance tracked
+11. No unhandled PostgreSQL errors in server output throughout
