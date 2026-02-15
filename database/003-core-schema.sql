@@ -122,6 +122,10 @@ CREATE TABLE "LogEntry"
     "AccountNo"         VARCHAR(20) GENERATED ALWAYS AS (("Json"->>'AccountNo')::VARCHAR(20)) STORED,
     "UserName"          VARCHAR(200) GENERATED ALWAYS AS (("Json"->>'UserName')::VARCHAR(200)) STORED,
     "Severity"          VARCHAR(20) GENERATED ALWAYS AS (("Json"->>'Severity')::VARCHAR(20)) STORED,
+    "LogSeverity"       VARCHAR(20) GENERATED ALWAYS AS (("Json"->>'LogSeverity')::VARCHAR(20)) STORED,
+    "Status"            VARCHAR(20) GENERATED ALWAYS AS (("Json"->>'Status')::VARCHAR(20)) STORED,
+    "Log"               VARCHAR(20) GENERATED ALWAYS AS (("Json"->>'Log')::VARCHAR(20)) STORED,
+    "IncidentHash"      VARCHAR(50) GENERATED ALWAYS AS (("Json"->>'IncidentHash')::VARCHAR(50)) STORED,
     "Application"       VARCHAR(50) GENERATED ALWAYS AS (("Json"->>'Application')::VARCHAR(50)) STORED,
     "DateTime"          TIMESTAMPTZ GENERATED ALWAYS AS (immutable_text_to_timestamptz("Json"->>'DateTime')) STORED,
     "Json"              JSONB NOT NULL,
@@ -133,3 +137,5 @@ CREATE TABLE "LogEntry"
 
 CREATE INDEX IX_LogEntry_AccountNo_DateTime ON "LogEntry"("AccountNo", "DateTime");
 CREATE INDEX IX_LogEntry_Severity ON "LogEntry"("Severity");
+CREATE INDEX IX_LogEntry_Status ON "LogEntry"("Status");
+CREATE INDEX IX_LogEntry_IncidentHash ON "LogEntry"("IncidentHash");

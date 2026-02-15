@@ -3,6 +3,7 @@ using MotoRent.Domain.Core;
 using MotoRent.Domain.DataContext;
 using MotoRent.Domain.Entities;
 using Npgsql;
+using NpgsqlTypes;
 using Polly;
 using Polly.Retry;
 
@@ -107,9 +108,8 @@ public class CorePgPersistence(IRequestContext context) : IPersistence
                                 VALUES (@Json, @Username, @Username, @Timestamp, @Timestamp)
                                 RETURNING '{entity.WebId}' AS "WebId", "{typeName}Id" AS "Id"
                                 """;
-
                             await using var cmd = new NpgsqlCommand(sql, conn, transaction);
-                            cmd.Parameters.AddWithValue("@Json", json);
+                            cmd.Parameters.Add(new NpgsqlParameter("@Json", NpgsqlDbType.Jsonb) { Value = json });
                             cmd.Parameters.AddWithValue("@Username", username);
                             cmd.Parameters.AddWithValue("@Timestamp", now);
 
@@ -130,7 +130,7 @@ public class CorePgPersistence(IRequestContext context) : IPersistence
                                 """;
 
                             await using var cmd = new NpgsqlCommand(sql, conn, transaction);
-                            cmd.Parameters.AddWithValue("@Json", json);
+                            cmd.Parameters.Add(new NpgsqlParameter("@Json", NpgsqlDbType.Jsonb) { Value = json });
                             cmd.Parameters.AddWithValue("@Username", username);
                             cmd.Parameters.AddWithValue("@Timestamp", now);
                             cmd.Parameters.AddWithValue("@Id", entity.GetId());
@@ -173,6 +173,8 @@ public class CorePgPersistence(IRequestContext context) : IPersistence
         }
         catch (Exception ex)
         {
+            Console.Error.WriteLine($"[CorePgPersistence] Submit FAILED: {ex.Message}");
+            Console.Error.WriteLine($"[CorePgPersistence] {ex}");
             return SubmitOperation.CreateFailure($"Submit failed: {ex.Message}", ex);
         }
     }

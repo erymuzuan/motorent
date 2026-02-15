@@ -17,5 +17,5 @@ ALTER TABLE "ShopSchedule" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation_shopschedule ON "ShopSchedule" USING ("tenant_id" = current_setting('app.current_tenant'));
 
 CREATE UNIQUE INDEX IX_ShopSchedule_ShopDate ON "ShopSchedule"("tenant_id", "ShopId", "Date");
-CREATE INDEX IX_ShopSchedule_DateRange ON "ShopSchedule"("ShopId", "Date") WHERE "Date" >= CURRENT_DATE;
+CREATE INDEX IX_ShopSchedule_DateRange ON "ShopSchedule"("ShopId", "Date");
 CREATE INDEX IX_ShopSchedule_TenantId ON "ShopSchedule"("tenant_id");

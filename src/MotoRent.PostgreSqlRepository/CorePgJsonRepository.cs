@@ -6,6 +6,7 @@ using MotoRent.Domain.Core;
 using MotoRent.Domain.DataContext;
 using MotoRent.Domain.Entities;
 using Npgsql;
+using NpgsqlTypes;
 using Polly;
 using Polly.Retry;
 
@@ -195,7 +196,7 @@ public partial class CorePgJsonRepository<T>(
                 """;
 
             await using var cmd = new NpgsqlCommand(sql, conn);
-            cmd.Parameters.AddWithValue("@Json", json);
+            cmd.Parameters.Add(new NpgsqlParameter("@Json", NpgsqlDbType.Jsonb) { Value = json });
             cmd.Parameters.AddWithValue("@Username", username);
             cmd.Parameters.AddWithValue("@Timestamp", now);
 
@@ -231,7 +232,7 @@ public partial class CorePgJsonRepository<T>(
                 """;
 
             await using var cmd = new NpgsqlCommand(sql, conn);
-            cmd.Parameters.AddWithValue("@Json", json);
+            cmd.Parameters.Add(new NpgsqlParameter("@Json", NpgsqlDbType.Jsonb) { Value = json });
             cmd.Parameters.AddWithValue("@Username", username);
             cmd.Parameters.AddWithValue("@Timestamp", now);
             cmd.Parameters.AddWithValue("@Id", entity.GetId());
