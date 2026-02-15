@@ -144,7 +144,7 @@ public class CorePgPersistence(IRequestContext context) : IPersistence
                 }
                 catch
                 {
-                    await transaction.RollbackAsync(ct);
+                    try { await transaction.RollbackAsync(ct); } catch { /* already disposed */ }
                     throw;
                 }
             });

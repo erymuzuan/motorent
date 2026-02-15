@@ -170,7 +170,7 @@ public class PgPersistence(
                 }
                 catch
                 {
-                    await transaction.RollbackAsync(ct);
+                    try { await transaction.RollbackAsync(ct); } catch { /* already disposed */ }
                     throw;
                 }
             });
@@ -203,6 +203,8 @@ public class PgPersistence(
         }
         catch (Exception ex)
         {
+            Console.Error.WriteLine($"[PgPersistence] Submit FAILED: {ex.Message}");
+            Console.Error.WriteLine($"[PgPersistence] {ex}");
             return SubmitOperation.CreateFailure($"Submit failed: {ex.Message}", ex);
         }
     }
@@ -233,8 +235,10 @@ public class PgPersistence(
         return (propType.Name, value) switch
         {
             // Thai Buddhist calendar handling
-            ("DateTimeOffset", DateTimeOffset { Year: > 3000 } ut) => ut.AddYears(-1086),
-            ("DateTimeOffset", DateTimeOffset { Year: > 2500 } ut) => ut.AddYears(-543),
+            ("DateTimeOffset", DateTimeOffset { Year: > 3000 } ut) => ut.AddYears(-1086).ToUniversalTime(),
+            ("DateTimeOffset", DateTimeOffset { Year: > 2500 } ut) => ut.AddYears(-543).ToUniversalTime(),
+            // PostgreSQL requires UTC offset for timestamptz
+            ("DateTimeOffset", DateTimeOffset dto) => dto.ToUniversalTime(),
             ("DateOnly", DateOnly { Year: > 3000 } ut) => $"{ut.Year - 1086}-{ut:MM-dd}",
             ("DateOnly", DateOnly { Year: > 2500 } ut) => $"{ut.Year - 543}-{ut:MM-dd}",
             ("DateTime", DateTime { Year: 1 }) when column.IsNullable => DBNull.Value,
