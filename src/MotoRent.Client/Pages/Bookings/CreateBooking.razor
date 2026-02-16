@@ -4,6 +4,7 @@
 @using MotoRent.Domain.Entities
 @using MotoRent.Domain.Models
 @using MotoRent.Services
+@using MotoRent.Domain.Storage
 @attribute [Authorize(Policy = "RequireTenantStaff")]
 @inherits LocalizedComponentBase<CreateBooking>
 @inject BookingService BookingService
@@ -13,6 +14,8 @@
 @inject InsuranceService InsuranceService
 @inject AccessoryService AccessoryService
 @inject AgentService AgentService
+@inject FleetModelImageService FleetModelImageService
+@inject IBinaryStore BinaryStore
 
 <MotoRentPageTitle>@Localizer["PageTitle"]</MotoRentPageTitle>
 
@@ -268,7 +271,11 @@
                                     <div class="mr-card @(isSelected ? "border-primary" : "")">
                                         <div class="mr-card-body p-3">
                                             <div class="d-flex justify-content-between align-items-start">
-                                                <div>
+                                                @if (GetPrimaryImageUrl(group.FleetModelId) is { } imageUrl)
+                                                {
+                                                    <span class="avatar avatar-lg me-3" style="background-image: url(@imageUrl)"></span>
+                                                }
+                                                <div class="flex-grow-1">
                                                     <h6 class="mb-1">@group.DisplayName</h6>
                                                     @if (!string.IsNullOrEmpty(group.EngineDisplay))
                                                     {
@@ -729,6 +736,7 @@
     private List<Insurance> m_insurancePackages = [];
     private List<Accessory> m_accessories = [];
     private List<BookingItemRequest> m_bookingItems = [];
+    private Dictionary<int, string> m_primaryImages = new();
 
     private record ModelSelection(VehicleGroup Group, int Quantity);
 
@@ -787,6 +795,17 @@
             var shopId = m_request.PreferredShopId ?? RequestContext.GetShopId();
             m_vehicleGroups = await VehicleService.GetVehicleGroupsAsync(shopId, status: VehicleStatus.Available);
 
+            // Load primary images for vehicle groups
+            m_primaryImages.Clear();
+            foreach (var group in m_vehicleGroups)
+            {
+                var storeId = await FleetModelImageService.GetPrimaryImageStoreIdAsync(group.FleetModelId);
+                if (!string.IsNullOrEmpty(storeId))
+                {
+                    m_primaryImages[group.FleetModelId] = storeId;
+                }
+            }
+
             // Load accessories
             if (shopId > 0)
             {
@@ -805,6 +824,15 @@
         {
             m_loadingVehicles = false;
         }
+    }
+
+    private string? GetPrimaryImageUrl(int fleetModelId)
+    {
+        if (m_primaryImages.TryGetValue(fleetModelId, out var storeId))
+        {
+            return BinaryStore.GetImageUrl(storeId);
+        }
+        return null;
     }
 
     private int GetSelectedQuantity(int fleetModelId)
