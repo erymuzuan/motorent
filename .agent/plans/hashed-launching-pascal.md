@@ -161,7 +161,14 @@ This tests `PgJsonRepository<T>` (tenant entities with RLS) and `PgPersistence` 
   - **Manager Dashboard** (`/manager`): Loads with Revenue Trend, Fleet Status sections
   - **Fleet Management** (`/vehicles`): 3 Vehicles, 3 Available, 0 Rented, 0 Maintenance. Grid/List views.
   - **Bookings** (`/bookings`): Today's Arrivals 0, Pending 0, Confirmed 0, Checked In 1
-  - **Exchange Rates** (`/settings/exchange-rates`): Page loads, no rates configured (empty state)
+  - **Denomination Groups** (`/settings/denomination-groups`): Created USD "Large Bills" group with denominations 100 and 20 — entity saved and listed
+  - **Exchange Rates** (`/settings/exchange-rates`): Full workflow tested:
+    - Provider selector (Manual/Mamy Exchange/Super Rich) works
+    - Fetched USD rates from Mamy Exchange provider — DenominationRate entity created in PostgreSQL
+    - Buy rate: 30.8500, Sell rate: 31.0500 (from provider)
+    - Buy/Sell toggle switches rates correctly
+    - Rate details flyout shows full breakdown (Provider Rate, Delta, Final Rate, Quick Calculator, Effective timestamp)
+    - Rate summary aggregation queries work against PostgreSQL
   - **Service Locations** (`/settings/service-locations`): Page loads with Patong Beach Shop dropdown, Create Default Locations button
 
 ### Remaining
@@ -179,6 +186,7 @@ This tests `PgJsonRepository<T>` (tenant entities with RLS) and `PgPersistence` 
 - Agent entity CRUD works (create via dialog, list with filters)
 - Payment records correctly linked to rentals with proper types and amounts
 - Dashboard aggregate queries (COUNT, SUM) work correctly against PostgreSQL
+- Denomination groups and exchange rates: full CRUD + external provider fetch works with PostgreSQL
 - Server runs on port 7105 with `dotnet watch`
 
 ## Verification
@@ -193,6 +201,8 @@ This tests `PgJsonRepository<T>` (tenant entities with RLS) and `PgPersistence` 
 9. Check-out flow completes — Rental status Completed, vehicle Available, deposit refunded
 10. Till close completes — Session closed with denomination count, variance tracked
 11. No unhandled PostgreSQL errors in server output throughout
-12. Vehicle Pools, Agents, Payments, Commissions, Renters, Exchange Rates, Service Locations all load correctly
+12. Vehicle Pools, Agents, Payments, Commissions, Renters, Service Locations all load correctly
+15. Denomination Groups CRUD works — create group with denominations, persist to PostgreSQL
+16. Exchange Rates — fetch from external provider (Mamy Exchange), Buy/Sell toggle, rate details flyout all work
 13. Dashboard and Manager Dashboard aggregate data from PostgreSQL correctly
 14. All tenant CRUD operations (create, read, list, filter) work with RLS isolation
