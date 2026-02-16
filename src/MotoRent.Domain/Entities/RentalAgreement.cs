@@ -6,6 +6,7 @@ public class RentalAgreement : Entity
     public int RentalId { get; set; }
     public string AgreementText { get; set; } = string.Empty;
     public string SignatureImagePath { get; set; } = string.Empty;  // Touch signature image
+    public string? ScannedDocumentPath { get; set; }  // Uploaded signed document (photo/scan)
     public DateTimeOffset SignedOn { get; set; }
     public string? SignedByIp { get; set; }
 
