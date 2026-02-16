@@ -189,6 +189,15 @@ public class BookingService
             query = query.Where(b => b.StartDate <= toDate.Value);
         }
 
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            query = query.Where(b =>
+                (b.BookingRef != null && b.BookingRef.Contains(searchTerm)) ||
+                (b.CustomerName != null && b.CustomerName.Contains(searchTerm)) ||
+                (b.CustomerPhone != null && b.CustomerPhone.Contains(searchTerm)) ||
+                (b.CustomerEmail != null && b.CustomerEmail.Contains(searchTerm)));
+        }
+
         query = query.OrderByDescending(b => b.BookingId);
 
         return await m_context.LoadAsync(query, page, pageSize, includeTotalRows: true);
