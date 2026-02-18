@@ -53,10 +53,10 @@
                     <label class="form-label">Rental Period</label>
                     <div class="row g-2">
                         <div class="col-6">
-                            <input type="date" class="form-control" lang="en" @bind="m_startDate" min="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                            <DatePicker @bind-Value="m_startDateValue" MinDate="DateTime.Today" CssClass="form-control" />
                         </div>
                         <div class="col-6">
-                            <input type="date" class="form-control" lang="en" @bind="m_endDate" />
+                            <DatePicker @bind-Value="m_endDateValue" MinDate="m_startDateValue" CssClass="form-control" />
                         </div>
                     </div>
                 </div>
@@ -317,6 +317,18 @@
     // Filters
     private DateTime? m_startDate = DateTime.Today;
     private DateTime? m_endDate = DateTime.Today.AddDays(3);
+
+    // Non-nullable wrappers for DatePicker component
+    private DateTime m_startDateValue
+    {
+        get => m_startDate ?? DateTime.Today;
+        set => m_startDate = value;
+    }
+    private DateTime m_endDateValue
+    {
+        get => m_endDate ?? DateTime.Today.AddDays(3);
+        set => m_endDate = value;
+    }
     private string? m_engineFilter;
     private string m_sortBy = "price-asc";
 

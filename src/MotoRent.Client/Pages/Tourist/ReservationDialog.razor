@@ -2,6 +2,7 @@
 @using MotoRent.Domain.Entities
 @using MotoRent.Domain.Models
 @using MotoRent.Services
+@using MotoRent.Client.Controls
 @inject BookingService BookingService
 @inject InsuranceService InsuranceService
 
@@ -34,11 +35,11 @@
             <div class="row g-3">
                 <div class="col-md-6">
                     <label class="form-label required">Start Date</label>
-                    <input type="date" class="form-control" lang="en" @bind="m_startDate" min="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                    <DatePicker @bind-Value="m_startDateValue" MinDate="DateTime.Today" CssClass="form-control" />
                 </div>
                 <div class="col-md-6">
                     <label class="form-label required">End Date</label>
-                    <input type="date" class="form-control" lang="en" @bind="m_endDate" min="@(m_startDate?.ToString("yyyy-MM-dd") ?? DateTime.Today.ToString("yyyy-MM-dd"))" />
+                    <DatePicker @bind-Value="m_endDateValue" MinDate="m_startDateValue" CssClass="form-control" />
                 </div>
             </div>
 
@@ -377,6 +378,18 @@
     // Step 1: Dates & Insurance
     private DateTime? m_startDate;
     private DateTime? m_endDate;
+
+    // Non-nullable wrappers for DatePicker component
+    private DateTime m_startDateValue
+    {
+        get => m_startDate ?? DateTime.Today;
+        set => m_startDate = value;
+    }
+    private DateTime m_endDateValue
+    {
+        get => m_endDate ?? DateTime.Today.AddDays(3);
+        set => m_endDate = value;
+    }
     private List<Insurance> m_insuranceOptions = [];
     private int? m_selectedInsuranceId;
     private Insurance? m_selectedInsurance => this.m_insuranceOptions.FirstOrDefault(i => i.InsuranceId == this.m_selectedInsuranceId);
