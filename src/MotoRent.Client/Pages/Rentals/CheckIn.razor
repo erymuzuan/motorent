@@ -92,18 +92,27 @@
                 }
                 else
                 {
-                    @* Duration type selector (Daily / Hourly) *@
+                    @* Duration type selector (Daily / Hourly / Package) *@
                     @if (m_selectedVehicle?.SupportsHourlyRental == true && m_selectedVehicle.DailyRate > 0)
                     {
                         @* Both daily and hourly rates - show toggle *@
                         <div class="d-flex justify-content-center mb-4">
                             <div class="btn-group" role="group">
                                 <button type="button"
-                                        class="btn @(m_selectedDurationType == RentalDurationType.Hourly ? "btn-primary" : "btn-outline-primary")"
+                                        class="btn @(m_selectedDurationType == RentalDurationType.Hourly && !m_isPackageMode ? "btn-primary" : "btn-outline-primary")"
                                         @onclick="@(() => OnDurationTypeChanged(RentalDurationType.Hourly))">
                                     <i class="ti ti-clock me-1"></i>
                                     @Localizer["HourlyRental"]
                                 </button>
+                                @if (HasPackages)
+                                {
+                                    <button type="button"
+                                            class="btn @(IsPackageMode ? "btn-primary" : "btn-outline-primary")"
+                                            @onclick="@(() => SetPackageMode(true))">
+                                        <i class="ti ti-package me-1"></i>
+                                        @Localizer["Package"]
+                                    </button>
+                                }
                                 <button type="button"
                                         class="btn @(m_selectedDurationType == RentalDurationType.Daily ? "btn-primary" : "btn-outline-primary")"
                                         @onclick="@(() => OnDurationTypeChanged(RentalDurationType.Daily))">
@@ -117,6 +126,7 @@
                     @if (m_selectedDurationType == RentalDurationType.Hourly)
                     {
                         <ConfigureHourlyRentalStep SelectedVehicle="m_selectedVehicle"
+                                                    IsPackageMode="m_isPackageMode"
                                                     @bind-Config="m_hourlyConfig" />
                     }
                     else
@@ -334,6 +344,7 @@
 
     // Duration type selection (Daily or Hourly) for non-JetSki vehicles
     private RentalDurationType m_selectedDurationType = RentalDurationType.Hourly;
+    private bool m_isPackageMode = false;
 
     // Step 4: Deposit information
     private DepositInfo m_depositInfo = new();
@@ -343,6 +354,8 @@
 
     private bool IsIntervalRental => this.m_selectedVehicle?.UsesIntervalPricing == true;
     private bool IsHourlyRental => !this.IsIntervalRental && this.m_selectedDurationType == RentalDurationType.Hourly;
+    private bool IsPackageMode => this.m_isPackageMode && this.m_selectedDurationType == RentalDurationType.Hourly;
+    private bool HasPackages => this.m_selectedVehicle?.HourlyPackages?.Count > 0;
 
     private decimal GetRentalTotalAmount()
     {
@@ -354,6 +367,14 @@
     private void OnDurationTypeChanged(RentalDurationType durationType)
     {
         this.m_selectedDurationType = durationType;
+        this.m_isPackageMode = false;
+        StateHasChanged();
+    }
+
+    private void SetPackageMode(bool isPackage)
+    {
+        this.m_selectedDurationType = RentalDurationType.Hourly;
+        this.m_isPackageMode = isPackage;
         StateHasChanged();
     }
 

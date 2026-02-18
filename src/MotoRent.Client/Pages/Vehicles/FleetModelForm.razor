@@ -290,7 +290,7 @@
                                     @Localizer["HourlyPackagesHint"]
                                 </div>
                             </div>
-                            <button type="button" class="btn btn-sm btn-outline-primary" @onclick="AddHourlyPackage">
+                            <button type="button" class="btn btn btn-outline-primary" @onclick="AddHourlyPackage">
                                 <i class="ti ti-plus me-1"></i>@Localizer["AddPackage"]
                             </button>
                         </div>
@@ -298,13 +298,14 @@
                         @if (Entity.HourlyPackages.Count > 0)
                         {
                             <div class="table-responsive">
-                                <table class="table table-sm table-vcenter mb-0">
+                                <table class="table table-vcenter mb-0">
                                     <thead>
                                         <tr>
-                                            <th style="width: 100px;">@Localizer["Hours"]</th>
-                                            <th style="width: 150px;">@Localizer["PackagePrice"]</th>
+                                            <th>@Localizer["PackageName"]</th>
+                                            <th style="width: 120px;">@Localizer["Hours"]</th>
+                                            <th style="width: 180px;">@Localizer["PackagePrice"]</th>
                                             <th>@Localizer["Savings"]</th>
-                                            <th style="width: 50px;"></th>
+                                            <th style="width: 60px;"></th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -315,11 +316,15 @@
                                             var savings = linearPrice - p.Price;
                                             <tr>
                                                 <td>
-                                                    <input type="number" class="form-control form-control-sm"
+                                                    <input type="text" class="form-control"
+                                                           @bind="p.Name" placeholder="@Localizer["PackageNamePlaceholder"]" />
+                                                </td>
+                                                <td>
+                                                    <input type="number" class="form-control"
                                                            @bind="p.Hours" min="1" max="24" />
                                                 </td>
                                                 <td>
-                                                    <div class="input-group input-group-sm">
+                                                    <div class="input-group">
                                                         <span class="input-group-text">฿</span>
                                                         <input type="number" class="form-control mr-mono"
                                                                @bind="p.Price" min="0" step="50" />
@@ -338,7 +343,7 @@
                                                     }
                                                 </td>
                                                 <td>
-                                                    <button type="button" class="btn btn-sm btn-ghost-danger"
+                                                    <button type="button" class="btn btn-ghost-danger"
                                                             @onclick="@(() => RemoveHourlyPackage(p))">
                                                         <i class="ti ti-trash"></i>
                                                     </button>
@@ -683,8 +688,20 @@
                 ? this.Entity.HourlyPackages.Max(p => p.Hours) + 1
                 : 2;
 
+        var name = nextHours switch
+        {
+            2 => Localizer["PackageName2Hours"].Value,
+            3 => Localizer["PackageName3Hours"].Value,
+            4 => Localizer["PackageNameHalfDay"].Value,
+            6 => Localizer["PackageName6Hours"].Value,
+            8 => Localizer["PackageNameFullDay"].Value,
+            12 => Localizer["PackageName12Hours"].Value,
+            _ => Localizer["PackageNameNHours", nextHours].Value
+        };
+
         this.Entity.HourlyPackages.Add(new HourlyPackagePrice
         {
+            Name = name,
             Hours = nextHours,
             Price = Math.Round((this.Entity.HourlyRate ?? 0) * nextHours * 0.9m / 50) * 50 // Default 10% discount, rounded to 50
         });
