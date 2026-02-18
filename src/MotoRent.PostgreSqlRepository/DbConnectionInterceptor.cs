@@ -9,7 +9,7 @@ public class DbConnectionInterceptor(IRequestContext context)
 
     public async Task SetTenantAsync(NpgsqlConnection connection)
     {
-        var tenant = this.Context.GetAccountNo();
+        var tenant = await this.Context.GetAccountNoAsync();
         if (string.IsNullOrWhiteSpace(tenant))
             throw new InvalidOperationException("Tenant account number is not available in the current request context");
 

@@ -28,8 +28,6 @@ public partial class PgJsonRepository<T>(
     private string IdColumn { get; } = $"{typeof(T).Name}Id";
     private string TableName { get; } = typeof(T).Name;
 
-    private const string AuditColumns = "\"CreatedBy\", \"CreatedTimestamp\", \"ChangedBy\", \"ChangedTimestamp\"";
-
     private ResiliencePipeline CreateRetryPipeline()
     {
         return new ResiliencePipelineBuilder()
@@ -142,7 +140,7 @@ public partial class PgJsonRepository<T>(
             await this.Interceptor.SetTenantAsync(conn);
 
             var columnNames = string.Join(",", columns.Select(c => $"\"{c.Name}\""));
-            var paramNames = string.Join(",", columns.Select((c, i) => $"@p{i}"));
+            var paramNames = string.Join(",", columns.Select((_, i) => $"@p{i}"));
 
             var sql = $"""
                 INSERT INTO "{this.TableName}"
@@ -157,7 +155,7 @@ public partial class PgJsonRepository<T>(
             {
                 var col = columns[i];
                 var value = GetParameterValue(col, entity, json, username, now, true);
-                AddParameter(cmd, col, i, value);
+                AddParameter(cmd, col, i, value!);
             }
 
             var result = await cmd.ExecuteScalarAsync(ct);
@@ -206,7 +204,7 @@ public partial class PgJsonRepository<T>(
             {
                 var col = columns[i];
                 var value = GetParameterValue(col, entity, json, username, now, false);
-                AddParameter(cmd, col, i, value);
+                AddParameter(cmd, col, i, value!);
             }
             cmd.Parameters.AddWithValue("@Id", id);
 
@@ -288,7 +286,7 @@ public partial class PgJsonRepository<T>(
         return entity;
     }
 
-    private static object GetParameterValue(PgColumn col, Entity entity, string json, string username, DateTimeOffset now, bool isInsert) => col.Name switch
+    private static object? GetParameterValue(PgColumn col, Entity entity, string json, string username, DateTimeOffset now, bool isInsert) => col.Name switch
     {
         "Json" => json,
         "CreatedTimestamp" when isInsert => now,
@@ -298,15 +296,15 @@ public partial class PgJsonRepository<T>(
         _ => GetEntityPropertyValue(col, entity)
     };
 
-    private static object GetEntityPropertyValue(PgColumn column, Entity entity)
+    private static object? GetEntityPropertyValue(PgColumn column, Entity entity)
     {
         var prop = entity.GetType().GetProperty(column.Name);
         if (prop is null)
             return DBNull.Value;
 
         var value = prop.GetValue(entity);
-        if (value is null)
-            return column.IsNullable ? DBNull.Value : DBNull.Value;
+        if (value is null && column.IsNullable)
+            return DBNull.Value;
 
         var type = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
 
