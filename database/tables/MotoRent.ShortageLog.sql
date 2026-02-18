@@ -1,25 +1,26 @@
 -- ShortageLog table - Variance accountability records
-CREATE TABLE [<schema>].[ShortageLog]
+CREATE TABLE "ShortageLog"
 (
-    [ShortageLogId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
-    -- Computed columns for indexing
-    [ShopId] AS CAST(JSON_VALUE([Json], '$.ShopId') AS INT),
-    [TillSessionId] AS CAST(JSON_VALUE([Json], '$.TillSessionId') AS INT),
-    [DailyCloseId] AS CAST(JSON_VALUE([Json], '$.DailyCloseId') AS INT),
-    [StaffUserName] AS CAST(JSON_VALUE([Json], '$.StaffUserName') AS NVARCHAR(100)),
-    [Currency] AS CAST(JSON_VALUE([Json], '$.Currency') AS CHAR(3)),
-    [Amount] AS CAST(JSON_VALUE([Json], '$.Amount') AS DECIMAL(18,2)),
-    [AmountInThb] AS CAST(JSON_VALUE([Json], '$.AmountInThb') AS DECIMAL(18,2)),
-    [LoggedAt] AS CONVERT(DATETIMEOFFSET, JSON_VALUE([Json], '$.LoggedAt'), 127) PERSISTED,
-    -- JSON storage
-    [Json] NVARCHAR(MAX) NOT NULL,
-    -- Audit columns
-    [CreatedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
-    [ChangedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
-    [CreatedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
-    [ChangedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
-)
+    "ShortageLogId" INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "ShopId" INT GENERATED ALWAYS AS (("Json"->>'ShopId')::INT) STORED,
+    "TillSessionId" INT GENERATED ALWAYS AS (("Json"->>'TillSessionId')::INT) STORED,
+    "DailyCloseId" INT GENERATED ALWAYS AS (("Json"->>'DailyCloseId')::INT) STORED,
+    "StaffUserName" VARCHAR(100) GENERATED ALWAYS AS (("Json"->>'StaffUserName')::VARCHAR(100)) STORED,
+    "Currency" CHAR(3) GENERATED ALWAYS AS (("Json"->>'Currency')::CHAR(3)) STORED,
+    "Amount" NUMERIC(18,2) GENERATED ALWAYS AS (("Json"->>'Amount')::NUMERIC(18,2)) STORED,
+    "AmountInThb" NUMERIC(18,2) GENERATED ALWAYS AS (("Json"->>'AmountInThb')::NUMERIC(18,2)) STORED,
+    "LoggedAt" TIMESTAMPTZ GENERATED ALWAYS AS (immutable_text_to_timestamptz("Json"->>'LoggedAt')) STORED,
+    "Json" JSONB NOT NULL,
+    "tenant_id" VARCHAR(50) NOT NULL DEFAULT current_setting('app.current_tenant'),
+    "CreatedBy" VARCHAR(50) NOT NULL DEFAULT 'system',
+    "ChangedBy" VARCHAR(50) NOT NULL DEFAULT 'system',
+    "CreatedTimestamp" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "ChangedTimestamp" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE "ShortageLog" ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation_shortagelog ON "ShortageLog" USING ("tenant_id" = current_setting('app.current_tenant'));
 
-CREATE INDEX IX_ShortageLog_ShopId_TillSessionId ON [<schema>].[ShortageLog]([ShopId], [TillSessionId])
-CREATE INDEX IX_ShortageLog_StaffUserName ON [<schema>].[ShortageLog]([StaffUserName])
-CREATE INDEX IX_ShortageLog_LoggedAt ON [<schema>].[ShortageLog]([LoggedAt])
+CREATE INDEX IX_ShortageLog_ShopId_TillSessionId ON "ShortageLog"("ShopId", "TillSessionId");
+CREATE INDEX IX_ShortageLog_StaffUserName ON "ShortageLog"("StaffUserName");
+CREATE INDEX IX_ShortageLog_LoggedAt ON "ShortageLog"("LoggedAt");
+CREATE INDEX IX_ShortageLog_TenantId ON "ShortageLog"("tenant_id");

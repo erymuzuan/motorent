@@ -1,45 +1,33 @@
 -- Agent table
 -- Stores agents (tour guides, hotels, travel agencies) who make bookings on behalf of customers
-CREATE TABLE [<schema>].[Agent]
+CREATE TABLE "Agent"
 (
-    [AgentId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
-    -- Agent Code (unique identifier like "TG-001", "HTL-PATONG")
-    [AgentCode] AS CAST(JSON_VALUE([Json], '$.AgentCode') AS NVARCHAR(50)) PERSISTED,
-    -- Basic Info
-    [Name] AS CAST(JSON_VALUE([Json], '$.Name') AS NVARCHAR(200)),
-    [AgentType] AS CAST(JSON_VALUE([Json], '$.AgentType') AS NVARCHAR(50)),
-    [Status] AS CAST(JSON_VALUE([Json], '$.Status') AS NVARCHAR(20)),
-    -- Contact
-    [Phone] AS CAST(JSON_VALUE([Json], '$.Phone') AS NVARCHAR(50)),
-    [Email] AS CAST(JSON_VALUE([Json], '$.Email') AS NVARCHAR(100)),
-    -- Commission
-    [CommissionType] AS CAST(JSON_VALUE([Json], '$.CommissionType') AS NVARCHAR(50)),
-    [CommissionRate] AS CAST(JSON_VALUE([Json], '$.CommissionRate') AS DECIMAL(18,2)),
-    [CommissionBalance] AS CAST(JSON_VALUE([Json], '$.CommissionBalance') AS DECIMAL(18,2)),
-    -- Statistics
-    [TotalBookings] AS CAST(JSON_VALUE([Json], '$.TotalBookings') AS INT),
-    [TotalCommissionEarned] AS CAST(JSON_VALUE([Json], '$.TotalCommissionEarned') AS DECIMAL(18,2)),
-    [TotalCommissionPaid] AS CAST(JSON_VALUE([Json], '$.TotalCommissionPaid') AS DECIMAL(18,2)),
-    -- JSON storage
-    [Json] NVARCHAR(MAX) NOT NULL,
-    -- Audit columns
-    [CreatedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
-    [ChangedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
-    [CreatedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
-    [ChangedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
-)
+    "AgentId" INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "AgentCode" VARCHAR(50) GENERATED ALWAYS AS (("Json"->>'AgentCode')::VARCHAR(50)) STORED,
+    "Name" VARCHAR(200) GENERATED ALWAYS AS (("Json"->>'Name')::VARCHAR(200)) STORED,
+    "AgentType" VARCHAR(50) GENERATED ALWAYS AS (("Json"->>'AgentType')::VARCHAR(50)) STORED,
+    "Status" VARCHAR(20) GENERATED ALWAYS AS (("Json"->>'Status')::VARCHAR(20)) STORED,
+    "Phone" VARCHAR(50) GENERATED ALWAYS AS (("Json"->>'Phone')::VARCHAR(50)) STORED,
+    "Email" VARCHAR(100) GENERATED ALWAYS AS (("Json"->>'Email')::VARCHAR(100)) STORED,
+    "CommissionType" VARCHAR(50) GENERATED ALWAYS AS (("Json"->>'CommissionType')::VARCHAR(50)) STORED,
+    "CommissionRate" NUMERIC(18,2) GENERATED ALWAYS AS (("Json"->>'CommissionRate')::NUMERIC(18,2)) STORED,
+    "CommissionBalance" NUMERIC(18,2) GENERATED ALWAYS AS (("Json"->>'CommissionBalance')::NUMERIC(18,2)) STORED,
+    "TotalBookings" INT GENERATED ALWAYS AS (("Json"->>'TotalBookings')::INT) STORED,
+    "TotalCommissionEarned" NUMERIC(18,2) GENERATED ALWAYS AS (("Json"->>'TotalCommissionEarned')::NUMERIC(18,2)) STORED,
+    "TotalCommissionPaid" NUMERIC(18,2) GENERATED ALWAYS AS (("Json"->>'TotalCommissionPaid')::NUMERIC(18,2)) STORED,
+    "Json" JSONB NOT NULL,
+    "tenant_id" VARCHAR(50) NOT NULL DEFAULT current_setting('app.current_tenant'),
+    "CreatedBy" VARCHAR(50) NOT NULL DEFAULT 'system',
+    "ChangedBy" VARCHAR(50) NOT NULL DEFAULT 'system',
+    "CreatedTimestamp" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "ChangedTimestamp" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE "Agent" ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation_agent ON "Agent" USING ("tenant_id" = current_setting('app.current_tenant'));
 
--- Unique index on AgentCode
-CREATE UNIQUE INDEX IX_Agent_AgentCode ON [<schema>].[Agent]([AgentCode])
-
--- Index for querying by status
-CREATE INDEX IX_Agent_Status ON [<schema>].[Agent]([Status])
-
--- Index for querying by type
-CREATE INDEX IX_Agent_AgentType ON [<schema>].[Agent]([AgentType])
-
--- Index for querying by type and status
-CREATE INDEX IX_Agent_AgentType_Status ON [<schema>].[Agent]([AgentType], [Status])
-
--- Index for outstanding commission balance
-CREATE INDEX IX_Agent_CommissionBalance ON [<schema>].[Agent]([CommissionBalance]) WHERE [Status] = 'Active'
+CREATE UNIQUE INDEX IX_Agent_AgentCode ON "Agent"("tenant_id", "AgentCode");
+CREATE INDEX IX_Agent_Status ON "Agent"("Status");
+CREATE INDEX IX_Agent_AgentType ON "Agent"("AgentType");
+CREATE INDEX IX_Agent_AgentType_Status ON "Agent"("AgentType", "Status");
+CREATE INDEX IX_Agent_CommissionBalance ON "Agent"("CommissionBalance") WHERE "Status" = 'Active';
+CREATE INDEX IX_Agent_TenantId ON "Agent"("tenant_id");

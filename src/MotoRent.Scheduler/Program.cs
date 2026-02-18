@@ -63,7 +63,7 @@ namespace MotoRent.Scheduler
                     });
 
                     // Add MotoRent data context (required for services)
-                    services.AddMotoRentDataContext(MotoConfig.SqlConnectionString);
+                    services.AddMotoRentDataContext(MotoConfig.ConnectionString);
 
                     // Register data context and services
                     services.AddSingleton<RentalDataContext>();

@@ -10,7 +10,7 @@ public class MockRequestContext : IRequestContext
     private readonly string m_schema;
     private readonly string m_userName;
 
-    public MockRequestContext(string schema = "MotoRent", string userName = "testuser")
+    public MockRequestContext(string schema = "tenant1", string userName = "testuser")
     {
         this.m_schema = schema;
         this.m_userName = userName;
@@ -19,7 +19,7 @@ public class MockRequestContext : IRequestContext
     public string? GetUserName() => this.m_userName;
     public string? GetAccountNo() => this.m_schema;
     public string? GetSchema() => this.m_schema;
-    public string GetConnectionString() => "Server=(local);Database=Test;Trusted_Connection=True;";
+    public string GetConnectionString() => "Host=localhost;Port=5432;Database=motorent_test;Username=postgres;Password=postgres;";
     public int GetShopId() => 1;
     public string? GetClaim(string claimType) => null;
     public Task<T?> GetClaimAsync<T>(string claimType) => Task.FromResult<T?>(default);
@@ -66,3 +66,5 @@ public class MockRequestContext : IRequestContext
     public DateOnly EndOfWeek(DateOnly date)
         => this.BeginningOfWeek(date).AddDays(6);
 }
+
+

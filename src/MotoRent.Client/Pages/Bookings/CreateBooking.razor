@@ -4,6 +4,7 @@
 @using MotoRent.Domain.Entities
 @using MotoRent.Domain.Models
 @using MotoRent.Services
+@using MotoRent.Domain.Storage
 @attribute [Authorize(Policy = "RequireTenantStaff")]
 @inherits LocalizedComponentBase<CreateBooking>
 @inject BookingService BookingService
@@ -13,6 +14,8 @@
 @inject InsuranceService InsuranceService
 @inject AccessoryService AccessoryService
 @inject AgentService AgentService
+@inject FleetModelImageService FleetModelImageService
+@inject IBinaryStore BinaryStore
 
 <MotoRentPageTitle>@Localizer["PageTitle"]</MotoRentPageTitle>
 
@@ -153,12 +156,54 @@
                 @if (m_linkedRenter == null)
                 {
                     <div class="mt-3 p-3 rounded" style="background: var(--mr-surface-secondary);">
-                        <div class="d-flex align-items-center justify-content-between">
-                            <span class="text-muted">@Localizer["LinkExistingRenter"]</span>
-                            <button type="button" class="btn btn-sm btn-outline-primary" @onclick="SearchRenters">
-                                <i class="ti ti-search"></i> @Localizer["Search"]
-                            </button>
+                        <label class="form-label mb-2">@Localizer["LinkExistingRenter"]</label>
+                        <div class="mr-search-box" style="max-width: 100%;">
+                            <i class="ti ti-search"></i>
+                            <input type="text" placeholder="@Localizer["SearchRenterPlaceholder"]"
+                                   @bind="m_renterSearchTerm" @bind:event="oninput" @onkeyup="OnRenterSearchKeyup" />
                         </div>
+                        @if (m_showRenterSearchResults && m_renterSearchResults.Count > 0)
+                        {
+                            <div class="mr-card mt-2" style="max-height: 200px; overflow-y: auto;">
+                                @foreach (var renter in m_renterSearchResults)
+                                {
+                                    <div class="d-flex align-items-center gap-3 p-2 border-bottom" style="cursor: pointer; border-color: var(--mr-border-light) !important;"
+                                         @onclick="@(() => SelectRenter(renter))">
+                                        <span class="avatar avatar-sm" style="background: var(--mr-accent-gradient); color: white;">
+                                            @renter.FullName?.FirstOrDefault()
+                                        </span>
+                                        <div class="d-flex flex-column">
+                                            <span class="mr-text-primary" style="font-weight: 500;">@renter.FullName</span>
+                                            <small class="mr-text-muted">
+                                                @renter.Phone @(renter.Nationality != null ? $"| {renter.Nationality}" : "")
+                                            </small>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else if (m_showRenterSearchResults && !string.IsNullOrWhiteSpace(m_renterSearchTerm))
+                        {
+                            <div class="mr-card mt-2 p-3">
+                                <span class="mr-text-muted">@Localizer["NoRentersFound"]</span>
+                            </div>
+                        }
+                        @if (m_recentRenters.Count > 0 && string.IsNullOrWhiteSpace(m_renterSearchTerm))
+                        {
+                            <div class="mt-3">
+                                <small class="mr-text-muted d-block mb-2">
+                                    <i class="ti ti-clock me-1"></i>@Localizer["RecentRenters"]
+                                </small>
+                                <div class="d-flex flex-wrap gap-2">
+                                    @foreach (var renter in m_recentRenters.Take(5))
+                                    {
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="@(() => SelectRenter(renter))">
+                                            @renter.FullName
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                        }
                     </div>
                 }
                 else
@@ -226,7 +271,11 @@
                                     <div class="mr-card @(isSelected ? "border-primary" : "")">
                                         <div class="mr-card-body p-3">
                                             <div class="d-flex justify-content-between align-items-start">
-                                                <div>
+                                                @if (GetPrimaryImageUrl(group.FleetModelId) is { } imageUrl)
+                                                {
+                                                    <span class="avatar avatar-lg me-3" style="background-image: url(@imageUrl)"></span>
+                                                }
+                                                <div class="flex-grow-1">
                                                     <h6 class="mb-1">@group.DisplayName</h6>
                                                     @if (!string.IsNullOrEmpty(group.EngineDisplay))
                                                     {
@@ -674,6 +723,11 @@
 
     // Linked renter
     private Renter? m_linkedRenter;
+    private List<Renter> m_recentRenters = [];
+    private List<Renter> m_renterSearchResults = [];
+    private string? m_renterSearchTerm;
+    private bool m_showRenterSearchResults;
+    private System.Timers.Timer? m_renterDebounceTimer;
 
     // Data
     private List<Shop> m_shops = [];
@@ -682,6 +736,7 @@
     private List<Insurance> m_insurancePackages = [];
     private List<Accessory> m_accessories = [];
     private List<BookingItemRequest> m_bookingItems = [];
+    private Dictionary<int, string> m_primaryImages = new();
 
     private record ModelSelection(VehicleGroup Group, int Quantity);
 
@@ -717,12 +772,19 @@
             var shopsTask = ShopService.GetShopsAsync(page: 1, pageSize: 100);
             var insuranceTask = InsuranceService.GetActiveInsurancesAsync();
             var agentsTask = AgentService.GetActiveAgentsAsync();
+            var rentersTask = LoadRecentRentersAsync();
 
-            await Task.WhenAll(shopsTask, insuranceTask, agentsTask);
+            await Task.WhenAll(shopsTask, insuranceTask, agentsTask, rentersTask);
 
             m_shops = (await shopsTask).ItemCollection.ToList();
             m_insurancePackages = await insuranceTask;
             m_agents = await agentsTask;
+    }
+
+    private async Task LoadRecentRentersAsync()
+    {
+        var result = await RenterService.GetRentersAsync(page: 1, pageSize: 10);
+        m_recentRenters = result.ItemCollection;
     }
 
     private async Task LoadAvailableVehiclesAsync()
@@ -732,6 +794,17 @@
         {
             var shopId = m_request.PreferredShopId ?? RequestContext.GetShopId();
             m_vehicleGroups = await VehicleService.GetVehicleGroupsAsync(shopId, status: VehicleStatus.Available);
+
+            // Load primary images for vehicle groups
+            m_primaryImages.Clear();
+            foreach (var group in m_vehicleGroups)
+            {
+                var storeId = await FleetModelImageService.GetPrimaryImageStoreIdAsync(group.FleetModelId);
+                if (!string.IsNullOrEmpty(storeId))
+                {
+                    m_primaryImages[group.FleetModelId] = storeId;
+                }
+            }
 
             // Load accessories
             if (shopId > 0)
@@ -751,6 +824,15 @@
         {
             m_loadingVehicles = false;
         }
+    }
+
+    private string? GetPrimaryImageUrl(int fleetModelId)
+    {
+        if (m_primaryImages.TryGetValue(fleetModelId, out var storeId))
+        {
+            return BinaryStore.GetImageUrl(storeId);
+        }
+        return null;
     }
 
     private int GetSelectedQuantity(int fleetModelId)
@@ -899,15 +981,46 @@
 
     private async Task SearchRenters()
     {
-        // For now, show info that search is available via customer list
-        // TODO: Implement renter search popup
-        ToastService.ShowInfo(Localizer["SearchRenterHint"]);
-        await Task.CompletedTask;
+        if (string.IsNullOrWhiteSpace(m_renterSearchTerm))
+        {
+            m_renterSearchResults = m_recentRenters.Take(5).ToList();
+            m_showRenterSearchResults = false;
+            return;
+        }
+        var result = await RenterService.GetRentersAsync(m_renterSearchTerm, page: 1, pageSize: 10);
+        m_renterSearchResults = result.ItemCollection;
+        m_showRenterSearchResults = true;
+    }
+
+    private void OnRenterSearchKeyup(KeyboardEventArgs e)
+    {
+        m_renterDebounceTimer?.Stop();
+        m_renterDebounceTimer?.Dispose();
+        m_renterDebounceTimer = new System.Timers.Timer(300);
+        m_renterDebounceTimer.Elapsed += async (sender, args) =>
+        {
+            m_renterDebounceTimer?.Stop();
+            await InvokeAsync(async () =>
+            {
+                await SearchRenters();
+                StateHasChanged();
+            });
+        };
+        m_renterDebounceTimer.Start();
+    }
+
+    private void SelectRenter(Renter renter)
+    {
+        m_linkedRenter = renter;
+        m_showRenterSearchResults = false;
+        m_renterSearchTerm = renter.FullName;
     }
 
     private void UnlinkRenter()
     {
         m_linkedRenter = null;
+        m_renterSearchTerm = null;
+        m_showRenterSearchResults = false;
     }
 
     private async Task OpenScanDocumentDialog()

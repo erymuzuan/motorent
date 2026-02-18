@@ -244,10 +244,14 @@
     private System.Timers.Timer? m_autoSaveTimer;
     private bool m_draftRestored;
     private bool m_autoSaving;
+    private bool m_initialized;
 
     protected override async Task OnParametersSetAsync()
     {
         await base.OnParametersSetAsync();
+
+        // Skip re-initialization to prevent overwriting user changes during re-renders
+        if (m_initialized) return;
 
         // Determine which currencies to show based on expected balances
         m_visibleCurrencies = [];
@@ -280,6 +284,14 @@
 
         // Try to restore draft counts
         await LoadDraftCountsAsync();
+
+        // Notify parent of initial breakdowns so Expected displays correctly
+        if (!m_draftRestored)
+        {
+            await OnBreakdownsChanged.InvokeAsync(BuildBreakdowns());
+        }
+
+        m_initialized = true;
     }
 
     /// <summary>

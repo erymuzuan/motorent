@@ -1,31 +1,27 @@
 -- AssetLoanPayment table - Individual loan payment records
-CREATE TABLE [<schema>].[AssetLoanPayment]
+CREATE TABLE "AssetLoanPayment"
 (
-    [AssetLoanPaymentId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
-    -- Loan reference
-    [AssetLoanId] AS CAST(JSON_VALUE([Json], '$.AssetLoanId') AS INT),
-    -- Payment details
-    [PaymentNumber] AS CAST(JSON_VALUE([Json], '$.PaymentNumber') AS INT),
-    [DueDate] DATE NULL,
-    [PaidDate] DATE NULL,
-    [TotalAmount] AS CAST(JSON_VALUE([Json], '$.TotalAmount') AS DECIMAL(12,2)),
-    [PrincipalAmount] AS CAST(JSON_VALUE([Json], '$.PrincipalAmount') AS DECIMAL(12,2)),
-    [InterestAmount] AS CAST(JSON_VALUE([Json], '$.InterestAmount') AS DECIMAL(12,2)),
-    [BalanceAfter] AS CAST(JSON_VALUE([Json], '$.BalanceAfter') AS DECIMAL(12,2)),
-    [Status] AS CAST(JSON_VALUE([Json], '$.Status') AS NVARCHAR(20)),
-    -- JSON storage
-    [Json] NVARCHAR(MAX) NOT NULL,
-    -- Audit columns
-    [CreatedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
-    [ChangedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
-    [CreatedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
-    [ChangedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
-)
---
+    "AssetLoanPaymentId" INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "AssetLoanId" INT GENERATED ALWAYS AS (("Json"->>'AssetLoanId')::INT) STORED,
+    "PaymentNumber" INT GENERATED ALWAYS AS (("Json"->>'PaymentNumber')::INT) STORED,
+    "DueDate" DATE NULL,
+    "PaidDate" DATE NULL,
+    "TotalAmount" NUMERIC(12,2) GENERATED ALWAYS AS (("Json"->>'TotalAmount')::NUMERIC(12,2)) STORED,
+    "PrincipalAmount" NUMERIC(12,2) GENERATED ALWAYS AS (("Json"->>'PrincipalAmount')::NUMERIC(12,2)) STORED,
+    "InterestAmount" NUMERIC(12,2) GENERATED ALWAYS AS (("Json"->>'InterestAmount')::NUMERIC(12,2)) STORED,
+    "BalanceAfter" NUMERIC(12,2) GENERATED ALWAYS AS (("Json"->>'BalanceAfter')::NUMERIC(12,2)) STORED,
+    "Status" VARCHAR(20) GENERATED ALWAYS AS (("Json"->>'Status')::VARCHAR(20)) STORED,
+    "Json" JSONB NOT NULL,
+    "tenant_id" VARCHAR(50) NOT NULL DEFAULT current_setting('app.current_tenant'),
+    "CreatedBy" VARCHAR(50) NOT NULL DEFAULT 'system',
+    "ChangedBy" VARCHAR(50) NOT NULL DEFAULT 'system',
+    "CreatedTimestamp" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "ChangedTimestamp" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE "AssetLoanPayment" ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation_assetloanpayment ON "AssetLoanPayment" USING ("tenant_id" = current_setting('app.current_tenant'));
 
-CREATE INDEX IX_AssetLoanPayment_LoanId ON [<schema>].[AssetLoanPayment]([AssetLoanId])
---
-CREATE INDEX IX_AssetLoanPayment_Status ON [<schema>].[AssetLoanPayment]([AssetLoanId], [Status])
---
-CREATE INDEX IX_AssetLoanPayment_DueDate ON [<schema>].[AssetLoanPayment]([DueDate])
---
+CREATE INDEX IX_AssetLoanPayment_LoanId ON "AssetLoanPayment"("AssetLoanId");
+CREATE INDEX IX_AssetLoanPayment_Status ON "AssetLoanPayment"("AssetLoanId", "Status");
+CREATE INDEX IX_AssetLoanPayment_DueDate ON "AssetLoanPayment"("DueDate");
+CREATE INDEX IX_AssetLoanPayment_TenantId ON "AssetLoanPayment"("tenant_id");

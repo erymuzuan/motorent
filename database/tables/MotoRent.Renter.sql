@@ -1,17 +1,19 @@
 -- Renter table
-CREATE TABLE [<schema>].[Renter]
+CREATE TABLE "Renter"
 (
-    [RenterId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
-    [FullName] AS CAST(JSON_VALUE([Json], '$.FullName') AS NVARCHAR(200)),
-    [Phone] AS CAST(JSON_VALUE([Json], '$.Phone') AS NVARCHAR(50)),
-    [PassportNo] AS CAST(JSON_VALUE([Json], '$.PassportNo') AS NVARCHAR(50)),
-    -- JSON storage
-    [Json] NVARCHAR(MAX) NOT NULL,
-    -- Audit columns
-    [CreatedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
-    [ChangedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
-    [CreatedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
-    [ChangedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
-)
+    "RenterId" INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "FullName" VARCHAR(200) GENERATED ALWAYS AS (("Json"->>'FullName')::VARCHAR(200)) STORED,
+    "Phone" VARCHAR(50) GENERATED ALWAYS AS (("Json"->>'Phone')::VARCHAR(50)) STORED,
+    "PassportNo" VARCHAR(50) GENERATED ALWAYS AS (("Json"->>'PassportNo')::VARCHAR(50)) STORED,
+    "Json" JSONB NOT NULL,
+    "tenant_id" VARCHAR(50) NOT NULL DEFAULT current_setting('app.current_tenant'),
+    "CreatedBy" VARCHAR(50) NOT NULL DEFAULT 'system',
+    "ChangedBy" VARCHAR(50) NOT NULL DEFAULT 'system',
+    "CreatedTimestamp" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "ChangedTimestamp" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE "Renter" ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation_renter ON "Renter" USING ("tenant_id" = current_setting('app.current_tenant'));
 
-CREATE INDEX IX_<schema>Renter_PassportNo ON [<schema>].[Renter]([PassportNo], [FullName])
+CREATE INDEX IX_Renter_PassportNo ON "Renter"("PassportNo", "FullName");
+CREATE INDEX IX_Renter_TenantId ON "Renter"("tenant_id");

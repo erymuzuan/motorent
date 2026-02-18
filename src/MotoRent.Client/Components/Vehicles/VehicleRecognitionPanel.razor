@@ -4,58 +4,68 @@
 @inject VehicleRecognitionService RecognitionService
 @inject IJSRuntime JsRuntime
 
-<div class="card mb-3">
-    <div class="card-header">
-        <h3 class="card-title">
-            <i class="ti ti-camera me-2"></i>Quick Recognition
-        </h3>
-        <div class="card-actions">
-            @if (m_recognitionResult != null)
-            {
+<div class="mr-form-panel mb-3">
+    <div class="mr-form-panel-header">
+        <div class="mr-form-panel-header-icon">
+            <i class="ti ti-camera"></i>
+        </div>
+        <h3 class="mr-form-panel-title">Quick Recognition</h3>
+        @if (m_recognitionResult != null)
+        {
+            <div class="ms-auto">
                 <button type="button" class="btn btn-ghost-secondary btn-sm" @onclick="Reset">
                     <i class="ti ti-refresh me-1"></i>New Photo
                 </button>
-            }
-        </div>
+            </div>
+        }
     </div>
-    <div class="card-body">
+    <div class="mr-form-panel-body p-0">
         @if (m_recognitionResult == null && !m_analyzing)
         {
-            <label @ref="m_dropZoneRef" for="vehicle-photo-input" class="dropzone @(m_isDragOver ? "dropzone-active" : "")"
-                 @ondragenter="@(() => m_isDragOver = true)"
-                 @ondragleave="@(() => m_isDragOver = false)"
-                 @ondragover:preventDefault
-                 @ondrop="OnDrop"
-                 @ondrop:preventDefault
-                 style="border: 2px dashed var(--tblr-border-color); border-radius: 8px; padding: 2rem; cursor: pointer; text-align: center; display: block;">
-                <i class="ti ti-camera-plus" style="font-size: 3rem; color: var(--tblr-primary); opacity: 0.6;"></i>
-                <p class="mt-2 mb-1 fw-medium">Upload Vehicle Photo</p>
-                <p class="text-secondary mb-0">Click to select or drag and drop</p>
-                <small class="text-secondary">Gemini AI will identify make, model, color, and license plate</small>
-                <InputFile @ref="m_fileInput" OnChange="OnFileSelected" accept="image/*"
-                           id="vehicle-photo-input" style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0;" />
-            </label>
+            <div class="empty-state">
+                <label @ref="m_dropZoneRef" for="vehicle-photo-input" class="empty-state-content @(m_isDragOver ? "active" : "")"
+                     @ondragenter="@(() => m_isDragOver = true)"
+                     @ondragleave="@(() => m_isDragOver = false)"
+                     @ondragover:preventDefault
+                     @ondrop="OnDrop"
+                     @ondrop:preventDefault>
+                    <div class="empty-state-icon">
+                        <i class="ti ti-camera-plus"></i>
+                    </div>
+                    <div class="empty-state-title">Upload Vehicle Photo</div>
+                    <div class="empty-state-hint">Click to select or drag and drop</div>
+                    <div class="text-muted small mt-2">
+                        <i class="ti ti-sparkles me-1"></i>
+                        Gemini AI will identify make, model, color, and license plate
+                    </div>
+                    <InputFile @ref="m_fileInput" OnChange="OnFileSelected" accept="image/*"
+                               id="vehicle-photo-input" class="visually-hidden" />
+                </label>
+            </div>
         }
         else if (m_analyzing)
         {
-            <div class="text-center py-4">
-                <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;"></div>
-                <p class="mb-1 fw-medium">Analyzing vehicle photo...</p>
-                <p class="text-secondary mb-0">Gemini AI is identifying the vehicle</p>
+            <div class="empty-state">
+                <div class="empty-state-content" style="cursor: default;">
+                    <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;"></div>
+                    <div class="empty-state-title">Analyzing vehicle photo...</div>
+                    <div class="empty-state-hint">Gemini AI is identifying the vehicle</div>
+                </div>
             </div>
         }
         else if (m_recognitionResult != null)
         {
-            @if (!m_recognitionResult.IsSuccess)
-            {
-                <div class="alert alert-danger mb-3">
-                    <i class="ti ti-alert-circle me-2"></i>
-                    @m_recognitionResult.Error
-                </div>
-            }
-            else
-            {
-                <div class="row g-3">
+            <div class="p-3">
+                @if (!m_recognitionResult.IsSuccess)
+                {
+                    <div class="alert alert-danger mb-0">
+                        <i class="ti ti-alert-circle me-2"></i>
+                        @m_recognitionResult.Error
+                    </div>
+                }
+                else
+                {
+                    <div class="row g-3">
                     @* Preview Image *@
                     @if (!string.IsNullOrEmpty(m_previewImageUrl))
                     {
@@ -137,15 +147,16 @@
                     </div>
                 </div>
 
-                <div class="mt-3 d-flex gap-2">
-                    <button type="button" class="btn btn-primary" @onclick="ApplyRecognition">
-                        <i class="ti ti-check me-2"></i>Apply to Form
-                    </button>
-                    <button type="button" class="btn btn-ghost-secondary" @onclick="Reset">
-                        Try Another Photo
-                    </button>
-                </div>
-            }
+                    <div class="mt-3 d-flex gap-2">
+                        <button type="button" class="btn btn-primary" @onclick="ApplyRecognition">
+                            <i class="ti ti-check me-2"></i>Apply to Form
+                        </button>
+                        <button type="button" class="btn btn-ghost-secondary" @onclick="Reset">
+                            Try Another Photo
+                        </button>
+                    </div>
+                }
+            </div>
         }
     </div>
 </div>

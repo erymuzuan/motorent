@@ -7,15 +7,7 @@
 <div class="row">
     @* Left Column: Basic Info & Images *@
     <div class="col-lg-4">
-        @* Quick Recognition Panel (for new vehicles only) *@
-        @if (IsNew)
-        {
-            <VehicleRecognitionPanel SuggestedVehicleType="@Entity.VehicleType"
-                                     OnApply="ApplyRecognitionResult"
-                                     OnImageCaptured="OnRecognitionImageCaptured" />
-        }
-
-        @* Vehicle Images (for existing vehicles - at top like Quick Recognition) *@
+        @* Vehicle Images (for existing vehicles) *@
         @if (!IsNew && Entity.VehicleId > 0)
         {
             <VehicleImageGallery VehicleId="@Entity.VehicleId"
@@ -166,7 +158,7 @@
             </div>
         </div>
 
-        @* Vehicle Images (pending upload for new vehicles) *@
+        @* Vehicle Images (for new vehicles - show info to save first) *@
         @if (IsNew)
         {
             <div class="mr-form-panel mb-3">
@@ -175,41 +167,17 @@
                         <i class="ti ti-photo"></i>
                     </div>
                     <h3 class="mr-form-panel-title">@Localizer["VehicleImages"]</h3>
-                    @if (PendingRecognitionImage != null)
-                    {
-                        <span class="badge bg-success ms-2">1 @Localizer["Photo"]</span>
-                    }
                 </div>
                 <div class="mr-form-panel-body">
-                    @if (PendingRecognitionImage != null)
-                    {
-                        @* Show preview of pending image *@
-                        <div class="position-relative mb-2">
-                            <img src="data:@PendingRecognitionImage.ContentType;base64,@PendingRecognitionImage.Base64Data"
-                                 alt="Vehicle preview"
-                                 class="rounded w-100"
-                                 style="max-height: 200px; object-fit: cover;" />
-                            <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-2"
-                                    @onclick="ClearPendingImage">
-                                <i class="ti ti-x"></i>
-                            </button>
+                    <div class="mr-info-panel">
+                        <div class="mr-info-panel-icon">
+                            <i class="ti ti-info-circle"></i>
                         </div>
-                        <div class="text-success small">
-                            <i class="ti ti-check me-1"></i>@Localizer["ImageWillBeUploadedOnSave"]
+                        <div>
+                            <div class="mr-info-panel-title">@Localizer["SaveToAddImages"]</div>
+                            <p class="mr-info-panel-text">@Localizer["SaveVehicleFirstHint"]</p>
                         </div>
-                    }
-                    else
-                    {
-                        <div class="mr-info-panel">
-                            <div class="mr-info-panel-icon">
-                                <i class="ti ti-info-circle"></i>
-                            </div>
-                            <div>
-                                <div class="mr-info-panel-title">@Localizer["SaveToAddImages"]</div>
-                                <p class="mr-info-panel-text">@Localizer["UseQuickRecognitionHint"]</p>
-                            </div>
-                        </div>
-                    }
+                    </div>
                 </div>
             </div>
         }
@@ -722,21 +690,6 @@
     private static string GetContrastColor(string hex) =>
         hex.ToUpperInvariant() is "#FFFFFF" or "#C0C0C0" or "#D4C5A9" or "#EAB308" ? "#333" : "#fff";
 
-    /// <summary>
-    /// Stores pending image data from Quick Recognition to be uploaded after save.
-    /// </summary>
-    public VehicleRecognitionPanel.RecognitionImageData? PendingRecognitionImage { get; private set; }
-
-    private void OnRecognitionImageCaptured(VehicleRecognitionPanel.RecognitionImageData imageData)
-    {
-        this.PendingRecognitionImage = imageData;
-    }
-
-    private void ClearPendingImage()
-    {
-        this.PendingRecognitionImage = null;
-    }
-
     private async Task OnVehicleTypeChanged(VehicleType type)
     {
         this.Entity.VehicleType = type;
@@ -787,7 +740,7 @@
         // Refresh if needed
     }
 
-    #region Recognition Integration
+    #region Lookups
 
     private List<string> m_lookupMakes = [];
     private List<VehicleModel> m_lookupModels = [];
@@ -808,64 +761,6 @@
         {
             // Fall back to defaults if lookup service fails
         }
-    }
-
-    private async Task ApplyRecognitionResult(VehicleRecognitionResult result)
-    {
-        if (result.VehicleType.HasValue)
-        {
-            await OnVehicleTypeChanged(result.VehicleType.Value);
-        }
-
-        if (!string.IsNullOrEmpty(result.RecognizedMake))
-        {
-            this.Entity.Brand = result.RecognizedMake;
-        }
-
-        if (!string.IsNullOrEmpty(result.RecognizedModel))
-        {
-            this.Entity.Model = result.RecognizedModel;
-        }
-
-        if (!string.IsNullOrEmpty(result.Color))
-        {
-            this.Entity.Color = result.Color;
-        }
-
-        if (result.Year.HasValue)
-        {
-            this.Entity.Year = result.Year.Value;
-        }
-
-        if (!string.IsNullOrEmpty(result.LicensePlate))
-        {
-            this.Entity.LicensePlate = result.LicensePlate;
-        }
-
-        if (result.EngineCC.HasValue && this.Entity.VehicleType == VehicleType.Motorbike)
-        {
-            this.Entity.EngineCC = result.EngineCC.Value;
-        }
-
-        if (result.Segment.HasValue && this.Entity.VehicleType == VehicleType.Car)
-        {
-            this.Entity.Segment = result.Segment.Value;
-        }
-
-        // If we have a matched lookup model, apply suggested pricing
-        if (result.MatchedVehicleModel != null)
-        {
-            if (result.MatchedVehicleModel.SuggestedDailyRate.HasValue && this.Entity.DailyRate == 0)
-            {
-                this.Entity.DailyRate = result.MatchedVehicleModel.SuggestedDailyRate.Value;
-            }
-            if (result.MatchedVehicleModel.SuggestedDeposit.HasValue && this.Entity.DepositAmount == 0)
-            {
-                this.Entity.DepositAmount = result.MatchedVehicleModel.SuggestedDeposit.Value;
-            }
-        }
-
-        this.StateHasChanged();
     }
 
     #endregion

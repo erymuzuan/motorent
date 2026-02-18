@@ -2,6 +2,9 @@
 @using MotoRent.Domain.Entities
 @using MotoRent.Client.Pages.Rentals
 @using MotoRent.Domain.Models
+@using MotoRent.Domain.Core
+@using Microsoft.AspNetCore.Components.Forms
+@using System.IO
 @inject IJSRuntime JS
 @inject DocumentTemplateService TemplateService
 
@@ -150,23 +153,6 @@
         <div class="col-12 col-md-6">
             <div class="card">
                 <div class="card-body">
-                    <h6 class="card-title mb-3">@Localizer["TermsConditions"]</h6>
-
-                    <div class="card bg-light" style="max-height: 200px; overflow-y: auto;">
-                        <div class="card-body p-3">
-                            <p class="mb-0" style="white-space: pre-line; font-size: 0.875rem;">@m_agreementText</p>
-                        </div>
-                    </div>
-
-                    <label class="form-check mt-3">
-                        <input class="form-check-input" type="checkbox" @bind="m_termsAccepted" />
-                        <span class="form-check-label">@Localizer["ExplainTermsConfirm"]</span>
-                    </label>
-                </div>
-            </div>
-
-            <div class="card mt-4">
-                <div class="card-body">
                     <h6 class="card-title mb-3">@Localizer["PrintAgreement"]</h6>
 
                     <p class="text-secondary mb-3">
@@ -227,6 +213,54 @@
                     }
                 </div>
             </div>
+
+            <div class="card mt-4">
+                <div class="card-body">
+                    <h6 class="card-title mb-3">@Localizer["TermsConditions"]</h6>
+
+                    @* Upload Signed Agreement Section *@
+                    @if (string.IsNullOrEmpty(ScannedAgreementPath))
+                    {
+                        <label class="btn btn-outline-secondary w-100 @(m_isUploading ? "disabled" : "")" style="padding: 1rem;">
+                            @if (m_isUploading)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                                <span>@Localizer["Uploading"]</span>
+                            }
+                            else
+                            {
+                                <i class="ti ti-camera me-2"></i>
+                                <span>@Localizer["UploadSignedAgreement"]</span>
+                            }
+                            <InputFile OnChange="OnAgreementFileSelected" accept="image/*,.pdf" capture="environment" class="d-none" disabled="@m_isUploading" />
+                        </label>
+                        <p class="text-secondary small mt-2 mb-0 text-center">@Localizer["UploadSignedAgreementHint"]</p>
+                    }
+                    else
+                    {
+                        <div class="alert alert-success d-flex align-items-center justify-content-between py-2 mb-0">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="ti ti-check"></i>
+                                <span>@Localizer["ScannedAgreementUploaded"]</span>
+                            </div>
+                            <div class="btn-group btn-group-sm">
+                                <button type="button" class="btn btn-outline-primary btn-sm" @onclick="ViewScannedAgreement">
+                                    <i class="ti ti-eye me-1"></i>
+                                    @Localizer["ViewScannedAgreement"]
+                                </button>
+                                <button type="button" class="btn btn-outline-danger btn-sm" @onclick="RemoveScannedAgreement">
+                                    <i class="ti ti-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    }
+
+                    <label class="form-check mt-3">
+                        <input class="form-check-input" type="checkbox" @bind="m_termsAccepted" />
+                        <span class="form-check-label">@Localizer["ExplainTermsConfirm"]</span>
+                    </label>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -249,11 +283,14 @@
     [Parameter] public RentalConfig? Config { get; set; }
     [Parameter] public DepositInfo? DepositInfo { get; set; }
     [Parameter] public EventCallback OnComplete { get; set; }
+    [Parameter] public string? ScannedAgreementPath { get; set; }
+    [Parameter] public EventCallback<string?> ScannedAgreementPathChanged { get; set; }
 
     private string m_agreementText = string.Empty;
     private bool m_termsAccepted;
     private bool m_agreementPrinted;
     private List<DocumentTemplate> m_templates = new();
+    private bool m_isUploading;
 
     private bool CanComplete => m_termsAccepted && m_agreementPrinted;
 
@@ -398,4 +435,101 @@
         60 => Localizer["1Hour"],
         _ => $"{minutes} {Localizer["Minutes"]}"
     };
+
+    private async Task OnAgreementFileSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file == null) return;
+
+        // Validate file size (max 10MB)
+        const long maxSize = 10 * 1024 * 1024;
+        if (file.Size > maxSize)
+        {
+            this.ShowWarning(Localizer["FileTooLarge"]);
+            return;
+        }
+
+        // Validate file type
+        var allowedTypes = new[] { "image/jpeg", "image/png", "image/gif", "image/webp", "application/pdf" };
+        if (!allowedTypes.Contains(file.ContentType.ToLower()))
+        {
+            this.ShowWarning(Localizer["InvalidFileType"]);
+            return;
+        }
+
+        m_isUploading = true;
+        StateHasChanged();
+
+        try
+        {
+            // Read file into memory
+            using var stream = file.OpenReadStream(maxSize);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            var fileBytes = ms.ToArray();
+
+            // Get file extension
+            var extension = Path.GetExtension(file.Name).ToLowerInvariant();
+            if (string.IsNullOrEmpty(extension))
+            {
+                extension = file.ContentType switch
+                {
+                    "image/jpeg" => ".jpg",
+                    "image/png" => ".png",
+                    "image/gif" => ".gif",
+                    "image/webp" => ".webp",
+                    "application/pdf" => ".pdf",
+                    _ => ".jpg"
+                };
+            }
+
+            // Save file to disk
+            var basePath = MotoConfig.FileStorageBasePath;
+            var accountNo = this.RequestContext.GetAccountNo() ?? "default";
+            var uploadDir = Path.Combine(Directory.GetCurrentDirectory(), basePath, accountNo, "agreements");
+            Directory.CreateDirectory(uploadDir);
+
+            var timestamp = DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmss");
+            var fileName = $"{timestamp}_{Guid.NewGuid()}{extension}";
+            var filePath = Path.Combine(uploadDir, fileName);
+            await File.WriteAllBytesAsync(filePath, fileBytes);
+
+            // Calculate relative path for storage
+            var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), basePath);
+            var relativePath = filePath.StartsWith(uploadsDir)
+                ? filePath[uploadsDir.Length..].TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                : filePath;
+
+            ScannedAgreementPath = relativePath;
+            await ScannedAgreementPathChanged.InvokeAsync(ScannedAgreementPath);
+            m_agreementPrinted = true; // Uploading signed copy counts as having agreement
+            this.ShowSuccess(Localizer["UploadSuccess"]);
+        }
+        catch (Exception ex)
+        {
+            this.ShowError($"{Localizer["UploadFailed"]}: {ex.Message}");
+        }
+        finally
+        {
+            m_isUploading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ViewScannedAgreement()
+    {
+        if (!string.IsNullOrEmpty(ScannedAgreementPath))
+        {
+            var url = $"/api/agreements/file/{ScannedAgreementPath}";
+            await JS.InvokeVoidAsync("window.open", url, "_blank");
+        }
+    }
+
+    private async Task RemoveScannedAgreement()
+    {
+        ScannedAgreementPath = null;
+        await ScannedAgreementPathChanged.InvokeAsync(null);
+        // Only reset m_agreementPrinted if user didn't print before
+        // Keep it true if they printed
+    }
 }
