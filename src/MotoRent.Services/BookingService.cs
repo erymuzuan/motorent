@@ -1225,6 +1225,7 @@ public class CreateBookingRequest
 {
     public int? PreferredShopId { get; set; }
     public string? PreferredShopName { get; set; }
+    public int? LinkedRenterId { get; set; }
     public string CustomerName { get; set; } = string.Empty;
     public string CustomerPhone { get; set; } = string.Empty;
     public string CustomerEmail { get; set; } = string.Empty;
