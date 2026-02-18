@@ -82,7 +82,8 @@
                                   OnCreateNew="OpenCreateRenterDialog" />
                 break;
             case 1:
-                <SelectVehicleStep @bind-SelectedVehicle="m_selectedVehicle" />
+                <SelectVehicleStep SelectedVehicle="m_selectedVehicle"
+                                   SelectedVehicleChanged="OnVehicleSelected" />
                 break;
             case 2:
                 @if (m_selectedVehicle?.UsesIntervalPricing == true)
@@ -332,6 +333,17 @@
 
     // Step 2: Vehicle selection
     private Vehicle? m_selectedVehicle;
+
+    private void OnVehicleSelected(Vehicle? vehicle)
+    {
+        this.m_selectedVehicle = vehicle;
+
+        // Auto-advance to next step when vehicle is selected
+        if (vehicle != null)
+        {
+            this.NextStep();
+        }
+    }
 
     // Step 3: Rental configuration (daily rentals)
     private RentalConfig m_rentalConfig = new();
