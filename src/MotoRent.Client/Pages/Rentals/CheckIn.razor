@@ -155,7 +155,8 @@
                                         DepositInfo="@m_depositInfo"
                                         IsIntervalRental="@IsIntervalRental"
                                         IsHourlyRental="@IsHourlyRental"
-                                        OnComplete="CompleteCheckIn" />
+                                        @bind-TermsAccepted="m_termsAccepted"
+                                        @bind-AgreementPrinted="m_agreementPrinted" />
                 break;
         }
 
@@ -175,6 +176,15 @@
                         @onclick="NextStep">
                     @CommonLocalizer["Next"]
                     <i class="ti ti-arrow-right"></i>
+                </button>
+            }
+            else
+            {
+                <button type="button" class="mr-btn-action success"
+                        style="padding: 0.75rem 1.5rem; font-size: 1rem;"
+                        @onclick="OnCompleteCheckInClicked">
+                    <i class="ti ti-circle-check"></i>
+                    @Localizer["CompleteCheckIn"]
                 </button>
             }
         </div>
@@ -364,6 +374,10 @@
     // Step 5: Pre-rental inspection
     private InspectionInfo? m_preInspection;
 
+    // Step 6: Agreement validation state
+    private bool m_termsAccepted;
+    private bool m_agreementPrinted;
+
     private bool IsIntervalRental => this.m_selectedVehicle?.UsesIntervalPricing == true;
     private bool IsHourlyRental => !this.IsIntervalRental && this.m_selectedDurationType == RentalDurationType.Hourly;
     private bool IsPackageMode => this.m_isPackageMode && this.m_selectedDurationType == RentalDurationType.Hourly;
@@ -471,6 +485,23 @@
             this.m_selectedRenter = renter;
             this.ShowSuccess(this.Localizer["RenterCreatedSuccess"]);
         }
+    }
+
+    private async Task OnCompleteCheckInClicked()
+    {
+        if (!m_termsAccepted)
+        {
+            this.ShowWarning(this.Localizer["TermsNotAccepted"]);
+            return;
+        }
+
+        if (!m_agreementPrinted)
+        {
+            this.ShowWarning(this.Localizer["PrintAgreementRequired"]);
+            return;
+        }
+
+        await CompleteCheckIn();
     }
 
     private async Task CompleteCheckIn()
