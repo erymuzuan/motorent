@@ -65,7 +65,11 @@ public class BookingService
                 PreferredColor = itemRequest.PreferredColor,
                 InsuranceId = itemRequest.InsuranceId,
                 AccessoryIds = itemRequest.AccessoryIds ?? [],
+                DurationType = itemRequest.DurationType,
                 DailyRate = itemRequest.DailyRate,
+                HourlyRate = itemRequest.HourlyRate,
+                RentalHours = itemRequest.RentalHours,
+                StartTime = itemRequest.StartTime,
                 InsuranceRate = itemRequest.InsuranceRate,
                 AccessoriesTotal = itemRequest.AccessoriesTotal,
                 DepositAmount = itemRequest.DepositAmount,
@@ -1264,7 +1268,15 @@ public class BookingItemRequest
     public int? InsuranceId { get; set; }
     public string? InsuranceName { get; set; }
     public List<int> AccessoryIds { get; set; } = [];
+
+    // Duration type
+    public RentalDurationType DurationType { get; set; } = RentalDurationType.Daily;
+    public int? RentalHours { get; set; }
+    public TimeSpan? StartTime { get; set; }
+
+    // Pricing
     public decimal DailyRate { get; set; }
+    public decimal? HourlyRate { get; set; }
     public decimal InsuranceRate { get; set; }
     public decimal AccessoriesTotal { get; set; }
     public decimal DepositAmount { get; set; }

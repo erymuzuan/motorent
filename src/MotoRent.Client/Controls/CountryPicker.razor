@@ -2,26 +2,24 @@
 
 <div class="dropdown country-picker">
     <button id="@m_toggleId"
-            class="btn btn-outline-secondary dropdown-toggle w-100 d-flex align-items-center justify-content-between"
+            class="form-select text-start d-flex align-items-center"
             type="button"
             data-bs-toggle="dropdown"
             data-bs-auto-close="true"
             aria-expanded="false">
-        <span class="d-flex align-items-center">
-            @if (!string.IsNullOrEmpty(Value))
+        @if (!string.IsNullOrEmpty(Value))
+        {
+            var selected = s_countries.FirstOrDefault(c => c.Name == Value);
+            if (selected != default)
             {
-                var selected = s_countries.FirstOrDefault(c => c.Name == Value);
-                if (selected != default)
-                {
-                    <span class="flag flag-xs flag-country-@selected.Code me-2"></span>
-                }
-                <span>@Value</span>
+                <span class="flag flag-xs flag-country-@selected.Code me-2"></span>
             }
-            else
-            {
-                <span class="text-secondary">@(Placeholder ?? "")</span>
-            }
-        </span>
+            <span>@Value</span>
+        }
+        else
+        {
+            <span class="text-secondary">@(Placeholder ?? "Select country...")</span>
+        }
     </button>
     <div class="dropdown-menu w-100 p-0">
         <div class="d-flex flex-column" style="max-height: 300px; overflow: hidden;">

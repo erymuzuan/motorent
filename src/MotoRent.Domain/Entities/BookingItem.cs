@@ -52,9 +52,29 @@ public class BookingItem
     // Pricing (captured at booking time)
 
     /// <summary>
+    /// Duration type for this item (Daily or Hourly).
+    /// </summary>
+    public RentalDurationType DurationType { get; set; } = RentalDurationType.Daily;
+
+    /// <summary>
     /// Daily rate for vehicle.
     /// </summary>
     public decimal DailyRate { get; set; }
+
+    /// <summary>
+    /// Hourly rate for vehicle (for hourly rentals).
+    /// </summary>
+    public decimal? HourlyRate { get; set; }
+
+    /// <summary>
+    /// Number of hours (for hourly rentals).
+    /// </summary>
+    public int? RentalHours { get; set; }
+
+    /// <summary>
+    /// Start time for hourly rentals.
+    /// </summary>
+    public TimeSpan? StartTime { get; set; }
 
     /// <summary>
     /// Daily rate for insurance.

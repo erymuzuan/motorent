@@ -35,6 +35,8 @@
             m_dotNetRef = DotNetObjectReference.Create(this);
 
             var options = new Dictionary<string, object?>();
+            if (Value != default)
+                options["defaultDate"] = Value.ToString("yyyy-MM-dd");
             if (MinDate.HasValue)
                 options["minDate"] = MinDate.Value.ToString("yyyy-MM-dd");
             if (MaxDate.HasValue)
@@ -42,6 +44,7 @@
 
             await m_jsModule.InvokeVoidAsync("initDatePicker", m_inputRef, m_dotNetRef, options);
 
+            // Also call setDate to ensure the value is set correctly after init
             if (Value != default)
             {
                 await m_jsModule.InvokeVoidAsync("setDate", m_inputRef, Value.ToString("yyyy-MM-dd"));

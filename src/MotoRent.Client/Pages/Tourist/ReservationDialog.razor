@@ -30,25 +30,136 @@
     @if (m_activeStep == 0)
     {
         <div class="d-flex flex-column gap-4">
-            <h4>Select Your Rental Period</h4>
-
-            <div class="row g-3">
-                <div class="col-md-6">
-                    <label class="form-label required">Start Date</label>
-                    <DatePicker @bind-Value="m_startDateValue" MinDate="DateTime.Today" CssClass="form-control" />
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label required">End Date</label>
-                    <DatePicker @bind-Value="m_endDateValue" MinDate="m_startDateValue" CssClass="form-control" />
-                </div>
-            </div>
-
-            @if (m_startDate.HasValue && m_endDate.HasValue)
+            @* Duration Type Toggle - Only show if vehicle supports both *@
+            @if (m_supportsHourly && !m_isHourlyOnly)
             {
-                <div class="alert alert-info">
-                    <i class="ti ti-calendar me-2"></i>
-                    @m_days day(s) - @FormatDate(m_startDate.Value) to @FormatDate(m_endDate.Value)
+                <div>
+                    <h4>Rental Type</h4>
+                    <div class="btn-group w-100" role="group">
+                        <input type="radio" class="btn-check" name="duration-type" id="duration-daily"
+                               checked="@(m_durationType == RentalDurationType.Daily)"
+                               @onchange="@(() => SetDurationType(RentalDurationType.Daily))" />
+                        <label class="btn btn-outline-primary" for="duration-daily">
+                            <i class="ti ti-calendar me-1"></i>Daily
+                        </label>
+
+                        <input type="radio" class="btn-check" name="duration-type" id="duration-hourly"
+                               checked="@(m_durationType == RentalDurationType.Hourly)"
+                               @onchange="@(() => SetDurationType(RentalDurationType.Hourly))" />
+                        <label class="btn btn-outline-primary" for="duration-hourly">
+                            <i class="ti ti-clock me-1"></i>Hourly
+                        </label>
+                    </div>
                 </div>
+            }
+
+            @if (m_durationType == RentalDurationType.Daily)
+            {
+                @* Daily Rental: Date Selection *@
+                <h4>Select Your Rental Period</h4>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label required">Start Date</label>
+                        <DatePicker @bind-Value="m_startDateValue" MinDate="DateTime.Today" CssClass="form-control" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label required">End Date</label>
+                        <DatePicker @bind-Value="m_endDateValue" MinDate="m_startDateValue" CssClass="form-control" />
+                    </div>
+                </div>
+
+                @if (m_startDate.HasValue && m_endDate.HasValue)
+                {
+                    <div class="alert alert-info">
+                        <i class="ti ti-calendar me-2"></i>
+                        @m_days day(s) - @FormatDate(m_startDate.Value) to @FormatDate(m_endDate.Value)
+                    </div>
+                }
+            }
+            else
+            {
+                @* Hourly Rental: Date, Time, and Duration Selection *@
+                <h4>Select Your Rental Time</h4>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label required">Date</label>
+                        <DatePicker @bind-Value="m_startDateValue" MinDate="DateTime.Today" CssClass="form-control" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label required">Start Time</label>
+                        <input type="time" class="form-control"
+                               value="@m_startTimeString"
+                               @onchange="@((e) => m_startTimeString = e.Value?.ToString() ?? "10:00")" />
+                    </div>
+                </div>
+
+                @* Hourly Packages (if available) *@
+                @if (HourlyPackages.Count > 0)
+                {
+                    <h5 class="mt-3">Choose a Package</h5>
+                    <div class="row g-2">
+                        @foreach (var package in HourlyPackages.OrderBy(p => p.Hours))
+                        {
+                            var pkg = package;
+                            var linearPrice = HourlyRate * pkg.Hours;
+                            var savings = linearPrice - pkg.Price;
+                            <div class="col-6 col-md-4">
+                                <div class="card h-100 cursor-pointer @(m_selectedPackage == pkg ? "border-primary border-2" : "")"
+                                     @onclick="@(() => SelectPackage(pkg))">
+                                    <div class="card-body text-center py-3">
+                                        <h4 class="mb-1">@(string.IsNullOrEmpty(pkg.Name) ? $"{pkg.Hours}hr" : pkg.Name)</h4>
+                                        <div class="text-muted small">@pkg.Hours hour(s)</div>
+                                        <div class="text-primary fw-bold h5 mb-0">@FormatCurrency(pkg.Price)</div>
+                                        @if (savings > 0)
+                                        {
+                                            <div class="text-success small">
+                                                <i class="ti ti-discount-2 me-1"></i>Save @FormatCurrency(savings)
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+
+                        @* Custom Hours Option *@
+                        <div class="col-6 col-md-4">
+                            <div class="card h-100 cursor-pointer @(m_selectedPackage == null ? "border-primary border-2" : "")"
+                                 @onclick="@(() => SelectPackage(null))">
+                                <div class="card-body text-center py-3">
+                                    <h4 class="mb-1">Custom</h4>
+                                    <div class="text-muted small">Choose hours</div>
+                                    <div class="text-primary fw-bold h5 mb-0">@FormatCurrency(HourlyRate)/hr</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                @* Custom Hours Input (show when no package selected or no packages available) *@
+                @if (m_selectedPackage == null)
+                {
+                    <div class="row g-3 mt-2">
+                        <div class="col-md-6">
+                            <label class="form-label required">Number of Hours</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" min="1" max="24"
+                                       @bind="m_selectedHours" />
+                                <span class="input-group-text">hours</span>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                @* Rental Period Summary *@
+                @if (m_startDate.HasValue)
+                {
+                    <div class="alert alert-info">
+                        <i class="ti ti-clock me-2"></i>
+                        @GetHourlyRentalSummary()
+                    </div>
+                }
             }
 
             <hr />
@@ -94,7 +205,16 @@
                                                 Deductible: @FormatCurrency(insurance.Deductible) | Max: @FormatCurrency(insurance.MaxCoverage)
                                             </small>
                                         </div>
-                                        <span class="text-primary">+@FormatCurrency(insurance.DailyRate)/day</span>
+                                        <span class="text-primary">
+                                            @if (m_durationType == RentalDurationType.Hourly)
+                                            {
+                                                @($"+{FormatCurrency(Math.Ceiling(insurance.DailyRate / 8 * EffectiveHours))} for {EffectiveHours}hrs")
+                                            }
+                                            else
+                                            {
+                                                @($"+{FormatCurrency(insurance.DailyRate)}/day")
+                                            }
+                                        </span>
                                     </div>
                                 </div>
                             </div>
@@ -194,8 +314,14 @@
                             <div class="mb-3">
                                 <small class="text-secondary">Rental Period</small>
                                 <div>
-                                    @FormatDate(m_startDate ?? DateTime.Today) - @FormatDate(m_endDate ?? DateTime.Today)
-                                    (@m_days days)
+                                    @if (m_durationType == RentalDurationType.Hourly)
+                                    {
+                                        @GetHourlyRentalSummary()
+                                    }
+                                    else
+                                    {
+                                        @($"{FormatDate(m_startDate ?? DateTime.Today)} - {FormatDate(m_endDate ?? DateTime.Today)} ({m_days} days)")
+                                    }
                                 </div>
                             </div>
                             @if (m_selectedInsurance != null)
@@ -223,13 +349,34 @@
                     <h4 class="card-title mb-3">Pricing Breakdown</h4>
                     <div class="d-flex flex-column gap-2">
                         <div class="d-flex justify-content-between">
-                            <span>Vehicle (@m_days days x @FormatCurrency(DailyRate))</span>
+                            @if (m_durationType == RentalDurationType.Hourly)
+                            {
+                                @if (m_selectedPackage != null)
+                                {
+                                    <span>Vehicle (@(string.IsNullOrEmpty(m_selectedPackage.Name) ? $"{m_selectedPackage.Hours}hr package" : m_selectedPackage.Name))</span>
+                                }
+                                else
+                                {
+                                    <span>Vehicle (@m_selectedHours hrs x @FormatCurrency(HourlyRate))</span>
+                                }
+                            }
+                            else
+                            {
+                                <span>Vehicle (@m_days days x @FormatCurrency(DailyRate))</span>
+                            }
                             <span>@FormatCurrency(m_vehicleTotal)</span>
                         </div>
                         @if (m_selectedInsurance != null)
                         {
                             <div class="d-flex justify-content-between">
-                                <span>Insurance (@m_days days x @FormatCurrency(m_selectedInsurance.DailyRate))</span>
+                                @if (m_durationType == RentalDurationType.Hourly)
+                                {
+                                    <span>Insurance (prorated for @EffectiveHours hrs)</span>
+                                }
+                                else
+                                {
+                                    <span>Insurance (@m_days days x @FormatCurrency(m_selectedInsurance.DailyRate))</span>
+                                }
                                 <span>@FormatCurrency(m_insuranceTotal)</span>
                             </div>
                         }
@@ -295,7 +442,16 @@
                         </div>
                         <div class="col-md-6 mb-3">
                             <small class="text-secondary">Rental Period</small>
-                            <div>@FormatDate(m_startDate ?? DateTime.Today) - @FormatDate(m_endDate ?? DateTime.Today)</div>
+                            <div>
+                                @if (m_durationType == RentalDurationType.Hourly)
+                                {
+                                    @GetHourlyRentalSummary()
+                                }
+                                else
+                                {
+                                    @($"{FormatDate(m_startDate ?? DateTime.Today)} - {FormatDate(m_endDate ?? DateTime.Today)}")
+                                }
+                            </div>
                         </div>
                         <div class="col-md-6 mb-3">
                             <small class="text-secondary">Customer</small>
@@ -383,17 +539,41 @@
     private DateTime m_startDateValue
     {
         get => m_startDate ?? DateTime.Today;
-        set => m_startDate = value;
+        set
+        {
+            m_startDate = value;
+            InvokeAsync(StateHasChanged);
+        }
     }
     private DateTime m_endDateValue
     {
-        get => m_endDate ?? DateTime.Today.AddDays(3);
-        set => m_endDate = value;
+        get => m_endDate ?? DateTime.Today;
+        set
+        {
+            m_endDate = value;
+            InvokeAsync(StateHasChanged);
+        }
     }
     private List<Insurance> m_insuranceOptions = [];
     private int? m_selectedInsuranceId;
     private Insurance? m_selectedInsurance => this.m_insuranceOptions.FirstOrDefault(i => i.InsuranceId == this.m_selectedInsuranceId);
     private string? m_preferredColor;
+
+    // Hourly rental (VehicleGroup supports hourly, legacy Motorbike does not)
+    private RentalDurationType m_durationType = RentalDurationType.Daily;
+    private bool m_supportsHourly => this.VehicleGroup?.SupportsHourlyRental ?? false;
+    private bool m_isHourlyOnly => this.VehicleGroup?.IsHourlyOnly ?? false;
+    private int m_selectedHours = 4;
+    private TimeSpan m_startTime = new(10, 0, 0);
+    private string m_startTimeString
+    {
+        get => this.m_startTime.ToString(@"hh\:mm");
+        set => TimeSpan.TryParse(value, out this.m_startTime);
+    }
+    private HourlyPackagePrice? m_selectedPackage;
+    private List<HourlyPackagePrice> HourlyPackages => this.VehicleGroup?.HourlyPackages ?? [];
+    private decimal HourlyRate => this.VehicleGroup?.MinHourlyRate ?? 0;
+    private int EffectiveHours => this.m_selectedPackage?.Hours ?? this.m_selectedHours;
 
     // Step 2: Contact Info
     private ContactInfo m_contactInfo = new();
@@ -419,13 +599,24 @@
     private int m_days => this.m_startDate.HasValue && this.m_endDate.HasValue
         ? Math.Max(1, (this.m_endDate.Value - this.m_startDate.Value).Days + 1)
         : 0;
-    private decimal m_vehicleTotal => this.DailyRate * this.m_days;
-    private decimal m_insuranceTotal => (this.m_selectedInsurance?.DailyRate ?? 0) * this.m_days;
+    private decimal m_vehicleTotal => this.m_durationType switch
+    {
+        RentalDurationType.Hourly when this.m_selectedPackage != null => this.m_selectedPackage.Price,
+        RentalDurationType.Hourly => this.HourlyRate * this.m_selectedHours,
+        _ => this.DailyRate * this.m_days
+    };
+    private decimal m_insuranceTotal => this.m_durationType switch
+    {
+        RentalDurationType.Hourly => Math.Ceiling((this.m_selectedInsurance?.DailyRate ?? 0) / 8 * this.EffectiveHours),
+        _ => (this.m_selectedInsurance?.DailyRate ?? 0) * this.m_days
+    };
     private decimal m_totalAmount => this.m_vehicleTotal + this.m_insuranceTotal;
 
     private bool CanProceed => this.m_activeStep switch
     {
-        0 => this.m_startDate.HasValue && this.m_endDate.HasValue,
+        0 => this.m_durationType == RentalDurationType.Hourly
+            ? this.m_startDate.HasValue && (this.m_selectedPackage != null || this.m_selectedHours > 0)
+            : this.m_startDate.HasValue && this.m_endDate.HasValue,
         1 => !string.IsNullOrWhiteSpace(this.m_contactInfo.FullName) &&
              !string.IsNullOrWhiteSpace(this.m_contactInfo.Phone) &&
              !string.IsNullOrWhiteSpace(this.m_contactInfo.Email),
@@ -437,7 +628,18 @@
     protected override async Task OnInitializedAsync()
     {
         this.m_startDate = this.DateRange?.Start ?? DateTime.Today;
-        this.m_endDate = this.DateRange?.End ?? DateTime.Today.AddDays(3);
+        this.m_endDate = this.DateRange?.End ?? DateTime.Today;
+
+        // Set duration type based on vehicle capability
+        if (this.m_isHourlyOnly)
+        {
+            this.m_durationType = RentalDurationType.Hourly;
+            // Select first package by default
+            this.m_selectedPackage = this.HourlyPackages.FirstOrDefault();
+            if (this.m_selectedPackage != null)
+                this.m_selectedHours = this.m_selectedPackage.Hours;
+        }
+
         await this.LoadInsuranceOptions();
     }
 
@@ -484,6 +686,20 @@
         this.m_submitting = true;
         try
         {
+            // Calculate start/end dates based on duration type
+            DateTimeOffset startDateOffset, endDateOffset;
+            if (this.m_durationType == RentalDurationType.Hourly)
+            {
+                var startDateTime = DateTime.SpecifyKind(this.m_startDate!.Value.Date + this.m_startTime, DateTimeKind.Unspecified);
+                startDateOffset = new DateTimeOffset(startDateTime, TimeSpan.Zero);
+                endDateOffset = startDateOffset.AddHours(this.EffectiveHours);
+            }
+            else
+            {
+                startDateOffset = new DateTimeOffset(DateTime.SpecifyKind(this.m_startDate!.Value.Date, DateTimeKind.Unspecified), TimeSpan.Zero);
+                endDateOffset = new DateTimeOffset(DateTime.SpecifyKind(this.m_endDate!.Value.Date, DateTimeKind.Unspecified), TimeSpan.Zero);
+            }
+
             var request = new CreateBookingRequest
             {
                 PreferredShopId = this.RequestContext.GetShopId(),
@@ -494,8 +710,8 @@
                 CustomerPassportNo = this.m_contactInfo.PassportNo,
                 HotelName = this.m_contactInfo.HotelName,
                 Notes = this.m_contactInfo.Notes,
-                StartDate = new DateTimeOffset(DateTime.SpecifyKind(this.m_startDate!.Value.Date, DateTimeKind.Unspecified), TimeSpan.Zero),
-                EndDate = new DateTimeOffset(DateTime.SpecifyKind(this.m_endDate!.Value.Date, DateTimeKind.Unspecified), TimeSpan.Zero),
+                StartDate = startDateOffset,
+                EndDate = endDateOffset,
                 BookingSource = "TouristPortal",
                 Items =
                 [
@@ -507,8 +723,12 @@
                         PreferredColor = this.m_preferredColor,
                         InsuranceId = this.m_selectedInsuranceId,
                         InsuranceName = this.m_selectedInsurance?.Name,
-                        DailyRate = this.DailyRate,
-                        InsuranceRate = this.m_selectedInsurance?.DailyRate ?? 0,
+                        DurationType = this.m_durationType,
+                        DailyRate = this.m_durationType == RentalDurationType.Daily ? this.DailyRate : 0,
+                        HourlyRate = this.m_durationType == RentalDurationType.Hourly ? this.HourlyRate : null,
+                        RentalHours = this.m_durationType == RentalDurationType.Hourly ? this.EffectiveHours : null,
+                        StartTime = this.m_durationType == RentalDurationType.Hourly ? this.m_startTime : null,
+                        InsuranceRate = this.m_insuranceTotal,
                         DepositAmount = this.DepositAmount,
                         ItemTotal = this.m_totalAmount,
                         VehicleDisplayName = this.DisplayName
@@ -532,6 +752,37 @@
         {
             this.m_submitting = false;
         }
+    }
+
+    private void SetDurationType(RentalDurationType type)
+    {
+        this.m_durationType = type;
+        if (type == RentalDurationType.Hourly)
+        {
+            this.m_selectedPackage = this.HourlyPackages.FirstOrDefault();
+            if (this.m_selectedPackage != null)
+                this.m_selectedHours = this.m_selectedPackage.Hours;
+        }
+        this.StateHasChanged();
+    }
+
+    private void SelectPackage(HourlyPackagePrice? package)
+    {
+        this.m_selectedPackage = package;
+        if (package != null)
+            this.m_selectedHours = package.Hours;
+        this.StateHasChanged();
+    }
+
+    private string GetHourlyRentalSummary()
+    {
+        if (!this.m_startDate.HasValue) return "Select a date";
+
+        var startDateTime = this.m_startDate.Value.Date + this.m_startTime;
+        var hours = this.EffectiveHours;
+        var endDateTime = startDateTime.AddHours(hours);
+
+        return $"{hours} hour(s) - {startDateTime:d MMM} {startDateTime:h:mm tt} to {endDateTime:h:mm tt}";
     }
 
     private class ContactInfo

@@ -87,11 +87,27 @@ export function initDatePicker(element, dotNetRef, options) {
         }
     };
 
+    // Parse date strings explicitly to avoid locale issues
+    function parseYMD(dateStr) {
+        if (!dateStr) return null;
+        const parts = dateStr.split('-');
+        if (parts.length === 3) {
+            const year = parseInt(parts[0], 10);
+            const month = parseInt(parts[1], 10) - 1; // JS months are 0-based
+            const day = parseInt(parts[2], 10);
+            return new Date(year, month, day);
+        }
+        return null;
+    }
+
+    if (options?.defaultDate) {
+        config.defaultDate = parseYMD(options.defaultDate);
+    }
     if (options?.minDate) {
-        config.minDate = options.minDate;
+        config.minDate = parseYMD(options.minDate);
     }
     if (options?.maxDate) {
-        config.maxDate = options.maxDate;
+        config.maxDate = parseYMD(options.maxDate);
     }
 
     const fp = flatpickr(element, config);
@@ -139,21 +155,43 @@ export function initDatePicker(element, dotNetRef, options) {
     return fp;
 }
 
-export function setDate(element, date) {
-    if (element?._flatpickr && date) {
-        element._flatpickr.setDate(date, false);
+export function setDate(element, dateStr) {
+    if (element?._flatpickr && dateStr) {
+        // Parse yyyy-MM-dd format explicitly to avoid locale issues
+        const parts = dateStr.split('-');
+        if (parts.length === 3) {
+            const year = parseInt(parts[0], 10);
+            const month = parseInt(parts[1], 10) - 1; // JS months are 0-based
+            const day = parseInt(parts[2], 10);
+            const dateObj = new Date(year, month, day);
+            element._flatpickr.setDate(dateObj, false);
+        }
     }
 }
 
-export function setMinDate(element, date) {
+export function setMinDate(element, dateStr) {
     if (element?._flatpickr) {
-        element._flatpickr.set('minDate', date || null);
+        let dateObj = null;
+        if (dateStr) {
+            const parts = dateStr.split('-');
+            if (parts.length === 3) {
+                dateObj = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+            }
+        }
+        element._flatpickr.set('minDate', dateObj);
     }
 }
 
-export function setMaxDate(element, date) {
+export function setMaxDate(element, dateStr) {
     if (element?._flatpickr) {
-        element._flatpickr.set('maxDate', date || null);
+        let dateObj = null;
+        if (dateStr) {
+            const parts = dateStr.split('-');
+            if (parts.length === 3) {
+                dateObj = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+            }
+        }
+        element._flatpickr.set('maxDate', dateObj);
     }
 }
 
