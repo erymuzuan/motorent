@@ -495,6 +495,19 @@ public partial class RentalService
                     Notes = $"Deposit refund via {request.PaymentMethod ?? "Cash"}"
                 };
                 session.Attach(refundPayment);
+
+                // 10b. Record deposit refund in Till (if cash refund)
+                if (this.TillService != null && deposit != null &&
+                    (request.PaymentMethod == "Cash" || request.PaymentMethod == null))
+                {
+                    _ = await this.TillService.RecordDepositRefundFromTillAsync(
+                        rental.RentedFromShopId,
+                        username,
+                        deposit.DepositId,
+                        request.RentalId,
+                        refundAmount,
+                        $"Deposit refund #{deposit.DepositId}");
+                }
             }
 
             // 11. Create owner payment if vehicle is third-party owned
