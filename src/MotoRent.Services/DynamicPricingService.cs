@@ -88,8 +88,8 @@ public class DynamicPricingService
         // Select highest priority rule
         var applicableRule = rules.OrderByDescending(r => r.Priority).First();
 
-        // Calculate adjusted rate
-        var adjustedRate = baseRate * applicableRule.Multiplier;
+        // Calculate adjusted rate: (base × multiplier) + amount adjustment
+        var adjustedRate = (baseRate * applicableRule.Multiplier) + applicableRule.AmountAdjustment;
 
         // Apply min/max bounds
         if (applicableRule.MinRate.HasValue && adjustedRate < applicableRule.MinRate.Value)
@@ -107,6 +107,7 @@ public class DynamicPricingService
             BaseRate = baseRate,
             AdjustedRate = adjustedRate,
             Multiplier = applicableRule.Multiplier,
+            AmountAdjustment = applicableRule.AmountAdjustment,
             AppliedRuleName = applicableRule.Name,
             AppliedRuleType = applicableRule.RuleType.ToString()
         };
@@ -155,10 +156,17 @@ public class DynamicPricingService
         // Handle day-of-week rules
         if (rule.RuleType == PricingRuleType.DayOfWeek)
         {
+            // Check new multi-day field first
+            if (rule.ApplicableDaysOfWeek.Count > 0)
+            {
+                return rule.ApplicableDaysOfWeek.Contains(rentalDate.DayOfWeek);
+            }
+            // Fallback to legacy single day
             if (rule.ApplicableDayOfWeek.HasValue)
             {
                 return rentalDate.DayOfWeek == rule.ApplicableDayOfWeek.Value;
             }
+            return false;
         }
 
         // Handle recurring rules (yearly events)
@@ -272,11 +280,14 @@ public class PricingCalculation
     /// <summary>Original base rate before adjustment.</summary>
     public decimal BaseRate { get; set; }
 
-    /// <summary>Adjusted rate after applying the multiplier.</summary>
+    /// <summary>Adjusted rate after applying the multiplier and amount adjustment.</summary>
     public decimal AdjustedRate { get; set; }
 
     /// <summary>Multiplier applied (1.0 = no change, 1.5 = +50%, 0.8 = -20%).</summary>
     public decimal Multiplier { get; set; } = 1.0m;
+
+    /// <summary>Fixed amount adjustment (+50 = add 50, -20 = subtract 20).</summary>
+    public decimal AmountAdjustment { get; set; }
 
     /// <summary>Name of the applied pricing rule, if any.</summary>
     public string? AppliedRuleName { get; set; }
@@ -285,7 +296,7 @@ public class PricingCalculation
     public string? AppliedRuleType { get; set; }
 
     /// <summary>Whether a pricing rule was applied.</summary>
-    public bool HasAdjustment => Multiplier != 1.0m;
+    public bool HasAdjustment => Multiplier != 1.0m || AmountAdjustment != 0;
 
     /// <summary>Percentage change as a formatted string (e.g., "+50%", "-20%").</summary>
     public string PercentageChange
@@ -296,4 +307,7 @@ public class PricingCalculation
             return pct >= 0 ? $"+{pct:N0}%" : $"{pct:N0}%";
         }
     }
+
+    /// <summary>Amount adjustment as a formatted string (e.g., "+50", "-20").</summary>
+    public string AmountChange => AmountAdjustment >= 0 ? $"+{AmountAdjustment:N0}" : $"{AmountAdjustment:N0}";
 }

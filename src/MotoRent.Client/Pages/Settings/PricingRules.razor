@@ -63,7 +63,7 @@
                             <th>@Localizer["Name"]</th>
                             <th>@Localizer["Type"]</th>
                             <th>@Localizer["DateRange"]</th>
-                            <th class="text-center">@Localizer["Multiplier"]</th>
+                            <th class="text-center">@Localizer["Adjustment"]</th>
                             <th class="text-center">@Localizer["Priority"]</th>
                             <th>@Localizer["Status"]</th>
                             <th style="width: 120px;"></th>
@@ -108,7 +108,14 @@
                                     <td>
                                         @if (rule.RuleType == PricingRuleType.DayOfWeek)
                                         {
-                                            <span>@Localizer[rule.ApplicableDayOfWeek?.ToString() ?? ""]</span>
+                                            @if (rule.ApplicableDaysOfWeek.Count > 0)
+                                            {
+                                                <span>@string.Join(", ", rule.ApplicableDaysOfWeek.Select(d => Localizer[d.ToString()].Value))</span>
+                                            }
+                                            else
+                                            {
+                                                <span>@Localizer[rule.ApplicableDayOfWeek?.ToString() ?? ""]</span>
+                                            }
                                         }
                                         else
                                         {
@@ -116,8 +123,8 @@
                                         }
                                     </td>
                                     <td class="text-center">
-                                        <span class="badge @GetMultiplierBadgeClass(rule.Multiplier)">
-                                            @FormatMultiplier(rule.Multiplier)
+                                        <span class="badge @GetAdjustmentBadgeClass(rule.Multiplier, rule.AmountAdjustment)">
+                                            @FormatAdjustment(rule.Multiplier, rule.AmountAdjustment)
                                         </span>
                                     </td>
                                     <td class="text-center">
@@ -359,17 +366,31 @@
         _ => "bg-secondary-lt text-secondary"
     };
 
-    private static string GetMultiplierBadgeClass(decimal multiplier)
+    private static string GetAdjustmentBadgeClass(decimal multiplier, decimal amountAdjustment)
     {
-        if (multiplier < 1.0m) return "bg-green-lt text-green";
-        if (multiplier > 1.0m) return "bg-red-lt text-red";
+        // Check for discount (multiplier < 1 or negative amount)
+        if (multiplier < 1.0m || amountAdjustment < 0) return "bg-green-lt text-green";
+        // Check for increase (multiplier > 1 or positive amount)
+        if (multiplier > 1.0m || amountAdjustment > 0) return "bg-red-lt text-red";
         return "bg-secondary-lt text-secondary";
     }
 
-    private static string FormatMultiplier(decimal multiplier)
+    private static string FormatAdjustment(decimal multiplier, decimal amountAdjustment)
     {
-        var pct = (multiplier - 1.0m) * 100;
-        return pct >= 0 ? $"+{pct:N0}%" : $"{pct:N0}%";
+        var parts = new List<string>();
+
+        if (multiplier != 1.0m)
+        {
+            var pct = (multiplier - 1.0m) * 100;
+            parts.Add(pct >= 0 ? $"+{pct:N0}%" : $"{pct:N0}%");
+        }
+
+        if (amountAdjustment != 0)
+        {
+            parts.Add(amountAdjustment >= 0 ? $"+฿{amountAdjustment:N0}" : $"฿{amountAdjustment:N0}");
+        }
+
+        return parts.Count > 0 ? string.Join(" ", parts) : "—";
     }
 
     public void Dispose()

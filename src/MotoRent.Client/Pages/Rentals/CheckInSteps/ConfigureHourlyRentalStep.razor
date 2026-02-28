@@ -2,6 +2,8 @@
 @using MotoRent.Domain.Entities
 @using MotoRent.Domain.Models
 @using MotoRent.Client.Pages.Rentals
+@using MotoRent.Services
+@inject DynamicPricingService DynamicPricingService
 
 <div class="d-flex flex-column gap-4">
     <div>
@@ -20,12 +22,13 @@
                     <div class="row g-3">
                         @if (IsPackageMode)
                         {
-                            @* Package Mode: Show packages from HourlyPackages *@
+                            @* Package Mode: Show packages from HourlyPackages with date-aware pricing *@
                             @foreach (var package in (SelectedVehicle?.HourlyPackages ?? []).OrderBy(p => p.Hours))
                             {
                                 var pkg = package;
-                                var linearPrice = (this.SelectedVehicle?.HourlyRate ?? 0) * pkg.Hours;
-                                var savings = linearPrice - pkg.Price;
+                                var adjustedPrice = m_adjustedPrices.GetValueOrDefault(pkg.Hours, pkg.Price);
+                                var linearPrice = m_adjustedHourlyRate * pkg.Hours;
+                                var savings = linearPrice - adjustedPrice;
                                 <div class="col-6 col-md-4">
                                     <div class="card h-100 @(m_selectedHours == pkg.Hours ? "border-primary border-2" : "")"
                                          style="cursor: pointer;"
@@ -39,7 +42,7 @@
                                             <h3 class="mb-0">@(string.IsNullOrEmpty(pkg.Name) ? $"{pkg.Hours} {Localizer["Hours"]}" : pkg.Name)</h3>
                                             <div class="text-muted small">@pkg.Hours @Localizer[pkg.Hours == 1 ? "HourSingular" : "Hours"]</div>
                                             <div class="text-primary fw-bold" style="font-size: 1.25rem;">
-                                                @FormatCurrency(pkg.Price)
+                                                @FormatCurrency(adjustedPrice)
                                             </div>
                                             @if (savings > 0)
                                             {
@@ -62,7 +65,7 @@
                             @foreach (var hours in new[] { 1, 2, 3, 4, 6, 8 })
                             {
                                 var h = hours;
-                                var price = (this.SelectedVehicle?.HourlyRate ?? 0) * h;
+                                var price = m_adjustedHourlyRate * h;
                                 <div class="col-6 col-md-4">
                                     <div class="card h-100 @(m_selectedHours == h ? "border-primary border-2" : "")"
                                          style="cursor: pointer;"
@@ -115,7 +118,8 @@
                         <div class="col-md-6">
                             <label class="form-label">@Localizer["Date"]</label>
                             <input type="date" class="form-control" lang="en"
-                                   @bind="m_startDate" min="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                                   @bind="m_startDate" @bind:after="OnDateChangedAsync"
+                                   min="@DateTime.Today.ToString("yyyy-MM-dd")" />
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">@Localizer["Time"]</label>
@@ -186,7 +190,7 @@
 
                             <div class="mt-2 text-secondary small">
                                 <i class="ti ti-info-circle me-1"></i>
-                                @FormatCurrency(this.SelectedVehicle.HourlyRate ?? 0) / @Localizer["HourSingular"]
+                                @FormatCurrency(this.m_adjustedHourlyRate) / @Localizer["HourSingular"]
                             </div>
                         </div>
                     }
@@ -210,6 +214,8 @@
     private DateTime? m_startDate;
     private string m_startTimeString = "";
     private TimeSpan m_startTime = TimeSpan.Zero;
+    private Dictionary<int, decimal> m_adjustedPrices = new();
+    private decimal m_adjustedHourlyRate;
 
     protected override async Task OnInitializedAsync()
     {
@@ -218,12 +224,43 @@
         this.m_startTimeString = this.m_startTime.ToString(@"hh\:mm");
         this.m_selectedHours = 1;
 
+        await this.LoadAdjustedPricesAsync();
         await this.UpdateConfigAsync();
+    }
+
+    private async Task LoadAdjustedPricesAsync()
+    {
+        this.m_adjustedPrices.Clear();
+
+        if (this.SelectedVehicle == null)
+            return;
+
+        var rentalDate = DateOnly.FromDateTime(this.m_startDate ?? DateTime.Today);
+        var vehicleType = this.SelectedVehicle.VehicleType.ToString();
+
+        // Calculate adjusted hourly rate
+        var hourlyCalc = await this.DynamicPricingService.CalculateAdjustedRateAsync(
+            this.SelectedVehicle.HourlyRate ?? 0, rentalDate, vehicleType);
+        this.m_adjustedHourlyRate = hourlyCalc.AdjustedRate;
+
+        // Calculate adjusted package prices
+        foreach (var package in this.SelectedVehicle.HourlyPackages ?? [])
+        {
+            var calc = await this.DynamicPricingService.CalculateAdjustedRateAsync(
+                package.Price, rentalDate, vehicleType);
+            this.m_adjustedPrices[package.Hours] = calc.AdjustedRate;
+        }
     }
 
     private async Task SelectHours(int hours)
     {
         this.m_selectedHours = hours;
+        await this.UpdateConfigAsync();
+    }
+
+    private async Task OnDateChangedAsync()
+    {
+        await this.LoadAdjustedPricesAsync();
         await this.UpdateConfigAsync();
     }
 
@@ -254,14 +291,13 @@
             var offset = TimeZoneInfo.Local.GetUtcOffset(startDateTime);
             this.Config.StartDateTime = new DateTimeOffset(startDateTime, offset);
             this.Config.Hours = this.m_selectedHours;
-            this.Config.HourlyRate = this.SelectedVehicle.HourlyRate ?? 0;
+            this.Config.HourlyRate = this.m_adjustedHourlyRate;
 
             // Package price only applies in Package mode
             if (this.IsPackageMode)
             {
-                var package = this.SelectedVehicle.HourlyPackages?
-                    .FirstOrDefault(p => p.Hours == this.m_selectedHours);
-                this.Config.PackagePrice = package?.Price;
+                var adjustedPrice = this.m_adjustedPrices.GetValueOrDefault(this.m_selectedHours);
+                this.Config.PackagePrice = adjustedPrice > 0 ? adjustedPrice : null;
             }
             else
             {

@@ -27,14 +27,25 @@
 
             @if (Entity.RuleType == PricingRuleType.DayOfWeek)
             {
-                <div class="col-md-6">
-                    <label class="form-label required">@Localizer["DayOfWeek"]</label>
-                    <select class="form-select" @bind="Entity.ApplicableDayOfWeek" required>
+                <div class="col-12">
+                    <label class="form-label required">@Localizer["SelectDays"]</label>
+                    <div class="d-flex flex-wrap gap-2">
                         @foreach (DayOfWeek day in Enum.GetValues<DayOfWeek>())
                         {
-                            <option value="@day">@Localizer[day.ToString()]</option>
+                            var d = day;
+                            var isSelected = Entity.ApplicableDaysOfWeek.Contains(d);
+                            <label class="form-check form-check-inline">
+                                <input type="checkbox" class="form-check-input"
+                                       checked="@isSelected"
+                                       @onchange="@(e => ToggleDay(d, (bool)(e.Value ?? false)))" />
+                                <span class="form-check-label">@Localizer[day.ToString()]</span>
+                            </label>
                         }
-                    </select>
+                    </div>
+                    @if (Entity.ApplicableDaysOfWeek.Count == 0)
+                    {
+                        <small class="text-danger">@Localizer["SelectAtLeastOneDay"]</small>
+                    }
                 </div>
             }
             else
@@ -63,7 +74,7 @@
                 <h6 class="mb-3">@Localizer["PricingAdjustment"]</h6>
             </div>
 
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <label class="form-label required">@Localizer["Multiplier"]</label>
                 <div class="input-group">
                     <input type="number" class="form-control" @bind="Entity.Multiplier"
@@ -73,7 +84,17 @@
                 <small class="form-hint">@Localizer["MultiplierHint"]</small>
             </div>
 
-            <div class="col-md-4">
+            <div class="col-md-3">
+                <label class="form-label">@Localizer["AmountAdjustment"]</label>
+                <div class="input-group">
+                    <span class="input-group-text">฿</span>
+                    <input type="number" class="form-control" @bind="Entity.AmountAdjustment"
+                           step="10" />
+                </div>
+                <small class="form-hint">@Localizer["AmountAdjustmentHint"]</small>
+            </div>
+
+            <div class="col-md-3">
                 <label class="form-label">@Localizer["MinRate"]</label>
                 <div class="input-group">
                     <span class="input-group-text">฿</span>
@@ -83,7 +104,7 @@
                 <small class="form-hint">@Localizer["MinRateHint"]</small>
             </div>
 
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <label class="form-label">@Localizer["MaxRate"]</label>
                 <div class="input-group">
                     <span class="input-group-text">฿</span>
@@ -104,8 +125,8 @@
                             <div class="text-secondary">
                                 @Localizer["BaseRateExample"]: ฿500/day
                                 <i class="ti ti-arrow-right mx-2"></i>
-                                <strong>฿@((500 * Entity.Multiplier).ToString("N0"))/day</strong>
-                                (@FormatMultiplier(Entity.Multiplier))
+                                <strong>฿@(((500 * Entity.Multiplier) + Entity.AmountAdjustment).ToString("N0"))/day</strong>
+                                (@FormatAdjustment())
                             </div>
                         </div>
                     </div>
@@ -171,13 +192,40 @@
         this.FormValid = true;
         this.m_startDate = Entity.StartDate.ToDateTime(TimeOnly.MinValue);
         this.m_endDate = Entity.EndDate.ToDateTime(TimeOnly.MinValue);
+
+        // Migrate legacy single-day to multi-day format
+        if (Entity.RuleType == PricingRuleType.DayOfWeek &&
+            Entity.ApplicableDaysOfWeek.Count == 0 &&
+            Entity.ApplicableDayOfWeek.HasValue)
+        {
+            Entity.ApplicableDaysOfWeek.Add(Entity.ApplicableDayOfWeek.Value);
+        }
     }
 
     private void OnRuleTypeChanged()
     {
         if (Entity.RuleType == PricingRuleType.DayOfWeek)
         {
-            Entity.ApplicableDayOfWeek ??= DayOfWeek.Saturday;
+            // Initialize with Saturday if no days selected
+            if (Entity.ApplicableDaysOfWeek.Count == 0)
+            {
+                Entity.ApplicableDaysOfWeek.Add(DayOfWeek.Saturday);
+            }
+        }
+    }
+
+    private void ToggleDay(DayOfWeek day, bool selected)
+    {
+        if (selected)
+        {
+            if (!Entity.ApplicableDaysOfWeek.Contains(day))
+            {
+                Entity.ApplicableDaysOfWeek.Add(day);
+            }
+        }
+        else
+        {
+            Entity.ApplicableDaysOfWeek.Remove(day);
         }
     }
 
@@ -192,6 +240,12 @@
         if (Entity.Multiplier <= 0 || Entity.Multiplier > 10)
         {
             this.ShowError(Localizer["MultiplierInvalid"]);
+            return;
+        }
+
+        if (Entity.RuleType == PricingRuleType.DayOfWeek && Entity.ApplicableDaysOfWeek.Count == 0)
+        {
+            this.ShowError(Localizer["SelectAtLeastOneDay"]);
             return;
         }
 
@@ -237,21 +291,35 @@
 
     private string GetPreviewAlertClass()
     {
-        if (Entity.Multiplier < 1.0m) return "alert-success";
-        if (Entity.Multiplier > 1.0m) return "alert-warning";
+        var effectiveChange = (Entity.Multiplier - 1.0m) * 500 + Entity.AmountAdjustment;
+        if (effectiveChange < 0) return "alert-success";
+        if (effectiveChange > 0) return "alert-warning";
         return "alert-info";
     }
 
     private string GetPreviewIcon()
     {
-        if (Entity.Multiplier < 1.0m) return "ti-discount-2";
-        if (Entity.Multiplier > 1.0m) return "ti-trending-up";
+        var effectiveChange = (Entity.Multiplier - 1.0m) * 500 + Entity.AmountAdjustment;
+        if (effectiveChange < 0) return "ti-discount-2";
+        if (effectiveChange > 0) return "ti-trending-up";
         return "ti-minus";
     }
 
-    private static string FormatMultiplier(decimal multiplier)
+    private string FormatAdjustment()
     {
-        var pct = (multiplier - 1.0m) * 100;
-        return pct >= 0 ? $"+{pct:N0}%" : $"{pct:N0}%";
+        var parts = new List<string>();
+
+        if (Entity.Multiplier != 1.0m)
+        {
+            var pct = (Entity.Multiplier - 1.0m) * 100;
+            parts.Add(pct >= 0 ? $"+{pct:N0}%" : $"{pct:N0}%");
+        }
+
+        if (Entity.AmountAdjustment != 0)
+        {
+            parts.Add(Entity.AmountAdjustment >= 0 ? $"+฿{Entity.AmountAdjustment:N0}" : $"฿{Entity.AmountAdjustment:N0}");
+        }
+
+        return parts.Count > 0 ? string.Join(" ", parts) : "ไม่มีการปรับราคา";
     }
 }

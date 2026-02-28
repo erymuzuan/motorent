@@ -95,7 +95,7 @@
                     </div>
                 </div>
 
-                @* Hourly Packages (if available) *@
+                @* Hourly Packages (if available) with date-aware pricing *@
                 @if (HourlyPackages.Count > 0)
                 {
                     <h5 class="mt-3">Choose a Package</h5>
@@ -601,7 +601,9 @@
         : 0;
     private decimal m_vehicleTotal => this.m_durationType switch
     {
-        RentalDurationType.Hourly when this.m_selectedPackage != null => this.m_selectedPackage.Price,
+        // Use base package price (dynamic pricing adjustments applied via Pricing Rules)
+        RentalDurationType.Hourly when this.m_selectedPackage != null =>
+            this.m_selectedPackage.Price,
         RentalDurationType.Hourly => this.HourlyRate * this.m_selectedHours,
         _ => this.DailyRate * this.m_days
     };
