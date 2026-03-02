@@ -5,6 +5,7 @@
 @using MotoRent.Client.Components.Receipts
 @using MotoRent.Domain.Entities
 @using MotoRent.Domain.Models
+@using MotoRent.Domain.Settings
 @using MotoRent.Services
 @attribute [Authorize(Policy = "RequireTenantStaff")]
 @inherits LocalizedComponentBase<CheckIn>
@@ -212,14 +213,20 @@
     [Parameter] public string? BookingRef { get; set; }
     private Booking? m_sourceBooking;
     private BookingItem? m_sourceBookingItem;
-    // Active till session for check-in
+    // Active till session for check-in (optional based on settings)
     private TillSession? m_tillSession;
+    private bool m_isTillRequired;
 
     protected override async Task OnInitializedAsync()
     {
-        // Require an active till session for check-in
+        // Check if till session is required based on organization settings
+        m_isTillRequired = await this.SettingConfig.GetBoolAsync(SettingKeys.Till_EnableCashierTill, defaultValue: false);
+
+        // Try to get active till session
         m_tillSession = await this.TillService.GetActiveSessionForUserAsync(this.UserName);
-        if (m_tillSession == null)
+
+        // Only require till session if the setting is enabled
+        if (m_isTillRequired && m_tillSession == null)
         {
             this.ToastService.ShowWarning(this.Localizer["TillSessionRequired"]);
             this.NavigationManager.NavigateTo("/staff/till");
@@ -506,7 +513,7 @@
 
     private async Task CompleteCheckIn()
     {
-        if (this.m_selectedRenter == null || this.m_selectedVehicle == null || this.m_tillSession == null)
+        if (this.m_selectedRenter == null || this.m_selectedVehicle == null)
         {
             this.ShowError(this.Localizer["ValidationError"]);
             return;
@@ -517,9 +524,9 @@
         {
             var request = new CheckInRequest
             {
-                // Use till session's shop ID
-                ShopId = this.m_tillSession.ShopId,
-                TillSessionId = this.m_tillSession.TillSessionId,
+                // Use till session's shop ID if available, otherwise use current shop from context
+                ShopId = this.m_tillSession?.ShopId ?? this.RequestContext.GetShopId(),
+                TillSessionId = this.m_tillSession?.TillSessionId ?? 0,
                 RenterId = this.m_selectedRenter.RenterId,
                 VehicleId = this.m_selectedVehicle.VehicleId,
                 SignatureImagePath = null, // Physical signature collected on printed agreement
@@ -606,7 +613,7 @@
                         this.m_sourceBooking.BookingId,
                         this.m_sourceBookingItem.ItemId,
                         this.m_selectedVehicle!.VehicleId,
-                        this.m_tillSession!.ShopId,
+                        this.m_tillSession?.ShopId ?? this.RequestContext.GetShopId(),
                         result.RentalId,
                         this.UserName);
                 }
@@ -686,7 +693,7 @@
     /// </summary>
     private async Task GenerateAndShowReceiptAsync(int rentalId)
     {
-        if (this.m_selectedRenter == null || this.m_selectedVehicle == null || this.m_tillSession == null)
+        if (this.m_selectedRenter == null || this.m_selectedVehicle == null)
             return;
 
         try
@@ -775,7 +782,7 @@
             // Generate the receipt
             var receipt = await this.ReceiptService.GenerateCheckInReceiptAsync(
                 rentalId,
-                this.m_tillSession.TillSessionId,
+                this.m_tillSession?.TillSessionId ?? 0,
                 rental,
                 this.m_selectedRenter,
                 this.m_selectedVehicle,
