@@ -80,8 +80,15 @@
                                 <div class="flex-fill">
                                     <div class="fw-bold">@fm.DisplayNameWithEngine</div>
                                     <div class="text-secondary small">
-                                        ฿@fm.DailyRate.ToString("N0")/@Localizer["Day"]
-                                        @if (fm.HourlyRate > 0) { <span class="ms-2">฿@fm.HourlyRate.Value.ToString("N0")/@Localizer["Hour"]</span> }
+                                        @if (fm.VehicleType == VehicleType.JetSki)
+                                        {
+                                            <span>฿@(fm.Rate1Hour?.ToString("N0") ?? "0")/@Localizer["Hour"]</span>
+                                        }
+                                        else
+                                        {
+                                            <span>฿@fm.DailyRate.ToString("N0")/@Localizer["Day"]</span>
+                                            @if (fm.HourlyRate > 0) { <span class="ms-2">฿@fm.HourlyRate.Value.ToString("N0")/@Localizer["Hour"]</span> }
+                                        }
                                     </div>
                                 </div>
                                 <i class="ti ti-chevron-right text-secondary"></i>
@@ -123,7 +130,14 @@
                 <div class="flex-fill">
                     <div class="fw-bold">@m_selectedFleetModel.DisplayNameWithEngine</div>
                     <div class="text-secondary small">
-                        ฿@m_selectedFleetModel.DailyRate.ToString("N0")/@Localizer["Day"]
+                        @if (m_selectedFleetModel.VehicleType == VehicleType.JetSki)
+                        {
+                            <span>฿@(m_selectedFleetModel.Rate1Hour?.ToString("N0") ?? "0")/@Localizer["Hour"]</span>
+                        }
+                        else
+                        {
+                            <span>฿@m_selectedFleetModel.DailyRate.ToString("N0")/@Localizer["Day"]</span>
+                        }
                         &middot; @Localizer["Deposit"]: ฿@m_selectedFleetModel.DepositAmount.ToString("N0")
                     </div>
                 </div>
