@@ -349,6 +349,7 @@
     private TimeSpan m_startTime = TimeSpan.Zero;
     private Dictionary<int, decimal> m_adjustedPrices = new();
     private decimal m_adjustedHourlyRate;
+    private bool m_previousIsPackageMode;
 
     // Insurance & Accessories
     private List<Insurance> m_insurances = [];
@@ -364,13 +365,51 @@
         this.m_startTime = new TimeSpan(DateTime.Now.Hour, 0, 0);
         this.m_startTimeString = this.m_startTime.ToString(@"hh\:mm");
         this.m_selectedHours = 1;
+        this.m_previousIsPackageMode = this.IsPackageMode;
 
         await Task.WhenAll(
             this.LoadAdjustedPricesAsync(),
             this.LoadInsurancesAsync(),
             this.LoadAccessoriesAsync()
         );
+
+        // Auto-select first package if starting in package mode
+        if (this.IsPackageMode)
+        {
+            this.AutoSelectFirstPackage();
+        }
+
         await this.UpdateConfigAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Detect when switching TO package mode
+        if (this.IsPackageMode && !this.m_previousIsPackageMode)
+        {
+            this.AutoSelectFirstPackage();
+            await this.UpdateConfigAsync();
+        }
+        // Detect when switching FROM package mode to hourly
+        else if (!this.IsPackageMode && this.m_previousIsPackageMode)
+        {
+            this.m_selectedHours = 1;
+            await this.UpdateConfigAsync();
+        }
+
+        this.m_previousIsPackageMode = this.IsPackageMode;
+    }
+
+    private void AutoSelectFirstPackage()
+    {
+        var firstPackage = (this.SelectedVehicle?.HourlyPackages ?? [])
+            .OrderBy(p => p.Hours)
+            .FirstOrDefault();
+
+        if (firstPackage != null)
+        {
+            this.m_selectedHours = firstPackage.Hours;
+        }
     }
 
     private async Task LoadAdjustedPricesAsync()
