@@ -40,7 +40,7 @@ public class RentalConfig
     public decimal GuideTotal => IncludeGuide ? GuideDailyFee * Days : 0;
     public decimal LocationFeesTotal => LocationPricing?.TotalLocationFees ?? 0;
     public decimal TotalAmount => VehicleTotal + InsuranceTotal + AccessoriesTotal + DriverTotal + GuideTotal + LocationFeesTotal;
-    public int Days => Math.Max(1, (int)(EndDate.Date - StartDate.Date).TotalDays);
+    public int Days => Math.Max(1, (int)(EndDate.Date - StartDate.Date).TotalDays + 1);
 
     // Dynamic Pricing
     /// <summary>Whether dynamic pricing was applied.</summary>
