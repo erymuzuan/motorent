@@ -15,7 +15,7 @@
                    step="1"
                    value="@count"
                    disabled="@Disabled"
-                   @oninput="@(e => OnCountChanged(denomination, count))" />
+                   @oninput="@(e => OnCountChanged(denomination, e))" />
             <span class="mr-denomination-subtotal">
                 @if (hasValue)
                 {
@@ -69,9 +69,9 @@
         return $"{symbol}{amount:N0}";
     }
 
-    private async Task OnCountChanged(decimal denomination, int count)
+    private async Task OnCountChanged(decimal denomination, ChangeEventArgs e)
     {
-        if (count >= 0)
+        if (int.TryParse(e.Value?.ToString(), out var count) && count >= 0)
         {
             DenominationCounts[denomination] = count;
         }
