@@ -242,6 +242,11 @@ public partial class Rental : Entity
     public string? VehicleName { get; set; }
 
     /// <summary>
+    /// Vehicle license plate number for search and display.
+    /// </summary>
+    public string? VehicleLicensePlate { get; set; }
+
+    /// <summary>
     /// Name of the shop where rental was initiated.
     /// </summary>
     public string? RentedFromShopName { get; set; }

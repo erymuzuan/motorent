@@ -186,7 +186,8 @@ public partial class RentalService
         using var session = this.Context.OpenSession(username);
 
         rental.VehicleId = vehicle.VehicleId;
-        rental.VehicleName = $"{vehicle.Brand} {vehicle.Model} {vehicle.LicensePlate}";
+        rental.VehicleName = $"{vehicle.Brand} {vehicle.Model}";
+        rental.VehicleLicensePlate = vehicle.LicensePlate;
         session.Attach(rental);
 
         // Update vehicle status

@@ -64,6 +64,7 @@ public partial class RentalService
                 Status = "Active",
                 Notes = request.Notes,
                 VehicleName = $"{vehicle.Brand} {vehicle.Model}",
+                VehicleLicensePlate = vehicle.LicensePlate,
                 // Pick-up location and fees
                 PickupLocationId = request.PickupLocationId,
                 PickupLocationName = request.PickupLocationName,
@@ -220,6 +221,7 @@ public partial class RentalService
             Status = "Active",
             Notes = request.Notes,
             VehicleName = $"{motorbike.Brand} {motorbike.Model}",
+            VehicleLicensePlate = motorbike.LicensePlate,
             PreRentalInspection = request.PreRentalInspection,
             TillSessionId = request.TillSessionId
         };

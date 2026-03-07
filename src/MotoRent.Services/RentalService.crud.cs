@@ -39,7 +39,24 @@ public partial class RentalService
 
         query = query.OrderByDescending(r => r.RentalId);
 
-        return await this.Context.LoadAsync(query, page, pageSize, includeTotalRows: true);
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            return await this.Context.LoadAsync(query, page, pageSize, includeTotalRows: true);
+        }
+
+        // For search term, load more and filter in memory
+        var result = await this.Context.LoadAsync(query, page, pageSize * 2, includeTotalRows: true);
+
+        var term = searchTerm.ToLowerInvariant();
+        result.ItemCollection = result.ItemCollection
+            .Where(r =>
+                (r.RenterName?.ToLowerInvariant().Contains(term) ?? false) ||
+                (r.VehicleName?.ToLowerInvariant().Contains(term) ?? false) ||
+                (r.VehicleLicensePlate?.ToLowerInvariant().Contains(term) ?? false))
+            .Take(pageSize)
+            .ToList();
+
+        return result;
     }
 
     public async Task<Rental?> GetRentalByIdAsync(int rentalId)

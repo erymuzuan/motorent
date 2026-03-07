@@ -7,7 +7,7 @@ public partial class Rental : ISearchable
     int ISearchable.Id => RentalId;
     string ISearchable.Title => $"{RenterName} - {VehicleName}";
     string ISearchable.Status => Status;
-    string ISearchable.Text => string.Join(" ", RenterName, VehicleName,
+    string ISearchable.Text => string.Join(" ", RenterName, VehicleName, VehicleLicensePlate,
         RentedFromShopName, PickupLocationName, DropoffLocationName, Notes);
     string ISearchable.Summary => $"{VehicleName} rented by {RenterName} ({Status})";
     string ISearchable.Type => "Rental";
