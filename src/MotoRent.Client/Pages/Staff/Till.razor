@@ -476,12 +476,24 @@ else
                             <div class="mr-receipt-time">
                                 @this.FormatTime(receipt.IssuedOn)
                             </div>
-                            <button type="button" class="btn btn-sm btn-icon btn-ghost-primary"
-                                    @onclick:stopPropagation="true"
-                                    @onclick="@(() => this.PrintReceiptDialog(receipt))"
-                                    title="@Localizer["Reprint"]">
-                                <i class="ti ti-printer"></i>
-                            </button>
+                            <div class="d-flex gap-1">
+                                @if (receipt.Status != ReceiptStatus.Voided)
+                                {
+                                    <button type="button" class="btn btn-sm btn-icon btn-ghost-danger"
+                                            @onclick:stopPropagation="true"
+                                            @onclick="@(() => this.InitiateVoidReceiptAsync(receipt))"
+                                            title="@Localizer["VoidReceipt"]">
+                                        <i class="ti ti-x"></i>
+                                    </button>
+                                }
+                                <button type="button" class="btn btn-sm btn-icon btn-ghost-primary"
+                                        @onclick:stopPropagation="true"
+                                        @onclick="@(() => this.PrintReceiptDialog(receipt))"
+                                        disabled="@(receipt.Status == ReceiptStatus.Voided)"
+                                        title="@Localizer["Reprint"]">
+                                    <i class="ti ti-printer"></i>
+                                </button>
+                            </div>
                         </div>
                     }
                 }
@@ -999,6 +1011,67 @@ else
                       $"{Localizer["VoidedAt"]}: {txn.VoidedAt?.ToString("yyyy-MM-dd h:mm tt")}";
 
         this.ShowInfo(message);
+    }
+
+    /// <summary>
+    /// Initiates void receipt workflow.
+    /// Shows void dialog with reason entry, then executes void.
+    /// </summary>
+    private async Task InitiateVoidReceiptAsync(Receipt receipt)
+    {
+        // Check if receipt can be voided
+        var (canVoid, reason) = await this.ReceiptService.CanVoidReceiptAsync(receipt.ReceiptId);
+        if (!canVoid)
+        {
+            this.ShowError(reason ?? Localizer["CannotVoidReceipt"]);
+            return;
+        }
+
+        // Show void confirmation dialog with reason entry
+        var voidResult = await this.DialogService.Create<VoidReceiptDialog>(Localizer["VoidReceipt"])
+            .WithParameter(x => x.Receipt, receipt)
+            .WithSize(ModalSize.Small)
+            .ShowDialogAsync();
+
+        if (voidResult is null or { Cancelled: true }) return;
+
+        var voidData = voidResult.Data as VoidReceiptResult;
+        if (voidData == null) return;
+
+        // Execute the void
+        await ExecuteVoidReceiptAsync(receipt.ReceiptId, voidData.Reason);
+    }
+
+    /// <summary>
+    /// Executes the void receipt operation.
+    /// </summary>
+    private async Task ExecuteVoidReceiptAsync(int receiptId, string reason)
+    {
+        this.m_loading = true;
+        this.StateHasChanged();
+
+        try
+        {
+            var result = await this.ReceiptService.VoidReceiptByManagerAsync(
+                receiptId,
+                reason,
+                this.UserName);
+
+            if (result.Success)
+            {
+                this.ShowSuccess(Localizer["ReceiptVoided"]);
+                await this.LoadDataAsync();
+            }
+            else
+            {
+                this.ShowError(result.Errors.FirstOrDefault()?.Message ?? Localizer["VoidFailed"]);
+            }
+        }
+        finally
+        {
+            this.m_loading = false;
+            this.StateHasChanged();
+        }
     }
 
     /// <summary>

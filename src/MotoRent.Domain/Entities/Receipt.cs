@@ -155,6 +155,16 @@ public class Receipt : Entity
     public string? VoidReason { get; set; }
 
     /// <summary>
+    /// Username of the staff who initiated the void
+    /// </summary>
+    public string? VoidedByUserName { get; set; }
+
+    /// <summary>
+    /// Username of the manager who approved the void (must be different from VoidedByUserName)
+    /// </summary>
+    public string? VoidApprovedByUserName { get; set; }
+
+    /// <summary>
     /// Number of times the receipt has been reprinted
     /// </summary>
     public int ReprintCount { get; set; }

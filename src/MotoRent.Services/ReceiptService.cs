@@ -6,10 +6,11 @@ namespace MotoRent.Services;
 /// <summary>
 /// Service for managing receipts (check-in, check-out/settlement, booking deposits).
 /// </summary>
-public class ReceiptService(RentalDataContext context, ShopService shopService)
+public class ReceiptService(RentalDataContext context, ShopService shopService, TillService tillService)
 {
     private RentalDataContext Context { get; } = context;
     private ShopService ShopService { get; } = shopService;
+    private TillService TillService { get; } = tillService;
 
     #region CRUD Operations
 
@@ -496,9 +497,190 @@ public class ReceiptService(RentalDataContext context, ShopService shopService)
     #region Actions
 
     /// <summary>
-    /// Voids a receipt.
+    /// Voids a receipt with manager approval, reversing all till balances.
+    /// Creates compensating TillTransactions to maintain audit trail.
     /// </summary>
-    public async Task<SubmitOperation> VoidReceiptAsync(int receiptId, string reason, string username)
+    /// <param name="receiptId">Receipt to void</param>
+    /// <param name="staffUserName">Staff initiating the void</param>
+    /// <param name="managerUserName">Manager approving the void (must be different from staff)</param>
+    /// <param name="reason">Reason for voiding</param>
+    /// <returns>Submit operation result</returns>
+    public async Task<SubmitOperation> VoidReceiptAsync(
+        int receiptId,
+        string staffUserName,
+        string managerUserName,
+        string reason)
+    {
+        // Prevent self-approval
+        if (staffUserName.Equals(managerUserName, StringComparison.OrdinalIgnoreCase))
+            return SubmitOperation.CreateFailure("Staff cannot approve their own void");
+
+        var receipt = await GetByIdAsync(receiptId);
+        if (receipt == null)
+            return SubmitOperation.CreateFailure("Receipt not found");
+
+        if (receipt.Status == ReceiptStatus.Voided)
+            return SubmitOperation.CreateFailure("Receipt is already voided");
+
+        // Check session is still open (if receipt is linked to a session)
+        TillSession? session = null;
+        if (receipt.TillSessionId.HasValue)
+        {
+            session = await TillService.GetSessionByIdAsync(receipt.TillSessionId.Value);
+            if (session is null)
+                return SubmitOperation.CreateFailure("Till session not found");
+
+            if (session.Status != TillSessionStatus.Open)
+                return SubmitOperation.CreateFailure("Cannot void receipt in a closed session");
+        }
+
+        // Find related TillTransactions to void (only non-voided, cash-in transactions)
+        var transactionsToVoid = new List<TillTransaction>();
+        var compensatingTransactions = new List<TillTransaction>();
+
+        if (receipt.TillSessionId.HasValue)
+        {
+            // Find by RentalId or BookingId depending on receipt type
+            IQueryable<TillTransaction> query;
+            if (receipt.RentalId.HasValue)
+            {
+                query = Context.CreateQuery<TillTransaction>()
+                    .Where(t => t.TillSessionId == receipt.TillSessionId.Value)
+                    .Where(t => t.RentalId == receipt.RentalId.Value)
+                    .Where(t => t.IsVoided == false)
+                    .Where(t => t.Direction == TillTransactionDirection.In);
+            }
+            else if (receipt.BookingId.HasValue)
+            {
+                // For booking deposits, match by booking ID pattern in notes/description
+                query = Context.CreateQuery<TillTransaction>()
+                    .Where(t => t.TillSessionId == receipt.TillSessionId.Value)
+                    .Where(t => t.TransactionType == TillTransactionType.BookingDeposit)
+                    .Where(t => t.IsVoided == false)
+                    .Where(t => t.Direction == TillTransactionDirection.In);
+            }
+            else
+            {
+                query = Context.CreateQuery<TillTransaction>().Where(t => false);
+            }
+
+            var result = await Context.LoadAsync(query, page: 1, size: 100, includeTotalRows: false);
+            transactionsToVoid = result.ItemCollection.ToList();
+
+            // Filter booking deposits to only those matching this receipt's timestamp (within 1 minute)
+            if (receipt.BookingId.HasValue && receipt.ReceiptType == ReceiptTypes.BookingDeposit)
+            {
+                var receiptTime = receipt.IssuedOn;
+                transactionsToVoid = transactionsToVoid
+                    .Where(t => Math.Abs((t.TransactionTime - receiptTime).TotalMinutes) < 1)
+                    .ToList();
+            }
+
+            // Create compensating entries and mark originals as voided
+            foreach (var original in transactionsToVoid)
+            {
+                // Create compensating entry (reverse direction)
+                var compensating = new TillTransaction
+                {
+                    TillSessionId = original.TillSessionId,
+                    TransactionType = TillTransactionType.VoidReversal,
+                    Direction = TillTransactionDirection.Out, // Reverse of In
+                    Amount = original.Amount,
+                    Currency = original.Currency,
+                    ExchangeRate = original.ExchangeRate,
+                    AmountInBaseCurrency = original.AmountInBaseCurrency,
+                    ExchangeRateSource = original.ExchangeRateSource,
+                    ExchangeRateId = original.ExchangeRateId,
+                    Description = $"VOID Receipt {receipt.ReceiptNo}: {original.Description}",
+                    OriginalTransactionId = original.TillTransactionId,
+                    TransactionTime = DateTimeOffset.Now,
+                    RecordedByUserName = staffUserName,
+                    Notes = $"Voided by {managerUserName}: {reason}",
+                    RentalId = original.RentalId
+                };
+                compensatingTransactions.Add(compensating);
+
+                // Mark original as voided
+                original.IsVoided = true;
+                original.VoidedAt = DateTimeOffset.Now;
+                original.VoidedByUserName = staffUserName;
+                original.VoidReason = reason;
+                original.VoidApprovedByUserName = managerUserName;
+
+                // Reverse session balances
+                if (session != null && original.AffectsCash)
+                {
+                    session.TotalCashIn -= original.AmountInBaseCurrency;
+                    if (session.CurrencyBalances.ContainsKey(original.Currency))
+                        session.CurrencyBalances[original.Currency] -= original.Amount;
+                }
+
+                // Handle non-cash payment type totals
+                if (session != null)
+                {
+                    switch (original.TransactionType)
+                    {
+                        case TillTransactionType.CardPayment:
+                            session.TotalCardPayments -= original.AmountInBaseCurrency;
+                            break;
+                        case TillTransactionType.BankTransfer:
+                            session.TotalBankTransfers -= original.AmountInBaseCurrency;
+                            break;
+                        case TillTransactionType.PromptPay:
+                            session.TotalPromptPay -= original.AmountInBaseCurrency;
+                            break;
+                    }
+                }
+            }
+        }
+
+        // Mark receipt as voided
+        receipt.Status = ReceiptStatus.Voided;
+        receipt.VoidedOn = DateTimeOffset.Now;
+        receipt.VoidReason = reason;
+        receipt.VoidedByUserName = staffUserName;
+        receipt.VoidApprovedByUserName = managerUserName;
+
+        // Save all changes atomically
+        using var persistenceSession = Context.OpenSession(staffUserName);
+        persistenceSession.Attach(receipt);
+
+        foreach (var transaction in transactionsToVoid)
+            persistenceSession.Attach(transaction);
+
+        foreach (var compensating in compensatingTransactions)
+            persistenceSession.Attach(compensating);
+
+        if (session != null)
+            persistenceSession.Attach(session);
+
+        var saveResult = await persistenceSession.SubmitChanges("VoidReceipt");
+
+        // Link original transactions to compensating entries (after save to get IDs)
+        if (saveResult.Success && compensatingTransactions.Count > 0)
+        {
+            for (var i = 0; i < transactionsToVoid.Count; i++)
+            {
+                transactionsToVoid[i].RelatedTransactionId = compensatingTransactions[i].TillTransactionId;
+            }
+            using var linkSession = Context.OpenSession(staffUserName);
+            foreach (var transaction in transactionsToVoid)
+                linkSession.Attach(transaction);
+            await linkSession.SubmitChanges("LinkVoidedTransactions");
+        }
+
+        return saveResult;
+    }
+
+    /// <summary>
+    /// Voids a receipt by a manager (no separate approval required).
+    /// Used by finance/admin pages where the user is already a manager.
+    /// Does NOT reverse till balances since this is typically called outside of till context.
+    /// </summary>
+    public async Task<SubmitOperation> VoidReceiptByManagerAsync(
+        int receiptId,
+        string reason,
+        string managerUserName)
     {
         var receipt = await GetByIdAsync(receiptId);
         if (receipt == null)
@@ -510,8 +692,37 @@ public class ReceiptService(RentalDataContext context, ShopService shopService)
         receipt.Status = ReceiptStatus.Voided;
         receipt.VoidedOn = DateTimeOffset.Now;
         receipt.VoidReason = reason;
+        receipt.VoidedByUserName = managerUserName;
+        receipt.VoidApprovedByUserName = managerUserName;
 
-        return await SaveReceiptAsync(receipt, username);
+        return await SaveReceiptAsync(receipt, managerUserName);
+    }
+
+    /// <summary>
+    /// Checks if a receipt can be voided.
+    /// Returns reason if not voidable.
+    /// </summary>
+    public async Task<(bool CanVoid, string? Reason)> CanVoidReceiptAsync(int receiptId)
+    {
+        var receipt = await GetByIdAsync(receiptId);
+        if (receipt is null)
+            return (false, "Receipt not found");
+
+        if (receipt.Status == ReceiptStatus.Voided)
+            return (false, "Already voided");
+
+        // Check if session is still open
+        if (receipt.TillSessionId.HasValue)
+        {
+            var session = await TillService.GetSessionByIdAsync(receipt.TillSessionId.Value);
+            if (session is null)
+                return (false, "Till session not found");
+
+            if (session.Status != TillSessionStatus.Open)
+                return (false, "Session is closed");
+        }
+
+        return (true, null);
     }
 
     /// <summary>
