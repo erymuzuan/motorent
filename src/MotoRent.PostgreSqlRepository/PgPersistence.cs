@@ -255,6 +255,10 @@ public class PgPersistence(
     {
         if (column.SqlType == "jsonb")
             cmd.Parameters.Add(new NpgsqlParameter($"@p{index}", NpgsqlDbType.Jsonb) { Value = parameterValue });
+        else if (column.SqlType == "date" && parameterValue is DateTimeOffset dto)
+            cmd.Parameters.Add(new NpgsqlParameter($"@p{index}", NpgsqlDbType.Date) { Value = DateOnly.FromDateTime(dto.DateTime) });
+        else if (column.SqlType == "date" && parameterValue is string dateStr)
+            cmd.Parameters.Add(new NpgsqlParameter($"@p{index}", NpgsqlDbType.Date) { Value = DateOnly.Parse(dateStr) });
         else
             cmd.Parameters.AddWithValue($"@p{index}", parameterValue);
     }
