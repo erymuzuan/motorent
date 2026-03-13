@@ -33,6 +33,10 @@ public class PricingRule : Entity
     public string? VehicleType { get; set; }                   // "Motorbike", "Car", or null for all
     public int? VehicleId { get; set; }                        // Specific vehicle only
 
+    // Package targeting (optional - when enabled, rule applies only to selected packages)
+    public bool ApplyToPackage { get; set; }                   // Enable package pricing mode
+    public List<PackageTarget> TargetPackages { get; set; } = [];  // Selected packages
+
     // Priority (higher wins on overlap)
     public int Priority { get; set; } = 10;
 
@@ -41,4 +45,13 @@ public class PricingRule : Entity
 
     public override int GetId() => this.PricingRuleId;
     public override void SetId(int value) => this.PricingRuleId = value;
+}
+
+/// <summary>
+/// Identifies a specific package within a FleetModel.
+/// </summary>
+public class PackageTarget
+{
+    public int FleetModelId { get; set; }
+    public string PackageName { get; set; } = string.Empty;
 }

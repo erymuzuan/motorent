@@ -388,7 +388,12 @@ public class RentalPricingService(
         {
             var rentalDate = DateOnly.FromDateTime(startDate.Date);
             var calc = await this.DynamicPricingService.CalculateAdjustedRateAsync(
-                basePrice, rentalDate, vehicle.VehicleType.ToString(), vehicle.VehicleId);
+                basePrice,
+                rentalDate,
+                vehicle.VehicleType.ToString(),
+                vehicle.VehicleId,
+                pricing.IsPackagePrice ? vehicle.FleetModelId : null,
+                pricing.IsPackagePrice ? packagePrice?.Name : null);
 
             pricing.VehicleTotal = calc.AdjustedRate;
             pricing.DynamicPricingApplied = calc.HasAdjustment;

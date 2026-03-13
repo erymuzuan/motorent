@@ -1,4 +1,5 @@
 @using MotoRent.Domain.Entities
+@using MotoRent.Domain.Models
 @inherits LocalizedDialogBase<PricingRule, PricingRuleDialog>
 
 <form id="@FormId" @onsubmit="SaveAsync" @onsubmit:preventDefault>
@@ -160,6 +161,39 @@
 
             <div class="col-12">
                 <label class="form-check form-switch">
+                    <input type="checkbox" class="form-check-input" @bind="Entity.ApplyToPackage"
+                           @bind:after="OnApplyToPackageChanged" />
+                    <span class="form-check-label">@Localizer["ApplyToPackage"]</span>
+                </label>
+                <small class="form-hint">@Localizer["ApplyToPackageHint"]</small>
+            </div>
+
+            @if (Entity.ApplyToPackage)
+            {
+                <div class="col-12">
+                    <label class="form-label required">@Localizer["SelectPackages"]</label>
+                    <div class="d-flex flex-column gap-1" style="max-height: 200px; overflow-y: auto;">
+                        @foreach (var pkg in m_packages)
+                        {
+                            var p = pkg;
+                            var isSelected = IsPackageSelected(p);
+                            <label class="form-check">
+                                <input type="checkbox" class="form-check-input"
+                                       checked="@isSelected"
+                                       @onchange="@(e => TogglePackage(p, (bool)(e.Value ?? false)))" />
+                                <span class="form-check-label">@p.Display</span>
+                            </label>
+                        }
+                    </div>
+                    @if (Entity.TargetPackages.Count == 0)
+                    {
+                        <small class="text-danger">@Localizer["SelectAtLeastOnePackage"]</small>
+                    }
+                </div>
+            }
+
+            <div class="col-12">
+                <label class="form-check form-switch">
                     <input type="checkbox" class="form-check-input" @bind="Entity.IsActive" />
                     <span class="form-check-label">@Localizer["Active"]</span>
                 </label>
@@ -186,8 +220,9 @@
 @code {
     private DateTime m_startDate;
     private DateTime m_endDate;
+    private List<PackageOption> m_packages = [];
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         this.FormValid = true;
         this.m_startDate = Entity.StartDate.ToDateTime(TimeOnly.MinValue);
@@ -200,6 +235,72 @@
         {
             Entity.ApplicableDaysOfWeek.Add(Entity.ApplicableDayOfWeek.Value);
         }
+
+        // Load packages from all active FleetModels
+        await LoadPackagesAsync();
+    }
+
+    private async Task LoadPackagesAsync()
+    {
+        var query = DataContext.CreateQuery<FleetModel>()
+            .Where(m => m.IsActive);
+
+        var result = await DataContext.LoadAsync(query, size: 500);
+
+        foreach (var fm in result.ItemCollection)
+        {
+            foreach (var pkg in fm.HourlyPackages)
+            {
+                m_packages.Add(new PackageOption
+                {
+                    FleetModelId = fm.FleetModelId,
+                    PackageName = pkg.Name,
+                    Display = $"{pkg.Name} ({fm.DisplayNameWithEngine})"
+                });
+            }
+        }
+    }
+
+    private void OnApplyToPackageChanged()
+    {
+        if (!Entity.ApplyToPackage)
+        {
+            // Clear package selection when disabled
+            Entity.TargetPackages.Clear();
+        }
+    }
+
+    private bool IsPackageSelected(PackageOption pkg)
+    {
+        return Entity.TargetPackages.Any(t =>
+            t.FleetModelId == pkg.FleetModelId && t.PackageName == pkg.PackageName);
+    }
+
+    private void TogglePackage(PackageOption pkg, bool selected)
+    {
+        if (selected)
+        {
+            if (!IsPackageSelected(pkg))
+            {
+                Entity.TargetPackages.Add(new PackageTarget
+                {
+                    FleetModelId = pkg.FleetModelId,
+                    PackageName = pkg.PackageName
+                });
+            }
+        }
+        else
+        {
+            Entity.TargetPackages.RemoveAll(t =>
+                t.FleetModelId == pkg.FleetModelId && t.PackageName == pkg.PackageName);
+        }
+    }
+
+    private class PackageOption
+    {
+        public int FleetModelId { get; set; }
+        public string PackageName { get; set; } = "";
+        public string Display { get; set; } = "";
     }
 
     private void OnRuleTypeChanged()
@@ -263,6 +364,19 @@
         {
             Entity.RecurringMonth = Entity.StartDate.Month;
             Entity.RecurringDay = Entity.StartDate.Day;
+        }
+
+        // Validate package selection
+        if (Entity.ApplyToPackage && Entity.TargetPackages.Count == 0)
+        {
+            this.ShowError(Localizer["SelectAtLeastOnePackage"]);
+            return;
+        }
+
+        // Clear packages if not applying to packages
+        if (!Entity.ApplyToPackage)
+        {
+            Entity.TargetPackages.Clear();
         }
 
         this.Saving = true;

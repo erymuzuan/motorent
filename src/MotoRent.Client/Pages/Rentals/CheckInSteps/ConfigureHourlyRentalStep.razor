@@ -427,11 +427,16 @@
             this.SelectedVehicle.HourlyRate ?? 0, rentalDate, vehicleType);
         this.m_adjustedHourlyRate = hourlyCalc.AdjustedRate;
 
-        // Calculate adjusted package prices
+        // Calculate adjusted package prices (pass FleetModelId and PackageName for package-specific rules)
         foreach (var package in this.SelectedVehicle.HourlyPackages ?? [])
         {
             var calc = await this.DynamicPricingService.CalculateAdjustedRateAsync(
-                package.Price, rentalDate, vehicleType);
+                package.Price,
+                rentalDate,
+                vehicleType,
+                this.SelectedVehicle.VehicleId,
+                this.SelectedVehicle.FleetModelId,
+                package.Name);
             this.m_adjustedPrices[package.Hours] = calc.AdjustedRate;
         }
     }
