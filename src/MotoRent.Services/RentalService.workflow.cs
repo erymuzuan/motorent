@@ -383,6 +383,7 @@ public partial class RentalService
             additionalCharges += request.AccessoryMissingCharge;
 
             // 6. Process damage reports
+            var damageReportsWithPhotos = new List<(DamageReport Report, List<string> Paths)>();
             foreach (var damageInfo in request.DamageReports ?? [])
             {
                 var damageReport = new DamageReport
@@ -397,6 +398,9 @@ public partial class RentalService
                 };
                 session.Attach(damageReport);
                 additionalCharges += damageInfo.EstimatedCost;
+
+                if (damageInfo.PhotoPaths is { Count: > 0 })
+                    damageReportsWithPhotos.Add((damageReport, damageInfo.PhotoPaths));
             }
 
             // 7. Update deposit status
@@ -556,6 +560,26 @@ public partial class RentalService
 
             if (result.Success)
             {
+                // 11b. Save damage photos (DamageReportIds are now populated after SubmitChanges)
+                if (damageReportsWithPhotos.Count > 0)
+                {
+                    using var photoSession = this.Context.OpenSession(username);
+                    foreach (var (report, paths) in damageReportsWithPhotos)
+                    {
+                        foreach (var path in paths)
+                        {
+                            photoSession.Attach(new DamagePhoto
+                            {
+                                DamageReportId = report.DamageReportId,
+                                PhotoType = "After",
+                                ImagePath = path,
+                                CapturedOn = DateTimeOffset.Now
+                            });
+                        }
+                    }
+                    await photoSession.SubmitChanges("CheckOut-DamagePhotos");
+                }
+
                 // 12. Make agent commission eligible if this rental is from an agent booking
                 await MakeAgentCommissionEligibleAsync(rental, username);
 

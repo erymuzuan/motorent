@@ -959,6 +959,18 @@
                                                 @FormatDateTime(damage.ReportedOn)
                                             </div>
                                         </div>
+                                        @if (m_damagePhotos.TryGetValue(damage.DamageReportId, out var photos) && photos.Count > 0)
+                                        {
+                                            <div class="d-flex gap-2 mt-2 ms-2">
+                                                @foreach (var photo in photos)
+                                                {
+                                                    <a href="/api/damage-photos/file/@photo.ImagePath" target="_blank" title="@photo.PhotoType">
+                                                        <img src="/api/damage-photos/file/@photo.ImagePath"
+                                                             class="img-thumbnail" style="height: 60px; width: 60px; object-fit: cover;" />
+                                                    </a>
+                                                }
+                                            </div>
+                                        }
                                     </div>
                                 }
                             </div>
@@ -1054,6 +1066,7 @@
     private Shop? m_returnShop;
     private List<Payment> m_payments = [];
     private List<DamageReport> m_damageReports = [];
+    private Dictionary<int, List<DamagePhoto>> m_damagePhotos = new();
     private List<AccessoryWithName> m_accessories = [];
 
     private bool m_isOverdue;
@@ -1127,6 +1140,17 @@
                 .OrderByDescending(d => d.ReportedOn);
             var damagesResult = await DataContext.LoadAsync(damagesQuery, 1, 100, false);
             m_damageReports = damagesResult.ItemCollection.ToList();
+
+            // Load damage photos
+            foreach (var dr in m_damageReports)
+            {
+                var photosResult = await DataContext.LoadAsync(
+                    DataContext.CreateQuery<DamagePhoto>()
+                        .Where(p => p.DamageReportId == dr.DamageReportId),
+                    1, 100, false);
+                if (photosResult.ItemCollection.Any())
+                    m_damagePhotos[dr.DamageReportId] = photosResult.ItemCollection.ToList();
+            }
 
             // Load accessories
             await LoadAccessoriesAsync();
