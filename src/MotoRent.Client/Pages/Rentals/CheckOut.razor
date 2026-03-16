@@ -596,9 +596,12 @@ else
                 this.m_hasMaintenanceWarning = maintenanceSummary.OverallStatus != MaintenanceStatus.Ok;
             }
 
-            // Load dropoff service locations
+            // Load dropoff service locations (use rental's shop if user has no specific shop)
+            var shopId = this.RequestContext.GetShopId();
+            if (shopId == 0)
+                shopId = this.m_rental.RentedFromShopId;
             this.m_dropoffLocations = await this.LocationService.GetActiveLocationsAsync(
-                this.RequestContext.GetShopId(), pickupOnly: null, dropoffOnly: true);
+                shopId, pickupOnly: null, dropoffOnly: true);
 
             // Check if rental already has a dropoff location configured
             if (this.m_rental.DropoffLocationId.HasValue)
