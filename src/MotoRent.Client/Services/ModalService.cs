@@ -4,11 +4,15 @@ namespace MotoRent.Client.Services;
 
 /// <summary>
 /// Service for managing modal dialogs using Tabler CSS modals.
+/// Supports nested (stacked) modals — opening a modal from within another modal
+/// pushes the inner modal on top; closing it reveals the outer modal.
 /// </summary>
 public class ModalService : IModalService
 {
+    private readonly Stack<ModalState> m_modalStack = new();
+
     public event Action? OnChange;
-    public ModalState? CurrentModal { get; private set; }
+    public ModalState? CurrentModal => m_modalStack.Count > 0 ? m_modalStack.Peek() : null;
 
     public Task<ModalResult> ShowAsync<TComponent>(string title, ModalOptions? options = null)
         where TComponent : IComponent
@@ -21,14 +25,14 @@ public class ModalService : IModalService
     {
         var tcs = new TaskCompletionSource<ModalResult>();
 
-        this.CurrentModal = new ModalState
+        m_modalStack.Push(new ModalState
         {
             Title = title,
             ComponentType = typeof(TComponent),
             Parameters = parameters,
             Options = options ?? new ModalOptions(),
             TaskCompletionSource = tcs
-        };
+        });
 
         this.OnChange?.Invoke();
         return tcs.Task;
@@ -38,14 +42,14 @@ public class ModalService : IModalService
     {
         var tcs = new TaskCompletionSource<ModalResult>();
 
-        this.CurrentModal = new ModalState
+        m_modalStack.Push(new ModalState
         {
             Title = title,
             ComponentType = typeof(object), // Placeholder
             ContentFragment = content,
             Options = options ?? new ModalOptions(),
             TaskCompletionSource = tcs
-        };
+        });
 
         this.OnChange?.Invoke();
         return tcs.Task;
@@ -53,10 +57,11 @@ public class ModalService : IModalService
 
     public void Close(ModalResult result)
     {
-        var modal = this.CurrentModal;
-        this.CurrentModal = null;
+        if (m_modalStack.Count == 0) return;
+
+        var modal = m_modalStack.Pop();
         this.OnChange?.Invoke();
 
-        modal?.TaskCompletionSource.TrySetResult(result);
+        modal.TaskCompletionSource.TrySetResult(result);
     }
 }

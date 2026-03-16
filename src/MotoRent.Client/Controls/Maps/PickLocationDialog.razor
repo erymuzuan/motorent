@@ -2,13 +2,6 @@
 @inject GoogleMapJsInterop MapJs
 @implements IAsyncDisposable
 
-@* Google Maps API Script - loads dynamically *@
-@if (!string.IsNullOrEmpty(m_apiKey) && !m_googleMapsLoaded)
-{
-    <script src="https://maps.googleapis.com/maps/api/js?key=@m_apiKey&libraries=places&callback=Function.prototype"
-            async defer @onload="OnGoogleMapsLoaded"></script>
-}
-
 <div class="modal-body p-0" style="height: 450px;">
     @if (!m_googleMapsLoaded)
     {
@@ -91,20 +84,14 @@
     {
         if (firstRender && !string.IsNullOrEmpty(m_apiKey))
         {
-            // Check if Google Maps is already loaded (e.g., from another dialog)
             try
             {
-                m_googleMapsLoaded = await MapJs.IsGoogleMapsLoadedAsync();
+                m_googleMapsLoaded = await MapJs.LoadGoogleMapsApiAsync(m_apiKey);
                 if (m_googleMapsLoaded)
                 {
                     StateHasChanged();
-                    await Task.Yield(); // Allow UI to update
+                    await Task.Yield();
                     await InitializeMapAsync();
-                }
-                else
-                {
-                    // Wait for script to load
-                    await WaitForGoogleMapsAsync();
                 }
             }
             catch
@@ -112,38 +99,6 @@
                 // JS interop may fail during prerender
             }
         }
-    }
-
-    private async Task WaitForGoogleMapsAsync()
-    {
-        // Poll for Google Maps to load (max 10 seconds)
-        for (int i = 0; i < 100; i++)
-        {
-            await Task.Delay(100);
-            try
-            {
-                if (await MapJs.IsGoogleMapsLoadedAsync())
-                {
-                    m_googleMapsLoaded = true;
-                    StateHasChanged();
-                    await Task.Yield();
-                    await InitializeMapAsync();
-                    return;
-                }
-            }
-            catch
-            {
-                // Continue waiting
-            }
-        }
-    }
-
-    private void OnGoogleMapsLoaded()
-    {
-        // Script onload callback
-        m_googleMapsLoaded = true;
-        StateHasChanged();
-        _ = InitializeMapAsync();
     }
 
     private async Task InitializeMapAsync()

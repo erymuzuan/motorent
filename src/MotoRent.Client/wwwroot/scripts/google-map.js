@@ -5,12 +5,61 @@ let map = null;
 let marker = null;
 let markers = [];
 let infoWindows = [];
+let _loadingPromise = null;
 
 /**
  * Check if Google Maps API is loaded
  */
 export function isGoogleMapsLoaded() {
     return typeof google !== 'undefined' && typeof google.maps !== 'undefined';
+}
+
+/**
+ * Load Google Maps API script dynamically (only once)
+ * @param {string} apiKey - Google Maps API key
+ * @returns {Promise<boolean>} true if loaded successfully
+ */
+export function loadGoogleMapsApi(apiKey) {
+    if (isGoogleMapsLoaded()) return Promise.resolve(true);
+    if (_loadingPromise) return _loadingPromise;
+
+    _loadingPromise = new Promise((resolve) => {
+        // Check if script tag already exists
+        const existing = document.querySelector('script[src*="maps.googleapis.com/maps/api/js"]');
+        if (existing) {
+            // Script tag exists but API not ready yet, wait for it
+            const check = setInterval(() => {
+                if (isGoogleMapsLoaded()) {
+                    clearInterval(check);
+                    resolve(true);
+                }
+            }, 100);
+            setTimeout(() => { clearInterval(check); resolve(false); }, 10000);
+            return;
+        }
+
+        const script = document.createElement('script');
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&loading=async`;
+        script.async = true;
+        script.defer = true;
+        script.onload = () => {
+            // Wait briefly for google.maps to initialize
+            const check = setInterval(() => {
+                if (isGoogleMapsLoaded()) {
+                    clearInterval(check);
+                    resolve(true);
+                }
+            }, 50);
+            setTimeout(() => { clearInterval(check); resolve(false); }, 5000);
+        };
+        script.onerror = () => {
+            _loadingPromise = null;
+            resolve(false);
+        };
+        document.head.appendChild(script);
+    });
+
+    return _loadingPromise;
 }
 
 /**

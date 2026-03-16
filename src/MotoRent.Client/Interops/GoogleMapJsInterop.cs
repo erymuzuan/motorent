@@ -28,6 +28,15 @@ public class GoogleMapJsInterop : IAsyncDisposable
     }
 
     /// <summary>
+    /// Load Google Maps API script dynamically (only once, prevents duplicate loading).
+    /// </summary>
+    public async Task<bool> LoadGoogleMapsApiAsync(string apiKey)
+    {
+        var module = await m_moduleTask.Value;
+        return await module.InvokeAsync<bool>("loadGoogleMapsApi", apiKey);
+    }
+
+    /// <summary>
     /// Initialize map picker with optional initial location.
     /// </summary>
     /// <param name="elementId">The DOM element ID for the map container.</param>
