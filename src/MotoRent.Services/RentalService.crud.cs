@@ -24,7 +24,24 @@ public partial class RentalService
 
         if (!string.IsNullOrWhiteSpace(status))
         {
-            query = query.Where(r => r.Status == status);
+            if (status == "Overdue")
+            {
+                var todayStart = DateTimeOffset.Now.Date;
+                query = query.Where(r => r.Status == "Active")
+                             .Where(r => r.ExpectedEndDate < todayStart);
+            }
+            else if (status == "DueToday")
+            {
+                var todayStart = DateTimeOffset.Now.Date;
+                var todayEnd = todayStart.AddDays(1);
+                query = query.Where(r => r.Status == "Active")
+                             .Where(r => r.ExpectedEndDate >= todayStart)
+                             .Where(r => r.ExpectedEndDate < todayEnd);
+            }
+            else
+            {
+                query = query.Where(r => r.Status == status);
+            }
         }
 
         if (fromDate.HasValue)

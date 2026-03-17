@@ -340,10 +340,11 @@
             // Load status counts
             m_statusCounts = await this.RentalService.GetStatusCountsAsync(0);
 
-            // Calculate due today and overdue counts from loaded rentals
-            var today = DateTimeOffset.Now.Date;
-            m_dueTodayCount = m_rentals.Count(r => r.IsDueToday);
-            m_overdueCount = m_rentals.Count(r => r.IsOverdue);
+            // Load overdue and due-today counts from server-side queries
+            var overdueResult = await this.RentalService.GetRentalsAsync(0, "Overdue", null, page: 1, pageSize: 1);
+            var dueTodayResult = await this.RentalService.GetRentalsAsync(0, "DueToday", null, page: 1, pageSize: 1);
+            m_overdueCount = overdueResult.TotalRows;
+            m_dueTodayCount = dueTodayResult.TotalRows;
         }
         finally
         {
