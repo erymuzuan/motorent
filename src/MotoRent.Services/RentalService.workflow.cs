@@ -102,9 +102,10 @@ public partial class RentalService
             using var childSession = this.Context.OpenSession(username);
 
             // 3. Create deposit
-            if (request.DepositAmount > 0)
+            Deposit? deposit = null;
+            if (request.DepositAmount > 0 || request.DepositType == "Passport")
             {
-                var deposit = new Deposit
+                deposit = new Deposit
                 {
                     RentalId = rental.RentalId,
                     DepositType = request.DepositType,
@@ -175,7 +176,13 @@ public partial class RentalService
                 {
                     RentalId = rental.RentalId,
                     PaymentType = "Deposit",
-                    PaymentMethod = request.DepositType == "Cash" ? "Cash" : "Card",
+                    PaymentMethod = request.DepositType switch
+                    {
+                        "Cash" => "Cash",
+                        "CardPreAuth" => "Card",
+                        "Passport" => "Passport",
+                        _ => "Cash"
+                    },
                     Amount = request.DepositAmount,
                     Status = "Completed",
                     TransactionRef = request.TransactionRef,
@@ -189,6 +196,15 @@ public partial class RentalService
 
             if (result.Success)
             {
+                // Link deposit to rental now that DepositId is populated
+                if (deposit != null && deposit.DepositId > 0)
+                {
+                    using var linkSession = this.Context.OpenSession(username);
+                    rental.DepositId = deposit.DepositId;
+                    linkSession.Attach(rental);
+                    await linkSession.SubmitChanges("CheckIn-LinkDeposit");
+                }
+
                 return CheckInResult.CreateSuccess(rental.RentalId);
             }
 

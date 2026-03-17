@@ -96,7 +96,7 @@
                 <label class="form-selectgroup-item">
                     <input type="radio" name="depositType" class="form-selectgroup-input"
                            checked="@(this.DepositInfo.DepositType == "Cash")"
-                           @onchange="@(() => this.DepositInfo.DepositType = "Cash")" />
+                           @onchange="@(() => OnDepositTypeChanged("Cash"))" />
                     <span class="form-selectgroup-label d-flex align-items-center gap-3">
                         <i class="ti ti-cash text-success" style="font-size: 1.5rem;"></i>
                         <span class="d-flex flex-column">
@@ -109,7 +109,7 @@
                 <label class="form-selectgroup-item">
                     <input type="radio" name="depositType" class="form-selectgroup-input"
                            checked="@(this.DepositInfo.DepositType == "CardPreAuth")"
-                           @onchange="@(() => this.DepositInfo.DepositType = "CardPreAuth")" />
+                           @onchange="@(() => OnDepositTypeChanged("CardPreAuth"))" />
                     <span class="form-selectgroup-label d-flex align-items-center gap-3">
                         <i class="ti ti-credit-card text-primary" style="font-size: 1.5rem;"></i>
                         <span class="d-flex flex-column">
@@ -122,7 +122,7 @@
                 <label class="form-selectgroup-item">
                     <input type="radio" name="depositType" class="form-selectgroup-input"
                            checked="@(this.DepositInfo.DepositType == "Passport")"
-                           @onchange="@(() => this.DepositInfo.DepositType = "Passport")" />
+                           @onchange="@(() => OnDepositTypeChanged("Passport"))" />
                     <span class="form-selectgroup-label d-flex align-items-center gap-3">
                         <i class="ti ti-id-badge text-warning" style="font-size: 1.5rem;"></i>
                         <span class="d-flex flex-column">
@@ -255,6 +255,13 @@
     {
         if (this.DepositInfo.Amount == 0)
             this.DepositInfo.Amount = this.RequiredAmount;
+    }
+
+    private void OnDepositTypeChanged(string depositType)
+    {
+        this.DepositInfo.DepositType = depositType;
+        this.DepositInfo.Amount = depositType == "Passport" ? 0 : this.RequiredAmount;
+        this.DepositInfo.IsCollected = false;
     }
 
     private async Task OnIsCollectedChanged(ChangeEventArgs e)
