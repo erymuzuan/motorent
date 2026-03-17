@@ -160,8 +160,12 @@ public class ReceiptService(RentalDataContext context, ShopService shopService, 
             insuranceAmount = insurance.DailyRate * rentalDays;
         }
 
-        // Calculate base rental amount (total minus insurance)
-        var baseRentalAmount = rentalAmount - insuranceAmount;
+        // Calculate driver and guide fees
+        var driverFee = rental.IncludeDriver ? rental.DriverFee : 0;
+        var guideFee = rental.IncludeGuide ? rental.GuideFee : 0;
+
+        // Calculate base rental amount (total minus insurance, driver, guide)
+        var baseRentalAmount = rentalAmount - insuranceAmount - driverFee - guideFee;
 
         receipt.Items.Add(new ReceiptItem
         {
@@ -205,6 +209,42 @@ public class ReceiptService(RentalDataContext context, ShopService shopService, 
                 Quantity = accessory.Quantity * days,
                 UnitPrice = accessory.DailyRate,
                 Amount = accessory.TotalAmount,
+                SortOrder = sortOrder++
+            });
+        }
+
+        // Add driver fee if present
+        if (rental.IncludeDriver && rental.DriverFee > 0)
+        {
+            var driverDailyRate = rentalDays > 0 ? rental.DriverFee / rentalDays : rental.DriverFee;
+            receipt.Items.Add(new ReceiptItem
+            {
+                Category = ReceiptItemCategory.DriverFee,
+                Description = "Driver",
+                Detail = isHourly
+                    ? "Driver service"
+                    : $"{rentalDays} day(s) @ {driverDailyRate:N0}/day",
+                Quantity = isHourly ? 1 : rentalDays,
+                UnitPrice = driverDailyRate,
+                Amount = rental.DriverFee,
+                SortOrder = sortOrder++
+            });
+        }
+
+        // Add guide fee if present
+        if (rental.IncludeGuide && rental.GuideFee > 0)
+        {
+            var guideDailyRate = rentalDays > 0 ? rental.GuideFee / rentalDays : rental.GuideFee;
+            receipt.Items.Add(new ReceiptItem
+            {
+                Category = ReceiptItemCategory.GuideFee,
+                Description = "Tourist Guide",
+                Detail = isHourly
+                    ? "Guide service"
+                    : $"{rentalDays} day(s) @ {guideDailyRate:N0}/day",
+                Quantity = isHourly ? 1 : rentalDays,
+                UnitPrice = guideDailyRate,
+                Amount = rental.GuideFee,
                 SortOrder = sortOrder++
             });
         }
