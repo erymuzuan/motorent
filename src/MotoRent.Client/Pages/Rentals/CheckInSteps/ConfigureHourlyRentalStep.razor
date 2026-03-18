@@ -6,6 +6,10 @@
 @inject DynamicPricingService DynamicPricingService
 @inject InsuranceService InsuranceService
 @inject AccessoryService AccessoryService
+@inject ServiceLocationService LocationService
+@inject RentalPricingService PricingService
+@inject ShopService ShopService
+@inject OperatingHoursService HoursService
 
 <div class="d-flex flex-column gap-4">
     <div>
@@ -267,6 +271,86 @@
                     }
                 </div>
             </div>
+
+            @* Pick-up/Drop-off Location *@
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title mb-3">
+                        <i class="ti ti-map-pin me-2"></i>@Localizer["PickupDropoff"]
+                    </h6>
+
+                    @if (m_loadingLocations)
+                    {
+                        <div class="progress progress-sm">
+                            <div class="progress-bar progress-bar-indeterminate"></div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="row g-3">
+                            @* Pickup Location *@
+                            <div class="col-12">
+                                <label class="form-label">@Localizer["PickupLocation"]</label>
+                                <select class="form-select" @bind="m_pickupLocationId" @bind:after="OnLocationChanged">
+                                    <option value="0">@Localizer["AtShopFree"]</option>
+                                    @foreach (var location in m_pickupLocations)
+                                    {
+                                        <option value="@location.ServiceLocationId">
+                                            @location.Name
+                                            @if (location.PickupFee > 0)
+                                            {
+                                                @($" (+{FormatCurrency(location.PickupFee)})")
+                                            }
+                                        </option>
+                                    }
+                                </select>
+                                @if (m_pickupOutOfHoursBand != null)
+                                {
+                                    <small class="text-warning mt-1 d-block">
+                                        <i class="ti ti-clock-exclamation me-1"></i>
+                                        @m_pickupOutOfHoursBand.BandName: +@FormatCurrency(m_pickupOutOfHoursBand.Fee)
+                                    </small>
+                                }
+                            </div>
+
+                            @* Dropoff Location *@
+                            <div class="col-12 mt-3">
+                                <label class="form-label">@Localizer["DropoffLocationExpected"]</label>
+                                <select class="form-select" @bind="m_dropoffLocationId" @bind:after="OnLocationChanged">
+                                    <option value="0">@Localizer["AtShopFree"]</option>
+                                    @foreach (var location in m_dropoffLocations)
+                                    {
+                                        <option value="@location.ServiceLocationId">
+                                            @location.Name
+                                            @if (location.DropoffFee > 0)
+                                            {
+                                                @($" (+{FormatCurrency(location.DropoffFee)})")
+                                            }
+                                        </option>
+                                    }
+                                </select>
+                                @if (m_dropoffOutOfHoursBand != null)
+                                {
+                                    <small class="text-warning mt-1 d-block">
+                                        <i class="ti ti-clock-exclamation me-1"></i>
+                                        @m_dropoffOutOfHoursBand.BandName: +@FormatCurrency(m_dropoffOutOfHoursBand.Fee)
+                                    </small>
+                                }
+                            </div>
+                        </div>
+
+                        @if (this.Config.LocationPricing?.HasAnyFees == true)
+                        {
+                            <div class="alert alert-info mt-3 mb-0 py-2">
+                                <small>
+                                    <i class="ti ti-info-circle me-1"></i>
+                                    @Localizer["LocationTimingFees"]: <strong>@FormatCurrency(this.Config.LocationFeesTotal)</strong>
+                                </small>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
         </div>
 
         <div class="col-12 col-md-4">
@@ -303,6 +387,38 @@
                                     <span>@accessory.Name x@acc.Quantity</span>
                                     <span>@FormatCurrency(accessory.DailyRate * acc.Quantity)</span>
                                 </div>
+                            }
+
+                            @if (this.Config.LocationPricing?.HasAnyFees == true)
+                            {
+                                @if (this.Config.LocationPricing.PickupLocationFee > 0)
+                                {
+                                    <div class="d-flex justify-content-between text-secondary">
+                                        <span><i class="ti ti-map-pin me-1"></i>@this.Config.LocationPricing.PickupLocationName</span>
+                                        <span>@FormatCurrency(this.Config.LocationPricing.PickupLocationFee)</span>
+                                    </div>
+                                }
+                                @if (this.Config.LocationPricing.DropoffLocationFee > 0)
+                                {
+                                    <div class="d-flex justify-content-between text-secondary">
+                                        <span><i class="ti ti-map-pin me-1"></i>@this.Config.LocationPricing.DropoffLocationName</span>
+                                        <span>@FormatCurrency(this.Config.LocationPricing.DropoffLocationFee)</span>
+                                    </div>
+                                }
+                                @if (this.Config.LocationPricing.IsOutOfHoursPickup)
+                                {
+                                    <div class="d-flex justify-content-between text-warning">
+                                        <span><i class="ti ti-clock me-1"></i>@this.Config.LocationPricing.OutOfHoursPickupBand</span>
+                                        <span>@FormatCurrency(this.Config.LocationPricing.OutOfHoursPickupFee)</span>
+                                    </div>
+                                }
+                                @if (this.Config.LocationPricing.IsOutOfHoursDropoff)
+                                {
+                                    <div class="d-flex justify-content-between text-warning">
+                                        <span><i class="ti ti-clock me-1"></i>@this.Config.LocationPricing.OutOfHoursDropoffBand</span>
+                                        <span>@FormatCurrency(this.Config.LocationPricing.OutOfHoursDropoffFee)</span>
+                                    </div>
+                                }
                             }
 
                             <hr class="my-2">
@@ -359,6 +475,16 @@
     private bool m_loadingAccessories;
     private int? m_selectedInsuranceId;
 
+    // Location
+    private List<ServiceLocation> m_pickupLocations = [];
+    private List<ServiceLocation> m_dropoffLocations = [];
+    private int m_pickupLocationId;
+    private int m_dropoffLocationId;
+    private bool m_loadingLocations;
+    private OutOfHoursResult? m_pickupOutOfHoursBand;
+    private OutOfHoursResult? m_dropoffOutOfHoursBand;
+    private Shop? m_shop;
+
     protected override async Task OnInitializedAsync()
     {
         this.m_startDate = DateTime.Today;
@@ -370,7 +496,8 @@
         await Task.WhenAll(
             this.LoadAdjustedPricesAsync(),
             this.LoadInsurancesAsync(),
-            this.LoadAccessoriesAsync()
+            this.LoadAccessoriesAsync(),
+            this.LoadLocationsAsync()
         );
 
         // Auto-select first package if starting in package mode
@@ -513,6 +640,9 @@
             .Where(a => !a.Accessory.IsIncluded)
             .Sum(a => a.Accessory.DailyRate * a.Quantity);
 
+        // Calculate location and out-of-hours pricing
+        await this.CalculateLocationPricingAsync();
+
         await this.ConfigChanged.InvokeAsync(this.Config);
     }
 
@@ -595,6 +725,72 @@
     }
 
     private void UpdateConfig() => _ = this.UpdateConfigAsync();
+
+    private async Task LoadLocationsAsync()
+    {
+        this.m_loadingLocations = true;
+        try
+        {
+            this.m_shop = await this.ShopService.GetShopByIdAsync(this.RequestContext.GetShopId());
+            this.m_pickupLocations = await this.LocationService.GetActiveLocationsAsync(
+                this.RequestContext.GetShopId(), pickupOnly: true, dropoffOnly: null);
+            this.m_dropoffLocations = await this.LocationService.GetActiveLocationsAsync(
+                this.RequestContext.GetShopId(), pickupOnly: null, dropoffOnly: true);
+        }
+        finally
+        {
+            this.m_loadingLocations = false;
+        }
+    }
+
+    private async Task OnLocationChanged()
+    {
+        this.Config.PickupLocationId = this.m_pickupLocationId > 0 ? this.m_pickupLocationId : null;
+        this.Config.PickupLocation = this.m_pickupLocations.FirstOrDefault(l => l.ServiceLocationId == this.m_pickupLocationId);
+        this.Config.DropoffLocationId = this.m_dropoffLocationId > 0 ? this.m_dropoffLocationId : null;
+        this.Config.DropoffLocation = this.m_dropoffLocations.FirstOrDefault(l => l.ServiceLocationId == this.m_dropoffLocationId);
+        await this.UpdateConfigAsync();
+    }
+
+    private async Task CalculateLocationPricingAsync()
+    {
+        if (!this.m_startDate.HasValue) return;
+
+        var startDateTime = this.m_startDate.Value.Date + this.m_startTime;
+        var endDateTime = startDateTime.AddHours(this.m_selectedHours);
+
+        var pickupDateTimeOffset = new DateTimeOffset(
+            DateTime.SpecifyKind(startDateTime, DateTimeKind.Utc), TimeSpan.Zero);
+        var dropoffDateTimeOffset = new DateTimeOffset(
+            DateTime.SpecifyKind(endDateTime, DateTimeKind.Utc), TimeSpan.Zero);
+
+        this.Config.LocationPricing = await this.PricingService.CalculateLocationPricingAsync(
+            this.RequestContext.GetShopId(),
+            pickupDateTimeOffset,
+            dropoffDateTimeOffset,
+            this.Config.PickupLocation,
+            this.Config.DropoffLocation);
+
+        await this.UpdateOutOfHoursBandsAsync();
+    }
+
+    private async Task UpdateOutOfHoursBandsAsync()
+    {
+        if (!this.m_startDate.HasValue) return;
+
+        var startDateTime = this.m_startDate.Value.Date + this.m_startTime;
+        var endDateTime = startDateTime.AddHours(this.m_selectedHours);
+
+        var pickupDto = new DateTimeOffset(
+            DateTime.SpecifyKind(startDateTime, DateTimeKind.Utc), TimeSpan.Zero);
+        this.m_pickupOutOfHoursBand = await this.HoursService.GetOutOfHoursFeeAsync(
+            this.RequestContext.GetShopId(), pickupDto);
+
+        var dropoffDto = new DateTimeOffset(
+            DateTime.SpecifyKind(endDateTime, DateTimeKind.Utc), TimeSpan.Zero);
+        this.m_dropoffOutOfHoursBand = await this.HoursService.GetOutOfHoursFeeAsync(
+            this.RequestContext.GetShopId(), dropoffDto);
+    }
 
     private class AccessorySelectionModel
     {
