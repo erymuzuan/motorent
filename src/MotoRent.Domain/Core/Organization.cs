@@ -34,7 +34,7 @@ public class Organization : Entity
     /// <summary>
     /// Language/locale code (default: th-TH for Thailand).
     /// </summary>
-    public string Language { get; set; } = "th-TH";
+    public string Language { get; set; } = MotoConfig.CountryDefaults.DefaultCulture;
 
     /// <summary>
     /// First day of the week for calendar displays.

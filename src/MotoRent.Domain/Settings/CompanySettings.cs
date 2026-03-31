@@ -14,4 +14,8 @@ public class CompanySettings
     public string? Phone { get; set; }
     public string? Address { get; set; }
     public string? Website { get; set; }
+    public string? SupportEmail { get; set; }
+    public string? DocsUrl { get; set; }
+
+    public string GetSupportEmail() => SupportEmail ?? Email ?? "";
 }

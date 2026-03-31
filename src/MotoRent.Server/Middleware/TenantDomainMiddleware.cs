@@ -1,3 +1,4 @@
+using MotoRent.Domain.Core;
 using MotoRent.Domain.Tourist;
 using MotoRent.Services.Tourist;
 
@@ -23,17 +24,12 @@ public class TenantDomainMiddleware
     private static readonly HashSet<string> s_systemDomains = new(StringComparer.OrdinalIgnoreCase)
     {
         "localhost",
-        "motorent.co.th",
-        "www.motorent.co.th",
-        "motorent.th",
-        "www.motorent.th",
-        "motorent.com",
-        "www.motorent.com"
+        MotoConfig.BaseDomain,
+        $"www.{MotoConfig.BaseDomain}"
     };
 
-    // Base domain for subdomain pattern
-    private const string c_baseDomain = ".motorent.co.th";
-    private const string c_baseThDomain = ".motorent.th";
+    // Base domain for subdomain pattern (derived from config)
+    private static readonly string s_baseDomain = $".{MotoConfig.BaseDomain}";
 
     public TenantDomainMiddleware(
         RequestDelegate next,
@@ -126,15 +122,10 @@ public class TenantDomainMiddleware
     {
         subdomain = "";
 
-        // Check for .motorent.co.th pattern
-        if (host.EndsWith(c_baseDomain, StringComparison.OrdinalIgnoreCase))
+        // Check for .{baseDomain} pattern
+        if (host.EndsWith(s_baseDomain, StringComparison.OrdinalIgnoreCase))
         {
-            subdomain = host[..^c_baseDomain.Length];
-        }
-        // Check for .motorent.th pattern
-        else if (host.EndsWith(c_baseThDomain, StringComparison.OrdinalIgnoreCase))
-        {
-            subdomain = host[..^c_baseThDomain.Length];
+            subdomain = host[..^s_baseDomain.Length];
         }
 
         // Skip "www" subdomain

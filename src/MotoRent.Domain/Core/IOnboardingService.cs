@@ -27,7 +27,7 @@ public class OnboardingRequest
     public string ShopName { get; set; } = "";
     public string Location { get; set; } = "";
     public string Phone { get; set; } = "";
-    public string PreferredLanguage { get; set; } = "th-TH";
+    public string PreferredLanguage { get; set; } = MotoConfig.CountryDefaults.DefaultCulture;
     
     public List<InitialFleetDto> Fleet { get; set; } = [];
     public SubscriptionPlan Plan { get; set; } = SubscriptionPlan.Pro;
