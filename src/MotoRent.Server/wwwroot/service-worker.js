@@ -1,5 +1,5 @@
-// MotoRent Service Worker v1.0.0
-const CACHE_NAME = 'app-cache-v1';
+// MotoRent Service Worker v1.0.1
+const CACHE_NAME = 'motorent-cache-v2';
 const OFFLINE_URL = '/offline.html';
 
 // Assets to cache on install
@@ -14,7 +14,7 @@ const STATIC_ASSETS = [
     '/lib/tabler-icons/tabler-icons.min.css',
     '/lib/tabler-1.4.0/js/tabler.min.js',
     '/MotoRent.Server.styles.css',
-    'https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap',
+    'https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap',
     'https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap'
 ];
 

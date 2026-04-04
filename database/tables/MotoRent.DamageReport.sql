@@ -1,22 +1,23 @@
 -- DamageReport table
-CREATE TABLE [<schema>].[DamageReport]
+CREATE TABLE "DamageReport"
 (
-    [DamageReportId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
-    -- Computed columns
-    [RentalId] AS CAST(JSON_VALUE([Json], '$.RentalId') AS INT),
-    [MotorbikeId] AS CAST(JSON_VALUE([Json], '$.MotorbikeId') AS INT),
-    [Severity] AS CAST(JSON_VALUE([Json], '$.Severity') AS NVARCHAR(20)),
-    [Status] AS CAST(JSON_VALUE([Json], '$.Status') AS NVARCHAR(20)),
-    -- DATETIMEOFFSET column (stored, not computed)
-    [ReportedOn] DATETIMEOFFSET NULL,
-    -- JSON storage
-    [Json] NVARCHAR(MAX) NOT NULL,
-    -- Audit columns
-    [CreatedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
-    [ChangedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
-    [CreatedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
-    [ChangedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
-)
+    "DamageReportId" INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "RentalId" INT GENERATED ALWAYS AS (("Json"->>'RentalId')::INT) STORED,
+    "MotorbikeId" INT GENERATED ALWAYS AS (("Json"->>'MotorbikeId')::INT) STORED,
+    "Severity" VARCHAR(20) GENERATED ALWAYS AS (("Json"->>'Severity')::VARCHAR(20)) STORED,
+    "Status" VARCHAR(20) GENERATED ALWAYS AS (("Json"->>'Status')::VARCHAR(20)) STORED,
+    "EstimatedCost" NUMERIC GENERATED ALWAYS AS (("Json"->>'EstimatedCost')::NUMERIC) STORED,
+    "ReportedOn" TIMESTAMPTZ NULL,
+    "Json" JSONB NOT NULL,
+    "tenant_id" VARCHAR(50) NOT NULL DEFAULT current_setting('app.current_tenant'),
+    "CreatedBy" VARCHAR(50) NOT NULL DEFAULT 'system',
+    "ChangedBy" VARCHAR(50) NOT NULL DEFAULT 'system',
+    "CreatedTimestamp" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "ChangedTimestamp" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE "DamageReport" ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation_damagereport ON "DamageReport" USING ("tenant_id" = current_setting('app.current_tenant'));
 
-CREATE INDEX IX_DamageReport_RentalId ON [<schema>].[DamageReport]([RentalId])
-CREATE INDEX IX_DamageReport_MotorbikeId ON [<schema>].[DamageReport]([MotorbikeId])
+CREATE INDEX IX_DamageReport_RentalId ON "DamageReport"("RentalId");
+CREATE INDEX IX_DamageReport_MotorbikeId ON "DamageReport"("MotorbikeId");
+CREATE INDEX IX_DamageReport_TenantId ON "DamageReport"("tenant_id");

@@ -1,26 +1,26 @@
--- PricingRule table - Dynamic pricing rules for seasonal and event-based pricing (organization-wide)
-CREATE TABLE [<schema>].[PricingRule]
+-- PricingRule table - Dynamic pricing rules (organization-wide)
+CREATE TABLE "PricingRule"
 (
-    [PricingRuleId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
-    -- Computed columns for querying
-    [Name] AS CAST(JSON_VALUE([Json], '$.Name') AS NVARCHAR(100)),
-    [RuleType] AS CAST(JSON_VALUE([Json], '$.RuleType') AS NVARCHAR(20)),
-    [StartDate] DATE NULL,
-    [EndDate] DATE NULL,
-    [IsRecurring] AS CAST(JSON_VALUE([Json], '$.IsRecurring') AS BIT),
-    [Multiplier] AS CAST(JSON_VALUE([Json], '$.Multiplier') AS DECIMAL(5,2)),
-    [Priority] AS CAST(JSON_VALUE([Json], '$.Priority') AS INT),
-    [IsActive] AS CAST(JSON_VALUE([Json], '$.IsActive') AS BIT),
-    [VehicleType] AS CAST(JSON_VALUE([Json], '$.VehicleType') AS NVARCHAR(20)),
-    [VehicleId] AS CAST(JSON_VALUE([Json], '$.VehicleId') AS INT),
-    -- JSON storage
-    [Json] NVARCHAR(MAX) NOT NULL,
-    -- Audit columns
-    [CreatedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
-    [ChangedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
-    [CreatedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
-    [ChangedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
-)
+    "PricingRuleId" INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "Name" VARCHAR(100) GENERATED ALWAYS AS (("Json"->>'Name')::VARCHAR(100)) STORED,
+    "RuleType" VARCHAR(20) GENERATED ALWAYS AS (("Json"->>'RuleType')::VARCHAR(20)) STORED,
+    "StartDate" DATE GENERATED ALWAYS AS (immutable_text_to_date("Json"->>'StartDate')) STORED,
+    "EndDate" DATE GENERATED ALWAYS AS (immutable_text_to_date("Json"->>'EndDate')) STORED,
+    "IsRecurring" BOOLEAN GENERATED ALWAYS AS (("Json"->>'IsRecurring')::BOOLEAN) STORED,
+    "Multiplier" NUMERIC(5,2) GENERATED ALWAYS AS (("Json"->>'Multiplier')::NUMERIC(5,2)) STORED,
+    "Priority" INT GENERATED ALWAYS AS (("Json"->>'Priority')::INT) STORED,
+    "IsActive" BOOLEAN GENERATED ALWAYS AS (("Json"->>'IsActive')::BOOLEAN) STORED,
+    "VehicleType" VARCHAR(20) GENERATED ALWAYS AS (("Json"->>'VehicleType')::VARCHAR(20)) STORED,
+    "VehicleId" INT GENERATED ALWAYS AS (("Json"->>'VehicleId')::INT) STORED,
+    "Json" JSONB NOT NULL,
+    "tenant_id" VARCHAR(50) NOT NULL DEFAULT current_setting('app.current_tenant'),
+    "CreatedBy" VARCHAR(50) NOT NULL DEFAULT 'system',
+    "ChangedBy" VARCHAR(50) NOT NULL DEFAULT 'system',
+    "CreatedTimestamp" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "ChangedTimestamp" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE "PricingRule" ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation_pricingrule ON "PricingRule" USING ("tenant_id" = current_setting('app.current_tenant'));
 
--- Index for querying active rules by date range
-CREATE INDEX IX_PricingRule_DateRange ON [<schema>].[PricingRule]([StartDate], [EndDate], [IsActive])
+CREATE INDEX IX_PricingRule_DateRange ON "PricingRule"("StartDate", "EndDate", "IsActive");
+CREATE INDEX IX_PricingRule_TenantId ON "PricingRule"("tenant_id");

@@ -1,20 +1,21 @@
 -- Motorbike table (organization-wide)
-CREATE TABLE [<schema>].[Motorbike]
+CREATE TABLE "Motorbike"
 (
-    [MotorbikeId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
-    -- Computed columns for querying
-    [LicensePlate] AS CAST(JSON_VALUE([Json], '$.LicensePlate') AS NVARCHAR(20)),
-    [Brand] AS CAST(JSON_VALUE([Json], '$.Brand') AS NVARCHAR(50)),
-    [Model] AS CAST(JSON_VALUE([Json], '$.Model') AS NVARCHAR(50)),
-    [Status] AS CAST(JSON_VALUE([Json], '$.Status') AS NVARCHAR(20)),
-    [DailyRate] AS CAST(JSON_VALUE([Json], '$.DailyRate') AS DECIMAL(10,2)),
-    -- JSON storage
-    [Json] NVARCHAR(MAX) NOT NULL,
-    -- Audit columns
-    [CreatedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
-    [ChangedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
-    [CreatedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
-    [ChangedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
-)
+    "MotorbikeId" INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "LicensePlate" VARCHAR(20) GENERATED ALWAYS AS (("Json"->>'LicensePlate')::VARCHAR(20)) STORED,
+    "Brand" VARCHAR(50) GENERATED ALWAYS AS (("Json"->>'Brand')::VARCHAR(50)) STORED,
+    "Model" VARCHAR(50) GENERATED ALWAYS AS (("Json"->>'Model')::VARCHAR(50)) STORED,
+    "Status" VARCHAR(20) GENERATED ALWAYS AS (("Json"->>'Status')::VARCHAR(20)) STORED,
+    "DailyRate" NUMERIC(10,2) GENERATED ALWAYS AS (("Json"->>'DailyRate')::NUMERIC(10,2)) STORED,
+    "Json" JSONB NOT NULL,
+    "tenant_id" VARCHAR(50) NOT NULL DEFAULT current_setting('app.current_tenant'),
+    "CreatedBy" VARCHAR(50) NOT NULL DEFAULT 'system',
+    "ChangedBy" VARCHAR(50) NOT NULL DEFAULT 'system',
+    "CreatedTimestamp" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "ChangedTimestamp" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE "Motorbike" ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation_motorbike ON "Motorbike" USING ("tenant_id" = current_setting('app.current_tenant'));
 
-CREATE INDEX IX_Motorbike_Status ON [<schema>].[Motorbike]([Status])
+CREATE INDEX IX_Motorbike_Status ON "Motorbike"("Status");
+CREATE INDEX IX_Motorbike_TenantId ON "Motorbike"("tenant_id");

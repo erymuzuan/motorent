@@ -5,9 +5,12 @@
 @using MotoRent.Domain.Core
 @using MotoRent.Domain.DataContext
 @using MotoRent.Domain.Storage
+@using MotoRent.Client.Services
 @inject IRequestContext RequestContext
 @inject CoreDataContext CoreContext
 @inject IBinaryStore BinaryStore
+@inject IJSRuntime JsRuntime
+@inject ToastService ToastService
 
 <button class="navbar-toggler" type="button" @onclick="OnToggle"
         aria-expanded="false" aria-label="Toggle navigation">
@@ -23,7 +26,16 @@
         {
             <img src="images/icons/ios/40.png" alt="@m_orgName" height="32" class="me-2" />
         }
-        <span class="fw-bold text-white">@m_orgName</span>
+        @if (IsSuperAdmin)
+        {
+            <span class="fw-bold text-white" style="cursor: pointer;"
+                  @onclick="CopyAccountNo" @onclick:stopPropagation @onclick:preventDefault
+                  title="Click to copy Account No">@m_orgName</span>
+        }
+        else
+        {
+            <span class="fw-bold text-white">@m_orgName</span>
+        }
     </a>
 </h1>
 
@@ -45,6 +57,12 @@
     /// </summary>
     [Parameter]
     public string DefaultName { get; set; } = MotoConfig.ApplicationName;
+
+    /// <summary>
+    /// Whether the current user is a SuperAdmin (enables click-to-copy AccountNo).
+    /// </summary>
+    [Parameter]
+    public bool IsSuperAdmin { get; set; }
 
     private string? m_logoUrl;
     private string m_orgName = "";
@@ -77,6 +95,16 @@
         catch
         {
             // Silently fail - show default branding
+        }
+    }
+
+    private async Task CopyAccountNo()
+    {
+        var accountNo = RequestContext.GetAccountNo();
+        if (!string.IsNullOrEmpty(accountNo))
+        {
+            await JsRuntime.InvokeVoidAsync("navigator.clipboard.writeText", accountNo);
+            ToastService.ShowSuccess($"Copied: {accountNo}");
         }
     }
 }

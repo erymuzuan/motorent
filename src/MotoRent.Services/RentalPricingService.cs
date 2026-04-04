@@ -79,7 +79,7 @@ public class RentalPricingService(
         }
         else if (durationType == RentalDurationType.Hourly)
         {
-            CalculateHourlyPricing(pricing, vehicle, startDate, endDate, includeDriver, includeGuide, insurance, accessories);
+            await CalculateHourlyPricingAsync(pricing, vehicle, startDate, endDate, includeDriver, includeGuide, insurance, accessories);
         }
         else // FixedInterval
         {
@@ -303,6 +303,7 @@ public class RentalPricingService(
         var packagePrice = vehicle.HourlyPackages?.FirstOrDefault(p => p.Hours == hours);
         if (packagePrice != null)
         {
+            // Use base package price (dynamic pricing adjustments applied via Pricing Rules)
             pricing.RentalRate = packagePrice.Price;
             pricing.VehicleTotal = packagePrice.Price;
             pricing.IsPackagePrice = true;
@@ -311,6 +312,112 @@ public class RentalPricingService(
         {
             pricing.RentalRate = vehicle.HourlyRate ?? 0;
             pricing.VehicleTotal = pricing.RentalRate * hours;
+        }
+
+        // Driver fee (prorated from daily)
+        if (includeDriver && vehicle.DriverDailyFee.HasValue && vehicle.DriverDailyFee > 0)
+        {
+            pricing.DriverFee = Math.Ceiling(vehicle.DriverDailyFee.Value / 8 * hours);
+            pricing.IncludeDriver = true;
+        }
+
+        // Guide fee (prorated from daily)
+        if (includeGuide && vehicle.GuideDailyFee.HasValue && vehicle.GuideDailyFee > 0)
+        {
+            pricing.GuideFee = Math.Ceiling(vehicle.GuideDailyFee.Value / 8 * hours);
+            pricing.IncludeGuide = true;
+        }
+
+        // Insurance (prorated from daily)
+        if (insurance != null)
+        {
+            pricing.InsuranceTotal = Math.Ceiling(insurance.DailyRate / 8 * hours);
+            pricing.InsuranceName = insurance.Name;
+        }
+
+        // Accessories (prorated from daily)
+        if (accessories != null && accessories.Count > 0)
+        {
+            pricing.AccessoriesTotal = accessories
+                .Where(a => !a.Accessory.IsIncluded)
+                .Sum(a => Math.Ceiling(a.Accessory.DailyRate / 8 * a.Quantity * hours));
+        }
+
+        pricing.SubTotal = pricing.VehicleTotal + pricing.InsuranceTotal +
+                           pricing.AccessoriesTotal + pricing.DriverFee + pricing.GuideFee;
+        pricing.DepositAmount = vehicle.DepositAmount;
+        pricing.Total = pricing.SubTotal;
+    }
+
+    /// <summary>
+    /// Calculates pricing for hourly rentals with dynamic pricing adjustments.
+    /// </summary>
+    private async Task CalculateHourlyPricingAsync(
+        RentalPricing pricing,
+        Vehicle vehicle,
+        DateTimeOffset startDate,
+        DateTimeOffset endDate,
+        bool includeDriver,
+        bool includeGuide,
+        Insurance? insurance,
+        List<AccessoryWithQuantity>? accessories)
+    {
+        int hours = Math.Max(1, (int)Math.Ceiling((endDate - startDate).TotalHours));
+        pricing.RentalHours = hours;
+        pricing.RentalDays = 0;
+
+        // Check for package price first, otherwise use hourly rate
+        var packagePrice = vehicle.HourlyPackages?.FirstOrDefault(p => p.Hours == hours);
+        decimal basePrice;
+
+        if (packagePrice != null)
+        {
+            basePrice = packagePrice.Price;
+            pricing.IsPackagePrice = true;
+        }
+        else
+        {
+            basePrice = (vehicle.HourlyRate ?? 0) * hours;
+        }
+
+        pricing.RentalRate = packagePrice?.Price ?? vehicle.HourlyRate ?? 0;
+        pricing.BaseVehicleTotal = basePrice;
+
+        // Apply dynamic pricing if available
+        if (this.DynamicPricingService != null)
+        {
+            var rentalDate = DateOnly.FromDateTime(startDate.Date);
+            var calc = await this.DynamicPricingService.CalculateAdjustedRateAsync(
+                basePrice,
+                rentalDate,
+                vehicle.VehicleType.ToString(),
+                vehicle.VehicleId,
+                pricing.IsPackagePrice ? vehicle.FleetModelId : null,
+                pricing.IsPackagePrice ? packagePrice?.Name : null);
+
+            pricing.VehicleTotal = calc.AdjustedRate;
+            pricing.DynamicPricingApplied = calc.HasAdjustment;
+
+            if (calc.HasAdjustment)
+            {
+                pricing.AverageMultiplier = calc.Multiplier;
+                pricing.AppliedRuleSummary = calc.AppliedRuleName;
+                pricing.DayBreakdown =
+                [
+                    new DayPricing
+                    {
+                        Date = rentalDate,
+                        BaseRate = calc.BaseRate,
+                        AdjustedRate = calc.AdjustedRate,
+                        Multiplier = calc.Multiplier,
+                        RuleName = calc.AppliedRuleName
+                    }
+                ];
+            }
+        }
+        else
+        {
+            pricing.VehicleTotal = basePrice;
         }
 
         // Driver fee (prorated from daily)

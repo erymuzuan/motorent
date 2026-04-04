@@ -4,6 +4,7 @@
 @using MotoRent.Domain.Entities
 @using MotoRent.Domain.Models
 @using MotoRent.Services
+@using MotoRent.Domain.Storage
 @attribute [Authorize(Policy = "RequireTenantStaff")]
 @inherits LocalizedComponentBase<CreateBooking>
 @inject BookingService BookingService
@@ -13,6 +14,8 @@
 @inject InsuranceService InsuranceService
 @inject AccessoryService AccessoryService
 @inject AgentService AgentService
+@inject FleetModelImageService FleetModelImageService
+@inject IBinaryStore BinaryStore
 
 <MotoRentPageTitle>@Localizer["PageTitle"]</MotoRentPageTitle>
 
@@ -153,12 +156,75 @@
                 @if (m_linkedRenter == null)
                 {
                     <div class="mt-3 p-3 rounded" style="background: var(--mr-surface-secondary);">
-                        <div class="d-flex align-items-center justify-content-between">
-                            <span class="text-muted">@Localizer["LinkExistingRenter"]</span>
-                            <button type="button" class="btn btn-sm btn-outline-primary" @onclick="SearchRenters">
-                                <i class="ti ti-search"></i> @Localizer["Search"]
-                            </button>
+                        <label class="form-label mb-2">@Localizer["LinkExistingRenter"]</label>
+                        <div class="mr-search-box" style="max-width: 100%;">
+                            <i class="ti ti-search"></i>
+                            <input type="text" placeholder="@Localizer["SearchRenterPlaceholder"]"
+                                   @bind="m_renterSearchTerm" @bind:event="oninput" @onkeyup="OnRenterSearchKeyup" />
                         </div>
+                        @if (m_showRenterSearchResults && m_renterSearchResults.Count > 0)
+                        {
+                            <div class="mr-card mt-2" style="max-height: 200px; overflow-y: auto;">
+                                @foreach (var renter in m_renterSearchResults)
+                                {
+                                    <div class="d-flex align-items-center gap-3 p-2 border-bottom" style="cursor: pointer; border-color: var(--mr-border-light) !important;"
+                                         @onclick="@(() => SelectRenter(renter))">
+                                        <span class="avatar avatar-sm" style="background: var(--mr-accent-gradient); color: white;">
+                                            @renter.FullName?.FirstOrDefault()
+                                        </span>
+                                        <div class="d-flex flex-column">
+                                            <span class="mr-text-primary" style="font-weight: 500;">@renter.FullName</span>
+                                            <small class="mr-text-muted">
+                                                @renter.Phone @(renter.Nationality != null ? $"| {renter.Nationality}" : "")
+                                            </small>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else if (m_showRenterSearchResults && !string.IsNullOrWhiteSpace(m_renterSearchTerm))
+                        {
+                            <div class="mr-card mt-2 p-3">
+                                <span class="mr-text-muted">@Localizer["NoRentersFound"]</span>
+                            </div>
+                        }
+                        @if (m_recentRenters.Count > 0 && string.IsNullOrWhiteSpace(m_renterSearchTerm))
+                        {
+                            <div class="mt-4">
+                                <h6 class="mb-3 mr-text-primary" style="font-weight: 600;">
+                                    <i class="ti ti-clock me-1" style="color: var(--mr-accent-secondary);"></i>
+                                    @Localizer["RecentRenters"]
+                                </h6>
+                                <div class="d-flex flex-column gap-2">
+                                    @foreach (var renter in m_recentRenters.Take(5))
+                                    {
+                                        <div class="mr-card p-3" style="cursor: pointer;"
+                                             @onclick="@(() => SelectRenter(renter))">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <div class="d-flex align-items-center gap-3">
+                                                    <span class="avatar avatar-sm"
+                                                          style="background: var(--mr-accent-gradient); color: white;">
+                                                        @renter.FullName?.FirstOrDefault()
+                                                    </span>
+                                                    <div class="d-flex flex-column">
+                                                        <span class="mr-text-primary" style="font-weight: 500;">
+                                                            @renter.FullName
+                                                        </span>
+                                                        <small class="mr-text-muted">
+                                                            @renter.Phone
+                                                            @if (!string.IsNullOrEmpty(renter.Nationality))
+                                                            {
+                                                                <span> | @renter.Nationality</span>
+                                                            }
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
                     </div>
                 }
                 else
@@ -182,11 +248,11 @@
                 <div class="row mb-4">
                     <div class="col-md-4 mb-3">
                         <label class="form-label">@Localizer["StartDate"] *</label>
-                        <input type="date" class="form-control" lang="en" @bind="m_startDate" min="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                        <DatePicker @bind-Value="m_startDate" MinDate="DateTime.Today" />
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label">@Localizer["EndDate"] *</label>
-                        <input type="date" class="form-control" lang="en" @bind="m_endDate" min="@m_startDate.ToString("yyyy-MM-dd")" />
+                        <DatePicker @bind-Value="m_endDate" MinDate="m_startDate" />
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label">@Localizer["PickupTime"]</label>
@@ -226,7 +292,11 @@
                                     <div class="mr-card @(isSelected ? "border-primary" : "")">
                                         <div class="mr-card-body p-3">
                                             <div class="d-flex justify-content-between align-items-start">
-                                                <div>
+                                                @if (GetPrimaryImageUrl(group.FleetModelId) is { } imageUrl)
+                                                {
+                                                    <span class="avatar avatar-lg me-3" style="background-image: url(@imageUrl)"></span>
+                                                }
+                                                <div class="flex-grow-1">
                                                     <h6 class="mb-1">@group.DisplayName</h6>
                                                     @if (!string.IsNullOrEmpty(group.EngineDisplay))
                                                     {
@@ -260,16 +330,24 @@
                                             <div class="d-flex align-items-center justify-content-end gap-2 mt-3">
                                                 @if (isSelected)
                                                 {
-                                                    <button type="button" class="btn btn-sm btn-outline-primary btn-icon"
+                                                    <button type="button"
+                                                            class="btn p-0 d-flex align-items-center justify-content-center"
+                                                            style="width: 28px; height: 28px; border-radius: 50%; background: #f1f5f9; border: none; color: #64748b; transition: all 0.2s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"
+                                                            onmouseover="this.style.background='#e2e8f0'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)';"
+                                                            onmouseout="this.style.background='#f1f5f9'; this.style.boxShadow='0 1px 2px rgba(0,0,0,0.05)';"
                                                             @onclick="@(() => RemoveModel(group.FleetModelId))">
-                                                        <i class="ti ti-minus"></i>
+                                                        <i class="ti ti-minus" style="font-size: 14px;"></i>
                                                     </button>
-                                                    <span class="fw-bold">@qty</span>
+                                                    <span style="min-width: 24px; text-align: center; font-weight: 600; font-size: 15px; color: var(--mr-text-primary);">@qty</span>
                                                 }
-                                                <button type="button" class="btn btn-sm btn-primary btn-icon"
+                                                <button type="button"
+                                                        class="btn p-0 d-flex align-items-center justify-content-center"
+                                                        style="width: 28px; height: 28px; border-radius: 50%; background: var(--mr-accent-gradient); border: none; color: white; transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,137,123,0.3);"
+                                                        onmouseover="this.style.transform='scale(1.1)'; this.style.boxShadow='0 4px 8px rgba(0,137,123,0.4)';"
+                                                        onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 2px 4px rgba(0,137,123,0.3)';"
                                                         disabled="@(qty >= group.AvailableUnits)"
                                                         @onclick="@(() => AddModel(group))">
-                                                    <i class="ti ti-plus"></i>
+                                                    <i class="ti ti-plus" style="font-size: 14px;"></i>
                                                 </button>
                                             </div>
                                         </div>
@@ -314,39 +392,91 @@
                                 <span class="fw-bold">@item.VehicleDisplayName</span>
                             </div>
                             <div class="mr-card-body p-3">
-                                <div class="row">
-                                    <div class="col-md-6 mb-3">
-                                        <label class="form-label">@Localizer["Insurance"]</label>
-                                        <select class="form-select" @bind="item.InsuranceId" @bind:after="() => OnInsuranceChanged(item)">
-                                            <option value="">@Localizer["NoInsurance"]</option>
-                                            @foreach (var insurance in m_insurancePackages)
-                                            {
-                                                <option value="@insurance.InsuranceId">@insurance.Name - @FormatCurrency(insurance.DailyRate)/day</option>
-                                            }
-                                        </select>
-                                    </div>
-                                    <div class="col-md-6 mb-3">
-                                        <label class="form-label">@Localizer["PreferredColor"]</label>
-                                        <input type="text" class="form-control" @bind="item.PreferredColor" placeholder="@Localizer["PreferredColorPlaceholder"]" />
-                                    </div>
+                                @* Insurance Selection *@
+                                <h6 class="card-title mb-1">@Localizer["InsuranceQuestion"]</h6>
+                                <p class="text-muted small mb-3">@Localizer["InsuranceSubtitle"]</p>
+
+                                <div class="d-flex flex-column gap-3 mb-4">
+                                    @* No protection option *@
+                                    <label class="form-selectgroup-item">
+                                        <input type="radio" name="insurance-@item.FleetModelId" class="form-selectgroup-input"
+                                               checked="@(item.InsuranceId == null)"
+                                               @onchange="@(() => SelectItemInsurance(item, null))" />
+                                        <span class="form-selectgroup-label d-flex justify-content-between align-items-center w-100">
+                                            <span class="d-flex align-items-center gap-3">
+                                                <span class="avatar avatar-sm bg-secondary-lt">
+                                                    <i class="ti ti-shield-off"></i>
+                                                </span>
+                                                <span class="fw-medium">@Localizer["NoProtection"]</span>
+                                            </span>
+                                            <span class="text-secondary">@Localizer["Free"]</span>
+                                        </span>
+                                    </label>
+
+                                    @* Insurance options *@
+                                    @foreach (var insurance in m_insurancePackages)
+                                    {
+                                        <label class="form-selectgroup-item">
+                                            <input type="radio" name="insurance-@item.FleetModelId" class="form-selectgroup-input"
+                                                   checked="@(item.InsuranceId == insurance.InsuranceId)"
+                                                   @onchange="@(() => SelectItemInsurance(item, insurance.InsuranceId))" />
+                                            <span class="form-selectgroup-label d-flex align-items-start w-100">
+                                                <span class="avatar avatar-sm bg-primary-lt flex-shrink-0 me-3">
+                                                    <i class="ti ti-shield-check"></i>
+                                                </span>
+                                                <span class="d-flex flex-column flex-grow-1">
+                                                    <span class="fw-medium text-primary">@insurance.Name</span>
+                                                    <small class="text-secondary">@insurance.Description</small>
+                                                    <small class="text-muted">
+                                                        @Localizer["MaxCoverage"]: @FormatCurrency(insurance.MaxCoverage) |
+                                                        @Localizer["Deductible"]: @FormatCurrency(insurance.Deductible)
+                                                    </small>
+                                                </span>
+                                                <span class="text-primary fw-medium ms-3 flex-shrink-0">
+                                                    @FormatCurrency(insurance.DailyRate)/@Localizer["Days"]
+                                                </span>
+                                            </span>
+                                        </label>
+                                    }
+                                </div>
+
+                                <div class="mb-4 text-muted small">
+                                    <a href="/insurance-terms" target="_blank" class="text-muted">
+                                        <i class="ti ti-info-circle me-1"></i>@Localizer["InsuranceTermsApply"]
+                                    </a>
+                                </div>
+
+                                @* Preferred Color *@
+                                <div class="mb-4">
+                                    <label class="form-label">@Localizer["PreferredColor"]</label>
+                                    <input type="text" class="form-control" @bind="item.PreferredColor" placeholder="@Localizer["PreferredColorPlaceholder"]" />
                                 </div>
 
                                 @* Accessories *@
-                                <label class="form-label">@Localizer["Accessories"]</label>
-                                <div class="row">
+                                <h6 class="card-title mb-3">@Localizer["Accessories"]</h6>
+                                <div class="d-flex flex-column gap-2">
                                     @foreach (var accessory in m_accessories)
                                     {
                                         var isSelected = (item.AccessoryIds ?? []).Contains(accessory.AccessoryId);
-                                        <div class="col-md-4 col-lg-3 mb-2">
-                                            <div class="form-check">
-                                                <input type="checkbox" class="form-check-input"
-                                                       checked="@isSelected"
-                                                       @onchange="@(() => ToggleAccessory(item, accessory))" />
-                                                <label class="form-check-label">
-                                                    @accessory.Name (@FormatCurrency(accessory.DailyRate)/day)
-                                                </label>
-                                            </div>
-                                        </div>
+                                        <label class="form-selectgroup-item">
+                                            <input type="checkbox" class="form-selectgroup-input"
+                                                   checked="@isSelected"
+                                                   @onchange="@(() => ToggleAccessory(item, accessory))" />
+                                            <span class="form-selectgroup-label d-flex align-items-center gap-3 w-100">
+                                                <span class="d-flex flex-column">
+                                                    <span>
+                                                        @accessory.Name
+                                                        @if (accessory.IsIncluded)
+                                                        {
+                                                            <span class="badge bg-success ms-2">@Localizer["Free"]</span>
+                                                        }
+                                                    </span>
+                                                    <small class="text-secondary">
+                                                        @(accessory.IsIncluded ? Localizer["IncludedWithRental"] : $"{FormatCurrency(accessory.DailyRate)}/{Localizer["Days"]}")
+                                                    </small>
+                                                </span>
+                                            </span>
+                                        </label>
                                     }
                                 </div>
 
@@ -674,6 +804,11 @@
 
     // Linked renter
     private Renter? m_linkedRenter;
+    private List<Renter> m_recentRenters = [];
+    private List<Renter> m_renterSearchResults = [];
+    private string? m_renterSearchTerm;
+    private bool m_showRenterSearchResults;
+    private System.Timers.Timer? m_renterDebounceTimer;
 
     // Data
     private List<Shop> m_shops = [];
@@ -682,6 +817,7 @@
     private List<Insurance> m_insurancePackages = [];
     private List<Accessory> m_accessories = [];
     private List<BookingItemRequest> m_bookingItems = [];
+    private Dictionary<int, string> m_primaryImages = new();
 
     private record ModelSelection(VehicleGroup Group, int Quantity);
 
@@ -717,12 +853,19 @@
             var shopsTask = ShopService.GetShopsAsync(page: 1, pageSize: 100);
             var insuranceTask = InsuranceService.GetActiveInsurancesAsync();
             var agentsTask = AgentService.GetActiveAgentsAsync();
+            var rentersTask = LoadRecentRentersAsync();
 
-            await Task.WhenAll(shopsTask, insuranceTask, agentsTask);
+            await Task.WhenAll(shopsTask, insuranceTask, agentsTask, rentersTask);
 
             m_shops = (await shopsTask).ItemCollection.ToList();
             m_insurancePackages = await insuranceTask;
             m_agents = await agentsTask;
+    }
+
+    private async Task LoadRecentRentersAsync()
+    {
+        var result = await RenterService.GetRentersAsync(page: 1, pageSize: 10);
+        m_recentRenters = result.ItemCollection;
     }
 
     private async Task LoadAvailableVehiclesAsync()
@@ -732,6 +875,17 @@
         {
             var shopId = m_request.PreferredShopId ?? RequestContext.GetShopId();
             m_vehicleGroups = await VehicleService.GetVehicleGroupsAsync(shopId, status: VehicleStatus.Available);
+
+            // Load primary images for vehicle groups
+            m_primaryImages.Clear();
+            foreach (var group in m_vehicleGroups)
+            {
+                var storeId = await FleetModelImageService.GetPrimaryImageStoreIdAsync(group.FleetModelId);
+                if (!string.IsNullOrEmpty(storeId))
+                {
+                    m_primaryImages[group.FleetModelId] = storeId;
+                }
+            }
 
             // Load accessories
             if (shopId > 0)
@@ -751,6 +905,15 @@
         {
             m_loadingVehicles = false;
         }
+    }
+
+    private string? GetPrimaryImageUrl(int fleetModelId)
+    {
+        if (m_primaryImages.TryGetValue(fleetModelId, out var storeId))
+        {
+            return BinaryStore.GetImageUrl(storeId);
+        }
+        return null;
     }
 
     private int GetSelectedQuantity(int fleetModelId)
@@ -806,6 +969,12 @@
                 });
             }
         }
+    }
+
+    private void SelectItemInsurance(BookingItemRequest item, int? insuranceId)
+    {
+        item.InsuranceId = insuranceId;
+        OnInsuranceChanged(item);
     }
 
     private void OnInsuranceChanged(BookingItemRequest item)
@@ -899,15 +1068,54 @@
 
     private async Task SearchRenters()
     {
-        // For now, show info that search is available via customer list
-        // TODO: Implement renter search popup
-        ToastService.ShowInfo(Localizer["SearchRenterHint"]);
-        await Task.CompletedTask;
+        if (string.IsNullOrWhiteSpace(m_renterSearchTerm))
+        {
+            m_renterSearchResults = m_recentRenters.Take(5).ToList();
+            m_showRenterSearchResults = false;
+            return;
+        }
+        var result = await RenterService.GetRentersAsync(m_renterSearchTerm, page: 1, pageSize: 10);
+        m_renterSearchResults = result.ItemCollection;
+        m_showRenterSearchResults = true;
+    }
+
+    private void OnRenterSearchKeyup(KeyboardEventArgs e)
+    {
+        m_renterDebounceTimer?.Stop();
+        m_renterDebounceTimer?.Dispose();
+        m_renterDebounceTimer = new System.Timers.Timer(300);
+        m_renterDebounceTimer.Elapsed += async (sender, args) =>
+        {
+            m_renterDebounceTimer?.Stop();
+            await InvokeAsync(async () =>
+            {
+                await SearchRenters();
+                StateHasChanged();
+            });
+        };
+        m_renterDebounceTimer.Start();
+    }
+
+    private void SelectRenter(Renter renter)
+    {
+        m_linkedRenter = renter;
+        m_showRenterSearchResults = false;
+        m_renterSearchTerm = renter.FullName;
+
+        // Populate form fields from linked renter
+        m_request.CustomerName = renter.FullName;
+        m_request.CustomerPhone = renter.Phone;
+        m_request.CustomerEmail = renter.Email;
+        m_request.CustomerNationality = renter.Nationality;
+        m_request.CustomerPassportNo = renter.PassportNo;
+        m_request.LinkedRenterId = renter.RenterId;
     }
 
     private void UnlinkRenter()
     {
         m_linkedRenter = null;
+        m_renterSearchTerm = null;
+        m_showRenterSearchResults = false;
     }
 
     private async Task OpenScanDocumentDialog()

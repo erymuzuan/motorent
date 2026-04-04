@@ -9,8 +9,13 @@ public static class MotoConfig
     private const string PREFIX = "MOTO_";
 
     // Connection Strings
-    public static string SqlConnectionString => GetEnvironmentVariable("SqlConnectionString") ??
-                                                "Data Source=.\\DEV2022;Initial Catalog=MotoRent;Integrated Security=True;TrustServerCertificate=True;Application Name=MotoRent";
+    public static string ConnectionString =>
+        GetEnvironmentVariable("ConnectionString") ??
+        GetEnvironmentVariable("SqlConnectionString") ?? // Legacy key
+        "Host=localhost;Port=5432;Database=motorent;Username=postgres;Password=postgres;Include Error Detail=true";
+
+    // Legacy alias kept for backward compatibility with existing deployments/scripts.
+    public static string SqlConnectionString => ConnectionString;
 
     // Authentication - Google OAuth
     public static string? GoogleClientId => GetEnvironmentVariable("GoogleClientId");

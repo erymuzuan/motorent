@@ -18,7 +18,7 @@ using MotoRent.Services.ExchangeRateProviders;
 using MotoRent.Domain.Search;
 using MotoRent.Server.Middleware;
 using MotoRent.Core.Repository;
-using MotoRent.SqlServerRepository;
+using MotoRent.PostgreSqlRepository;
 using HashidsNet;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -48,11 +48,11 @@ builder.Services.AddScoped<IRequestContext>(sp =>
     return new MotoRentRequestContext(httpContextAccessor, configuration);
 });
 
-// Add MotoRent data context (uses environment variable MOTO_SqlConnectionString)
-builder.Services.AddMotoRentDataContext(MotoConfig.SqlConnectionString);
+// Add MotoRent data context (uses MOTO_ConnectionString, or legacy MOTO_SqlConnectionString)
+builder.Services.AddMotoRentDataContext(MotoConfig.ConnectionString);
 
-// Add SQL Server repository implementations (IPagingTranslator, ISqlServerMetadata, IRepository<T>)
-builder.Services.AddMotoRentSqlServerRepository();
+// Add PostgreSQL repository implementations (PgPagingTranslator, IPgMetadata, IRepository<T>)
+builder.Services.AddMotoRentPostgreSqlRepository();
 
 // Add MotoRent services
 builder.Services.AddScoped<MotorbikeService>(); // Deprecated: use VehicleService
@@ -138,7 +138,7 @@ builder.Services.AddScoped<IExchangeRateProvider, SuperRichProvider>();
 builder.Services.AddScoped<ManagerPinService>();
 
 // Error logging services
-builder.Services.AddScoped<MotoRent.Domain.Core.ILogger, SqlLogger>();
+builder.Services.AddScoped<MotoRent.Domain.Core.ILogger, PgLogger>();
 builder.Services.AddScoped<LogEntryService>();
 // Feedback services
 builder.Services.AddScoped<FeedbackService>();
@@ -183,15 +183,15 @@ if (!string.IsNullOrEmpty(openSearchHost))
     builder.Services.AddScoped<ISearchService, OpenSearchService>();
 }
 
-// Add Core Repository (LINQ expression tree translation + caching)
+// Add Core PostgreSQL Repository (LINQ expression tree translation + caching)
 builder.Services.AddHybridCache();
-builder.Services.AddCoreRepository(builder.Configuration);
+builder.Services.AddCorePostgreSqlRepository(builder.Configuration);
 
 // Add Core services
-builder.Services.AddScoped<IDirectoryService, SqlDirectoryService>();
+builder.Services.AddScoped<IDirectoryService, PgDirectoryService>();
 builder.Services.AddScoped<MotoRent.Domain.Core.IAuthenticationService, MotoRent.Services.Core.AuthenticationService>();
 builder.Services.AddScoped<IOnboardingService, OnboardingService>();
-builder.Services.AddScoped<ISubscriptionService, SqlSubscriptionService>();
+builder.Services.AddScoped<ISubscriptionService, PgSubscriptionService>();
 builder.Services.AddScoped<OrganizationService>();
 builder.Services.AddScoped<ISettingConfig, SettingConfigService>();
 // Vehicle lookup services (global, shared across all tenants)

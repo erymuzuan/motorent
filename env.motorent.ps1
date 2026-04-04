@@ -4,7 +4,8 @@ $config =  ".\env.motorent.local.ps1"
 # Run with: . .\env.motorent.ps1
 
 # Database Connection
-$env:MOTO_SqlConnectionString = "Data Source=.\DEV2022;Initial Catalog=MotoRent;Integrated Security=True;TrustServerCertificate=True;Application Name=MotoRent"
+$env:MOTO_ConnectionString = "Host=localhost;Port=5432;Database=motorent;Username=postgres;Password=postgres;Include Error Detail=true;"
+$env:MOTO_SqlConnectionString = $env:MOTO_ConnectionString
 
 # Google OAuth (get from Google Cloud Console)
 $env:MOTO_GoogleClientId = "YOUR_GOOGLE_CLIENT_ID"

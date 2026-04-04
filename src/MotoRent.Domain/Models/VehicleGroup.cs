@@ -115,6 +115,26 @@ public class VehicleGroup
     public bool IsHourlyOnly { get; set; }
 
     /// <summary>
+    /// Whether any vehicle in this group supports hourly rentals.
+    /// </summary>
+    public bool SupportsHourlyRental { get; set; }
+
+    /// <summary>
+    /// Lowest hourly rate in the group (if hourly supported).
+    /// </summary>
+    public decimal? MinHourlyRate { get; set; }
+
+    /// <summary>
+    /// Highest hourly rate in the group (if hourly supported).
+    /// </summary>
+    public decimal? MaxHourlyRate { get; set; }
+
+    /// <summary>
+    /// Hourly packages available for this group (from first vehicle that has them).
+    /// </summary>
+    public List<HourlyPackagePrice> HourlyPackages { get; set; } = [];
+
+    /// <summary>
     /// Whether prices vary within the group.
     /// </summary>
     public bool HasPriceRange => MinDailyRate != MaxDailyRate;
@@ -162,6 +182,10 @@ public class VehicleGroup
             MaintenanceUnits = vehicleList.Count(v => v.Status == VehicleStatus.Maintenance),
             ReservedUnits = vehicleList.Count(v => v.Status == VehicleStatus.Reserved),
             IsHourlyOnly = vehicleList.All(v => v.IsHourlyOnly),
+            SupportsHourlyRental = vehicleList.Any(v => v.SupportsHourlyRental),
+            MinHourlyRate = vehicleList.Where(v => v.SupportsHourlyRental).Select(v => v.HourlyRate).Min(),
+            MaxHourlyRate = vehicleList.Where(v => v.SupportsHourlyRental).Select(v => v.HourlyRate).Max(),
+            HourlyPackages = vehicleList.FirstOrDefault(v => v.HourlyPackages?.Count > 0)?.HourlyPackages ?? [],
             MinDailyRate = vehicleList.Min(v => v.DisplayRate),
             MaxDailyRate = vehicleList.Max(v => v.DisplayRate),
             MinDepositAmount = vehicleList.Min(v => v.DepositAmount),

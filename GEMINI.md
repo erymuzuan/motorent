@@ -6,7 +6,7 @@ Motorbike rental system for Thailand tourist areas (Phuket, Krabi, etc.). Blazor
 ## Tech Stack
 - **Frontend**: Blazor Server + WASM (PWA)
 - **UI**: Tabler.css
-- **Database**: SQL Server with JSON columns and computed columns
+- **Database**: PostgreSQL with JSONB columns and computed columns
 - **ORM**: Custom Repository Pattern (from rx-erp)
 - **JSON**: System.Text.Json with polymorphism support
 - **Messaging**: RabbitMQ (planned)
@@ -23,8 +23,8 @@ motorent/
 │   ├── MotoRent.Server/               # Blazor Server host
 │   ├── MotoRent.Client/               # WASM client (PWA)
 │   ├── MotoRent.Domain/               # Entities, interfaces & DataContext (implementation-agnostic)
-│   ├── MotoRent.SqlServerRepository/  # SQL Server IRepository implementation
-│   ├── MotoRent.Core.Repository/      # Core schema SQL Server repository
+│   ├── MotoRent.PostgreSqlRepository/ # PostgreSQL IRepository implementation
+│   ├── MotoRent.Core.Repository/      # Core schema PostgreSQL repository
 │   └── MotoRent.Services/             # Business services
 └── tests/
 ```
@@ -77,19 +77,19 @@ public class MotorbikeService
 - Private fields use `m_` prefix in `@code` blocks
 
 ## Database Design
-Tables use JSON columns with computed columns for indexing:
+Tables use JSONB columns with computed columns for indexing:
 ```sql
-CREATE TABLE [MotoRent].[Entity]
+CREATE TABLE "Entity"
 (
-    [EntityId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
-    [ComputedColumn] AS CAST(JSON_VALUE([Json], '$.Property') AS TYPE), --  except for DATE and DATETIMEOFFSET
-    [Date] DATE NULL,
-    [TimeStamp] DATETIMEOFFSET NULL,
-    [Json] NVARCHAR(MAX) NOT NULL,
-    [CreatedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
-    [ChangedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
-    [CreatedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
-    [ChangedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
+    "EntityId" INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "ComputedColumn" AS (("Json"->>'Property')::TYPE) STORED,
+    "Date" DATE NULL,
+    "TimeStamp" TIMESTAMPTZ NULL,
+    "Json" JSONB NOT NULL,
+    "CreatedBy" VARCHAR(50) NOT NULL DEFAULT 'system',
+    "ChangedBy" VARCHAR(50) NOT NULL DEFAULT 'system',
+    "CreatedTimestamp" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "ChangedTimestamp" TIMESTAMPTZ NOT NULL DEFAULT NOW()
 )
 ```
 
@@ -263,9 +263,9 @@ See `.claude/skills/` for detailed patterns:
 - `rental-workflow/` - Check-in/check-out logic
 
 ## Connection String
-Default: `Server=(local)\DEV2022;Database=MotoRent;Trusted_Connection=True;TrustServerCertificate=True;`
+Default: `Host=localhost;Port=5432;Database=motorent;Username=postgres;Password=postgres;`
 
-Configure in env `MOTO_SqlConnectionString`
+Configure in env `MOTO_ConnectionString`
 
 ## GitHub Repository
 https://github.com/erymuzuan/motorent

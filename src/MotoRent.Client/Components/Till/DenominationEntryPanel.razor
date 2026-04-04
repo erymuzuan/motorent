@@ -9,13 +9,25 @@
 
         <div class="mr-denomination-row @(hasValue ? "has-value" : "")">
             <span class="mr-denomination-value">@FormatDenomination(denomination)</span>
+            <button type="button"
+                    class="btn btn-outline-secondary btn-sm mr-denomination-btn"
+                    disabled="@(Disabled || count == 0)"
+                    @onclick="@(() => Decrement(denomination))">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
             <input type="number"
                    class="form-control form-control-sm mr-denomination-input"
                    min="0"
                    step="1"
                    value="@count"
                    disabled="@Disabled"
-                   @oninput="@(e => OnCountChanged(denomination, count))" />
+                   @oninput="@(e => OnCountChanged(denomination, e))" />
+            <button type="button"
+                    class="btn btn-outline-secondary btn-sm mr-denomination-btn"
+                    disabled="@Disabled"
+                    @onclick="@(() => Increment(denomination))">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
             <span class="mr-denomination-subtotal">
                 @if (hasValue)
                 {
@@ -69,9 +81,25 @@
         return $"{symbol}{amount:N0}";
     }
 
-    private async Task OnCountChanged(decimal denomination, int count)
+    private async Task Increment(decimal denomination)
     {
-        if (count >= 0)
+        DenominationCounts[denomination] = GetCount(denomination) + 1;
+        await DenominationCountsChanged.InvokeAsync(DenominationCounts);
+    }
+
+    private async Task Decrement(decimal denomination)
+    {
+        var count = GetCount(denomination);
+        if (count > 0)
+        {
+            DenominationCounts[denomination] = count - 1;
+            await DenominationCountsChanged.InvokeAsync(DenominationCounts);
+        }
+    }
+
+    private async Task OnCountChanged(decimal denomination, ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var count) && count >= 0)
         {
             DenominationCounts[denomination] = count;
         }

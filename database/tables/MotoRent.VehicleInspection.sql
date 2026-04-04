@@ -1,38 +1,30 @@
 -- VehicleInspection table for 3D damage marking and inspection records
-CREATE TABLE [<schema>].[VehicleInspection]
+CREATE TABLE "VehicleInspection"
 (
-    [VehicleInspectionId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
-    -- Computed columns for efficient querying
-    [VehicleId] AS CAST(JSON_VALUE([Json], '$.VehicleId') AS INT),
-    [RentalId] AS CAST(JSON_VALUE([Json], '$.RentalId') AS INT),
-    [MaintenanceRecordId] AS CAST(JSON_VALUE([Json], '$.MaintenanceRecordId') AS INT),
-    [AccidentId] AS CAST(JSON_VALUE([Json], '$.AccidentId') AS INT),
-    [InspectionType] AS CAST(JSON_VALUE([Json], '$.InspectionType') AS NVARCHAR(20)),
-    [OverallCondition] AS CAST(JSON_VALUE([Json], '$.OverallCondition') AS NVARCHAR(20)),
-    [InspectedAt] AS CAST(JSON_VALUE([Json], '$.InspectedAt') AS DATETIMEOFFSET),
-    [OdometerReading] AS CAST(JSON_VALUE([Json], '$.OdometerReading') AS INT),
-    [FuelLevel] AS CAST(JSON_VALUE([Json], '$.FuelLevel') AS INT),
-    [PreviousInspectionId] AS CAST(JSON_VALUE([Json], '$.PreviousInspectionId') AS INT),
-    -- JSON storage for markers and full entity data
-    [Json] NVARCHAR(MAX) NOT NULL,
-    -- Audit columns
-    [CreatedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
-    [ChangedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
-    [CreatedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
-    [ChangedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
-)
+    "VehicleInspectionId" INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "VehicleId" INT GENERATED ALWAYS AS (("Json"->>'VehicleId')::INT) STORED,
+    "RentalId" INT GENERATED ALWAYS AS (("Json"->>'RentalId')::INT) STORED,
+    "MaintenanceRecordId" INT GENERATED ALWAYS AS (("Json"->>'MaintenanceRecordId')::INT) STORED,
+    "AccidentId" INT GENERATED ALWAYS AS (("Json"->>'AccidentId')::INT) STORED,
+    "InspectionType" VARCHAR(20) GENERATED ALWAYS AS (("Json"->>'InspectionType')::VARCHAR(20)) STORED,
+    "OverallCondition" VARCHAR(20) GENERATED ALWAYS AS (("Json"->>'OverallCondition')::VARCHAR(20)) STORED,
+    "InspectedAt" TIMESTAMPTZ GENERATED ALWAYS AS (immutable_text_to_timestamptz("Json"->>'InspectedAt')) STORED,
+    "OdometerReading" INT GENERATED ALWAYS AS (("Json"->>'OdometerReading')::INT) STORED,
+    "FuelLevel" INT GENERATED ALWAYS AS (("Json"->>'FuelLevel')::INT) STORED,
+    "PreviousInspectionId" INT GENERATED ALWAYS AS (("Json"->>'PreviousInspectionId')::INT) STORED,
+    "Json" JSONB NOT NULL,
+    "tenant_id" VARCHAR(50) NOT NULL DEFAULT current_setting('app.current_tenant'),
+    "CreatedBy" VARCHAR(50) NOT NULL DEFAULT 'system',
+    "ChangedBy" VARCHAR(50) NOT NULL DEFAULT 'system',
+    "CreatedTimestamp" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "ChangedTimestamp" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE "VehicleInspection" ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation_vehicleinspection ON "VehicleInspection" USING ("tenant_id" = current_setting('app.current_tenant'));
 
--- Index for vehicle lookup
-CREATE INDEX IX_VehicleInspection_VehicleId ON [<schema>].[VehicleInspection]([VehicleId])
-
--- Index for rental-based inspection lookup
-CREATE INDEX IX_VehicleInspection_RentalId ON [<schema>].[VehicleInspection]([RentalId])
-
--- Index for maintenance-based inspection lookup
-CREATE INDEX IX_VehicleInspection_MaintenanceRecordId ON [<schema>].[VehicleInspection]([MaintenanceRecordId])
-
--- Index for accident-based inspection lookup
-CREATE INDEX IX_VehicleInspection_AccidentId ON [<schema>].[VehicleInspection]([AccidentId])
-
--- Composite index for inspection type and date
-CREATE INDEX IX_VehicleInspection_Type_Date ON [<schema>].[VehicleInspection]([InspectionType], [InspectedAt])
+CREATE INDEX IX_VehicleInspection_VehicleId ON "VehicleInspection"("VehicleId");
+CREATE INDEX IX_VehicleInspection_RentalId ON "VehicleInspection"("RentalId");
+CREATE INDEX IX_VehicleInspection_MaintenanceRecordId ON "VehicleInspection"("MaintenanceRecordId");
+CREATE INDEX IX_VehicleInspection_AccidentId ON "VehicleInspection"("AccidentId");
+CREATE INDEX IX_VehicleInspection_Type_Date ON "VehicleInspection"("InspectionType", "InspectedAt");
+CREATE INDEX IX_VehicleInspection_TenantId ON "VehicleInspection"("tenant_id");

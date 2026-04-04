@@ -1,7 +1,7 @@
 using FluentAssertions;
 using MotoRent.Domain.Entities;
 using MotoRent.Domain.QueryProviders;
-using MotoRent.SqlServerRepository;
+using MotoRent.PostgreSqlRepository;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -13,12 +13,12 @@ namespace MotoRent.LinqSql.Tests;
 public class EnumQueryTestFixture
 {
     private readonly ITestOutputHelper m_output;
-    private readonly SqlQueryProvider m_provider;
+    private readonly PgQueryProvider m_provider;
 
     public EnumQueryTestFixture(ITestOutputHelper output)
     {
         this.m_output = output;
-        this.m_provider = new SqlQueryProvider(new MockRequestContext());
+        this.m_provider = new PgQueryProvider();
     }
 
     [Fact]
@@ -33,7 +33,7 @@ public class EnumQueryTestFixture
         this.m_output.WriteLine(sql);
 
         // Assert
-        sql.Should().Contain("[Status] = 'Open'");
+        sql.Should().Contain("\"Status\" = 'Open'");
     }
 
     [Fact]
@@ -48,7 +48,7 @@ public class EnumQueryTestFixture
         this.m_output.WriteLine(sql);
 
         // Assert
-        sql.Should().Contain("[Status] <> 'Closed'");
+        sql.Should().Contain("\"Status\" <> 'Closed'");
     }
 
     [Fact]
@@ -63,8 +63,8 @@ public class EnumQueryTestFixture
         this.m_output.WriteLine(sql);
 
         // Assert
-        sql.Should().Contain("[StaffUserName] = 'john'");
-        sql.Should().Contain("[Status] = 'Open'");
+        sql.Should().Contain("\"StaffUserName\" = 'john'");
+        sql.Should().Contain("\"Status\" = 'Open'");
         sql.Should().Contain("AND");
     }
 
@@ -81,8 +81,8 @@ public class EnumQueryTestFixture
         this.m_output.WriteLine(sql);
 
         // Assert - Both conditions present in nested structure
-        sql.Should().Contain("[StaffUserName] = 'john'");
-        sql.Should().Contain("[Status] = 'Open'");
+        sql.Should().Contain("\"StaffUserName\" = 'john'");
+        sql.Should().Contain("\"Status\" = 'Open'");
         sql.Should().Contain("WHERE");
     }
 
@@ -99,7 +99,7 @@ public class EnumQueryTestFixture
         this.m_output.WriteLine(sql);
 
         // Assert
-        sql.Should().Contain("[Status] = 'Reconciling'");
+        sql.Should().Contain("\"Status\" = 'Reconciling'");
     }
 
     [Fact]
@@ -131,7 +131,7 @@ public class EnumQueryTestFixture
         this.m_output.WriteLine(sql);
 
         // Assert
-        sql.Should().Contain("[Status] = 'Verified'");
+        sql.Should().Contain("\"Status\" = 'Verified'");
     }
 
     [Fact]
@@ -146,7 +146,7 @@ public class EnumQueryTestFixture
         this.m_output.WriteLine(sql);
 
         // Assert
-        sql.Should().Contain("[Status] = 'PendingVerification'");
+        sql.Should().Contain("\"Status\" = 'PendingVerification'");
     }
 
     [Fact]
@@ -161,6 +161,8 @@ public class EnumQueryTestFixture
         this.m_output.WriteLine(sql);
 
         // Assert
-        sql.Should().Contain("[Status] = 'ClosedWithVariance'");
+        sql.Should().Contain("\"Status\" = 'ClosedWithVariance'");
     }
 }
+
+

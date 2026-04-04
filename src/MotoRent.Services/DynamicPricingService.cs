@@ -46,14 +46,31 @@ public class DynamicPricingService
         => await m_settings.SetValueAsync(SettingKeyEnabled, enabled);
 
     /// <summary>
-    /// Calculates the adjusted rate based on active pricing rules.
+    /// Calculates the adjusted rate based on active pricing rules for hourly/daily rates.
     /// Returns the base rate unchanged if dynamic pricing is disabled.
     /// </summary>
-    public async Task<PricingCalculation> CalculateAdjustedRateAsync(
+    public Task<PricingCalculation> CalculateAdjustedRateAsync(
         decimal baseRate,
         DateOnly rentalDate,
         string? vehicleType = null,
         int? vehicleId = null)
+    {
+        // Call the overload with no package info (hourly/daily rate)
+        return CalculateAdjustedRateAsync(baseRate, rentalDate, vehicleType, vehicleId, null, null);
+    }
+
+    /// <summary>
+    /// Calculates the adjusted rate based on active pricing rules.
+    /// When fleetModelId and packageName are provided, only package-specific rules apply.
+    /// When they are null, only non-package rules (hourly/daily) apply.
+    /// </summary>
+    public async Task<PricingCalculation> CalculateAdjustedRateAsync(
+        decimal baseRate,
+        DateOnly rentalDate,
+        string? vehicleType,
+        int? vehicleId,
+        int? fleetModelId,
+        string? packageName)
     {
         // Check if dynamic pricing is enabled
         var isEnabled = await m_settings.GetBoolAsync(SettingKeyEnabled);
@@ -70,8 +87,9 @@ public class DynamicPricingService
             };
         }
 
-        // Load active rules
-        var rules = await LoadActiveRulesAsync(rentalDate, vehicleType, vehicleId);
+        // Load active rules with package filter
+        var isPackagePrice = fleetModelId.HasValue && !string.IsNullOrEmpty(packageName);
+        var rules = await LoadActiveRulesAsync(rentalDate, vehicleType, vehicleId, isPackagePrice, fleetModelId, packageName);
 
         if (rules.Count == 0)
         {
@@ -88,8 +106,8 @@ public class DynamicPricingService
         // Select highest priority rule
         var applicableRule = rules.OrderByDescending(r => r.Priority).First();
 
-        // Calculate adjusted rate
-        var adjustedRate = baseRate * applicableRule.Multiplier;
+        // Calculate adjusted rate: (base × multiplier) + amount adjustment
+        var adjustedRate = (baseRate * applicableRule.Multiplier) + applicableRule.AmountAdjustment;
 
         // Apply min/max bounds
         if (applicableRule.MinRate.HasValue && adjustedRate < applicableRule.MinRate.Value)
@@ -107,6 +125,7 @@ public class DynamicPricingService
             BaseRate = baseRate,
             AdjustedRate = adjustedRate,
             Multiplier = applicableRule.Multiplier,
+            AmountAdjustment = applicableRule.AmountAdjustment,
             AppliedRuleName = applicableRule.Name,
             AppliedRuleType = applicableRule.RuleType.ToString()
         };
@@ -115,10 +134,19 @@ public class DynamicPricingService
     /// <summary>
     /// Loads all active pricing rules that apply to the given date and filters.
     /// </summary>
+    /// <param name="rentalDate">The rental date to check.</param>
+    /// <param name="vehicleType">Optional vehicle type filter.</param>
+    /// <param name="vehicleId">Optional specific vehicle filter.</param>
+    /// <param name="isPackagePrice">True if calculating for a package price.</param>
+    /// <param name="fleetModelId">FleetModel ID for package matching.</param>
+    /// <param name="packageName">Package name for package matching.</param>
     private async Task<List<PricingRule>> LoadActiveRulesAsync(
         DateOnly rentalDate,
         string? vehicleType,
-        int? vehicleId)
+        int? vehicleId,
+        bool isPackagePrice = false,
+        int? fleetModelId = null,
+        string? packageName = null)
     {
         var query = m_context.CreateQuery<PricingRule>()
             .Where(r => r.IsActive);
@@ -141,6 +169,28 @@ public class DynamicPricingService
             if (rule.VehicleId.HasValue && rule.VehicleId != vehicleId)
                 continue;
 
+            // Package filtering:
+            // - If calculating hourly/daily (isPackagePrice = false): skip package-specific rules
+            // - If calculating package price (isPackagePrice = true): only include matching package rules
+            if (!isPackagePrice)
+            {
+                // Hourly/Daily rate - skip package-specific rules
+                if (rule.ApplyToPackage)
+                    continue;
+            }
+            else
+            {
+                // Package price - only include package-specific rules that match
+                if (!rule.ApplyToPackage)
+                    continue; // Skip non-package rules
+
+                // Must match one of the target packages
+                var matchesPackage = rule.TargetPackages.Any(t =>
+                    t.FleetModelId == fleetModelId && t.PackageName == packageName);
+                if (!matchesPackage)
+                    continue;
+            }
+
             applicableRules.Add(rule);
         }
 
@@ -155,10 +205,17 @@ public class DynamicPricingService
         // Handle day-of-week rules
         if (rule.RuleType == PricingRuleType.DayOfWeek)
         {
+            // Check new multi-day field first
+            if (rule.ApplicableDaysOfWeek.Count > 0)
+            {
+                return rule.ApplicableDaysOfWeek.Contains(rentalDate.DayOfWeek);
+            }
+            // Fallback to legacy single day
             if (rule.ApplicableDayOfWeek.HasValue)
             {
                 return rentalDate.DayOfWeek == rule.ApplicableDayOfWeek.Value;
             }
+            return false;
         }
 
         // Handle recurring rules (yearly events)
@@ -272,11 +329,14 @@ public class PricingCalculation
     /// <summary>Original base rate before adjustment.</summary>
     public decimal BaseRate { get; set; }
 
-    /// <summary>Adjusted rate after applying the multiplier.</summary>
+    /// <summary>Adjusted rate after applying the multiplier and amount adjustment.</summary>
     public decimal AdjustedRate { get; set; }
 
     /// <summary>Multiplier applied (1.0 = no change, 1.5 = +50%, 0.8 = -20%).</summary>
     public decimal Multiplier { get; set; } = 1.0m;
+
+    /// <summary>Fixed amount adjustment (+50 = add 50, -20 = subtract 20).</summary>
+    public decimal AmountAdjustment { get; set; }
 
     /// <summary>Name of the applied pricing rule, if any.</summary>
     public string? AppliedRuleName { get; set; }
@@ -285,7 +345,7 @@ public class PricingCalculation
     public string? AppliedRuleType { get; set; }
 
     /// <summary>Whether a pricing rule was applied.</summary>
-    public bool HasAdjustment => Multiplier != 1.0m;
+    public bool HasAdjustment => Multiplier != 1.0m || AmountAdjustment != 0;
 
     /// <summary>Percentage change as a formatted string (e.g., "+50%", "-20%").</summary>
     public string PercentageChange
@@ -296,4 +356,7 @@ public class PricingCalculation
             return pct >= 0 ? $"+{pct:N0}%" : $"{pct:N0}%";
         }
     }
+
+    /// <summary>Amount adjustment as a formatted string (e.g., "+50", "-20").</summary>
+    public string AmountChange => AmountAdjustment >= 0 ? $"+{AmountAdjustment:N0}" : $"{AmountAdjustment:N0}";
 }

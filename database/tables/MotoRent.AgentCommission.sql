@@ -1,47 +1,32 @@
 -- AgentCommission table
 -- Tracks commission for agent bookings
--- Commission becomes eligible only after rental is completed
-CREATE TABLE [<schema>].[AgentCommission]
+CREATE TABLE "AgentCommission"
 (
-    [AgentCommissionId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
-    -- Foreign Keys
-    [AgentId] AS CAST(JSON_VALUE([Json], '$.AgentId') AS INT),
-    [BookingId] AS CAST(JSON_VALUE([Json], '$.BookingId') AS INT),
-    [RentalId] AS CAST(JSON_VALUE([Json], '$.RentalId') AS INT),
-    -- Status: Pending, Approved, Paid, Voided
-    [Status] AS CAST(JSON_VALUE([Json], '$.Status') AS NVARCHAR(20)),
-    -- Amounts
-    [CommissionAmount] AS CAST(JSON_VALUE([Json], '$.CommissionAmount') AS DECIMAL(18,2)),
-    [BookingTotal] AS CAST(JSON_VALUE([Json], '$.BookingTotal') AS DECIMAL(18,2)),
-    -- Dates (regular columns, not computed - per CLAUDE.md rules)
-    [EligibleDate] DATETIMEOFFSET NULL,
-    [ApprovedDate] DATETIMEOFFSET NULL,
-    [PaidDate] DATETIMEOFFSET NULL,
-    -- Denormalized
-    [AgentCode] AS CAST(JSON_VALUE([Json], '$.AgentCode') AS NVARCHAR(50)),
-    [BookingRef] AS CAST(JSON_VALUE([Json], '$.BookingRef') AS NVARCHAR(10)),
-    -- JSON storage
-    [Json] NVARCHAR(MAX) NOT NULL,
-    -- Audit columns
-    [CreatedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
-    [ChangedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
-    [CreatedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
-    [ChangedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
-)
+    "AgentCommissionId" INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "AgentId" INT GENERATED ALWAYS AS (("Json"->>'AgentId')::INT) STORED,
+    "BookingId" INT GENERATED ALWAYS AS (("Json"->>'BookingId')::INT) STORED,
+    "RentalId" INT GENERATED ALWAYS AS (("Json"->>'RentalId')::INT) STORED,
+    "Status" VARCHAR(20) GENERATED ALWAYS AS (("Json"->>'Status')::VARCHAR(20)) STORED,
+    "CommissionAmount" NUMERIC(18,2) GENERATED ALWAYS AS (("Json"->>'CommissionAmount')::NUMERIC(18,2)) STORED,
+    "BookingTotal" NUMERIC(18,2) GENERATED ALWAYS AS (("Json"->>'BookingTotal')::NUMERIC(18,2)) STORED,
+    "EligibleDate" TIMESTAMPTZ NULL,
+    "ApprovedDate" TIMESTAMPTZ NULL,
+    "PaidDate" TIMESTAMPTZ NULL,
+    "AgentCode" VARCHAR(50) GENERATED ALWAYS AS (("Json"->>'AgentCode')::VARCHAR(50)) STORED,
+    "BookingRef" VARCHAR(10) GENERATED ALWAYS AS (("Json"->>'BookingRef')::VARCHAR(10)) STORED,
+    "Json" JSONB NOT NULL,
+    "tenant_id" VARCHAR(50) NOT NULL DEFAULT current_setting('app.current_tenant'),
+    "CreatedBy" VARCHAR(50) NOT NULL DEFAULT 'system',
+    "ChangedBy" VARCHAR(50) NOT NULL DEFAULT 'system',
+    "CreatedTimestamp" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "ChangedTimestamp" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE "AgentCommission" ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation_agentcommission ON "AgentCommission" USING ("tenant_id" = current_setting('app.current_tenant'));
 
--- Index for querying by agent
-CREATE INDEX IX_AgentCommission_AgentId ON [<schema>].[AgentCommission]([AgentId])
-
--- Index for querying by booking
-CREATE INDEX IX_AgentCommission_BookingId ON [<schema>].[AgentCommission]([BookingId])
-
--- Index for querying by rental
-CREATE INDEX IX_AgentCommission_RentalId ON [<schema>].[AgentCommission]([RentalId])
-
--- Index for querying by status
-CREATE INDEX IX_AgentCommission_Status ON [<schema>].[AgentCommission]([Status])
-
--- Index for querying agent commissions by status (for approval/payment workflows)
-CREATE INDEX IX_AgentCommission_AgentId_Status ON [<schema>].[AgentCommission]([AgentId], [Status])
-
--- EligibleDate, ApprovedDate, PaidDate are now regular columns and can be indexed if needed
+CREATE INDEX IX_AgentCommission_AgentId ON "AgentCommission"("AgentId");
+CREATE INDEX IX_AgentCommission_BookingId ON "AgentCommission"("BookingId");
+CREATE INDEX IX_AgentCommission_RentalId ON "AgentCommission"("RentalId");
+CREATE INDEX IX_AgentCommission_Status ON "AgentCommission"("Status");
+CREATE INDEX IX_AgentCommission_AgentId_Status ON "AgentCommission"("AgentId", "Status");
+CREATE INDEX IX_AgentCommission_TenantId ON "AgentCommission"("tenant_id");

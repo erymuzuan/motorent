@@ -19,7 +19,7 @@
         @* Top Navigation Bar *@
         <header class="navbar navbar-expand-md d-print-none sticky-top">
             <div class="container-xl">
-                <LogoHeader OnToggle="ToggleNavbar" HomeUrl="@m_homeUrl" DefaultName="@m_orgName" />
+                <LogoHeader OnToggle="ToggleNavbar" HomeUrl="@m_homeUrl" DefaultName="@m_orgName" IsSuperAdmin="@m_isSuperAdmin" />
             <div class="navbar-nav flex-row order-md-last">
                 @* Theme Toggle *@
                 <div class="nav-item d-none d-md-flex me-3">
@@ -209,6 +209,7 @@
     private string? m_userInitials;
     private string m_homeUrl = "/";
     private string m_orgName = MotoConfig.ApplicationName;
+    private bool m_isSuperAdmin;
 
 
     private string CurrentPathAndQuery =>
@@ -250,6 +251,7 @@
             if (user.Identity?.IsAuthenticated == true)
             {
                 var isSuperAdmin = user.IsInRole(UserAccount.SUPER_ADMIN);
+                m_isSuperAdmin = isSuperAdmin;
                 var hasTenantRole = UserAccount.AllRoles.Any(role => user.IsInRole(role));
 
                 // SuperAdmin without tenant access (not impersonating) should go to super admin page

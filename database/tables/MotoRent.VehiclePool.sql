@@ -1,20 +1,19 @@
 -- VehiclePool table - groups shops that share vehicle inventory
-CREATE TABLE [<schema>].[VehiclePool]
+CREATE TABLE "VehiclePool"
 (
-    [VehiclePoolId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
-    -- Computed columns for querying
-    [Name] AS CAST(JSON_VALUE([Json], '$.Name') AS NVARCHAR(200)),
-    [IsActive] AS CAST(JSON_VALUE([Json], '$.IsActive') AS BIT),
-    [PrimaryShopId] AS CAST(JSON_VALUE([Json], '$.PrimaryShopId') AS INT),
-    -- JSON storage (includes ShopIds array)
-    [Json] NVARCHAR(MAX) NOT NULL,
-    -- Audit columns
-    [CreatedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
-    [ChangedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
-    [CreatedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
-    [ChangedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
-)
---
+    "VehiclePoolId" INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "Name" VARCHAR(200) GENERATED ALWAYS AS (("Json"->>'Name')::VARCHAR(200)) STORED,
+    "IsActive" BOOLEAN GENERATED ALWAYS AS (("Json"->>'IsActive')::BOOLEAN) STORED,
+    "PrimaryShopId" INT GENERATED ALWAYS AS (("Json"->>'PrimaryShopId')::INT) STORED,
+    "Json" JSONB NOT NULL,
+    "tenant_id" VARCHAR(50) NOT NULL DEFAULT current_setting('app.current_tenant'),
+    "CreatedBy" VARCHAR(50) NOT NULL DEFAULT 'system',
+    "ChangedBy" VARCHAR(50) NOT NULL DEFAULT 'system',
+    "CreatedTimestamp" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "ChangedTimestamp" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE "VehiclePool" ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation_vehiclepool ON "VehiclePool" USING ("tenant_id" = current_setting('app.current_tenant'));
 
-CREATE INDEX IX_VehiclePool_IsActive ON [<schema>].[VehiclePool]([IsActive])
---
+CREATE INDEX IX_VehiclePool_IsActive ON "VehiclePool"("IsActive");
+CREATE INDEX IX_VehiclePool_TenantId ON "VehiclePool"("tenant_id");

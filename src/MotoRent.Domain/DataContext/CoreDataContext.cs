@@ -135,6 +135,8 @@ public class CoreDataContext
         }
         catch (Exception ex)
         {
+            Console.Error.WriteLine($"[CoreDataContext] SubmitChanges '{operation}' FAILED: {ex.Message}");
+            Console.Error.WriteLine($"[CoreDataContext] {ex}");
             return SubmitOperation.CreateFailure($"Submit failed: {ex.Message}", ex);
         }
     }

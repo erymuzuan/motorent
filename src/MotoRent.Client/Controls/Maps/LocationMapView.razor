@@ -1,13 +1,6 @@
 @inject GoogleMapJsInterop MapJs
 @implements IAsyncDisposable
 
-@* Google Maps API Script - loads dynamically if not already loaded *@
-@if (!string.IsNullOrEmpty(m_apiKey) && !m_googleMapsLoaded)
-{
-    <script src="https://maps.googleapis.com/maps/api/js?key=@m_apiKey&callback=Function.prototype"
-            async defer></script>
-}
-
 <div class="card @CssClass">
     <div class="card-body p-0">
         @if (!m_googleMapsLoaded && !string.IsNullOrEmpty(m_apiKey))
@@ -99,41 +92,29 @@
     {
         if (firstRender && !string.IsNullOrEmpty(m_apiKey))
         {
-            await WaitForGoogleMapsAndInitializeAsync();
+            try
+            {
+                m_googleMapsLoaded = await MapJs.LoadGoogleMapsApiAsync(m_apiKey);
+                if (m_googleMapsLoaded)
+                {
+                    StateHasChanged();
+                    await Task.Yield();
+                    await InitializeMapAsync();
+                }
+            }
+            catch
+            {
+                // JS interop may fail during prerender
+            }
         }
     }
 
     protected override async Task OnParametersSetAsync()
     {
-        // Reinitialize map if location changes
         if (m_mapInitialized && m_googleMapsLoaded)
         {
             m_mapInitialized = false;
             await InitializeMapAsync();
-        }
-    }
-
-    private async Task WaitForGoogleMapsAndInitializeAsync()
-    {
-        // Poll for Google Maps to load (max 10 seconds)
-        for (int i = 0; i < 100; i++)
-        {
-            await Task.Delay(100);
-            try
-            {
-                if (await MapJs.IsGoogleMapsLoadedAsync())
-                {
-                    m_googleMapsLoaded = true;
-                    StateHasChanged();
-                    await Task.Yield();
-                    await InitializeMapAsync();
-                    return;
-                }
-            }
-            catch
-            {
-                // Continue waiting
-            }
         }
     }
 

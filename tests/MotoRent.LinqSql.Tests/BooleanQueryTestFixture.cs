@@ -1,7 +1,7 @@
 using FluentAssertions;
 using MotoRent.Domain.Entities;
 using MotoRent.Domain.QueryProviders;
-using MotoRent.SqlServerRepository;
+using MotoRent.PostgreSqlRepository;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -13,16 +13,16 @@ namespace MotoRent.LinqSql.Tests;
 public class BooleanQueryTestFixture
 {
     private readonly ITestOutputHelper m_output;
-    private readonly SqlQueryProvider m_provider;
+    private readonly PgQueryProvider m_provider;
 
     public BooleanQueryTestFixture(ITestOutputHelper output)
     {
         this.m_output = output;
-        this.m_provider = new SqlQueryProvider(new MockRequestContext());
+        this.m_provider = new PgQueryProvider();
     }
 
     [Fact]
-    public void BooleanTrue_GeneratesEquals1()
+    public void BooleanTrue_GeneratesEqualsTrue()
     {
         // Arrange
         var query = new Query<TillSession>(this.m_provider)
@@ -33,11 +33,11 @@ public class BooleanQueryTestFixture
         this.m_output.WriteLine(sql);
 
         // Assert
-        sql.Should().Contain("[IsForceClose] = 1");
+        sql.Should().Contain("\"IsForceClose\"");
     }
 
     [Fact]
-    public void BooleanFalse_GeneratesEquals0()
+    public void BooleanFalse_GeneratesEqualsFalse()
     {
         // Arrange
         var query = new Query<TillSession>(this.m_provider)
@@ -48,11 +48,11 @@ public class BooleanQueryTestFixture
         this.m_output.WriteLine(sql);
 
         // Assert
-        sql.Should().Contain("[IsForceClose] = 0");
+        sql.Should().Contain("\"IsForceClose\" = false");
     }
 
     [Fact]
-    public void BooleanExplicitTrue_GeneratesEquals1()
+    public void BooleanExplicitTrue_GeneratesEqualsTrue()
     {
         // Arrange
         var query = new Query<TillSession>(this.m_provider)
@@ -63,12 +63,12 @@ public class BooleanQueryTestFixture
         this.m_output.WriteLine(sql);
 
         // Assert
-        sql.Should().Contain("[IsForceClose]");
-        sql.Should().Contain("1");
+        sql.Should().Contain("\"IsForceClose\"");
+        sql.Should().Contain("true");
     }
 
     [Fact]
-    public void BooleanExplicitFalse_GeneratesEquals0()
+    public void BooleanExplicitFalse_GeneratesEqualsFalse()
     {
         // Arrange
         var query = new Query<TillSession>(this.m_provider)
@@ -79,8 +79,8 @@ public class BooleanQueryTestFixture
         this.m_output.WriteLine(sql);
 
         // Assert
-        sql.Should().Contain("[IsForceClose]");
-        sql.Should().Contain("0");
+        sql.Should().Contain("\"IsForceClose\"");
+        sql.Should().Contain("false");
     }
 
     [Fact]
@@ -95,8 +95,8 @@ public class BooleanQueryTestFixture
         this.m_output.WriteLine(sql);
 
         // Assert
-        sql.Should().Contain("[IsForceClose]");
-        sql.Should().Contain("[ShopId] = 1");
+        sql.Should().Contain("\"IsForceClose\"");
+        sql.Should().Contain("\"ShopId\" = 1");
         sql.Should().Contain("AND");
     }
 
@@ -113,8 +113,8 @@ public class BooleanQueryTestFixture
         this.m_output.WriteLine(sql);
 
         // Assert - Both conditions present in nested structure
-        sql.Should().Contain("[IsForceClose] = 1");
-        sql.Should().Contain("[ShopId] = 1");
+        sql.Should().Contain("\"IsForceClose\"");
+        sql.Should().Contain("\"ShopId\" = 1");
         sql.Should().Contain("WHERE");
     }
 
@@ -130,7 +130,7 @@ public class BooleanQueryTestFixture
         this.m_output.WriteLine(sql);
 
         // Assert
-        sql.Should().Contain("[IsLateClose] = 1");
+        sql.Should().Contain("\"IsLateClose\"");
     }
 
     [Fact]
@@ -145,7 +145,7 @@ public class BooleanQueryTestFixture
         this.m_output.WriteLine(sql);
 
         // Assert
-        sql.Should().Contain("[IsLateClose] = 0");
+        sql.Should().Contain("\"IsLateClose\" = false");
     }
 
     [Fact]
@@ -161,8 +161,8 @@ public class BooleanQueryTestFixture
         this.m_output.WriteLine(sql);
 
         // Assert
-        sql.Should().Contain("[IsForceClose]");
-        sql.Should().Contain("1");
+        sql.Should().Contain("\"IsForceClose\"");
+        sql.Should().Contain("true");
     }
 
     [Fact]
@@ -178,7 +178,9 @@ public class BooleanQueryTestFixture
         this.m_output.WriteLine(sql);
 
         // Assert
-        sql.Should().Contain("[IsForceClose] = 1");
-        sql.Should().Contain("[IsLateClose] = 1");
+        sql.Should().Contain("\"IsForceClose\"");
+        sql.Should().Contain("\"IsLateClose\"");
     }
 }
+
+

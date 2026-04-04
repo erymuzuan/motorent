@@ -9,12 +9,12 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddMotoRentDataContext(this IServiceCollection services, string connectionString)
     {
-        // Note: Infrastructure services (IPagingTranslator, ISqlServerMetadata) and
-        // IRepository<T> implementations are registered via AddMotoRentSqlServerRepository()
-        // from MotoRent.SqlServerRepository project
+        // Note: Infrastructure services (IPgMetadata, DbConnectionInterceptor) and
+        // IRepository<T> implementations are registered via AddMotoRentPostgreSqlRepository()
+        // from MotoRent.PostgreSqlRepository project
 
         // Note: Core entity repositories (Organization, User, Setting, etc.) are registered
-        // via AddCoreRepository() from MotoRent.Core.Repository project
+        // via AddCorePostgreSqlRepository() from MotoRent.PostgreSqlRepository project
 
         // Register RentalDataContext with full dependency injection
         services.AddScoped<RentalDataContext>(sp =>

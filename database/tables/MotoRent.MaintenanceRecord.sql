@@ -1,25 +1,26 @@
 -- MaintenanceRecord table - Detailed service history with attachments
-CREATE TABLE [<schema>].[MaintenanceRecord]
+CREATE TABLE "MaintenanceRecord"
 (
-    [MaintenanceRecordId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
-    -- Computed columns for querying
-    [VehicleId] AS CAST(JSON_VALUE([Json], '$.VehicleId') AS INT),
-    [ServiceTypeId] AS CAST(JSON_VALUE([Json], '$.ServiceTypeId') AS INT),
-    [ServiceTypeName] AS CAST(JSON_VALUE([Json], '$.ServiceTypeName') AS NVARCHAR(100)),
-    [ServiceDate] DATE NULL,
-    [ServiceMileage] AS CAST(JSON_VALUE([Json], '$.ServiceMileage') AS INT),
-    [Cost] AS CAST(JSON_VALUE([Json], '$.Cost') AS MONEY),
-    [WorkshopName] AS CAST(JSON_VALUE([Json], '$.Workshop.Name') AS NVARCHAR(200)),
-    -- JSON storage (includes Photos[], Documents[], Workshop{})
-    [Json] NVARCHAR(MAX) NOT NULL,
-    -- Audit columns
-    [CreatedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
-    [ChangedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
-    [CreatedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
-    [ChangedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
-)
+    "MaintenanceRecordId" INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "VehicleId" INT GENERATED ALWAYS AS (("Json"->>'VehicleId')::INT) STORED,
+    "ServiceTypeId" INT GENERATED ALWAYS AS (("Json"->>'ServiceTypeId')::INT) STORED,
+    "ServiceTypeName" VARCHAR(100) GENERATED ALWAYS AS (("Json"->>'ServiceTypeName')::VARCHAR(100)) STORED,
+    "ServiceDate" DATE NULL,
+    "ServiceMileage" INT GENERATED ALWAYS AS (("Json"->>'ServiceMileage')::INT) STORED,
+    "Cost" NUMERIC(19,4) GENERATED ALWAYS AS (("Json"->>'Cost')::NUMERIC(19,4)) STORED,
+    "WorkshopName" VARCHAR(200) GENERATED ALWAYS AS (("Json"->'Workshop'->>'Name')::VARCHAR(200)) STORED,
+    "Json" JSONB NOT NULL,
+    "tenant_id" VARCHAR(50) NOT NULL DEFAULT current_setting('app.current_tenant'),
+    "CreatedBy" VARCHAR(50) NOT NULL DEFAULT 'system',
+    "ChangedBy" VARCHAR(50) NOT NULL DEFAULT 'system',
+    "CreatedTimestamp" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "ChangedTimestamp" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE "MaintenanceRecord" ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation_maintenancerecord ON "MaintenanceRecord" USING ("tenant_id" = current_setting('app.current_tenant'));
 
-CREATE INDEX IX_MaintenanceRecord_VehicleId ON [<schema>].[MaintenanceRecord]([VehicleId])
-CREATE INDEX IX_MaintenanceRecord_ServiceTypeId ON [<schema>].[MaintenanceRecord]([ServiceTypeId])
-CREATE INDEX IX_MaintenanceRecord_ServiceDate ON [<schema>].[MaintenanceRecord]([ServiceDate])
-CREATE INDEX IX_MaintenanceRecord_Composite ON [<schema>].[MaintenanceRecord]([VehicleId], [ServiceDate])
+CREATE INDEX IX_MaintenanceRecord_VehicleId ON "MaintenanceRecord"("VehicleId");
+CREATE INDEX IX_MaintenanceRecord_ServiceTypeId ON "MaintenanceRecord"("ServiceTypeId");
+CREATE INDEX IX_MaintenanceRecord_ServiceDate ON "MaintenanceRecord"("ServiceDate");
+CREATE INDEX IX_MaintenanceRecord_Composite ON "MaintenanceRecord"("VehicleId", "ServiceDate");
+CREATE INDEX IX_MaintenanceRecord_TenantId ON "MaintenanceRecord"("tenant_id");

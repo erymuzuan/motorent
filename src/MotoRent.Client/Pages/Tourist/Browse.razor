@@ -5,11 +5,14 @@
 @inherits TouristComponentBase
 @using MotoRent.Domain.Entities
 @using MotoRent.Domain.Models
+@using MotoRent.Domain.Storage
 @using MotoRent.Services
 @using MotoRent.Client.Components.Tourist
 @using MotoRent.Client.Controls
 @inject VehicleService VehicleService
 @inject ShopService ShopService
+@inject FleetModelImageService FleetModelImageService
+@inject IBinaryStore BinaryStore
 @inject IJSRuntime JS
 
 <PageTitle>Browse Motorbikes - @TenantName</PageTitle>
@@ -50,10 +53,10 @@
                     <label class="form-label">Rental Period</label>
                     <div class="row g-2">
                         <div class="col-6">
-                            <input type="date" class="form-control" @bind="m_startDate" min="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                            <DatePicker @bind-Value="m_startDateValue" MinDate="DateTime.Today" CssClass="form-control" />
                         </div>
                         <div class="col-6">
-                            <input type="date" class="form-control" @bind="m_endDate" />
+                            <DatePicker @bind-Value="m_endDateValue" MinDate="m_startDateValue" CssClass="form-control" />
                         </div>
                     </div>
                 </div>
@@ -178,7 +181,7 @@
                     <div class="card h-100 cursor-pointer tourist-bike-card" @onclick="@(() => ViewGroupDetails(group))">
                         <div class="card-img-top img-responsive img-responsive-16by9 position-relative"
                              style="background-image: url('@GetGroupImage(group)'); background-color: #f8fafc;">
-                            @if (string.IsNullOrEmpty(group.ImagePath))
+                            @if (string.IsNullOrEmpty(group.ImagePath) && !this.m_primaryImageUrls.ContainsKey(group.FleetModelId))
                             {
                                 <div class="d-flex align-items-center justify-content-center h-100">
                                     <i class="ti @GetVehicleTypeIcon(group.VehicleType) text-secondary" style="font-size: 4rem; opacity: 0.3;"></i>
@@ -309,10 +312,31 @@
     private bool m_loading = true;
     private bool m_gridView = true;
     private HashSet<string> m_favorites = [];  // Now stores group keys instead of IDs
+    private Dictionary<int, string> m_primaryImageUrls = new();
 
     // Filters
     private DateTime? m_startDate = DateTime.Today;
-    private DateTime? m_endDate = DateTime.Today.AddDays(3);
+    private DateTime? m_endDate = DateTime.Today;
+
+    // Non-nullable wrappers for DatePicker component
+    private DateTime m_startDateValue
+    {
+        get => m_startDate ?? DateTime.Today;
+        set
+        {
+            m_startDate = value;
+            InvokeAsync(StateHasChanged);
+        }
+    }
+    private DateTime m_endDateValue
+    {
+        get => m_endDate ?? DateTime.Today;
+        set
+        {
+            m_endDate = value;
+            InvokeAsync(StateHasChanged);
+        }
+    }
     private string? m_engineFilter;
     private string m_sortBy = "price-asc";
 
@@ -381,6 +405,18 @@
             // Use SelectedShopId from URL if provided, otherwise use default ShopId
             var shopId = this.m_selectedShopId ?? 0;
             this.m_vehicleGroups = await this.VehicleService.GetAvailableVehicleGroupsForTouristAsync(shopId);
+
+            // Load primary images for all fleet models
+            this.m_primaryImageUrls.Clear();
+            foreach (var group in this.m_vehicleGroups)
+            {
+                var storeId = await this.FleetModelImageService.GetPrimaryImageStoreIdAsync(group.FleetModelId);
+                if (!string.IsNullOrEmpty(storeId))
+                {
+                    this.m_primaryImageUrls[group.FleetModelId] = this.BinaryStore.GetImageUrl(storeId);
+                }
+            }
+
             this.ApplyFilters();
         }
         finally
@@ -458,11 +494,17 @@
         _ => "bg-secondary-lt text-secondary"
     };
 
-    private static string GetGroupImage(VehicleGroup group)
+    private string GetGroupImage(VehicleGroup group)
     {
+        // First check for fleet model image from cache
+        if (this.m_primaryImageUrls.TryGetValue(group.FleetModelId, out var imageUrl))
+            return imageUrl;
+
+        // Fall back to vehicle image path if exists
         if (!string.IsNullOrEmpty(group.ImagePath))
             return group.ImagePath;
 
+        // Fall back to placeholder by vehicle type
         return group.VehicleType switch
         {
             VehicleType.Motorbike => "/images/vehicles/motorbike-placeholder.png",

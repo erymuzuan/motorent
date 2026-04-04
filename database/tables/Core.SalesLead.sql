@@ -1,64 +1,28 @@
--- =============================================
--- MotoRent Sales Lead Schema
+-- SalesLead table (Core - no tenant isolation)
 -- Tracks leads from contact forms and other sources
--- through the sales funnel: Lead -> Trial -> Customer
--- =============================================
+CREATE TABLE "SalesLead"
+(
+    "SalesLeadId"       INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "No"                VARCHAR(20) GENERATED ALWAYS AS (("Json"->>'No')::VARCHAR(20)) STORED,
+    "Name"              VARCHAR(200) GENERATED ALWAYS AS (("Json"->>'Name')::VARCHAR(200)) STORED,
+    "Email"             VARCHAR(200) GENERATED ALWAYS AS (("Json"->>'Email')::VARCHAR(200)) STORED,
+    "Phone"             VARCHAR(50) GENERATED ALWAYS AS (("Json"->>'Phone')::VARCHAR(50)) STORED,
+    "Company"           VARCHAR(200) GENERATED ALWAYS AS (("Json"->>'Company')::VARCHAR(200)) STORED,
+    "Status"            VARCHAR(20) GENERATED ALWAYS AS (("Json"->>'Status')::VARCHAR(20)) STORED,
+    "Source"            VARCHAR(20) GENERATED ALWAYS AS (("Json"->>'Source')::VARCHAR(20)) STORED,
+    "PlanInterested"    VARCHAR(20) GENERATED ALWAYS AS (("Json"->>'PlanInterested')::VARCHAR(20)) STORED,
+    "FleetSize"         INT GENERATED ALWAYS AS (("Json"->>'FleetSize')::INT) STORED,
+    "OrganizationId"    INT GENERATED ALWAYS AS (("Json"->>'OrganizationId')::INT) STORED,
+    "AccountNo"         VARCHAR(20) GENERATED ALWAYS AS (("Json"->>'AccountNo')::VARCHAR(20)) STORED,
+    "Json"              JSONB NOT NULL,
+    "CreatedBy"         VARCHAR(50) NOT NULL DEFAULT 'system',
+    "ChangedBy"         VARCHAR(50) NOT NULL DEFAULT 'system',
+    "CreatedTimestamp"  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "ChangedTimestamp"  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
-SET QUOTED_IDENTIFIER ON
-GO
+CREATE UNIQUE INDEX IX_SalesLead_No ON "SalesLead"("No");
 
--- =============================================
--- SalesLead Table
--- =============================================
-IF NOT EXISTS (SELECT * FROM sys.tables t
-    JOIN sys.schemas s ON t.schema_id = s.schema_id
-    WHERE s.name = 'Core' AND t.name = 'SalesLead')
-BEGIN
-    CREATE TABLE [Core].[SalesLead]
-    (
-        [SalesLeadId]       INT            NOT NULL PRIMARY KEY IDENTITY(1,1),
-        -- Computed columns from JSON
-        [No]                AS CAST(JSON_VALUE([Json], '$.No') AS VARCHAR(20)) PERSISTED,
-        [Name]              AS CAST(JSON_VALUE([Json], '$.Name') AS NVARCHAR(200)),
-        [Email]             AS CAST(JSON_VALUE([Json], '$.Email') AS VARCHAR(200)),
-        [Phone]             AS CAST(JSON_VALUE([Json], '$.Phone') AS VARCHAR(50)),
-        [Company]           AS CAST(JSON_VALUE([Json], '$.Company') AS NVARCHAR(200)),
-        [Status]            AS CAST(JSON_VALUE([Json], '$.Status') AS VARCHAR(20)),
-        [Source]            AS CAST(JSON_VALUE([Json], '$.Source') AS VARCHAR(20)),
-        [PlanInterested]    AS CAST(JSON_VALUE([Json], '$.PlanInterested') AS VARCHAR(20)),
-        [FleetSize]         AS CAST(JSON_VALUE([Json], '$.FleetSize') AS INT),
-        [OrganizationId]    AS CAST(JSON_VALUE([Json], '$.OrganizationId') AS INT),
-        [AccountNo]         AS CAST(JSON_VALUE([Json], '$.AccountNo') AS VARCHAR(20)),
-        -- JSON storage
-        [Json]              NVARCHAR(MAX)  NOT NULL,
-        -- Audit columns
-        [CreatedBy]         VARCHAR(50)    NOT NULL DEFAULT 'system',
-        [ChangedBy]         VARCHAR(50)    NOT NULL DEFAULT 'system',
-        [CreatedTimestamp]  DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
-        [ChangedTimestamp]  DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
-    );
-END
-GO
+CREATE INDEX IX_SalesLead_Email ON "SalesLead"("Email");
 
--- Create indexes
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_SalesLead_No')
-BEGIN
-    -- Note: Unique index without filter since No is a computed column
-    CREATE UNIQUE INDEX [IX_SalesLead_No] ON [Core].[SalesLead]([No]);
-END
-GO
-
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_SalesLead_Email')
-BEGIN
-    CREATE INDEX [IX_SalesLead_Email] ON [Core].[SalesLead]([Email]);
-END
-GO
-
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_SalesLead_Status')
-BEGIN
-    CREATE INDEX [IX_SalesLead_Status] ON [Core].[SalesLead]([Status], [Source], [CreatedTimestamp]);
-END
-GO
-
-PRINT 'SalesLead table and indexes created successfully';
-GO
+CREATE INDEX IX_SalesLead_Status ON "SalesLead"("Status", "Source", "CreatedTimestamp");

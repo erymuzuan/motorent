@@ -1,57 +1,50 @@
 -- Vehicle table - replaces Motorbike with support for multiple vehicle types
-CREATE TABLE [<schema>].[Vehicle]
+CREATE TABLE "Vehicle"
 (
-    [VehicleId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
+    "VehicleId" INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     -- Fleet Model
-    [FleetModelId] AS CAST(JSON_VALUE([Json], '$.FleetModelId') AS INT),
+    "FleetModelId" INT GENERATED ALWAYS AS (("Json"->>'FleetModelId')::INT) STORED,
     -- Location and Pool
-    [HomeShopId] AS CAST(JSON_VALUE([Json], '$.HomeShopId') AS INT),
-    [VehiclePoolId] AS CAST(JSON_VALUE([Json], '$.VehiclePoolId') AS INT),
-    [CurrentShopId] AS CAST(JSON_VALUE([Json], '$.CurrentShopId') AS INT),
+    "HomeShopId" INT GENERATED ALWAYS AS (("Json"->>'HomeShopId')::INT) STORED,
+    "VehiclePoolId" INT GENERATED ALWAYS AS (("Json"->>'VehiclePoolId')::INT) STORED,
+    "CurrentShopId" INT GENERATED ALWAYS AS (("Json"->>'CurrentShopId')::INT) STORED,
     -- Vehicle Type and Classification
-    [VehicleType] AS CAST(JSON_VALUE([Json], '$.VehicleType') AS NVARCHAR(20)),
-    [Segment] AS CAST(JSON_VALUE([Json], '$.Segment') AS NVARCHAR(20)),
-    [DurationType] AS CAST(JSON_VALUE([Json], '$.DurationType') AS NVARCHAR(20)),
+    "VehicleType" VARCHAR(20) GENERATED ALWAYS AS (("Json"->>'VehicleType')::VARCHAR(20)) STORED,
+    "Segment" VARCHAR(20) GENERATED ALWAYS AS (("Json"->>'Segment')::VARCHAR(20)) STORED,
+    "DurationType" VARCHAR(20) GENERATED ALWAYS AS (("Json"->>'DurationType')::VARCHAR(20)) STORED,
     -- Common Properties
-    [LicensePlate] AS CAST(JSON_VALUE([Json], '$.LicensePlate') AS NVARCHAR(20)),
-    [Brand] AS CAST(JSON_VALUE([Json], '$.Brand') AS NVARCHAR(50)),
-    [Model] AS CAST(JSON_VALUE([Json], '$.Model') AS NVARCHAR(50)),
-    [Status] AS CAST(JSON_VALUE([Json], '$.Status') AS NVARCHAR(20)),
+    "LicensePlate" VARCHAR(20) GENERATED ALWAYS AS (("Json"->>'LicensePlate')::VARCHAR(20)) STORED,
+    "Brand" VARCHAR(50) GENERATED ALWAYS AS (("Json"->>'Brand')::VARCHAR(50)) STORED,
+    "Model" VARCHAR(50) GENERATED ALWAYS AS (("Json"->>'Model')::VARCHAR(50)) STORED,
+    "Status" VARCHAR(20) GENERATED ALWAYS AS (("Json"->>'Status')::VARCHAR(20)) STORED,
     -- Pricing
-    [DailyRate] AS CAST(JSON_VALUE([Json], '$.DailyRate') AS DECIMAL(10,2)),
-    [Rate15Min] AS CAST(JSON_VALUE([Json], '$.Rate15Min') AS DECIMAL(10,2)),
-    [Rate30Min] AS CAST(JSON_VALUE([Json], '$.Rate30Min') AS DECIMAL(10,2)),
-    [Rate1Hour] AS CAST(JSON_VALUE([Json], '$.Rate1Hour') AS DECIMAL(10,2)),
+    "DailyRate" NUMERIC(10,2) GENERATED ALWAYS AS (("Json"->>'DailyRate')::NUMERIC(10,2)) STORED,
+    "Rate15Min" NUMERIC(10,2) GENERATED ALWAYS AS (("Json"->>'Rate15Min')::NUMERIC(10,2)) STORED,
+    "Rate30Min" NUMERIC(10,2) GENERATED ALWAYS AS (("Json"->>'Rate30Min')::NUMERIC(10,2)) STORED,
+    "Rate1Hour" NUMERIC(10,2) GENERATED ALWAYS AS (("Json"->>'Rate1Hour')::NUMERIC(10,2)) STORED,
     -- Driver/Guide Fees
-    [DriverDailyFee] AS CAST(JSON_VALUE([Json], '$.DriverDailyFee') AS DECIMAL(10,2)),
-    [GuideDailyFee] AS CAST(JSON_VALUE([Json], '$.GuideDailyFee') AS DECIMAL(10,2)),
+    "DriverDailyFee" NUMERIC(10,2) GENERATED ALWAYS AS (("Json"->>'DriverDailyFee')::NUMERIC(10,2)) STORED,
+    "GuideDailyFee" NUMERIC(10,2) GENERATED ALWAYS AS (("Json"->>'GuideDailyFee')::NUMERIC(10,2)) STORED,
     -- Third-Party Owner
-    [VehicleOwnerId] AS CAST(JSON_VALUE([Json], '$.VehicleOwnerId') AS INT),
-    [OwnerPaymentModel] AS CAST(JSON_VALUE([Json], '$.OwnerPaymentModel') AS NVARCHAR(20)),
-    [OwnerDailyRate] AS CAST(JSON_VALUE([Json], '$.OwnerDailyRate') AS DECIMAL(10,2)),
-    [OwnerRevenueSharePercent] AS CAST(JSON_VALUE([Json], '$.OwnerRevenueSharePercent') AS DECIMAL(5,4)),
-    -- JSON storage
-    [Json] NVARCHAR(MAX) NOT NULL,
-    -- Audit columns
-    [CreatedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
-    [ChangedBy] VARCHAR(50) NOT NULL DEFAULT 'system',
-    [CreatedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
-    [ChangedTimestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()
-)
---
+    "VehicleOwnerId" INT GENERATED ALWAYS AS (("Json"->>'VehicleOwnerId')::INT) STORED,
+    "OwnerPaymentModel" VARCHAR(20) GENERATED ALWAYS AS (("Json"->>'OwnerPaymentModel')::VARCHAR(20)) STORED,
+    "OwnerDailyRate" NUMERIC(10,2) GENERATED ALWAYS AS (("Json"->>'OwnerDailyRate')::NUMERIC(10,2)) STORED,
+    "OwnerRevenueSharePercent" NUMERIC(5,4) GENERATED ALWAYS AS (("Json"->>'OwnerRevenueSharePercent')::NUMERIC(5,4)) STORED,
+    "Json" JSONB NOT NULL,
+    "tenant_id" VARCHAR(50) NOT NULL DEFAULT current_setting('app.current_tenant'),
+    "CreatedBy" VARCHAR(50) NOT NULL DEFAULT 'system',
+    "ChangedBy" VARCHAR(50) NOT NULL DEFAULT 'system',
+    "CreatedTimestamp" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "ChangedTimestamp" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE "Vehicle" ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation_vehicle ON "Vehicle" USING ("tenant_id" = current_setting('app.current_tenant'));
 
--- Indexes for common query patterns
-CREATE INDEX IX_Vehicle_HomeShopId_Status ON [<schema>].[Vehicle]([HomeShopId], [Status])
---
-CREATE INDEX IX_Vehicle_CurrentShopId_Status ON [<schema>].[Vehicle]([CurrentShopId], [Status])
---
-CREATE INDEX IX_Vehicle_VehiclePoolId_Status ON [<schema>].[Vehicle]([VehiclePoolId], [Status])
---
-CREATE INDEX IX_Vehicle_VehicleType_Status ON [<schema>].[Vehicle]([VehicleType], [Status])
---
-CREATE UNIQUE INDEX IX_Vehicle_LicensePlate ON [<schema>].[Vehicle]([LicensePlate])
---
-CREATE INDEX IX_Vehicle_VehicleOwnerId ON [<schema>].[Vehicle]([VehicleOwnerId])
---
-CREATE INDEX IX_Vehicle_FleetModelId ON [<schema>].[Vehicle]([FleetModelId])
---
+CREATE INDEX IX_Vehicle_HomeShopId_Status ON "Vehicle"("HomeShopId", "Status");
+CREATE INDEX IX_Vehicle_CurrentShopId_Status ON "Vehicle"("CurrentShopId", "Status");
+CREATE INDEX IX_Vehicle_VehiclePoolId_Status ON "Vehicle"("VehiclePoolId", "Status");
+CREATE INDEX IX_Vehicle_VehicleType_Status ON "Vehicle"("VehicleType", "Status");
+CREATE UNIQUE INDEX IX_Vehicle_LicensePlate ON "Vehicle"("tenant_id", "LicensePlate");
+CREATE INDEX IX_Vehicle_VehicleOwnerId ON "Vehicle"("VehicleOwnerId");
+CREATE INDEX IX_Vehicle_FleetModelId ON "Vehicle"("FleetModelId");
+CREATE INDEX IX_Vehicle_TenantId ON "Vehicle"("tenant_id");

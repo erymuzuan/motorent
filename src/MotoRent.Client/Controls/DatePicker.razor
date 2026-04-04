@@ -1,0 +1,115 @@
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<input type="text"
+       @ref="m_inputRef"
+       class="@CssClass"
+       placeholder="@Placeholder"
+       @attributes="AdditionalAttributes" />
+
+@code {
+    [Parameter] public DateTime Value { get; set; }
+    [Parameter] public EventCallback<DateTime> ValueChanged { get; set; }
+    [Parameter] public string CssClass { get; set; } = "form-control";
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public DateTime? MinDate { get; set; }
+    [Parameter] public DateTime? MaxDate { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private ElementReference m_inputRef;
+    private IJSObjectReference? m_jsModule;
+    private DotNetObjectReference<DatePicker>? m_dotNetRef;
+    private bool m_initialized;
+    private DateTime m_lastValue;
+    private DateTime? m_lastMinDate;
+    private DateTime? m_lastMaxDate;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            m_jsModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/date-picker.js");
+            m_dotNetRef = DotNetObjectReference.Create(this);
+
+            var options = new Dictionary<string, object?>();
+            if (Value != default)
+                options["defaultDate"] = Value.ToString("yyyy-MM-dd");
+            if (MinDate.HasValue)
+                options["minDate"] = MinDate.Value.ToString("yyyy-MM-dd");
+            if (MaxDate.HasValue)
+                options["maxDate"] = MaxDate.Value.ToString("yyyy-MM-dd");
+
+            await m_jsModule.InvokeVoidAsync("initDatePicker", m_inputRef, m_dotNetRef, options);
+
+            // Also call setDate to ensure the value is set correctly after init
+            if (Value != default)
+            {
+                await m_jsModule.InvokeVoidAsync("setDate", m_inputRef, Value.ToString("yyyy-MM-dd"));
+            }
+
+            m_initialized = true;
+            m_lastValue = Value;
+            m_lastMinDate = MinDate;
+            m_lastMaxDate = MaxDate;
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!m_initialized || m_jsModule == null) return;
+
+        // Update value if changed externally
+        if (m_lastValue != Value)
+        {
+            m_lastValue = Value;
+            await m_jsModule.InvokeVoidAsync("setDate", m_inputRef, Value.ToString("yyyy-MM-dd"));
+        }
+
+        // Update min date if changed
+        if (m_lastMinDate != MinDate)
+        {
+            m_lastMinDate = MinDate;
+            await m_jsModule.InvokeVoidAsync("setMinDate", m_inputRef,
+                MinDate?.ToString("yyyy-MM-dd"));
+        }
+
+        // Update max date if changed
+        if (m_lastMaxDate != MaxDate)
+        {
+            m_lastMaxDate = MaxDate;
+            await m_jsModule.InvokeVoidAsync("setMaxDate", m_inputRef,
+                MaxDate?.ToString("yyyy-MM-dd"));
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnDateChanged(string? dateStr)
+    {
+        if (!string.IsNullOrEmpty(dateStr) && DateTime.TryParse(dateStr, out var newValue))
+        {
+            if (m_lastValue != newValue)
+            {
+                m_lastValue = newValue;
+                Value = newValue;
+                await ValueChanged.InvokeAsync(newValue);
+            }
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (m_jsModule != null)
+        {
+            try
+            {
+                await m_jsModule.InvokeVoidAsync("destroy", m_inputRef);
+                await m_jsModule.DisposeAsync();
+            }
+            catch { }
+        }
+        m_dotNetRef?.Dispose();
+    }
+}

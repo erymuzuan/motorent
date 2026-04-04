@@ -1,4 +1,5 @@
 @using MotoRent.Domain.Entities
+@using MotoRent.Domain.Models
 @inherits LocalizedDialogBase<PricingRule, PricingRuleDialog>
 
 <form id="@FormId" @onsubmit="SaveAsync" @onsubmit:preventDefault>
@@ -27,26 +28,37 @@
 
             @if (Entity.RuleType == PricingRuleType.DayOfWeek)
             {
-                <div class="col-md-6">
-                    <label class="form-label required">@Localizer["DayOfWeek"]</label>
-                    <select class="form-select" @bind="Entity.ApplicableDayOfWeek" required>
+                <div class="col-12">
+                    <label class="form-label required">@Localizer["SelectDays"]</label>
+                    <div class="d-flex flex-column gap-1">
                         @foreach (DayOfWeek day in Enum.GetValues<DayOfWeek>())
                         {
-                            <option value="@day">@Localizer[day.ToString()]</option>
+                            var d = day;
+                            var isSelected = Entity.ApplicableDaysOfWeek.Contains(d);
+                            <label class="form-check">
+                                <input type="checkbox" class="form-check-input"
+                                       checked="@isSelected"
+                                       @onchange="@(e => ToggleDay(d, (bool)(e.Value ?? false)))" />
+                                <span class="form-check-label">@Localizer[day.ToString()]</span>
+                            </label>
                         }
-                    </select>
+                    </div>
+                    @if (Entity.ApplicableDaysOfWeek.Count == 0)
+                    {
+                        <small class="text-danger">@Localizer["SelectAtLeastOneDay"]</small>
+                    }
                 </div>
             }
             else
             {
                 <div class="col-md-6">
                     <label class="form-label required">@Localizer["StartDate"]</label>
-                    <input type="date" class="form-control" @bind="m_startDate" required />
+                    <input type="date" class="form-control" lang="en" @bind="m_startDate" required />
                 </div>
 
                 <div class="col-md-6">
                     <label class="form-label required">@Localizer["EndDate"]</label>
-                    <input type="date" class="form-control" @bind="m_endDate" required />
+                    <input type="date" class="form-control" lang="en" @bind="m_endDate" required />
                 </div>
 
                 <div class="col-12">
@@ -63,7 +75,7 @@
                 <h6 class="mb-3">@Localizer["PricingAdjustment"]</h6>
             </div>
 
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <label class="form-label required">@Localizer["Multiplier"]</label>
                 <div class="input-group">
                     <input type="number" class="form-control" @bind="Entity.Multiplier"
@@ -73,7 +85,17 @@
                 <small class="form-hint">@Localizer["MultiplierHint"]</small>
             </div>
 
-            <div class="col-md-4">
+            <div class="col-md-3">
+                <label class="form-label">@Localizer["AmountAdjustment"]</label>
+                <div class="input-group">
+                    <span class="input-group-text">฿</span>
+                    <input type="number" class="form-control" @bind="Entity.AmountAdjustment"
+                           step="10" />
+                </div>
+                <small class="form-hint">@Localizer["AmountAdjustmentHint"]</small>
+            </div>
+
+            <div class="col-md-3">
                 <label class="form-label">@Localizer["MinRate"]</label>
                 <div class="input-group">
                     <span class="input-group-text">฿</span>
@@ -83,7 +105,7 @@
                 <small class="form-hint">@Localizer["MinRateHint"]</small>
             </div>
 
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <label class="form-label">@Localizer["MaxRate"]</label>
                 <div class="input-group">
                     <span class="input-group-text">฿</span>
@@ -104,8 +126,8 @@
                             <div class="text-secondary">
                                 @Localizer["BaseRateExample"]: ฿500/day
                                 <i class="ti ti-arrow-right mx-2"></i>
-                                <strong>฿@((500 * Entity.Multiplier).ToString("N0"))/day</strong>
-                                (@FormatMultiplier(Entity.Multiplier))
+                                <strong>฿@(((500 * Entity.Multiplier) + Entity.AmountAdjustment).ToString("N0"))/day</strong>
+                                (@FormatAdjustment())
                             </div>
                         </div>
                     </div>
@@ -139,6 +161,39 @@
 
             <div class="col-12">
                 <label class="form-check form-switch">
+                    <input type="checkbox" class="form-check-input" @bind="Entity.ApplyToPackage"
+                           @bind:after="OnApplyToPackageChanged" />
+                    <span class="form-check-label">@Localizer["ApplyToPackage"]</span>
+                </label>
+                <small class="form-hint">@Localizer["ApplyToPackageHint"]</small>
+            </div>
+
+            @if (Entity.ApplyToPackage)
+            {
+                <div class="col-12">
+                    <label class="form-label required">@Localizer["SelectPackages"]</label>
+                    <div class="d-flex flex-column gap-1" style="max-height: 200px; overflow-y: auto;">
+                        @foreach (var pkg in m_packages)
+                        {
+                            var p = pkg;
+                            var isSelected = IsPackageSelected(p);
+                            <label class="form-check">
+                                <input type="checkbox" class="form-check-input"
+                                       checked="@isSelected"
+                                       @onchange="@(e => TogglePackage(p, (bool)(e.Value ?? false)))" />
+                                <span class="form-check-label">@p.Display</span>
+                            </label>
+                        }
+                    </div>
+                    @if (Entity.TargetPackages.Count == 0)
+                    {
+                        <small class="text-danger">@Localizer["SelectAtLeastOnePackage"]</small>
+                    }
+                </div>
+            }
+
+            <div class="col-12">
+                <label class="form-check form-switch">
                     <input type="checkbox" class="form-check-input" @bind="Entity.IsActive" />
                     <span class="form-check-label">@Localizer["Active"]</span>
                 </label>
@@ -165,19 +220,113 @@
 @code {
     private DateTime m_startDate;
     private DateTime m_endDate;
+    private List<PackageOption> m_packages = [];
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         this.FormValid = true;
         this.m_startDate = Entity.StartDate.ToDateTime(TimeOnly.MinValue);
         this.m_endDate = Entity.EndDate.ToDateTime(TimeOnly.MinValue);
+
+        // Migrate legacy single-day to multi-day format
+        if (Entity.RuleType == PricingRuleType.DayOfWeek &&
+            Entity.ApplicableDaysOfWeek.Count == 0 &&
+            Entity.ApplicableDayOfWeek.HasValue)
+        {
+            Entity.ApplicableDaysOfWeek.Add(Entity.ApplicableDayOfWeek.Value);
+        }
+
+        // Load packages from all active FleetModels
+        await LoadPackagesAsync();
+    }
+
+    private async Task LoadPackagesAsync()
+    {
+        var query = DataContext.CreateQuery<FleetModel>()
+            .Where(m => m.IsActive);
+
+        var result = await DataContext.LoadAsync(query, size: 500);
+
+        foreach (var fm in result.ItemCollection)
+        {
+            foreach (var pkg in fm.HourlyPackages)
+            {
+                m_packages.Add(new PackageOption
+                {
+                    FleetModelId = fm.FleetModelId,
+                    PackageName = pkg.Name,
+                    Display = $"{pkg.Name} ({fm.DisplayNameWithEngine})"
+                });
+            }
+        }
+    }
+
+    private void OnApplyToPackageChanged()
+    {
+        if (!Entity.ApplyToPackage)
+        {
+            // Clear package selection when disabled
+            Entity.TargetPackages.Clear();
+        }
+    }
+
+    private bool IsPackageSelected(PackageOption pkg)
+    {
+        return Entity.TargetPackages.Any(t =>
+            t.FleetModelId == pkg.FleetModelId && t.PackageName == pkg.PackageName);
+    }
+
+    private void TogglePackage(PackageOption pkg, bool selected)
+    {
+        if (selected)
+        {
+            if (!IsPackageSelected(pkg))
+            {
+                Entity.TargetPackages.Add(new PackageTarget
+                {
+                    FleetModelId = pkg.FleetModelId,
+                    PackageName = pkg.PackageName
+                });
+            }
+        }
+        else
+        {
+            Entity.TargetPackages.RemoveAll(t =>
+                t.FleetModelId == pkg.FleetModelId && t.PackageName == pkg.PackageName);
+        }
+    }
+
+    private class PackageOption
+    {
+        public int FleetModelId { get; set; }
+        public string PackageName { get; set; } = "";
+        public string Display { get; set; } = "";
     }
 
     private void OnRuleTypeChanged()
     {
         if (Entity.RuleType == PricingRuleType.DayOfWeek)
         {
-            Entity.ApplicableDayOfWeek ??= DayOfWeek.Saturday;
+            // Initialize with Saturday if no days selected
+            if (Entity.ApplicableDaysOfWeek.Count == 0)
+            {
+                Entity.ApplicableDaysOfWeek.Add(DayOfWeek.Saturday);
+            }
+        }
+    }
+
+    private void ToggleDay(DayOfWeek day, bool selected)
+    {
+        if (selected)
+        {
+            if (!Entity.ApplicableDaysOfWeek.Contains(day))
+            {
+                Entity.ApplicableDaysOfWeek.Add(day);
+            }
+        }
+        else
+        {
+            Entity.ApplicableDaysOfWeek.Remove(day);
         }
     }
 
@@ -195,6 +344,12 @@
             return;
         }
 
+        if (Entity.RuleType == PricingRuleType.DayOfWeek && Entity.ApplicableDaysOfWeek.Count == 0)
+        {
+            this.ShowError(Localizer["SelectAtLeastOneDay"]);
+            return;
+        }
+
         // Sync dates from DateTime back to DateOnly
         Entity.StartDate = DateOnly.FromDateTime(m_startDate);
         Entity.EndDate = DateOnly.FromDateTime(m_endDate);
@@ -209,6 +364,19 @@
         {
             Entity.RecurringMonth = Entity.StartDate.Month;
             Entity.RecurringDay = Entity.StartDate.Day;
+        }
+
+        // Validate package selection
+        if (Entity.ApplyToPackage && Entity.TargetPackages.Count == 0)
+        {
+            this.ShowError(Localizer["SelectAtLeastOnePackage"]);
+            return;
+        }
+
+        // Clear packages if not applying to packages
+        if (!Entity.ApplyToPackage)
+        {
+            Entity.TargetPackages.Clear();
         }
 
         this.Saving = true;
@@ -237,21 +405,35 @@
 
     private string GetPreviewAlertClass()
     {
-        if (Entity.Multiplier < 1.0m) return "alert-success";
-        if (Entity.Multiplier > 1.0m) return "alert-warning";
+        var effectiveChange = (Entity.Multiplier - 1.0m) * 500 + Entity.AmountAdjustment;
+        if (effectiveChange < 0) return "alert-success";
+        if (effectiveChange > 0) return "alert-warning";
         return "alert-info";
     }
 
     private string GetPreviewIcon()
     {
-        if (Entity.Multiplier < 1.0m) return "ti-discount-2";
-        if (Entity.Multiplier > 1.0m) return "ti-trending-up";
+        var effectiveChange = (Entity.Multiplier - 1.0m) * 500 + Entity.AmountAdjustment;
+        if (effectiveChange < 0) return "ti-discount-2";
+        if (effectiveChange > 0) return "ti-trending-up";
         return "ti-minus";
     }
 
-    private static string FormatMultiplier(decimal multiplier)
+    private string FormatAdjustment()
     {
-        var pct = (multiplier - 1.0m) * 100;
-        return pct >= 0 ? $"+{pct:N0}%" : $"{pct:N0}%";
+        var parts = new List<string>();
+
+        if (Entity.Multiplier != 1.0m)
+        {
+            var pct = (Entity.Multiplier - 1.0m) * 100;
+            parts.Add(pct >= 0 ? $"+{pct:N0}%" : $"{pct:N0}%");
+        }
+
+        if (Entity.AmountAdjustment != 0)
+        {
+            parts.Add(Entity.AmountAdjustment >= 0 ? $"+฿{Entity.AmountAdjustment:N0}" : $"฿{Entity.AmountAdjustment:N0}");
+        }
+
+        return parts.Count > 0 ? string.Join(" ", parts) : "ไม่มีการปรับราคา";
     }
 }
