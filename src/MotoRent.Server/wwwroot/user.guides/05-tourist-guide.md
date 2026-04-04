@@ -1,6 +1,6 @@
-# MotoRent Tourist Portal Guide
+# JaleOS Tourist Portal Guide
 
-Welcome to MotoRent! This guide will help you browse and rent vehicles during your vacation in Thailand.
+Welcome to JaleOS! This guide will help you browse and rent vehicles during your vacation in Malaysia.
 
 ## Getting Started
 
@@ -14,7 +14,7 @@ Welcome to MotoRent! This guide will help you browse and rent vehicles during yo
 
 The homepage displays available vehicles with:
 - **Vehicle Type** - Motorbike, Car, Jet Ski, Boat, Van
-- **Daily Rate** - Price per day in Thai Baht (THB)
+- **Daily Rate** - Price per day in Malaysian Ringgit (MYR)
 - **Availability** - Real-time status
 
 Use filters to narrow down your search:
@@ -80,7 +80,7 @@ When you arrive at the shop:
    - Reservation confirmation
 
 2. **Pay Deposit**
-   - Cash (THB) or credit card
+   - Cash (MYR) or credit card
    - Deposit is refundable upon return
 
 3. **Vehicle Inspection**
@@ -109,9 +109,9 @@ When you arrive at the shop:
 
 ### Safety Tips
 
-1. **Always wear a helmet** (required by law)
+1. **Always wear a helmet** (required by law in Malaysia)
 2. **Drive on the left side** of the road
-3. **Respect speed limits**
+3. **Respect speed limits** (typically 50-60 km/h in town, 90-110 km/h on highways)
 4. **Avoid driving at night** if unfamiliar with roads
 5. **Keep documents with you** at all times
 
@@ -124,7 +124,7 @@ When you arrive at the shop:
 
 **Accident:**
 1. Ensure everyone is safe
-2. Call emergency services if needed (191)
+2. Call emergency services if needed (999)
 3. Contact the rental shop immediately
 4. Take photos of the scene
 5. Get a police report if required
@@ -206,18 +206,19 @@ Standard rentals include:
 ### How do I pay?
 
 Accepted payment methods:
-- Cash (THB)
+- Cash (MYR)
 - Credit/Debit card (Visa, Mastercard)
-- PromptPay (Thai mobile payment)
+- Touch 'n Go eWallet
+- FPX online banking
 
 ## Contact Support
 
 Need help? Contact your rental shop:
 - Phone number on your rental agreement
-- WhatsApp/Line available
+- WhatsApp available
 - Email response within 24 hours
 
 ---
 
-*MotoRent - Vehicle Rental Management System*
+*JaleOS - Vehicle Rental Management System*
 *Enjoy your trip safely!*

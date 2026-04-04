@@ -54,7 +54,7 @@ These are recorded automatically when you process rentals:
 | **Rental Payment** | Customer pays for rental at check-in |
 | **Security Deposit** | Customer pays cash deposit |
 | **Card Payment** | Customer pays by card (tracked, doesn't affect cash) |
-| **PromptPay** | Customer pays via PromptPay (tracked, doesn't affect cash) |
+| **Touch 'n Go / FPX** | Customer pays via e-wallet or online banking (tracked, doesn't affect cash) |
 | **Deposit Refund** | Cash refund at check-out |
 | **Damage Charge** | Customer pays for damage |
 
@@ -112,7 +112,7 @@ For when a customer needs to pay more on an existing rental:
 2. Search for the rental by ID or customer name
 3. Select the rental from the results
 4. Enter the payment amount
-5. Select payment method (Cash, Card, PromptPay, Bank Transfer)
+5. Select payment method (Cash, Card, Touch 'n Go, FPX, Bank Transfer)
 6. Click **Record Payment**
 7. Payment appears in your transactions
 
@@ -173,7 +173,7 @@ When processing a new rental:
 3. At the payment step:
    - **Cash**: Entered into your till automatically
    - **Card**: Tracked but doesn't affect your cash balance
-   - **PromptPay/Bank Transfer**: Tracked as electronic payment
+   - **Touch 'n Go/FPX/Bank Transfer**: Tracked as electronic payment
 4. After check-in, a receipt is generated and can be printed
 
 ### Split Payments
@@ -189,10 +189,10 @@ The system tracks each payment separately.
 For foreign currency cash payments:
 1. Select the currency (USD, EUR, GBP, etc.)
 2. Enter the amount in that currency
-3. The exchange rate converts it to THB
-4. Your till tracks the THB equivalent
+3. The exchange rate converts it to MYR
+4. Your till tracks the MYR equivalent
 
-Supported currencies: THB, USD, EUR, GBP, CNY, JPY, AUD, RUB
+Supported currencies: MYR, USD, EUR, GBP, SGD, CNY, JPY, AUD
 
 ## Processing Refunds at Check-Out
 
@@ -351,4 +351,4 @@ Your counted cash doesn't match expected.
 
 ---
 
-*MotoRent - Vehicle Rental Management System*
+*JaleOS - Vehicle Rental Management System*

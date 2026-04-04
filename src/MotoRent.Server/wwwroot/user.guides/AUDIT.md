@@ -28,3 +28,36 @@
 
 ### General
 - [x] Verify all screenshots are up to date (Updated product name to MotoRent).
+
+---
+
+## JaleOS Malaysian Market Adaptation - Mar 2026
+
+All guides updated to reflect the JaleOS deployment targeting the Malaysian market (jaleos branch).
+
+### Branding Changes
+- [x] Replaced "MotoRent" with "JaleOS" across all guide titles, body text, and footer taglines.
+
+### Market-Specific Changes
+- [x] **Currency**: THB (Thai Baht) → MYR (Malaysian Ringgit) in all examples and references.
+- [x] **Payment Methods**: PromptPay → Touch 'n Go eWallet / FPX online banking.
+- [x] **Supported Currencies**: Updated multi-currency list (THB → MYR base, added SGD, removed RUB).
+- [x] **Emergency Number**: 191 (Thailand) → 999 (Malaysia).
+- [x] **Messaging**: Removed Line app reference, kept WhatsApp (primary in Malaysia).
+- [x] **Location Examples**: Phuket/Patong → Langkawi/Penang/Pantai Cenang.
+- [x] **Business Names**: "Patong Rentals Co." → "Langkawi Rides Sdn Bhd".
+
+### Pricing Preset Changes
+- [x] **01-orgadmin-quickstart.md**: "Create Thailand Preset" → "Create Malaysia Preset" with Malaysian holidays.
+- [x] **04-shopmanager-quickstart.md**: Same pricing preset update.
+- [x] Holidays: Songkran → Hari Raya Aidilfitri, added School Holidays (Jun-Jul).
+- [x] High/Peak Season: Nov 15 - Apr 15 → Dec 1 - Feb 28.
+
+### Tourist Guide (05)
+- [x] "vacation in Thailand" → "vacation in Malaysia".
+- [x] Speed limit guidance added for Malaysian roads.
+- [x] Driving rules retained (left-side driving applies to both countries).
+
+### Onboarding Guide (12)
+- [x] Updated example org and shop names for Malaysian context.
+- [x] Currency default changed to MYR.

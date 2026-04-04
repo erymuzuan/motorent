@@ -1,6 +1,6 @@
-# MotoRent Quick Start Guide - Staff
+# JaleOS Quick Start Guide - Staff
 
-Welcome to MotoRent! This guide will help you get started as a Staff member.
+Welcome to JaleOS! This guide will help you get started as a Staff member.
 
 ![Staff Dashboard](images/09-staff-dashboard.png)
 
@@ -181,4 +181,4 @@ To add a new renter:
 
 ---
 
-*MotoRent - Vehicle Rental Management System*
+*JaleOS - Vehicle Rental Management System*

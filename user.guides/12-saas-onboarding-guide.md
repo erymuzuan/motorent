@@ -1,10 +1,10 @@
 # SaaS Onboarding & Setup Guide
 
-Welcome to the MotoRent SaaS platform! This guide will walk you through the process of setting up your organization and your first rental shop.
+Welcome to the JaleOS platform! This guide will walk you through the process of setting up your organization and your first rental shop.
 
 ## 1. Creating Your Account
 
-1. Go to the MotoRent landing page and click **Get Started** or **Start Free Trial**.
+1. Go to the JaleOS landing page and click **Get Started** or **Start Free Trial**.
 2. Sign up using your **Google** or **Microsoft** account.
 3. Once logged in, you will be automatically redirected to the **Onboarding Wizard**.
 
@@ -13,12 +13,12 @@ Welcome to the MotoRent SaaS platform! This guide will walk you through the proc
 The wizard consists of 4 simple steps to get your business live:
 
 ### Step 1: Organization Profile
-- **Organization Name**: Your business name (e.g., "Patong Rentals Co.").
+- **Organization Name**: Your business name (e.g., "Langkawi Rides Sdn Bhd").
 - **Country & Language**: Set your primary operating region.
-- **Currency**: Choose your primary currency (usually THB for Thailand).
+- **Currency**: Choose your primary currency (MYR for Malaysia).
 
 ### Step 2: Your First Shop
-- **Shop Name**: e.g., "Patong Beach Branch".
+- **Shop Name**: e.g., "Pantai Cenang Branch".
 - **Address & Contact**: This will appear on your receipts and agreements.
 - **Operating Hours**: Set when your shop is open for pickups and returns.
 
@@ -49,4 +49,4 @@ Our support team is available via the chat widget in the bottom right corner of 
 
 ---
 
-*MotoRent - Grow Your Rental Business*
+*JaleOS - Grow Your Rental Business*

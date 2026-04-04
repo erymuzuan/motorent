@@ -1,4 +1,4 @@
-# MotoRent Asset Depreciation Guide - Financial Management
+# JaleOS Asset Depreciation Guide - Financial Management
 
 Welcome to the Asset Depreciation module! This guide helps Organization Admins and Shop Managers track vehicle value, depreciation, expenses, and profitability.
 
@@ -220,7 +220,7 @@ To track depreciation for a vehicle:
 3. Fill in the asset details:
    - **Vehicle** - Select the vehicle to track
    - **Acquisition Date** - When the vehicle was purchased
-   - **Acquisition Cost** - Purchase price (THB)
+   - **Acquisition Cost** - Purchase price (MYR)
    - **Vendor Name** - Dealer or seller
    - **Reference No.** - Invoice or receipt number
 
@@ -242,16 +242,16 @@ To track depreciation for a vehicle:
 | **Hybrid** | Day Out of Door + Straight Line | Combined first-use drop then steady decline |
 
 #### Day Out of Door Example
-- Acquisition Cost: 100,000 THB
+- Acquisition Cost: 100,000 MYR
 - Day Out of Door: 20%
-- **First rental triggers:** 20,000 THB immediate depreciation
-- Remaining 80,000 THB depreciates over useful life
+- **First rental triggers:** 20,000 MYR immediate depreciation
+- Remaining 80,000 MYR depreciates over useful life
 
 #### Straight Line Example
-- Acquisition Cost: 100,000 THB
+- Acquisition Cost: 100,000 MYR
 - Useful Life: 60 months
-- Residual Value: 10,000 THB
-- **Monthly depreciation:** (100,000 - 10,000) / 60 = 1,500 THB
+- Residual Value: 10,000 MYR
+- **Monthly depreciation:** (100,000 - 10,000) / 60 = 1,500 MYR
 
 ### 3. Recording Depreciation
 
@@ -321,7 +321,7 @@ When you finance a vehicle purchase:
 3. Select the **Asset**
 4. Enter loan details:
    - **Lender Name** - Bank or finance company
-   - **Principal Amount** - Loan amount (THB)
+   - **Principal Amount** - Loan amount (MYR)
    - **Annual Interest Rate** - e.g., 8% = 0.08
    - **Term** - Length in months
    - **Down Payment** - Initial payment made
@@ -441,7 +441,7 @@ For vehicles with no resale value (theft, total loss):
 
 ## Pre-Existing Vehicles
 
-For vehicles acquired before implementing MotoRent:
+For vehicles acquired before implementing JaleOS:
 
 1. Create asset with **"Pre-existing vehicle"** checked
 2. Enter **Initial Book Value** (current estimated value)
@@ -496,4 +496,4 @@ A: Create the asset without a loan. Track lease payments as regular expenses und
 
 ---
 
-*MotoRent - Vehicle Rental Management System*
+*JaleOS - Vehicle Rental Management System*

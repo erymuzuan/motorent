@@ -1,6 +1,6 @@
-# MotoRent Quick Start Guide - Shop Manager
+# JaleOS Quick Start Guide - Shop Manager
 
-Welcome to MotoRent! This guide will help you get started as a Shop Manager.
+Welcome to JaleOS! This guide will help you get started as a Shop Manager.
 
 ![Dashboard](images/02-dashboard.png)
 
@@ -177,14 +177,15 @@ Manage dynamic pricing for your shop under **Settings > Pricing Rules**:
 
 **What are Pricing Rules?**
 Pricing rules automatically adjust rental rates based on:
-- **Seasons** - High season surcharges (e.g., +30% Nov-Apr)
-- **Events** - Festival pricing (e.g., +50% Songkran)
+- **Seasons** - Peak season surcharges (e.g., +30% Dec-Feb)
+- **Events** - Festival pricing (e.g., +50% Hari Raya)
 - **Days of Week** - Weekend premiums (e.g., +10% Saturday)
 
-**Quick Start with Thailand Preset**
-Click "Create Thailand Preset" to add common rules:
-- High Season (Nov 15 - Apr 15): +30%
-- Songkran Festival (Apr 13-15): +50%
+**Quick Start with Malaysia Preset**
+Click "Create Malaysia Preset" to add common rules:
+- Peak Season (Dec 1 - Feb 28): +30%
+- Hari Raya Aidilfitri (varies yearly): +50%
+- School Holidays (Jun - Jul): +20%
 - Weekend Premium (Saturday): +10%
 
 **Creating Custom Rules**
@@ -295,4 +296,4 @@ Access reports through **Finance > Reports**:
 
 ---
 
-*MotoRent - Vehicle Rental Management System*
+*JaleOS - Vehicle Rental Management System*

@@ -232,7 +232,7 @@ public class PgPersistence(
 
         var propType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
 
-        return (propType.Name, value) switch
+        return (propType.Name, value!) switch
         {
             // Thai Buddhist calendar handling
             ("DateTimeOffset", DateTimeOffset { Year: > 3000 } ut) => ut.AddYears(-1086).ToUniversalTime(),
@@ -244,7 +244,6 @@ public class PgPersistence(
             ("DateTime", DateTime { Year: 1 }) when column.IsNullable => DBNull.Value,
             ("DateOnly", DateOnly { Year: 1 }) when column.IsNullable => DBNull.Value,
             (_, DateOnly { Year: > 1920 and < 2120 } dt) => $"{dt:yyyy-MM-dd}",
-            (_, null) when column.IsNullable => DBNull.Value,
             _ when propType.IsEnum => value!.ToString()!,
             _ when propType.IsGenericType && propType.GenericTypeArguments[0].IsEnum => value!.ToString()!,
             _ => value

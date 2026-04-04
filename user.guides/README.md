@@ -1,6 +1,6 @@
-# MotoRent User Guides
+# JaleOS User Guides
 
-Quick start guides for all MotoRent user roles.
+Quick start guides for all JaleOS user roles.
 
 ![Dashboard Overview](images/02-dashboard.png)
 
@@ -92,5 +92,5 @@ Tourist/Renter
 
 ---
 
-*MotoRent - Vehicle Rental Management System*
+*JaleOS - Vehicle Rental Management System*
 *Last Updated: January 2026*

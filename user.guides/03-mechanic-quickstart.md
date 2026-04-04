@@ -1,6 +1,6 @@
-# MotoRent Quick Start Guide - Mechanic
+# JaleOS Quick Start Guide - Mechanic
 
-Welcome to MotoRent! This guide will help you get started as a Mechanic.
+Welcome to JaleOS! This guide will help you get started as a Mechanic.
 
 ![Fleet Management](images/05-fleet.png)
 
@@ -159,4 +159,4 @@ Contact your Shop Manager for:
 
 ---
 
-*MotoRent - Vehicle Rental Management System*
+*JaleOS - Vehicle Rental Management System*

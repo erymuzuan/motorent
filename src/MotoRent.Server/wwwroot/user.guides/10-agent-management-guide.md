@@ -49,4 +49,4 @@ Navigate to **Finance > Reports > Agent Performance** to see:
 
 ---
 
-*MotoRent - Partner with the Best*
+*JaleOS - Partner with the Best*

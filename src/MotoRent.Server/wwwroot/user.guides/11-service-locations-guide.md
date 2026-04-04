@@ -7,7 +7,7 @@ Service Locations are specific points where vehicles can be picked up or dropped
 1. Navigate to **Settings > Service Locations**.
 2. Click **Add Location**.
 3. Fill in the details:
-   - **Name**: e.g., "Phuket Airport", "Patong Main Office".
+   - **Name**: e.g., "Langkawi Airport", "Penang Main Office".
    - **Type**: Shop, Hotel, Airport, or Other.
    - **Coordinates**: (Optional) For mapping features.
    - **Drop-off Fee**: The additional charge if a customer returns a vehicle here instead of the pickup location.
@@ -30,4 +30,4 @@ The **Fleet Dashboard** shows the current location of every vehicle, making it e
 
 ---
 
-*MotoRent - Flexible Rental Solutions*
+*JaleOS - Flexible Rental Solutions*

@@ -1,12 +1,12 @@
-# MotoRent Quick Start Guide - Super Admin
+# JaleOS Quick Start Guide - Super Admin
 
-Welcome to MotoRent! This guide covers the Super Admin (Platform Administrator) role.
+Welcome to JaleOS! This guide covers the Super Admin (Platform Administrator) role.
 
 ![Impersonate User](images/01-impersonate.png)
 
 ## Your Role
 
-As a Super Admin, you manage the entire MotoRent platform:
+As a Super Admin, you manage the entire JaleOS platform:
 - Manage Organizations (tenants)
 - Manage System Users
 - Impersonate users for support
@@ -300,5 +300,5 @@ If you detect suspicious activity:
 
 ---
 
-*MotoRent - Vehicle Rental Management System*
+*JaleOS - Vehicle Rental Management System*
 *Platform Administration Guide*

@@ -1,12 +1,12 @@
-# MotoRent Quick Start Guide - Organization Admin
+# JaleOS Quick Start Guide - Organization Admin
 
-Welcome to MotoRent! This guide will help you get started as an Organization Admin (OrgAdmin).
+Welcome to JaleOS! This guide will help you get started as an Organization Admin (OrgAdmin).
 
 ![Dashboard](images/02-dashboard.png)
 
 ## Your Role
 
-As an OrgAdmin, you have **full access** to all features in MotoRent. You can manage:
+As an OrgAdmin, you have **full access** to all features in JaleOS. You can manage:
 - Rentals and check-ins/check-outs
 - Fleet (vehicles and accessories)
 - Finance (payments, deposits, reports)
@@ -84,7 +84,7 @@ See the [Agent Management Guide](10-agent-management-guide.md) for more details.
 ### 5. Finance Management
 
 #### Payments
-- Track all rental payments (Cash, Card, PromptPay, Bank Transfer)
+- Track all rental payments (Cash, Card, Touch 'n Go, FPX, Bank Transfer)
 - Filter by status, method, and date range
 - Record manual payments
 
@@ -112,7 +112,7 @@ When an accident occurs:
 
 ### 7. Customizing Your Documents
 
-Use the **Document Template Designer** to make MotoRent look like your own brand:
+Use the **Document Template Designer** to make JaleOS look like your own brand:
 - **Visual Editor**: Drag-and-drop blocks to design your own headers and footers.
 - **Dynamic Data**: Use tokens like `{{CustomerName}}` to auto-fill rental info.
 - **Standard Templates**: Create custom versions of Booking Confirmations, Rental Agreements, and Receipts.
@@ -145,7 +145,7 @@ Use the visual **Pricing Calendar** to see exactly which rules are active for an
 #### Creating Pricing Rules
 1. Click "+ Add Rule"
 2. Configure the rule:
-   - **Rule Name** - Descriptive name (e.g., "High Season", "Songkran Festival")
+   - **Rule Name** - Descriptive name (e.g., "Peak Season", "Hari Raya")
    - **Rule Type** - Season, Event, Day of Week, or Custom
    - **Dates** - Start and end dates (or select day for weekly rules)
    - **Multiplier** - Price adjustment (e.g., 1.3 = +30%, 0.9 = -10%)
@@ -153,10 +153,11 @@ Use the visual **Pricing Calendar** to see exactly which rules are active for an
    - **Priority** - Higher priority rules apply first when overlapping
    - **Vehicle Type** - Apply to specific types or all vehicles
 
-#### Thailand Preset
-Click "Create Thailand Preset" to instantly create common rules:
-- **High Season** (Nov 15 - Apr 15): +30%
-- **Songkran Festival** (Apr 13-15): +50%
+#### Malaysia Preset
+Click "Create Malaysia Preset" to instantly create common rules:
+- **Peak Season** (Dec 1 - Feb 28): +30%
+- **Hari Raya Aidilfitri** (varies yearly): +50%
+- **School Holidays** (Jun - Jul): +20%
 - **Weekend Premium** (Saturday): +10%
 
 #### Rule Types
@@ -196,4 +197,4 @@ The dialog shows a live preview of how the multiplier affects pricing:
 
 ---
 
-*MotoRent - Vehicle Rental Management System*
+*JaleOS - Vehicle Rental Management System*
