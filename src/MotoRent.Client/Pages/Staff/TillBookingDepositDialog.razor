@@ -25,7 +25,7 @@
                                 @m_selectedBooking.StartDate.ToString("dd MMM") - @m_selectedBooking.EndDate.ToString("dd MMM")
                             </span>
                     <span class="fw-bold text-warning">
-                                @Localizer["Due"]: ฿@m_selectedBooking.BalanceDue.ToString("N0")
+                                @Localizer["Due"]: @BaseCurrencySymbol@m_selectedBooking.BalanceDue.ToString("N0")
                             </span>
                 </div>
             </div>
@@ -91,12 +91,12 @@
                                     </div>
                                 </div>
                                 <div class="text-end">
-                                    <div class="fw-semibold">฿@booking.TotalAmount.ToString("N0")</div>
+                                    <div class="fw-semibold">@BaseCurrencySymbol@booking.TotalAmount.ToString("N0")</div>
                                     <div class="small">
                                         @if (booking.BalanceDue > 0)
                                         {
                                             <span
-                                                class="text-warning">@Localizer["Due"]: ฿@booking.BalanceDue.ToString("N0")</span>
+                                                class="text-warning">@Localizer["Due"]: @BaseCurrencySymbol@booking.BalanceDue.ToString("N0")</span>
                                         }
                                         else
                                         {
@@ -133,15 +133,15 @@
                 <div class="row text-center g-2">
                     <div class="col-4">
                         <div class="small text-muted">@Localizer["TotalAmount"]</div>
-                        <div class="fw-semibold">฿@m_selectedBooking.TotalAmount.ToString("N0")</div>
+                        <div class="fw-semibold">@BaseCurrencySymbol@m_selectedBooking.TotalAmount.ToString("N0")</div>
                     </div>
                     <div class="col-4">
                         <div class="small text-muted">@Localizer["AmountPaid"]</div>
-                        <div class="fw-semibold text-success">฿@m_selectedBooking.AmountPaid.ToString("N0")</div>
+                        <div class="fw-semibold text-success">@BaseCurrencySymbol@m_selectedBooking.AmountPaid.ToString("N0")</div>
                     </div>
                     <div class="col-4">
                         <div class="small text-muted">@Localizer["BalanceDue"]</div>
-                        <div class="fw-semibold text-warning">฿@m_selectedBooking.BalanceDue.ToString("N0")</div>
+                        <div class="fw-semibold text-warning">@BaseCurrencySymbol@m_selectedBooking.BalanceDue.ToString("N0")</div>
                     </div>
                 </div>
             </div>
@@ -255,13 +255,13 @@
                                 {
                                     <div class="d-flex justify-content-between mb-1">
                                         <span class="text-muted">@Localizer["AmountReceived"]</span>
-                                        <span class="fw-semibold">฿@m_receivedAmount.ToString("N0")</span>
+                                        <span class="fw-semibold">@BaseCurrencySymbol@m_receivedAmount.ToString("N0")</span>
                                     </div>
                                     <hr class="my-2"/>
                                     <div class="d-flex justify-content-between fs-5 fw-bold">
                                         <span>@Localizer["ChangeToGive"]</span>
                                         <span class="@(m_changeAmount >= 0 ? "text-success" : "text-danger")">
-                                                    ฿@m_changeAmount.ToString("N0")
+                                                    @BaseCurrencySymbol@m_changeAmount.ToString("N0")
                                                 </span>
                                     </div>
                                 }
@@ -275,12 +275,12 @@
                     <div class="mb-3">
                         <label class="form-label required">@Localizer["Amount"]</label>
                         <div class="input-group input-group-lg">
-                            <span class="input-group-text">฿</span>
+                            <span class="input-group-text">@BaseCurrencySymbol</span>
                             <input type="number" class="form-control text-end fs-4" @bind="m_amount"
                                    required min="1" max="@m_selectedBooking.BalanceDue" step="any" placeholder="0"/>
                         </div>
                         <div class="form-hint">@Localizer["MaxAmount"]:
-                            ฿@m_selectedBooking.BalanceDue.ToString("N0")</div>
+                            @BaseCurrencySymbol@m_selectedBooking.BalanceDue.ToString("N0")</div>
                     </div>
                 }
 
@@ -575,7 +575,7 @@
     {
         var symbol = currency switch
         {
-            SupportedCurrencies.THB => "฿",
+            SupportedCurrencies.THB => CurrencyDenominations.GetCurrencySymbol(MotoConfig.CountryDefaults.Currency),
             SupportedCurrencies.USD => "$",
             SupportedCurrencies.EUR => "€",
             SupportedCurrencies.CNY => "¥",

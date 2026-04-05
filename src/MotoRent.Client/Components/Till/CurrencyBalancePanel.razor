@@ -9,7 +9,7 @@
             @if (!m_expanded)
             {
                 <span class="mr-balance-total-collapsed">
-                    @CurrencyDenominations.GetCurrencySymbol(SupportedCurrencies.THB)@TotalThbEquivalent.ToString("N0")
+                    @BaseCurrencySymbol@TotalThbEquivalent.ToString("N0")
                 </span>
             }
         </div>
@@ -25,10 +25,10 @@
                 <div class="mr-balance-row">
                     <span class="mr-balance-currency">@currency</span>
                     <span class="mr-balance-amount">@symbol@balance.ToString("N2")</span>
-                    @if (currency != SupportedCurrencies.THB)
+                    @if (currency != BaseCurrencyCode)
                     {
                         var thbEquiv = m_thbEquivalents.GetValueOrDefault(currency, 0);
-                        <span class="mr-balance-equiv">(~@CurrencyDenominations.GetCurrencySymbol(SupportedCurrencies.THB)@thbEquiv.ToString("N0"))</span>
+                        <span class="mr-balance-equiv">(~@BaseCurrencySymbol@thbEquiv.ToString("N0"))</span>
                     }
                 </div>
             }
@@ -36,7 +36,7 @@
             <div class="mr-balance-total">
                 <span>@Localizer["TotalThbEquivalent"]:</span>
                 <span class="mr-balance-total-value">
-                    @CurrencyDenominations.GetCurrencySymbol(SupportedCurrencies.THB)@TotalThbEquivalent.ToString("N0")
+                    @BaseCurrencySymbol@TotalThbEquivalent.ToString("N0")
                 </span>
             </div>
         </div>
@@ -67,7 +67,7 @@
     {
         get
         {
-            var thbBalance = CurrencyBalances.GetValueOrDefault(SupportedCurrencies.THB, 0);
+            var thbBalance = CurrencyBalances.GetValueOrDefault(BaseCurrencyCode, 0);
             var foreignThbTotal = m_thbEquivalents.Values.Sum();
             return thbBalance + foreignThbTotal;
         }
@@ -103,7 +103,7 @@
 
         foreach (var (currency, balance) in CurrencyBalances)
         {
-            if (currency == SupportedCurrencies.THB || balance <= 0)
+            if (currency == BaseCurrencyCode || balance <= 0)
                 continue;
 
             var conversion = await ExchangeRateService.ConvertToThbAsync(currency, balance);
@@ -119,14 +119,14 @@
     /// </summary>
     private IEnumerable<(string Currency, decimal Balance)> GetNonZeroBalances()
     {
-        // THB first, then foreign currencies
-        if (CurrencyBalances.TryGetValue(SupportedCurrencies.THB, out var thbBalance) && thbBalance > 0)
+        // Base currency first, then foreign currencies
+        if (CurrencyBalances.TryGetValue(BaseCurrencyCode, out var thbBalance) && thbBalance > 0)
         {
-            yield return (SupportedCurrencies.THB, thbBalance);
+            yield return (BaseCurrencyCode, thbBalance);
         }
 
         foreach (var (currency, balance) in CurrencyBalances
-            .Where(kvp => kvp.Key != SupportedCurrencies.THB && kvp.Value > 0)
+            .Where(kvp => kvp.Key != BaseCurrencyCode && kvp.Value > 0)
             .OrderBy(kvp => kvp.Key))
         {
             yield return (currency, balance);

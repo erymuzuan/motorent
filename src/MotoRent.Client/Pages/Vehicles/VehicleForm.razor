@@ -1,8 +1,8 @@
 @using MotoRent.Client.Components.Vehicles
 @using MotoRent.Client.Components.Shared
-@using MotoRent.Domain.Lookups
 @inherits LocalizedComponentBase<VehicleForm>
 @inject VehicleLookupService LookupService
+@using MotoRent.Domain.Lookups
 
 <div class="row">
     @* Left Column: Basic Info & Images *@
@@ -67,9 +67,9 @@
                         <label class="mr-form-label">@Localizer["Province"] <span class="required">*</span></label>
                         <select class="mr-form-control" @bind="Entity.LicensePlateProvince" required>
                             <option value="">@Localizer["SelectProvince"]...</option>
-                            @foreach (var province in ThaiProvinces.All)
+                            @foreach (var province in MalaysiaStates.All)
                             {
-                                <option value="@province">@Localizer[$"Province_{province.Replace(" ", "")}"]</option>
+                                <option value="@province">@province</option>
                             }
                         </select>
                     </div>
@@ -389,40 +389,40 @@
                         {
                             <div class="col-md-4">
                                 <label class="mr-form-label">@Localizer["HourlyRate"]</label>
-                                <div class="mr-form-control-plaintext fw-bold">฿@Entity.HourlyRate.Value.ToString("N0") / @Localizer["Hour"]</div>
+                                <div class="mr-form-control-plaintext fw-bold">@BaseCurrencySymbol@Entity.HourlyRate.Value.ToString("N0") / @Localizer["Hour"]</div>
                             </div>
                         }
                         @if (Entity.DailyRate > 0)
                         {
                             <div class="col-md-4">
                                 <label class="mr-form-label">@Localizer["DailyRate"]</label>
-                                <div class="mr-form-control-plaintext fw-bold">฿@Entity.DailyRate.ToString("N0") / @Localizer["Day"]</div>
+                                <div class="mr-form-control-plaintext fw-bold">@BaseCurrencySymbol@Entity.DailyRate.ToString("N0") / @Localizer["Day"]</div>
                             </div>
                         }
                         @if (Entity.Rate15Min > 0)
                         {
                             <div class="col-md-4">
                                 <label class="mr-form-label">@Localizer["Rate15Min"]</label>
-                                <div class="mr-form-control-plaintext fw-bold">฿@Entity.Rate15Min.Value.ToString("N0")</div>
+                                <div class="mr-form-control-plaintext fw-bold">@BaseCurrencySymbol@Entity.Rate15Min.Value.ToString("N0")</div>
                             </div>
                         }
                         @if (Entity.Rate30Min > 0)
                         {
                             <div class="col-md-4">
                                 <label class="mr-form-label">@Localizer["Rate30Min"]</label>
-                                <div class="mr-form-control-plaintext fw-bold">฿@Entity.Rate30Min.Value.ToString("N0")</div>
+                                <div class="mr-form-control-plaintext fw-bold">@BaseCurrencySymbol@Entity.Rate30Min.Value.ToString("N0")</div>
                             </div>
                         }
                         @if (Entity.Rate1Hour > 0)
                         {
                             <div class="col-md-4">
                                 <label class="mr-form-label">@Localizer["Rate1Hour"]</label>
-                                <div class="mr-form-control-plaintext fw-bold">฿@Entity.Rate1Hour.Value.ToString("N0")</div>
+                                <div class="mr-form-control-plaintext fw-bold">@BaseCurrencySymbol@Entity.Rate1Hour.Value.ToString("N0")</div>
                             </div>
                         }
                         <div class="col-md-4">
                             <label class="mr-form-label">@Localizer["DepositAmount"]</label>
-                            <div class="mr-form-control-plaintext fw-bold">฿@Entity.DepositAmount.ToString("N0")</div>
+                            <div class="mr-form-control-plaintext fw-bold">@BaseCurrencySymbol@Entity.DepositAmount.ToString("N0")</div>
                         </div>
                     </div>
                 </div>
@@ -444,25 +444,25 @@
                             <div class="col-md-4">
                                 <label class="mr-form-label">@Localizer["Rate15Min"]</label>
                                 <div class="mr-input-group">
-                                    <span class="mr-input-group-text">฿</span>
+                                    <span class="mr-input-group-text">@BaseCurrencySymbol</span>
                                     <input type="number" class="mr-form-control mr-mono" @bind="Entity.Rate15Min"
-                                           min="0" step="50" placeholder="500" />
+                                           min="0" step="1" placeholder="500" />
                                 </div>
                             </div>
 
                             <div class="col-md-4">
                                 <label class="mr-form-label">@Localizer["Rate30Min"]</label>
                                 <div class="mr-input-group">
-                                    <span class="mr-input-group-text">฿</span>
+                                    <span class="mr-input-group-text">@BaseCurrencySymbol</span>
                                     <input type="number" class="mr-form-control mr-mono" @bind="Entity.Rate30Min"
-                                           min="0" step="50" placeholder="800" />
+                                           min="0" step="1" placeholder="800" />
                                 </div>
                             </div>
 
                             <div class="col-md-4">
                                 <label class="mr-form-label">@Localizer["Rate1Hour"] <span class="required">*</span></label>
                                 <div class="mr-input-group">
-                                    <span class="mr-input-group-text">฿</span>
+                                    <span class="mr-input-group-text">@BaseCurrencySymbol</span>
                                     <input type="number" class="mr-form-control mr-mono" @bind="Entity.Rate1Hour" required
                                            min="100" step="100" placeholder="1500" />
                                 </div>
@@ -473,9 +473,9 @@
                             <div class="col-md-4">
                                 <label class="mr-form-label">@Localizer["HourlyRate"]</label>
                                 <div class="mr-input-group">
-                                    <span class="mr-input-group-text">฿</span>
+                                    <span class="mr-input-group-text">@BaseCurrencySymbol</span>
                                     <input type="number" class="mr-form-control mr-mono" @bind="Entity.HourlyRate"
-                                           min="0" step="50" placeholder="@GetHourlyRatePlaceholder()" />
+                                           min="0" step="1" placeholder="@GetHourlyRatePlaceholder()" />
                                     <span class="mr-input-group-text">/ @Localizer["Hour"]</span>
                                 </div>
                                 <div class="mr-form-hint">
@@ -487,9 +487,9 @@
                             <div class="col-md-4">
                                 <label class="mr-form-label">@Localizer["DailyRate"]</label>
                                 <div class="mr-input-group">
-                                    <span class="mr-input-group-text">฿</span>
+                                    <span class="mr-input-group-text">@BaseCurrencySymbol</span>
                                     <input type="number" class="mr-form-control mr-mono" @bind="Entity.DailyRate"
-                                           min="0" step="50" placeholder="@GetDailyRatePlaceholder()" />
+                                           min="0" step="1" placeholder="@GetDailyRatePlaceholder()" />
                                     <span class="mr-input-group-text">/ @Localizer["Day"]</span>
                                 </div>
                                 <div class="mr-form-hint">
@@ -502,9 +502,9 @@
                         <div class="col-md-6">
                             <label class="mr-form-label">@Localizer["DepositAmount"] <span class="required">*</span></label>
                             <div class="mr-input-group">
-                                <span class="mr-input-group-text">฿</span>
+                                <span class="mr-input-group-text">@BaseCurrencySymbol</span>
                                 <input type="number" class="mr-form-control mr-mono" @bind="Entity.DepositAmount" required
-                                       min="500" step="500" placeholder="@GetDepositPlaceholder()" />
+                                       min="0" step="100" placeholder="@GetDepositPlaceholder()" />
                             </div>
                         </div>
                     </div>
@@ -527,7 +527,7 @@
                         <div class="col-md-6">
                             <label class="mr-form-label">@Localizer["DriverDailyFee"]</label>
                             <div class="mr-input-group">
-                                <span class="mr-input-group-text">฿</span>
+                                <span class="mr-input-group-text">@BaseCurrencySymbol</span>
                                 <input type="number" class="mr-form-control mr-mono" @bind="Entity.DriverDailyFee"
                                        min="0" step="100" placeholder="1000" />
                                 <span class="mr-input-group-text">/ @Localizer["Day"]</span>
@@ -543,7 +543,7 @@
                             <div class="col-md-6">
                                 <label class="mr-form-label">@Localizer["GuideDailyFee"]</label>
                                 <div class="mr-input-group">
-                                    <span class="mr-input-group-text">฿</span>
+                                    <span class="mr-input-group-text">@BaseCurrencySymbol</span>
                                     <input type="number" class="mr-form-control mr-mono" @bind="Entity.GuideDailyFee"
                                            min="0" step="100" placeholder="800" />
                                     <span class="mr-input-group-text">/ @Localizer["Day"]</span>

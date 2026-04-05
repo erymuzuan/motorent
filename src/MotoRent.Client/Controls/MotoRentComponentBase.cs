@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using MotoRent.Client.Services;
 using MotoRent.Domain.Core;
 using MotoRent.Domain.DataContext;
+using MotoRent.Domain.Entities;
 using MotoRent.Domain.Settings;
 
 namespace MotoRent.Client.Controls;
@@ -76,7 +77,7 @@ public class MotoRentComponentBase : ComponentBase
     #region Currency Formatting
 
     /// <summary>
-    /// Formats a decimal as Thai Baht currency.
+    /// Formats a decimal using the deployment's default currency code.
     /// </summary>
     protected string FormatCurrency(decimal amount) => $"{amount:N0} {MotoConfig.CountryDefaults.Currency}";
 
@@ -84,6 +85,26 @@ public class MotoRentComponentBase : ComponentBase
     /// Formats a decimal as currency with decimals.
     /// </summary>
     protected string FormatCurrencyWithDecimals(decimal amount) => $"{amount:N2} {MotoConfig.CountryDefaults.Currency}";
+
+    /// <summary>
+    /// Gets the deployment base currency code.
+    /// </summary>
+    protected string BaseCurrencyCode => MotoConfig.CountryDefaults.Currency;
+
+    /// <summary>
+    /// Gets the deployment base currency symbol.
+    /// </summary>
+    protected string BaseCurrencySymbol => CurrencyDenominations.GetCurrencySymbol(this.BaseCurrencyCode);
+
+    /// <summary>
+    /// Formats a decimal using the deployment base currency symbol.
+    /// </summary>
+    protected string FormatBaseCurrency(decimal amount) => $"{this.BaseCurrencySymbol}{amount:N0}";
+
+    /// <summary>
+    /// Formats a decimal using the deployment base currency symbol with decimals.
+    /// </summary>
+    protected string FormatBaseCurrencyWithDecimals(decimal amount) => $"{this.BaseCurrencySymbol}{amount:N2}";
 
     #endregion
 

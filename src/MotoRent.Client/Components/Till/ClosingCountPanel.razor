@@ -16,7 +16,7 @@
             var varianceClass = GetVarianceClass(variance);
             var varianceIcon = GetVarianceIcon(variance);
             var symbol = CurrencyDenominations.GetCurrencySymbol(currency);
-            var isTHB = currency == SupportedCurrencies.THB;
+            var isTHB = currency == BaseCurrencyCode;
 
             <div class="mr-currency-section">
                 <div class="mr-currency-header">
@@ -129,7 +129,7 @@
         }
 
         @* No foreign currency message *@
-        @if (m_visibleCurrencies.Count == 1 && m_visibleCurrencies.Contains(SupportedCurrencies.THB))
+        @if (m_visibleCurrencies.Count == 1 && m_visibleCurrencies.Contains(BaseCurrencyCode))
         {
             <div class="mr-no-foreign-currency">
                 <i class="ti ti-info-circle me-2"></i>
@@ -186,11 +186,11 @@
             <span class="mr-overall-amount">
                 @if (overallVariance >= 0)
                 {
-                    @($"+{CurrencyDenominations.GetCurrencySymbol(SupportedCurrencies.THB)}{overallVariance:N0}")
+                    @($"+{BaseCurrencySymbol}{overallVariance:N0}")
                 }
                 else
                 {
-                    @($"-{CurrencyDenominations.GetCurrencySymbol(SupportedCurrencies.THB)}{Math.Abs(overallVariance):N0}")
+                    @($"-{BaseCurrencySymbol}{Math.Abs(overallVariance):N0}")
                 }
             </span>
         </div>
@@ -198,7 +198,7 @@
         @* Grand total *@
         <div class="mr-grand-total">
             <span>@Localizer["GrandTotal"]</span>
-            <span class="mr-grand-amount">@CurrencyDenominations.GetCurrencySymbol(SupportedCurrencies.THB)@GetGrandTotalThb().ToString("N0")</span>
+            <span class="mr-grand-amount">@BaseCurrencySymbol@GetGrandTotalThb().ToString("N0")</span>
         </div>
 
         @* Variance warning *@
@@ -256,13 +256,13 @@
         // Determine which currencies to show based on expected balances
         m_visibleCurrencies = [];
 
-        // THB always shown (required)
-        m_visibleCurrencies.Add(SupportedCurrencies.THB);
+        // Base currency always shown (required)
+        m_visibleCurrencies.Add(BaseCurrencyCode);
 
         // Add foreign currencies only if expected balance > 0
         foreach (var currency in CurrencyDenominations.CurrenciesWithDenominations)
         {
-            if (currency == SupportedCurrencies.THB) continue;
+            if (currency == BaseCurrencyCode) continue;
 
             if (ExpectedBalances.TryGetValue(currency, out var balance) && balance > 0)
             {
@@ -330,7 +330,7 @@
     {
         foreach (var currency in m_visibleCurrencies)
         {
-            if (currency == SupportedCurrencies.THB) continue;
+            if (currency == BaseCurrencyCode) continue;
 
             var rate = await ExchangeRateService.GetCurrentRateAsync(currency);
             if (rate != null)
@@ -371,7 +371,7 @@
         {
             var currencyTotal = GetTotal(currency);
 
-            if (currency == SupportedCurrencies.THB)
+            if (currency == BaseCurrencyCode)
             {
                 total += currencyTotal;
             }
@@ -399,7 +399,7 @@
             var expected = GetExpectedBalance(currency);
             var variance = actual - expected;
 
-            if (currency == SupportedCurrencies.THB)
+            if (currency == BaseCurrencyCode)
             {
                 totalVariance += variance;
             }
@@ -419,6 +419,7 @@
     private string GetCurrencyName(string currency) => currency switch
     {
         SupportedCurrencies.THB => Localizer["ThailandBaht"],
+        SupportedCurrencies.MYR => GetLocalizedText("MalaysianRinggit", "Malaysian Ringgit"),
         SupportedCurrencies.USD => Localizer["USDollar"],
         SupportedCurrencies.EUR => Localizer["Euro"],
         SupportedCurrencies.CNY => Localizer["ChineseYuan"],

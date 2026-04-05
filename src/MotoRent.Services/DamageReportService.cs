@@ -279,10 +279,12 @@ public class DamageReportService(RentalDataContext context)
 
     /// <summary>
     /// Gets total estimated damage costs by status.
+    /// Uses a single query to load all reports and computes summaries in memory
+    /// for reliability.
     /// </summary>
     public async Task<DamageCostSummary> GetCostSummaryAsync(int shopId)
     {
-        var baseQuery = this.Context.CreateQuery<DamageReport>();
+        var query = this.Context.CreateQuery<DamageReport>();
 
         // Only filter by shop if a specific shopId is provided (> 0)
         if (shopId > 0)
@@ -290,40 +292,28 @@ public class DamageReportService(RentalDataContext context)
             var rentalIds = await this.Context.GetDistinctAsync<Rental, int>(
                 r => r.RentedFromShopId == shopId,
                 r => r.RentalId);
-            baseQuery = baseQuery.Where(d => rentalIds.IsInList(d.RentalId));
+            query = query.Where(d => rentalIds.IsInList(d.RentalId));
         }
 
-        // Get counts and sums for each status using SQL aggregates
-        var pendingQuery = baseQuery.Where(d => d.Status == "Pending");
-        var chargedQuery = baseQuery.Where(d => d.Status == "Charged");
-        var waivedQuery = baseQuery.Where(d => d.Status == "Waived");
-        var insuranceClaimQuery = baseQuery.Where(d => d.Status == "InsuranceClaim");
+        query = query.OrderByDescending(d => d.DamageReportId);
+        var result = await this.Context.LoadAsync(query, 1, 10000, false);
+        var all = result.ItemCollection;
 
-        var pendingCount = await this.Context.GetCountAsync(pendingQuery);
-        var pendingSum = await this.Context.GetSumAsync(pendingQuery, d => d.EstimatedCost);
-
-        var chargedCount = await this.Context.GetCountAsync(chargedQuery);
-        // For charged, we need ActualCost if available, otherwise EstimatedCost
-        // This requires loading the data since we can't do COALESCE in the expression tree
-        var chargedResult = await this.Context.LoadAsync(chargedQuery, 1, 10000, false);
-        var chargedAmount = chargedResult.ItemCollection.Sum(d => d.ActualCost ?? d.EstimatedCost);
-
-        var waivedCount = await this.Context.GetCountAsync(waivedQuery);
-        var waivedSum = await this.Context.GetSumAsync(waivedQuery, d => d.EstimatedCost);
-
-        var insuranceClaimCount = await this.Context.GetCountAsync(insuranceClaimQuery);
-        var insuranceClaimSum = await this.Context.GetSumAsync(insuranceClaimQuery, d => d.EstimatedCost);
+        var pending = all.Where(d => d.Status == "Pending").ToList();
+        var charged = all.Where(d => d.Status == "Charged").ToList();
+        var waived = all.Where(d => d.Status == "Waived").ToList();
+        var insuranceClaim = all.Where(d => d.Status == "InsuranceClaim").ToList();
 
         return new DamageCostSummary
         {
-            PendingCount = pendingCount,
-            PendingEstimatedCost = pendingSum,
-            ChargedCount = chargedCount,
-            ChargedAmount = chargedAmount,
-            WaivedCount = waivedCount,
-            WaivedAmount = waivedSum,
-            InsuranceClaimCount = insuranceClaimCount,
-            InsuranceClaimAmount = insuranceClaimSum
+            PendingCount = pending.Count,
+            PendingEstimatedCost = pending.Sum(d => d.EstimatedCost),
+            ChargedCount = charged.Count,
+            ChargedAmount = charged.Sum(d => d.ActualCost ?? d.EstimatedCost),
+            WaivedCount = waived.Count,
+            WaivedAmount = waived.Sum(d => d.EstimatedCost),
+            InsuranceClaimCount = insuranceClaim.Count,
+            InsuranceClaimAmount = insuranceClaim.Sum(d => d.EstimatedCost)
         };
     }
 }

@@ -88,9 +88,9 @@
             <div class="col-md-3">
                 <label class="form-label">@Localizer["AmountAdjustment"]</label>
                 <div class="input-group">
-                    <span class="input-group-text">฿</span>
+                    <span class="input-group-text">@BaseCurrencySymbol</span>
                     <input type="number" class="form-control" @bind="Entity.AmountAdjustment"
-                           step="10" />
+                           step="1" />
                 </div>
                 <small class="form-hint">@Localizer["AmountAdjustmentHint"]</small>
             </div>
@@ -98,9 +98,9 @@
             <div class="col-md-3">
                 <label class="form-label">@Localizer["MinRate"]</label>
                 <div class="input-group">
-                    <span class="input-group-text">฿</span>
+                    <span class="input-group-text">@BaseCurrencySymbol</span>
                     <input type="number" class="form-control" @bind="Entity.MinRate"
-                           min="0" step="50" />
+                           min="0" step="1" />
                 </div>
                 <small class="form-hint">@Localizer["MinRateHint"]</small>
             </div>
@@ -108,9 +108,9 @@
             <div class="col-md-3">
                 <label class="form-label">@Localizer["MaxRate"]</label>
                 <div class="input-group">
-                    <span class="input-group-text">฿</span>
+                    <span class="input-group-text">@BaseCurrencySymbol</span>
                     <input type="number" class="form-control" @bind="Entity.MaxRate"
-                           min="0" step="50" />
+                           min="0" step="1" />
                 </div>
                 <small class="form-hint">@Localizer["MaxRateHint"]</small>
             </div>
@@ -124,9 +124,9 @@
                         <div>
                             <h4 class="alert-title">@Localizer["PricePreview"]</h4>
                             <div class="text-secondary">
-                                @Localizer["BaseRateExample"]: ฿500/day
+                                @Localizer["BaseRateExample"]: @(BaseCurrencySymbol)500/day
                                 <i class="ti ti-arrow-right mx-2"></i>
-                                <strong>฿@(((500 * Entity.Multiplier) + Entity.AmountAdjustment).ToString("N0"))/day</strong>
+                                <strong>@(BaseCurrencySymbol)@(((500 * Entity.Multiplier) + Entity.AmountAdjustment).ToString("N0"))/day</strong>
                                 (@FormatAdjustment())
                             </div>
                         </div>
@@ -431,7 +431,7 @@
 
         if (Entity.AmountAdjustment != 0)
         {
-            parts.Add(Entity.AmountAdjustment >= 0 ? $"+฿{Entity.AmountAdjustment:N0}" : $"฿{Entity.AmountAdjustment:N0}");
+            parts.Add(Entity.AmountAdjustment >= 0 ? $"+{BaseCurrencySymbol}{Entity.AmountAdjustment:N0}" : $"{BaseCurrencySymbol}{Entity.AmountAdjustment:N0}");
         }
 
         return parts.Count > 0 ? string.Join(" ", parts) : "ไม่มีการปรับราคา";

@@ -8,9 +8,9 @@
             <span>@Localizer["AddCash"]</span>
         </div>
         <div class="mr-denomination-chips">
-            @foreach (var denomination in CurrencyDenominations.GetDenominations(SupportedCurrencies.THB))
+            @foreach (var denomination in CurrencyDenominations.GetDenominations(BaseCurrencyCode))
             {
-                var isBill = denomination >= 20;
+                var isBill = denomination >= 5;
                 var chipClass = isBill ? "mr-chip-bill" : "mr-chip-coin";
                 var count = GetCount(denomination);
 
@@ -19,7 +19,7 @@
                         disabled="@Disabled"
                         @onclick="() => Increment(denomination)">
                     <span class="mr-chip-indicator"></span>
-                    <span class="mr-chip-icon">@(isBill ? "฿" : "C")</span>
+                    <span class="mr-chip-icon">@(isBill ? BaseCurrencySymbol : "C")</span>
                     <span class="mr-chip-value">@denomination.ToString("N0")</span>
                 </button>
             }
@@ -28,7 +28,7 @@
 
     @* Counted Items Section - Only show items with count > 0 *@
     @{
-        var countedItems = CurrencyDenominations.GetDenominations(SupportedCurrencies.THB)
+        var countedItems = CurrencyDenominations.GetDenominations(BaseCurrencyCode)
             .Where(d => GetCount(d) > 0)
             .ToList();
     }
@@ -47,17 +47,17 @@
                 {
                     var count = GetCount(denomination);
                     var subtotal = denomination * count;
-                    var isBill = denomination >= 20;
+                    var isBill = denomination >= 5;
                     var chipClass = isBill ? "mr-item-bill" : "mr-item-coin";
 
                     <div class="mr-counted-item">
                         <div class="mr-item-badge @chipClass">
-                            <span class="mr-badge-icon">@(isBill ? "฿" : "C")</span>
+                            <span class="mr-badge-icon">@(isBill ? BaseCurrencySymbol : "C")</span>
                             <span class="mr-badge-value">@denomination.ToString("N0")</span>
                         </div>
                         <div class="mr-item-subtotal">
                             <span class="mr-subtotal-label">@Localizer["Subtotal"]</span>
-                            <span class="mr-subtotal-value">฿@subtotal.ToString("N0")</span>
+                            <span class="mr-subtotal-value">@FormatBaseCurrency(subtotal)</span>
                         </div>
                         <div class="mr-item-controls">
                             @if (count > 1)
@@ -107,13 +107,13 @@
     [Parameter]
     public bool Disabled { get; set; }
 
-    // THB denomination -> count (simplified for THB only)
+    // Base-currency denomination -> count
     private Dictionary<decimal, int> m_counts = new();
 
     protected override void OnInitialized()
     {
         // Initialize all denominations with 0 counts
-        foreach (var denom in CurrencyDenominations.GetDenominations(SupportedCurrencies.THB))
+        foreach (var denom in CurrencyDenominations.GetDenominations(BaseCurrencyCode))
         {
             m_counts[denom] = 0;
         }
@@ -154,7 +154,7 @@
     {
         var breakdown = new CurrencyDenominationBreakdown
         {
-            Currency = SupportedCurrencies.THB,
+            Currency = BaseCurrencyCode,
             Denominations = new Dictionary<decimal, int>(m_counts.Where(kvp => kvp.Value > 0))
         };
 

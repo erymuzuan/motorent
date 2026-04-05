@@ -42,7 +42,7 @@
                 <div class="col-6">
                     <div class="text-muted small">@Localizer["Amount"]</div>
                     <div class="fw-bold fs-4">
-                        @if (Transaction.Currency == SupportedCurrencies.THB)
+                        @if (Transaction.Currency == BaseCurrencyCode)
                         {
                             @FormatThb(Transaction.Amount)
                         }
@@ -180,7 +180,9 @@
             TillTransactionType.TopUp => Localizer["TopUp"],
             TillTransactionType.CardPayment => Localizer["CardPayment"],
             TillTransactionType.BankTransfer => Localizer["BankTransfer"],
-            TillTransactionType.PromptPay => Localizer["PromptPay"],
+            TillTransactionType.PromptPay => GetLocalizedText("DuitNow", "DuitNow QR"),
+            TillTransactionType.DuitNow => GetLocalizedText("DuitNow", "DuitNow QR"),
+            TillTransactionType.FPX => "FPX",
             TillTransactionType.DepositRefund => Localizer["DepositRefund"],
             TillTransactionType.FuelReimbursement => Localizer["FuelReimbursement"],
             TillTransactionType.AgentCommission => Localizer["AgentCommission"],
@@ -191,16 +193,16 @@
         };
     }
 
-    private static string FormatThb(decimal amount)
+    private string FormatThb(decimal amount)
     {
-        return $"\u0e3f{amount:N0}";
+        return $"{BaseCurrencySymbol}{amount:N0}";
     }
 
-    private static string FormatCurrency(decimal amount, string currency)
+    private string FormatCurrency(decimal amount, string currency)
     {
         return currency switch
         {
-            SupportedCurrencies.THB => $"\u0e3f{amount:N0}",
+            var code when code == BaseCurrencyCode => $"{BaseCurrencySymbol}{amount:N0}",
             SupportedCurrencies.USD => $"${amount:N2}",
             SupportedCurrencies.EUR => $"\u20ac{amount:N2}",
             SupportedCurrencies.CNY => $"\u00a5{amount:N2}",

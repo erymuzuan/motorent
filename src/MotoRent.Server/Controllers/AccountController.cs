@@ -23,13 +23,15 @@ public class AccountController(
     MotoRent.Domain.Core.IAuthenticationService authenticationService,
     IRequestContext requestContext,
     CoreDataContext coreDataContext,
-    RentalDataContext rentalDataContext) : Controller
+    RentalDataContext rentalDataContext,
+    IHostEnvironment hostEnvironment) : Controller
 {
     private IDirectoryService DirectoryService { get; } = directoryService;
     private MotoRent.Domain.Core.IAuthenticationService AuthenticationService { get; } = authenticationService;
     private IRequestContext RequestContext { get; } = requestContext;
     private CoreDataContext CoreDataContext { get; } = coreDataContext;
     private RentalDataContext RentalDataContext { get; } = rentalDataContext;
+    private IHostEnvironment HostEnvironment { get; } = hostEnvironment;
 
     // Login Pages
 
@@ -502,6 +504,57 @@ public class AccountController(
         }
 
         return this.Ok(new { url = impersonateUrl });
+    }
+
+    // Development Auth
+
+    /// <summary>
+    /// Development-only login endpoint. Signs in as any user without OAuth.
+    /// </summary>
+    [AllowAnonymous]
+    [HttpGet("dev-login")]
+    public async Task<IActionResult> DevLogin(
+        [FromQuery(Name = "user")] string userName,
+        [FromQuery(Name = "role")] string? role = null,
+        [FromQuery(Name = "account")] string? accountNo = null,
+        [FromQuery(Name = "url")] string? url = null)
+    {
+        if (!this.HostEnvironment.IsDevelopment())
+        {
+            return this.NotFound();
+        }
+
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.Name, userName),
+            new(ClaimTypes.Email, userName),
+            new("Provider", "DevLogin")
+        };
+
+        if (string.Equals(role, "administrator", StringComparison.OrdinalIgnoreCase))
+        {
+            claims.Add(new Claim(ClaimTypes.Role, UserAccount.SUPER_ADMIN));
+        }
+        else if (!string.IsNullOrWhiteSpace(accountNo))
+        {
+            var userClaims = await this.DirectoryService.GetClaimsAsync(userName, accountNo);
+            claims.AddRange(userClaims);
+        }
+
+        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        var principal = new ClaimsPrincipal(identity);
+
+        await this.HttpContext.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            principal,
+            new AuthenticationProperties
+            {
+                IsPersistent = true,
+                ExpiresUtc = DateTimeOffset.UtcNow.AddDays(14),
+                IssuedUtc = DateTimeOffset.UtcNow
+            });
+
+        return this.LocalRedirect(url ?? "/");
     }
 
     // Helpers

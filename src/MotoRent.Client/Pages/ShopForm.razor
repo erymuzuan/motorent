@@ -1,4 +1,5 @@
 @inherits LocalizedComponentBase<ShopForm>
+@using MotoRent.Domain.Lookups
 
 <div class="card">
     <div class="card-header">
@@ -57,16 +58,33 @@
                                placeholder="@Localizer["AddressPlaceholder"]" />
                     </div>
 
-                    <div class="col-12">
-                        <ThaiAddressSelector @bind-Province="Entity.Province"
-                                             @bind-District="Entity.District"
-                                             @bind-Subdistrict="Entity.Subdistrict"
-                                             @bind-PostalCode="Entity.PostalCode"
-                                             Required="true"
-                                             ProvinceColumnClass="col-md-3"
-                                             DistrictColumnClass="col-md-3"
-                                             SubdistrictColumnClass="col-md-3"
-                                             PostalCodeColumnClass="col-md-3" />
+                    <div class="col-md-3">
+                        <label class="form-label required">@Localizer["Province"]</label>
+                        <select class="form-select" @bind="Entity.Province" required>
+                            <option value="">@Localizer["SelectProvince"]...</option>
+                            @foreach (var state in MalaysiaStates.All)
+                            {
+                                <option value="@state">@state</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">@Localizer["District"]</label>
+                        <input type="text" class="form-control" @bind="Entity.District"
+                               placeholder="e.g. Petaling" />
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">@Localizer["Subdistrict"]</label>
+                        <input type="text" class="form-control" @bind="Entity.Subdistrict"
+                               placeholder="e.g. SS 15" />
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">@Localizer["PostalCode"]</label>
+                        <input type="text" class="form-control" @bind="Entity.PostalCode"
+                               placeholder="e.g. 47500" maxlength="10" />
                     </div>
 
                     <div class="col-12">
@@ -78,7 +96,7 @@
                     <div class="col-md-6">
                         <label class="form-label required">@Localizer["PhoneNumber"]</label>
                         <input type="tel" class="form-control" @bind="Entity.Phone" required
-                               placeholder="+66 XX XXX XXXX" />
+                               placeholder="+60 XX-XXX XXXX" />
                     </div>
 
                     <div class="col-md-6">
@@ -208,7 +226,7 @@
                                         </td>
                                         <td>
                                             <input type="number" class="form-control" style="max-width: 120px;"
-                                                   @bind="band.Fee" min="0" step="50" />
+                                                   @bind="band.Fee" min="0" step="1" />
                                         </td>
                                         <td>
                                             <button type="button" class="btn btn-icon btn-ghost-danger"

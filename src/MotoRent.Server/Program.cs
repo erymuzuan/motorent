@@ -146,9 +146,6 @@ builder.Services.AddScoped<FeedbackEmailService>();
 // Sales lead tracking
 builder.Services.AddScoped<SalesLeadService>();
 
-// Thai address data provider - reads from wwwroot directly (no self-referencing HTTP)
-builder.Services.AddSingleton<IThaiAddressDataProvider, ThaiAddressDataProvider>();
-
 // Add HttpClient for external API calls (Gemini)
 builder.Services.AddHttpClient("Gemini", client => { client.Timeout = TimeSpan.FromSeconds(60); });
 // Add HttpClient for NotificationService (Email + LINE)
@@ -307,7 +304,7 @@ builder.Services.AddAuthorization(options =>
     // Tenant-specific policies (require AccountNo claim = tenant context)
     // SuperAdmin must impersonate a tenant user to access these pages
     options.AddPolicy("RequireTenantStaff", policy =>
-        policy.RequireRole(UserAccount.STAFF, UserAccount.SHOP_MANAGER, UserAccount.ORG_ADMIN)
+        policy.RequireRole(UserAccount.STAFF, UserAccount.SHOP_MANAGER, UserAccount.ORG_ADMIN, UserAccount.MECHANIC)
             .RequireClaim("AccountNo"));
 
     options.AddPolicy("RequireTenantManager", policy =>

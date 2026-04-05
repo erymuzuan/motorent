@@ -33,7 +33,7 @@ public class TrafficFineService(RentalDataContext context)
         if (toDate.HasValue)
             query = query.Where(f => f.FineDate <= toDate.Value);
 
-        query = query.OrderByDescending(f => f.FineDate);
+        query = query.OrderByDescending(f => f.TrafficFineId);
 
         if (string.IsNullOrWhiteSpace(searchTerm))
         {
@@ -62,6 +62,10 @@ public class TrafficFineService(RentalDataContext context)
 
     public async Task<TrafficFine> CreateAsync(TrafficFine fine, string userName)
     {
+        // Ensure FineDate is set (standalone DATE column in DB, not computed from JSON)
+        if (fine.FineDate == default)
+            fine.FineDate = DateTimeOffset.UtcNow;
+
         // Denormalize vehicle info
         var vehicle = await this.Context.LoadOneAsync<Vehicle>(v => v.VehicleId == fine.VehicleId);
         if (vehicle != null)
@@ -89,6 +93,10 @@ public class TrafficFineService(RentalDataContext context)
 
     public async Task<TrafficFine> UpdateAsync(TrafficFine fine, string userName)
     {
+        // Ensure FineDate is set (standalone DATE column in DB, not computed from JSON)
+        if (fine.FineDate == default)
+            fine.FineDate = DateTimeOffset.UtcNow;
+
         using var session = this.Context.OpenSession(userName);
         session.Attach(fine);
         await session.SubmitChanges("UpdateTrafficFine");
@@ -115,7 +123,7 @@ public class TrafficFineService(RentalDataContext context)
     {
         var query = this.Context.CreateQuery<TrafficFine>()
             .Where(f => f.VehicleId == vehicleId && f.Status == "Pending")
-            .OrderByDescending(f => f.FineDate);
+            .OrderByDescending(f => f.TrafficFineId);
 
         var result = await this.Context.LoadAsync(query, 1, 100);
         return result.ItemCollection;
@@ -125,7 +133,7 @@ public class TrafficFineService(RentalDataContext context)
     {
         var query = this.Context.CreateQuery<TrafficFine>()
             .Where(f => f.RentalId == rentalId && f.Status == "Pending")
-            .OrderByDescending(f => f.FineDate);
+            .OrderByDescending(f => f.TrafficFineId);
 
         var result = await this.Context.LoadAsync(query, 1, 100);
         return result.ItemCollection;

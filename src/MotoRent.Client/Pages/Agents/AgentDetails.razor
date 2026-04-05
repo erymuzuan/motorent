@@ -105,14 +105,14 @@
                             {
                                 <div class="datagrid-item">
                                     <div class="datagrid-title">@this.Localizer["MinCommission"]</div>
-                                    <div class="datagrid-content">฿@this.Agent.MinCommission.Value.ToString("N0")</div>
+                                    <div class="datagrid-content">@BaseCurrencySymbol@this.Agent.MinCommission.Value.ToString("N0")</div>
                                 </div>
                             }
                             @if (this.Agent.MaxCommission.HasValue)
                             {
                                 <div class="datagrid-item">
                                     <div class="datagrid-title">@this.Localizer["MaxCommission"]</div>
-                                    <div class="datagrid-content">฿@this.Agent.MaxCommission.Value.ToString("N0")</div>
+                                    <div class="datagrid-content">@BaseCurrencySymbol@this.Agent.MaxCommission.Value.ToString("N0")</div>
                                 </div>
                             }
                         </div>
@@ -137,7 +137,7 @@
                             <div class="col-6">
                                 <div class="card card-sm bg-success-lt">
                                     <div class="card-body text-center">
-                                        <div class="h2 mb-0">฿@this.Agent.TotalCommissionEarned.ToString("N0")</div>
+                                        <div class="h2 mb-0">@BaseCurrencySymbol@this.Agent.TotalCommissionEarned.ToString("N0")</div>
                                         <div class="text-secondary">@this.Localizer["Earned"]</div>
                                     </div>
                                 </div>
@@ -145,7 +145,7 @@
                             <div class="col-6">
                                 <div class="card card-sm">
                                     <div class="card-body text-center">
-                                        <div class="h2 mb-0">฿@this.Agent.TotalCommissionPaid.ToString("N0")</div>
+                                        <div class="h2 mb-0">@BaseCurrencySymbol@this.Agent.TotalCommissionPaid.ToString("N0")</div>
                                         <div class="text-secondary">@this.Localizer["Paid"]</div>
                                     </div>
                                 </div>
@@ -153,7 +153,7 @@
                             <div class="col-6">
                                 <div class="card card-sm @(this.Agent.CommissionBalance > 0 ? "bg-warning-lt" : "")">
                                     <div class="card-body text-center">
-                                        <div class="h2 mb-0">฿@this.Agent.CommissionBalance.ToString("N0")</div>
+                                        <div class="h2 mb-0">@BaseCurrencySymbol@this.Agent.CommissionBalance.ToString("N0")</div>
                                         <div class="text-secondary">@this.Localizer["Balance"]</div>
                                     </div>
                                 </div>
@@ -231,7 +231,7 @@
                                                     <td>
                                                         @booking.StartDate.ToString("dd MMM") - @booking.EndDate.ToString("dd MMM")
                                                     </td>
-                                                    <td class="text-end">฿@booking.TotalAmount.ToString("N0")</td>
+                                                    <td class="text-end">@BaseCurrencySymbol@booking.TotalAmount.ToString("N0")</td>
                                                     <td>
                                                         <span class="badge @GetBookingStatusBadgeClass(booking.Status)">
                                                             @booking.Status
@@ -275,8 +275,8 @@
                                                 <tr>
                                                     <td>@commission.BookingRef</td>
                                                     <td>@commission.CustomerName</td>
-                                                    <td class="text-end">฿@commission.BookingTotal.ToString("N0")</td>
-                                                    <td class="text-end fw-bold">฿@commission.CommissionAmount.ToString("N0")</td>
+                                                    <td class="text-end">@BaseCurrencySymbol@commission.BookingTotal.ToString("N0")</td>
+                                                    <td class="text-end fw-bold">@BaseCurrencySymbol@commission.CommissionAmount.ToString("N0")</td>
                                                     <td>
                                                         <span class="badge @GetCommissionStatusBadgeClass(commission.Status)">
                                                             @this.Localizer[commission.Status]
@@ -323,7 +323,7 @@
                                                         <td><strong>@invoice.InvoiceNo</strong></td>
                                                         <td>@invoice.CustomerName</td>
                                                         <td>@invoice.InvoiceDate.ToString("dd MMM yyyy")</td>
-                                                        <td class="text-end">฿@invoice.TotalAmount.ToString("N0")</td>
+                                                        <td class="text-end">@BaseCurrencySymbol@invoice.TotalAmount.ToString("N0")</td>
                                                         <td>
                                                             <span class="badge @GetPaymentStatusBadgeClass(invoice.PaymentStatus)">
                                                                 @this.Localizer[invoice.PaymentStatus]
@@ -489,9 +489,9 @@
         return agent.CommissionType switch
         {
             AgentCommissionType.Percentage => $"{agent.CommissionRate}%",
-            AgentCommissionType.FixedPerBooking => $"฿{agent.CommissionRate:N0}/booking",
-            AgentCommissionType.FixedPerVehicle => $"฿{agent.CommissionRate:N0}/vehicle",
-            AgentCommissionType.FixedPerDay => $"฿{agent.CommissionRate:N0}/day",
+            AgentCommissionType.FixedPerBooking => $"{BaseCurrencySymbol}{agent.CommissionRate:N0}/booking",
+            AgentCommissionType.FixedPerVehicle => $"{BaseCurrencySymbol}{agent.CommissionRate:N0}/vehicle",
+            AgentCommissionType.FixedPerDay => $"{BaseCurrencySymbol}{agent.CommissionRate:N0}/day",
             _ => $"{agent.CommissionRate}"
         };
     }

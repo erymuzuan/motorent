@@ -219,6 +219,12 @@
             m_costSummary = await DamageReportService.GetCostSummaryAsync(0);
             await LoadReportsAsync();
         }
+        catch (Exception ex)
+        {
+            LogError(ex, "Failed to load damage reports");
+            m_damageReports = [];
+            m_costSummary = new();
+        }
         finally
         {
             m_loading = false;
@@ -243,8 +249,19 @@
     {
         m_activeTab = tab;
         m_loading = true;
-        await LoadReportsAsync();
-        m_loading = false;
+        try
+        {
+            await LoadReportsAsync();
+        }
+        catch (Exception ex)
+        {
+            LogError(ex, "Failed to load damage reports for tab {Tab}", tab);
+            m_damageReports = [];
+        }
+        finally
+        {
+            m_loading = false;
+        }
     }
 
     private async Task OpenDetailsDialog(DamageReportWithDetails item)

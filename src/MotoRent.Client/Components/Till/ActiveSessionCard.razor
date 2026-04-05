@@ -24,7 +24,7 @@
 
         @* Currency balances *@
         <div class="row g-2">
-            @foreach (var balance in Session.CurrencyBalances.Where(b => b.Value != 0 || b.Key == SupportedCurrencies.THB))
+            @foreach (var balance in Session.CurrencyBalances.Where(b => b.Value != 0 || b.Key == BaseCurrencyCode))
             {
                 <div class="col-6">
                     <small class="text-secondary d-block">@balance.Key</small>
@@ -71,9 +71,12 @@
 
     private string FormatAmount(decimal amount, string currency)
     {
-        return currency == SupportedCurrencies.THB
+        var symbol = CurrencyDenominations.GetCurrencySymbol(currency);
+        var value = currency == BaseCurrencyCode
             ? amount.ToString("N0")
             : amount.ToString("N2");
+
+        return $"{symbol}{value}";
     }
 
     private string GetLastActivityText()

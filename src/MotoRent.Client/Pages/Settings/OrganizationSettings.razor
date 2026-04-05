@@ -123,7 +123,7 @@
     private bool m_sendLateReturnAlert = true;
 
     private string m_defaultPaymentMethod = "Cash";
-    private string m_acceptedMethods = "Cash,Card,PromptPay,BankTransfer";
+    private string m_acceptedMethods = "Cash,Card,DuitNow,FPX";
     private string? m_promptPayId;
     private string? m_bankName;
     private string? m_bankAccountNo;
@@ -192,7 +192,7 @@
         m_defaultPaymentMethod = await SettingConfig.GetStringAsync(SettingKeys.Payment_DefaultMethod, defaultValue: "Cash") ?? "Cash";
         m_acceptedMethods = string.Join(",", await SettingConfig.GetArrayAsync(SettingKeys.Payment_AcceptedMethods));
         if (string.IsNullOrWhiteSpace(m_acceptedMethods))
-            m_acceptedMethods = "Cash,Card,PromptPay,BankTransfer";
+            m_acceptedMethods = "Cash,Card,DuitNow,FPX";
         m_promptPayId = await SettingConfig.GetStringAsync(SettingKeys.Payment_PromptPayId);
         m_bankName = await SettingConfig.GetStringAsync(SettingKeys.Payment_BankName);
         m_bankAccountNo = await SettingConfig.GetStringAsync(SettingKeys.Payment_BankAccountNo);
@@ -201,10 +201,10 @@
 
         // Vehicle type settings
         m_enableMotorbike = await SettingConfig.GetBoolAsync(SettingKeys.Fleet_EnableMotorbike, defaultValue: true);
-        m_enableCar = await SettingConfig.GetBoolAsync(SettingKeys.Fleet_EnableCar, defaultValue: false);
-        m_enableJetSki = await SettingConfig.GetBoolAsync(SettingKeys.Fleet_EnableJetSki, defaultValue: false);
-        m_enableBoat = await SettingConfig.GetBoolAsync(SettingKeys.Fleet_EnableBoat, defaultValue: false);
-        m_enableVan = await SettingConfig.GetBoolAsync(SettingKeys.Fleet_EnableVan, defaultValue: false);
+        m_enableCar = await SettingConfig.GetBoolAsync(SettingKeys.Fleet_EnableCar, defaultValue: true);
+        m_enableJetSki = await SettingConfig.GetBoolAsync(SettingKeys.Fleet_EnableJetSki, defaultValue: true);
+        m_enableBoat = await SettingConfig.GetBoolAsync(SettingKeys.Fleet_EnableBoat, defaultValue: true);
+        m_enableVan = await SettingConfig.GetBoolAsync(SettingKeys.Fleet_EnableVan, defaultValue: true);
 
         // Dynamic pricing settings
         m_dynamicPricingEnabled = await SettingConfig.GetBoolAsync(DynamicPricingService.SettingKeyEnabled, defaultValue: false);
@@ -302,7 +302,7 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label">@Localizer["Phone"]</label>
-                            <input type="tel" class="form-control" @bind="m_organization!.Phone" placeholder="+66-xxx-xxx-xxxx" />
+                            <input type="tel" class="form-control" @bind="m_organization!.Phone" placeholder="+60-xx-xxx-xxxx" />
                         </div>
                         <div>
                             <label class="form-label">@Localizer["Email"]</label>
@@ -331,26 +331,26 @@
                     <div class="col-md-6">
                         <label class="form-label">@Localizer["DefaultCurrency"]</label>
                         <select class="form-select" @bind="m_organization!.Currency">
-                            <option value="THB">THB - Thai Baht</option>
+                            <option value="MYR">MYR - Malaysian Ringgit</option>
                             <option value="USD">USD - US Dollar</option>
                             <option value="EUR">EUR - Euro</option>
-                            <option value="MYR">MYR - Malaysian Ringgit</option>
+                            <option value="SGD">SGD - Singapore Dollar</option>
                         </select>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">@Localizer["Timezone"]</label>
                         <select class="form-select" @bind="m_organization!.Timezone">
-                            <option value="7">UTC+7 (Thailand)</option>
                             <option value="8">UTC+8 (Malaysia/Singapore)</option>
+                            <option value="7">UTC+7 (Indochina)</option>
                             <option value="0">UTC+0 (GMT)</option>
                         </select>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">@Localizer["Language"]</label>
                         <select class="form-select" @bind="m_organization!.Language">
-                            <option value="th-TH">Thai</option>
-                            <option value="en-US">English</option>
+                            <option value="en-MY">English</option>
                             <option value="ms-MY">Bahasa Melayu</option>
+                            <option value="th-TH">Thai</option>
                         </select>
                     </div>
                 </div>
@@ -378,7 +378,7 @@
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">@Localizer["Province"]</label>
-                        <input type="text" class="form-control" @bind="m_organization!.Address.Province" placeholder="e.g. Phuket, Krabi" />
+                        <input type="text" class="form-control" @bind="m_organization!.Address.Province" placeholder="e.g. Selangor, Penang" />
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">@Localizer["PostalCode"]</label>
@@ -459,7 +459,7 @@
                             <div class="col-md-6">
                                 <label class="form-label">@Localizer["DefaultDepositAmount"]</label>
                                 <div class="input-group">
-                                    <input type="number" class="form-control" @bind="m_defaultDepositAmount" min="0" step="500" />
+                                    <input type="number" class="form-control" @bind="m_defaultDepositAmount" min="0" step="100" />
                                     <span class="input-group-text">@m_organization!.Currency</span>
                                 </div>
                             </div>
@@ -575,14 +575,14 @@
                                 <select class="form-select" @bind="m_defaultPaymentMethod">
                                     <option value="Cash">@Localizer["Cash"]</option>
                                     <option value="Card">@Localizer["CreditDebitCard"]</option>
-                                    <option value="PromptPay">PromptPay</option>
-                                    <option value="BankTransfer">@Localizer["BankTransfer"]</option>
+                                    <option value="DuitNow">@GetLocalizedText("DuitNow", "DuitNow QR")</option>
+                                    <option value="FPX">FPX</option>
                                 </select>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">@Localizer["AcceptedPaymentMethods"]</label>
                                 <div>
-                                    @foreach (var method in new[] { "Cash", "Card", "PromptPay", "BankTransfer" })
+                                    @foreach (var method in new[] { "Cash", "Card", "DuitNow", "FPX" })
                                     {
                                         <div class="form-check form-check-inline">
                                             <input type="checkbox" class="form-check-input"
@@ -599,10 +599,10 @@
 
                     <div class="col-12">
                         <hr />
-                        <h4 class="mb-3">PromptPay</h4>
+                        <h4 class="mb-3">@GetLocalizedText("DuitNow", "DuitNow QR")</h4>
                         <div class="col-md-6">
                             <label class="form-label">@Localizer["PromptPayId"]</label>
-                            <input type="text" class="form-control" @bind="m_promptPayId" placeholder="Phone number or Citizen ID" />
+                            <input type="text" class="form-control" @bind="m_promptPayId" placeholder="Mobile number or business ID" />
                             <small class="text-secondary">@Localizer["PromptPayIdDescription"]</small>
                         </div>
                     </div>
@@ -613,7 +613,7 @@
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label class="form-label">@Localizer["BankName"]</label>
-                                <input type="text" class="form-control" @bind="m_bankName" placeholder="e.g. Bangkok Bank, SCB" />
+                                <input type="text" class="form-control" @bind="m_bankName" placeholder="e.g. Maybank, CIMB, Public Bank" />
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">@Localizer["BankAccountNo"]</label>
@@ -790,8 +790,10 @@
     {
         "Cash" => Localizer["Cash"],
         "Card" => Localizer["CreditDebitCard"],
-        "PromptPay" => "PromptPay",
-        "BankTransfer" => Localizer["BankTransfer"],
+        "PromptPay" => GetLocalizedText("DuitNow", "DuitNow QR"),
+        "DuitNow" => GetLocalizedText("DuitNow", "DuitNow QR"),
+        "BankTransfer" => "FPX",
+        "FPX" => "FPX",
         _ => method
     };
 
