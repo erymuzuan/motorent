@@ -4,6 +4,7 @@
 @attribute [Authorize(Policy = "RequireTenantManager")]
 @inherits LocalizedComponentBase<AssetDetails>
 @inject AssetService AssetService
+@inject AssetLoanService LoanService
 
 <MotoRentPageTitle>@(m_asset?.VehicleName ?? this.Localizer["AssetDetails"])</MotoRentPageTitle>
 
@@ -327,6 +328,116 @@
                 </table>
             </div>
         </div>
+
+        @* Loan Information Section *@
+        @if (m_loan != null)
+        {
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="ti ti-credit-card me-2"></i>
+                        @this.Localizer["LoanAmortization"]
+                    </h3>
+                    <div class="card-actions">
+                        <span class="badge @GetLoanStatusBadgeClass(m_loan.Status)">@m_loan.Status</span>
+                    </div>
+                </div>
+                <div class="mr-loan-summary">
+                    <div class="mr-loan-summary-item">
+                        <span class="mr-loan-summary-label">@this.Localizer["Lender"]</span>
+                        <span class="mr-loan-summary-value">@m_loan.LenderName</span>
+                    </div>
+                    @if (!string.IsNullOrEmpty(m_loan.LoanAccountNo))
+                    {
+                        <div class="mr-loan-summary-item">
+                            <span class="mr-loan-summary-label">@this.Localizer["AccountNo"]</span>
+                            <span class="mr-loan-summary-value">@m_loan.LoanAccountNo</span>
+                        </div>
+                    }
+                    <div class="mr-loan-summary-item">
+                        <span class="mr-loan-summary-label">@this.Localizer["Principal"]</span>
+                        <span class="mr-loan-summary-value">@m_loan.PrincipalAmount.ToString("N0") @this.Localizer["CurrencyTHB"]</span>
+                    </div>
+                    <div class="mr-loan-summary-item">
+                        <span class="mr-loan-summary-label">@this.Localizer["InterestRate"]</span>
+                        <span class="mr-loan-summary-value">@((m_loan.AnnualInterestRate * 100).ToString("N2"))%</span>
+                    </div>
+                    <div class="mr-loan-summary-item">
+                        <span class="mr-loan-summary-label">@this.Localizer["Term"]</span>
+                        <span class="mr-loan-summary-value">@m_loan.TermMonths @this.Localizer["MonthsUnit"]</span>
+                    </div>
+                    <div class="mr-loan-summary-item">
+                        <span class="mr-loan-summary-label">@this.Localizer["MonthlyPayment"]</span>
+                        <span class="mr-loan-summary-value">@m_loan.MonthlyPayment.ToString("N0") @this.Localizer["CurrencyTHB"]</span>
+                    </div>
+                    <div class="mr-loan-summary-item">
+                        <span class="mr-loan-summary-label">@this.Localizer["Balance"]</span>
+                        <span class="mr-loan-summary-value">@m_loan.RemainingPrincipal.ToString("N0") @this.Localizer["CurrencyTHB"]</span>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-vcenter card-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>@this.Localizer["DueDate"]</th>
+                                <th>@this.Localizer["PaidDate"]</th>
+                                <th class="text-end">@this.Localizer["PrincipalAmt"]</th>
+                                <th class="text-end">@this.Localizer["InterestAmt"]</th>
+                                <th class="text-end">@this.Localizer["TotalPayment"]</th>
+                                <th class="text-end">@this.Localizer["Balance"]</th>
+                                <th>@this.Localizer["StatusLabel"]</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var payment in m_loanPayments.Skip(m_paymentPage * m_paymentPageSize).Take(m_paymentPageSize))
+                            {
+                                <tr>
+                                    <td>@payment.PaymentNumber</td>
+                                    <td>@payment.DueDate.ToString("dd MMM yyyy")</td>
+                                    <td>@(payment.PaidDate?.ToString("dd MMM yyyy") ?? "-")</td>
+                                    <td class="text-end">@payment.PrincipalAmount.ToString("N0")</td>
+                                    <td class="text-end">@payment.InterestAmount.ToString("N0")</td>
+                                    <td class="text-end fw-bold">@payment.TotalAmount.ToString("N0")</td>
+                                    <td class="text-end">@payment.BalanceAfter.ToString("N0")</td>
+                                    <td>
+                                        <span class="badge @GetPaymentStatusBadgeClass(payment.Status)">@payment.Status</span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr class="fw-bold">
+                                <td colspan="3">@this.Localizer["Total"]</td>
+                                <td class="text-end">@m_loanPayments.Sum(p => p.PrincipalAmount).ToString("N0")</td>
+                                <td class="text-end">@m_loanPayments.Sum(p => p.InterestAmount).ToString("N0")</td>
+                                <td class="text-end">@m_loanPayments.Sum(p => p.TotalAmount).ToString("N0")</td>
+                                <td colspan="2"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                @if (m_loanPayments.Count > m_paymentPageSize)
+                {
+                    <div class="card-footer d-flex align-items-center justify-content-between">
+                        <p class="m-0 text-muted">
+                            @this.Localizer["ShowingPayments",
+                                (m_paymentPage * m_paymentPageSize + 1).ToString(),
+                                Math.Min((m_paymentPage + 1) * m_paymentPageSize, m_loanPayments.Count).ToString(),
+                                m_loanPayments.Count.ToString()]
+                        </p>
+                        <div class="btn-group">
+                            <button class="btn btn-sm btn-outline-secondary" disabled="@(m_paymentPage == 0)" @onclick="PreviousPaymentPage">
+                                <i class="ti ti-chevron-left"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary" disabled="@((m_paymentPage + 1) * m_paymentPageSize >= m_loanPayments.Count)" @onclick="NextPaymentPage">
+                                <i class="ti ti-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
     }
 </div>
 
@@ -336,10 +447,14 @@
 
     private int m_assetId;
     private Asset? m_asset;
+    private AssetLoan? m_loan;
+    private List<AssetLoanPayment> m_loanPayments = [];
     private List<DepreciationEntry> m_depreciationEntries = [];
     private List<DepreciationProjection> m_projections = [];
     private bool m_loading = true;
     private string m_chartView = "history";
+    private int m_paymentPage;
+    private const int m_paymentPageSize = 12;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -358,6 +473,25 @@
             {
                 m_depreciationEntries = await AssetService.GetDepreciationEntriesAsync(m_assetId);
                 m_projections = AssetService.GetDepreciationProjections(m_asset, 24);
+
+                // Load loan data if this asset has a loan
+                if (m_asset.AssetLoanId.HasValue)
+                {
+                    m_loan = await LoanService.GetLoanByIdAsync(m_asset.AssetLoanId.Value);
+                    if (m_loan != null)
+                    {
+                        m_loanPayments = await LoanService.GetPaymentsAsync(m_loan.AssetLoanId);
+                    }
+                }
+                else
+                {
+                    // Also try looking up by asset ID in case the reference wasn't set
+                    m_loan = await LoanService.GetLoanByAssetIdAsync(m_assetId);
+                    if (m_loan != null)
+                    {
+                        m_loanPayments = await LoanService.GetPaymentsAsync(m_loan.AssetLoanId);
+                    }
+                }
             }
         }
         finally
@@ -471,5 +605,34 @@
         }
         path += $" L {50 + (m_projections.Count - 1) * xStep} 250 Z";
         return path;
+    }
+
+    private string GetLoanStatusBadgeClass(LoanStatus status) => status switch
+    {
+        LoanStatus.Active => "bg-blue-lt",
+        LoanStatus.PaidOff => "bg-success-lt",
+        LoanStatus.Defaulted => "bg-danger-lt",
+        _ => "bg-secondary-lt"
+    };
+
+    private string GetPaymentStatusBadgeClass(LoanPaymentStatus status) => status switch
+    {
+        LoanPaymentStatus.Paid => "bg-success-lt",
+        LoanPaymentStatus.Pending => "bg-secondary-lt",
+        LoanPaymentStatus.Late => "bg-warning-lt",
+        LoanPaymentStatus.Missed => "bg-danger-lt",
+        _ => "bg-secondary-lt"
+    };
+
+    private void PreviousPaymentPage()
+    {
+        if (m_paymentPage > 0)
+            m_paymentPage--;
+    }
+
+    private void NextPaymentPage()
+    {
+        if ((m_paymentPage + 1) * m_paymentPageSize < m_loanPayments.Count)
+            m_paymentPage++;
     }
 }
