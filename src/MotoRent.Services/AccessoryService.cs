@@ -15,10 +15,10 @@ public class AccessoryService(RentalDataContext context)
     {
         var query = this.Context.CreateQuery<Accessory>();
 
-        // Only filter by shop if a specific shopId is provided (> 0)
+        // Filter by shop, including global accessories (ShopId == 0)
         if (shopId > 0)
         {
-            query = query.Where(a => a.ShopId == shopId);
+            query = query.Where(a => a.ShopId == shopId || a.ShopId == 0);
         }
 
         query = query.OrderByDescending(a => a.AccessoryId);
@@ -47,10 +47,10 @@ public class AccessoryService(RentalDataContext context)
         var query = this.Context.CreateQuery<Accessory>()
             .Where(a => a.QuantityAvailable > 0);
 
-        // Only filter by shop if a specific shopId is provided (> 0)
+        // Filter by shop, including global accessories (ShopId == 0)
         if (shopId > 0)
         {
-            query = query.Where(a => a.ShopId == shopId);
+            query = query.Where(a => a.ShopId == shopId || a.ShopId == 0);
         }
 
         var result = await this.Context.LoadAsync(query, page: 1, size: 100, includeTotalRows: false);
@@ -93,12 +93,12 @@ public class AccessoryService(RentalDataContext context)
         int total;
         int includedFree;
 
-        // Only filter by shop if a specific shopId is provided (> 0)
+        // Filter by shop, including global accessories (ShopId == 0)
         if (shopId > 0)
         {
-            total = await this.Context.GetCountAsync<Accessory>(a => a.ShopId == shopId);
+            total = await this.Context.GetCountAsync<Accessory>(a => a.ShopId == shopId || a.ShopId == 0);
             includedFree = await this.Context.GetCountAsync<Accessory>(
-                a => a.ShopId == shopId && a.IsIncluded);
+                a => (a.ShopId == shopId || a.ShopId == 0) && a.IsIncluded);
         }
         else
         {

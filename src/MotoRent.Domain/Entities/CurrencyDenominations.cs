@@ -1,3 +1,5 @@
+using MotoRent.Domain.Core;
+
 namespace MotoRent.Domain.Entities;
 
 /// <summary>
@@ -73,9 +75,11 @@ public static class CurrencyDenominations
         _ => currency
     };
 
+    public static string BaseCurrency => MotoConfig.CountryDefaults.Currency;
+
     /// <summary>
     /// Gets the list of currencies that support denomination counting.
-    /// These are the primary currencies used for cash handling in Thai tourist areas.
+    /// These are the primary currencies used for cash handling in Malaysia-focused deployments.
     /// </summary>
     public static readonly string[] CurrenciesWithDenominations =
     [
@@ -86,4 +90,21 @@ public static class CurrencyDenominations
         SupportedCurrencies.MYR,
         SupportedCurrencies.SGD
     ];
+
+    /// <summary>
+    /// Gets the minimum denomination value that is a banknote (not a coin) for a given currency.
+    /// Used to determine whether to display a denomination with the currency symbol (note) or "C" (coin).
+    /// </summary>
+    /// <param name="currency">Currency code</param>
+    /// <returns>The smallest note denomination value</returns>
+    public static decimal GetMinNoteValue(string currency) => currency switch
+    {
+        SupportedCurrencies.THB => 20,  // 20 baht and above are notes; 10, 5, 2, 1 are coins
+        SupportedCurrencies.MYR => 1,   // RM 1 and above are all notes (coins are sen, not tracked)
+        SupportedCurrencies.USD => 1,   // $1 and above are notes
+        SupportedCurrencies.EUR => 5,   // 5 EUR and above are notes; 1, 2 are coins
+        SupportedCurrencies.CNY => 1,   // 1 CNY and above are notes
+        SupportedCurrencies.SGD => 2,   // $2 and above are notes
+        _ => 1
+    };
 }

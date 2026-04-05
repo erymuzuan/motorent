@@ -45,7 +45,7 @@ public partial class RentalService
                 RentedFromShopId = request.ShopId,
                 VehiclePoolId = vehicle.VehiclePoolId,
                 RenterId = request.RenterId,
-                RenterName = renter?.FullName,
+                RenterName = renter?.FullName ?? request.RenterName,
                 VehicleId = request.VehicleId,
                 FleetModelId = vehicle.FleetModelId > 0 ? vehicle.FleetModelId : null,
                 DurationType = request.DurationType,
@@ -225,7 +225,7 @@ public partial class RentalService
         {
             RentedFromShopId = request.ShopId,
             RenterId = request.RenterId,
-            RenterName = renter?.FullName,
+            RenterName = renter?.FullName ?? request.RenterName,
             VehicleId = request.VehicleId,
             DurationType = RentalDurationType.Daily,
             StartDate = request.StartDate,

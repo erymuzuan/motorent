@@ -371,7 +371,7 @@
     private HourlyRentalConfig m_hourlyConfig = new();
 
     // Duration type selection (Daily or Hourly) for non-JetSki vehicles
-    private RentalDurationType m_selectedDurationType = RentalDurationType.Hourly;
+    private RentalDurationType m_selectedDurationType = RentalDurationType.Daily;
     private bool m_isPackageMode = false;
 
     // Step 4: Deposit information
@@ -436,10 +436,10 @@
                 var hasDaily = this.m_selectedVehicle.DailyRate > 0;
                 var hasHourly = this.m_selectedVehicle.SupportsHourlyRental;
 
-                if (hasDaily && !hasHourly)
-                    this.m_selectedDurationType = RentalDurationType.Daily;
-                else
+                if (!hasDaily && hasHourly)
                     this.m_selectedDurationType = RentalDurationType.Hourly;
+                else
+                    this.m_selectedDurationType = RentalDurationType.Daily;
             }
 
             this.m_activeStep++;
@@ -521,12 +521,24 @@
         this.m_processing = true;
         try
         {
+            // Save unsaved renter (e.g., created from booking info) before completing check-in
+            if (this.m_selectedRenter.RenterId == 0)
+            {
+                var saveResult = await this.RenterService.CreateRenterAsync(this.m_selectedRenter, this.UserName);
+                if (!saveResult.Success)
+                {
+                    this.ShowError(this.Localizer["RenterSaveFailed"]);
+                    return;
+                }
+            }
+
             var request = new CheckInRequest
             {
                 // Use till session's shop ID if available, otherwise use current shop from context
                 ShopId = this.m_tillSession?.ShopId ?? this.RequestContext.GetShopId(),
                 TillSessionId = this.m_tillSession?.TillSessionId ?? 0,
                 RenterId = this.m_selectedRenter.RenterId,
+                RenterName = this.m_selectedRenter.FullName,
                 VehicleId = this.m_selectedVehicle.VehicleId,
                 SignatureImagePath = null, // Physical signature collected on printed agreement
                 SignedByIp = "127.0.0.1",
