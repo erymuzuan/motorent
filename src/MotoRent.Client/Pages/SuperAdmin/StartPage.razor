@@ -10,6 +10,7 @@
 @using MotoRent.Services.Core
 @inject CoreDataContext CoreDataContext
 @inject FeedbackService FeedbackService
+@inject AiUsageService AiUsageService
 
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
@@ -90,6 +91,15 @@
             <div class="mr-summary-content">
                 <h4>@Localizer["StatNewFeedback"]</h4>
                 <div class="mr-value">@m_newFeedbackCount</div>
+            </div>
+        </div>
+        <div class="mr-summary-card">
+            <div class="mr-summary-icon info">
+                <i class="ti ti-sparkles"></i>
+            </div>
+            <div class="mr-summary-content">
+                <h4>@Localizer["StatAiQueries"]</h4>
+                <div class="mr-value">@m_aiQueryCount</div>
             </div>
         </div>
     </div>
@@ -302,6 +312,7 @@
     private int m_openSupportCount;
     private int m_newLeadsCount;
     private int m_newFeedbackCount;
+    private int m_aiQueryCount;
 
     protected override async Task OnInitializedAsync()
     {
@@ -331,5 +342,9 @@
         // Count new feedback
         var feedbackStats = await this.FeedbackService.GetStatsAsync();
         this.m_newFeedbackCount = feedbackStats.NewCount;
+
+        // Count today's AI queries
+        var aiStats = await this.AiUsageService.GetStatsAsync();
+        this.m_aiQueryCount = aiStats.TodayCount;
     }
 }
