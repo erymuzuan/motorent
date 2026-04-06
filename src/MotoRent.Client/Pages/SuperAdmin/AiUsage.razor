@@ -384,17 +384,29 @@
     private int m_page = 1;
     private int m_pageSize = 20;
     private int m_totalRows;
-    private int m_totalPages => (int)Math.Ceiling((double)m_totalRows / m_pageSize);
+    private int m_totalPages => (int)Math.Ceiling((double)this.m_totalRows / this.m_pageSize);
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadStatsAsync();
-        await LoadDataAsync();
-    }
+        this.Loading = true;
+        try
+        {
+            var statsTask = this.AiUsageService.GetStatsAsync();
+            var filter = this.BuildFilter();
+            var logsTask = this.AiUsageService.GetLogsAsync(filter, this.m_page, this.m_pageSize);
+            var breakdownTask = this.AiUsageService.GetModelBreakdownAsync(filter);
 
-    private async Task LoadStatsAsync()
-    {
-        m_stats = await this.AiUsageService.GetStatsAsync();
+            await Task.WhenAll(statsTask, logsTask, breakdownTask);
+
+            this.m_stats = statsTask.Result;
+            this.m_logs = logsTask.Result.ItemCollection.ToList();
+            this.m_totalRows = logsTask.Result.TotalRows;
+            this.m_modelBreakdown = breakdownTask.Result;
+        }
+        finally
+        {
+            this.Loading = false;
+        }
     }
 
     private async Task LoadDataAsync()
@@ -403,12 +415,12 @@
         this.Loading = true;
         try
         {
-            m_page = 1;
-            var filter = BuildFilter();
-            var logsResult = await this.AiUsageService.GetLogsAsync(filter, m_page, m_pageSize);
-            m_logs = logsResult.ItemCollection.ToList();
-            m_totalRows = logsResult.TotalRows;
-            m_modelBreakdown = await this.AiUsageService.GetModelBreakdownAsync(filter);
+            this.m_page = 1;
+            var filter = this.BuildFilter();
+            var logsResult = await this.AiUsageService.GetLogsAsync(filter, this.m_page, this.m_pageSize);
+            this.m_logs = logsResult.ItemCollection.ToList();
+            this.m_totalRows = logsResult.TotalRows;
+            this.m_modelBreakdown = await this.AiUsageService.GetModelBreakdownAsync(filter);
         }
         finally
         {
@@ -419,7 +431,7 @@
     private AiUsageFilter BuildFilter()
     {
         var now = DateTimeOffset.Now;
-        DateTimeOffset? from = m_dateRange switch
+        DateTimeOffset? from = this.m_dateRange switch
         {
             "today" => new DateTimeOffset(now.Date, now.Offset),
             "week" => new DateTimeOffset(now.Date, now.Offset).AddDays(-7),
@@ -428,25 +440,25 @@
         };
 
         return new AiUsageFilter(
-            UserName: m_userNameFilter,
-            ServiceName: m_serviceFilter,
-            Model: m_modelFilter,
-            UserType: m_userType,
+            UserName: this.m_userNameFilter,
+            ServiceName: this.m_serviceFilter,
+            Model: this.m_modelFilter,
+            UserType: this.m_userType,
             From: from,
             To: null);
     }
 
     private async Task GoToPage(int page)
     {
-        if (page < 1 || page > m_totalPages) return;
-        m_page = page;
+        if (page < 1 || page > this.m_totalPages) return;
+        this.m_page = page;
         this.Loading = true;
         try
         {
-            var filter = BuildFilter();
-            var logsResult = await this.AiUsageService.GetLogsAsync(filter, m_page, m_pageSize);
-            m_logs = logsResult.ItemCollection.ToList();
-            m_totalRows = logsResult.TotalRows;
+            var filter = this.BuildFilter();
+            var logsResult = await this.AiUsageService.GetLogsAsync(filter, this.m_page, this.m_pageSize);
+            this.m_logs = logsResult.ItemCollection.ToList();
+            this.m_totalRows = logsResult.TotalRows;
         }
         finally
         {
@@ -456,7 +468,7 @@
 
     private void ToggleExpand(int logId)
     {
-        m_expandedId = m_expandedId == logId ? null : logId;
+        this.m_expandedId = this.m_expandedId == logId ? null : logId;
     }
 
     private static string ShortenModel(string model) => model switch

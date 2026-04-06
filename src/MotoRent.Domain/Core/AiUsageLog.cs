@@ -29,6 +29,6 @@ public class AiUsageLog : Entity
     public string? Error { get; set; }
     public DateTimeOffset DateTime { get; set; } = DateTimeOffset.Now;
 
-    public override int GetId() => AiUsageLogId;
-    public override void SetId(int value) => AiUsageLogId = value;
+    public override int GetId() => this.AiUsageLogId;
+    public override void SetId(int value) => this.AiUsageLogId = value;
 }

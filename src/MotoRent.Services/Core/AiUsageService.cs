@@ -6,10 +6,10 @@ using MotoRent.Domain.Entities;
 
 namespace MotoRent.Services.Core;
 
-public class AiUsageService
+public class AiUsageService(CoreDataContext context, ILogger<AiUsageService> logger)
 {
-    private readonly CoreDataContext m_context;
-    private readonly ILogger<AiUsageService> m_logger;
+    private CoreDataContext Context { get; } = context;
+    private ILogger<AiUsageService> Logger { get; } = logger;
 
     private static readonly Dictionary<string, (decimal InputPerMillion, decimal OutputPerMillion)> s_defaultPricing = new()
     {
@@ -19,14 +19,6 @@ public class AiUsageService
 
     private static readonly decimal s_defaultMyrRate = 4.5m;
 
-    public AiUsageService(CoreDataContext context, ILogger<AiUsageService> logger)
-    {
-        m_context = context;
-        m_logger = logger;
-    }
-
-    #region Rate Limiting
-
     public async Task<RateLimitResult> CheckRateLimitAsync(string? userName, string? ipAddress, string? sessionId)
     {
         var now = DateTimeOffset.Now;
@@ -35,40 +27,40 @@ public class AiUsageService
 
         if (!string.IsNullOrEmpty(userName))
         {
-            return await CheckRegisteredLimitAsync(userName, startOfDay, startOfWeek);
+            return await this.CheckRegisteredLimitAsync(userName, startOfDay, startOfWeek);
         }
 
-        return await CheckAnonymousLimitAsync(ipAddress, sessionId, startOfDay);
+        return await this.CheckAnonymousLimitAsync(ipAddress, sessionId, startOfDay);
     }
 
     private async Task<RateLimitResult> CheckRegisteredLimitAsync(
         string userName, DateTimeOffset startOfDay, DateTimeOffset startOfWeek)
     {
-        const int dailyLimit = 50;
-        const int weeklyLimit = 200;
+        const int DAILY_LIMIT = 50;
+        const int WEEKLY_LIMIT = 200;
 
-        var dailyQuery = m_context.AiUsageLogs
+        var dailyQuery = this.Context.AiUsageLogs
             .Where(x => x.UserName == userName && x.DateTime >= startOfDay);
-        var dailyUsed = await m_context.GetCountAsync(dailyQuery);
+        var dailyUsed = await this.Context.GetCountAsync(dailyQuery);
 
-        var weeklyQuery = m_context.AiUsageLogs
+        var weeklyQuery = this.Context.AiUsageLogs
             .Where(x => x.UserName == userName && x.DateTime >= startOfWeek);
-        var weeklyUsed = await m_context.GetCountAsync(weeklyQuery);
+        var weeklyUsed = await this.Context.GetCountAsync(weeklyQuery);
 
         return new RateLimitResult(
-            Allowed: dailyUsed < dailyLimit && weeklyUsed < weeklyLimit,
+            Allowed: dailyUsed < DAILY_LIMIT && weeklyUsed < WEEKLY_LIMIT,
             DailyUsed: dailyUsed,
-            DailyLimit: dailyLimit,
+            DailyLimit: DAILY_LIMIT,
             WeeklyUsed: weeklyUsed,
-            WeeklyLimit: weeklyLimit);
+            WeeklyLimit: WEEKLY_LIMIT);
     }
 
     private async Task<RateLimitResult> CheckAnonymousLimitAsync(
         string? ipAddress, string? sessionId, DateTimeOffset startOfDay)
     {
-        const int dailyLimit = 3;
+        const int DAILY_LIMIT = 3;
 
-        var query = m_context.AiUsageLogs
+        var query = this.Context.AiUsageLogs
             .Where(x => x.UserName == null && x.DateTime >= startOfDay);
 
         if (!string.IsNullOrEmpty(ipAddress))
@@ -81,22 +73,18 @@ public class AiUsageService
         }
         else
         {
-            return new RateLimitResult(false, 0, dailyLimit, 0, 0);
+            return new RateLimitResult(false, 0, DAILY_LIMIT, 0, 0);
         }
 
-        var dailyUsed = await m_context.GetCountAsync(query);
+        var dailyUsed = await this.Context.GetCountAsync(query);
 
         return new RateLimitResult(
-            Allowed: dailyUsed < dailyLimit,
+            Allowed: dailyUsed < DAILY_LIMIT,
             DailyUsed: dailyUsed,
-            DailyLimit: dailyLimit,
+            DailyLimit: DAILY_LIMIT,
             WeeklyUsed: 0,
             WeeklyLimit: 0);
     }
-
-    #endregion
-
-    #region Cost Estimation
 
     public (decimal Usd, decimal Myr) EstimateCost(string model, int inputTokens, int outputTokens)
     {
@@ -142,14 +130,7 @@ public class AiUsageService
         return s_defaultPricing;
     }
 
-    private static decimal GetMyrRate()
-    {
-        return s_defaultMyrRate;
-    }
-
-    #endregion
-
-    #region Queries for SuperAdmin
+    private static decimal GetMyrRate() => s_defaultMyrRate;
 
     public async Task<AiUsageStats> GetStatsAsync()
     {
@@ -157,37 +138,33 @@ public class AiUsageService
         var startOfDay = new DateTimeOffset(now.Date, now.Offset);
         var startOfWeek = startOfDay.AddDays(-(int)now.DayOfWeek);
 
-        var todayQuery = m_context.AiUsageLogs.Where(x => x.DateTime >= startOfDay);
-        var todayCount = await m_context.GetCountAsync(todayQuery);
+        // Load week data once, derive today from it
+        var weekQuery = this.Context.AiUsageLogs.Where(x => x.DateTime >= startOfWeek);
+        var weekLogs = await this.Context.LoadAsync(weekQuery, 1, 1000, includeTotalRows: true);
+        var weekItems = weekLogs.ItemCollection;
 
-        var weekQuery = m_context.AiUsageLogs.Where(x => x.DateTime >= startOfWeek);
-        var weekCount = await m_context.GetCountAsync(weekQuery);
-
-        var todayLogs = await m_context.LoadAsync(todayQuery, 1, 1000, includeTotalRows: false);
-        var todayCostUsd = todayLogs.ItemCollection.Sum(x => x.EstimatedCostUsd);
-        var todayCostMyr = todayLogs.ItemCollection.Sum(x => x.EstimatedCostMyr);
-
-        var weekLogs = await m_context.LoadAsync(weekQuery, 1, 1000, includeTotalRows: false);
-        var weekCostUsd = weekLogs.ItemCollection.Sum(x => x.EstimatedCostUsd);
-        var weekCostMyr = weekLogs.ItemCollection.Sum(x => x.EstimatedCostMyr);
+        var todayItems = weekItems.Where(x => x.DateTime >= startOfDay).ToList();
 
         return new AiUsageStats(
-            todayCount, weekCount,
-            todayCostUsd, todayCostMyr,
-            weekCostUsd, weekCostMyr);
+            todayItems.Count,
+            weekLogs.TotalRows,
+            todayItems.Sum(x => x.EstimatedCostUsd),
+            todayItems.Sum(x => x.EstimatedCostMyr),
+            weekItems.Sum(x => x.EstimatedCostUsd),
+            weekItems.Sum(x => x.EstimatedCostMyr));
     }
 
     public async Task<LoadOperation<AiUsageLog>> GetLogsAsync(AiUsageFilter filter, int page = 1, int size = 20)
     {
-        var query = BuildQuery(filter);
+        var query = this.BuildQuery(filter);
         query = query.OrderByDescending(x => x.AiUsageLogId);
-        return await m_context.LoadAsync(query, page, size, includeTotalRows: true);
+        return await this.Context.LoadAsync(query, page, size, includeTotalRows: true);
     }
 
     public async Task<List<AiUsageModelBreakdown>> GetModelBreakdownAsync(AiUsageFilter filter)
     {
-        var query = BuildQuery(filter);
-        var lo = await m_context.LoadAsync(query, 1, 5000, includeTotalRows: false);
+        var query = this.BuildQuery(filter);
+        var lo = await this.Context.LoadAsync(query, 1, 5000, includeTotalRows: false);
         var logs = lo.ItemCollection;
 
         return logs
@@ -205,7 +182,7 @@ public class AiUsageService
 
     private IQueryable<AiUsageLog> BuildQuery(AiUsageFilter filter)
     {
-        var query = m_context.AiUsageLogs.AsQueryable();
+        var query = this.Context.AiUsageLogs.AsQueryable();
 
         if (!string.IsNullOrEmpty(filter.UserName))
             query = query.Where(x => x.UserName != null && x.UserName.Contains(filter.UserName));
@@ -229,11 +206,7 @@ public class AiUsageService
 
         return query;
     }
-
-    #endregion
 }
-
-#region DTOs
 
 public record RateLimitResult(
     bool Allowed,
@@ -273,5 +246,3 @@ internal class ModelPricing
     public decimal Input { get; set; }
     public decimal Output { get; set; }
 }
-
-#endregion
