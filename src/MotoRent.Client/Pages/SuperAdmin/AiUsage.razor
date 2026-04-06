@@ -1,0 +1,478 @@
+@page "/super-admin/ai-usage"
+@rendermode InteractiveServer
+@inherits LocalizedComponentBase<AiUsage>
+@using Microsoft.AspNetCore.Authorization
+@using MotoRent.Domain.Core
+@using MotoRent.Services.Core
+@attribute [Authorize(Roles = UserAccount.SUPER_ADMIN)]
+@inject AiUsageService AiUsageService
+
+<PageTitle>@Localizer["PageTitle"]</PageTitle>
+
+<!-- Page Header -->
+<div class="mr-page-header">
+    <div class="container-xl">
+        <nav class="mr-breadcrumb">
+            <span class="mr-breadcrumb-item"><a href="/">@CommonLocalizer["Home"]</a></span>
+            <i class="ti ti-chevron-right mr-breadcrumb-separator"></i>
+            <span class="mr-breadcrumb-item"><a href="/super-admin/start-page">@Localizer["BreadcrumbSuperAdmin"]</a></span>
+            <i class="ti ti-chevron-right mr-breadcrumb-separator"></i>
+            <span class="mr-breadcrumb-item active">@Localizer["BreadcrumbAiUsage"]</span>
+        </nav>
+        <div class="d-flex justify-content-between align-items-center pb-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="mr-header-icon">
+                    <i class="ti ti-sparkles"></i>
+                </div>
+                <div>
+                    <h1 class="mr-page-title">@Localizer["HeaderTitle"]</h1>
+                    <p class="mr-page-subtitle mb-0">@Localizer["HeaderSubtitle"]</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container-xl py-4">
+    <div class="row">
+        <!-- Filters (col-3) -->
+        <div class="col-12 col-md-3 mb-3">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="ti ti-filter me-1"></i>@Localizer["Filters"]
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">@Localizer["DateRange"]</label>
+                        <select class="form-select" @bind="m_dateRange" @bind:after="LoadDataAsync">
+                            <option value="today">@Localizer["DateToday"]</option>
+                            <option value="week">@Localizer["DateLast7Days"]</option>
+                            <option value="month">@Localizer["DateLast30Days"]</option>
+                            <option value="all">@Localizer["DateAll"]</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">@Localizer["Service"]</label>
+                        <select class="form-select" @bind="m_serviceFilter" @bind:after="LoadDataAsync">
+                            <option value="">@Localizer["FilterAll"]</option>
+                            <option value="DocumentationSearch">DocumentationSearch</option>
+                            <option value="DocumentOcr">DocumentOcr</option>
+                            <option value="VehicleRecognition">VehicleRecognition</option>
+                            <option value="Transliteration">Transliteration</option>
+                            <option value="DocumentTemplateAi">DocumentTemplateAi</option>
+                            <option value="DocumentationTranslation">DocumentationTranslation</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">@Localizer["Model"]</label>
+                        <select class="form-select" @bind="m_modelFilter" @bind:after="LoadDataAsync">
+                            <option value="">@Localizer["FilterAll"]</option>
+                            <option value="gemini-3.1-flash-lite-preview">gemini-3.1-flash-lite</option>
+                            <option value="gemini-3-flash-preview">gemini-3-flash</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">@Localizer["UserType"]</label>
+                        <select class="form-select" @bind="m_userType" @bind:after="LoadDataAsync">
+                            <option value="@AiUserType.All">@Localizer["FilterAll"]</option>
+                            <option value="@AiUserType.Anonymous">@Localizer["Anonymous"]</option>
+                            <option value="@AiUserType.Registered">@Localizer["Registered"]</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">@Localizer["UserName"]</label>
+                        <input type="text" class="form-control" placeholder="@Localizer["FilterByUser"]"
+                               @bind="m_userNameFilter" @bind:after="LoadDataAsync" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content (col-9) -->
+        <div class="col-12 col-md-9">
+            <!-- Summary Stats Row -->
+            <div class="row row-deck row-cards mb-3">
+                <div class="col-sm-6 col-lg-3">
+                    <div class="card card-sm">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-auto">
+                                    <span class="bg-primary text-white avatar">
+                                        <i class="ti ti-message-chatbot"></i>
+                                    </span>
+                                </div>
+                                <div class="col">
+                                    <div class="fw-bold">@m_stats.TodayCount</div>
+                                    <div class="text-secondary small">@Localizer["StatTodayQueries"]</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6 col-lg-3">
+                    <div class="card card-sm">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-auto">
+                                    <span class="bg-info text-white avatar">
+                                        <i class="ti ti-chart-bar"></i>
+                                    </span>
+                                </div>
+                                <div class="col">
+                                    <div class="fw-bold">@m_stats.WeekCount</div>
+                                    <div class="text-secondary small">@Localizer["StatWeekQueries"]</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6 col-lg-3">
+                    <div class="card card-sm">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-auto">
+                                    <span class="bg-success text-white avatar">
+                                        <i class="ti ti-coin"></i>
+                                    </span>
+                                </div>
+                                <div class="col">
+                                    <div class="fw-bold">$@m_stats.TodayCostUsd.ToString("F4")</div>
+                                    <div class="text-secondary small">@Localizer["StatTodayCost"]</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6 col-lg-3">
+                    <div class="card card-sm">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-auto">
+                                    <span class="bg-warning text-white avatar">
+                                        <i class="ti ti-coin"></i>
+                                    </span>
+                                </div>
+                                <div class="col">
+                                    <div class="fw-bold">$@m_stats.WeekCostUsd.ToString("F4")</div>
+                                    <div class="text-secondary small">@Localizer["StatWeekCost"]</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cost Breakdown by Model -->
+            @if (m_modelBreakdown.Count > 0)
+            {
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="ti ti-chart-pie me-1"></i>@Localizer["CostBreakdown"]
+                        </h3>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-vcenter card-table">
+                            <thead>
+                                <tr>
+                                    <th>@Localizer["ColModel"]</th>
+                                    <th class="text-end">@Localizer["ColQueries"]</th>
+                                    <th class="text-end">@Localizer["ColInputTokens"]</th>
+                                    <th class="text-end">@Localizer["ColOutputTokens"]</th>
+                                    <th class="text-end">@Localizer["ColCostUsd"]</th>
+                                    <th class="text-end">@Localizer["ColCostMyr"]</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var row in m_modelBreakdown)
+                                {
+                                    <tr>
+                                        <td>
+                                            <span class="badge bg-primary-lt">@row.Model</span>
+                                        </td>
+                                        <td class="text-end font-monospace">@row.Queries.ToString("N0")</td>
+                                        <td class="text-end font-monospace">@row.InputTokens.ToString("N0")</td>
+                                        <td class="text-end font-monospace">@row.OutputTokens.ToString("N0")</td>
+                                        <td class="text-end font-monospace">$@row.CostUsd.ToString("F4")</td>
+                                        <td class="text-end font-monospace">RM @row.CostMyr.ToString("F4")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+
+            @if (Loading)
+            {
+                <div class="progress progress-sm mb-4">
+                    <div class="progress-bar progress-bar-indeterminate"></div>
+                </div>
+            }
+
+            <!-- Query Log Table -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="ti ti-list me-1"></i>@Localizer["QueryLog"]
+                    </h3>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-vcenter card-table table-hover">
+                        <thead>
+                            <tr>
+                                <th>@Localizer["ColDateTime"]</th>
+                                <th>@Localizer["ColUserIp"]</th>
+                                <th>@Localizer["ColService"]</th>
+                                <th>@Localizer["ColModel"]</th>
+                                <th>@Localizer["ColQuestion"]</th>
+                                <th class="text-end">@Localizer["ColTokens"]</th>
+                                <th class="text-end">@Localizer["ColCost"]</th>
+                                <th>@CommonLocalizer["Status"]</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var log in m_logs)
+                            {
+                                <tr class="cursor-pointer" @onclick="() => ToggleExpand(log.AiUsageLogId)">
+                                    <td>
+                                        <span title="@log.DateTime.ToString("g")">@GetTimeAgo(log.DateTime)</span>
+                                    </td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(log.UserName))
+                                        {
+                                            <span class="badge bg-primary-lt">@log.UserName</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted small">@log.IpAddress</span>
+                                        }
+                                    </td>
+                                    <td><span class="badge bg-secondary-lt">@log.ServiceName</span></td>
+                                    <td><span class="small">@ShortenModel(log.Model)</span></td>
+                                    <td>
+                                        <div class="text-truncate" style="max-width: 200px;" title="@log.Question">
+                                            @log.Question
+                                        </div>
+                                    </td>
+                                    <td class="text-end font-monospace small">
+                                        @log.InputTokens.ToString("N0") / @log.OutputTokens.ToString("N0")
+                                    </td>
+                                    <td class="text-end font-monospace small">
+                                        $@log.EstimatedCostUsd.ToString("F4")
+                                    </td>
+                                    <td>
+                                        @if (log.Success)
+                                        {
+                                            <span class="badge bg-success">OK</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-danger">@Localizer["Failed"]</span>
+                                        }
+                                    </td>
+                                </tr>
+                                @if (m_expandedId == log.AiUsageLogId)
+                                {
+                                    <tr>
+                                        <td colspan="8">
+                                            <div class="p-3 bg-light rounded">
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="mb-2">
+                                                            <strong>@Localizer["DetailQuestion"]</strong>
+                                                            <div class="mt-1 text-break">@(log.Question ?? "-")</div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <div class="mb-2">
+                                                            <strong>@Localizer["DetailResponse"]</strong>
+                                                            <div class="mt-1 text-break">@(log.ResponsePreview ?? "-")</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="row mt-2">
+                                                    <div class="col-md-3">
+                                                        <small class="text-muted">@Localizer["DetailIpAddress"]:</small>
+                                                        <div>@(log.IpAddress ?? "-")</div>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <small class="text-muted">@Localizer["DetailSession"]:</small>
+                                                        <div>@(log.SessionId ?? "-")</div>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <small class="text-muted">@Localizer["ColCostMyr"]:</small>
+                                                        <div>RM @log.EstimatedCostMyr.ToString("F4")</div>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <small class="text-muted">@Localizer["DetailError"]:</small>
+                                                        <div>@(log.Error ?? "-")</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                @if (m_logs.Count == 0 && !Loading)
+                {
+                    <div class="card-body">
+                        <div class="empty">
+                            <div class="empty-icon">
+                                <i class="ti ti-sparkles" style="font-size: 3rem;"></i>
+                            </div>
+                            <p class="empty-title">@Localizer["EmptyTitle"]</p>
+                            <p class="empty-subtitle text-secondary">@Localizer["EmptySubtitle"]</p>
+                        </div>
+                    </div>
+                }
+
+                @* Pagination *@
+                @if (m_totalRows > m_pageSize)
+                {
+                    <div class="card-footer d-flex align-items-center">
+                        <p class="m-0 text-secondary">
+                            @Localizer["ShowingEntries", $"{((m_page - 1) * m_pageSize) + 1}", $"{Math.Min(m_page * m_pageSize, m_totalRows)}", $"{m_totalRows}"]
+                        </p>
+                        <ul class="pagination m-0 ms-auto">
+                            <li class="page-item @(m_page == 1 ? "disabled" : "")">
+                                <a class="page-link" href="javascript:" @onclick="() => GoToPage(m_page - 1)">
+                                    <i class="ti ti-chevron-left"></i>
+                                </a>
+                            </li>
+                            @for (var i = 1; i <= Math.Min(m_totalPages, 5); i++)
+                            {
+                                var pageNum = i;
+                                <li class="page-item @(m_page == pageNum ? "active" : "")">
+                                    <a class="page-link" href="javascript:" @onclick="() => GoToPage(pageNum)">@pageNum</a>
+                                </li>
+                            }
+                            <li class="page-item @(m_page == m_totalPages ? "disabled" : "")">
+                                <a class="page-link" href="javascript:" @onclick="() => GoToPage(m_page + 1)">
+                                    <i class="ti ti-chevron-right"></i>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<AiUsageLog> m_logs = [];
+    private List<AiUsageModelBreakdown> m_modelBreakdown = [];
+    private AiUsageStats m_stats = new(0, 0, 0, 0, 0, 0);
+    private bool Loading { get; set; }
+    private int? m_expandedId;
+
+    // Filters
+    private string m_dateRange = "week";
+    private string? m_serviceFilter;
+    private string? m_modelFilter;
+    private AiUserType m_userType = AiUserType.All;
+    private string? m_userNameFilter;
+
+    // Pagination
+    private int m_page = 1;
+    private int m_pageSize = 20;
+    private int m_totalRows;
+    private int m_totalPages => (int)Math.Ceiling((double)m_totalRows / m_pageSize);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadStatsAsync();
+        await LoadDataAsync();
+    }
+
+    private async Task LoadStatsAsync()
+    {
+        m_stats = await this.AiUsageService.GetStatsAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        if (this.Loading) return;
+        this.Loading = true;
+        try
+        {
+            m_page = 1;
+            var filter = BuildFilter();
+            var logsResult = await this.AiUsageService.GetLogsAsync(filter, m_page, m_pageSize);
+            m_logs = logsResult.ItemCollection.ToList();
+            m_totalRows = logsResult.TotalRows;
+            m_modelBreakdown = await this.AiUsageService.GetModelBreakdownAsync(filter);
+        }
+        finally
+        {
+            this.Loading = false;
+        }
+    }
+
+    private AiUsageFilter BuildFilter()
+    {
+        var now = DateTimeOffset.Now;
+        DateTimeOffset? from = m_dateRange switch
+        {
+            "today" => new DateTimeOffset(now.Date, now.Offset),
+            "week" => new DateTimeOffset(now.Date, now.Offset).AddDays(-7),
+            "month" => new DateTimeOffset(now.Date, now.Offset).AddDays(-30),
+            _ => null
+        };
+
+        return new AiUsageFilter(
+            UserName: m_userNameFilter,
+            ServiceName: m_serviceFilter,
+            Model: m_modelFilter,
+            UserType: m_userType,
+            From: from,
+            To: null);
+    }
+
+    private async Task GoToPage(int page)
+    {
+        if (page < 1 || page > m_totalPages) return;
+        m_page = page;
+        this.Loading = true;
+        try
+        {
+            var filter = BuildFilter();
+            var logsResult = await this.AiUsageService.GetLogsAsync(filter, m_page, m_pageSize);
+            m_logs = logsResult.ItemCollection.ToList();
+            m_totalRows = logsResult.TotalRows;
+        }
+        finally
+        {
+            this.Loading = false;
+        }
+    }
+
+    private void ToggleExpand(int logId)
+    {
+        m_expandedId = m_expandedId == logId ? null : logId;
+    }
+
+    private static string ShortenModel(string model) => model switch
+    {
+        "gemini-3.1-flash-lite-preview" => "flash-lite",
+        "gemini-3-flash-preview" => "flash",
+        _ => model.Length > 20 ? model[..20] + "..." : model
+    };
+
+    private static string GetTimeAgo(DateTimeOffset timestamp)
+    {
+        var diff = DateTimeOffset.Now - timestamp;
+        if (diff.TotalMinutes < 1) return "just now";
+        if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes}m ago";
+        if (diff.TotalHours < 24) return $"{(int)diff.TotalHours}h ago";
+        if (diff.TotalDays < 7) return $"{(int)diff.TotalDays}d ago";
+        return timestamp.ToString("MMM d");
+    }
+}
