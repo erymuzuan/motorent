@@ -50,6 +50,12 @@ public class DocumentationSearchServiceTests
                         Parts = new List<GeminiPart> { new GeminiPart { Text = "The answer from Gemini" } }
                     }
                 }
+            },
+            UsageMetadata = new GeminiUsageMetadata
+            {
+                PromptTokenCount = 100,
+                CandidatesTokenCount = 50,
+                TotalTokenCount = 150
             }
         };
 
@@ -81,7 +87,8 @@ public class DocumentationSearchServiceTests
         var result = await service.AskGeminiAsync("How do I rent?");
 
         // Assert
-        Assert.Equal("The answer from Gemini", result);
+        Assert.True(result.Success);
+        Assert.Equal("The answer from Gemini", result.Answer);
         
         // Verify that the documentation context was indeed read
         handlerMock.Protected().Verify(

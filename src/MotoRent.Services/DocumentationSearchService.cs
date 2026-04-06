@@ -21,20 +21,22 @@ public class DocumentationSearchService(
     private ILogger<DocumentationSearchService> Logger { get; } = logger;
     private string DocsPath { get; } = docsPath;
 
-    public async Task<string> AskGeminiAsync(string question, CancellationToken cancellationToken = default)
+    public async Task<GeminiSearchResult> AskGeminiAsync(string question, CancellationToken cancellationToken = default)
     {
         var apiKey = MotoConfig.GeminiApiKey;
 
         if (string.IsNullOrWhiteSpace(apiKey))
         {
-            return "Gemini API key is not configured.";
+            return new GeminiSearchResult("Gemini API key is not configured.", "", 0, 0, false, "No API key");
         }
 
         var context = await this.GetDocumentationContextAsync();
 
         if (string.IsNullOrWhiteSpace(context))
         {
-            return "I'm sorry, I couldn't find information about that in our guides.";
+            return new GeminiSearchResult(
+                "I'm sorry, I couldn't find information about that in our guides.",
+                "", 0, 0, false, "No documentation context");
         }
 
         var request = CreateGeminiRequest(context, question);
@@ -70,7 +72,14 @@ public class DocumentationSearchService(
 
                 if (!string.IsNullOrWhiteSpace(answer))
                 {
-                    return answer;
+                    var usage = geminiResponse?.UsageMetadata;
+                    return new GeminiSearchResult(
+                        answer,
+                        model,
+                        usage?.PromptTokenCount ?? 0,
+                        usage?.CandidatesTokenCount ?? 0,
+                        true,
+                        null);
                 }
 
                 this.Logger.LogWarning("Gemini returned an empty answer for model {Model}", model);
@@ -93,7 +102,10 @@ public class DocumentationSearchService(
         }
 
         this.Logger.LogError(lastException, "Failed to get response from Gemini API for documentation search");
-        return "An error occurred while communicating with the AI assistant.";
+        return new GeminiSearchResult(
+            "An error occurred while communicating with the AI assistant.",
+            MotoConfig.GeminiModels.FirstOrDefault() ?? "",
+            0, 0, false, lastException?.Message);
     }
 
     private async Task<string> GetDocumentationContextAsync()
@@ -186,3 +198,11 @@ public class DocumentationSearchService(
         return httpRequest;
     }
 }
+
+public record GeminiSearchResult(
+    string Answer,
+    string Model,
+    int InputTokens,
+    int OutputTokens,
+    bool Success,
+    string? Error);
