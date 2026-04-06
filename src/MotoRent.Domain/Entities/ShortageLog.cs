@@ -1,3 +1,5 @@
+using MotoRent.Domain.Core;
+
 namespace MotoRent.Domain.Entities;
 
 /// <summary>
@@ -32,9 +34,9 @@ public class ShortageLog : Entity
     public string StaffDisplayName { get; set; } = string.Empty;
 
     /// <summary>
-    /// Currency of the shortage (THB, USD, EUR, CNY).
+    /// Currency of the shortage (MYR, USD, EUR, CNY).
     /// </summary>
-    public string Currency { get; set; } = SupportedCurrencies.THB;
+    public string Currency { get; set; } = SupportedCurrencies.BaseCurrency;
 
     /// <summary>
     /// Amount of the shortage in the original currency.
@@ -43,8 +45,8 @@ public class ShortageLog : Entity
     public decimal Amount { get; set; }
 
     /// <summary>
-    /// Amount converted to THB at the time of logging.
-    /// For THB shortages, equals Amount.
+    /// Amount converted to the deployment base currency at the time of logging.
+    /// For base-currency shortages, equals Amount.
     /// </summary>
     public decimal AmountInThb { get; set; }
 

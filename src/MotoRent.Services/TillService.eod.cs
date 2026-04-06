@@ -161,9 +161,9 @@ public partial class TillService
         string reason,
         string managerUserName)
     {
-        // Convert to THB if foreign currency
+        // Convert to the deployment base currency if foreign currency
         decimal amountInThb;
-        if (currency == SupportedCurrencies.THB)
+        if (currency == BaseCurrency)
         {
             amountInThb = Math.Abs(amount);
         }

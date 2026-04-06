@@ -32,7 +32,7 @@ public class Organization : Entity
     public double? Timezone { get; set; } = MotoConfig.CountryDefaults.TimezoneOffset;
 
     /// <summary>
-    /// Language/locale code (default: th-TH for Thailand).
+    /// Language/locale code (default derived from MOTO_Country).
     /// </summary>
     public string Language { get; set; } = MotoConfig.CountryDefaults.DefaultCulture;
 
@@ -57,7 +57,7 @@ public class Organization : Entity
     public bool IsTrialActive => TrialEndDate.HasValue && TrialEndDate.Value > DateTimeOffset.UtcNow;
 
     /// <summary>
-    /// Preferred language for the organization (th/en).
+    /// Preferred language for the organization (en/ms).
     /// </summary>
     public string? PreferredLanguage { get; set; }
 
@@ -143,5 +143,5 @@ public class Address
     public string? City { get; set; }
     public string? Province { get; set; }
     public string? PostalCode { get; set; }
-    public string? Country { get; set; } = "Thailand";
+    public string? Country { get; set; } = "Malaysia";
 }

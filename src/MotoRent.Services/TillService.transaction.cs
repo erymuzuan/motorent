@@ -35,9 +35,9 @@ public partial class TillService
             TransactionType = type,
             Direction = TillTransactionDirection.In,
             Amount = amount,
-            Currency = SupportedCurrencies.THB,
+            Currency = BaseCurrency,
             ExchangeRate = 1.0m,
-            AmountInBaseCurrency = amount, // THB transaction, so same as Amount
+            AmountInBaseCurrency = amount,
             ExchangeRateSource = "Base",
             Description = description,
             PaymentId = paymentId,
@@ -53,7 +53,7 @@ public partial class TillService
         {
             session.TotalCashIn += amount;
             // Also update CurrencyBalances for consistency
-            session.CurrencyBalances[SupportedCurrencies.THB] = session.GetCurrencyBalance(SupportedCurrencies.THB) + amount;
+            session.CurrencyBalances[BaseCurrency] = session.GetCurrencyBalance(BaseCurrency) + amount;
         }
 
         switch (type)
@@ -65,9 +65,11 @@ public partial class TillService
                 session.TotalCardPayments += amount;
                 break;
             case TillTransactionType.BankTransfer:
+            case TillTransactionType.FPX:
                 session.TotalBankTransfers += amount;
                 break;
             case TillTransactionType.PromptPay:
+            case TillTransactionType.DuitNow:
                 session.TotalPromptPay += amount;
                 break;
         }

@@ -101,7 +101,7 @@ public partial class ExchangeRateService(
     /// Deactivates any existing rate for the same currency.
     /// </summary>
     /// <param name="currency">Currency code (USD, EUR, etc.)</param>
-    /// <param name="buyRate">THB amount for 1 unit of foreign currency</param>
+    /// <param name="buyRate">Base-currency amount for 1 unit of foreign currency</param>
     /// <param name="source">Rate source (Manual, API, Adjusted)</param>
     /// <param name="username">User setting the rate</param>
     /// <param name="apiRate">Original API rate if adjusted (optional)</param>
@@ -149,17 +149,19 @@ public partial class ExchangeRateService(
     // Currency Conversion
 
     /// <summary>
-    /// Converts a foreign currency amount to THB.
+    /// Converts a foreign currency amount to the deployment base currency.
     /// Returns conversion details including rate used and source for audit.
     /// </summary>
     /// <param name="currency">Source currency code</param>
     /// <param name="foreignAmount">Amount in foreign currency</param>
     /// <param name="shopId">Optional shop ID for shop-specific rates (null = use org defaults)</param>
-    /// <returns>Conversion result with THB amount and rate details, or null if no rate configured</returns>
+    /// <returns>Conversion result with base-currency amount and rate details, or null if no rate configured</returns>
     public async Task<ExchangeConversionResult?> ConvertToThbAsync(string currency, decimal foreignAmount, int? shopId = null)
     {
-        // If already THB, return as-is
-        if (currency == SupportedCurrencies.THB)
+        var baseCurrency = SupportedCurrencies.BaseCurrency;
+
+        // If already the base currency, return as-is
+        if (currency == baseCurrency)
         {
             return new ExchangeConversionResult(foreignAmount, 1.0m, "Base", null);
         }
@@ -173,7 +175,7 @@ public partial class ExchangeRateService(
         // Use the lowest buy rate (most conservative - protects business from overpaying)
         var rate = rates.OrderBy(r => r.BuyRate).First();
 
-        // Calculate THB amount
+        // Calculate base-currency amount
         var thbAmount = foreignAmount * rate.BuyRate;
 
         return new ExchangeConversionResult(thbAmount, rate.BuyRate, rate.ProviderCode, rate.DenominationRateId);
@@ -202,10 +204,10 @@ public partial class ExchangeRateService(
 /// Result of a currency conversion operation.
 /// Contains the converted amount and audit information about the rate used.
 /// </summary>
-/// <param name="ThbAmount">Amount in THB (base currency)</param>
+/// <param name="ThbAmount">Amount in the deployment base currency</param>
 /// <param name="RateUsed">Exchange rate that was applied</param>
-/// <param name="RateSource">Source of the rate (Manual, API, Adjusted, or Base for THB)</param>
-/// <param name="ExchangeRateId">Reference to the ExchangeRate entity used (null for THB)</param>
+/// <param name="RateSource">Source of the rate (Manual, API, Adjusted, or Base for the base currency)</param>
+/// <param name="ExchangeRateId">Reference to the ExchangeRate entity used (null for the base currency)</param>
 public record ExchangeConversionResult(
     decimal ThbAmount,
     decimal RateUsed,

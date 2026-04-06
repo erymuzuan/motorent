@@ -36,10 +36,10 @@ public partial class TillService
             OpeningFloat = openingFloat,
             OpenedAt = DateTimeOffset.Now,
             OpeningNotes = notes,
-            // Initialize currency balances - THB starts with opening float, foreign currencies start at 0
+            // Initialize currency balances - base currency starts with opening float, foreign currencies start at 0
             CurrencyBalances = new Dictionary<string, decimal>
             {
-                [SupportedCurrencies.THB] = openingFloat,
+                [BaseCurrency] = openingFloat,
                 [SupportedCurrencies.USD] = 0,
                 [SupportedCurrencies.EUR] = 0,
                 [SupportedCurrencies.CNY] = 0
@@ -225,9 +225,9 @@ public partial class TillService
             closingVariances[breakdown.Currency] = breakdown.Variance ?? 0;
         }
 
-        // Get THB values for backward compatibility with existing fields
-        var thbActual = actualBalances.GetValueOrDefault(SupportedCurrencies.THB, 0);
-        var thbExpected = session.GetCurrencyBalance(SupportedCurrencies.THB);
+        // Get base-currency values for backward compatibility with existing fields
+        var thbActual = actualBalances.GetValueOrDefault(BaseCurrency, 0);
+        var thbExpected = session.GetCurrencyBalance(BaseCurrency);
 
         session.ActualCash = thbActual;
         session.Variance = thbActual - thbExpected;

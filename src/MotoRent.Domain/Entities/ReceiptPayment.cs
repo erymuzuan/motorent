@@ -1,3 +1,5 @@
+using MotoRent.Domain.Core;
+
 namespace MotoRent.Domain.Entities;
 
 /// <summary>
@@ -13,7 +15,7 @@ public class ReceiptPayment
     public string PaymentId { get; set; } = Guid.NewGuid().ToString("N")[..8];
 
     /// <summary>
-    /// Payment method (Cash, Card, PromptPay, BankTransfer)
+    /// Payment method (Cash, Card, DuitNow, FPX, BankTransfer)
     /// </summary>
     public string Method { get; set; } = PaymentMethods.Cash;
 
@@ -23,34 +25,34 @@ public class ReceiptPayment
     public decimal Amount { get; set; }
 
     /// <summary>
-    /// Currency code (THB, USD, EUR, GBP, CNY, JPY, AUD, RUB)
+    /// Currency code (MYR, USD, EUR, GBP, CNY, JPY, AUD, RUB)
     /// </summary>
-    public string Currency { get; set; } = SupportedCurrencies.THB;
+    public string Currency { get; set; } = SupportedCurrencies.BaseCurrency;
 
     /// <summary>
-    /// Exchange rate to THB (1.0 for THB, otherwise the conversion rate)
+    /// Exchange rate to the deployment base currency (1.0 for base-currency payments, otherwise the conversion rate)
     /// </summary>
     public decimal ExchangeRate { get; set; } = 1.0m;
 
     /// <summary>
-    /// Amount converted to base currency (THB)
+    /// Amount converted to the deployment base currency
     /// </summary>
     public decimal AmountInBaseCurrency { get; set; }
 
     /// <summary>
-    /// Source of the exchange rate used (Manual, API, Adjusted, or "Base" for THB)
+    /// Source of the exchange rate used (Manual, API, Adjusted, or "Base" for base-currency payments)
     /// Captured at transaction time for RATE-04 audit trail requirement.
     /// </summary>
     public string ExchangeRateSource { get; set; } = "Base";
 
     /// <summary>
-    /// Reference to the ExchangeRate entity used (null for THB base currency)
+    /// Reference to the ExchangeRate entity used (null for base-currency payments)
     /// Enables linking back to the exact rate record for audit purposes.
     /// </summary>
     public int? ExchangeRateId { get; set; }
 
     /// <summary>
-    /// Transaction reference (card authorization code, PromptPay reference, etc.)
+    /// Transaction reference (card authorization code, DuitNow/FPX reference, etc.)
     /// </summary>
     public string? Reference { get; set; }
 
@@ -78,6 +80,8 @@ public static class PaymentMethods
     public const string Cash = "Cash";
     public const string Card = "Card";
     public const string PromptPay = "PromptPay";
+    public const string DuitNow = "DuitNow";
+    public const string FPX = "FPX";
     public const string BankTransfer = "BankTransfer";
 }
 
@@ -86,6 +90,8 @@ public static class PaymentMethods
 /// </summary>
 public static class SupportedCurrencies
 {
+    public static string BaseCurrency => MotoConfig.CountryDefaults.Currency;
+
     public const string THB = "THB";  // Thai Baht (base currency)
     public const string USD = "USD";  // US Dollar
     public const string EUR = "EUR";  // Euro

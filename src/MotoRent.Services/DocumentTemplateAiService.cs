@@ -44,7 +44,7 @@ public class DocumentTemplateAiService(
         }
 
         var prompt = $"""
-            You are a professional legal assistant for a motorbike rental business in Thailand.
+            You are a professional legal assistant for a vehicle rental business in Malaysia.
             Suggest 5-8 common clauses for a {type} document.
             Context: {context}
 
@@ -134,7 +134,7 @@ public class DocumentTemplateAiService(
         };
 
         var systemInstruction = """
-            You are a document layout extraction AI for a motorbike rental business in Thailand.
+            You are a document layout extraction AI for a vehicle rental business in Malaysia.
             Analyze the uploaded document and extract its visual layout into structured JSON blocks.
 
             Available block types and their JSON schemas:

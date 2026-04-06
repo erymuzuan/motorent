@@ -26,8 +26,10 @@ public partial class TillService
             "cash" => TillTransactionType.RentalPayment,
             "card" => TillTransactionType.CardPayment,
             "banktransfer" => TillTransactionType.BankTransfer,
-            "promptpay" => TillTransactionType.PromptPay,
-            "qrcode" => TillTransactionType.PromptPay, // QRCode is typically PromptPay in Thailand
+            "fpx" => TillTransactionType.FPX,
+            "promptpay" => TillTransactionType.DuitNow,
+            "duitnow" => TillTransactionType.DuitNow,
+            "qrcode" => TillTransactionType.DuitNow,
             _ => TillTransactionType.RentalPayment
         };
 
@@ -83,7 +85,9 @@ public partial class TillService
             "cash" => TillTransactionType.RentalPayment,
             "card" => TillTransactionType.CardPayment,
             "banktransfer" => TillTransactionType.BankTransfer,
-            "promptpay" => TillTransactionType.PromptPay,
+            "fpx" => TillTransactionType.FPX,
+            "promptpay" => TillTransactionType.DuitNow,
+            "duitnow" => TillTransactionType.DuitNow,
             _ => TillTransactionType.RentalPayment
         };
 

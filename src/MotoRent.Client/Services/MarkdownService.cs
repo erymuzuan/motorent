@@ -18,7 +18,7 @@ public class MarkdownService(HttpClient httpClient, NavigationManager navigation
     /// <summary>
     /// Gets the documentation folder path based on language.
     /// </summary>
-    public static string GetDocsFolder(string lang) => lang == "th" ? "user.guides.th" : "user.guides";
+    public static string GetDocsFolder(string lang) => lang == "ms" ? "user.guides.ms" : "user.guides";
 
     /// <summary>
     /// Renders a markdown file to HTML with optional language fallback.
@@ -53,10 +53,10 @@ public class MarkdownService(HttpClient httpClient, NavigationManager navigation
         }
         catch (HttpRequestException ex)
         {
-            // If Thai doesn't exist, fall back to English
-            if (lang == "th")
+            // If Malay doesn't exist, fall back to English
+            if (lang == "ms")
             {
-                this.Logger.LogInformation("Thai version not found for {FileName}, falling back to English", fileName);
+                this.Logger.LogInformation("Malay version not found for {FileName}, falling back to English", fileName);
                 var englishPath = $"user.guides/{fileName}";
                 try
                 {

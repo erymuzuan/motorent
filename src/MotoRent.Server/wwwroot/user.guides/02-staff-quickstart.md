@@ -1,184 +1,51 @@
 # JaleOS Quick Start Guide - Staff
 
-Welcome to JaleOS! This guide will help you get started as a Staff member.
+This guide covers the daily operations for front-desk staff. Your primary goal is to provide a smooth check-in and check-out experience for renters.
+
+![Staff Overview](images/02-staff-hero.png)
+
+## 1. Staff Dashboard
+
+The Staff Dashboard is designed for quick actions:
+- **New Check-In**: Start a new rental session.
+- **Process Check-Out**: Process a returning vehicle.
+- **Active Rentals**: View all currently rented vehicles.
+- **Overdue**: Quickly see which rentals missed their return time.
+- **Due Today**: A prioritized list of returns expected today.
 
 ![Staff Dashboard](images/09-staff-dashboard.png)
 
-## Your Role
+## 2. Check-In Process (The Wizard)
 
-As a Staff member, you handle day-to-day rental operations:
-- Process check-ins (new rentals)
-- Process check-outs (returns)
-- Manage active rentals
-- Register new customers
-- Report accidents
+When a customer arrives, use the **New Check-In** button. This follows a 5-step wizard:
+1. **Rental Details**: Select the shop, duration type (Daily or Fixed Interval), and dates.
+2. **Customer Registration**: Search for existing customers or register a new one. Use the **OCR Feature** (powered by Gemini AI) to automatically extract their name, ID number, and nationality from their ID or Passport.
+3. **Vehicle & Options**: Select an available vehicle, insurance package, and accessories.
+4. **Agreement & Signature**: Read the terms to the customer. They must sign directly on the screen.
+5. **Payment & Review**: Record the rental payment and the security deposit (Cash or Card).
 
-## Navigation Overview
+![Check-In Wizard](images/04-checkin.png)
 
-Your navigation menu includes:
+## 3. Processing Returns (Check-Out)
 
-| Menu | Description |
-|------|-------------|
-| **Dashboard** | Overview of active rentals and quick actions |
-| **Rentals** | Manage active rentals, check-in, check-out |
-| **Accidents** | Report and view vehicle accidents |
-| **Customers** | View and register renters |
+When a vehicle is returned:
+1. Locate the rental in the **Due Today** list or via **Process Check-Out**.
+2. **Standard Check**: Record the return mileage and end date.
+3. **Damage Inspection**: Check the vehicle for new scratches or damages. If damage is found, create a **Damage Report** with photos and estimated costs.
+4. **Deposit Refund**: The system calculates if any amount should be deducted from the deposit for damages or late returns. Process the refund to the customer.
 
-> **Note:** Finance, Fleet management, and Settings are managed by Shop Managers and Admins.
+## 4. Customer Management
 
-## Getting Started
+Use the **Customers > Renters** menu to manage renter profiles. You can update contact information, verify documents, and view their rental history.
 
-### 1. Dashboard Overview
+![Renters](images/07-renters.png)
 
-Your Dashboard shows:
-- **Active Rentals** - Vehicles currently out
-- **Available Vehicles** - Ready for rental
-- **Due Today** - Expected returns
-- **Today's Revenue** - Collections (view only)
+## 5. Reporting Accidents
 
-**Quick Actions:**
-- **New Check-In** - Start a new rental
-- **Process Check-Out** - Return a vehicle
-- **Register Renter** - Add new customer
-
-### 2. Processing a New Rental (Check-In)
-
-![Check-In Process](images/04-checkin.png)
-
-This is your most common task. Follow these steps:
-
-#### Step 1: Select Renter
-1. Click **Rentals > Check-In** or "New Check-In"
-2. Search for the customer by:
-   - Name
-   - Phone number
-   - Passport number
-3. If new customer, click "Create New Renter"
-
-#### Step 2: Select Vehicle
-1. Browse available vehicles
-2. Use filters to narrow down:
-   - Vehicle type (Motorbike, Car, etc.)
-   - Brand
-3. Click on the vehicle to select it
-
-#### Step 3: Configure Rental
-1. Set rental dates:
-   - Start date (usually today)
-   - Expected end date
-2. Add optional insurance package
-3. Add accessories (helmet, phone holder, etc.)
-
-#### Step 4: Collect Deposit
-1. Enter deposit amount
-2. Select deposit type:
-   - Cash
-   - Card
-3. Record the deposit
-
-#### Step 5: Confirm Agreement
-1. Review rental summary
-2. Print or email agreement
-3. Click "Complete Check-In"
-
-### 3. Processing a Return (Check-Out)
-
-When a customer returns a vehicle:
-
-1. Go to **Rentals** and find the active rental
-2. Click **Check Out** on the rental card
-3. Complete the inspection:
-   - Check vehicle condition
-   - Note fuel level
-   - Document any new damage
-4. Calculate final charges:
-   - Extra days (if applicable)
-   - Damage charges
-   - Late fees
-5. Process refund or collect additional payment
-6. Release the deposit
-
-### 4. Managing Active Rentals
-
-The **Rentals** page shows all rentals with filters:
-
-| Filter | Description |
-|--------|-------------|
-| **Active** | Currently rented out |
-| **Due Today** | Expected to return today |
-| **Overdue** | Past expected return date |
-| **Completed** | Returned successfully |
-
-**Actions on rental cards:**
-- **Check Out** - Process return
-- **Extend** - Add more days
-- **Cancel** - Cancel rental
-- **Invoice** - View/print invoice
-
-### 5. Reporting Accidents
-
-If a customer reports damage or an accident:
-1. Go to **Accidents**
-2. Click "Report Accident"
-3. Fill in the incident details:
-   - **Details**: Vehicle, rental, date, and description.
-   - **Parties**: Add any other people or vehicles involved.
-   - **Photos**: Upload photos of the damage.
-4. If there are repair costs, enter them in the **Costs** tab.
-5. Save the report. The vehicle status will automatically change to **Maintenance** if the damage is severe.
-
-### 6. Registering New Customers
-
-To add a new renter:
-
-1. Go to **Customers > Renters**
-2. Click "Register Renter"
-3. Fill in required information:
-   - Full name
-   - Nationality
-   - Passport or ID number
-   - Phone number
-   - Email
-   - Hotel/accommodation
-4. Save the record
-
-## Daily Workflow
-
-### Morning Checklist
-- [ ] Review Dashboard for due returns
-- [ ] Check for overdue rentals
-- [ ] Prepare available vehicles
-
-### During the Day
-- [ ] Process check-ins promptly
-- [ ] Verify customer documents
-- [ ] Take photos of vehicles before rental
-- [ ] Document vehicle condition at return
-
-### End of Day
-- [ ] Review any incomplete rentals
-- [ ] Report any incidents to manager
-- [ ] Note any vehicles needing attention
-
-## Tips for Success
-
-1. **Always verify documents** - Check passport/ID validity
-2. **Take photos** - Document vehicle condition before and after
-3. **Be clear about terms** - Explain rental dates, deposit, insurance
-4. **Stay organized** - Use filters to find rentals quickly
-5. **Report issues immediately** - Don't delay accident reports
-
-## Need Help?
-
-- Contact your Shop Manager for:
-  - Payment issues
-  - Pricing questions
-  - Vehicle availability concerns
-
-- Contact the Admin for:
-  - System access issues
-  - Account problems
+If a customer reports an accident during their rental:
+1. Go to **Accidents** and click **Report New Accident**.
+2. Document the date, location, involved parties, and estimated costs in the respective tabs.
+3. Upload any supporting documents or photos.
 
 ---
-
-*JaleOS - Vehicle Rental Management System*
+*Operational Tip: Always verify the original document (Passport/License) against the data extracted by the OCR feature for accuracy.*

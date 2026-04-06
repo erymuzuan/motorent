@@ -16,28 +16,27 @@ public partial class Shop : Entity
     public string Name { get; set; } = string.Empty;
 
     /// <summary>
-    /// Province where the shop is located (e.g., Phuket, Krabi, Chiang Mai).
-    /// Uses English names from ThaiProvinces lookup.
+    /// State or federal territory where the shop is located.
     /// </summary>
     public string Province { get; set; } = string.Empty;
 
     /// <summary>
-    /// Specific area/neighborhood within the province (e.g., Patong, Ao Nang, Old City).
+    /// Specific area or neighborhood within the state or federal territory.
     /// </summary>
     public string Location { get; set; } = string.Empty;
 
     /// <summary>
-    /// District (อำเภอ) where the shop is located.
+    /// District where the shop is located.
     /// </summary>
     public string District { get; set; } = string.Empty;
 
     /// <summary>
-    /// Subdistrict (ตำบล) where the shop is located.
+    /// Subdistrict or locality where the shop is located.
     /// </summary>
     public string Subdistrict { get; set; } = string.Empty;
 
     /// <summary>
-    /// Postal code (รหัสไปรษณีย์).
+    /// Postal code.
     /// </summary>
     public string PostalCode { get; set; } = string.Empty;
 

@@ -1,3 +1,5 @@
+using MotoRent.Domain.Core;
+
 namespace MotoRent.Domain.Entities;
 
 /// <summary>
@@ -27,18 +29,22 @@ public class TillSession : Entity
     // Non-cash totals (for EOD reconciliation)
     public decimal TotalCardPayments { get; set; }
     public decimal TotalBankTransfers { get; set; }
+    /// <summary>
+    /// Tracks DuitNow QR / instant-transfer style payments.
+    /// Legacy property name retained for data compatibility.
+    /// </summary>
     public decimal TotalPromptPay { get; set; }
 
     /// <summary>
-    /// Tracks actual foreign currency amounts in the drawer.
-    /// Key is currency code (THB, USD, EUR, CNY), value is amount in that currency.
-    /// THB balance is the total THB in drawer; foreign currency balances track
+     /// Tracks actual foreign currency amounts in the drawer.
+    /// Key is currency code (MYR, USD, EUR, CNY), value is amount in that currency.
+    /// The base-currency balance is the total local cash in drawer; foreign currency balances track
     /// un-converted foreign currency received during the session.
-    /// Initialized with THB = OpeningFloat on session open; foreign currencies start at 0.
+    /// Initialized with the deployment base currency = OpeningFloat on session open; foreign currencies start at 0.
     /// </summary>
     public Dictionary<string, decimal> CurrencyBalances { get; set; } = new()
     {
-        [SupportedCurrencies.THB] = 0
+        [SupportedCurrencies.BaseCurrency] = 0
     };
 
     // Closing
@@ -66,7 +72,7 @@ public class TillSession : Entity
 
     /// <summary>
     /// Actual counted balances per currency at close.
-    /// Key: currency code (THB, USD, EUR, CNY)
+    /// Key: currency code (MYR, USD, EUR, CNY)
     /// Value: actual counted amount in that currency
     /// </summary>
     public Dictionary<string, decimal> ActualBalances { get; set; } = new();
@@ -74,7 +80,7 @@ public class TillSession : Entity
     /// <summary>
     /// Variance per currency at close (Actual - Expected).
     /// Positive = over, Negative = short, Zero = balanced.
-    /// Key: currency code (THB, USD, EUR, CNY)
+    /// Key: currency code (MYR, USD, EUR, CNY)
     /// Value: variance in that currency
     /// </summary>
     public Dictionary<string, decimal> ClosingVariances { get; set; } = new();
@@ -99,7 +105,7 @@ public class TillSession : Entity
     /// Gets the balance for a specific currency in the drawer.
     /// Returns 0 if the currency is not tracked in this session.
     /// </summary>
-    /// <param name="currency">Currency code (THB, USD, EUR, CNY)</param>
+    /// <param name="currency">Currency code (MYR, USD, EUR, CNY)</param>
     /// <returns>Amount in the specified currency, or 0 if not tracked</returns>
     public decimal GetCurrencyBalance(string currency)
     {

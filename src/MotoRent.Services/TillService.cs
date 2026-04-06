@@ -1,4 +1,5 @@
 using MotoRent.Domain.DataContext;
+using MotoRent.Domain.Core;
 using MotoRent.Domain.Entities;
 
 namespace MotoRent.Services;
@@ -10,6 +11,7 @@ public partial class TillService(RentalDataContext context, ExchangeRateService 
 {
     private RentalDataContext Context { get; } = context;
     private ExchangeRateService ExchangeRateService { get; } = exchangeRateService;
+    private static string BaseCurrency => MotoConfig.CountryDefaults.Currency;
 }
 
 /// <summary>
@@ -71,7 +73,7 @@ public class CurrencyDropAmount
     /// <summary>
     /// Currency code (THB, USD, EUR, CNY)
     /// </summary>
-    public string Currency { get; set; } = SupportedCurrencies.THB;
+    public string Currency { get; set; } = SupportedCurrencies.BaseCurrency;
 
     /// <summary>
     /// Amount to drop in this currency

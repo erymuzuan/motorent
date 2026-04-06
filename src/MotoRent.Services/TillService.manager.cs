@@ -155,7 +155,9 @@ public partial class TillService
         {
             TillTransactionType.CardPayment,
             TillTransactionType.BankTransfer,
-            TillTransactionType.PromptPay
+            TillTransactionType.PromptPay,
+            TillTransactionType.DuitNow,
+            TillTransactionType.FPX
         };
 
         var result = await this.Context.LoadAsync(
@@ -206,7 +208,7 @@ public partial class TillService
     }
 
     /// <summary>
-    /// Calculates total variance in THB across all currencies.
+    /// Calculates total variance in the deployment base currency across all currencies.
     /// Uses current exchange rates to convert foreign currency variances.
     /// </summary>
     public async Task<decimal> GetTotalVarianceInThbAsync(TillSession session)
@@ -217,7 +219,7 @@ public partial class TillService
         decimal totalThb = 0;
         foreach (var (currency, variance) in session.ClosingVariances)
         {
-            if (currency == SupportedCurrencies.THB)
+            if (currency == BaseCurrency)
             {
                 totalThb += variance;
             }

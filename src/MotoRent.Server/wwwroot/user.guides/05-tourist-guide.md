@@ -1,224 +1,36 @@
 # JaleOS Tourist Portal Guide
 
-Welcome to JaleOS! This guide will help you browse and rent vehicles during your vacation in Malaysia.
+JaleOS is available as a Progressive Web App (PWA) on your mobile device. You can browse, reserve, and track your rentals directly from your phone.
 
-## Getting Started
+![Tourist Overview](images/05-tourist-hero.png)
 
-### Accessing the Portal
+## 1. Installing the App
 
-1. Visit your rental shop's website (provided by your hotel or travel agent)
-2. Browse available vehicles without signing in
-3. Create an account or sign in to make reservations
+- When you visit the JaleOS portal, you may see an **"Install App"** banner.
+- Tap **Install** to add JaleOS to your home screen for quick access and offline support.
 
-### Browsing Vehicles
+## 2. Browsing & Reservations
 
-The homepage displays available vehicles with:
-- **Vehicle Type** - Motorbike, Car, Jet Ski, Boat, Van
-- **Daily Rate** - Price per day in Malaysian Ringgit (MYR)
-- **Availability** - Real-time status
+- **Browse**: View all available vehicles in your area. You can filter by brand, engine size, and price.
+- **Details**: View high-quality photos and specifications for each vehicle.
+- **Reservation**:
+    - Select your pickup and drop-off dates.
+    - Choose your preferred insurance and accessories.
+    - Provide your contact details to hold the reservation.
+    - You will receive a **Confirmation Code** (e.g., MR-240112-ABC123) to show at the shop.
 
-Use filters to narrow down your search:
-- Vehicle type
-- Price range
-- Features (automatic/manual)
+## 3. Your Rental History
 
-## Making a Reservation
+- Access your current and past rentals by verifying your **Email** or **Phone Number**.
+- View active rental details, including your expected return time and location.
+- View digital copies of your signed **Rental Agreement** and receipts.
 
-### Step 1: Select a Vehicle
+## 4. Notifications
 
-1. Click on a vehicle card to view details
-2. Review:
-   - Photos and specifications
-   - Daily rate and deposit amount
-   - Insurance options
-   - Included accessories (helmet, etc.)
-
-### Step 2: Choose Dates
-
-1. Select your pickup date and time
-2. Select your return date and time
-3. Review the total rental duration
-4. See the estimated total cost
-
-### Step 3: Add Options
-
-1. **Insurance** - Choose from available packages:
-   - Basic (included)
-   - Standard - Lower deductible
-   - Premium - Full coverage
-2. **Accessories** - Add optional items:
-   - Extra helmet
-   - Phone holder
-   - GPS device
-
-### Step 4: Your Information
-
-Provide your details:
-- Full name (as on passport)
-- Nationality
-- Passport number
-- Phone number (for WhatsApp/SMS)
-- Email address
-- Hotel/accommodation name
-
-### Step 5: Confirm Reservation
-
-1. Review your reservation summary
-2. Accept the rental terms and conditions
-3. Submit your reservation
-4. Receive confirmation via email
-
-## At the Rental Shop
-
-### Check-In Process
-
-When you arrive at the shop:
-
-1. **Present Documents**
-   - Passport or ID
-   - Driver's license (International Driving Permit recommended)
-   - Reservation confirmation
-
-2. **Pay Deposit**
-   - Cash (MYR) or credit card
-   - Deposit is refundable upon return
-
-3. **Vehicle Inspection**
-   - Staff will walk you through the vehicle
-   - Photos taken of current condition
-   - Test the vehicle before leaving
-
-4. **Receive Keys**
-   - Sign the rental agreement
-   - Get emergency contact numbers
-   - Receive the vehicle
-
-### Important Documents
-
-**Required:**
-- Valid passport
-- Driver's license
-- International Driving Permit (recommended for motorbikes)
-
-**Provided:**
-- Rental agreement
-- Insurance certificate
-- Emergency contact card
-
-## During Your Rental
-
-### Safety Tips
-
-1. **Always wear a helmet** (required by law in Malaysia)
-2. **Drive on the left side** of the road
-3. **Respect speed limits** (typically 50-60 km/h in town, 90-110 km/h on highways)
-4. **Avoid driving at night** if unfamiliar with roads
-5. **Keep documents with you** at all times
-
-### In Case of Problems
-
-**Breakdown or Mechanical Issue:**
-1. Move to a safe location
-2. Call the emergency number on your contact card
-3. Wait for assistance
-
-**Accident:**
-1. Ensure everyone is safe
-2. Call emergency services if needed (999)
-3. Contact the rental shop immediately
-4. Take photos of the scene
-5. Get a police report if required
-
-**Lost Keys:**
-1. Contact the rental shop
-2. Replacement fee may apply
-
-## Returning the Vehicle
-
-### Check-Out Process
-
-1. **Return on Time**
-   - Late returns may incur charges
-   - Contact shop if you need to extend
-
-2. **Vehicle Inspection**
-   - Staff will inspect the vehicle
-   - Compare condition with check-in photos
-   - Note any new damage
-
-3. **Final Payment**
-   - Extra days (if applicable)
-   - Fuel charges (if not full)
-   - Damage charges (if any)
-
-4. **Deposit Refund**
-   - Cash deposits refunded immediately
-   - Card deposits refunded within 3-7 days
-
-## Your Rental History
-
-### Viewing Past Rentals
-
-Log in to your account to see:
-- All past reservations
-- Rental details and receipts
-- Payment history
-
-### Leaving Feedback
-
-After your rental:
-1. Rate your experience
-2. Leave comments
-3. Help other travelers
-
-## Frequently Asked Questions
-
-### Do I need a license?
-
-**Motorbikes:** International Driving Permit or valid license from your country
-**Cars:** Valid driver's license from your country
-**Jet Skis/Boats:** No license required, but brief training provided
-
-### What if I damage the vehicle?
-
-Damage costs depend on:
-- Insurance coverage selected
-- Severity of damage
-- Deductible amount
-
-Report all damage immediately to minimize costs.
-
-### Can I extend my rental?
-
-Yes! Contact the shop:
-- Before your return date
-- Extension subject to availability
-- Additional payment required
-
-### What's included in the rental?
-
-Standard rentals include:
-- One helmet (motorbikes)
-- Basic insurance
-- 24/7 emergency support
-- Unlimited mileage (local area)
-
-### How do I pay?
-
-Accepted payment methods:
-- Cash (MYR)
-- Credit/Debit card (Visa, Mastercard)
-- Touch 'n Go eWallet
-- FPX online banking
-
-## Contact Support
-
-Need help? Contact your rental shop:
-- Phone number on your rental agreement
-- WhatsApp available
-- Email response within 24 hours
+- If you have the app installed and notifications enabled, you will receive reminders for:
+    - Upcoming pickup times.
+    - Rental expiration/return reminders.
+    - Important updates from the shop.
 
 ---
-
-*JaleOS - Vehicle Rental Management System*
-*Enjoy your trip safely!*
+*Service Note: Reservations made online ensure your preferred vehicle is ready for you when you arrive at the shop.*

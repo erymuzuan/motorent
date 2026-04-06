@@ -176,8 +176,9 @@
     }
 
     function isValidPhone(phone) {
-      // Thai phone number format
-      return /^[0-9]{9,10}$/.test(phone.replace(/[-\s]/g, ''));
+      // Malaysia phone number format
+      const normalized = phone.replace(/[+\-\s]/g, '');
+      return /^(60)?[0-9]{9,11}$/.test(normalized);
     }
   }
 

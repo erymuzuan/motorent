@@ -14,6 +14,7 @@ public class NotificationService
     private readonly HttpClient m_httpClient;
     private readonly ILogger m_logger;
     private const string LINE_NOTIFY_API = "https://notify-api.line.me/api/notify";
+    private static string BaseCurrency => MotoConfig.CountryDefaults.Currency;
 
     public NotificationService(HttpClient httpClient, ILogger logger)
     {
@@ -165,7 +166,7 @@ public class NotificationService
             return false;
         }
 
-        var message = $"\n[Payment Received]\nBooking: {booking.BookingRef}\nAmount: {amount:N0} THB\nThank you!";
+        var message = $"\n[Payment Received]\nBooking: {booking.BookingRef}\nAmount: {amount:N0} {BaseCurrency}\nThank you!";
         return await SendLineNotifyAsync(lineAccessToken, message);
     }
 
@@ -194,7 +195,7 @@ public class NotificationService
         }
 
         var refundText = refundAmount.HasValue && refundAmount.Value > 0
-            ? $"\nRefund: {refundAmount:N0} THB"
+            ? $"\nRefund: {refundAmount:N0} {BaseCurrency}"
             : "";
         var message = $"\n[Booking Cancelled]\nBooking: {booking.BookingRef}{refundText}\nWe hope to serve you again!";
         return await SendLineNotifyAsync(lineAccessToken, message);
@@ -255,7 +256,7 @@ public class NotificationService
     private string BuildBookingConfirmationEmail(Booking booking, string? shopPhone, string? shopLineId)
     {
         var vehiclesList = string.Join("<br>", booking.Items.Select(i =>
-            $"&bull; {i.VehicleDisplayName ?? "Vehicle"} - {i.DailyRate:N0} THB/day"));
+            $"&bull; {i.VehicleDisplayName ?? "Vehicle"} - {i.DailyRate:N0} {BaseCurrency}/day"));
 
         var pickupTime = booking.PickupTime.HasValue
             ? booking.PickupTime.Value.ToString(@"hh\:mm")
@@ -312,10 +313,10 @@ public class NotificationService
 
             <div class='details'>
                 <p><strong>Payment Summary:</strong></p>
-                <p>Total Amount: {booking.TotalAmount:N0} THB</p>
-                <p>Deposit Required: {booking.DepositRequired:N0} THB</p>
-                <p>Amount Paid: {booking.AmountPaid:N0} THB</p>
-                <p>Balance Due: {(booking.TotalAmount - booking.AmountPaid):N0} THB</p>
+                <p>Total Amount: {booking.TotalAmount:N0} {BaseCurrency}</p>
+                <p>Deposit Required: {booking.DepositRequired:N0} {BaseCurrency}</p>
+                <p>Amount Paid: {booking.AmountPaid:N0} {BaseCurrency}</p>
+                <p>Balance Due: {(booking.TotalAmount - booking.AmountPaid):N0} {BaseCurrency}</p>
             </div>
 
             <div class='details'>
@@ -370,16 +371,16 @@ public class NotificationService
 
             <div class='details'>
                 <p><strong>Payment Details:</strong></p>
-                <p class='amount'>{amount:N0} THB</p>
+                <p class='amount'>{amount:N0} {BaseCurrency}</p>
                 <p>Payment Method: {paymentMethod}</p>
                 <p>Date: {DateTimeOffset.Now:MMMM dd, yyyy h:mm tt}</p>
             </div>
 
             <div class='details'>
                 <p><strong>Booking Reference:</strong> {booking.BookingRef}</p>
-                <p><strong>Total Amount:</strong> {booking.TotalAmount:N0} THB</p>
-                <p><strong>Amount Paid:</strong> {booking.AmountPaid:N0} THB</p>
-                <p><strong>Balance Due:</strong> {(booking.TotalAmount - booking.AmountPaid):N0} THB</p>
+                <p><strong>Total Amount:</strong> {booking.TotalAmount:N0} {BaseCurrency}</p>
+                <p><strong>Amount Paid:</strong> {booking.AmountPaid:N0} {BaseCurrency}</p>
+                <p><strong>Balance Due:</strong> {(booking.TotalAmount - booking.AmountPaid):N0} {BaseCurrency}</p>
             </div>
 
             <p>Thank you for choosing us!</p>
@@ -438,7 +439,7 @@ public class NotificationService
                 <p><strong>Don't Forget to Bring:</strong></p>
                 <p>&bull; Valid passport or ID</p>
                 <p>&bull; Booking reference: {booking.BookingRef}</p>
-                {(booking.TotalAmount - booking.AmountPaid > 0 ? $"<p>&bull; Remaining payment: {(booking.TotalAmount - booking.AmountPaid):N0} THB</p>" : "")}
+                {(booking.TotalAmount - booking.AmountPaid > 0 ? $"<p>&bull; Remaining payment: {(booking.TotalAmount - booking.AmountPaid):N0} {BaseCurrency}</p>" : "")}
             </div>
 
             {(string.IsNullOrWhiteSpace(shopPhone) ? "" : $@"
@@ -464,7 +465,7 @@ public class NotificationService
             ? $@"
             <div class='details'>
                 <p><strong>Refund Information:</strong></p>
-                <p>Refund Amount: {refundAmount:N0} THB</p>
+                <p>Refund Amount: {refundAmount:N0} {BaseCurrency}</p>
                 <p>Refunds are typically processed within 3-5 business days.</p>
             </div>"
             : "";
@@ -520,8 +521,8 @@ Customer: {booking.CustomerName}
 Pickup: {booking.StartDate:MMM dd, yyyy}
 Return: {booking.EndDate:MMM dd, yyyy}
 Vehicles: {vehicles}
-Total: {booking.TotalAmount:N0} THB
-Paid: {booking.AmountPaid:N0} THB";
+Total: {booking.TotalAmount:N0} {BaseCurrency}
+Paid: {booking.AmountPaid:N0} {BaseCurrency}";
     }
 
     #endregion

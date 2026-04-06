@@ -15,16 +15,16 @@ public class HelpController(
     private DocumentationSearchService SearchService { get; } = searchService;
     private DocumentationTranslationService TranslationService { get; } = translationService;
 
-    [HttpGet("ask")]
-    public async Task<IActionResult> Ask([FromQuery] string q)
+    [HttpPost("ask")]
+    public async Task<IActionResult> Ask([FromBody] AskRequest request, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(q))
+        if (string.IsNullOrWhiteSpace(request.Question))
         {
             return this.BadRequest("Question cannot be empty.");
         }
 
-        var answer = await this.SearchService.AskGeminiAsync(q);
-        return this.Ok(new { answer });
+        var answer = await this.SearchService.AskGeminiAsync(request.Question, cancellationToken);
+        return this.Ok(new AskResponse(answer));
     }
 
     /// <summary>
@@ -75,4 +75,8 @@ public class HelpController(
             results = result.Results.Select(r => new { r.FileName, r.Success, r.Error })
         });
     }
+
+    public sealed record AskRequest(string Question);
+
+    public sealed record AskResponse(string Answer);
 }

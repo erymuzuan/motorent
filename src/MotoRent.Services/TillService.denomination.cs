@@ -47,17 +47,17 @@ public partial class TillService
             }
         }
 
-        // Calculate total in THB
+        // Calculate total in the deployment base currency
         decimal totalInThb = 0;
         foreach (var breakdown in breakdowns)
         {
-            if (breakdown.Currency == SupportedCurrencies.THB)
+            if (breakdown.Currency == BaseCurrency)
             {
                 totalInThb += breakdown.Total;
             }
             else
             {
-                // Convert foreign currency to THB (with shop fallback to org defaults)
+                // Convert foreign currency to the deployment base currency (with shop fallback to org defaults)
                 var conversion = await this.ExchangeRateService.ConvertToThbAsync(breakdown.Currency, breakdown.Total, session.ShopId);
                 if (conversion is not null)
                 {
@@ -156,7 +156,7 @@ public partial class TillService
 
     /// <summary>
     /// Gets the expected balance for a currency in a session.
-    /// For THB: returns the THB currency balance from session.
+    /// For the base currency: returns the local currency balance from session.
     /// For foreign currencies: returns the foreign currency balance.
     /// </summary>
     private static decimal GetExpectedBalanceForCurrency(TillSession session, string currency) =>

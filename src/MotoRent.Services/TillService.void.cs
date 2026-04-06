@@ -132,10 +132,10 @@ public partial class TillService
 
     /// <summary>
     /// Records an overpayment refund to the till.
-    /// Always issued in THB cash regardless of original payment currency.
+    /// Always issued in base-currency cash regardless of original payment currency.
     /// </summary>
     /// <param name="sessionId">Current till session</param>
-    /// <param name="refundAmountThb">Refund amount in THB</param>
+    /// <param name="refundAmountThb">Refund amount in the deployment base currency</param>
     /// <param name="reason">Reason for refund</param>
     /// <param name="originalPaymentIds">IDs of original payments being refunded (string IDs from ReceiptPayment)</param>
     /// <param name="rentalId">Related rental ID</param>
@@ -162,7 +162,7 @@ public partial class TillService
             TransactionType = TillTransactionType.OverpaymentRefund,
             Direction = TillTransactionDirection.Out,
             Amount = refundAmountThb,
-            Currency = SupportedCurrencies.THB,
+            Currency = BaseCurrency,
             ExchangeRate = 1.0m,
             AmountInBaseCurrency = refundAmountThb,
             ExchangeRateSource = "Base",
@@ -177,7 +177,7 @@ public partial class TillService
 
         // Update session totals
         session.TotalCashOut += refundAmountThb;
-        session.CurrencyBalances[SupportedCurrencies.THB] -= refundAmountThb;
+        session.CurrencyBalances[BaseCurrency] -= refundAmountThb;
 
         using var persistenceSession = this.Context.OpenSession(username);
         persistenceSession.Attach(transaction);

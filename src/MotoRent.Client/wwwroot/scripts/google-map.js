@@ -77,9 +77,9 @@ export async function initPicker(elementId, center, readonly = false) {
         return;
     }
 
-    // Default center: Phuket, Thailand
+    // Default center: Kuala Lumpur, Malaysia
     if (!center || !center.lat || !center.lng) {
-        center = { lat: 7.8804, lng: 98.3923 };
+        center = { lat: 3.1390, lng: 101.6869 };
     }
 
     map = new google.maps.Map(element, {

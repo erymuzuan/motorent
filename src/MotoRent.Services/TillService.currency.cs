@@ -10,11 +10,11 @@ public partial class TillService
 {
     /// <summary>
     /// Records a foreign currency payment to the till.
-    /// Converts to THB using current exchange rate and tracks both foreign and THB amounts.
+    /// Converts to the deployment base currency using current exchange rate and tracks both foreign and local amounts.
     /// </summary>
     /// <param name="sessionId">Till session ID</param>
     /// <param name="type">Transaction type (e.g., RentalPayment, SecurityDeposit)</param>
-    /// <param name="currency">Currency code (THB, USD, EUR, CNY)</param>
+    /// <param name="currency">Currency code (MYR, USD, EUR, CNY)</param>
     /// <param name="foreignAmount">Amount in foreign currency</param>
     /// <param name="description">Transaction description</param>
     /// <param name="username">User recording the transaction</param>
@@ -35,8 +35,8 @@ public partial class TillService
         int? rentalId = null,
         string? notes = null)
     {
-        // For THB, delegate to existing RecordCashInAsync
-        if (currency == SupportedCurrencies.THB)
+        // For base currency, delegate to existing RecordCashInAsync
+        if (currency == BaseCurrency)
         {
             return await this.RecordCashInAsync(sessionId, type, foreignAmount, description, username,
                 paymentId, depositId, rentalId, notes);
@@ -49,7 +49,7 @@ public partial class TillService
         if (session.Status != TillSessionStatus.Open)
             return SubmitOperation.CreateFailure("Session is not open");
 
-        // Convert to THB using current exchange rate (with shop fallback to org defaults)
+        // Convert to the deployment base currency using current exchange rate (with shop fallback to org defaults)
         var conversion = await this.ExchangeRateService.ConvertToThbAsync(currency, foreignAmount, session.ShopId);
         if (conversion is null)
             return SubmitOperation.CreateFailure($"No exchange rate configured for {currency}");
@@ -74,7 +74,7 @@ public partial class TillService
             Notes = notes
         };
 
-        // Update session totals - always use THB equivalent for reconciliation
+        // Update session totals - always use the base-currency equivalent for reconciliation
         if (transaction.AffectsCash)
             session.TotalCashIn += conversion.ThbAmount;
 
@@ -90,9 +90,11 @@ public partial class TillService
                 session.TotalCardPayments += conversion.ThbAmount;
                 break;
             case TillTransactionType.BankTransfer:
+            case TillTransactionType.FPX:
                 session.TotalBankTransfers += conversion.ThbAmount;
                 break;
             case TillTransactionType.PromptPay:
+            case TillTransactionType.DuitNow:
                 session.TotalPromptPay += conversion.ThbAmount;
                 break;
         }
@@ -126,7 +128,7 @@ public partial class TillService
             return SubmitOperation.CreateFailure("Session is not open");
 
         var transactions = new List<TillTransaction>();
-        decimal totalThbDropped = 0;
+        decimal totalBaseCurrencyDropped = 0;
 
         foreach (var drop in drops.Where(d => d.Amount > 0))
         {
@@ -135,15 +137,15 @@ public partial class TillService
             if (drop.Amount > currentBalance)
                 return SubmitOperation.CreateFailure($"Insufficient {drop.Currency} balance. Available: {currentBalance:N2}, Requested: {drop.Amount:N2}");
 
-            // Get THB equivalent for non-THB currencies
-            decimal thbEquivalent;
+            // Get base-currency equivalent for non-base currencies
+            decimal baseCurrencyEquivalent;
             decimal exchangeRate = 1.0m;
             string rateSource = "Base";
             int? exchangeRateId = null;
 
-            if (drop.Currency == SupportedCurrencies.THB)
+            if (drop.Currency == BaseCurrency)
             {
-                thbEquivalent = drop.Amount;
+                baseCurrencyEquivalent = drop.Amount;
             }
             else
             {
@@ -151,7 +153,7 @@ public partial class TillService
                 if (conversion is null)
                     return SubmitOperation.CreateFailure($"No exchange rate configured for {drop.Currency}");
 
-                thbEquivalent = conversion.ThbAmount;
+                baseCurrencyEquivalent = conversion.ThbAmount;
                 exchangeRate = conversion.RateUsed;
                 rateSource = conversion.RateSource;
                 exchangeRateId = conversion.ExchangeRateId;
@@ -165,7 +167,7 @@ public partial class TillService
                 Amount = drop.Amount,
                 Currency = drop.Currency,
                 ExchangeRate = exchangeRate,
-                AmountInBaseCurrency = thbEquivalent,
+                AmountInBaseCurrency = baseCurrencyEquivalent,
                 ExchangeRateSource = rateSource,
                 ExchangeRateId = exchangeRateId,
                 Description = $"Cash drop to safe ({drop.Currency})",
@@ -178,11 +180,11 @@ public partial class TillService
 
             // Update currency balance
             session.CurrencyBalances[drop.Currency] -= drop.Amount;
-            totalThbDropped += thbEquivalent;
+            totalBaseCurrencyDropped += baseCurrencyEquivalent;
         }
 
-        // Update session total dropped (always in THB equivalent)
-        session.TotalDropped += totalThbDropped;
+        // Update session total dropped (always in base-currency equivalent)
+        session.TotalDropped += totalBaseCurrencyDropped;
 
         using var persistenceSession = this.Context.OpenSession(username);
         foreach (var transaction in transactions)

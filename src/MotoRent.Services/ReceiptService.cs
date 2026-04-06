@@ -519,7 +519,7 @@ public class ReceiptService(RentalDataContext context, ShopService shopService, 
                 Method = paymentMethod,
                 Amount = amount,
                 AmountInBaseCurrency = amount,
-                Currency = SupportedCurrencies.THB
+                Currency = SupportedCurrencies.BaseCurrency
             }
         };
 
@@ -664,9 +664,11 @@ public class ReceiptService(RentalDataContext context, ShopService shopService, 
                             session.TotalCardPayments -= original.AmountInBaseCurrency;
                             break;
                         case TillTransactionType.BankTransfer:
+                        case TillTransactionType.FPX:
                             session.TotalBankTransfers -= original.AmountInBaseCurrency;
                             break;
                         case TillTransactionType.PromptPay:
+                        case TillTransactionType.DuitNow:
                             session.TotalPromptPay -= original.AmountInBaseCurrency;
                             break;
                     }

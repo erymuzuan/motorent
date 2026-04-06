@@ -8,6 +8,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using MotoRent.Domain.Core;
+using MotoRent.Domain.Extensions;
 
 namespace MotoRent.Services;
 
@@ -23,66 +24,76 @@ public class DocumentationSearchService(
     public async Task<string> AskGeminiAsync(string question, CancellationToken cancellationToken = default)
     {
         var apiKey = MotoConfig.GeminiApiKey;
-        var model = MotoConfig.GeminiModel;
 
-        if (string.IsNullOrEmpty(apiKey))
+        if (string.IsNullOrWhiteSpace(apiKey))
         {
             return "Gemini API key is not configured.";
         }
 
         var context = await this.GetDocumentationContextAsync();
-        var prompt = $"""
-            You are the MotoRent Help Assistant. Use the following documentation context to answer the user's question.
-            If the answer is not in the documentation, say "I'm sorry, I couldn't find information about that in our guides."
-            Provide clear, step-by-step instructions when applicable.
-            You can answer in English or Thai, matching the user's language.
 
-            CRITICAL: At the end of your answer, list the files you used as sources in the format: "Sources: [filename1, filename2]".
-
-            Documentation Context:
-            {context}
-
-            User Question: {question}
-
-            Answer:
-            """;
-
-        var request = new
+        if (string.IsNullOrWhiteSpace(context))
         {
-            contents = new[]
-            {
-                new
-                {
-                    parts = new[]
-                    {
-                        new { text = prompt }
-                    }
-                }
-            },
-            generationConfig = new
-            {
-                temperature = 0.2,
-                maxOutputTokens = 2048
-            }
-        };
+            return "I'm sorry, I couldn't find information about that in our guides.";
+        }
 
+        var request = CreateGeminiRequest(context, question);
         var client = this.HttpClientFactory.CreateClient("Gemini");
-        var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}";
+        Exception? lastException = null;
 
-        try
+        foreach (var model in MotoConfig.GeminiModels)
         {
-            var response = await client.PostAsJsonAsync(url, request, cancellationToken);
-            response.EnsureSuccessStatusCode();
+            try
+            {
+                using var httpRequest = CreateGeminiHttpRequest(apiKey, model, request);
+                using var response = await client.SendAsync(httpRequest, cancellationToken);
+                var responseBody = await response.ReadContentAsStringAsync(false);
 
-            var geminiResponse = await response.Content.ReadFromJsonAsync<GeminiResponse>(cancellationToken);
-            return geminiResponse?.Candidates?.FirstOrDefault()?.Content?.Parts?.FirstOrDefault()?.Text 
-                   ?? "I'm sorry, I couldn't generate a response.";
+                if (!response.IsSuccessStatusCode)
+                {
+                    lastException = new HttpRequestException(
+                        $"Gemini model {model} returned HTTP {(int)response.StatusCode}: {responseBody}");
+                    this.Logger.LogWarning(
+                        "Gemini request failed for model {Model} with HTTP {StatusCode}",
+                        model,
+                        (int)response.StatusCode);
+                    continue;
+                }
+
+                var geminiResponse = JsonSerializer.Deserialize<GeminiResponse>(responseBody);
+                var answer = geminiResponse?.Candidates?
+                    .FirstOrDefault()?
+                    .Content?
+                    .Parts?
+                    .Select(x => x.Text)
+                    .FirstOrDefault(x => !string.IsNullOrWhiteSpace(x));
+
+                if (!string.IsNullOrWhiteSpace(answer))
+                {
+                    return answer;
+                }
+
+                this.Logger.LogWarning("Gemini returned an empty answer for model {Model}", model);
+            }
+            catch (HttpRequestException ex)
+            {
+                lastException = ex;
+                this.Logger.LogWarning(ex, "Gemini request failed for model {Model}", model);
+            }
+            catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                lastException = ex;
+                this.Logger.LogWarning(ex, "Gemini request timed out for model {Model}", model);
+            }
+            catch (JsonException ex)
+            {
+                lastException = ex;
+                this.Logger.LogWarning(ex, "Failed to parse Gemini response for model {Model}", model);
+            }
         }
-        catch (Exception ex)
-        {
-            this.Logger.LogError(ex, "Failed to get response from Gemini API for documentation search");
-            return "An error occurred while communicating with the AI assistant.";
-        }
+
+        this.Logger.LogError(lastException, "Failed to get response from Gemini API for documentation search");
+        return "An error occurred while communicating with the AI assistant.";
     }
 
     private async Task<string> GetDocumentationContextAsync()
@@ -111,5 +122,67 @@ public class DocumentationSearchService(
         }
 
         return contextBuilder.ToString();
+    }
+
+    private static object CreateGeminiRequest(string context, string question)
+    {
+        return new
+        {
+            system_instruction = new
+            {
+                parts = new[]
+                {
+                    new
+                    {
+                        text = """
+                            You are the MotoRent Help Assistant.
+                            Answer using only the provided documentation context.
+                            If the answer is not supported by the documentation, say: "I'm sorry, I couldn't find information about that in our guides."
+                            Provide clear step-by-step guidance when it helps.
+                            Match the user's language when possible, including English, Thai, or Bahasa Melayu.
+                            End every answer with sources in this exact format: Sources: [filename1, filename2]
+                            Only cite files that are present in the provided context.
+                            """
+                    }
+                }
+            },
+            contents = new[]
+            {
+                new
+                {
+                    parts = new[]
+                    {
+                        new
+                        {
+                            text = $"""
+                                Documentation Context:
+                                {context}
+
+                                User Question:
+                                {question}
+                                """
+                        }
+                    }
+                }
+            },
+            generationConfig = new
+            {
+                maxOutputTokens = 2048,
+                thinkingConfig = new
+                {
+                    thinkingLevel = "low"
+                }
+            }
+        };
+    }
+
+    private static HttpRequestMessage CreateGeminiHttpRequest(string apiKey, string model, object request)
+    {
+        var httpRequest = new HttpRequestMessage(
+            HttpMethod.Post,
+            $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent");
+        httpRequest.Headers.Add("x-goog-api-key", apiKey);
+        httpRequest.Content = JsonContent.Create(request);
+        return httpRequest;
     }
 }

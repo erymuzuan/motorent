@@ -1,3 +1,5 @@
+using MotoRent.Domain.Core;
+
 namespace MotoRent.Domain.Entities;
 
 /// <summary>
@@ -22,9 +24,9 @@ public enum DenominationCountType
 public class CurrencyDenominationBreakdown
 {
     /// <summary>
-    /// Currency code (THB, USD, EUR, CNY).
+    /// Currency code (MYR, USD, EUR, CNY).
     /// </summary>
-    public string Currency { get; set; } = SupportedCurrencies.THB;
+    public string Currency { get; set; } = SupportedCurrencies.BaseCurrency;
 
     /// <summary>
     /// Denomination counts. Key is denomination value (e.g., 1000, 500, 100), value is count.
@@ -88,12 +90,12 @@ public class TillDenominationCount : Entity
 
     /// <summary>
     /// Denomination breakdowns for each currency counted.
-    /// Typically includes THB and any foreign currencies present.
+    /// Typically includes the deployment base currency and any foreign currencies present.
     /// </summary>
     public List<CurrencyDenominationBreakdown> CurrencyBreakdowns { get; set; } = [];
 
     /// <summary>
-    /// Grand total in THB (THB total + foreign amounts converted at time of count).
+    /// Grand total in the deployment base currency (local total + foreign amounts converted at time of count).
     /// </summary>
     public decimal TotalInThb { get; set; }
 

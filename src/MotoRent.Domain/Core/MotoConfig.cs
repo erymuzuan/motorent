@@ -25,7 +25,7 @@ public static class MotoConfig
     public static string? MicrosoftClientId => GetEnvironmentVariable("MicrosoftClientId");
     public static string? MicrosoftClientSecret => GetEnvironmentVariable("MicrosoftClientSecret");
 
-    // Authentication - LINE OAuth
+    // Authentication - LINE OAuth (legacy)
     public static string? LineChannelId => GetEnvironmentVariable("LineChannelId");
     public static string? LineChannelSecret => GetEnvironmentVariable("LineChannelSecret");
 
@@ -41,9 +41,10 @@ public static class MotoConfig
     public static string[] SuperAdmins => (GetEnvironmentVariable("SuperAdmin") ?? "")
         .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-    // Gemini OCR Configuration
+    // Gemini Configuration
     public static string? GeminiApiKey => GetEnvironmentVariable("GeminiApiKey");
-    public static string GeminiModel => GetEnvironmentVariable("GeminiModel") ?? "gemini-3-flash-preview";
+    public static string[] GeminiModels => GetGeminiModels();
+    public static string GeminiModel => GeminiModels[0];
 
     // Google Maps Configuration
     public static string? GoogleMapKey => GetEnvironmentVariable("GoogleMapKey");
@@ -67,7 +68,7 @@ public static class MotoConfig
     public static string DatabaseSource => GetEnvironmentVariable("DatabaseSource") ?? "database";
 
     // Application Settings
-    public static string ApplicationName => GetEnvironmentVariable("ApplicationName") ?? "MotoRent";
+    public static string ApplicationName => GetEnvironmentVariable("ApplicationName") ?? "JaleOS";
     public static string BaseUrl => GetEnvironmentVariable("BaseUrl") ?? "https://localhost:7103";
 
     // SMTP Email Configuration
@@ -87,7 +88,7 @@ public static class MotoConfig
     public static string? FeedbackNotificationEmails =>
         GetEnvironmentVariable("FeedbackNotificationEmails");
 
-    // LINE Notify Configuration (for shop staff notifications)
+    // LINE Notify Configuration (legacy shop staff notifications)
     public static string? LineNotifyToken => GetEnvironmentVariable("LineNotifyToken");
 
     // Multi-Market Configuration
@@ -95,7 +96,7 @@ public static class MotoConfig
     /// Country code for the deployment (TH=Thailand, MY=Malaysia).
     /// Drives currency, timezone, and feature defaults.
     /// </summary>
-    public static string Country => GetEnvironmentVariable("Country") ?? "TH";
+    public static string Country => GetEnvironmentVariable("Country") ?? "MY";
 
     /// <summary>
     /// Comma-separated list of enabled language codes (e.g., "en,th" or "en,ms").
@@ -114,15 +115,15 @@ public static class MotoConfig
     /// <summary>
     /// Base domain for tenant subdomain mapping (e.g., "motorent.co.th" or "jaleos.my").
     /// </summary>
-    public static string BaseDomain => GetEnvironmentVariable("BaseDomain") ?? "motorent.co.th";
+    public static string BaseDomain => GetEnvironmentVariable("BaseDomain") ?? "jaleos.my";
 
     /// <summary>
     /// Gets country configuration for the given country code.
     /// </summary>
     public static CountryConfig GetCountryConfig(string countryCode) => countryCode.ToUpperInvariant() switch
     {
-        "MY" => new CountryConfig("MY", "MYR", 8.0, "en,ms", "+60", "en-MY"),
-        _ => new CountryConfig("TH", "THB", 7.0, "en,th", "+66", "th-TH"),  // Default to Thailand
+        "TH" => new CountryConfig("TH", "THB", 7.0, "en,th", "+66", "th-TH"),
+        _ => new CountryConfig("MY", "MYR", 8.0, "en,ms", "+60", "en-MY")
     };
 
     /// <summary>
@@ -182,6 +183,42 @@ public static class MotoConfig
     {
         var val = GetEnvironmentVariable(setting);
         return bool.TryParse(val, out var boolValue) ? boolValue : defaultValue;
+    }
+
+    private static string[] GetGeminiModels()
+    {
+        var models = new List<string>();
+
+        AddGeminiModels(models, GetEnvironmentVariable("GeminiModels"));
+        AddGeminiModel(models, GetEnvironmentVariable("GeminiModel"));
+        AddGeminiModel(models, "gemini-3.1-flash-lite-preview");
+        AddGeminiModel(models, "gemini-3-flash-preview");
+
+        return models.ToArray();
+    }
+
+    private static void AddGeminiModels(List<string> models, string? configuredModels)
+    {
+        if (string.IsNullOrWhiteSpace(configuredModels))
+        {
+            return;
+        }
+
+        foreach (var model in configuredModels.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            AddGeminiModel(models, model);
+        }
+    }
+
+    private static void AddGeminiModel(List<string> models, string? model)
+    {
+        if (string.IsNullOrWhiteSpace(model) ||
+            models.Any(x => string.Equals(x, model, StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        models.Add(model);
     }
 
     #endregion

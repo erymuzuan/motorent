@@ -29,17 +29,17 @@ public class TenantContext
     public string? SmallLogoUrl { get; set; }
 
     /// <summary>
-    /// Currency code for price display (default: THB).
+    /// Currency code for price display (default derived from MOTO_Country).
     /// </summary>
-    public string Currency { get; set; } = "THB";
+    public string Currency { get; set; } = MotoConfig.CountryDefaults.Currency;
 
     /// <summary>
-    /// Timezone offset from UTC (default: 7 for Thailand).
+    /// Timezone offset from UTC (default derived from MOTO_Country).
     /// </summary>
-    public double Timezone { get; set; } = 7;
+    public double Timezone { get; set; } = MotoConfig.CountryDefaults.TimezoneOffset;
 
     /// <summary>
-    /// Language/locale code for UI (default: th-TH).
+    /// Language/locale code for UI (default derived from MOTO_Country).
     /// </summary>
     public string Language { get; set; } = MotoConfig.CountryDefaults.DefaultCulture;
 
