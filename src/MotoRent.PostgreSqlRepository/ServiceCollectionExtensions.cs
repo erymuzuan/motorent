@@ -119,6 +119,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IRepository<VehicleModel>, CorePgJsonRepository<VehicleModel>>();
         services.AddScoped<IRepository<SalesLead>, CorePgJsonRepository<SalesLead>>();
         services.AddScoped<IRepository<Feedback>, CorePgJsonRepository<Feedback>>();
+        services.AddScoped<IRepository<AiUsageLog>, CorePgJsonRepository<AiUsageLog>>();
 
         // Register CoreDataContext (uses DI-injected repositories)
         services.AddScoped<CoreDataContext>();

@@ -31,6 +31,7 @@ public class CoreDataContext
     public IQueryable<VehicleModel> VehicleModels => CreateQuery<VehicleModel>();
     public IQueryable<SalesLead> SalesLeads => CreateQuery<SalesLead>();
     public IQueryable<Feedback> Feedbacks => CreateQuery<Feedback>();
+    public IQueryable<AiUsageLog> AiUsageLogs => CreateQuery<AiUsageLog>();
 
     /// <summary>
     /// Creates a queryable for the specified Core entity type.
