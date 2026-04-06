@@ -1,11 +1,12 @@
 @using System.Net.Http.Json
 @inherits LocalizedComponentBase<DocumentationChat>
 @inject HttpClient HttpClient
+@inject MarkdownService MarkdownService
 
 <div class="card @(this.m_expanded ? "chat-expanded" : "chat-collapsed")">
     <div class="card-header cursor-pointer" @onclick="this.ToggleExpand">
         <h3 class="card-title">
-            <i class="ti ti-robot me-2"></i>@Localizer["AskGemini"]
+            <i class="ti ti-sparkles me-2"></i>@Localizer["AskGemini"]
         </h3>
         <div class="card-actions">
             <i class="ti @(this.m_expanded ? "ti-chevron-down" : "ti-chevron-up")"></i>
@@ -24,19 +25,25 @@
                             {
                                 <div class="animated-dots">@Localizer["Thinking"]</div>
                             }
+                            else if (msg.IsUser)
+                            {
+                                @msg.Text
+                            }
                             else
                             {
-                                @((MarkupString)this.FormatMessage(msg.Text))
+                                <div class="markdown">
+                                    @((MarkupString)this.FormatMessage(msg.Text))
+                                </div>
                             }
                         </div>
                     </div>
                 }
             </div>
             
-            <div class="input-group">
-                <input type="text" class="form-control" placeholder="@Localizer["AskQuestion"]..." 
-                       @bind="this.m_currentInput" @onkeyup="this.HandleKeyUp" disabled="@this.Loading" />
-                <button class="btn btn-primary" @onclick="this.SendMessageAsync" disabled="@(this.Loading || string.IsNullOrWhiteSpace(this.m_currentInput))">
+            <div class="input-group align-items-end">
+                <textarea class="form-control chat-input" rows="3" placeholder="@Localizer["AskQuestionPlaceholder"]"
+                          @bind="this.m_currentInput" @onkeyup="this.HandleKeyUp" disabled="@this.Loading"></textarea>
+                <button class="btn btn-primary align-self-stretch" @onclick="this.SendMessageAsync" disabled="@(this.Loading || string.IsNullOrWhiteSpace(this.m_currentInput))">
                     <i class="ti ti-send"></i>
                 </button>
             </div>
@@ -59,20 +66,20 @@
 
         // Look for "Sources: [file1.md, file2.md]"
         var parts = text.Split("Sources:", StringSplitOptions.TrimEntries);
-        var content = parts[0];
-        
+        var content = this.MarkdownService.ToHtml(parts[0]);
+
         if (parts.Length > 1)
         {
             var sourcesPart = parts[1].Trim('[', ']', ' ');
             var files = sourcesPart.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            
+
             var sourcesHtml = "<div class='mt-2 small text-secondary'><strong>Sources:</strong> ";
             foreach (var file in files)
             {
                 sourcesHtml += $"<a href='/learn/{file}' class='badge bg-blue-lt me-1'>{file}</a> ";
             }
             sourcesHtml += "</div>";
-            
+
             return content + sourcesHtml;
         }
 
@@ -81,7 +88,7 @@
 
     private async Task HandleKeyUp(KeyboardEventArgs e)
     {
-        if (e.Key == "Enter")
+        if (e.Key == "Enter" && !e.ShiftKey)
         {
             await this.SendMessageAsync();
         }
@@ -101,9 +108,19 @@
         
         try
         {
-            var absoluteUri = this.NavigationManager.ToAbsoluteUri($"api/help/ask?q={Uri.EscapeDataString(question)}").ToString();
-            var response = await this.HttpClient.GetFromJsonAsync<AskResponse>(absoluteUri);
-            aiMsg.Text = response?.Answer ?? "Sorry, I couldn't get an answer.";
+            var absoluteUri = this.NavigationManager.ToAbsoluteUri("api/help/ask").ToString();
+            using var response = await this.HttpClient.PostAsJsonAsync(absoluteUri, new AskRequest(question));
+
+            if (response.IsSuccessStatusCode)
+            {
+                var askResponse = await response.Content.ReadFromJsonAsync<AskResponse>();
+                aiMsg.Text = askResponse?.Answer ?? "Sorry, I couldn't get an answer.";
+            }
+            else
+            {
+                aiMsg.Text = await response.Content.ReadAsStringAsync();
+            }
+
             aiMsg.IsLoading = false;
         }
         catch (Exception)
@@ -124,5 +141,6 @@
         public bool IsLoading { get; set; } = isLoading;
     }
 
+    private record AskRequest(string Question);
     private record AskResponse(string Answer);
 }
