@@ -6,6 +6,9 @@ public class GeminiResponse
 {
     [JsonPropertyName("candidates")]
     public List<GeminiCandidate>? Candidates { get; set; }
+
+    [JsonPropertyName("usageMetadata")]
+    public GeminiUsageMetadata? UsageMetadata { get; set; }
 }
 
 public class GeminiCandidate
@@ -24,4 +27,16 @@ public class GeminiPart
 {
     [JsonPropertyName("text")]
     public string? Text { get; set; }
+}
+
+public class GeminiUsageMetadata
+{
+    [JsonPropertyName("promptTokenCount")]
+    public int PromptTokenCount { get; set; }
+
+    [JsonPropertyName("candidatesTokenCount")]
+    public int CandidatesTokenCount { get; set; }
+
+    [JsonPropertyName("totalTokenCount")]
+    public int TotalTokenCount { get; set; }
 }
