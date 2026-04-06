@@ -98,7 +98,8 @@ public partial class TransliterationService(
             var response = await client.SendAsync(httpRequest, cancellationToken);
             response.EnsureSuccessStatusCode();
 
-            var geminiResponse = await response.Content.ReadFromJsonAsync<GeminiResponse>(s_jsonOptions, cancellationToken);
+            var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            var geminiResponse = JsonSerializer.Deserialize<GeminiResponse>(responseBody);
             var result = geminiResponse?.Candidates?.FirstOrDefault()?.Content?.Parts?.FirstOrDefault()?.Text?.Trim() ?? text;
 
             // Sanitize: keep only ASCII letters and numbers
@@ -174,24 +175,4 @@ public partial class TransliterationService(
     [GeneratedRegex(@"[^A-Za-z0-9]")]
     private static partial Regex SanitizeRegex();
 
-    // Gemini API response classes
-    private class GeminiResponse
-    {
-        public List<Candidate>? Candidates { get; set; }
-    }
-
-    private class Candidate
-    {
-        public Content? Content { get; set; }
-    }
-
-    private class Content
-    {
-        public List<Part>? Parts { get; set; }
-    }
-
-    private class Part
-    {
-        public string? Text { get; set; }
-    }
 }

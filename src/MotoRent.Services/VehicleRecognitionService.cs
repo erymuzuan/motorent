@@ -83,7 +83,8 @@ public class VehicleRecognitionService(
             var response = await client.SendAsync(httpRequest, cancellationToken);
             response.EnsureSuccessStatusCode();
 
-            var geminiResponse = await response.Content.ReadFromJsonAsync<GeminiApiResponse>(s_jsonOptions, cancellationToken);
+            var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            var geminiResponse = JsonSerializer.Deserialize<GeminiResponse>(responseBody);
             var rawJson = geminiResponse?.Candidates?.FirstOrDefault()?.Content?.Parts?.FirstOrDefault()?.Text ?? "{}";
 
             this.Logger.LogInformation("Gemini vehicle recognition response received");
@@ -267,25 +268,4 @@ public class VehicleRecognitionService(
             _ => "application/octet-stream"
         };
     }
-}
-
-// Internal Gemini API response models
-internal class GeminiApiResponse
-{
-    public List<GeminiApiCandidate>? Candidates { get; set; }
-}
-
-internal class GeminiApiCandidate
-{
-    public GeminiApiContent? Content { get; set; }
-}
-
-internal class GeminiApiContent
-{
-    public List<GeminiApiPart>? Parts { get; set; }
-}
-
-internal class GeminiApiPart
-{
-    public string? Text { get; set; }
 }
