@@ -91,6 +91,7 @@ builder.Services.AddScoped<DocumentationTranslationService>(sp =>
     return new DocumentationTranslationService(httpClientFactory, logger, docsPath);
 });
 builder.Services.AddScoped<TransliterationService>();
+builder.Services.AddScoped<AiUsageService>();
 builder.Services.AddScoped<DesignerState>();
 builder.Services.AddScoped<ITemplateDataResolver, TemplateDataResolver>();
 builder.Services.AddScoped<IQuestPdfGenerator, QuestPdfGenerator>();
