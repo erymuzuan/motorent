@@ -116,9 +116,14 @@
                 var askResponse = await response.Content.ReadFromJsonAsync<AskResponse>();
                 aiMsg.Text = askResponse?.Answer ?? "Sorry, I couldn't get an answer.";
             }
+            else if ((int)response.StatusCode == 429)
+            {
+                var rateLimitResponse = await response.Content.ReadFromJsonAsync<AskResponse>();
+                aiMsg.Text = rateLimitResponse?.Answer ?? "You've reached your question limit for today. Please try again tomorrow.";
+            }
             else
             {
-                aiMsg.Text = await response.Content.ReadAsStringAsync();
+                aiMsg.Text = "Sorry, something went wrong. Please try again later.";
             }
 
             aiMsg.IsLoading = false;

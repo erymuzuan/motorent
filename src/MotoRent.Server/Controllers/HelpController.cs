@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Hosting;
 using MotoRent.Domain.Core;
 using MotoRent.Domain.DataContext;
 using MotoRent.Services;
@@ -13,12 +14,14 @@ public class HelpController(
     DocumentationSearchService searchService,
     DocumentationTranslationService translationService,
     AiUsageService aiUsageService,
-    CoreDataContext coreDataContext) : ControllerBase
+    CoreDataContext coreDataContext,
+    IHostEnvironment hostEnvironment) : ControllerBase
 {
     private DocumentationSearchService SearchService { get; } = searchService;
     private DocumentationTranslationService TranslationService { get; } = translationService;
     private AiUsageService AiUsageService { get; } = aiUsageService;
     private CoreDataContext CoreDataContext { get; } = coreDataContext;
+    private IHostEnvironment HostEnvironment { get; } = hostEnvironment;
 
     [HttpPost("ask")]
     public async Task<IActionResult> Ask([FromBody] AskRequest request, CancellationToken cancellationToken)
@@ -33,18 +36,17 @@ public class HelpController(
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
         var sessionId = this.GetOrCreateSessionCookie();
 
-        // 2. Rate limit check
-        var limit = await this.AiUsageService.CheckRateLimitAsync(userName, ipAddress, sessionId);
-        if (!limit.Allowed)
+        // 2. Rate limit check (skip in Development/localhost)
+        if (!this.HostEnvironment.IsDevelopment())
         {
-            return this.StatusCode(429, new
+            var limit = await this.AiUsageService.CheckRateLimitAsync(userName, ipAddress, sessionId);
+            if (!limit.Allowed)
             {
-                error = "Rate limit exceeded",
-                dailyUsed = limit.DailyUsed,
-                dailyLimit = limit.DailyLimit,
-                weeklyUsed = limit.WeeklyUsed,
-                weeklyLimit = limit.WeeklyLimit
-            });
+                return this.StatusCode(429, new AskResponse(
+                    userName is not null
+                        ? $"You've reached your daily limit of {limit.DailyLimit} questions. Please try again tomorrow."
+                        : $"You've reached the limit of {limit.DailyLimit} questions per day. Please sign in for a higher limit."));
+            }
         }
 
         // 3. Call Gemini
