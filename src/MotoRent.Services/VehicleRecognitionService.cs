@@ -73,11 +73,14 @@ public class VehicleRecognitionService(
         var request = CreateGeminiRequest(base64Image, mimeType, prompt);
 
         var client = this.HttpClientFactory.CreateClient("Gemini");
-        var url = $"{BASE_URL}/{model}:generateContent?key={apiKey}";
+        var url = $"{BASE_URL}/{model}:generateContent";
 
         try
         {
-            var response = await client.PostAsJsonAsync(url, request, s_jsonOptions, cancellationToken);
+            using var httpRequest = new HttpRequestMessage(HttpMethod.Post, url);
+            httpRequest.Headers.Add("x-goog-api-key", apiKey);
+            httpRequest.Content = JsonContent.Create(request, options: s_jsonOptions);
+            var response = await client.SendAsync(httpRequest, cancellationToken);
             response.EnsureSuccessStatusCode();
 
             var geminiResponse = await response.Content.ReadFromJsonAsync<GeminiApiResponse>(s_jsonOptions, cancellationToken);

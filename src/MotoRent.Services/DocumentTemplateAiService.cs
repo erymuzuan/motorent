@@ -73,11 +73,14 @@ public class DocumentTemplateAiService(
         };
 
         var client = this.HttpClientFactory.CreateClient("Gemini");
-        var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}";
+        var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent";
 
         try
         {
-            var response = await client.PostAsJsonAsync(url, request, s_jsonOptions, cancellationToken);
+            using var httpRequest = new HttpRequestMessage(HttpMethod.Post, url);
+            httpRequest.Headers.Add("x-goog-api-key", apiKey);
+            httpRequest.Content = JsonContent.Create(request, options: s_jsonOptions);
+            var response = await client.SendAsync(httpRequest, cancellationToken);
             response.EnsureSuccessStatusCode();
 
             var geminiResponse = await response.Content.ReadFromJsonAsync<GeminiResponse>(s_jsonOptions, cancellationToken);
@@ -203,11 +206,14 @@ public class DocumentTemplateAiService(
         };
 
         var client = this.HttpClientFactory.CreateClient("Gemini");
-        var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}";
+        var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent";
 
         try
         {
-            var response = await client.PostAsJsonAsync(url, request, s_jsonOptions, cancellationToken);
+            using var httpRequest2 = new HttpRequestMessage(HttpMethod.Post, url);
+            httpRequest2.Headers.Add("x-goog-api-key", apiKey);
+            httpRequest2.Content = JsonContent.Create(request, options: s_jsonOptions);
+            var response = await client.SendAsync(httpRequest2, cancellationToken);
             response.EnsureSuccessStatusCode();
 
             var geminiResponse = await response.Content.ReadFromJsonAsync<GeminiResponse>(s_jsonOptions, cancellationToken);

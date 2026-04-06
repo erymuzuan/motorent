@@ -72,11 +72,14 @@ public class DocumentationTranslationService(
         };
 
         var client = this.HttpClientFactory.CreateClient("Gemini");
-        var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}";
+        var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent";
 
         try
         {
-            var response = await client.PostAsJsonAsync(url, request, cancellationToken);
+            using var httpRequest = new HttpRequestMessage(HttpMethod.Post, url);
+            httpRequest.Headers.Add("x-goog-api-key", apiKey);
+            httpRequest.Content = JsonContent.Create(request);
+            var response = await client.SendAsync(httpRequest, cancellationToken);
             response.EnsureSuccessStatusCode();
 
             var geminiResponse = await response.Content.ReadFromJsonAsync<GeminiResponse>(cancellationToken);
