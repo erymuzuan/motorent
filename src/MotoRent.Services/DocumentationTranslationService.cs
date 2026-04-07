@@ -240,7 +240,7 @@ public class DocumentationTranslationService(
                - Technical terms: API, URL, JSON, HTML, CSS, ID, GPS, PDF, etc.
                - File paths and extensions: .md, .json, .png, etc.
                - Code snippets and examples
-               - Image paths (e.g., images/xxx.png)
+               - Image paths (e.g., images/xxx.webp)
                - Internal links to .md files
             3. Translate these naturally to Thai:
                - Menu names and UI labels

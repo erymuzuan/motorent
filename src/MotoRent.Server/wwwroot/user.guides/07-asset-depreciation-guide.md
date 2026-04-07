@@ -6,7 +6,7 @@ If you don't track depreciation, you are living on borrowed time. When it's time
 
 **JaleOS Asset Depreciation** helps you track the declining value of your vehicles, showing you the *true* Return on Investment (ROI) and Net Profit. It ensures you know exactly when a vehicle is no longer profitable and needs to be sold.
 
-![Asset Depreciation Overview](images/07-asset-depreciation-hero.png)
+![Asset Depreciation Overview](images/07-asset-depreciation-hero.webp)
 
 ## How It Works in 30 Seconds
 
@@ -35,7 +35,7 @@ The Asset Dashboard (`/finance/asset-dashboard`) provides a comprehensive view o
 - **Top Performers**: Instantly see which vehicles generate the highest true profit.
 - **Attention Needed**: Get alerts for overdue depreciation runs or underperforming assets.
 
-![Asset Dashboard](images/07-asset-dashboard.png)
+![Asset Dashboard](images/07-asset-dashboard.webp)
 
 ---
 
@@ -79,7 +79,7 @@ You can view detailed financial information for any single vehicle by clicking t
 ### Asset Value Chart
 The Asset Details page (`/finance/assets/{id}/details`) features an interactive chart showing the vehicle's book value over time, including future projections based on your chosen depreciation method.
 
-![Asset Details](images/07-asset-details.png)
+![Asset Details](images/07-asset-details.webp)
 
 ### Vehicle ROI Report
 Navigate to **Finance > Reports > Profitability** to see:

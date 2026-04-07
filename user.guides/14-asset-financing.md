@@ -4,7 +4,7 @@ Are you expanding your fleet through **Hire Purchase (HP)**? In Malaysia, most r
 
 JaleOs helps you track your loan principal, interest, and monthly installments, giving you a clear picture of when your vehicle will start generating pure profit.
 
-![Hero: Professional Car Rental Office with HP Document and RM Coins](images/14-asset-financing-hero.png)
+![Hero: Professional Car Rental Office with HP Document and RM Coins](images/14-asset-financing-hero.webp)
 
 ## How It Works in 30 Seconds
 

@@ -4,7 +4,7 @@ For many car rental businesses in Malaysia, the front desk is the biggest bottle
 
 **JaleOS** digitizes the entire rental process. With features like eKYC (Optical Character Recognition), digital signatures, and strict photographic damage tracking, what used to be a 15-minute headache is now a 3-minute professional experience.
 
-![Rental Operations Overview](images/16-rental-operations-hero.png)
+![Rental Operations Overview](images/16-rental-operations-hero.webp)
 
 ## How It Works in 30 Seconds
 
@@ -24,7 +24,7 @@ Before a customer even arrives at your shop, JaleOS works for you. The built-in 
 *   **Booking Deposit**: Instead of just reserving a car and hoping they show up, you can require a **Booking Deposit** (e.g., RM50 or 20% of the total) paid securely via FPX, DuitNow QR, or Credit Card.
 *   **Seamless Handover**: Because the customer has already filled in their details and paid a deposit online, your staff only needs to verify their identity and hand over the keys.
 
-![Online Booking Form](images/16-online-booking.png)
+![Online Booking Form](images/16-online-booking.webp)
 
 ---
 
@@ -45,7 +45,7 @@ The Check-In process is a guided 5-step wizard designed to prevent staff from mi
 ### Step 1: Renter (eKYC)
 Search for an existing renter or create a new one. When creating a new renter, use the **OCR Feature** (powered by Gemini AI). Simply take a photo of the Passport or MyKad, and the system extracts the Name, ID Number, and Nationality automatically.
 
-![eKYC Renter Selection](images/16-checkin-ekyc.png)
+![eKYC Renter Selection](images/16-checkin-ekyc.webp)
 
 ### Step 2 & 3: Vehicle and Configuration
 Select the available vehicle. In the Configuration step, you can:
@@ -53,7 +53,7 @@ Select the available vehicle. In the Configuration step, you can:
 - Select an **Insurance Package** (e.g., Basic, Full Coverage).
 - Add **Accessories** (e.g., Helmets, Phone Holders) which automatically update the daily rate.
 
-![Check-In Add-ons](images/16-checkin-addons.png)
+![Check-In Add-ons](images/16-checkin-addons.webp)
 
 ### Step 4 & 5: Deposit and Agreement
 Collect the security deposit (Cash or Card Pre-auth) and record it in the Till. Finally, the customer reviews the generated rental agreement and signs it directly on the screen.
@@ -76,7 +76,7 @@ The Check-Out dialog automatically calculates the final settlement:
 - **Fuel Shortage**: Charge the customer if the fuel level is lower than when it left.
 - **Drop-off Fees**: If the vehicle is returned to a different Service Location.
 
-![Check-Out Billing](images/16-checkout-billing.png)
+![Check-Out Billing](images/16-checkout-billing.webp)
 
 Once settled, the system processes the deposit refund and generates a final Settlement Receipt.
 

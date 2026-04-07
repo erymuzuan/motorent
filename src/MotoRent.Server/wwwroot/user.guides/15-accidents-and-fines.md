@@ -4,7 +4,7 @@ In the Malaysian car rental business, unrecovered **JPJ/PDRM summons (saman)** a
 
 Whether it's a speeding ticket on the North-South Highway or a fender-bender on the Pan-Borneo, JaleOs ensures that every Ringgit of damage or fine is documented, tracked, and recovered from the responsible party.
 
-![Hero: Stressed Owner with PDRM/JPJ Summons](images/15-accidents-and-fines-hero.png)
+![Hero: Stressed Owner with PDRM/JPJ Summons](images/15-accidents-and-fines-hero.webp)
 
 ## How It Works in 30 Seconds
 
@@ -59,7 +59,7 @@ Without a systematic way to track summons, you lose money every month.
 *   **Photo Evidence**: Always use the **Damage Assessment** tool during both Check-in and Check-out.
 *   **Blacklisting**: If a renter refuses to pay for a summons, use the **Blacklist** feature to prevent them from renting again (and warn other shops in your pool).
 
-![Scenario: Secure Agreement and Deposit Refund](images/15-accidents-and-fines-scenario.png)
+![Scenario: Secure Agreement and Deposit Refund](images/15-accidents-and-fines-scenario.webp)
 
 ---
 

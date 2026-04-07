@@ -6,7 +6,7 @@ However, tracking who brought which customer and manually calculating commission
 
 **JaleOS Agent Management** formalizes these partnerships. It tracks every referred booking from start to finish and ensures your agents are paid accurately and on time through the Till system, building trust and encouraging them to send more business your way.
 
-![Agent Management Overview](images/10-agent-hero.png)
+![Agent Management Overview](images/10-agent-hero.webp)
 
 ## How It Works in 30 Seconds
 
@@ -38,7 +38,7 @@ Ahmad runs a rental shop in Pantai Cenang. He works with 5 local hotels that rec
    - **Default Rate**: The standard commission you pay this agent.
 4. Click **Save**.
 
-![Agents List](images/10-agents-list.png)
+![Agents List](images/10-agents-list.webp)
 
 ## Day-to-Day Operations: Tracking Commissions
 
@@ -49,7 +49,7 @@ When a customer arrives from an agent, simply select the **Agent** from the drop
 - **Eligible**: The rental is completed (checked out). The commission is now due to the agent.
 - **Paid**: The commission has been recorded as paid.
 
-![Agent Commissions](images/10-agent-commissions.png)
+![Agent Commissions](images/10-agent-commissions.webp)
 
 ### Processing Payments (Payouts)
 To pay an agent, you use the daily Till:

@@ -2,7 +2,7 @@
 
 Welcome to JaleOS! This guide covers the Super Admin (Platform Administrator) role.
 
-![Impersonate User](images/01-impersonate.png)
+![Impersonate User](images/01-impersonate.webp)
 
 ## Your Role
 

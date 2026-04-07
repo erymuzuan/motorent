@@ -26,9 +26,12 @@
   <Target Name="CopyUserGuides" AfterTargets="AfterBuild">
     <ItemGroup>
       <UserGuides Include="$(ProjectDir)..\..\user.guides\**\*.*" />
+      <MalayUserGuides Include="$(ProjectDir)..\..\user.guides.ms\**\*.*" />
     </ItemGroup>
     <Copy SourceFiles="@(UserGuides)" DestinationFiles="@(UserGuides->'$(ProjectDir)wwwroot\user.guides\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(MalayUserGuides)" DestinationFiles="@(MalayUserGuides->'$(ProjectDir)wwwroot\user.guides.ms\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
     <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File $(ProjectDir)..\..\scripts\generate-docs-manifest.ps1 -SourceDir $(ProjectDir)..\..\user.guides -OutFile $(ProjectDir)wwwroot\user.guides\manifest.json" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File $(ProjectDir)..\..\scripts\generate-docs-manifest.ps1 -SourceDir $(ProjectDir)..\..\user.guides.ms -OutFile $(ProjectDir)wwwroot\user.guides.ms\manifest.json" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
   </Target>
 
 </Project>

@@ -4,7 +4,7 @@ Are you still charging the same price for a Perodua Myvi during Hari Raya as you
 
 In the Malaysian rental market, demand isn't constant. Between school holidays, Chinese New Year, and the year-end Langkawi peak, your vehicles are worth significantly more at certain times of the year. **Dynamic Pricing** automates your rate adjustments so you never miss out on peak-season profits.
 
-![Hero: Car Rental Shop in Langkawi with Festive Calendar](images/13-dynamic-pricing-hero.png)
+![Hero: Car Rental Shop in Langkawi with Festive Calendar](images/13-dynamic-pricing-hero.webp)
 
 ## How It Works in 30 Seconds
 
@@ -24,7 +24,7 @@ Ridzuan runs a fleet of 15 cars in Kuah, Langkawi. Before JaleOs, he tried to ma
 *   **The Solution**: Ridzuan set a **"Festive Peak"** rule in JaleOs with a **1.4x multiplier**.
 *   **The Result**: Every booking made for that week was automatically calculated at the higher rate. His staff didn't have to remember anything, and his revenue increased by 40% without adding a single new car to his fleet.
 
-![Scenario: Malaysian Owner seeing Revenue Growth](images/13-dynamic-pricing-scenario.png)
+![Scenario: Malaysian Owner seeing Revenue Growth](images/13-dynamic-pricing-scenario.webp)
 
 ---
 

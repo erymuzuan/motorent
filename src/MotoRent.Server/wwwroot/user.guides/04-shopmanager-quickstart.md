@@ -2,7 +2,7 @@
 
 Welcome to the JaleOS Management Dashboard. As a Shop Manager, you have oversight of your shop's fleet, finances, and operational settings.
 
-![Shop Manager Overview](images/04-shopmanager-hero.png)
+![Shop Manager Overview](images/04-shopmanager-hero.webp)
 
 ## 1. Dashboard Overview
 
@@ -12,7 +12,7 @@ The Management Dashboard provides a high-level view of your shop's performance:
 - **Fleet Status**: A breakdown of your vehicles (Rented, Available, Maintenance).
 - **Recent Activity**: A timeline of actions taken by staff and system events.
 
-![Dashboard](images/02-dashboard.png)
+![Dashboard](images/02-dashboard.webp)
 
 ## 2. Fleet Management
 
@@ -20,7 +20,7 @@ Manage your assets efficiently under the **Fleet** menu:
 - **All Vehicles**: View and manage your shop's fleet. You can add new vehicles, update their status, and track mileage.
 - **Accessories**: Manage rental add-ons like helmets and phone holders. Set daily rates and track quantities.
 
-![Fleet Management](images/05-fleet.png)
+![Fleet Management](images/05-fleet.webp)
 
 ## 3. Financial Oversight
 
@@ -39,7 +39,7 @@ Configure your shop under the **Settings** menu:
 - **Vehicle Pools**: Configure shared inventory between multiple shop locations.
 - **Pricing Rules**: Manage dynamic pricing for your shop based on seasons or days.
 
-![Shops](images/08-shops.png)
+![Shops](images/08-shops.webp)
 
 ## 5. Partners & Incidents
 

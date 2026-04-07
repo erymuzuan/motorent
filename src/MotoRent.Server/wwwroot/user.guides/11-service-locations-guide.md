@@ -6,7 +6,7 @@ If you don't offer this, you lose the booking. But if you do offer it without a 
 
 **JaleOS Service Locations** turns this logistical challenge into a seamless revenue stream. It tracks the exact location of every vehicle in your fleet and automatically applies one-way fees when customers return vehicles to a different location.
 
-![Service Locations Overview](images/11-service-locations-hero.png)
+![Service Locations Overview](images/11-service-locations-hero.webp)
 
 ## How It Works in 30 Seconds
 
@@ -37,7 +37,7 @@ Ahmad runs a rental fleet in Kota Kinabalu. A tourist family rented a Perodua Al
    - **Drop-off Fee**: Set the additional charge (e.g., 50) if a customer returns a vehicle here instead of the pickup location.
 4. Click **Save**.
 
-![Service Locations List](images/11-service-locations.png)
+![Service Locations List](images/11-service-locations.webp)
 
 ## Day-to-Day Operations
 
@@ -46,7 +46,7 @@ When processing a new rental through the Check-In Wizard, you can specify both t
 
 If the Return Location is different from the Pickup Location, the **Drop-off Fee** will be automatically added to the rental total under "Additional Charges."
 
-![Location Selection](images/11-location-selection.png)
+![Location Selection](images/11-location-selection.webp)
 
 ### Managing Breakdowns (Vehicle Swaps)
 Service Locations aren't just for airports. Imagine a customer's car breaks down at a partner hotel in Batu Ferringhi:

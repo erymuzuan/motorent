@@ -114,8 +114,8 @@ window.MotoRentPwa = {
         const registration = await navigator.serviceWorker.ready;
         await registration.showNotification(title, {
             body: options.body || '',
-            icon: options.icon || '/icons/icon-192x192.png',
-            badge: options.badge || '/icons/icon-72x72.png',
+            icon: options.icon || '/icons/icon-192x192.webp',
+            badge: options.badge || '/icons/icon-72x72.webp',
             vibrate: options.vibrate || [100, 50, 100],
             data: options.data || {},
             actions: options.actions || []

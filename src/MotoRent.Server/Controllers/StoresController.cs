@@ -103,9 +103,9 @@ public class StoresController : ControllerBase
 
         // Handle special IDs
         if (storeId == "no-image")
-            return Redirect("/images/no-image.png");
+            return Redirect("/images/no-image.webp");
         if (storeId == "no-user")
-            return Redirect("/images/no-user.png");
+            return Redirect("/images/no-user.webp");
 
         try
         {

@@ -2,7 +2,7 @@
 
 As a Mechanic, your focus is on the health and safety of the fleet.
 
-![Mechanic Overview](images/03-mechanic-hero.png)
+![Mechanic Overview](images/03-mechanic-hero.webp)
 
 ## 1. Fleet Health Monitoring
 

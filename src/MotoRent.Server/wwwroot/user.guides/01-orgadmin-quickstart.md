@@ -2,7 +2,7 @@
 
 Welcome to JaleOS! This guide will help you get started as an Organization Admin (OrgAdmin).
 
-![OrgAdmin Overview](images/01-orgadmin-hero.png)
+![OrgAdmin Overview](images/01-orgadmin-hero.webp)
 
 ## Your Role
 
@@ -16,7 +16,7 @@ The Management Dashboard provides a high-level view of your business performance
 - **Fleet Status**: A breakdown of your vehicles (Rented, Available, Maintenance).
 - **Recent Activity**: A timeline of actions taken by staff and system events.
 
-![Dashboard](images/02-dashboard.png)
+![Dashboard](images/02-dashboard.webp)
 
 ## 2. Fleet Management
 
@@ -24,7 +24,7 @@ Manage your assets efficiently under the **Fleet** menu:
 - **All Vehicles**: View and manage your entire fleet across all shops. You can add new vehicles, update their status (e.g., move to maintenance), and track mileage.
 - **Accessories**: Manage rental add-ons like helmets, phone holders, and child seats. Set daily rates and track available quantities.
 
-![Fleet Management](images/05-fleet.png)
+![Fleet Management](images/05-fleet.webp)
 
 ## 3. Financial Oversight
 
@@ -51,7 +51,7 @@ Configure your "Rules of the Game" under the **Settings** menu:
 - **Accidents**: Monitor accident reports including parties involved and repair costs.
 - **Damage Reports**: Review damage documented during check-outs.
 
-![Accident Management](images/06-accidents.png)
+![Accident Management](images/06-accidents.webp)
 
 ---
 *Tip: Use the "Export Report" button on the dashboard to download data for offline analysis.*

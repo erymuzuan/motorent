@@ -2,7 +2,7 @@
 
 This guide covers the daily operations for front-desk staff. Your primary goal is to provide a smooth check-in and check-out experience for renters.
 
-![Staff Overview](images/02-staff-hero.png)
+![Staff Overview](images/02-staff-hero.webp)
 
 ## 1. Staff Dashboard
 
@@ -13,7 +13,7 @@ The Staff Dashboard is designed for quick actions:
 - **Overdue**: Quickly see which rentals missed their return time.
 - **Due Today**: A prioritized list of returns expected today.
 
-![Staff Dashboard](images/09-staff-dashboard.png)
+![Staff Dashboard](images/09-staff-dashboard.webp)
 
 ## 2. Check-In Process (The Wizard)
 
@@ -24,7 +24,7 @@ When a customer arrives, use the **New Check-In** button. This follows a 5-step 
 4. **Agreement & Signature**: Read the terms to the customer. They must sign directly on the screen.
 5. **Payment & Review**: Record the rental payment and the security deposit (Cash or Card).
 
-![Check-In Wizard](images/04-checkin.png)
+![Check-In Wizard](images/04-checkin.webp)
 
 ## 3. Processing Returns (Check-Out)
 
@@ -38,7 +38,7 @@ When a vehicle is returned:
 
 Use the **Customers > Renters** menu to manage renter profiles. You can update contact information, verify documents, and view their rental history.
 
-![Renters](images/07-renters.png)
+![Renters](images/07-renters.webp)
 
 ## 5. Reporting Accidents
 

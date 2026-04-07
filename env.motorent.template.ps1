@@ -27,7 +27,9 @@ $env:MOTO_SuperAdmin = "admin@example.com"
 
 # Gemini OCR (get from Google AI Studio)
 $env:MOTO_GeminiApiKey = "YOUR_GEMINI_API_KEY"
-$env:MOTO_GeminiModel = "gemini-2.0-flash"
+$env:MOTO_GeminiModels = "gemini-3.1-flash-lite-preview,gemini-3-flash-preview"
+# Optional legacy single-model override
+# $env:MOTO_GeminiModel = "gemini-3.1-flash-lite-preview"
 
 # File Storage
 $env:MOTO_FileStorageBasePath = "uploads"

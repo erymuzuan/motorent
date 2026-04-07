@@ -2,7 +2,7 @@
 
 JaleOS is available as a Progressive Web App (PWA) on your mobile device. You can browse, reserve, and track your rentals directly from your phone.
 
-![Tourist Overview](images/05-tourist-hero.png)
+![Tourist Overview](images/05-tourist-hero.webp)
 
 ## 1. Installing the App
 

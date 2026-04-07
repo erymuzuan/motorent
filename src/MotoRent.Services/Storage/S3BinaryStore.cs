@@ -211,8 +211,8 @@ public class S3BinaryStore : IBinaryStore, IDisposable
     {
         return storeId switch
         {
-            "no-image" => "/images/no-image.png",
-            "no-user" => "/images/no-user.png",
+            "no-image" => "/images/no-image.webp",
+            "no-user" => "/images/no-user.webp",
             null or "" => string.Empty,
             _ when storeId.StartsWith("public-") => $"https://s3.{MotoConfig.AwsRegion}.amazonaws.com/{MotoConfig.AwsPublicBucket}/{storeId}",
             _ => this.GetPreSignedUrl(storeId)

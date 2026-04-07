@@ -2,7 +2,7 @@
 
 ยินดีต้อนรับสู่ MotoRent! คู่มือนี้ครอบคลุมบทบาท Super Admin (ผู้ดูแลแพลตฟอร์ม)
 
-![Impersonate User](images/01-impersonate.png)
+![Impersonate User](images/01-impersonate.webp)
 
 ## บทบาทของคุณ
 

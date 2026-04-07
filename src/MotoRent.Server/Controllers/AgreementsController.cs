@@ -41,7 +41,7 @@ public class AgreementsController : ControllerBase
         }
 
         // Validate file type
-        var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp", ".pdf" };
+        var allowedExtensions = new[] { ".webp", ".webp", ".webp", ".gif", ".webp", ".pdf" };
         var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
         if (!allowedExtensions.Contains(extension))
         {

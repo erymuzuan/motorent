@@ -2,7 +2,7 @@
 
 Quick start guides for all JaleOS user roles.
 
-![Dashboard Overview](images/02-dashboard.png)
+![Dashboard Overview](images/02-dashboard.webp)
 
 ## Available Guides
 

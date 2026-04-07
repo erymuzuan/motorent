@@ -44,7 +44,7 @@ public class DamagePhotosController : ControllerBase
         }
 
         // Validate file type
-        var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+        var allowedExtensions = new[] { ".webp", ".webp", ".webp", ".gif", ".webp" };
         var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
         if (!allowedExtensions.Contains(extension))
         {
@@ -64,7 +64,7 @@ public class DamagePhotosController : ControllerBase
             var basePath = MotoConfig.FileStorageBasePath;
             var accountNo = m_requestContext.GetAccountNo();
 
-            // Store in: uploads/{accountNo}/damage/{rentalId or temp}/{guid}.jpg
+            // Store in: uploads/{accountNo}/damage/{rentalId or temp}/{guid}.webp
             var folder = rentalId.HasValue ? rentalId.Value.ToString() : "temp";
             var uploadDir = Path.Combine(Directory.GetCurrentDirectory(), basePath, accountNo ?? "default", "damage", folder);
 

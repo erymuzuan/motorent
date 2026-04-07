@@ -17,7 +17,7 @@ public class BinaryStore
     public byte[]? Content { get; set; }
 
     /// <summary>
-    /// File extension (e.g., ".jpg", ".pdf").
+    /// File extension (e.g., ".webp", ".pdf").
     /// </summary>
     public string? Extension { get; set; }
 
