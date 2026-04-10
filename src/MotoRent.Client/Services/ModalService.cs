@@ -13,6 +13,7 @@ public class ModalService : IModalService
 
     public event Action? OnChange;
     public ModalState? CurrentModal => m_modalStack.Count > 0 ? m_modalStack.Peek() : null;
+    public IReadOnlyList<ModalState> ModalStack => m_modalStack.Reverse().ToList();
 
     public Task<ModalResult> ShowAsync<TComponent>(string title, ModalOptions? options = null)
         where TComponent : IComponent

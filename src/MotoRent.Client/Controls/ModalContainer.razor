@@ -2,61 +2,64 @@
 @implements IDisposable
 @inject IModalService ModalService
 
-@if (m_modal is not null)
+@foreach (var (modal, index) in m_modals.Select((m, i) => (m, i)))
 {
-    <div class="modal modal-blur fade show" style="display: block;" tabindex="-1"
+    var isTop = index == m_modals.Count - 1;
+    <div class="modal modal-blur fade show" style="display: block;@(isTop ? "" : " visibility: hidden;")" tabindex="-1"
          @onclick="OnBackdropClick" @onkeydown="OnKeyDown">
-        <div class="modal-dialog @GetModalClasses()" role="document" @onclick:stopPropagation="true">
+        <div class="modal-dialog @GetModalClasses(modal)" role="document" @onclick:stopPropagation="true">
             <div class="modal-content">
-                @if (m_modal.Options.ShowHeader)
+                @if (modal.Options.ShowHeader)
                 {
-                    <div class="modal-header @GetHeaderStatusClass()">
-                        <h5 class="modal-title">@m_modal.Title</h5>
-                        @if (m_modal.Options.ShowCloseButton)
+                    <div class="modal-header @GetHeaderStatusClass(modal)">
+                        <h5 class="modal-title">@modal.Title</h5>
+                        @if (modal.Options.ShowCloseButton)
                         {
                             <button type="button" class="btn-close" @onclick="OnCloseClick"></button>
                         }
                     </div>
                 }
                 <CascadingValue Value="m_modalInstance">
-                    @if (m_modal.ContentFragment is not null)
+                    @if (modal.ContentFragment is not null)
                     {
-                        @m_modal.ContentFragment
+                        @modal.ContentFragment
                     }
                     else
                     {
-                        <DynamicComponent Type="@m_modal.ComponentType" Parameters="@m_modal.Parameters" />
+                        <DynamicComponent Type="@modal.ComponentType" Parameters="@modal.Parameters" />
                     }
                 </CascadingValue>
             </div>
         </div>
     </div>
-    <div class="modal-backdrop fade show"></div>
+    @if (isTop)
+    {
+        <div class="modal-backdrop fade show"></div>
+    }
 }
 
 @code {
-    private ModalState? m_modal;
+    private IReadOnlyList<ModalState> m_modals = [];
     private ModalInstance? m_modalInstance;
 
     protected override void OnInitialized()
     {
         this.ModalService.OnChange += this.OnModalChange;
-        this.m_modal = this.ModalService.CurrentModal;
+        this.m_modals = this.ModalService.ModalStack;
         this.m_modalInstance = new ModalInstance(this.ModalService);
     }
 
     private void OnModalChange()
     {
-        this.m_modal = this.ModalService.CurrentModal;
+        this.m_modals = this.ModalService.ModalStack;
         this.InvokeAsync(this.StateHasChanged);
     }
 
-    private string GetModalClasses()
+    private static string GetModalClasses(ModalState modal)
     {
         var classes = new List<string>();
 
-        // Size
-        classes.Add(this.m_modal?.Options.Size switch
+        classes.Add(modal.Options.Size switch
         {
             ModalSize.Small => "modal-sm",
             ModalSize.Medium => "modal-md",
@@ -66,14 +69,12 @@
             _ => "modal-lg"
         });
 
-        // Centered
-        if (this.m_modal?.Options.Centered == true)
+        if (modal.Options.Centered == true)
         {
             classes.Add("modal-dialog-centered");
         }
 
-        // Scrollable
-        if (this.m_modal?.Options.Scrollable == true)
+        if (modal.Options.Scrollable == true)
         {
             classes.Add("modal-dialog-scrollable");
         }
@@ -81,17 +82,18 @@
         return string.Join(" ", classes);
     }
 
-    private string GetHeaderStatusClass()
+    private static string GetHeaderStatusClass(ModalState modal)
     {
-        if (string.IsNullOrEmpty(this.m_modal?.Options.StatusColor))
+        if (string.IsNullOrEmpty(modal.Options.StatusColor))
             return string.Empty;
 
-        return $"bg-{this.m_modal.Options.StatusColor}";
+        return $"bg-{modal.Options.StatusColor}";
     }
 
     private void OnBackdropClick()
     {
-        if (this.m_modal?.Options.CloseOnClickOutside == true)
+        var topModal = this.m_modals.Count > 0 ? this.m_modals[^1] : null;
+        if (topModal?.Options.CloseOnClickOutside == true)
         {
             this.ModalService.Close(ModalResult.Cancel());
         }
@@ -99,7 +101,8 @@
 
     private void OnKeyDown(KeyboardEventArgs e)
     {
-        if (e.Key == "Escape" && this.m_modal?.Options.CloseOnEsc == true)
+        var topModal = this.m_modals.Count > 0 ? this.m_modals[^1] : null;
+        if (e.Key == "Escape" && topModal?.Options.CloseOnEsc == true)
         {
             this.ModalService.Close(ModalResult.Cancel());
         }

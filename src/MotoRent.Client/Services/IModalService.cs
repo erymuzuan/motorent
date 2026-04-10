@@ -18,6 +18,11 @@ public interface IModalService
     ModalState? CurrentModal { get; }
 
     /// <summary>
+    /// Gets all active modals in bottom-to-top order (for rendering stacked modals).
+    /// </summary>
+    IReadOnlyList<ModalState> ModalStack { get; }
+
+    /// <summary>
     /// Shows a modal dialog with the specified component.
     /// </summary>
     Task<ModalResult> ShowAsync<TComponent>(string title, ModalOptions? options = null)
