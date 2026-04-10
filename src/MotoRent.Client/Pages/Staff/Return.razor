@@ -3,6 +3,8 @@
 @using Microsoft.AspNetCore.Authorization
 @inherits LocalizedComponentBase<Return>
 @attribute [Authorize(Policy = "RequireTenantStaff")]
+@inject RentalService RentalService
+@inject DepositService DepositService
 
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
@@ -335,28 +337,28 @@ else
 
     private async Task LoadRecentActiveAsync()
     {
-        // TODO: Load from service
-        this.m_recentActive =
-        [
-            new(4, "Sophie Chen", "+66 854 321 0987", "Yamaha NMAX 155", "D-3456",
-                DateTime.Today.AddDays(-1), DateTime.Today.AddDays(-5), 450, 5000),
-            new(2, "Maria Garcia", "+66 898 765 4321", "Yamaha Aerox 155", "B-5678",
-                DateTime.Today, DateTime.Today.AddDays(-1), 450, 5000),
-            new(6, "Emma Davis", "+66 821 098 7654", "Yamaha Fino 125", "F-2345",
-                DateTime.Today.AddDays(-2), DateTime.Today.AddDays(-7), 350, 3000),
-        ];
+        var now = DateTimeOffset.Now;
+        var dueToday = await this.RentalService.GetTodaysDueReturnsAsync(0, now);
+        var overdue = await this.RentalService.GetOverdueRentalsAsync(0, now);
 
-        await Task.CompletedTask;
+        this.m_recentActive = dueToday.Concat(overdue)
+            .Select(MapToReturnItem)
+            .ToList();
     }
 
     private async Task LoadRentalAsync(int rentalId)
     {
-        // TODO: Load from service
-        this.m_rental = this.m_recentActive.FirstOrDefault(r => r.RentalId == rentalId)
-                   ?? new(rentalId, "John Smith", "+66 812 345 6789", "Honda Click 125", "A-1234",
-                       DateTime.Today.AddDays(2), DateTime.Today.AddDays(-2), 350, 3000);
+        var rental = await this.RentalService.GetRentalByIdAsync(rentalId);
+        if (rental != null)
+        {
+            this.m_rental = MapToReturnItem(rental);
 
-        await Task.CompletedTask;
+            var deposit = await this.DepositService.GetDepositByRentalIdAsync(rentalId);
+            if (deposit != null)
+            {
+                this.m_rental = this.m_rental with { DepositAmount = deposit.Amount };
+            }
+        }
     }
 
     private async Task OnSearchKeyDown(KeyboardEventArgs args)
@@ -374,22 +376,8 @@ else
         this.m_loading = true;
         try
         {
-            await Task.Delay(200); // Simulate search
-
-            // TODO: Replace with actual search
-            var search = this.m_searchText.ToLowerInvariant();
-            this.m_searchResults = this.m_recentActive
-                .Concat(
-                [
-                    new(1, "John Smith", "+66 812 345 6789", "Honda Click 125", "A-1234",
-                        DateTime.Today.AddDays(2), DateTime.Today.AddDays(-2), 350, 3000),
-                    new(7, "Michael Lee", "+66 810 987 6543", "Honda Scoopy i", "G-6789",
-                        DateTime.Today.AddDays(3), DateTime.Today.AddDays(-1), 300, 3000),
-                ])
-                .Where(r =>
-                    r.LicensePlate.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                    r.RenterName.Contains(search, StringComparison.OrdinalIgnoreCase))
-                .ToList();
+            var rentals = await this.RentalService.SearchActiveRentalsAsync(this.m_searchText);
+            this.m_searchResults = rentals.Select(MapToReturnItem).ToList();
         }
         finally
         {
@@ -429,10 +417,60 @@ else
         if (!await this.DialogService.ConfirmAsync(message, Localizer["ConfirmReturn"]))
             return;
 
-        // TODO: Process return via service
-        this.ShowSuccess(Localizer["ReturnSuccess", this.m_rental!.LicensePlate]);
-        this.NavigationManager.NavigateTo("/staff");
+        try
+        {
+            var request = new CheckOutRequest
+            {
+                RentalId = this.m_rental!.RentalId,
+                ActualEndDate = DateTimeOffset.Now,
+                RefundDeposit = this.RefundAmount > 0,
+                DeductionAmount = this.m_damageCharge > 0 ? this.m_damageCharge : null,
+                Notes = this.m_damageNotes
+            };
+
+            if (!this.m_bikeConditionOk && !string.IsNullOrWhiteSpace(this.m_damageNotes))
+            {
+                request.DamageReports =
+                [
+                    new DamageReportInfo
+                    {
+                        Description = this.m_damageNotes,
+                        Severity = "Minor",
+                        EstimatedCost = this.m_damageCharge
+                    }
+                ];
+            }
+
+            var result = await this.RentalService.CheckOutAsync(request, this.UserName);
+
+            if (result.Success)
+            {
+                this.ShowSuccess(Localizer["ReturnSuccess", this.m_rental!.LicensePlate]);
+                this.NavigationManager.NavigateTo("/staff");
+            }
+            else
+            {
+                this.ShowError(result.Message ?? "Failed to complete return");
+            }
+        }
+        catch (Exception ex)
+        {
+            this.LogError(ex, "Error completing return for rental {RentalId}", this.m_rental!.RentalId);
+            this.ShowError(Localizer["ReturnFailed"]);
+        }
     }
+
+    private static RentalReturnItem MapToReturnItem(Rental r) => new(
+        r.RentalId,
+        r.RenterName ?? "",
+        "",
+        r.VehicleName ?? "",
+        r.VehicleLicensePlate ?? "",
+        r.ExpectedEndDate.DateTime,
+        r.StartDate.DateTime,
+        r.RentalRate,
+        0
+    );
 
     private record RentalReturnItem(
         int RentalId,
