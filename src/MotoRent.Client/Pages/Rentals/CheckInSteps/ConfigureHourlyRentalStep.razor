@@ -1,5 +1,6 @@
 @inherits LocalizedComponentBase<CheckIn>
 @using MotoRent.Domain.Entities
+@using MotoRent.Domain.Extensions
 @using MotoRent.Domain.Models
 @using MotoRent.Client.Pages.Rentals
 @using MotoRent.Services
@@ -603,6 +604,7 @@
     {
         if (this.m_startDate.HasValue && this.SelectedVehicle != null)
         {
+            this.m_startDate = this.m_startDate.Value.NormalizeBuddhistYear();
             var startDateTime = this.m_startDate.Value.Date + this.m_startTime;
             var offset = TimeZoneInfo.Local.GetUtcOffset(startDateTime);
             this.Config.StartDateTime = new DateTimeOffset(startDateTime, offset);

@@ -1,5 +1,6 @@
 @inherits LocalizedComponentBase<CheckIn>
 @using MotoRent.Domain.Entities
+@using MotoRent.Domain.Extensions
 @using MotoRent.Services
 @using MotoRent.Client.Pages.Rentals
 @inject InsuranceService InsuranceService
@@ -671,9 +672,15 @@
     private async Task UpdateConfigAsync()
     {
         if (this.m_startDate.HasValue)
+        {
+            this.m_startDate = this.m_startDate.Value.NormalizeBuddhistYear();
             this.Config.StartDate = new DateTimeOffset(DateTime.SpecifyKind(this.m_startDate.Value, DateTimeKind.Utc), TimeSpan.Zero);
+        }
         if (this.m_endDate.HasValue)
+        {
+            this.m_endDate = this.m_endDate.Value.NormalizeBuddhistYear();
             this.Config.EndDate = new DateTimeOffset(DateTime.SpecifyKind(this.m_endDate.Value, DateTimeKind.Utc), TimeSpan.Zero);
+        }
 
         this.Config.SelectedInsuranceId = this.m_selectedInsuranceId;
         this.Config.SelectedInsurance = this.m_selectedInsuranceId.HasValue
