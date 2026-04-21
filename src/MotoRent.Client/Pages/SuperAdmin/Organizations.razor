@@ -114,6 +114,11 @@
                                                     Activate
                                                 </a>
                                             }
+                                            <div class="dropdown-divider"></div>
+                                            <a class="dropdown-item text-danger" href="#" @onclick="@(() => DeleteOrganization(org))" @onclick:preventDefault>
+                                                <i class="ti ti-trash me-2"></i>
+                                                Delete
+                                            </a>
                                         </div>
                                     }
                                 </div>
@@ -208,5 +213,43 @@
         organization.IsActive = true;
         await LoadOrganizationsAsync();
         this.ShowSuccess($"{organization.Name} has been activated.");
+    }
+
+    private async Task DeleteOrganization(Organization organization)
+    {
+        CloseDropdown();
+
+        var confirmed = await this.DialogService.ConfirmYesNoAsync(
+            $"This will PERMANENTLY delete '{organization.Name}' ({organization.AccountNo}) and ALL its data — shops, vehicles, rentals, renters, payments, damage reports, and more. This cannot be undone.\n\nContinue?",
+            "Delete Organization");
+
+        if (!confirmed)
+            return;
+
+        var typed = await this.DialogService.PromptAsync(
+            $"Type the account number '{organization.AccountNo}' to confirm deletion.",
+            "Confirm Delete");
+
+        if (!string.Equals(typed?.Trim(), organization.AccountNo, StringComparison.Ordinal))
+        {
+            this.ShowWarning("Account number did not match. Delete cancelled.");
+            return;
+        }
+
+        this.m_loading = true;
+        try
+        {
+            await this.SubscriptionService.DeleteSchemaAsync(organization);
+            this.ShowSuccess($"{organization.Name} has been deleted.");
+        }
+        catch (Exception ex)
+        {
+            this.LogError(ex, "Failed to delete organization {AccountNo}", organization.AccountNo);
+            this.ShowError($"Failed to delete organization: {ex.Message}");
+        }
+        finally
+        {
+            await LoadOrganizationsAsync();
+        }
     }
 }

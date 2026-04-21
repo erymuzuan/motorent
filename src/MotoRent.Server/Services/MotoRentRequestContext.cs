@@ -23,7 +23,10 @@ public class MotoRentRequestContext : IRequestContext
 
     public string GetConnectionString()
     {
-        return this.m_configuration.GetConnectionString("MotoRent")
+        // Prefer the MOTO_ConnectionString env var (MotoConfig) so dev/prod only has one source
+        // of truth for the DB connection. Fall back to appsettings.json ConnectionStrings:MotoRent.
+        return MotoConfig.ConnectionString
+            ?? this.m_configuration.GetConnectionString("MotoRent")
             ?? throw new InvalidOperationException("Connection string 'MotoRent' not found in configuration.");
     }
 

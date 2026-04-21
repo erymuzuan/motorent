@@ -12,7 +12,7 @@ public static class MotoConfig
     public static string ConnectionString =>
         GetEnvironmentVariable("ConnectionString") ??
         GetEnvironmentVariable("SqlConnectionString") ?? // Legacy key
-        "Host=localhost;Port=5432;Database=motorent;Username=postgres;Password=postgres;Include Error Detail=true";
+        "Host=localhost;Port=5432;Database=motorent;Username=motorent_app;Password=motorent_app_dev;Include Error Detail=true";
 
     // Legacy alias kept for backward compatibility with existing deployments/scripts.
     public static string SqlConnectionString => ConnectionString;

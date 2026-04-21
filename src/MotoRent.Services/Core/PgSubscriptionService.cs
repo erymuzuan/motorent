@@ -304,13 +304,23 @@ public partial class PgSubscriptionService(
             }
         }
 
-        // Delete all data for this tenant from each table
+        // Delete all data for this tenant from each table.
+        // RLS policies require app.current_tenant to match the row's tenant_id,
+        // so we must set it to the tenant being deleted (not the caller's tenant).
         foreach (var table in tables)
         {
             try
             {
                 await using var conn = new NpgsqlConnection(connectionString);
                 await conn.OpenAsync();
+
+                await using (var setCmd = new NpgsqlCommand(
+                    "SELECT set_config('app.current_tenant', @tenant, false)", conn))
+                {
+                    setCmd.Parameters.AddWithValue("@tenant", accountNo);
+                    await setCmd.ExecuteNonQueryAsync();
+                }
+
                 await using var cmd = new NpgsqlCommand($"DELETE FROM \"{table}\" WHERE \"tenant_id\" = @tenantId", conn);
                 cmd.Parameters.AddWithValue("@tenantId", accountNo);
                 await cmd.ExecuteNonQueryAsync();
