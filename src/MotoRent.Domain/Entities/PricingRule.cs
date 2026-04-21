@@ -20,16 +20,22 @@ public class PricingRule : Entity
     public int? RecurringDay { get; set; }                     // Day of month
 
     // Day of week (for DayOfWeek rule type)
-    public DayOfWeek? ApplicableDayOfWeek { get; set; }        // For weekend premium rules
+    public DayOfWeek? ApplicableDayOfWeek { get; set; }        // Legacy: single day
+    public List<DayOfWeek> ApplicableDaysOfWeek { get; set; } = [];  // Multiple days (e.g., Sat+Sun)
 
     // Pricing
     public decimal Multiplier { get; set; } = 1.0m;            // 1.5 = +50%, 0.8 = -20%
+    public decimal AmountAdjustment { get; set; }              // +50 = เพิ่ม 50 บาท, -20 = ลด 20 บาท
     public decimal? MinRate { get; set; }                      // Floor price
     public decimal? MaxRate { get; set; }                      // Ceiling price
 
     // Vehicle filtering (optional)
     public string? VehicleType { get; set; }                   // "Motorbike", "Car", or null for all
     public int? VehicleId { get; set; }                        // Specific vehicle only
+
+    // Package targeting (optional - when enabled, rule applies only to selected packages)
+    public bool ApplyToPackage { get; set; }                   // Enable package pricing mode
+    public List<PackageTarget> TargetPackages { get; set; } = [];  // Selected packages
 
     // Priority (higher wins on overlap)
     public int Priority { get; set; } = 10;
@@ -39,4 +45,13 @@ public class PricingRule : Entity
 
     public override int GetId() => this.PricingRuleId;
     public override void SetId(int value) => this.PricingRuleId = value;
+}
+
+/// <summary>
+/// Identifies a specific package within a FleetModel.
+/// </summary>
+public class PackageTarget
+{
+    public int FleetModelId { get; set; }
+    public string PackageName { get; set; } = string.Empty;
 }

@@ -42,15 +42,6 @@
                 OnBreakdownsChanged="@OnBreakdownsChanged"
                 Disabled="@m_saving" />
 
-            @* Validation Error for THB Total *@
-            @if (m_showThbValidation && OpeningFloatThb <= 0)
-            {
-                <div class="alert alert-warning mt-3">
-                    <i class="ti ti-alert-triangle me-2"></i>
-                    @Localizer["ThbRequiredError"]
-                </div>
-            }
-
             @* Notes Section *@
             <div class="mt-4">
                 <label class="form-label text-muted">
@@ -105,7 +96,7 @@
         @* Action Buttons *@
         <div class="mr-sidebar-actions">
             <button type="button" class="btn btn-primary btn-lg w-100 mb-2" @onclick="SaveAsync"
-                    disabled="@(m_saving || m_loading || m_selectedShopId == 0 || OpeningFloatThb <= 0)">
+                    disabled="@(m_saving || m_loading || m_selectedShopId == 0)">
                 @if (m_saving)
                 {
                     <span class="spinner-border spinner-border-sm me-2" role="status"></span>
@@ -133,7 +124,6 @@
     private int m_selectedShopId;
     private string? m_notes;
     private string? m_validationError;
-    private bool m_showThbValidation;
 
     // Denomination breakdowns from OpeningFloatPanel
     private List<CurrencyDenominationBreakdown> m_currencyBreakdowns = [];
@@ -186,11 +176,6 @@
     private void OnBreakdownsChanged(List<CurrencyDenominationBreakdown> breakdowns)
     {
         m_currencyBreakdowns = breakdowns;
-        // Clear validation when user enters data
-        if (OpeningFloatThb > 0)
-        {
-            m_showThbValidation = false;
-        }
         StateHasChanged();
     }
 
@@ -199,13 +184,6 @@
     private async Task SaveAsync()
     {
         if (m_saving || m_selectedShopId == 0) return;
-
-        // Validate THB total > 0
-        if (OpeningFloatThb <= 0)
-        {
-            m_showThbValidation = true;
-            return;
-        }
 
         try
         {

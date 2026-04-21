@@ -4,6 +4,7 @@ CREATE TABLE "Renter"
     "RenterId" INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     "FullName" VARCHAR(200) GENERATED ALWAYS AS (("Json"->>'FullName')::VARCHAR(200)) STORED,
     "Phone" VARCHAR(50) GENERATED ALWAYS AS (("Json"->>'Phone')::VARCHAR(50)) STORED,
+    "Email" VARCHAR(200) GENERATED ALWAYS AS (("Json"->>'Email')::VARCHAR(200)) STORED,
     "PassportNo" VARCHAR(50) GENERATED ALWAYS AS (("Json"->>'PassportNo')::VARCHAR(50)) STORED,
     "Json" JSONB NOT NULL,
     "tenant_id" VARCHAR(50) NOT NULL DEFAULT current_setting('app.current_tenant'),
@@ -17,3 +18,5 @@ CREATE POLICY tenant_isolation_renter ON "Renter" USING ("tenant_id" = current_s
 
 CREATE INDEX IX_Renter_PassportNo ON "Renter"("PassportNo", "FullName");
 CREATE INDEX IX_Renter_TenantId ON "Renter"("tenant_id");
+CREATE INDEX IX_Renter_Email ON "Renter"("Email");
+CREATE INDEX IX_Renter_Phone ON "Renter"("Phone");

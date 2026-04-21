@@ -1,0 +1,80 @@
+<input type="text"
+       inputmode="decimal"
+       class="@CssClass"
+       value="@m_displayValue"
+       @onfocus="OnFocus"
+       @onblur="OnBlur"
+       @oninput="OnInput"
+       @attributes="AdditionalAttributes" />
+
+@code {
+    [Parameter] public decimal Value { get; set; }
+    [Parameter] public EventCallback<decimal> ValueChanged { get; set; }
+    [Parameter] public string CssClass { get; set; } = "form-control";
+    [Parameter] public int DecimalPlaces { get; set; } = 2;
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string m_displayValue = "";
+    private bool m_focused;
+    private decimal m_lastValue;
+
+    protected override void OnParametersSet()
+    {
+        if (m_lastValue != Value && !m_focused)
+        {
+            m_lastValue = Value;
+            m_displayValue = FormatValue(Value);
+        }
+    }
+
+    private void OnFocus()
+    {
+        m_focused = true;
+        // Show raw number without commas when editing
+        m_displayValue = Value == 0 ? "" : Value.ToString($"F{DecimalPlaces}").TrimEnd('0').TrimEnd('.');
+    }
+
+    private async Task OnBlur()
+    {
+        m_focused = false;
+        var parsed = ParseValue(m_displayValue);
+        if (parsed != Value)
+        {
+            Value = parsed;
+            m_lastValue = parsed;
+            await ValueChanged.InvokeAsync(parsed);
+        }
+        m_displayValue = FormatValue(Value);
+    }
+
+    private async Task OnInput(ChangeEventArgs e)
+    {
+        var raw = e.Value?.ToString() ?? "";
+        m_displayValue = raw;
+
+        var parsed = ParseValue(raw);
+        if (parsed != Value)
+        {
+            Value = parsed;
+            m_lastValue = parsed;
+            await ValueChanged.InvokeAsync(parsed);
+        }
+    }
+
+    private string FormatValue(decimal value)
+    {
+        if (value == 0) return "0";
+        return DecimalPlaces > 0
+            ? value.ToString($"N{DecimalPlaces}").TrimEnd('0').TrimEnd('.')
+            : value.ToString("N0");
+    }
+
+    private static decimal ParseValue(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return 0;
+        // Strip commas and spaces
+        var cleaned = text.Replace(",", "").Replace(" ", "");
+        return decimal.TryParse(cleaned, out var result) ? Math.Max(0, result) : 0;
+    }
+}

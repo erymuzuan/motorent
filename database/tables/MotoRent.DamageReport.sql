@@ -6,6 +6,7 @@ CREATE TABLE "DamageReport"
     "MotorbikeId" INT GENERATED ALWAYS AS (("Json"->>'MotorbikeId')::INT) STORED,
     "Severity" VARCHAR(20) GENERATED ALWAYS AS (("Json"->>'Severity')::VARCHAR(20)) STORED,
     "Status" VARCHAR(20) GENERATED ALWAYS AS (("Json"->>'Status')::VARCHAR(20)) STORED,
+    "EstimatedCost" NUMERIC GENERATED ALWAYS AS (("Json"->>'EstimatedCost')::NUMERIC) STORED,
     "ReportedOn" TIMESTAMPTZ NULL,
     "Json" JSONB NOT NULL,
     "tenant_id" VARCHAR(50) NOT NULL DEFAULT current_setting('app.current_tenant'),

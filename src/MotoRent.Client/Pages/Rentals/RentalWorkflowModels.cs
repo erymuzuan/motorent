@@ -1,4 +1,5 @@
 using MotoRent.Domain.Entities;
+using MotoRent.Domain.Extensions;
 using MotoRent.Services;
 
 namespace MotoRent.Client.Pages.Rentals;
@@ -40,7 +41,7 @@ public class RentalConfig
     public decimal GuideTotal => IncludeGuide ? GuideDailyFee * Days : 0;
     public decimal LocationFeesTotal => LocationPricing?.TotalLocationFees ?? 0;
     public decimal TotalAmount => VehicleTotal + InsuranceTotal + AccessoriesTotal + DriverTotal + GuideTotal + LocationFeesTotal;
-    public int Days => Math.Max(1, (int)(EndDate.Date - StartDate.Date).TotalDays);
+    public int Days => Math.Max(1, (int)(EndDate.Date.NormalizeBuddhistYear() - StartDate.Date.NormalizeBuddhistYear()).TotalDays + 1);
 
     // Dynamic Pricing
     /// <summary>Whether dynamic pricing was applied.</summary>
@@ -127,7 +128,15 @@ public class HourlyRentalConfig
     public decimal InsuranceTotal { get; set; }
     public decimal AccessoriesTotal { get; set; }
 
-    public decimal TotalAmount => VehicleTotal + InsuranceTotal + AccessoriesTotal + DriverFee + GuideFee;
+    // Pick-up/Drop-off location
+    public int? PickupLocationId { get; set; }
+    public ServiceLocation? PickupLocation { get; set; }
+    public int? DropoffLocationId { get; set; }
+    public ServiceLocation? DropoffLocation { get; set; }
+    public LocationPricing? LocationPricing { get; set; }
+    public decimal LocationFeesTotal => LocationPricing?.TotalLocationFees ?? 0;
+
+    public decimal TotalAmount => VehicleTotal + InsuranceTotal + AccessoriesTotal + DriverFee + GuideFee + LocationFeesTotal;
     public DateTimeOffset EndDateTime => StartDateTime.AddHours(Hours);
     public bool IsValid => Hours > 0 && (HourlyRate > 0 || PackagePrice > 0);
 }

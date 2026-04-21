@@ -64,6 +64,7 @@ public partial class RentalService
                 Status = "Active",
                 Notes = request.Notes,
                 VehicleName = $"{vehicle.Brand} {vehicle.Model}",
+                VehicleLicensePlate = vehicle.LicensePlate,
                 // Pick-up location and fees
                 PickupLocationId = request.PickupLocationId,
                 PickupLocationName = request.PickupLocationName,
@@ -101,9 +102,10 @@ public partial class RentalService
             using var childSession = this.Context.OpenSession(username);
 
             // 3. Create deposit
-            if (request.DepositAmount > 0)
+            Deposit? deposit = null;
+            if (request.DepositAmount > 0 || request.DepositType == "Passport")
             {
-                var deposit = new Deposit
+                deposit = new Deposit
                 {
                     RentalId = rental.RentalId,
                     DepositType = request.DepositType,
@@ -174,7 +176,13 @@ public partial class RentalService
                 {
                     RentalId = rental.RentalId,
                     PaymentType = "Deposit",
-                    PaymentMethod = request.DepositType == "Cash" ? "Cash" : "Card",
+                    PaymentMethod = request.DepositType switch
+                    {
+                        "Cash" => "Cash",
+                        "CardPreAuth" => "Card",
+                        "Passport" => "Passport",
+                        _ => "Cash"
+                    },
                     Amount = request.DepositAmount,
                     Status = "Completed",
                     TransactionRef = request.TransactionRef,
@@ -188,6 +196,15 @@ public partial class RentalService
 
             if (result.Success)
             {
+                // Link deposit to rental now that DepositId is populated
+                if (deposit != null && deposit.DepositId > 0)
+                {
+                    using var linkSession = this.Context.OpenSession(username);
+                    rental.DepositId = deposit.DepositId;
+                    linkSession.Attach(rental);
+                    await linkSession.SubmitChanges("CheckIn-LinkDeposit");
+                }
+
                 return CheckInResult.CreateSuccess(rental.RentalId);
             }
 
@@ -220,6 +237,7 @@ public partial class RentalService
             Status = "Active",
             Notes = request.Notes,
             VehicleName = $"{motorbike.Brand} {motorbike.Model}",
+            VehicleLicensePlate = motorbike.LicensePlate,
             PreRentalInspection = request.PreRentalInspection,
             TillSessionId = request.TillSessionId
         };
@@ -381,6 +399,7 @@ public partial class RentalService
             additionalCharges += request.AccessoryMissingCharge;
 
             // 6. Process damage reports
+            var damageReportsWithPhotos = new List<(DamageReport Report, List<string> Paths)>();
             foreach (var damageInfo in request.DamageReports ?? [])
             {
                 var damageReport = new DamageReport
@@ -395,6 +414,9 @@ public partial class RentalService
                 };
                 session.Attach(damageReport);
                 additionalCharges += damageInfo.EstimatedCost;
+
+                if (damageInfo.PhotoPaths is { Count: > 0 })
+                    damageReportsWithPhotos.Add((damageReport, damageInfo.PhotoPaths));
             }
 
             // 7. Update deposit status
@@ -495,6 +517,19 @@ public partial class RentalService
                     Notes = $"Deposit refund via {request.PaymentMethod ?? "Cash"}"
                 };
                 session.Attach(refundPayment);
+
+                // 10b. Record deposit refund in Till (if cash refund)
+                if (this.TillService != null && deposit != null &&
+                    (request.PaymentMethod == "Cash" || request.PaymentMethod == null))
+                {
+                    _ = await this.TillService.RecordDepositRefundFromTillAsync(
+                        rental.RentedFromShopId,
+                        username,
+                        deposit.DepositId,
+                        request.RentalId,
+                        refundAmount,
+                        $"Deposit refund #{deposit.DepositId}");
+                }
             }
 
             // 11. Create owner payment if vehicle is third-party owned
@@ -541,6 +576,26 @@ public partial class RentalService
 
             if (result.Success)
             {
+                // 11b. Save damage photos (DamageReportIds are now populated after SubmitChanges)
+                if (damageReportsWithPhotos.Count > 0)
+                {
+                    using var photoSession = this.Context.OpenSession(username);
+                    foreach (var (report, paths) in damageReportsWithPhotos)
+                    {
+                        foreach (var path in paths)
+                        {
+                            photoSession.Attach(new DamagePhoto
+                            {
+                                DamageReportId = report.DamageReportId,
+                                PhotoType = "After",
+                                ImagePath = path,
+                                CapturedOn = DateTimeOffset.Now
+                            });
+                        }
+                    }
+                    await photoSession.SubmitChanges("CheckOut-DamagePhotos");
+                }
+
                 // 12. Make agent commission eligible if this rental is from an agent booking
                 await MakeAgentCommissionEligibleAsync(rental, username);
 

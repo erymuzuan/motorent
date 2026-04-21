@@ -5,6 +5,7 @@
 @using MotoRent.Client.Components.Receipts
 @using MotoRent.Domain.Entities
 @using MotoRent.Domain.Models
+@using MotoRent.Domain.Settings
 @using MotoRent.Services
 @attribute [Authorize(Policy = "RequireTenantStaff")]
 @inherits LocalizedComponentBase<CheckIn>
@@ -82,7 +83,8 @@
                                   OnCreateNew="OpenCreateRenterDialog" />
                 break;
             case 1:
-                <SelectVehicleStep @bind-SelectedVehicle="m_selectedVehicle" />
+                <SelectVehicleStep SelectedVehicle="m_selectedVehicle"
+                                   SelectedVehicleChanged="OnVehicleSelected" />
                 break;
             case 2:
                 @if (m_selectedVehicle?.UsesIntervalPricing == true)
@@ -92,18 +94,27 @@
                 }
                 else
                 {
-                    @* Duration type selector (Daily / Hourly) *@
+                    @* Duration type selector (Daily / Hourly / Package) *@
                     @if (m_selectedVehicle?.SupportsHourlyRental == true && m_selectedVehicle.DailyRate > 0)
                     {
                         @* Both daily and hourly rates - show toggle *@
                         <div class="d-flex justify-content-center mb-4">
                             <div class="btn-group" role="group">
                                 <button type="button"
-                                        class="btn @(m_selectedDurationType == RentalDurationType.Hourly ? "btn-primary" : "btn-outline-primary")"
+                                        class="btn @(m_selectedDurationType == RentalDurationType.Hourly && !m_isPackageMode ? "btn-primary" : "btn-outline-primary")"
                                         @onclick="@(() => OnDurationTypeChanged(RentalDurationType.Hourly))">
                                     <i class="ti ti-clock me-1"></i>
                                     @Localizer["HourlyRental"]
                                 </button>
+                                @if (HasPackages)
+                                {
+                                    <button type="button"
+                                            class="btn @(IsPackageMode ? "btn-primary" : "btn-outline-primary")"
+                                            @onclick="@(() => SetPackageMode(true))">
+                                        <i class="ti ti-package me-1"></i>
+                                        @Localizer["Package"]
+                                    </button>
+                                }
                                 <button type="button"
                                         class="btn @(m_selectedDurationType == RentalDurationType.Daily ? "btn-primary" : "btn-outline-primary")"
                                         @onclick="@(() => OnDurationTypeChanged(RentalDurationType.Daily))">
@@ -117,6 +128,7 @@
                     @if (m_selectedDurationType == RentalDurationType.Hourly)
                     {
                         <ConfigureHourlyRentalStep SelectedVehicle="m_selectedVehicle"
+                                                    IsPackageMode="m_isPackageMode"
                                                     @bind-Config="m_hourlyConfig" />
                     }
                     else
@@ -144,7 +156,8 @@
                                         DepositInfo="@m_depositInfo"
                                         IsIntervalRental="@IsIntervalRental"
                                         IsHourlyRental="@IsHourlyRental"
-                                        OnComplete="CompleteCheckIn" />
+                                        @bind-TermsAccepted="m_termsAccepted"
+                                        @bind-AgreementPrinted="m_agreementPrinted" />
                 break;
         }
 
@@ -164,6 +177,14 @@
                         @onclick="NextStep">
                     @CommonLocalizer["Next"]
                     <i class="ti ti-arrow-right"></i>
+                </button>
+            }
+            else
+            {
+                <button type="button" class="mr-btn-primary-action"
+                        @onclick="OnCompleteCheckInClicked">
+                    <i class="ti ti-circle-check"></i>
+                    @Localizer["CompleteCheckIn"]
                 </button>
             }
         </div>
@@ -191,14 +212,20 @@
     [Parameter] public string? BookingRef { get; set; }
     private Booking? m_sourceBooking;
     private BookingItem? m_sourceBookingItem;
-    // Active till session for check-in
+    // Active till session for check-in (optional based on settings)
     private TillSession? m_tillSession;
+    private bool m_isTillRequired;
 
     protected override async Task OnInitializedAsync()
     {
-        // Require an active till session for check-in
+        // Check if till session is required based on organization settings
+        m_isTillRequired = await this.SettingConfig.GetBoolAsync(SettingKeys.Till_EnableCashierTill, defaultValue: false);
+
+        // Try to get active till session
         m_tillSession = await this.TillService.GetActiveSessionForUserAsync(this.UserName);
-        if (m_tillSession == null)
+
+        // Only require till session if the setting is enabled
+        if (m_isTillRequired && m_tillSession == null)
         {
             this.ToastService.ShowWarning(this.Localizer["TillSessionRequired"]);
             this.NavigationManager.NavigateTo("/staff/till");
@@ -323,6 +350,17 @@
     // Step 2: Vehicle selection
     private Vehicle? m_selectedVehicle;
 
+    private void OnVehicleSelected(Vehicle? vehicle)
+    {
+        this.m_selectedVehicle = vehicle;
+
+        // Auto-advance to next step when vehicle is selected
+        if (vehicle != null)
+        {
+            this.NextStep();
+        }
+    }
+
     // Step 3: Rental configuration (daily rentals)
     private RentalConfig m_rentalConfig = new();
 
@@ -334,6 +372,7 @@
 
     // Duration type selection (Daily or Hourly) for non-JetSki vehicles
     private RentalDurationType m_selectedDurationType = RentalDurationType.Hourly;
+    private bool m_isPackageMode = false;
 
     // Step 4: Deposit information
     private DepositInfo m_depositInfo = new();
@@ -341,8 +380,14 @@
     // Step 5: Pre-rental inspection
     private InspectionInfo? m_preInspection;
 
+    // Step 6: Agreement validation state
+    private bool m_termsAccepted;
+    private bool m_agreementPrinted;
+
     private bool IsIntervalRental => this.m_selectedVehicle?.UsesIntervalPricing == true;
     private bool IsHourlyRental => !this.IsIntervalRental && this.m_selectedDurationType == RentalDurationType.Hourly;
+    private bool IsPackageMode => this.m_isPackageMode && this.m_selectedDurationType == RentalDurationType.Hourly;
+    private bool HasPackages => this.m_selectedVehicle?.HourlyPackages?.Count > 0;
 
     private decimal GetRentalTotalAmount()
     {
@@ -354,6 +399,14 @@
     private void OnDurationTypeChanged(RentalDurationType durationType)
     {
         this.m_selectedDurationType = durationType;
+        this.m_isPackageMode = false;
+        StateHasChanged();
+    }
+
+    private void SetPackageMode(bool isPackage)
+    {
+        this.m_selectedDurationType = RentalDurationType.Hourly;
+        this.m_isPackageMode = isPackage;
         StateHasChanged();
     }
 
@@ -440,9 +493,26 @@
         }
     }
 
+    private async Task OnCompleteCheckInClicked()
+    {
+        if (!m_termsAccepted)
+        {
+            this.ShowWarning(this.Localizer["TermsNotAccepted"]);
+            return;
+        }
+
+        if (!m_agreementPrinted)
+        {
+            this.ShowWarning(this.Localizer["PrintAgreementRequired"]);
+            return;
+        }
+
+        await CompleteCheckIn();
+    }
+
     private async Task CompleteCheckIn()
     {
-        if (this.m_selectedRenter == null || this.m_selectedVehicle == null || this.m_tillSession == null)
+        if (this.m_selectedRenter == null || this.m_selectedVehicle == null)
         {
             this.ShowError(this.Localizer["ValidationError"]);
             return;
@@ -453,9 +523,9 @@
         {
             var request = new CheckInRequest
             {
-                // Use till session's shop ID
-                ShopId = this.m_tillSession.ShopId,
-                TillSessionId = this.m_tillSession.TillSessionId,
+                // Use till session's shop ID if available, otherwise use current shop from context
+                ShopId = this.m_tillSession?.ShopId ?? this.RequestContext.GetShopId(),
+                TillSessionId = this.m_tillSession?.TillSessionId ?? 0,
                 RenterId = this.m_selectedRenter.RenterId,
                 VehicleId = this.m_selectedVehicle.VehicleId,
                 SignatureImagePath = null, // Physical signature collected on printed agreement
@@ -504,6 +574,21 @@
                         Quantity = a.Quantity,
                         ChargedAmount = a.TotalAmount
                     }).ToList();
+                // Location
+                request.PickupLocationId = this.m_hourlyConfig.PickupLocationId;
+                request.PickupLocationName = this.m_hourlyConfig.PickupLocation?.Name;
+                request.PickupLocationFee = this.m_hourlyConfig.LocationPricing?.PickupLocationFee ?? 0;
+                request.OutOfHoursPickupFee = this.m_hourlyConfig.LocationPricing?.OutOfHoursPickupFee ?? 0;
+                request.IsOutOfHoursPickup = this.m_hourlyConfig.LocationPricing?.IsOutOfHoursPickup ?? false;
+                request.OutOfHoursPickupBand = this.m_hourlyConfig.LocationPricing?.OutOfHoursPickupBand;
+                request.ScheduledPickupTime = this.m_hourlyConfig.StartDateTime.TimeOfDay;
+                request.DropoffLocationId = this.m_hourlyConfig.DropoffLocationId;
+                request.DropoffLocationName = this.m_hourlyConfig.DropoffLocation?.Name;
+                request.DropoffLocationFee = this.m_hourlyConfig.LocationPricing?.DropoffLocationFee ?? 0;
+                request.OutOfHoursDropoffFee = this.m_hourlyConfig.LocationPricing?.OutOfHoursDropoffFee ?? 0;
+                request.IsOutOfHoursDropoff = this.m_hourlyConfig.LocationPricing?.IsOutOfHoursDropoff ?? false;
+                request.OutOfHoursDropoffBand = this.m_hourlyConfig.LocationPricing?.OutOfHoursDropoffBand;
+                request.ScheduledDropoffTime = this.m_hourlyConfig.EndDateTime.TimeOfDay;
             }
             else
             {
@@ -526,6 +611,21 @@
                         Quantity = a.Quantity,
                         ChargedAmount = a.TotalAmount
                     }).ToList();
+                // Location
+                request.PickupLocationId = this.m_rentalConfig.PickupLocationId;
+                request.PickupLocationName = this.m_rentalConfig.PickupLocation?.Name;
+                request.PickupLocationFee = this.m_rentalConfig.LocationPricing?.PickupLocationFee ?? 0;
+                request.OutOfHoursPickupFee = this.m_rentalConfig.LocationPricing?.OutOfHoursPickupFee ?? 0;
+                request.IsOutOfHoursPickup = this.m_rentalConfig.LocationPricing?.IsOutOfHoursPickup ?? false;
+                request.OutOfHoursPickupBand = this.m_rentalConfig.LocationPricing?.OutOfHoursPickupBand;
+                request.ScheduledPickupTime = this.m_rentalConfig.PickupTime;
+                request.DropoffLocationId = this.m_rentalConfig.DropoffLocationId;
+                request.DropoffLocationName = this.m_rentalConfig.DropoffLocation?.Name;
+                request.DropoffLocationFee = this.m_rentalConfig.LocationPricing?.DropoffLocationFee ?? 0;
+                request.OutOfHoursDropoffFee = this.m_rentalConfig.LocationPricing?.OutOfHoursDropoffFee ?? 0;
+                request.IsOutOfHoursDropoff = this.m_rentalConfig.LocationPricing?.IsOutOfHoursDropoff ?? false;
+                request.OutOfHoursDropoffBand = this.m_rentalConfig.LocationPricing?.OutOfHoursDropoffBand;
+                request.ScheduledDropoffTime = this.m_rentalConfig.DropoffTime;
             }
 
             var result = await this.RentalService.CheckInAsync(request, this.UserName);
@@ -542,7 +642,7 @@
                         this.m_sourceBooking.BookingId,
                         this.m_sourceBookingItem.ItemId,
                         this.m_selectedVehicle!.VehicleId,
-                        this.m_tillSession!.ShopId,
+                        this.m_tillSession?.ShopId ?? this.RequestContext.GetShopId(),
                         result.RentalId,
                         this.UserName);
                 }
@@ -622,7 +722,7 @@
     /// </summary>
     private async Task GenerateAndShowReceiptAsync(int rentalId)
     {
-        if (this.m_selectedRenter == null || this.m_selectedVehicle == null || this.m_tillSession == null)
+        if (this.m_selectedRenter == null || this.m_selectedVehicle == null)
             return;
 
         try
@@ -711,7 +811,7 @@
             // Generate the receipt
             var receipt = await this.ReceiptService.GenerateCheckInReceiptAsync(
                 rentalId,
-                this.m_tillSession.TillSessionId,
+                this.m_tillSession?.TillSessionId ?? 0,
                 rental,
                 this.m_selectedRenter,
                 this.m_selectedVehicle,

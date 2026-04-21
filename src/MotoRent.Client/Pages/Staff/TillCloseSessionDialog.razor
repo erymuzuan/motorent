@@ -115,9 +115,11 @@
                 @* Variance Acknowledgment *@
                 @if (this.HasVariance)
                 {
-                    <div class="alert alert-warning mt-4">
-                        <label class="form-check mb-0">
-                            <input type="checkbox" class="form-check-input" @bind="this.AcknowledgeVariance" />
+                    <div class="alert alert-warning mt-4 cursor-pointer" @onclick="() => AcknowledgeVariance = !AcknowledgeVariance" style="user-select: none;">
+                        <label class="form-check mb-0 d-flex align-items-center gap-2" style="min-height: 44px;">
+                            <input type="checkbox" class="form-check-input flex-shrink-0"
+                                   style="width: 1.5rem; height: 1.5rem;"
+                                   checked="@this.AcknowledgeVariance" />
                             <span class="form-check-label">
                                 <i class="ti ti-alert-triangle me-1"></i>
                                 @Localizer["AcknowledgeVariance"]
@@ -240,7 +242,8 @@
     private Dictionary<string, decimal> m_exchangeRates = new();
 
     private bool HasEnteredAmount => this.ActualCash > 0 ||
-        this.m_currencyBreakdowns.Any(b => b.Currency == SupportedCurrencies.THB && b.Total > 0);
+        this.m_currencyBreakdowns.Any(b => b.Currency == SupportedCurrencies.THB && b.Total > 0) ||
+        this.GetExpectedTotalThb() == 0;
 
     private bool HasVariance => this.m_currencyBreakdowns.Any(b => b.Variance.HasValue && b.Variance.Value != 0);
 

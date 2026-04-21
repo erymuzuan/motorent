@@ -340,6 +340,8 @@ else
     private int m_fuelLevelAtReturn = 100;
     private int? m_fuelLevelAtCheckIn;
     private decimal m_fuelSurcharge;
+    private int m_fuelDeficitQuarters;
+    private decimal m_fuelRatePerQuarter;
 
     // Cleanliness
     private string m_cleanlinessLevel = "Clean";
@@ -567,6 +569,11 @@ else
             {
                 this.m_fleetModel = await this.FleetModelService.GetFleetModelByIdAsync(fleetModelId.Value);
             }
+            // Fallback: find FleetModel by matching brand/model/year
+            if (this.m_fleetModel == null && this.m_vehicle != null)
+            {
+                this.m_fleetModel = await this.FleetModelService.GetFleetModelForVehicleAsync(this.m_vehicle);
+            }
 
             // Load daily late fee mode setting
             if (this.m_rental.DurationType == RentalDurationType.Daily)
@@ -589,9 +596,12 @@ else
                 this.m_hasMaintenanceWarning = maintenanceSummary.OverallStatus != MaintenanceStatus.Ok;
             }
 
-            // Load dropoff service locations
+            // Load dropoff service locations (use rental's shop if user has no specific shop)
+            var shopId = this.RequestContext.GetShopId();
+            if (shopId == 0)
+                shopId = this.m_rental.RentedFromShopId;
             this.m_dropoffLocations = await this.LocationService.GetActiveLocationsAsync(
-                this.RequestContext.GetShopId(), pickupOnly: null, dropoffOnly: true);
+                shopId, pickupOnly: null, dropoffOnly: true);
 
             // Check if rental already has a dropoff location configured
             if (this.m_rental.DropoffLocationId.HasValue)
@@ -760,12 +770,47 @@ else
                 AccessoryMissingCharge = this.m_accessoryMissingCharge
             };
 
-            if (this.m_damageLevel != "None" && !string.IsNullOrEmpty(this.m_damageDescription))
+            if (this.m_use3DInspection && this.m_inspectionMarkers.Count > 0)
+            {
+                var newMarkers = this.m_inspectionMarkers.Where(m => !m.IsPreExisting).ToList();
+                if (newMarkers.Count > 0)
+                {
+                    var description = string.Join("; ", newMarkers.Select(m =>
+                        $"{m.DamageType} ({m.Severity})"
+                        + (string.IsNullOrEmpty(m.LocationDescription) ? "" : $" - {m.LocationDescription}")
+                        + (string.IsNullOrEmpty(m.Description) ? "" : $": {m.Description}")
+                    ));
+
+                    var maxSeverity = newMarkers
+                        .Select(m => m.Severity)
+                        .OrderByDescending(s => s switch { "Major" => 3, "Moderate" => 2, "Minor" => 1, _ => 0 })
+                        .First();
+
+                    var allPhotoPaths = newMarkers
+                        .SelectMany(m => m.PhotoStoreIds)
+                        .Concat(this.m_damagePhotoPaths)
+                        .Distinct()
+                        .ToList();
+
+                    request.DamageReports = [
+                        new DamageReportInfo
+                        {
+                            Description = description,
+                            Severity = maxSeverity,
+                            EstimatedCost = this.m_3dInspectionDamageEstimate,
+                            PhotoPaths = allPhotoPaths.Count > 0 ? allPhotoPaths : null
+                        }
+                    ];
+                }
+            }
+            else if (this.m_damageLevel != "None")
             {
                 request.DamageReports = [
                     new DamageReportInfo
                     {
-                        Description = this.m_damageDescription,
+                        Description = string.IsNullOrEmpty(this.m_damageDescription)
+                            ? $"{this.m_damageLevel} damage reported during checkout"
+                            : this.m_damageDescription,
                         Severity = this.m_damageLevel,
                         EstimatedCost = this.m_damageEstimate,
                         PhotoPaths = this.m_damagePhotoPaths.Count > 0 ? this.m_damagePhotoPaths : null
@@ -808,16 +853,19 @@ else
 
     private void CalculateFuelSurcharge()
     {
-        if (this.m_fuelLevelAtCheckIn.HasValue && this.m_fuelLevelAtReturn < this.m_fuelLevelAtCheckIn.Value)
+        int checkInLevel = this.m_fuelLevelAtCheckIn ?? 100;
+        if (this.m_fuelLevelAtReturn < checkInLevel)
         {
-            int deficit = this.m_fuelLevelAtCheckIn.Value - this.m_fuelLevelAtReturn;
-            int quarters = deficit / 25;
-            var perQuarter = this.m_vehicle?.FuelSurchargePerQuarter
+            int deficit = checkInLevel - this.m_fuelLevelAtReturn;
+            this.m_fuelDeficitQuarters = deficit / 25;
+            this.m_fuelRatePerQuarter = this.m_vehicle?.FuelSurchargePerQuarter
                 ?? this.m_fleetModel?.FuelSurchargePerQuarter ?? 50m;
-            this.m_fuelSurcharge = quarters * perQuarter;
+            this.m_fuelSurcharge = this.m_fuelDeficitQuarters * this.m_fuelRatePerQuarter;
         }
         else
         {
+            this.m_fuelDeficitQuarters = 0;
+            this.m_fuelRatePerQuarter = 0;
             this.m_fuelSurcharge = 0;
         }
     }
@@ -992,7 +1040,13 @@ else
                 {
                     <div class="form-group">
                         <label class="form-label">@Localizer["MileageAtReturn"]</label>
-                        <input type="number" class="form-control form-control-lg" @bind="m_mileageEnd" min="@m_rental.MileageStart" />
+                        <input type="number" class="form-control form-control-lg @(m_mileageEnd < m_rental.MileageStart ? "is-invalid" : "")" @bind="m_mileageEnd" min="@m_rental.MileageStart" />
+                        @if (m_mileageEnd < m_rental.MileageStart)
+                        {
+                            <div class="invalid-feedback" style="display:block">
+                                @string.Format(Localizer["MileageMustBeGreaterThan"], m_rental.MileageStart.ToString("N0"))
+                            </div>
+                        }
                     </div>
                 }
             </div>
@@ -1165,7 +1219,7 @@ else
                     </div>
                     <div class="status-content">
                         <span class="status-title">@Localizer["FuelSurchargeApplied"]</span>
-                        <span class="status-detail">+@FormatCurrency(m_fuelSurcharge)</span>
+                        <span class="status-detail">@Localizer["FuelDeficitDetail", m_fuelDeficitQuarters, FormatCurrency(m_fuelRatePerQuarter)] = +@FormatCurrency(m_fuelSurcharge)</span>
                     </div>
                 </div>
             }
@@ -1611,6 +1665,9 @@ else
                 <div class="settlement-row text-warning">
                     <span><i class="ti ti-gas-station me-1"></i>@Localizer["FuelSurcharge"]</span>
                     <span>+@FormatCurrency(m_fuelSurcharge)</span>
+                </div>
+                <div class="settlement-row text-secondary" style="font-size: 0.8rem; padding-left: 1.75rem;">
+                    <span>@Localizer["FuelDeficitDetail", m_fuelDeficitQuarters, FormatCurrency(m_fuelRatePerQuarter)]</span>
                 </div>
             }
 

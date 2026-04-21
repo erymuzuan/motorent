@@ -158,9 +158,11 @@ public class DamagePhotosController : ControllerBase
         var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), basePath);
         if (fullPath.StartsWith(uploadsDir))
         {
-            return fullPath[uploadsDir.Length..].TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            return fullPath[uploadsDir.Length..]
+                .TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                .Replace('\\', '/');
         }
-        return fullPath;
+        return fullPath.Replace('\\', '/');
     }
 
     private static string GetMimeType(string filePath)

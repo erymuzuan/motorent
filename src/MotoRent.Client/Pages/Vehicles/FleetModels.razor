@@ -99,8 +99,16 @@
 
                             <div class="row g-2 mb-3">
                                 <div class="col-6">
-                                    <div class="text-secondary small">@Localizer["DailyRate"]</div>
-                                    <div class="fw-bold">฿@fm.DailyRate.ToString("N0")</div>
+                                    @if (fm.VehicleType == VehicleType.JetSki)
+                                    {
+                                        <div class="text-secondary small">@Localizer["Rate1Hour"]</div>
+                                        <div class="fw-bold">฿@(fm.Rate1Hour?.ToString("N0") ?? "0")</div>
+                                    }
+                                    else
+                                    {
+                                        <div class="text-secondary small">@Localizer["DailyRate"]</div>
+                                        <div class="fw-bold">฿@fm.DailyRate.ToString("N0")</div>
+                                    }
                                 </div>
                                 <div class="col-6">
                                     <div class="text-secondary small">@Localizer["Deposit"]</div>
@@ -110,7 +118,24 @@
                                     <div class="text-secondary small">@Localizer["Units"]</div>
                                     <div class="fw-bold">@this.GetUnitCount(fm.FleetModelId)</div>
                                 </div>
-                                @if (fm.HourlyRate.HasValue && fm.HourlyRate > 0)
+                                @if (fm.VehicleType == VehicleType.JetSki)
+                                {
+                                    @if (fm.Rate15Min.HasValue && fm.Rate15Min > 0)
+                                    {
+                                        <div class="col-6">
+                                            <div class="text-secondary small">@Localizer["Rate15Min"]</div>
+                                            <div class="fw-bold">฿@fm.Rate15Min.Value.ToString("N0")</div>
+                                        </div>
+                                    }
+                                    @if (fm.Rate30Min.HasValue && fm.Rate30Min > 0)
+                                    {
+                                        <div class="col-6">
+                                            <div class="text-secondary small">@Localizer["Rate30Min"]</div>
+                                            <div class="fw-bold">฿@fm.Rate30Min.Value.ToString("N0")</div>
+                                        </div>
+                                    }
+                                }
+                                else if (fm.HourlyRate.HasValue && fm.HourlyRate > 0)
                                 {
                                     <div class="col-6">
                                         <div class="text-secondary small">@Localizer["HourlyRate"]</div>
