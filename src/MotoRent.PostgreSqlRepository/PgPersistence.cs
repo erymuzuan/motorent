@@ -247,7 +247,7 @@ public class PgPersistence(
             (_, null) when column.IsNullable => DBNull.Value,
             _ when propType.IsEnum => value!.ToString()!,
             _ when propType.IsGenericType && propType.GenericTypeArguments[0].IsEnum => value!.ToString()!,
-            _ => value
+            _ => value!
         };
     }
 

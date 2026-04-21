@@ -677,7 +677,7 @@ internal class PgQueryFormatter : DbExpressionVisitor
         return column;
     }
 
-    protected override Expression? VisitSelect(SelectExpression select)
+    protected override Expression VisitSelect(SelectExpression select)
     {
         this.m_sb.Append("SELECT ");
 
@@ -761,7 +761,7 @@ internal class PgQueryFormatter : DbExpressionVisitor
         return select;
     }
 
-    protected override Expression? VisitSource(Expression source)
+    protected override Expression VisitSource(Expression source)
     {
         switch ((DbExpressionType)source.NodeType)
         {
