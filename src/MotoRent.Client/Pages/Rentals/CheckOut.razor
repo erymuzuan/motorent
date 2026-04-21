@@ -1040,7 +1040,13 @@ else
                 {
                     <div class="form-group">
                         <label class="form-label">@Localizer["MileageAtReturn"]</label>
-                        <input type="number" class="form-control form-control-lg" @bind="m_mileageEnd" min="@m_rental.MileageStart" />
+                        <input type="number" class="form-control form-control-lg @(m_mileageEnd < m_rental.MileageStart ? "is-invalid" : "")" @bind="m_mileageEnd" min="@m_rental.MileageStart" />
+                        @if (m_mileageEnd < m_rental.MileageStart)
+                        {
+                            <div class="invalid-feedback" style="display:block">
+                                @string.Format(Localizer["MileageMustBeGreaterThan"], m_rental.MileageStart.ToString("N0"))
+                            </div>
+                        }
                     </div>
                 }
             </div>
