@@ -47,48 +47,18 @@
                 <label class="form-label required">@Localizer["AcquisitionCost"]</label>
                 <div class="input-group">
                     <span class="input-group-text">@Localizer["CurrencyTHBShort"]</span>
-                    <input type="number" class="form-control" @bind="Entity.AcquisitionCost" required min="0" step="0.01" />
+                    <CurrencyInput @bind-Value="Entity.AcquisitionCost" />
                 </div>
             </div>
-...
-            @if (Entity.IsPreExisting)
-            {
-                <div class="col-md-6">
-                    <label class="form-label">@Localizer["InitialBookValue"]</label>
-                    <div class="input-group">
-                        <span class="input-group-text">@Localizer["CurrencyTHBShort"]</span>
-                        <input type="number" class="form-control" @bind="Entity.InitialBookValue" min="0" step="0.01" />
-                    </div>
-                    <small class="text-muted">@Localizer["InitialBookValueHelp"]</small>
-                </div>
-            }
-...
+
             <div class="col-md-6">
                 <label class="form-label required">@Localizer["ResidualValue"]</label>
                 <div class="input-group">
                     <span class="input-group-text">@Localizer["CurrencyTHBShort"]</span>
-                    <input type="number" class="form-control" @bind="Entity.ResidualValue" required min="0" step="0.01" />
+                    <CurrencyInput @bind-Value="Entity.ResidualValue" />
                 </div>
                 <small class="text-muted">@Localizer["ResidualValueHelp"]</small>
             </div>
-...
-                <div class="col-md-6">
-                    <label class="form-label required">@Localizer["PrincipalAmount"]</label>
-                    <div class="input-group">
-                        <span class="input-group-text">@Localizer["CurrencyTHBShort"]</span>
-                        <input type="number" class="form-control" @bind="m_loan.PrincipalAmount" required min="0" step="0.01" />
-                    </div>
-                </div>
-...
-                @if (m_loan.PrincipalAmount > 0 && m_loan.TermMonths > 0)
-                {
-                    <div class="col-12">
-                        <div class="alert alert-info">
-                            <strong>@Localizer["EstimatedMonthlyPayment"]:</strong>
-                            @Localizer["CurrencyTHBShort"]@CalculateMonthlyPayment().ToString("N2")
-                        </div>
-                    </div>
-                }
 
             <div class="col-md-6">
                 <label class="form-label">@Localizer["VendorName"]</label>
@@ -116,7 +86,7 @@
                     <label class="form-label">@Localizer["InitialBookValue"]</label>
                     <div class="input-group">
                         <span class="input-group-text">@Localizer["CurrencyTHBShort"]</span>
-                        <input type="number" class="form-control" @bind="Entity.InitialBookValue" min="0" step="0.01" />
+                        <CurrencyInput @bind-Value="m_initialBookValue" />
                     </div>
                     <small class="text-muted">@Localizer["InitialBookValueHelp"]</small>
                 </div>
@@ -214,7 +184,7 @@
                     <label class="form-label required">@Localizer["PrincipalAmount"]</label>
                     <div class="input-group">
                         <span class="input-group-text">@Localizer["CurrencyTHBShort"]</span>
-                        <input type="number" class="form-control" @bind="m_loan.PrincipalAmount" required min="0" step="0.01" />
+                        <CurrencyInput @bind-Value="m_loan.PrincipalAmount" />
                     </div>
                 </div>
 
@@ -272,6 +242,7 @@
     private decimal m_dayOutOfDoorPercent = 20;
     private decimal m_decliningBalanceRate = 25;
     private decimal m_annualInterestRate = 5;
+    private decimal m_initialBookValue;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -309,6 +280,7 @@
         // Convert decimal rates to percentages for display
         m_dayOutOfDoorPercent = (Entity.DayOutOfDoorPercent ?? 0.2m) * 100;
         m_decliningBalanceRate = (Entity.DecliningBalanceRate ?? 0.25m) * 100;
+        m_initialBookValue = Entity.InitialBookValue ?? 0;
     }
 
     private async Task SaveAsync()
@@ -323,6 +295,7 @@
             // Convert percentage fields back to decimals
             Entity.DayOutOfDoorPercent = m_dayOutOfDoorPercent / 100;
             Entity.DecliningBalanceRate = m_decliningBalanceRate / 100;
+            Entity.InitialBookValue = m_initialBookValue > 0 ? m_initialBookValue : null;
 
             // Set initial book value
             if (IsNew)
