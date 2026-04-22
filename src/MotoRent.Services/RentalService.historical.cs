@@ -11,8 +11,13 @@ public partial class RentalService
         rental.Status = "Completed";
         rental.ActualEndDate ??= rental.ExpectedEndDate;
 
-        using var session = this.Context.OpenSession(username);
-        session.Attach(rental);
+        using (var rentalSession = this.Context.OpenSession(username))
+        {
+            rentalSession.Attach(rental);
+            var rentalResult = await rentalSession.SubmitChanges("RecordPastRental");
+            if (!rentalResult.Success)
+                return rentalResult;
+        }
 
         if (rental.PaidAmount is > 0)
         {
@@ -26,9 +31,12 @@ public partial class RentalService
                 Status = "Completed",
                 Notes = "Recorded via past-rental entry"
             };
-            session.Attach(payment);
+
+            using var paymentSession = this.Context.OpenSession(username);
+            paymentSession.Attach(payment);
+            return await paymentSession.SubmitChanges("RecordPastRentalPayment");
         }
 
-        return await session.SubmitChanges("RecordPastRental");
+        return SubmitOperation.CreateSuccess(1, 0, 0);
     }
 }

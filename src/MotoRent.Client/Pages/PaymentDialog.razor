@@ -4,6 +4,29 @@
 
 <form id="@FormId" @onsubmit="SaveAsync" @onsubmit:preventDefault>
     <div class="modal-body">
+        @{
+            var selectedRental = m_selectedRentalId.HasValue
+                ? m_rentals.FirstOrDefault(r => r.RentalId == m_selectedRentalId.Value)
+                : null;
+            var rentalIdForBanner = selectedRental?.RentalId ?? Entity.RentalId;
+        }
+        @if (rentalIdForBanner > 0)
+        {
+            <div class="alert alert-info d-flex align-items-center mb-3" role="status">
+                <i class="ti ti-receipt me-2"></i>
+                <div class="flex-fill">
+                    <strong>@Localizer["Rental"] #@rentalIdForBanner</strong>
+                    @if (selectedRental is not null)
+                    {
+                        <span class="text-secondary ms-2">@selectedRental.RenterName</span>
+                        @if (!string.IsNullOrEmpty(selectedRental.VehicleLicensePlate))
+                        {
+                            <span class="badge bg-primary-lt ms-2">@selectedRental.VehicleLicensePlate</span>
+                        }
+                    }
+                </div>
+            </div>
+        }
         <div class="row g-3">
             @if (!HideRentalSelector)
             {
