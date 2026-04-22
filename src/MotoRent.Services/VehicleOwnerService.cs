@@ -6,7 +6,7 @@ namespace MotoRent.Services;
 /// <summary>
 /// Service for managing third-party vehicle owners.
 /// </summary>
-public class VehicleOwnerService(RentalDataContext context)
+public partial class VehicleOwnerService(RentalDataContext context)
 {
     private RentalDataContext Context { get; } = context;
 
@@ -69,6 +69,29 @@ public class VehicleOwnerService(RentalDataContext context)
     {
         return await this.Context.GetCountAsync(
             this.Context.CreateQuery<Vehicle>().Where(v => v.VehicleOwnerId == ownerId));
+    }
+
+    public async Task<List<Vehicle>> GetUnassignedVehiclesAsync(string? searchTerm = null)
+    {
+        var query = this.Context.CreateQuery<Vehicle>()
+            .Where(v => v.VehicleOwnerId == null)
+            .Where(v => v.Status != VehicleStatus.Retired)
+            .OrderBy(v => v.LicensePlate);
+
+        var result = await this.Context.LoadAsync(query, page: 1, size: 500, includeTotalRows: false);
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var term = searchTerm.ToLowerInvariant();
+            result.ItemCollection = result.ItemCollection
+                .Where(v =>
+                    (v.LicensePlate?.ToLowerInvariant().Contains(term) ?? false) ||
+                    (v.Brand?.ToLowerInvariant().Contains(term) ?? false) ||
+                    (v.Model?.ToLowerInvariant().Contains(term) ?? false))
+                .ToList();
+        }
+
+        return result.ItemCollection;
     }
 
     #endregion

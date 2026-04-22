@@ -1,0 +1,344 @@
+@page "/settings/vehicle-owners/{VehicleOwnerId}"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Policy = "RequireTenantManager")]
+@inherits LocalizedComponentBase<VehicleOwnerDetails>
+@inject VehicleOwnerService VehicleOwnerService
+
+<MotoRentPageTitle>@(this.m_owner?.Name ?? this.Localizer["VehicleOwner"])</MotoRentPageTitle>
+
+<TablerHeader Title="@(this.m_owner?.Name ?? this.Localizer["Loading"])"
+              PreTitle="@this.Localizer["VehicleOwnerDetails"]">
+    <div class="btn-list">
+        @if (this.m_owner is not null)
+        {
+            <button type="button" class="btn btn-outline-primary" @onclick="this.OpenEditDialog">
+                <i class="ti ti-edit me-1"></i>
+                @this.Localizer["Edit"]
+            </button>
+        }
+        <a href="/settings/vehicle-owners" class="btn btn-ghost-secondary">
+            <i class="ti ti-arrow-left me-1"></i>
+            @this.Localizer["BackToList"]
+        </a>
+    </div>
+</TablerHeader>
+
+<LoadingSkeleton Loading="@this.Loading" Mode="LoadingSkeleton.PlaceholderMode.Card" Rows="6">
+    @if (this.m_owner is null)
+    {
+        <div class="alert alert-danger">
+            <h4 class="alert-title">@this.Localizer["OwnerNotFound"]</h4>
+            <div class="text-secondary">@this.Localizer["OwnerNotFoundDesc", this.VehicleOwnerId]</div>
+            <div class="mt-3">
+                <a href="/settings/vehicle-owners" class="btn btn-outline-danger">
+                    <i class="ti ti-arrow-left me-1"></i>
+                    @this.Localizer["BackToList"]
+                </a>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-header">
+                <ul class="nav nav-tabs card-header-tabs" role="tablist">
+                    <li class="nav-item">
+                        <button type="button"
+                                class="nav-link @(this.m_activeTab == TabInfo ? "active" : "")"
+                                @onclick="@(() => this.m_activeTab = TabInfo)">
+                            <i class="ti ti-user me-1"></i>
+                            @this.Localizer["OwnerInfoTab"]
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button type="button"
+                                class="nav-link @(this.m_activeTab == TabBank ? "active" : "")"
+                                @onclick="@(() => this.m_activeTab = TabBank)">
+                            <i class="ti ti-building-bank me-1"></i>
+                            @this.Localizer["BankDetailsTab"]
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button type="button"
+                                class="nav-link @(this.m_activeTab == TabVehicles ? "active" : "")"
+                                @onclick="@(() => this.m_activeTab = TabVehicles)">
+                            <i class="ti ti-car me-1"></i>
+                            @this.Localizer["VehiclesTab"]
+                            <span class="badge bg-secondary-lt ms-2">@this.m_vehicles.Count</span>
+                        </button>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="card-body">
+                @if (this.m_activeTab == TabInfo)
+                {
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="datagrid-title">@this.Localizer["OwnerName"]</div>
+                            <div class="datagrid-content fw-bold">@this.m_owner.Name</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="datagrid-title">@this.Localizer["Status"]</div>
+                            <div class="datagrid-content">
+                                <span class="badge @(this.m_owner.IsActive ? "bg-success" : "bg-secondary")">
+                                    @this.Localizer[this.m_owner.IsActive ? "Active" : "Inactive"]
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="datagrid-title">@this.Localizer["Phone"]</div>
+                            <div class="datagrid-content">@this.m_owner.Phone</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="datagrid-title">@this.Localizer["Email"]</div>
+                            <div class="datagrid-content">@(string.IsNullOrEmpty(this.m_owner.Email) ? "-" : this.m_owner.Email)</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="datagrid-title">@this.Localizer["IdNumber"]</div>
+                            <div class="datagrid-content">@(string.IsNullOrEmpty(this.m_owner.IdNumber) ? "-" : this.m_owner.IdNumber)</div>
+                        </div>
+                        <div class="col-12">
+                            <div class="datagrid-title">@this.Localizer["Address"]</div>
+                            <div class="datagrid-content">@(string.IsNullOrEmpty(this.m_owner.Address) ? "-" : this.m_owner.Address)</div>
+                        </div>
+                        @if (!string.IsNullOrEmpty(this.m_owner.Notes))
+                        {
+                            <div class="col-12">
+                                <div class="datagrid-title">@this.Localizer["Notes"]</div>
+                                <div class="datagrid-content">@this.m_owner.Notes</div>
+                            </div>
+                        }
+                    </div>
+                }
+
+                @if (this.m_activeTab == TabBank)
+                {
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="datagrid-title">@this.Localizer["BankName"]</div>
+                            <div class="datagrid-content">@(string.IsNullOrEmpty(this.m_owner.BankName) ? "-" : this.m_owner.BankName)</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="datagrid-title">@this.Localizer["AccountNumber"]</div>
+                            <div class="datagrid-content">@(string.IsNullOrEmpty(this.m_owner.BankAccountNumber) ? "-" : this.m_owner.BankAccountNumber)</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="datagrid-title">@this.Localizer["AccountName"]</div>
+                            <div class="datagrid-content">@(string.IsNullOrEmpty(this.m_owner.BankAccountName) ? "-" : this.m_owner.BankAccountName)</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="datagrid-title">@this.Localizer["PromptPayId"]</div>
+                            <div class="datagrid-content">@(string.IsNullOrEmpty(this.m_owner.PromptPayId) ? "-" : this.m_owner.PromptPayId)</div>
+                        </div>
+                    </div>
+                }
+
+                @if (this.m_activeTab == TabVehicles)
+                {
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="text-secondary">
+                            @this.Localizer["VehiclesAssignedCount", this.m_vehicles.Count]
+                        </div>
+                        <button type="button" class="btn btn-primary" @onclick="this.OpenAttachDialog"
+                                disabled="@(!this.m_owner.IsActive)">
+                            <i class="ti ti-plus me-1"></i>
+                            @this.Localizer["AttachVehicles"]
+                        </button>
+                    </div>
+
+                    @if (this.m_vehicles.Count == 0)
+                    {
+                        <div class="empty">
+                            <div class="empty-icon">
+                                <i class="ti ti-car-off" style="font-size: 3rem; color: var(--tblr-secondary);"></i>
+                            </div>
+                            <p class="empty-title">@this.Localizer["NoVehiclesAssigned"]</p>
+                            <p class="empty-subtitle text-secondary">
+                                @this.Localizer["NoVehiclesAssignedHint"]
+                            </p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-vcenter">
+                                <thead>
+                                    <tr>
+                                        <th>@this.Localizer["Plate"]</th>
+                                        <th>@this.Localizer["Vehicle"]</th>
+                                        <th>@this.Localizer["Status"]</th>
+                                        <th>@this.Localizer["PaymentModel"]</th>
+                                        <th class="w-1"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var v in this.m_vehicles)
+                                    {
+                                        var isRented = v.Status == VehicleStatus.Rented;
+                                        <tr>
+                                            <td>
+                                                <a href="/vehicles/@this.EncodeId(v.VehicleId)" class="text-reset text-decoration-none">
+                                                    <span class="badge bg-primary-lt">@v.LicensePlate</span>
+                                                </a>
+                                            </td>
+                                            <td>
+                                                @v.Brand @v.Model
+                                                @if (v.Year > 0)
+                                                {
+                                                    <span class="text-secondary">(@v.Year)</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                <span class="badge @GetStatusBadgeClass(v.Status)">
+                                                    @this.Localizer[v.Status]
+                                                </span>
+                                            </td>
+                                            <td>
+                                                @if (v.OwnerPaymentModel == OwnerPaymentModel.RevenueShare)
+                                                {
+                                                    <span class="badge bg-indigo-lt text-indigo">
+                                                        @((v.OwnerRevenueSharePercent ?? 0m).ToString("P0"))
+                                                    </span>
+                                                }
+                                                else if (v.OwnerPaymentModel == OwnerPaymentModel.DailyRate)
+                                                {
+                                                    <span class="badge bg-teal-lt text-teal">
+                                                        ฿@((v.OwnerDailyRate ?? 0m).ToString("N0"))/@this.Localizer["Day"]
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-secondary">-</span>
+                                                }
+                                            </td>
+                                            <td class="text-end">
+                                                <button type="button"
+                                                        class="btn btn-sm btn-ghost-danger"
+                                                        disabled="@isRented"
+                                                        title="@(isRented ? this.Localizer["CannotDetachWhileRented"].Value : this.Localizer["DetachVehicle"].Value)"
+                                                        @onclick="() => this.ConfirmDetach(v)">
+                                                    <i class="ti ti-unlink me-1"></i>
+                                                    @this.Localizer["Detach"]
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    }
+</LoadingSkeleton>
+
+@code {
+    private const string TabInfo = "info";
+    private const string TabBank = "bank";
+    private const string TabVehicles = "vehicles";
+
+    [Parameter] public string VehicleOwnerId { get; set; } = "";
+
+    private VehicleOwner? m_owner;
+    private List<Vehicle> m_vehicles = [];
+    private string m_activeTab = TabVehicles;
+    private int m_vehicleOwnerId;
+
+    private bool Loading { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        this.m_vehicleOwnerId = this.DecodeId(this.VehicleOwnerId);
+        if (this.m_vehicleOwnerId == 0)
+        {
+            this.m_owner = null;
+            return;
+        }
+        await this.LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        if (this.Loading) return;
+        this.Loading = true;
+        try
+        {
+            var ownerTask = this.VehicleOwnerService.GetOwnerByIdAsync(this.m_vehicleOwnerId);
+            var vehiclesTask = this.VehicleOwnerService.GetOwnerVehiclesAsync(this.m_vehicleOwnerId);
+            await Task.WhenAll(ownerTask, vehiclesTask);
+
+            this.m_owner = ownerTask.Result;
+            this.m_vehicles = this.m_owner is not null ? vehiclesTask.Result : [];
+        }
+        finally
+        {
+            this.Loading = false;
+        }
+    }
+
+    private async Task OpenEditDialog()
+    {
+        if (this.m_owner is null) return;
+
+        var result = await this.DialogService
+            .Create<VehicleOwnerDialog>(this.Localizer["EditVehicleOwner"].Value)
+            .WithParameter(x => x.Entity, this.m_owner.Clone())
+            .WithParameter(x => x.IsNew, false)
+            .Large()
+            .ShowDialogAsync();
+
+        if (!result.Cancelled)
+        {
+            await this.LoadAsync();
+            this.ShowSuccess(this.Localizer["OwnerUpdated"].Value);
+        }
+    }
+
+    private async Task OpenAttachDialog()
+    {
+        if (this.m_owner is null) return;
+
+        var result = await this.DialogService
+            .Create<AttachVehicleDialog>(this.Localizer["AttachVehicles"].Value)
+            .WithParameter(x => x.OwnerId, this.m_owner.VehicleOwnerId)
+            .WithParameter(x => x.OwnerName, this.m_owner.Name)
+            .Large()
+            .ShowDialogAsync();
+
+        if (!result.Cancelled)
+        {
+            await this.LoadAsync();
+            this.ShowSuccess(this.Localizer["VehicleAttached"].Value);
+        }
+    }
+
+    private async Task ConfirmDetach(Vehicle vehicle)
+    {
+        var message = this.Localizer["ConfirmDetachMessage", vehicle.LicensePlate ?? ""].Value;
+        if (!await this.DialogService.ConfirmYesNoAsync(message, this.Localizer["DetachVehicle"].Value))
+            return;
+
+        var result = await this.VehicleOwnerService.DetachVehicleAsync(vehicle.VehicleId, this.UserName);
+        if (result.Success)
+        {
+            await this.LoadAsync();
+            this.ShowSuccess(this.Localizer["VehicleDetached"].Value);
+        }
+        else
+        {
+            this.ShowError(result.Message ?? this.Localizer["DetachFailed"].Value);
+        }
+    }
+
+    private static string GetStatusBadgeClass(string status) => status switch
+    {
+        VehicleStatus.Available => "bg-success-lt text-success",
+        VehicleStatus.Rented => "bg-primary-lt text-primary",
+        VehicleStatus.Maintenance => "bg-warning-lt text-warning",
+        VehicleStatus.Reserved => "bg-info-lt text-info",
+        VehicleStatus.Retired => "bg-danger-lt text-danger",
+        _ => "bg-secondary-lt text-secondary"
+    };
+}

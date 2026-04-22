@@ -23,13 +23,15 @@ public class AccountController(
     MotoRent.Domain.Core.IAuthenticationService authenticationService,
     IRequestContext requestContext,
     CoreDataContext coreDataContext,
-    RentalDataContext rentalDataContext) : Controller
+    RentalDataContext rentalDataContext,
+    IWebHostEnvironment webHostEnvironment) : Controller
 {
     private IDirectoryService DirectoryService { get; } = directoryService;
     private MotoRent.Domain.Core.IAuthenticationService AuthenticationService { get; } = authenticationService;
     private IRequestContext RequestContext { get; } = requestContext;
     private CoreDataContext CoreDataContext { get; } = coreDataContext;
     private RentalDataContext RentalDataContext { get; } = rentalDataContext;
+    private IWebHostEnvironment WebHostEnvironment { get; } = webHostEnvironment;
 
     // Login Pages
 
@@ -428,6 +430,52 @@ public class AccountController(
         var principal = new ClaimsPrincipal(identity);
 
         // Sign in as the impersonated user
+        await this.HttpContext.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            principal,
+            new AuthenticationProperties
+            {
+                IsPersistent = true,
+                ExpiresUtc = DateTimeOffset.UtcNow.AddDays(14),
+                IssuedUtc = DateTimeOffset.UtcNow
+            });
+
+        return this.LocalRedirect(url ?? "/");
+    }
+
+    [AllowAnonymous]
+    [HttpGet("dev-login")]
+    public async Task<IActionResult> DevLogin(
+        [FromQuery(Name = "user")] string userName,
+        [FromQuery(Name = "account")] string accountNo,
+        [FromQuery(Name = "url")] string? url = null)
+    {
+        // Dev-only endpoint for automated testing. Gated on Development environment AND localhost.
+        var isLocal = string.Equals(this.HttpContext.Request.Host.Host, "localhost", StringComparison.OrdinalIgnoreCase)
+            || this.HttpContext.Connection.RemoteIpAddress is { } remoteIp && IPAddress.IsLoopback(remoteIp);
+
+        if (!this.WebHostEnvironment.IsDevelopment() || !isLocal)
+        {
+            return this.NotFound();
+        }
+
+        var user = await this.CoreDataContext.LoadOneAsync<CoreUser>(u => u.UserName == userName);
+        if (user == null)
+        {
+            return this.NotFound($"User '{userName}' not found");
+        }
+
+        var org = await this.CoreDataContext.LoadOneAsync<Organization>(o => o.AccountNo == accountNo);
+        if (org == null)
+        {
+            return this.NotFound($"Organization '{accountNo}' not found");
+        }
+
+        var claims = (await this.DirectoryService.GetClaimsAsync(userName, accountNo)).ToList();
+
+        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        var principal = new ClaimsPrincipal(identity);
+
         await this.HttpContext.SignInAsync(
             CookieAuthenticationDefaults.AuthenticationScheme,
             principal,

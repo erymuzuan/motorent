@@ -1,0 +1,271 @@
+@inherits LocalizedDialogBase<Vehicle, AttachVehicleDialog>
+@implements IDisposable
+@inject VehicleOwnerService VehicleOwnerService
+
+<div class="modal-body">
+    <div class="alert alert-info mb-3">
+        <i class="ti ti-info-circle me-2"></i>
+        @this.Localizer["AttachIntro", this.OwnerName ?? ""]
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label fw-bold">
+            <span class="badge bg-primary me-2">1</span>
+            @this.Localizer["PickVehicle"]
+        </label>
+        <div class="input-icon mb-2">
+            <span class="input-icon-addon">
+                <i class="ti ti-search"></i>
+            </span>
+            <input type="search" class="form-control"
+                   placeholder="@this.Localizer["SearchPlaceholder"]"
+                   @bind="this.m_searchTerm" @bind:event="oninput" @onkeyup="this.OnSearchKeyUp" />
+        </div>
+
+        <div class="table-responsive" style="max-height: 260px; overflow-y: auto;">
+            <table class="table table-sm table-hover mb-0">
+                <thead class="sticky-top" style="background: var(--tblr-bg-surface-secondary, #f1f5f9);">
+                    <tr>
+                        <th style="width: 1%"></th>
+                        <th>@this.Localizer["Plate"]</th>
+                        <th>@this.Localizer["Vehicle"]</th>
+                        <th>@this.Localizer["Status"]</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (this.Loading)
+                    {
+                        <tr>
+                            <td colspan="4" class="text-center text-secondary py-3">
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                                @this.CommonLocalizer["Loading"]
+                            </td>
+                        </tr>
+                    }
+                    else if (this.m_vehicles.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="4" class="text-center text-secondary py-3">
+                                @this.Localizer["NoUnassignedVehicles"]
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        foreach (var v in this.m_vehicles)
+                        {
+                            var selected = this.Entity.VehicleId == v.VehicleId;
+                            <tr class="@(selected ? "table-primary" : "")" style="cursor: pointer"
+                                @onclick="() => this.SelectVehicle(v)">
+                                <td>
+                                    <input type="radio" class="form-check-input"
+                                           checked="@selected"
+                                           @onclick="() => this.SelectVehicle(v)"
+                                           @onclick:stopPropagation="true" />
+                                </td>
+                                <td>
+                                    <span class="badge bg-primary-lt">@v.LicensePlate</span>
+                                </td>
+                                <td>@v.Brand @v.Model @(v.Year > 0 ? $"({v.Year})" : "")</td>
+                                <td>
+                                    <span class="badge @GetStatusBadgeClass(v.Status)">
+                                        @this.Localizer[v.Status]
+                                    </span>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    @if (this.Entity.VehicleId > 0)
+    {
+        <div class="mb-2">
+            <label class="form-label fw-bold">
+                <span class="badge bg-primary me-2">2</span>
+                @this.Localizer["PaymentSetup"]
+            </label>
+
+            <div class="row g-2">
+                <div class="col-md-6">
+                    <label class="form-check">
+                        <input type="radio" class="form-check-input"
+                               checked="@(this.m_paymentModel == OwnerPaymentModel.RevenueShare)"
+                               @onchange="() => this.SetModel(OwnerPaymentModel.RevenueShare)" />
+                        <span class="form-check-label">
+                            <strong>@this.Localizer["RevenueShare"]</strong>
+                            <div class="text-secondary small">@this.Localizer["RevenueShareHint"]</div>
+                        </span>
+                    </label>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-check">
+                        <input type="radio" class="form-check-input"
+                               checked="@(this.m_paymentModel == OwnerPaymentModel.DailyRate)"
+                               @onchange="() => this.SetModel(OwnerPaymentModel.DailyRate)" />
+                        <span class="form-check-label">
+                            <strong>@this.Localizer["DailyRate"]</strong>
+                            <div class="text-secondary small">@this.Localizer["DailyRateHint"]</div>
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="row g-2 mt-2">
+                @if (this.m_paymentModel == OwnerPaymentModel.RevenueShare)
+                {
+                    <div class="col-md-6">
+                        <label class="form-label required">@this.Localizer["SharePercent"]</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control"
+                                   min="0" max="100" step="0.1"
+                                   @bind="this.m_sharePercent" />
+                            <span class="input-group-text">%</span>
+                        </div>
+                        <small class="form-hint">@this.Localizer["SharePercentHint"]</small>
+                    </div>
+                }
+                else
+                {
+                    <div class="col-md-6">
+                        <label class="form-label required">@this.Localizer["RatePerDay"]</label>
+                        <div class="input-group">
+                            <span class="input-group-text">฿</span>
+                            <input type="number" class="form-control"
+                                   min="0" step="1"
+                                   @bind="this.m_dailyRate" />
+                        </div>
+                        <small class="form-hint">@this.Localizer["RatePerDayHint"]</small>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-ghost-secondary" @onclick="this.Cancel">
+        @this.CommonLocalizer["Cancel"]
+    </button>
+    <button type="button" class="btn btn-primary" @onclick="this.SaveAsync" disabled="@(this.Saving || !this.CanSave)">
+        @if (this.Saving)
+        {
+            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+        }
+        <i class="ti ti-link me-1"></i>
+        @this.Localizer["AttachVehicle"]
+    </button>
+</div>
+
+@code {
+    [Parameter] public int OwnerId { get; set; }
+    [Parameter] public string? OwnerName { get; set; }
+
+    private List<Vehicle> m_vehicles = [];
+    private string? m_searchTerm;
+    private System.Timers.Timer? m_debounceTimer;
+
+    private OwnerPaymentModel m_paymentModel = OwnerPaymentModel.RevenueShare;
+    private decimal m_sharePercent = 30m;
+    private decimal m_dailyRate = 200m;
+
+    private bool Loading { get; set; }
+
+    private bool CanSave => this.Entity.VehicleId > 0 && this.OwnerId > 0 &&
+        (this.m_paymentModel == OwnerPaymentModel.RevenueShare
+            ? this.m_sharePercent is > 0 and <= 100
+            : this.m_dailyRate > 0);
+
+    protected override async Task OnInitializedAsync()
+    {
+        this.FormValid = true;
+        await this.LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        if (this.Loading) return;
+        this.Loading = true;
+        try
+        {
+            this.m_vehicles = await this.VehicleOwnerService.GetUnassignedVehiclesAsync(this.m_searchTerm);
+        }
+        finally
+        {
+            this.Loading = false;
+        }
+    }
+
+    private void OnSearchKeyUp(KeyboardEventArgs _)
+    {
+        this.m_debounceTimer?.Stop();
+        this.m_debounceTimer?.Dispose();
+        this.m_debounceTimer = new System.Timers.Timer(300);
+        this.m_debounceTimer.Elapsed += async (_, _) =>
+        {
+            this.m_debounceTimer?.Stop();
+            await this.InvokeAsync(async () =>
+            {
+                await this.LoadAsync();
+                this.StateHasChanged();
+            });
+        };
+        this.m_debounceTimer.Start();
+    }
+
+    private void SelectVehicle(Vehicle vehicle) => this.Entity = vehicle;
+
+    private void SetModel(OwnerPaymentModel model) => this.m_paymentModel = model;
+
+    private async Task SaveAsync()
+    {
+        if (!this.CanSave) return;
+
+        this.Saving = true;
+        try
+        {
+            // User enters 0–100; Vehicle.OwnerRevenueSharePercent is stored as 0.0–1.0.
+            var rateOrPercent = this.m_paymentModel == OwnerPaymentModel.RevenueShare
+                ? this.m_sharePercent / 100m
+                : this.m_dailyRate;
+
+            var result = await this.VehicleOwnerService.AttachVehicleAsync(
+                this.Entity.VehicleId,
+                this.OwnerId,
+                this.m_paymentModel,
+                rateOrPercent,
+                this.UserName);
+
+            if (result.Success)
+            {
+                this.Close();
+            }
+            else
+            {
+                this.ShowError(result.Message ?? "Attach failed");
+            }
+        }
+        finally
+        {
+            this.Saving = false;
+        }
+    }
+
+    private static string GetStatusBadgeClass(string status) => status switch
+    {
+        VehicleStatus.Available => "bg-success-lt text-success",
+        VehicleStatus.Rented => "bg-primary-lt text-primary",
+        VehicleStatus.Maintenance => "bg-warning-lt text-warning",
+        VehicleStatus.Reserved => "bg-info-lt text-info",
+        VehicleStatus.Retired => "bg-danger-lt text-danger",
+        _ => "bg-secondary-lt text-secondary"
+    };
+
+    public void Dispose()
+    {
+        this.m_debounceTimer?.Stop();
+        this.m_debounceTimer?.Dispose();
+    }
+}
