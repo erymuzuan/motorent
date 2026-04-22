@@ -1038,19 +1038,16 @@ else
                 </div>
                 <div class="date-box">
                     <span class="date-label">@Localizer["Expected"]</span>
-                    @if (m_isIntervalRental || m_isHourlyRental)
-                    {
-                        <input type="datetime-local" class="form-control form-control-sm date-value-input" lang="en"
-                               value="@m_rental.ExpectedEndDate.LocalDateTime.ToString("yyyy-MM-ddTHH:mm", CultureInfo.InvariantCulture)"
-                               @onchange="OnExpectedEndDateTimeChanged" />
-                    }
-                    else
-                    {
-                        <input type="date" class="form-control form-control-sm date-value-input" lang="en"
-                               value="@m_rental.ExpectedEndDate.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
-                               min="@m_rental.StartDate.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
-                               @onchange="OnExpectedEndDateChanged" />
-                    }
+                    <span class="date-value">
+                        @if (m_isIntervalRental || m_isHourlyRental)
+                        {
+                            @m_rental!.ExpectedEndDate.LocalDateTime.ToString("dd/MM/yyyy HH:mm", CultureInfo.InvariantCulture)
+                        }
+                        else
+                        {
+                            @m_rental!.ExpectedEndDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)
+                        }
+                    </span>
                 </div>
             </div>
         </div>
@@ -1064,7 +1061,30 @@ else
 
             <div class="form-grid">
                 <div class="form-group">
-                    <label class="form-label">@Localizer["ActualReturnDateTime"]</label>
+                    <label class="form-label">
+                        <i class="ti ti-calendar-event me-1"></i>
+                        @Localizer["ExpectedReturn"]
+                    </label>
+                    @if (m_isIntervalRental || m_isHourlyRental)
+                    {
+                        <input type="datetime-local" class="form-control form-control-lg" lang="en"
+                               value="@m_rental.ExpectedEndDate.LocalDateTime.ToString("yyyy-MM-ddTHH:mm", CultureInfo.InvariantCulture)"
+                               @onchange="OnExpectedEndDateTimeChanged" />
+                    }
+                    else
+                    {
+                        <input type="date" class="form-control form-control-lg" lang="en"
+                               value="@m_rental.ExpectedEndDate.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
+                               min="@m_rental.StartDate.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
+                               @onchange="OnExpectedEndDateChanged" />
+                    }
+                    <small class="form-hint text-muted">@Localizer["ExpectedReturnHint"]</small>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="ti ti-calendar-check me-1"></i>
+                        @Localizer["ActualReturnDateTime"]
+                    </label>
                     <input type="datetime-local" class="form-control form-control-lg"
                            @bind="m_actualReturnDateTime" />
                 </div>
