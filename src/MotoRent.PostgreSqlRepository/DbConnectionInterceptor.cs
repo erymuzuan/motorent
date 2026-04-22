@@ -13,6 +13,12 @@ public class DbConnectionInterceptor(IRequestContext context)
         if (string.IsNullOrWhiteSpace(tenant))
             throw new InvalidOperationException("Tenant account number is not available in the current request context");
 
+        // Drop superuser privileges so FORCE RLS policies actually apply.
+        await using (var roleCmd = new NpgsqlCommand("SET ROLE motorent_app", connection))
+        {
+            await roleCmd.ExecuteNonQueryAsync();
+        }
+
         await using var cmd = new NpgsqlCommand("SELECT set_config('app.current_tenant', @tenant, false)", connection);
         cmd.Parameters.AddWithValue("@tenant", tenant);
         await cmd.ExecuteNonQueryAsync();

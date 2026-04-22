@@ -356,6 +356,11 @@ builder.Services.AddRazorComponents()
 
 var app = builder.Build();
 
+// Self-healing Postgres RLS bootstrap — ensures motorent_app role, FORCE RLS, and
+// tenant_isolation_<table> policies exist on every table with a tenant_id column.
+// Runs once per startup and is idempotent.
+await PgRlsBootstrap.EnsureRlsAsync(MotoConfig.ConnectionString);
+
 // Configure ObjectBuilder for service resolution
 app.Services.ConfigureObjectBuilder();
 

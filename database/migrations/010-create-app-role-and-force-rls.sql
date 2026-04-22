@@ -2,6 +2,18 @@
 -- Migration 010: Create non-superuser app role + enforce FORCE RLS
 -- =============================================================================
 --
+-- SUPERSEDED by the runtime self-healing bootstrap in
+-- src/MotoRent.PostgreSqlRepository/PgRlsBootstrap.cs (invoked from
+-- src/MotoRent.Server/Program.cs on every start). The app now creates the
+-- motorent_app role, grants privileges, and applies ENABLE + FORCE ROW LEVEL
+-- SECURITY + tenant_isolation_<table> policies on every table with a
+-- `tenant_id` column — idempotently, so new tenant tables are auto-protected.
+--
+-- This file is kept for diagnostic / read-only shells where the app cannot be
+-- run (e.g., taking a forensic DB snapshot and re-applying RLS manually).
+-- You typically should NOT need to run it by hand.
+-- =============================================================================
+--
 -- WHY: The application was connecting as `postgres` (a superuser), which
 --   silently bypasses ALL Row Level Security policies — even when FORCE ROW
 --   LEVEL SECURITY is enabled. This caused cross-tenant data leaks where
