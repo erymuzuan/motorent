@@ -1,0 +1,523 @@
+@page "/rentals/record"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Policy = "RequireTenantStaff")]
+@inherits LocalizedComponentBase<RecordPastRental>
+@inject RenterService RenterService
+@inject VehicleService VehicleService
+@inject RentalService RentalService
+
+<MotoRentPageTitle>@this.Localizer["RecordPastRental"]</MotoRentPageTitle>
+
+<TablerHeader Title="@this.Localizer["RecordPastRental"]" PreTitle="@this.Localizer["Rentals"]">
+    <a href="/rentals" class="btn btn-ghost-secondary">
+        <i class="ti ti-arrow-left me-1"></i>
+        @this.Localizer["BackToRentals"]
+    </a>
+</TablerHeader>
+
+<div class="alert alert-info mb-3">
+    <i class="ti ti-info-circle me-2"></i>
+    @this.Localizer["RecordPastRentalHint"]
+</div>
+
+<form @onsubmit="this.SaveAsync" @onsubmit:preventDefault>
+    @* Renter Section *@
+    <div class="card mb-3">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i class="ti ti-user me-2"></i>@this.Localizer["RenterSection"]
+            </h3>
+        </div>
+        <div class="card-body">
+            @if (this.m_renter is null)
+            {
+                <div class="input-icon mb-2">
+                    <span class="input-icon-addon"><i class="ti ti-search"></i></span>
+                    <input type="search" class="form-control"
+                           placeholder="@this.Localizer["RenterSearchPlaceholder"]"
+                           @bind="this.m_renterSearchTerm" @bind:event="oninput"
+                           @onkeyup="this.OnRenterSearchKeyUp" />
+                </div>
+
+                @if (this.m_renterResults.Count > 0)
+                {
+                    <div class="list-group list-group-flush mb-2" style="max-height: 220px; overflow-y: auto;">
+                        @foreach (var r in this.m_renterResults)
+                        {
+                            <button type="button" class="list-group-item list-group-item-action"
+                                    @onclick="@(() => this.PickRenter(r))">
+                                <strong>@r.FullName</strong>
+                                <span class="text-secondary ms-2">@r.Phone</span>
+                                @if (!string.IsNullOrEmpty(r.Nationality))
+                                {
+                                    <span class="badge bg-secondary-lt ms-2">@r.Nationality</span>
+                                }
+                            </button>
+                        }
+                    </div>
+                }
+
+                <button type="button" class="btn btn-outline-primary btn-sm" @onclick="this.OpenInlineRenter">
+                    <i class="ti ti-user-plus me-1"></i>
+                    @this.Localizer["AddNewRenter"]
+                </button>
+
+                @if (this.m_showInlineRenter)
+                {
+                    <div class="row g-2 mt-2 p-3 border rounded-3 bg-light">
+                        <div class="col-md-6">
+                            <label class="form-label required">@this.Localizer["FullName"]</label>
+                            <input type="text" class="form-control" @bind="this.m_newRenter.FullName" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label required">@this.Localizer["Phone"]</label>
+                            <input type="tel" class="form-control" @bind="this.m_newRenter.Phone" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">@this.Localizer["Nationality"]</label>
+                            <input type="text" class="form-control" @bind="this.m_newRenter.Nationality" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">@this.Localizer["Passport"]</label>
+                            <input type="text" class="form-control" @bind="this.m_newRenter.PassportNo" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">@this.Localizer["Email"]</label>
+                            <input type="email" class="form-control" @bind="this.m_newRenter.Email" />
+                        </div>
+                        <div class="col-12">
+                            <button type="button" class="btn btn-primary btn-sm" @onclick="this.SaveNewRenter">
+                                @this.Localizer["SaveRenter"]
+                            </button>
+                            <button type="button" class="btn btn-ghost-secondary btn-sm ms-2"
+                                    @onclick="@(() => this.m_showInlineRenter = false)">
+                                @this.CommonLocalizer["Cancel"]
+                            </button>
+                        </div>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <strong>@this.m_renter.FullName</strong>
+                        <span class="text-secondary ms-2">@this.m_renter.Phone</span>
+                        @if (!string.IsNullOrEmpty(this.m_renter.Nationality))
+                        {
+                            <span class="badge bg-secondary-lt ms-2">@this.m_renter.Nationality</span>
+                        }
+                    </div>
+                    <button type="button" class="btn btn-sm btn-ghost-secondary"
+                            @onclick="@(() => { this.m_renter = null; this.m_renterResults = []; })">
+                        @this.Localizer["Change"]
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+
+    @* Vehicle + Mileage Section *@
+    <div class="card mb-3">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i class="ti ti-car me-2"></i>@this.Localizer["VehicleSection"]
+            </h3>
+        </div>
+        <div class="card-body">
+            @if (this.m_vehicle is null)
+            {
+                <div class="input-icon mb-2">
+                    <span class="input-icon-addon"><i class="ti ti-search"></i></span>
+                    <input type="search" class="form-control"
+                           placeholder="@this.Localizer["VehicleSearchPlaceholder"]"
+                           @bind="this.m_vehicleSearchTerm" @bind:event="oninput"
+                           @onkeyup="this.OnVehicleSearchKeyUp" />
+                </div>
+
+                @if (this.m_vehicleResults.Count > 0)
+                {
+                    <div class="list-group list-group-flush" style="max-height: 220px; overflow-y: auto;">
+                        @foreach (var v in this.m_vehicleResults)
+                        {
+                            <button type="button" class="list-group-item list-group-item-action"
+                                    @onclick="@(() => this.PickVehicle(v))">
+                                <span class="badge bg-primary-lt me-2">@v.LicensePlate</span>
+                                @v.Brand @v.Model @(v.Year > 0 ? $"({v.Year})" : "")
+                            </button>
+                        }
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <div>
+                        <span class="badge bg-primary-lt me-2">@this.m_vehicle.LicensePlate</span>
+                        <strong>@this.m_vehicle.Brand @this.m_vehicle.Model</strong>
+                        @if (this.m_vehicle.Year > 0)
+                        {
+                            <span class="text-secondary ms-2">(@this.m_vehicle.Year)</span>
+                        }
+                    </div>
+                    <button type="button" class="btn btn-sm btn-ghost-secondary"
+                            @onclick="@(() => { this.m_vehicle = null; this.m_vehicleResults = []; })">
+                        @this.Localizer["Change"]
+                    </button>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">@this.Localizer["MileageStart"]</label>
+                        <input type="number" class="form-control" min="0" @bind="this.m_mileageStart" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">@this.Localizer["MileageEnd"]</label>
+                        <input type="number" class="form-control" min="0" @bind="this.m_mileageEnd" />
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    @* Dates Section *@
+    <div class="card mb-3">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i class="ti ti-calendar me-2"></i>@this.Localizer["DatesSection"]
+            </h3>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label required">@this.Localizer["StartDate"]</label>
+                    <input type="date" class="form-control" @bind="this.m_startDate" />
+                    <small class="form-hint">@this.Localizer["PastDateAllowed"]</small>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label required">@this.Localizer["EndDate"]</label>
+                    <input type="date" class="form-control" @bind="this.m_endDate" />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Payment Section *@
+    <div class="card mb-3">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i class="ti ti-cash me-2"></i>@this.Localizer["PaymentSection"]
+            </h3>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label required">@this.Localizer["RentalSum"]</label>
+                    <div class="input-group">
+                        <span class="input-group-text">฿</span>
+                        <input type="number" class="form-control" min="0" step="1" @bind="this.m_totalAmount" />
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">@this.Localizer["PaidAmount"]</label>
+                    <div class="input-group">
+                        <span class="input-group-text">฿</span>
+                        <input type="number" class="form-control" min="0" step="1" @bind="this.m_paidAmount" />
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">@this.Localizer["PaymentMethod"]</label>
+                    <div class="btn-group w-100" role="group">
+                        @foreach (var method in new[] { "Cash", "Card", "PromptPay", "BankTransfer" })
+                        {
+                            <input type="radio" class="btn-check" name="paymentMethod" id="@($"pm-{method}")"
+                                   checked="@(this.m_paymentMethod == method)"
+                                   @onchange="() => this.m_paymentMethod = method" />
+                            <label class="btn btn-outline-primary" for="@($"pm-{method}")">
+                                @this.Localizer[method]
+                            </label>
+                        }
+                    </div>
+                </div>
+                <div class="col-md-6 d-flex align-items-end">
+                    <label class="form-check form-switch">
+                        <input type="checkbox" class="form-check-input" @bind="this.m_isPaid" />
+                        <span class="form-check-label">@this.Localizer["MarkAsPaid"]</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="alert alert-success mt-3 mb-0">
+                <div class="d-flex justify-content-between">
+                    <span>@this.Localizer["RentalSum"]</span>
+                    <strong>฿@this.m_totalAmount.ToString("N0")</strong>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span>@this.Localizer["PaidAmount"]</span>
+                    <strong>฿@this.m_paidAmount.ToString("N0")</strong>
+                </div>
+                @if (this.m_totalAmount - this.m_paidAmount > 0)
+                {
+                    <div class="d-flex justify-content-between text-danger">
+                        <span>@this.Localizer["Outstanding"]</span>
+                        <strong>฿@((this.m_totalAmount - this.m_paidAmount).ToString("N0"))</strong>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    @* Agreement Upload *@
+    <div class="card mb-3">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i class="ti ti-file-text me-2"></i>@this.Localizer["AgreementSection"]
+            </h3>
+        </div>
+        <div class="card-body">
+            <label class="form-label">@this.Localizer["AgreementHint"]</label>
+            <FileUpload StoreId="@this.m_agreementStoreId"
+                        StoreIdChanged="id => { this.m_agreementStoreId = id; this.StateHasChanged(); }"
+                        Prepend="rental-agreement"
+                        AcceptedExtensions=".pdf,image/*" />
+            @if (!string.IsNullOrEmpty(this.m_agreementStoreId))
+            {
+                <div class="mt-2">
+                    <span class="badge bg-success-lt text-success">
+                        <i class="ti ti-check me-1"></i>@this.Localizer["FileUploaded"]
+                    </span>
+                </div>
+            }
+        </div>
+    </div>
+
+    @* Notes Section *@
+    <div class="card mb-3">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i class="ti ti-notes me-2"></i>@this.Localizer["NotesSection"]
+            </h3>
+        </div>
+        <div class="card-body">
+            <textarea class="form-control" rows="6" @bind="this.m_notesHtml"
+                      placeholder="@this.Localizer["NotesPlaceholder"]"></textarea>
+            <small class="form-hint">@this.Localizer["NotesHint"]</small>
+        </div>
+    </div>
+
+    @* Attachments Section *@
+    <div class="card mb-3">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i class="ti ti-paperclip me-2"></i>@this.Localizer["AttachmentsSection"]
+            </h3>
+        </div>
+        <div class="card-body">
+            <label class="form-label">@this.Localizer["AddAttachment"]</label>
+            <FileUpload StoreIdChanged="this.OnAttachmentUploaded"
+                        Prepend="rental-attachment"
+                        AcceptedExtensions=".pdf,image/*" />
+
+            @if (this.m_attachments.Count > 0)
+            {
+                <div class="list-group list-group-flush mt-3">
+                    @foreach (var att in this.m_attachments)
+                    {
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="ti @(att.AttachmentType == "Photo" ? "ti-photo" : "ti-file") me-2"></i>
+                                @att.DisplayName
+                                <span class="badge bg-secondary-lt ms-2">@this.Localizer[att.AttachmentType]</span>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-ghost-danger"
+                                    @onclick="@(() => this.RemoveAttachment(att))">
+                                <i class="ti ti-trash"></i>
+                            </button>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+
+    @* Save Bar *@
+    <div class="card mb-3">
+        <div class="card-footer d-flex justify-content-between">
+            <a href="/rentals" class="btn btn-ghost-secondary">
+                <i class="ti ti-arrow-left me-1"></i>@this.CommonLocalizer["Cancel"]
+            </a>
+            <button type="submit" class="btn btn-primary" disabled="@(this.m_saving || !this.CanSave)">
+                @if (this.m_saving)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                }
+                <i class="ti ti-device-floppy me-1"></i>
+                @this.Localizer["SaveRecord"]
+            </button>
+        </div>
+    </div>
+</form>
+
+@code {
+    // Renter
+    private Renter? m_renter;
+    private string? m_renterSearchTerm;
+    private List<Renter> m_renterResults = [];
+    private bool m_showInlineRenter;
+    private Renter m_newRenter = new();
+
+    // Vehicle
+    private Vehicle? m_vehicle;
+    private string? m_vehicleSearchTerm;
+    private List<Vehicle> m_vehicleResults = [];
+    private int m_mileageStart;
+    private int? m_mileageEnd;
+
+    // Dates
+    private DateTime m_startDate = DateTime.Today.AddDays(-7);
+    private DateTime m_endDate = DateTime.Today.AddDays(-5);
+
+    // Payment
+    private decimal m_totalAmount;
+    private decimal m_paidAmount;
+    private string m_paymentMethod = "Cash";
+    private bool m_isPaid = true;
+
+    // Agreement + Notes + Attachments
+    private string? m_agreementStoreId;
+    private string? m_notesHtml;
+    private List<RentalAttachment> m_attachments = [];
+
+    private bool m_saving;
+
+    private bool CanSave => this.m_renter is not null
+        && this.m_vehicle is not null
+        && this.m_totalAmount > 0
+        && this.m_endDate >= this.m_startDate;
+
+    private async Task OnRenterSearchKeyUp(KeyboardEventArgs _)
+    {
+        if (string.IsNullOrWhiteSpace(this.m_renterSearchTerm) || this.m_renterSearchTerm.Length < 2)
+        {
+            this.m_renterResults = [];
+            return;
+        }
+        var result = await this.RenterService.GetRentersAsync(this.m_renterSearchTerm, 1, 20);
+        this.m_renterResults = result.ItemCollection.ToList();
+    }
+
+    private void PickRenter(Renter r)
+    {
+        this.m_renter = r;
+        this.m_renterResults = [];
+        this.m_renterSearchTerm = null;
+    }
+
+    private void OpenInlineRenter()
+    {
+        this.m_newRenter = new Renter { FullName = this.m_renterSearchTerm ?? "" };
+        this.m_showInlineRenter = true;
+    }
+
+    private async Task SaveNewRenter()
+    {
+        if (string.IsNullOrWhiteSpace(this.m_newRenter.FullName) || string.IsNullOrWhiteSpace(this.m_newRenter.Phone))
+        {
+            this.ShowError(this.Localizer["RenterNamePhoneRequired"].Value);
+            return;
+        }
+        var result = await this.RenterService.CreateRenterAsync(this.m_newRenter, this.UserName);
+        if (result.Success)
+        {
+            this.m_renter = this.m_newRenter;
+            this.m_showInlineRenter = false;
+            this.m_newRenter = new Renter();
+            this.ShowSuccess(this.Localizer["RenterCreated"].Value);
+        }
+        else
+        {
+            this.ShowError(result.Message ?? "");
+        }
+    }
+
+    private async Task OnVehicleSearchKeyUp(KeyboardEventArgs _)
+    {
+        if (string.IsNullOrWhiteSpace(this.m_vehicleSearchTerm) || this.m_vehicleSearchTerm.Length < 2)
+        {
+            this.m_vehicleResults = [];
+            return;
+        }
+        var result = await this.VehicleService.GetVehiclesAsync(
+            shopId: 0, searchTerm: this.m_vehicleSearchTerm, page: 1, pageSize: 20);
+        this.m_vehicleResults = result.ItemCollection.ToList();
+    }
+
+    private void PickVehicle(Vehicle v)
+    {
+        this.m_vehicle = v;
+        this.m_vehicleResults = [];
+        this.m_vehicleSearchTerm = null;
+    }
+
+    private void OnAttachmentUploaded(string? storeId)
+    {
+        if (string.IsNullOrWhiteSpace(storeId)) return;
+        this.m_attachments.Add(new RentalAttachment
+        {
+            StoreId = storeId,
+            DisplayName = $"Attachment {this.m_attachments.Count + 1}",
+            AttachmentType = "Document",
+            UploadedOn = DateTimeOffset.UtcNow
+        });
+        this.StateHasChanged();
+    }
+
+    private void RemoveAttachment(RentalAttachment att)
+    {
+        this.m_attachments.Remove(att);
+    }
+
+    private async Task SaveAsync()
+    {
+        if (!this.CanSave) return;
+        this.m_saving = true;
+        try
+        {
+            var rental = new Rental
+            {
+                RenterId = this.m_renter!.RenterId,
+                RenterName = this.m_renter.FullName,
+                VehicleId = this.m_vehicle!.VehicleId,
+                VehicleName = $"{this.m_vehicle.Brand} {this.m_vehicle.Model}".Trim(),
+                VehicleLicensePlate = this.m_vehicle.LicensePlate,
+                StartDate = new DateTimeOffset(this.m_startDate, TimeSpan.Zero),
+                ExpectedEndDate = new DateTimeOffset(this.m_endDate, TimeSpan.Zero),
+                ActualEndDate = new DateTimeOffset(this.m_endDate, TimeSpan.Zero),
+                MileageStart = this.m_mileageStart,
+                MileageEnd = this.m_mileageEnd,
+                TotalAmount = this.m_totalAmount,
+                PaidAmount = this.m_paidAmount,
+                PaymentMethod = this.m_paymentMethod,
+                IsPaid = this.m_isPaid,
+                AgreementStoreId = this.m_agreementStoreId,
+                NotesHtml = this.m_notesHtml,
+                Attachments = this.m_attachments
+            };
+
+            var result = await this.RentalService.CreateHistoricalRentalAsync(rental, this.UserName);
+            if (result.Success)
+            {
+                this.ShowSuccess(this.Localizer["RentalRecorded"].Value);
+                this.NavigationManager.NavigateTo("/rentals");
+            }
+            else
+            {
+                this.ShowError(result.Message ?? this.Localizer["SaveFailed"].Value);
+            }
+        }
+        finally
+        {
+            this.m_saving = false;
+        }
+    }
+}
