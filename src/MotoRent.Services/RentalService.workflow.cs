@@ -300,6 +300,7 @@ public partial class RentalService
             rental.ReturnedToShopId = returnShopId;
             rental.MileageEnd = request.MileageEnd;
             rental.Status = "Completed";
+            rental.LateFeeWaived = request.LateFeeWaived;
             if (!string.IsNullOrEmpty(request.Notes))
                 rental.Notes = (rental.Notes ?? "") + "\n" + request.Notes;
 
@@ -353,45 +354,48 @@ public partial class RentalService
                     SettingKeys.Rental_DailyLateFeeMode, defaultValue: "Daily") ?? "Daily";
             }
 
-            if (rental.DurationType == RentalDurationType.Daily)
+            if (!request.LateFeeWaived)
             {
-                // Check if org uses hourly late fees for daily rentals
-                if (dailyLateFeeMode == "Hourly" && vehicle != null
-                    && vehicle.HourlyRate.HasValue && vehicle.HourlyRate > 0)
+                if (rental.DurationType == RentalDurationType.Daily)
                 {
+                    // Check if org uses hourly late fees for daily rentals
+                    if (dailyLateFeeMode == "Hourly" && vehicle != null
+                        && vehicle.HourlyRate.HasValue && vehicle.HourlyRate > 0)
+                    {
+                        extraHours = CalculateExtraHours(rental.ExpectedEndDate, request.ActualEndDate);
+                        if (extraHours > 0)
+                        {
+                            additionalCharges += extraHours * vehicle.HourlyRate.Value;
+                        }
+                    }
+                    else
+                    {
+                        extraDays = CalculateExtraDays(rental.ExpectedEndDate, request.ActualEndDate);
+                        if (extraDays > 0)
+                        {
+                            additionalCharges += extraDays * rental.RentalRate;
+                        }
+                    }
+                }
+                else if (rental.DurationType == RentalDurationType.Hourly)
+                {
+                    // Hourly rental: charge per extra hour at the rental rate
                     extraHours = CalculateExtraHours(rental.ExpectedEndDate, request.ActualEndDate);
                     if (extraHours > 0)
                     {
-                        additionalCharges += extraHours * vehicle.HourlyRate.Value;
+                        additionalCharges += extraHours * rental.RentalRate;
                     }
                 }
                 else
                 {
-                    extraDays = CalculateExtraDays(rental.ExpectedEndDate, request.ActualEndDate);
-                    if (extraDays > 0)
+                    // Interval rental overtime
+                    var expectedEnd = rental.StartDate.AddMinutes(rental.IntervalMinutes ?? 60);
+                    if (request.ActualEndDate > expectedEnd)
                     {
-                        additionalCharges += extraDays * rental.RentalRate;
+                        var extraMinutes = (request.ActualEndDate - expectedEnd).TotalMinutes;
+                        // Charge at hourly rate (prorated)
+                        additionalCharges += (decimal)(extraMinutes / 60) * rental.RentalRate;
                     }
-                }
-            }
-            else if (rental.DurationType == RentalDurationType.Hourly)
-            {
-                // Hourly rental: charge per extra hour at the rental rate
-                extraHours = CalculateExtraHours(rental.ExpectedEndDate, request.ActualEndDate);
-                if (extraHours > 0)
-                {
-                    additionalCharges += extraHours * rental.RentalRate;
-                }
-            }
-            else
-            {
-                // Interval rental overtime
-                var expectedEnd = rental.StartDate.AddMinutes(rental.IntervalMinutes ?? 60);
-                if (request.ActualEndDate > expectedEnd)
-                {
-                    var extraMinutes = (request.ActualEndDate - expectedEnd).TotalMinutes;
-                    // Charge at hourly rate (prorated)
-                    additionalCharges += (decimal)(extraMinutes / 60) * rental.RentalRate;
                 }
             }
 

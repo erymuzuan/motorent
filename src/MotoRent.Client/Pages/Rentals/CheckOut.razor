@@ -297,7 +297,8 @@ else
     private int m_returnToShopId;
 
     // Return details
-    private DateTime? m_actualReturnDate;
+    private DateTime m_actualReturnDateTime = DateTime.Now;
+    private bool m_lateFeeWaived;
     private int m_mileageEnd;
     private string? m_notes;
 
@@ -353,29 +354,31 @@ else
     private decimal m_accessoryMissingCharge;
 
     // Calculated values
-    private int m_extraDays => this.m_actualReturnDate.HasValue && !this.m_isIntervalRental && !this.m_isHourlyRental
-        ? Math.Max(0, (int)(this.m_actualReturnDate.Value - this.m_rental!.ExpectedEndDate.Date).TotalDays)
-        : 0;
+    private DateTimeOffset ActualReturnOffset =>
+        new(this.m_actualReturnDateTime, TimeZoneInfo.Local.GetUtcOffset(this.m_actualReturnDateTime));
+
+    private int m_extraDays => this.m_rental is null || this.m_lateFeeWaived || this.m_isIntervalRental || this.m_isHourlyRental
+        ? 0
+        : Math.Max(0, (int)(this.m_actualReturnDateTime.Date - this.m_rental.ExpectedEndDate.Date).TotalDays);
 
     private int m_extraHours
     {
         get
         {
-            if (this.m_rental == null) return 0;
+            if (this.m_rental == null || this.m_lateFeeWaived) return 0;
 
             if (this.m_isHourlyRental)
             {
-                var actualEnd = DateTimeOffset.Now;
+                var actualEnd = this.ActualReturnOffset;
                 if (actualEnd <= this.m_rental.ExpectedEndDate) return 0;
                 return (int)Math.Ceiling((actualEnd - this.m_rental.ExpectedEndDate).TotalHours);
             }
 
             if (this.m_dailyLateFeeMode == "Hourly" && this.m_vehicle?.HourlyRate > 0
-                && this.m_actualReturnDate.HasValue && !this.m_isIntervalRental)
+                && !this.m_isIntervalRental)
             {
                 var expectedEnd = this.m_rental.ExpectedEndDate;
-                var actualEnd = new DateTimeOffset(
-                    DateTime.SpecifyKind(this.m_actualReturnDate.Value, DateTimeKind.Utc), TimeSpan.Zero);
+                var actualEnd = this.ActualReturnOffset;
                 if (actualEnd <= expectedEnd) return 0;
                 return (int)Math.Ceiling((actualEnd - expectedEnd).TotalHours);
             }
@@ -388,7 +391,7 @@ else
     {
         get
         {
-            if (this.m_rental == null) return 0;
+            if (this.m_rental == null || this.m_lateFeeWaived) return 0;
 
             if (this.m_isHourlyRental)
                 return this.m_extraHours * this.m_rental.RentalRate;
@@ -412,7 +415,6 @@ else
     private decimal m_refundAmount => Math.Max(0, this.m_depositAmount - this.m_totalAdditional);
 
     private bool CanProceedToStep2 => this.m_rental != null &&
-                                      (this.m_actualReturnDate.HasValue || this.m_isIntervalRental || this.m_isHourlyRental) &&
                                       (!this.m_showMileage || this.m_mileageEnd >= this.m_rental.MileageStart) &&
                                       this.m_postInspection != null;
 
@@ -533,7 +535,9 @@ else
         try
         {
             this.m_activeStep = 0;
-            this.m_actualReturnDate = DateTime.Today;
+            var expectedLocal = this.m_rental!.ExpectedEndDate.LocalDateTime;
+            this.m_actualReturnDateTime = DateTime.Now >= expectedLocal ? DateTime.Now : expectedLocal;
+            this.m_lateFeeWaived = false;
             this.m_mileageEnd = this.m_rental!.MileageStart;
             this.m_returnToShopId = this.RequestContext.GetShopId();
 
@@ -725,11 +729,8 @@ else
 
     private async Task CalculateDropoffOutOfHoursFeeAsync()
     {
-        if (!this.m_actualReturnDate.HasValue && !this.m_isIntervalRental && !this.m_isHourlyRental) return;
-
-        var dropoffDate = (this.m_isIntervalRental || this.m_isHourlyRental) ? DateTime.Today : this.m_actualReturnDate!.Value;
-        var dropoffDateTime = new DateTimeOffset(
-            DateTime.SpecifyKind(dropoffDate, DateTimeKind.Utc), TimeSpan.Zero)
+        var dropoffDateTime = new DateTimeOffset(this.m_actualReturnDateTime.Date,
+            TimeZoneInfo.Local.GetUtcOffset(this.m_actualReturnDateTime))
             .Add(this.m_dropoffTime);
 
         this.m_dropoffOutOfHoursBand = await this.HoursService.GetOutOfHoursFeeAsync(this.RequestContext.GetShopId(), dropoffDateTime);
@@ -760,7 +761,6 @@ else
     private async Task CompleteCheckOut()
     {
         if (this.m_rental == null) return;
-        if (!this.m_actualReturnDate.HasValue && !this.m_isIntervalRental && !this.m_isHourlyRental) return;
 
         this.m_saving = true;
         try
@@ -769,9 +769,8 @@ else
             {
                 RentalId = this.m_rental.RentalId,
                 ExpectedEndDate = this.m_rental.ExpectedEndDate,
-                ActualEndDate = (this.m_isIntervalRental || this.m_isHourlyRental)
-                    ? DateTimeOffset.Now
-                    : new DateTimeOffset(DateTime.SpecifyKind(this.m_actualReturnDate!.Value, DateTimeKind.Utc), TimeSpan.Zero),
+                ActualEndDate = this.ActualReturnOffset,
+                LateFeeWaived = this.m_lateFeeWaived,
                 MileageEnd = this.m_showMileage ? this.m_mileageEnd : 0,
                 Notes = this.m_notes,
                 PaymentMethod = this.m_refundMethod,
@@ -1064,13 +1063,11 @@ else
             </h5>
 
             <div class="form-grid">
-                @if (!m_isIntervalRental && !m_isHourlyRental)
-                {
-                    <div class="form-group">
-                        <label class="form-label">@Localizer["ActualReturnDate"]</label>
-                        <input type="date" class="form-control form-control-lg" lang="en" @bind="m_actualReturnDate" />
-                    </div>
-                }
+                <div class="form-group">
+                    <label class="form-label">@Localizer["ActualReturnDateTime"]</label>
+                    <input type="datetime-local" class="form-control form-control-lg"
+                           @bind="m_actualReturnDateTime" />
+                </div>
                 @if (m_showMileage)
                 {
                     <div class="form-group">
@@ -1215,6 +1212,22 @@ else
                     <span class="status-title">@Localizer["EarlyReturn"]</span>
                     <span class="status-detail">@Localizer["ReturningEarly", Math.Abs(m_extraDays)]</span>
                 </div>
+            </div>
+        }
+
+        @if (this.m_rental is not null && this.ActualReturnOffset > this.m_rental.ExpectedEndDate)
+        {
+            <div class="form-section">
+                <label class="form-check form-switch">
+                    <input type="checkbox" class="form-check-input" @bind="m_lateFeeWaived" />
+                    <span class="form-check-label">@Localizer["WaiveLateFee"]</span>
+                </label>
+                @if (m_lateFeeWaived)
+                {
+                    <div class="text-success small mt-1">
+                        <i class="ti ti-check me-1"></i>@Localizer["LateFeeWaivedNote"]
+                    </div>
+                }
             </div>
         }
 
@@ -1684,6 +1697,19 @@ else
                 <div class="settlement-row text-warning">
                     <span>@Localizer["ExtraDays", m_extraDays]</span>
                     <span>+@FormatCurrency(m_extraDaysCharge)</span>
+                </div>
+            }
+            @if (this.m_rental is not null && this.ActualReturnOffset > this.m_rental.ExpectedEndDate)
+            {
+                <div class="settlement-row">
+                    <label class="form-check form-switch mb-0">
+                        <input type="checkbox" class="form-check-input" @bind="m_lateFeeWaived" />
+                        <span class="form-check-label">@Localizer["WaiveLateFee"]</span>
+                    </label>
+                    @if (m_lateFeeWaived)
+                    {
+                        <span class="text-success small">@Localizer["LateFeeWaivedNote"]</span>
+                    }
                 </div>
             }
 

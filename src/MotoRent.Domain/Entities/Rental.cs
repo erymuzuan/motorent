@@ -221,6 +221,8 @@ public partial class Rental : Entity
     public string Status { get; set; } = "Reserved";  // Reserved, Active, Completed, Cancelled
     public string? Notes { get; set; }
 
+    public bool LateFeeWaived { get; set; }
+
     // Denormalized for display
 
     public string? RenterName { get; set; }

@@ -95,6 +95,8 @@ public class CheckOutRequest
     public bool RefundDeposit { get; set; } = true;
     public decimal? DeductionAmount { get; set; }
 
+    public bool LateFeeWaived { get; set; }
+
     // For cross-shop returns (pooled vehicles)
     public int? ReturnShopId { get; set; }
 
