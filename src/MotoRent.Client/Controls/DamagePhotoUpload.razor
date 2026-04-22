@@ -141,6 +141,13 @@
     }
 
     private static readonly string[] s_allowedExtensions = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
+    private static readonly HashSet<string> s_allowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "image/jpeg",
+        "image/png",
+        "image/gif",
+        "image/webp"
+    };
 
     private async Task ProcessFile(IBrowserFile file)
     {
@@ -150,10 +157,10 @@
             return;
         }
 
-        var extension = Path.GetExtension(file.Name).ToLowerInvariant();
-        if (!s_allowedExtensions.Contains(extension))
+        var extension = GetNormalizedExtension(file);
+        if (string.IsNullOrWhiteSpace(extension))
         {
-            m_error = "Invalid file type. Allowed: JPG, PNG, GIF, WebP";
+            m_error = "Invalid file type. Allowed: JPG, JPEG, PNG, GIF, WebP";
             return;
         }
 
@@ -227,6 +234,29 @@
     {
         m_photos.Clear();
         StateHasChanged();
+    }
+
+    private static string? GetNormalizedExtension(IBrowserFile file)
+    {
+        var extension = Path.GetExtension(file.Name).ToLowerInvariant();
+        if (s_allowedExtensions.Contains(extension))
+        {
+            return extension;
+        }
+
+        if (!s_allowedContentTypes.Contains(file.ContentType))
+        {
+            return null;
+        }
+
+        return file.ContentType.ToLowerInvariant() switch
+        {
+            "image/jpeg" => ".jpg",
+            "image/png" => ".png",
+            "image/gif" => ".gif",
+            "image/webp" => ".webp",
+            _ => null
+        };
     }
 
 }

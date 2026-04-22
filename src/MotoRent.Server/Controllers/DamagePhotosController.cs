@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MotoRent.Domain.Core;
 using MotoRent.Domain.DataContext;
+using MotoRent.Domain.Storage;
 
 namespace MotoRent.Server.Controllers;
 
@@ -14,13 +15,16 @@ namespace MotoRent.Server.Controllers;
 public class DamagePhotosController : ControllerBase
 {
     private readonly IRequestContext m_requestContext;
+    private readonly IBinaryStore m_binaryStore;
     private readonly ILogger<DamagePhotosController> m_logger;
 
     public DamagePhotosController(
         IRequestContext requestContext,
+        IBinaryStore binaryStore,
         ILogger<DamagePhotosController> logger)
     {
         m_requestContext = requestContext;
+        m_binaryStore = binaryStore;
         m_logger = logger;
     }
 
@@ -103,8 +107,19 @@ public class DamagePhotosController : ControllerBase
     /// Serves a damage photo file.
     /// </summary>
     [HttpGet("file/{*filePath}")]
-    public IActionResult GetDamagePhoto(string filePath)
+    public async Task<IActionResult> GetDamagePhoto(string filePath)
     {
+        if (IsBinaryStoreId(filePath))
+        {
+            var document = await m_binaryStore.GetContentAsync(filePath);
+            if (document?.Content == null)
+            {
+                return NotFound();
+            }
+
+            return File(document.Content, document.ContentType ?? "application/octet-stream", enableRangeProcessing: true);
+        }
+
         var basePath = MotoConfig.FileStorageBasePath;
         var fullPath = Path.Combine(Directory.GetCurrentDirectory(), basePath, filePath);
 
@@ -176,6 +191,18 @@ public class DamagePhotosController : ControllerBase
             ".webp" => "image/webp",
             _ => "application/octet-stream"
         };
+    }
+
+    private static bool IsBinaryStoreId(string filePath)
+    {
+        if (string.IsNullOrWhiteSpace(filePath))
+        {
+            return false;
+        }
+
+        return !filePath.Contains('/') &&
+               !filePath.Contains('\\') &&
+               string.IsNullOrEmpty(Path.GetExtension(filePath));
     }
 }
 
