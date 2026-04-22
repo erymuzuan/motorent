@@ -1,10 +1,12 @@
 @page "/rentals/record"
 @using Microsoft.AspNetCore.Authorization
+@using MotoRent.Services
 @attribute [Authorize(Policy = "RequireTenantStaff")]
 @inherits LocalizedComponentBase<RecordPastRental>
 @inject RenterService RenterService
 @inject VehicleService VehicleService
 @inject RentalService RentalService
+@implements IDisposable
 
 <MotoRentPageTitle>@this.Localizer["RecordPastRental"]</MotoRentPageTitle>
 
@@ -22,10 +24,11 @@
 
 <form @onsubmit="this.SaveAsync" @onsubmit:preventDefault>
     @* Renter Section *@
-    <div class="card mb-3">
+    <div class="card mb-3 @(this.m_showFieldErrors && this.m_renter is null ? "border-danger" : "")">
         <div class="card-header">
             <h3 class="card-title">
                 <i class="ti ti-user me-2"></i>@this.Localizer["RenterSection"]
+                <span class="text-danger ms-1">*</span>
             </h3>
         </div>
         <div class="card-body">
@@ -38,6 +41,14 @@
                            @bind="this.m_renterSearchTerm" @bind:event="oninput"
                            @onkeyup="this.OnRenterSearchKeyUp" />
                 </div>
+
+                @if (this.m_renterSearching)
+                {
+                    <div class="text-secondary small mb-2">
+                        <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                        @this.Localizer["Searching"]
+                    </div>
+                }
 
                 @if (this.m_renterResults.Count > 0)
                 {
@@ -56,6 +67,10 @@
                         }
                     </div>
                 }
+                else if (!this.m_renterSearching && !string.IsNullOrWhiteSpace(this.m_renterSearchTerm) && this.m_renterSearchTerm.Length >= 2)
+                {
+                    <div class="text-secondary small mb-2">@this.Localizer["NoRenterFound"]</div>
+                }
 
                 <button type="button" class="btn btn-outline-primary btn-sm" @onclick="this.OpenInlineRenter">
                     <i class="ti ti-user-plus me-1"></i>
@@ -64,35 +79,72 @@
 
                 @if (this.m_showInlineRenter)
                 {
-                    <div class="row g-2 mt-2 p-3 border rounded-3 bg-light">
-                        <div class="col-md-6">
-                            <label class="form-label required">@this.Localizer["FullName"]</label>
-                            <input type="text" class="form-control" @bind="this.m_newRenter.FullName" />
+                    <div class="mt-3 p-3 border rounded-3 bg-light">
+                        @* Passport Scan Option *@
+                        <div class="mb-3">
+                            <label class="form-label d-flex justify-content-between align-items-center">
+                                <span>
+                                    <i class="ti ti-scan me-1"></i>
+                                    @this.Localizer["ScanPassportToFill"]
+                                </span>
+                                <button type="button" class="btn btn-ghost-secondary btn-sm"
+                                        @onclick="@(() => this.m_showPassportScan = !this.m_showPassportScan)">
+                                    @(this.m_showPassportScan ? this.Localizer["HideScanner"] : this.Localizer["ShowScanner"])
+                                </button>
+                            </label>
+                            @if (this.m_showPassportScan)
+                            {
+                                <DocumentUpload DocumentType="Passport"
+                                                OnDataExtracted="this.ApplyPassportScan" />
+                            }
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label required">@this.Localizer["Phone"]</label>
-                            <input type="tel" class="form-control" @bind="this.m_newRenter.Phone" />
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">@this.Localizer["Nationality"]</label>
-                            <input type="text" class="form-control" @bind="this.m_newRenter.Nationality" />
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">@this.Localizer["Passport"]</label>
-                            <input type="text" class="form-control" @bind="this.m_newRenter.PassportNo" />
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">@this.Localizer["Email"]</label>
-                            <input type="email" class="form-control" @bind="this.m_newRenter.Email" />
-                        </div>
-                        <div class="col-12">
-                            <button type="button" class="btn btn-primary btn-sm" @onclick="this.SaveNewRenter">
-                                @this.Localizer["SaveRenter"]
-                            </button>
-                            <button type="button" class="btn btn-ghost-secondary btn-sm ms-2"
-                                    @onclick="@(() => this.m_showInlineRenter = false)">
-                                @this.CommonLocalizer["Cancel"]
-                            </button>
+
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <label class="form-label required">@this.Localizer["FullName"]</label>
+                                <input type="text"
+                                       class="form-control @(this.m_showRenterErrors && string.IsNullOrWhiteSpace(this.m_newRenter.FullName) ? "is-invalid" : "")"
+                                       @bind="this.m_newRenter.FullName" />
+                                @if (this.m_showRenterErrors && string.IsNullOrWhiteSpace(this.m_newRenter.FullName))
+                                {
+                                    <div class="invalid-feedback">@this.Localizer["FullNameRequired"]</div>
+                                }
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label required">@this.Localizer["Phone"]</label>
+                                <input type="tel"
+                                       class="form-control @(this.m_showRenterErrors && string.IsNullOrWhiteSpace(this.m_newRenter.Phone) ? "is-invalid" : "")"
+                                       @bind="this.m_newRenter.Phone" />
+                                @if (this.m_showRenterErrors && string.IsNullOrWhiteSpace(this.m_newRenter.Phone))
+                                {
+                                    <div class="invalid-feedback">@this.Localizer["PhoneRequired"]</div>
+                                }
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">@this.Localizer["Nationality"]</label>
+                                <input type="text" class="form-control" @bind="this.m_newRenter.Nationality" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">@this.Localizer["Passport"]</label>
+                                <input type="text" class="form-control" @bind="this.m_newRenter.PassportNo" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">@this.Localizer["Email"]</label>
+                                <input type="email" class="form-control" @bind="this.m_newRenter.Email" />
+                            </div>
+                            <div class="col-12">
+                                <button type="button" class="btn btn-primary btn-sm" @onclick="this.SaveNewRenter" disabled="@this.m_savingRenter">
+                                    @if (this.m_savingRenter)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                    }
+                                    @this.Localizer["SaveRenter"]
+                                </button>
+                                <button type="button" class="btn btn-ghost-secondary btn-sm ms-2"
+                                        @onclick="this.CancelInlineRenter">
+                                    @this.CommonLocalizer["Cancel"]
+                                </button>
+                            </div>
                         </div>
                     </div>
                 }
@@ -101,6 +153,7 @@
             {
                 <div class="d-flex align-items-center justify-content-between">
                     <div>
+                        <i class="ti ti-circle-check text-success me-1"></i>
                         <strong>@this.m_renter.FullName</strong>
                         <span class="text-secondary ms-2">@this.m_renter.Phone</span>
                         @if (!string.IsNullOrEmpty(this.m_renter.Nationality))
@@ -118,10 +171,11 @@
     </div>
 
     @* Vehicle + Mileage Section *@
-    <div class="card mb-3">
+    <div class="card mb-3 @(this.m_showFieldErrors && this.m_vehicle is null ? "border-danger" : "")">
         <div class="card-header">
             <h3 class="card-title">
                 <i class="ti ti-car me-2"></i>@this.Localizer["VehicleSection"]
+                <span class="text-danger ms-1">*</span>
             </h3>
         </div>
         <div class="card-body">
@@ -134,6 +188,14 @@
                            @bind="this.m_vehicleSearchTerm" @bind:event="oninput"
                            @onkeyup="this.OnVehicleSearchKeyUp" />
                 </div>
+
+                @if (this.m_vehicleSearching)
+                {
+                    <div class="text-secondary small mb-2">
+                        <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                        @this.Localizer["Searching"]
+                    </div>
+                }
 
                 @if (this.m_vehicleResults.Count > 0)
                 {
@@ -148,11 +210,16 @@
                         }
                     </div>
                 }
+                else if (!this.m_vehicleSearching && !string.IsNullOrWhiteSpace(this.m_vehicleSearchTerm) && this.m_vehicleSearchTerm.Length >= 2)
+                {
+                    <div class="text-secondary small">@this.Localizer["NoVehicleFound"]</div>
+                }
             }
             else
             {
                 <div class="d-flex align-items-center justify-content-between mb-3">
                     <div>
+                        <i class="ti ti-circle-check text-success me-1"></i>
                         <span class="badge bg-primary-lt me-2">@this.m_vehicle.LicensePlate</span>
                         <strong>@this.m_vehicle.Brand @this.m_vehicle.Model</strong>
                         @if (this.m_vehicle.Year > 0)
@@ -181,7 +248,7 @@
     </div>
 
     @* Dates Section *@
-    <div class="card mb-3">
+    <div class="card mb-3 @(this.m_showFieldErrors && this.m_endDate < this.m_startDate ? "border-danger" : "")">
         <div class="card-header">
             <h3 class="card-title">
                 <i class="ti ti-calendar me-2"></i>@this.Localizer["DatesSection"]
@@ -196,14 +263,20 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label required">@this.Localizer["EndDate"]</label>
-                    <input type="date" class="form-control" @bind="this.m_endDate" />
+                    <input type="date"
+                           class="form-control @(this.m_showFieldErrors && this.m_endDate < this.m_startDate ? "is-invalid" : "")"
+                           @bind="this.m_endDate" />
+                    @if (this.m_showFieldErrors && this.m_endDate < this.m_startDate)
+                    {
+                        <div class="invalid-feedback">@this.Localizer["EndDateBeforeStart"]</div>
+                    }
                 </div>
             </div>
         </div>
     </div>
 
     @* Payment Section *@
-    <div class="card mb-3">
+    <div class="card mb-3 @(this.m_showFieldErrors && this.m_totalAmount <= 0 ? "border-danger" : "")">
         <div class="card-header">
             <h3 class="card-title">
                 <i class="ti ti-cash me-2"></i>@this.Localizer["PaymentSection"]
@@ -213,10 +286,16 @@
             <div class="row g-3">
                 <div class="col-md-6">
                     <label class="form-label required">@this.Localizer["RentalSum"]</label>
-                    <div class="input-group">
+                    <div class="input-group @(this.m_showFieldErrors && this.m_totalAmount <= 0 ? "is-invalid" : "")">
                         <span class="input-group-text">฿</span>
-                        <input type="number" class="form-control" min="0" step="1" @bind="this.m_totalAmount" />
+                        <input type="number"
+                               class="form-control @(this.m_showFieldErrors && this.m_totalAmount <= 0 ? "is-invalid" : "")"
+                               min="0" step="1" @bind="this.m_totalAmount" />
                     </div>
+                    @if (this.m_showFieldErrors && this.m_totalAmount <= 0)
+                    {
+                        <div class="invalid-feedback d-block">@this.Localizer["AmountRequired"]</div>
+                    }
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">@this.Localizer["PaidAmount"]</label>
@@ -246,6 +325,40 @@
                     </label>
                 </div>
             </div>
+
+            @* Payment Proof Upload for PromptPay / BankTransfer *@
+            @if (this.m_paymentMethod is "PromptPay" or "BankTransfer")
+            {
+                <div class="mt-3 p-3 border rounded-3 bg-light">
+                    <label class="form-label">
+                        <i class="ti ti-receipt me-1"></i>
+                        @this.Localizer["UploadPaymentSlip"]
+                    </label>
+                    <FileUpload StoreIdChanged="this.OnPaymentProofUploaded"
+                                Prepend="payment-slip"
+                                AcceptedExtensions=".pdf,image/*" />
+                    <small class="form-hint">@this.Localizer["PaymentSlipHint"]</small>
+
+                    @if (this.GetPaymentProofAttachments().Count > 0)
+                    {
+                        <div class="list-group list-group-flush mt-2">
+                            @foreach (var att in this.GetPaymentProofAttachments())
+                            {
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <i class="ti ti-receipt text-success me-2"></i>
+                                        @att.DisplayName
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-ghost-danger"
+                                            @onclick="@(() => this.RemoveAttachment(att))">
+                                        <i class="ti ti-trash"></i>
+                                    </button>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
 
             <div class="alert alert-success mt-3 mb-0">
                 <div class="d-flex justify-content-between">
@@ -318,10 +431,13 @@
                         Prepend="rental-attachment"
                         AcceptedExtensions=".pdf,image/*" />
 
-            @if (this.m_attachments.Count > 0)
+            @{
+                var otherAttachments = this.m_attachments.Where(a => a.AttachmentType != "PaymentProof").ToList();
+            }
+            @if (otherAttachments.Count > 0)
             {
                 <div class="list-group list-group-flush mt-3">
-                    @foreach (var att in this.m_attachments)
+                    @foreach (var att in otherAttachments)
                     {
                         <div class="list-group-item d-flex justify-content-between align-items-center">
                             <div>
@@ -339,6 +455,28 @@
             }
         </div>
     </div>
+
+    @* Validation Summary - shown when save is blocked *@
+    @if (!this.CanSave && this.GetValidationIssues().Count > 0)
+    {
+        <div class="alert alert-warning mb-3">
+            <div class="d-flex">
+                <div class="me-3">
+                    <i class="ti ti-alert-triangle" style="font-size: 1.5rem;"></i>
+                </div>
+                <div class="flex-fill">
+                    <h4 class="alert-title">@this.Localizer["CannotSaveYet"]</h4>
+                    <div class="text-secondary">@this.Localizer["CompleteTheFollowing"]</div>
+                    <ul class="mb-0 mt-2">
+                        @foreach (var issue in this.GetValidationIssues())
+                        {
+                            <li>@issue</li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </div>
+    }
 
     @* Save Bar *@
     <div class="card mb-3">
@@ -365,6 +503,11 @@
     private List<Renter> m_renterResults = [];
     private bool m_showInlineRenter;
     private Renter m_newRenter = new();
+    private bool m_renterSearching;
+    private bool m_savingRenter;
+    private bool m_showRenterErrors;
+    private bool m_showPassportScan;
+    private System.Timers.Timer? m_renterSearchTimer;
 
     // Vehicle
     private Vehicle? m_vehicle;
@@ -372,6 +515,8 @@
     private List<Vehicle> m_vehicleResults = [];
     private int m_mileageStart;
     private int? m_mileageEnd;
+    private bool m_vehicleSearching;
+    private System.Timers.Timer? m_vehicleSearchTimer;
 
     // Dates
     private DateTime m_startDate = DateTime.Today.AddDays(-7);
@@ -389,21 +534,66 @@
     private List<RentalAttachment> m_attachments = [];
 
     private bool m_saving;
+    private bool m_showFieldErrors;
+
+    private const int SearchDebounceMs = 300;
 
     private bool CanSave => this.m_renter is not null
         && this.m_vehicle is not null
         && this.m_totalAmount > 0
         && this.m_endDate >= this.m_startDate;
 
-    private async Task OnRenterSearchKeyUp(KeyboardEventArgs _)
+    private List<string> GetValidationIssues()
     {
+        var issues = new List<string>();
+        if (this.m_renter is null) issues.Add(this.Localizer["Issue_SelectRenter"]);
+        if (this.m_vehicle is null) issues.Add(this.Localizer["Issue_SelectVehicle"]);
+        if (this.m_totalAmount <= 0) issues.Add(this.Localizer["Issue_EnterAmount"]);
+        if (this.m_endDate < this.m_startDate) issues.Add(this.Localizer["Issue_EndDateBeforeStart"]);
+        return issues;
+    }
+
+    private List<RentalAttachment> GetPaymentProofAttachments()
+        => this.m_attachments.Where(a => a.AttachmentType == "PaymentProof").ToList();
+
+    #region Renter search
+
+    private void OnRenterSearchKeyUp(KeyboardEventArgs _)
+    {
+        this.m_renterSearchTimer?.Stop();
+        this.m_renterSearchTimer?.Dispose();
+
         if (string.IsNullOrWhiteSpace(this.m_renterSearchTerm) || this.m_renterSearchTerm.Length < 2)
         {
             this.m_renterResults = [];
+            this.m_renterSearching = false;
             return;
         }
-        var result = await this.RenterService.GetRentersAsync(this.m_renterSearchTerm, 1, 20);
-        this.m_renterResults = result.ItemCollection.ToList();
+
+        this.m_renterSearching = true;
+        this.m_renterSearchTimer = new System.Timers.Timer(SearchDebounceMs) { AutoReset = false };
+        this.m_renterSearchTimer.Elapsed += async (_, _) => await this.InvokeAsync(this.ExecuteRenterSearch);
+        this.m_renterSearchTimer.Start();
+    }
+
+    private async Task ExecuteRenterSearch()
+    {
+        try
+        {
+            var term = this.m_renterSearchTerm;
+            if (string.IsNullOrWhiteSpace(term) || term.Length < 2)
+            {
+                this.m_renterResults = [];
+                return;
+            }
+            var result = await this.RenterService.GetRentersAsync(term, 1, 20);
+            this.m_renterResults = result.ItemCollection.ToList();
+        }
+        finally
+        {
+            this.m_renterSearching = false;
+            this.StateHasChanged();
+        }
     }
 
     private void PickRenter(Renter r)
@@ -417,39 +607,100 @@
     {
         this.m_newRenter = new Renter { FullName = this.m_renterSearchTerm ?? "" };
         this.m_showInlineRenter = true;
+        this.m_showRenterErrors = false;
+        this.m_showPassportScan = false;
+    }
+
+    private void CancelInlineRenter()
+    {
+        this.m_showInlineRenter = false;
+        this.m_showRenterErrors = false;
+        this.m_showPassportScan = false;
+        this.m_newRenter = new Renter();
+    }
+
+    private void ApplyPassportScan(ExtractedDocumentData data)
+    {
+        if (!string.IsNullOrWhiteSpace(data.FullName)) this.m_newRenter.FullName = data.FullName;
+        if (!string.IsNullOrWhiteSpace(data.DocumentNumber)) this.m_newRenter.PassportNo = data.DocumentNumber;
+        if (!string.IsNullOrWhiteSpace(data.Nationality)) this.m_newRenter.Nationality = data.Nationality;
+        this.StateHasChanged();
     }
 
     private async Task SaveNewRenter()
     {
+        this.m_showRenterErrors = true;
         if (string.IsNullOrWhiteSpace(this.m_newRenter.FullName) || string.IsNullOrWhiteSpace(this.m_newRenter.Phone))
         {
             this.ShowError(this.Localizer["RenterNamePhoneRequired"].Value);
             return;
         }
-        var result = await this.RenterService.CreateRenterAsync(this.m_newRenter, this.UserName);
-        if (result.Success)
+
+        this.m_savingRenter = true;
+        try
         {
-            this.m_renter = this.m_newRenter;
-            this.m_showInlineRenter = false;
-            this.m_newRenter = new Renter();
-            this.ShowSuccess(this.Localizer["RenterCreated"].Value);
+            var result = await this.RenterService.CreateRenterAsync(this.m_newRenter, this.UserName);
+            if (result.Success)
+            {
+                this.m_renter = this.m_newRenter;
+                this.m_showInlineRenter = false;
+                this.m_showRenterErrors = false;
+                this.m_showPassportScan = false;
+                this.m_newRenter = new Renter();
+                this.ShowSuccess(this.Localizer["RenterCreated"].Value);
+            }
+            else
+            {
+                this.ShowError(result.Message ?? "");
+            }
         }
-        else
+        finally
         {
-            this.ShowError(result.Message ?? "");
+            this.m_savingRenter = false;
         }
     }
 
-    private async Task OnVehicleSearchKeyUp(KeyboardEventArgs _)
+    #endregion
+
+    #region Vehicle search
+
+    private void OnVehicleSearchKeyUp(KeyboardEventArgs _)
     {
+        this.m_vehicleSearchTimer?.Stop();
+        this.m_vehicleSearchTimer?.Dispose();
+
         if (string.IsNullOrWhiteSpace(this.m_vehicleSearchTerm) || this.m_vehicleSearchTerm.Length < 2)
         {
             this.m_vehicleResults = [];
+            this.m_vehicleSearching = false;
             return;
         }
-        var result = await this.VehicleService.GetVehiclesAsync(
-            shopId: 0, searchTerm: this.m_vehicleSearchTerm, page: 1, pageSize: 20);
-        this.m_vehicleResults = result.ItemCollection.ToList();
+
+        this.m_vehicleSearching = true;
+        this.m_vehicleSearchTimer = new System.Timers.Timer(SearchDebounceMs) { AutoReset = false };
+        this.m_vehicleSearchTimer.Elapsed += async (_, _) => await this.InvokeAsync(this.ExecuteVehicleSearch);
+        this.m_vehicleSearchTimer.Start();
+    }
+
+    private async Task ExecuteVehicleSearch()
+    {
+        try
+        {
+            var term = this.m_vehicleSearchTerm;
+            if (string.IsNullOrWhiteSpace(term) || term.Length < 2)
+            {
+                this.m_vehicleResults = [];
+                return;
+            }
+            var result = await this.VehicleService.GetVehiclesAsync(
+                shopId: 0, searchTerm: term, page: 1, pageSize: 20);
+            this.m_vehicleResults = result.ItemCollection.ToList();
+        }
+        finally
+        {
+            this.m_vehicleSearching = false;
+            this.StateHasChanged();
+        }
     }
 
     private void PickVehicle(Vehicle v)
@@ -459,14 +710,30 @@
         this.m_vehicleSearchTerm = null;
     }
 
+    #endregion
+
     private void OnAttachmentUploaded(string? storeId)
     {
         if (string.IsNullOrWhiteSpace(storeId)) return;
         this.m_attachments.Add(new RentalAttachment
         {
             StoreId = storeId,
-            DisplayName = $"Attachment {this.m_attachments.Count + 1}",
+            DisplayName = $"Attachment {this.m_attachments.Count(a => a.AttachmentType != "PaymentProof") + 1}",
             AttachmentType = "Document",
+            UploadedOn = DateTimeOffset.UtcNow
+        });
+        this.StateHasChanged();
+    }
+
+    private void OnPaymentProofUploaded(string? storeId)
+    {
+        if (string.IsNullOrWhiteSpace(storeId)) return;
+        var methodLabel = this.Localizer[this.m_paymentMethod].Value;
+        this.m_attachments.Add(new RentalAttachment
+        {
+            StoreId = storeId,
+            DisplayName = this.Localizer["PaymentSlipLabel", methodLabel].Value,
+            AttachmentType = "PaymentProof",
             UploadedOn = DateTimeOffset.UtcNow
         });
         this.StateHasChanged();
@@ -479,7 +746,13 @@
 
     private async Task SaveAsync()
     {
-        if (!this.CanSave) return;
+        this.m_showFieldErrors = true;
+        if (!this.CanSave)
+        {
+            this.ShowError(this.Localizer["CannotSaveYet"].Value);
+            return;
+        }
+
         this.m_saving = true;
         try
         {
@@ -519,5 +792,11 @@
         {
             this.m_saving = false;
         }
+    }
+
+    public void Dispose()
+    {
+        this.m_renterSearchTimer?.Dispose();
+        this.m_vehicleSearchTimer?.Dispose();
     }
 }

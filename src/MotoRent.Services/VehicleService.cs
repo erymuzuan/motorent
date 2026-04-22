@@ -43,15 +43,22 @@ public class VehicleService(RentalDataContext context, VehiclePoolService poolSe
 
         query = query.OrderByDescending(v => v.VehicleId);
 
-        var result = await this.Context.LoadAsync(query, page, pageSize, includeTotalRows: true);
+        // When searching, load a large window up-front so the in-memory filter
+        // isn't limited to the first `pageSize` newest rows (which caused the
+        // search to return no matches for older vehicles). See MOTOR-14 #2.
+        var isSearching = !string.IsNullOrWhiteSpace(searchTerm);
+        var loadPage = isSearching ? 1 : page;
+        var loadSize = isSearching ? 1000 : pageSize;
+
+        var result = await this.Context.LoadAsync(query, loadPage, loadSize, includeTotalRows: true);
 
         // Populate shared properties from FleetModel
         await PopulateFleetModelDataAsync(result.ItemCollection);
 
         // Apply search term filter in memory
-        if (!string.IsNullOrWhiteSpace(searchTerm))
+        if (isSearching)
         {
-            result.ItemCollection = ApplySearchFilter(result.ItemCollection, searchTerm);
+            result.ItemCollection = ApplySearchFilter(result.ItemCollection, searchTerm!);
         }
 
         return result;
