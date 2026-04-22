@@ -295,6 +295,8 @@ public partial class RentalService
 
             // 4. Update rental
             rental.ActualEndDate = request.ActualEndDate;
+            if (request.ExpectedEndDate.HasValue)
+                rental.ExpectedEndDate = request.ExpectedEndDate.Value;
             rental.ReturnedToShopId = returnShopId;
             rental.MileageEnd = request.MileageEnd;
             rental.Status = "Completed";

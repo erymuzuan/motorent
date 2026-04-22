@@ -88,6 +88,7 @@ public class CheckOutRequest
 {
     public int RentalId { get; set; }
     public DateTimeOffset ActualEndDate { get; set; }
+    public DateTimeOffset? ExpectedEndDate { get; set; }
     public int MileageEnd { get; set; }
     public string? Notes { get; set; }
     public string? PaymentMethod { get; set; }

@@ -8,6 +8,7 @@
 @using MotoRent.Client.Components.Shared
 @using MotoRent.Client.Controls
 @using MotoRent.Client.Controls.VehicleInspection
+@using System.Globalization
 @attribute [Authorize(Policy = "RequireTenantStaff")]
 @inherits LocalizedComponentBase<CheckOut>
 @inject RentalService RentalService
@@ -735,6 +736,27 @@ else
         this.m_dropoffOutOfHoursFee = this.m_dropoffOutOfHoursBand?.Fee ?? 0;
     }
 
+    private void OnExpectedEndDateChanged(ChangeEventArgs e)
+    {
+        if (this.m_rental == null) return;
+        if (DateTime.TryParse(e.Value?.ToString(), CultureInfo.InvariantCulture, DateTimeStyles.None, out var dt))
+        {
+            var offset = this.m_rental.ExpectedEndDate.Offset;
+            this.m_rental.ExpectedEndDate = new DateTimeOffset(dt.Date, offset);
+        }
+    }
+
+    private void OnExpectedEndDateTimeChanged(ChangeEventArgs e)
+    {
+        if (this.m_rental == null) return;
+        if (DateTime.TryParse(e.Value?.ToString(), CultureInfo.InvariantCulture, DateTimeStyles.None, out var dt))
+        {
+            var offset = this.m_rental.ExpectedEndDate.Offset;
+            this.m_rental.ExpectedEndDate = new DateTimeOffset(
+                DateTime.SpecifyKind(dt, DateTimeKind.Unspecified), offset);
+        }
+    }
+
     private async Task CompleteCheckOut()
     {
         if (this.m_rental == null) return;
@@ -746,6 +768,7 @@ else
             var request = new CheckOutRequest
             {
                 RentalId = this.m_rental.RentalId,
+                ExpectedEndDate = this.m_rental.ExpectedEndDate,
                 ActualEndDate = (this.m_isIntervalRental || this.m_isHourlyRental)
                     ? DateTimeOffset.Now
                     : new DateTimeOffset(DateTime.SpecifyKind(this.m_actualReturnDate!.Value, DateTimeKind.Utc), TimeSpan.Zero),
@@ -1000,23 +1023,35 @@ else
             <div class="summary-dates">
                 <div class="date-box">
                     <span class="date-label">@Localizer["Started"]</span>
-                    <span class="date-value">@FormatDate(m_rental!.StartDate)</span>
+                    <span class="date-value">
+                        @if (m_isIntervalRental || m_isHourlyRental)
+                        {
+                            @m_rental!.StartDate.LocalDateTime.ToString("dd/MM/yyyy HH:mm", CultureInfo.InvariantCulture)
+                        }
+                        else
+                        {
+                            @m_rental!.StartDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)
+                        }
+                    </span>
                 </div>
                 <div class="date-arrow">
                     <i class="ti ti-arrow-right"></i>
                 </div>
                 <div class="date-box">
                     <span class="date-label">@Localizer["Expected"]</span>
-                    <span class="date-value">
-                        @if (m_isIntervalRental || m_isHourlyRental)
-                        {
-                            @m_rental.ExpectedEndDate.ToString("dd MMM h:mm tt")
-                        }
-                        else
-                        {
-                            @FormatDate(m_rental.ExpectedEndDate)
-                        }
-                    </span>
+                    @if (m_isIntervalRental || m_isHourlyRental)
+                    {
+                        <input type="datetime-local" class="form-control form-control-sm date-value-input" lang="en"
+                               value="@m_rental.ExpectedEndDate.LocalDateTime.ToString("yyyy-MM-ddTHH:mm", CultureInfo.InvariantCulture)"
+                               @onchange="OnExpectedEndDateTimeChanged" />
+                    }
+                    else
+                    {
+                        <input type="date" class="form-control form-control-sm date-value-input" lang="en"
+                               value="@m_rental.ExpectedEndDate.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
+                               min="@m_rental.StartDate.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
+                               @onchange="OnExpectedEndDateChanged" />
+                    }
                 </div>
             </div>
         </div>
