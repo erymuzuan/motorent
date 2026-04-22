@@ -4078,3 +4078,215 @@ textarea.mr-form-control {
 .pb-footer {
     padding-bottom: 120px !important;
 }
+
+/* ============================================
+   MOTOR-13: Mobile & Tablet Navigation
+   Touch-optimized responsive menu behavior
+   ============================================ */
+
+/* Hamburger toggler - WCAG 2.5.5 touch target (44x44) and visible
+   prominence. Only visible below md breakpoint (Bootstrap's built-in
+   .navbar-expand-md .navbar-toggler { display: none } handles ≥md). */
+@media (max-width: 767.98px) {
+    .mr-navbar-gradient .navbar-toggler {
+        min-width: 44px;
+        min-height: 44px;
+        padding: 0.5rem;
+        border: 1px solid rgba(255, 255, 255, 0.35);
+        background-color: rgba(255, 255, 255, 0.08);
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 0.5rem;
+    }
+
+    .mr-navbar-gradient .navbar-toggler:focus,
+    .mr-navbar-gradient .navbar-toggler:hover {
+        background-color: rgba(255, 255, 255, 0.18);
+        box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.25);
+        outline: none;
+    }
+
+    .mr-navbar-gradient .navbar-toggler-icon {
+        width: 1.5rem;
+        height: 1.5rem;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255,255,255,0.95%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2.25' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+    }
+}
+
+/* ---- Mobile layout: below md (767.98px) ---- */
+@media (max-width: 767.98px) {
+
+    /* Header row: avoid name wrapping / push user avatar off-screen.
+       The org name gets its own text-overflow limit. */
+    .mr-navbar-gradient .navbar-brand {
+        min-width: 0;
+        max-width: calc(100vw - 180px);
+        overflow: hidden;
+    }
+
+    .mr-navbar-gradient .navbar-brand span.fw-bold {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* Show theme & language toggles on mobile too — they were hidden by
+       Bootstrap d-none d-md-flex. Users need language switching especially
+       (tourist market). Theme toggle stays available. */
+    .mr-navbar-gradient header.navbar .navbar-nav.order-md-last > .nav-item.d-none.d-md-flex {
+        display: inline-flex !important;
+        margin-right: 0.25rem !important;
+    }
+
+    .mr-navbar-gradient header.navbar .navbar-nav.order-md-last .nav-link {
+        padding: 0.5rem !important;
+        min-width: 40px;
+        min-height: 40px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Collapsed nav panel: give it an opaque surface so it doesn't blend
+       into the gradient; put it just below the header.
+       NOTE: overrides an earlier `background: transparent !important` rule
+       (lines ~76-85), so we also use !important here. */
+    .mr-navbar-gradient .navbar-expand-md .navbar-collapse {
+        background: #ffffff !important;
+        border-top: 1px solid rgba(0, 0, 0, 0.08);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+        padding: 0.5rem 0;
+        margin: 0 -1rem;
+    }
+
+    [data-bs-theme="dark"] .mr-navbar-gradient .navbar-expand-md .navbar-collapse {
+        background: #1a1d21 !important;
+        border-top-color: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Inner nav becomes a vertical stack (main menu only — NOT the
+       header's top-right navbar-nav which keeps horizontal layout) */
+    .mr-navbar-gradient .navbar-expand-md .navbar-collapse .navbar-nav {
+        flex-direction: column !important;
+        width: 100%;
+        padding: 0 0.5rem;
+    }
+
+    .mr-navbar-gradient .navbar-expand-md .navbar-collapse .navbar-nav .nav-item {
+        width: 100%;
+    }
+
+    /* Header's top-right navbar-nav stays horizontal on mobile */
+    .mr-navbar-gradient header.navbar .navbar-nav.order-md-last {
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        align-items: center;
+        margin-left: auto;
+    }
+
+    /* Top-level nav links become touch-optimised rows (main menu only) */
+    .mr-navbar-gradient .navbar-expand-md .navbar-collapse .navbar-nav .nav-link {
+        color: var(--tblr-body-color, #1e293b) !important;
+        min-height: 48px;
+        padding: 0.75rem 1rem !important;
+        border-radius: 8px;
+        justify-content: flex-start;
+    }
+
+    .mr-navbar-gradient .navbar-expand-md .navbar-collapse .navbar-nav .nav-link:hover,
+    .mr-navbar-gradient .navbar-expand-md .navbar-collapse .navbar-nav .nav-link:focus {
+        background: var(--mr-accent-bg-light, rgba(20, 184, 166, 0.12));
+        color: var(--mr-accent-primary, #0f766e) !important;
+    }
+
+    .mr-navbar-gradient .navbar-expand-md .navbar-collapse .navbar-nav .nav-link-icon {
+        color: var(--tblr-secondary, #667382) !important;
+        margin-right: 0.25rem;
+    }
+
+    /* Dropdown menus render inline/static on mobile so they act like an
+       expandable section inside the drawer instead of a floating popover.
+       Still hidden by default; Bootstrap adds .show on toggle. */
+    .mr-navbar-gradient .navbar-expand-md .navbar-collapse .navbar-nav .dropdown-menu {
+        position: static !important;
+        float: none;
+        width: 100%;
+        margin: 0.25rem 0 0.5rem 0.75rem;
+        padding: 0.25rem 0;
+        border: 0;
+        border-left: 2px solid var(--tblr-border-color, #e2e8f0);
+        border-radius: 0;
+        box-shadow: none;
+        background: transparent;
+    }
+
+    [data-bs-theme="dark"] .mr-navbar-gradient .navbar-expand-md .navbar-collapse .navbar-nav .dropdown-menu {
+        border-left-color: rgba(255, 255, 255, 0.12);
+    }
+
+    /* Dropdown items: 48px min-height for touch */
+    .mr-navbar-gradient .dropdown-item {
+        min-height: 48px;
+        padding: 0.75rem 1rem;
+        display: flex;
+        align-items: center;
+        border-radius: 8px;
+        margin: 2px 0;
+    }
+
+    /* Ensure dropdown-toggle caret still shows and rotates visibly */
+    .mr-navbar-gradient .navbar-expand-md .navbar-collapse .navbar-nav .dropdown-toggle::after {
+        margin-left: auto;
+    }
+
+    /* User dropdown (top header) — show the avatar with good touch
+       target; the text beside it stays hidden via d-xl-block */
+    .mr-navbar-gradient .nav-item.dropdown > .nav-link.p-0 {
+        min-width: 44px;
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2px !important;
+    }
+}
+
+/* ---- Tablet layout (md..lg): 768..1023.98 ---- */
+@media (min-width: 768px) and (max-width: 1023.98px) {
+
+    /* Keep horizontal menu but give items room to breathe and slightly
+       larger touch targets than default. */
+    .mr-navbar-gradient .navbar-expand-md .navbar-nav .nav-link {
+        min-height: 44px;
+        padding: 0.5rem 0.75rem !important;
+    }
+
+    .mr-navbar-gradient .dropdown-item {
+        min-height: 44px;
+        padding: 0.625rem 1rem;
+        display: flex;
+        align-items: center;
+    }
+
+    /* Dropdown menu: wider by default for tablet so 2-word items don't
+       get cramped. */
+    .mr-navbar-gradient .navbar-nav .dropdown-menu {
+        min-width: 14rem;
+    }
+}
+
+/* ---- Dropdown menu background: make sure it's always opaque enough
+   to be readable over the gradient header, for ALL breakpoints. ---- */
+.mr-navbar-gradient .dropdown-menu {
+    background: #ffffff;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+[data-bs-theme="dark"] .mr-navbar-gradient .dropdown-menu {
+    background: #232629;
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
